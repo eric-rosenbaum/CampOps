@@ -109,33 +109,21 @@ export async function initializeSupabase(): Promise<{
   tasks: ChecklistTask[];
   season: Season | null;
 } | null> {
+  console.log('[Supabase] initializeSupabase() called');
+  console.log('[Supabase] URL:', import.meta.env.VITE_SUPABASE_URL);
+  console.log('[Supabase] Key set:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
+
   try {
-    // Check if issues table is populated
-    const { count, error: countErr } = await supabase
-      .from('issues')
-      .select('id', { count: 'exact', head: true });
-
-    if (countErr) {
-      console.error('Supabase init error (table may not exist yet):', countErr.message);
-      return null;
-    }
-
-    if ((count ?? 0) === 0) {
-      await seedSupabase();
-    }
+    // Always ensure users exist (required for FK constraints on issues/activity)
+    const userRows = SEED_USERS.map((u) => ({ id: u.id, name: u.name, role: u.role, initials: u.initials }));
+    const { error: ue } = await supabase.from('users').upsert(userRows, { onConflict: 'id' });
+    if (ue) console.error('[Supabase] User upsert error:', ue.message);
 
     const data = await loadFromSupabase();
-
-    // If we got no issues back (e.g. seeding failed), return null so the
-    // caller keeps the in-memory seed data instead of overwriting with empty.
-    if (data.issues.length === 0) {
-      console.error('Supabase returned no issues — falling back to seed data');
-      return null;
-    }
-
+    console.log('[Supabase] Loaded:', data.issues.length, 'issues,', data.tasks.length, 'tasks');
     return data;
   } catch (e) {
-    console.error('Supabase init failed:', e);
+    console.error('[Supabase] initializeSupabase threw:', e);
     return null;
   }
 }

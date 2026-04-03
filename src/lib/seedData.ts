@@ -1,14 +1,14 @@
 import type { User, Issue, ChecklistTask, Season } from './types';
 
 export const SEED_USERS: User[] = [
-  { id: 'u1', name: 'Jordan M.', role: 'doe', initials: 'JM' },
-  { id: 'u2', name: 'Tom H.', role: 'facilities_manager', initials: 'TH' },
-  { id: 'u3', name: 'Dana K.', role: 'maintenance_staff', initials: 'DK' },
-  { id: 'u4', name: 'Mike L.', role: 'maintenance_staff', initials: 'ML' },
+  { id: '10000000-0000-0000-0000-000000000001', name: 'Jordan M.', role: 'doe', initials: 'JM' },
+  { id: '10000000-0000-0000-0000-000000000002', name: 'Tom H.', role: 'facilities_manager', initials: 'TH' },
+  { id: '10000000-0000-0000-0000-000000000003', name: 'Dana K.', role: 'maintenance_staff', initials: 'DK' },
+  { id: '10000000-0000-0000-0000-000000000004', name: 'Mike L.', role: 'maintenance_staff', initials: 'ML' },
 ];
 
 export const SEED_SEASON: Season = {
-  id: 's1',
+  id: '20000000-0000-0000-0000-000000000001',
   name: 'Summer 2025',
   openingDate: '2025-06-23',
   closingDate: '2025-07-18',

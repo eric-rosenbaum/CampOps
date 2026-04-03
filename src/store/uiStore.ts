@@ -15,7 +15,7 @@ interface UIStore {
 }
 
 export const useUIStore = create<UIStore>((set) => ({
-  currentUserId: 'u1',
+  currentUserId: '10000000-0000-0000-0000-000000000001',
   isLogIssueModalOpen: false,
   isLogTaskModalOpen: false,
   isSeasonModalOpen: false,

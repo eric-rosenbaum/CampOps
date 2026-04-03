@@ -19,7 +19,11 @@ function AppInit() {
     let unsubTasks: (() => void) | null = null;
 
     initializeSupabase().then((data) => {
-      if (!data) return; // Supabase unavailable or returned empty — keep in-memory seed data
+      if (!data) {
+        console.warn('[App] Supabase unavailable — stores remain empty');
+        return;
+      }
+      console.log('[App] Supabase data received:', data.issues.length, 'issues,', data.tasks.length, 'tasks');
       setIssues(data.issues);
       setTasks(data.tasks);
       if (data.season) setSeason(data.season);

@@ -41,10 +41,10 @@ function computeDueDate(openingDate: string, daysRelative: number): string {
 }
 
 export const useChecklistStore = create<ChecklistStore>((set, get) => ({
-  tasks: SEED_TASKS,
-  season: SEED_SEASON,
+  tasks: [],
+  season: null,
   activePhase: 'pre',
-  selectedTaskId: SEED_TASKS.filter((t) => t.phase === 'pre')[0]?.id ?? null,
+  selectedTaskId: null,
   filter: 'all',
   searchQuery: '',
 

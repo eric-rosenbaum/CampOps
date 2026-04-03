@@ -53,8 +53,8 @@ function computeNextDueDate(dueDate: string | null, interval: Issue['recurringIn
 }
 
 export const useIssuesStore = create<IssuesStore>((set, get) => ({
-  issues: SEED_ISSUES,
-  selectedIssueId: SEED_ISSUES[0]?.id ?? null,
+  issues: [],
+  selectedIssueId: null,
   filter: 'all',
   searchQuery: '',
 

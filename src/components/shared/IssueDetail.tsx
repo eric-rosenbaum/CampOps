@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Issue, IssueStatus } from '@/lib/types';
 import { SEED_USERS } from '@/lib/seedData';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useUIStore } from '@/store/uiStore';
+import { useAuth } from '@/lib/auth';
 import { PriorityBadge } from './PriorityBadge';
 import { ActivityFeed } from './ActivityFeed';
 import { Button } from './Button';
@@ -14,13 +15,21 @@ interface Props {
 }
 
 export function IssueDetail({ issue }: Props) {
-  const { updateIssue, resolveIssue, reopenIssue, addActivityEntry } = useIssuesStore();
-  const { currentUserId, openEditIssueModal } = useUIStore();
-  const currentUser = SEED_USERS.find((u) => u.id === currentUserId) ?? SEED_USERS[0];
-  const canEdit = currentUser.role === 'doe' || currentUser.role === 'facilities_manager';
+  const { updateIssue, resolveIssue, reopenIssue, addActivityEntry, deleteIssue } = useIssuesStore();
+  const { openEditIssueModal } = useUIStore();
+  const { currentUser, can } = useAuth();
+  const currentUserId = currentUser.id;
 
   const [showResolveForm, setShowResolveForm] = useState(false);
   const [actualCostInput, setActualCostInput] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Reset transient UI state when switching issues
+  useEffect(() => {
+    setShowResolveForm(false);
+    setActualCostInput('');
+    setShowDeleteConfirm(false);
+  }, [issue.id]);
 
   const assignee = SEED_USERS.find((u) => u.id === issue.assigneeId);
   const reporter = SEED_USERS.find((u) => u.id === issue.reportedById);
@@ -81,6 +90,10 @@ export function IssueDetail({ issue }: Props) {
     });
   }
 
+  function handleDelete() {
+    deleteIssue(issue.id);
+  }
+
   const selectClass = 'text-[13px] bg-white border border-border rounded-btn px-2 py-1.5 focus:outline-none focus:border-sage w-full';
 
   return (
@@ -118,7 +131,7 @@ export function IssueDetail({ issue }: Props) {
 
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-forest/50">Assigned to</span>
-            {canEdit ? (
+            {can('assign') ? (
               <select
                 value={issue.assigneeId ?? ''}
                 onChange={(e) => handleAssigneeChange(e.target.value)}
@@ -198,21 +211,42 @@ export function IssueDetail({ issue }: Props) {
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-border space-y-2">
-        {issue.status === 'resolved' ? (
-          <Button variant="ghost" size="sm" className="w-full justify-center" onClick={handleReopen}>
-            Reopen issue
-          </Button>
+        {showDeleteConfirm ? (
+          <div className="space-y-2">
+            <p className="text-[12px] text-forest/60 text-center">Delete this issue? This cannot be undone.</p>
+            <div className="flex gap-2">
+              <Button variant="danger" size="sm" className="flex-1 justify-center" onClick={handleDelete}>
+                Confirm delete
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowDeleteConfirm(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : issue.status === 'resolved' ? (
+          <>
+            <Button variant="ghost" size="sm" className="w-full justify-center" onClick={handleReopen}>
+              Reopen issue
+            </Button>
+            {can('createIssue') && (
+              <Button variant="ghost" size="sm" className="w-full justify-center text-red/70 hover:text-red" onClick={() => setShowDeleteConfirm(true)}>
+                Delete issue
+              </Button>
+            )}
+          </>
         ) : (
           <>
             {showResolveForm ? (
               <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="Actual cost (optional, e.g. 280)"
-                  value={actualCostInput}
-                  onChange={(e) => setActualCostInput(e.target.value)}
-                  className="w-full text-[13px] bg-white border border-border rounded-btn px-3 py-1.5 focus:outline-none focus:border-sage"
-                />
+                {can('enterActualCost') && (
+                  <input
+                    type="text"
+                    placeholder="Actual cost (optional, e.g. 280)"
+                    value={actualCostInput}
+                    onChange={(e) => setActualCostInput(e.target.value)}
+                    className="w-full text-[13px] bg-white border border-border rounded-btn px-3 py-1.5 focus:outline-none focus:border-sage"
+                  />
+                )}
                 <div className="flex gap-2">
                   <Button size="sm" className="flex-1 justify-center" onClick={handleResolve}>
                     Confirm resolve
@@ -223,22 +257,18 @@ export function IssueDetail({ issue }: Props) {
                 </div>
               </div>
             ) : (
-              <Button
-                size="sm"
-                className="w-full justify-center"
-                onClick={() => setShowResolveForm(true)}
-              >
+              <Button size="sm" className="w-full justify-center" onClick={() => setShowResolveForm(true)}>
                 Mark resolved
               </Button>
             )}
-            {canEdit && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-center"
-                onClick={() => openEditIssueModal(issue.id)}
-              >
+            {can('createIssue') && !showResolveForm && (
+              <Button variant="ghost" size="sm" className="w-full justify-center" onClick={() => openEditIssueModal(issue.id)}>
                 Edit
+              </Button>
+            )}
+            {can('createIssue') && !showResolveForm && (
+              <Button variant="ghost" size="sm" className="w-full justify-center text-red/70 hover:text-red" onClick={() => setShowDeleteConfirm(true)}>
+                Delete issue
               </Button>
             )}
           </>

@@ -1,7 +1,7 @@
 import type { ChecklistTask, ChecklistStatus } from '@/lib/types';
 import { SEED_USERS } from '@/lib/seedData';
 import { useChecklistStore } from '@/store/checklistStore';
-import { useUIStore } from '@/store/uiStore';
+import { useAuth } from '@/lib/auth';
 import { PriorityBadge } from './PriorityBadge';
 import { ActivityFeed } from './ActivityFeed';
 import { Button } from './Button';
@@ -13,9 +13,8 @@ interface Props {
 
 export function TaskDetail({ task }: Props) {
   const { updateTask, completeTask, addActivityEntry } = useChecklistStore();
-  const { currentUserId } = useUIStore();
-  const currentUser = SEED_USERS.find((u) => u.id === currentUserId) ?? SEED_USERS[0];
-  const canEdit = currentUser.role === 'doe' || currentUser.role === 'facilities_manager';
+  const { currentUser, can } = useAuth();
+  const currentUserId = currentUser.id;
 
   const assignee = SEED_USERS.find((u) => u.id === task.assigneeId);
 
@@ -101,7 +100,7 @@ export function TaskDetail({ task }: Props) {
 
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-forest/50">Assigned to</span>
-            {canEdit ? (
+            {can('assign') ? (
               <select
                 value={task.assigneeId ?? ''}
                 onChange={(e) => handleAssigneeChange(e.target.value)}

@@ -6,6 +6,8 @@ import {
   dbUpsertIssue,
   dbUpdateIssue,
   dbAddIssueActivity,
+  dbDeleteIssue,
+  dbDeletePhoto,
 } from '@/lib/db';
 
 type FilterType = 'all' | 'urgent' | 'unassigned' | 'in_progress' | 'resolved';
@@ -22,6 +24,7 @@ interface IssuesStore {
   selectIssue: (id: string | null) => void;
   addIssue: (issue: Issue) => void;
   updateIssue: (id: string, patch: Partial<Issue>) => void;
+  deleteIssue: (id: string) => void;
   resolveIssue: (id: string, actualCost?: number | null) => void;
   reopenIssue: (id: string) => void;
   addActivityEntry: (issueId: string, entry: ActivityEntry) => void;
@@ -89,6 +92,16 @@ export const useIssuesStore = create<IssuesStore>((set, get) => ({
   addIssue: (issue) => {
     set((state) => ({ issues: [issue, ...state.issues] }));
     dbUpsertIssue(issue);
+  },
+
+  deleteIssue: (id) => {
+    const issue = get().issues.find((i) => i.id === id);
+    set((state) => ({
+      issues: state.issues.filter((i) => i.id !== id),
+      selectedIssueId: state.selectedIssueId === id ? null : state.selectedIssueId,
+    }));
+    if (issue?.photoUrl) dbDeletePhoto(issue.photoUrl);
+    dbDeleteIssue(id);
   },
 
   updateIssue: (id, patch) => {

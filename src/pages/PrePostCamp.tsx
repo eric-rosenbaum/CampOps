@@ -9,6 +9,7 @@ import { SeasonModal } from '@/components/shared/SeasonModal';
 import { Button } from '@/components/shared/Button';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useUIStore } from '@/store/uiStore';
+import { useAuth } from '@/lib/auth';
 import { format } from 'date-fns';
 import { Plus, Calendar } from 'lucide-react';
 
@@ -27,7 +28,8 @@ export function PrePostCamp() {
     selectedTaskId, selectTask, filteredTasks, tasks,
     season, completionPercent, completionByLocation,
   } = useChecklistStore();
-  const { openLogTaskModal, openSeasonModal, isLogTaskModalOpen, isSeasonModalOpen, currentUserId: _cu } = useUIStore();
+  const { openLogTaskModal, openSeasonModal, isLogTaskModalOpen, isSeasonModalOpen } = useUIStore();
+  const { can } = useAuth();
 
   const filtered = filteredTasks();
   const selectedTask = tasks.find((t) => t.id === selectedTaskId);
@@ -54,14 +56,18 @@ export function PrePostCamp() {
         subtitle={subtitle}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={openSeasonModal}>
-              <Calendar className="w-3.5 h-3.5" />
-              New season
-            </Button>
-            <Button size="sm" onClick={openLogTaskModal}>
-              <Plus className="w-3.5 h-3.5" />
-              Add task
-            </Button>
+            {can('activateNewSeason') && (
+              <Button variant="ghost" size="sm" onClick={openSeasonModal}>
+                <Calendar className="w-3.5 h-3.5" />
+                New season
+              </Button>
+            )}
+            {can('createTask') && (
+              <Button size="sm" onClick={openLogTaskModal}>
+                <Plus className="w-3.5 h-3.5" />
+                Add task
+              </Button>
+            )}
           </div>
         }
       />

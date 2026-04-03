@@ -1,12 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { useUIStore } from '@/store/uiStore';
 import { useIssuesStore } from '@/store/issuesStore';
 import { SEED_USERS } from '@/lib/seedData';
+import { useAuth } from '@/lib/auth';
+import { dbUploadPhoto, dbDeletePhoto } from '@/lib/db';
 import type { Issue, Location, Priority, RecurringInterval } from '@/lib/types';
 import { generateId } from '@/lib/utils';
+import { Camera, X } from 'lucide-react';
 
 const LOCATIONS: Location[] = [
   'Waterfront', 'Dining Hall', 'Cabins', 'Art Barn', 'Aquatics',
@@ -26,13 +29,17 @@ interface FormValues {
 }
 
 export function LogIssueModal() {
-  const { isLogIssueModalOpen, editingIssueId, closeAllModals, currentUserId } = useUIStore();
+  const { isLogIssueModalOpen, editingIssueId, closeAllModals } = useUIStore();
   const { addIssue, updateIssue, addActivityEntry, selectIssue, issues } = useIssuesStore();
-
-  const currentUser = SEED_USERS.find((u) => u.id === currentUserId) ?? SEED_USERS[0];
+  const { currentUser, can } = useAuth();
+  const currentUserId = currentUser.id;
   const editingIssue = editingIssueId ? issues.find((i) => i.id === editingIssueId) : null;
 
-  const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<FormValues>({
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [removeExistingPhoto, setRemoveExistingPhoto] = useState(false);
+
+  const { register, handleSubmit, watch, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
     defaultValues: {
       priority: 'normal',
       location: 'Waterfront',
@@ -43,8 +50,11 @@ export function LogIssueModal() {
 
   const isRecurring = watch('isRecurring');
 
-  // Populate form when editing
   useEffect(() => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setRemoveExistingPhoto(false);
+
     if (editingIssue) {
       reset({
         title: editingIssue.title,
@@ -72,6 +82,22 @@ export function LogIssueModal() {
     }
   }, [editingIssue, reset, isLogIssueModalOpen]);
 
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setRemoveExistingPhoto(false);
+    const reader = new FileReader();
+    reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  function handleRemovePhoto() {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setRemoveExistingPhoto(true);
+  }
+
   function parseCost(raw: string): { display: string | null; value: number | null } {
     if (!raw.trim()) return { display: null, value: null };
     const cleaned = raw.replace(/[$,]/g, '');
@@ -92,13 +118,23 @@ export function LogIssueModal() {
     return { display: raw, value: null };
   }
 
-  function onSubmit(data: FormValues) {
+  async function onSubmit(data: FormValues) {
     const now = new Date().toISOString();
     const assigneeId = data.assigneeId || null;
     const assignee = SEED_USERS.find((u) => u.id === assigneeId);
     const { display, value } = parseCost(data.costEstimate);
 
     if (editingIssue) {
+      // Resolve photo for edit
+      let photoUrl: string | null = editingIssue.photoUrl;
+      if (photoFile) {
+        const url = await dbUploadPhoto(photoFile, editingIssue.id);
+        if (url) photoUrl = url;
+      } else if (removeExistingPhoto && editingIssue.photoUrl) {
+        await dbDeletePhoto(editingIssue.photoUrl);
+        photoUrl = null;
+      }
+
       updateIssue(editingIssue.id, {
         title: data.title,
         location: data.location,
@@ -111,6 +147,7 @@ export function LogIssueModal() {
         estimatedCostValue: value,
         isRecurring: data.isRecurring,
         recurringInterval: data.isRecurring ? data.recurringInterval : null,
+        photoUrl,
       });
       addActivityEntry(editingIssue.id, {
         id: generateId(),
@@ -121,6 +158,14 @@ export function LogIssueModal() {
       });
     } else {
       const id = generateId();
+
+      // Upload photo for new issue
+      let photoUrl: string | null = null;
+      if (photoFile) {
+        const url = await dbUploadPhoto(photoFile, id);
+        if (url) photoUrl = url;
+      }
+
       const activityLog = [
         {
           id: generateId(),
@@ -152,7 +197,7 @@ export function LogIssueModal() {
         estimatedCostDisplay: display,
         estimatedCostValue: value,
         actualCost: null,
-        photoUrl: null,
+        photoUrl,
         dueDate: data.dueDate || null,
         isRecurring: data.isRecurring,
         recurringInterval: data.isRecurring ? data.recurringInterval : null,
@@ -169,6 +214,8 @@ export function LogIssueModal() {
   }
 
   if (!isLogIssueModalOpen) return null;
+
+  const displayPhoto = photoPreview ?? (editingIssue?.photoUrl && !removeExistingPhoto ? editingIssue.photoUrl : null);
 
   const inputClass = 'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
   const labelClass = 'block text-[12px] font-medium text-forest/70 mb-1';
@@ -215,15 +262,17 @@ export function LogIssueModal() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelClass}>Assign to</label>
-            <select {...register('assigneeId')} className={inputClass}>
-              <option value="">Unassigned</option>
-              {SEED_USERS.map((u) => (
-                <option key={u.id} value={u.id}>{u.name}</option>
-              ))}
-            </select>
-          </div>
+          {can('assign') && (
+            <div>
+              <label className={labelClass}>Assign to</label>
+              <select {...register('assigneeId')} className={inputClass}>
+                <option value="">Unassigned</option>
+                {SEED_USERS.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className={labelClass}>Due date</label>
             <input type="date" {...register('dueDate')} className={inputClass} />
@@ -237,6 +286,38 @@ export function LogIssueModal() {
             className={inputClass}
             placeholder="e.g. $380 or 600-1200"
           />
+        </div>
+
+        {/* Photo */}
+        <div>
+          <label className={labelClass}>Photo</label>
+          {displayPhoto ? (
+            <div className="relative">
+              <img
+                src={displayPhoto}
+                alt="Issue"
+                className="w-full rounded-card border border-border object-cover max-h-48"
+              />
+              <button
+                type="button"
+                onClick={handleRemovePhoto}
+                className="absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <label className="flex items-center gap-2 py-3 px-3 bg-cream rounded-card border border-dashed border-border text-forest/40 cursor-pointer hover:border-sage hover:text-forest/60 transition-colors">
+              <Camera className="w-4 h-4" />
+              <span className="text-[12px]">Click to attach photo</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoChange}
+              />
+            </label>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -264,10 +345,10 @@ export function LogIssueModal() {
         )}
 
         <div className="flex gap-2 pt-2">
-          <Button type="submit" className="flex-1 justify-center">
-            {editingIssue ? 'Save changes' : 'Log issue'}
+          <Button type="submit" className="flex-1 justify-center" disabled={isSubmitting}>
+            {isSubmitting ? 'Saving…' : (editingIssue ? 'Save changes' : 'Log issue')}
           </Button>
-          <Button type="button" variant="ghost" onClick={closeAllModals}>
+          <Button type="button" variant="ghost" onClick={closeAllModals} disabled={isSubmitting}>
             Cancel
           </Button>
         </div>

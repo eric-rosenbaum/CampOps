@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useUIStore } from '@/store/uiStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { SEED_USERS } from '@/lib/seedData';
+import { useAuth } from '@/lib/auth';
 import type { ChecklistTask, Location, Priority } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { addDays } from 'date-fns';
@@ -24,9 +25,10 @@ interface FormValues {
 }
 
 export function LogTaskModal() {
-  const { isLogTaskModalOpen, closeAllModals, currentUserId } = useUIStore();
+  const { isLogTaskModalOpen, closeAllModals } = useUIStore();
   const { addTask, season, activePhase } = useChecklistStore();
-  const currentUser = SEED_USERS.find((u) => u.id === currentUserId) ?? SEED_USERS[0];
+  const { currentUser, can } = useAuth();
+  const currentUserId = currentUser.id;
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     defaultValues: {
@@ -139,15 +141,17 @@ export function LogTaskModal() {
           </div>
         </div>
 
-        <div>
-          <label className={labelClass}>Assign to</label>
-          <select {...register('assigneeId')} className={inputClass}>
-            <option value="">Unassigned</option>
-            {SEED_USERS.map((u) => (
-              <option key={u.id} value={u.id}>{u.name}</option>
-            ))}
-          </select>
-        </div>
+        {can('assign') && (
+          <div>
+            <label className={labelClass}>Assign to</label>
+            <select {...register('assigneeId')} className={inputClass}>
+              <option value="">Unassigned</option>
+              {SEED_USERS.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="flex gap-2 pt-2">
           <Button type="submit" className="flex-1 justify-center">

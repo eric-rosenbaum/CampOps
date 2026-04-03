@@ -10,6 +10,7 @@ import { Button } from '@/components/shared/Button';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useUIStore } from '@/store/uiStore';
 import { useChecklistStore } from '@/store/checklistStore';
+import { useAuth } from '@/lib/auth';
 import { formatCost } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Download, Plus } from 'lucide-react';
@@ -33,6 +34,7 @@ export function IssuesRepairs() {
   } = useIssuesStore();
   const { openLogIssueModal, isLogIssueModalOpen } = useUIStore();
   const { season } = useChecklistStore();
+  const { can } = useAuth();
 
   const filtered = filteredIssues();
   const selectedIssue = issues.find((i) => i.id === selectedIssueId);
@@ -59,10 +61,12 @@ export function IssuesRepairs() {
               <Download className="w-3.5 h-3.5" />
               Export report
             </Button>
-            <Button size="sm" onClick={openLogIssueModal}>
-              <Plus className="w-3.5 h-3.5" />
-              Log issue
-            </Button>
+            {can('createIssue') && (
+              <Button size="sm" onClick={openLogIssueModal}>
+                <Plus className="w-3.5 h-3.5" />
+                Log issue
+              </Button>
+            )}
           </div>
         }
       />

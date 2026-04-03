@@ -337,6 +337,36 @@ export async function dbUpsertSeason(season: Season) {
   if (error) console.error('dbUpsertSeason error:', error.message);
 }
 
+// ─── Photo storage ────────────────────────────────────────────────────────────
+
+const PHOTO_BUCKET = 'issue-photos';
+
+export async function dbUploadPhoto(file: File, issueId: string): Promise<string | null> {
+  const { error } = await supabase.storage
+    .from(PHOTO_BUCKET)
+    .upload(issueId, file, { upsert: true, contentType: file.type });
+  if (error) {
+    console.error('[Supabase] Photo upload error:', error.message);
+    return null;
+  }
+  const { data } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(issueId);
+  return data.publicUrl;
+}
+
+export async function dbDeletePhoto(photoUrl: string): Promise<void> {
+  const marker = `/${PHOTO_BUCKET}/`;
+  const idx = photoUrl.indexOf(marker);
+  if (idx === -1) return;
+  const path = decodeURIComponent(photoUrl.slice(idx + marker.length).split('?')[0]);
+  const { error } = await supabase.storage.from(PHOTO_BUCKET).remove([path]);
+  if (error) console.error('[Supabase] Photo delete error:', error.message);
+}
+
+export async function dbDeleteIssue(id: string): Promise<void> {
+  const { error } = await supabase.from('issues').delete().eq('id', id);
+  if (error) console.error('[Supabase] Delete issue error:', error.message);
+}
+
 // ─── Realtime subscriptions ───────────────────────────────────────────────────
 
 type IssueCallback = (issues: Issue[]) => void;

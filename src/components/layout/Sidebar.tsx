@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, CheckSquare, Wrench, ClipboardList, TreePine } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
 
 const navItems = [
   { section: 'Today', items: [
@@ -13,6 +14,8 @@ const navItems = [
 ];
 
 export function Sidebar() {
+  const { currentUser, roleLabel } = useAuth();
+
   return (
     <aside className="w-sidebar min-w-sidebar h-screen bg-forest flex flex-col flex-shrink-0 sticky top-0">
       {/* Logo */}
@@ -55,7 +58,7 @@ export function Sidebar() {
       {/* Footer */}
       <div className="px-5 py-4 border-t border-white/10">
         <p className="text-[12px] font-medium text-white/80">Pinecrest Summer Camp</p>
-        <p className="text-[11px] text-white/40 mt-0.5">Jordan M. — Ops Director</p>
+        <p className="text-[11px] text-white/40 mt-0.5">{currentUser.name} — {roleLabel}</p>
       </div>
     </aside>
   );

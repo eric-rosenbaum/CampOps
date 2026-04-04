@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string></string>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIImageName</key>
+		<string></string>
+		<key>UILaunchScreen</key>
+		<dict/>
+	</dict>
+	<key>SUPABASE_URL</key>
+	<string>https://fbfxeupqguzxrbyqojyg.supabase.co</string>
+	<key>SUPABASE_ANON_KEY</key>
+	<string>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZiZnhldXBxZ3V6eHJieXFvanlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMzAyNDksImV4cCI6MjA5MDcwNjI0OX0.Jl0QAxRSqBbZBsIbmkXPRlrnC9PNfsax1456Nqzson4</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>CampOps uses your photo library to attach photos to issues.</string>
+</dict>
+</plist>

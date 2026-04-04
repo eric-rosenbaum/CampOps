@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import type { Issue, ActivityEntry, IssueStatus, Priority } from '@/lib/types';
-import { SEED_ISSUES } from '@/lib/seedData';
 import { addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import {
   dbUpsertIssue,

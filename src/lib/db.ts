@@ -5,7 +5,7 @@
  */
 
 import { supabase } from './supabase';
-import { SEED_USERS, SEED_ISSUES, SEED_TASKS, SEED_SEASON } from './seedData';
+import { SEED_USERS } from './seedData';
 import type { Issue, ChecklistTask, ActivityEntry, Season } from './types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -128,72 +128,6 @@ export async function initializeSupabase(): Promise<{
   }
 }
 
-async function seedSupabase() {
-  // Users
-  const userRows = SEED_USERS.map((u) => ({
-    id: u.id,
-    name: u.name,
-    role: u.role,
-    initials: u.initials,
-  }));
-  const { error: ue } = await supabase.from('users').upsert(userRows, { onConflict: 'id' });
-  if (ue) console.error('Seed users error:', ue.message);
-
-  // Season
-  const { error: se } = await supabase.from('seasons').upsert([{
-    id: SEED_SEASON.id,
-    name: SEED_SEASON.name,
-    opening_date: SEED_SEASON.openingDate,
-    closing_date: SEED_SEASON.closingDate,
-  }], { onConflict: 'id' });
-  if (se) console.error('Seed season error:', se.message);
-
-  // Issues
-  const { error: ie } = await supabase.from('issues').upsert(
-    SEED_ISSUES.map(issueToRow),
-    { onConflict: 'id' },
-  );
-  if (ie) console.error('Seed issues error:', ie.message);
-
-  // Issue activity
-  const activityRows = SEED_ISSUES.flatMap((issue) =>
-    issue.activityLog.map((a) => ({
-      id: a.id,
-      issue_id: issue.id,
-      user_id: a.userId === 'system' ? null : a.userId,
-      user_name: a.userName,
-      action: a.action,
-      created_at: a.timestamp,
-    })),
-  );
-  if (activityRows.length > 0) {
-    const { error: ae } = await supabase.from('issue_activity').upsert(activityRows, { onConflict: 'id' });
-    if (ae) console.error('Seed issue_activity error:', ae.message);
-  }
-
-  // Checklist tasks
-  const { error: te } = await supabase.from('checklist_tasks').upsert(
-    SEED_TASKS.map(taskToRow),
-    { onConflict: 'id' },
-  );
-  if (te) console.error('Seed tasks error:', te.message);
-
-  // Checklist activity
-  const taskActivityRows = SEED_TASKS.flatMap((task) =>
-    task.activityLog.map((a) => ({
-      id: a.id,
-      task_id: task.id,
-      user_id: a.userId === 'system' ? null : a.userId,
-      user_name: a.userName,
-      action: a.action,
-      created_at: a.timestamp,
-    })),
-  );
-  if (taskActivityRows.length > 0) {
-    const { error: tae } = await supabase.from('checklist_activity').upsert(taskActivityRows, { onConflict: 'id' });
-    if (tae) console.error('Seed checklist_activity error:', tae.message);
-  }
-}
 
 async function loadFromSupabase(): Promise<{
   issues: Issue[];

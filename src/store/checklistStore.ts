@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { addDays } from 'date-fns';
 import type { ChecklistTask, ActivityEntry, Season, Location } from '@/lib/types';
-import { SEED_TASKS, SEED_SEASON } from '@/lib/seedData';
 import {
   dbUpsertTask,
   dbUpdateTask,

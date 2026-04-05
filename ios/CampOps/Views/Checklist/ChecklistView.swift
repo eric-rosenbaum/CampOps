@@ -20,6 +20,7 @@ struct ChecklistView: View {
             }
             .navigationTitle("Pre/Post Camp")
             .toolbar {
+                ToolbarItem(placement: .primaryAction) { UserMenuButton() }
                 if userManager.can.createTask, vm.season != nil {
                     ToolbarItem(placement: .primaryAction) {
                         Button { showingAddTask = true } label: { Image(systemName: "plus") }

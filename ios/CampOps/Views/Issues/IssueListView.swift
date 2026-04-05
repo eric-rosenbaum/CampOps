@@ -18,6 +18,7 @@ struct IssueListView: View {
             }
             .navigationTitle("Issues & Repairs")
             .toolbar {
+                ToolbarItem(placement: .primaryAction) { UserMenuButton() }
                 if userManager.can.createIssue {
                     ToolbarItem(placement: .primaryAction) {
                         Button { showingLogIssue = true } label: { Image(systemName: "plus") }

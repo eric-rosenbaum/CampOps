@@ -14,6 +14,7 @@
 		49E5A7892F81A74E007122C8 /* UserPickerRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A7822F81A74E007122C8 /* UserPickerRow.swift */; };
 		49E5A78A2F81A74E007122C8 /* Issue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A75F2F81A74E007122C8 /* Issue.swift */; };
 		49E5A78B2F81A74E007122C8 /* AssignPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A77D2F81A74E007122C8 /* AssignPickerSheet.swift */; };
+		49E5A7BB2F81A74E007122C8 /* UserMenuButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A7BA2F81A74E007122C8 /* UserMenuButton.swift */; };
 		49E5A78C2F81A74E007122C8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A7552F81A74E007122C8 /* ContentView.swift */; };
 		49E5A78D2F81A74E007122C8 /* ActivityEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A75C2F81A74E007122C8 /* ActivityEntry.swift */; };
 		49E5A78E2F81A74E007122C8 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A7812F81A74E007122C8 /* StatusBadge.swift */; };
@@ -86,6 +87,7 @@
 		49E5A77A2F81A74E007122C8 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		49E5A77C2F81A74E007122C8 /* ActivityFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityFeed.swift; sourceTree = "<group>"; };
 		49E5A77D2F81A74E007122C8 /* AssignPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssignPickerSheet.swift; sourceTree = "<group>"; };
+		49E5A7BA2F81A74E007122C8 /* UserMenuButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserMenuButton.swift; sourceTree = "<group>"; };
 		49E5A77E2F81A74E007122C8 /* AvatarCircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarCircle.swift; sourceTree = "<group>"; };
 		49E5A77F2F81A74E007122C8 /* PhotoPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPicker.swift; sourceTree = "<group>"; };
 		49E5A7802F81A74E007122C8 /* PriorityBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriorityBadge.swift; sourceTree = "<group>"; };
@@ -260,6 +262,7 @@
 			children = (
 				49E5A77C2F81A74E007122C8 /* ActivityFeed.swift */,
 				49E5A77D2F81A74E007122C8 /* AssignPickerSheet.swift */,
+				49E5A7BA2F81A74E007122C8 /* UserMenuButton.swift */,
 				49E5A77E2F81A74E007122C8 /* AvatarCircle.swift */,
 				49E5A77F2F81A74E007122C8 /* PhotoPicker.swift */,
 				49E5A7802F81A74E007122C8 /* PriorityBadge.swift */,
@@ -378,6 +381,7 @@
 				49E5A7892F81A74E007122C8 /* UserPickerRow.swift in Sources */,
 				49E5A78A2F81A74E007122C8 /* Issue.swift in Sources */,
 				49E5A78B2F81A74E007122C8 /* AssignPickerSheet.swift in Sources */,
+				49E5A7BB2F81A74E007122C8 /* UserMenuButton.swift in Sources */,
 				49E5A78C2F81A74E007122C8 /* ContentView.swift in Sources */,
 				49E5A78D2F81A74E007122C8 /* ActivityEntry.swift in Sources */,
 				49E5A78E2F81A74E007122C8 /* StatusBadge.swift in Sources */,

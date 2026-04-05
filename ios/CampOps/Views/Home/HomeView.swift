@@ -4,8 +4,6 @@ struct HomeView: View {
     @EnvironmentObject private var userManager: UserManager
     @EnvironmentObject private var issueVM: IssueListViewModel
     @EnvironmentObject private var checklistVM: ChecklistViewModel
-    @State private var showingProfile = false
-
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -21,13 +19,8 @@ struct HomeView: View {
             .navigationTitle("Camp Ops")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button { showingProfile = true } label: {
-                        AvatarCircle(initials: userManager.currentUser.initials, size: 32)
-                    }
+                    UserMenuButton()
                 }
-            }
-            .sheet(isPresented: $showingProfile) {
-                ProfileView().environmentObject(userManager)
             }
         }
         .task {

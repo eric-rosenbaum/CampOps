@@ -27,7 +27,7 @@ struct LogIssueView: View {
                     }
                 }
                 Section("Assignment") {
-                    Picker("Assign to", selection: $vm.assignedToId) {
+                    Picker("Assign to", selection: $vm.assigneeId) {
                         Text("Unassigned").tag(String?.none)
                         ForEach(CampUser.seedUsers, id: \.id) { Text($0.name).tag(Optional($0.id)) }
                     }

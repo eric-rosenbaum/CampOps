@@ -122,7 +122,7 @@ struct IssueDetailView: View {
             }
         }
         .sheet(isPresented: $showingAssignPicker) {
-            AssignPickerSheet(currentAssigneeId: vm.issue.assignedToId) { user in
+            AssignPickerSheet(currentAssigneeId: vm.issue.assigneeId) { user in
                 Task { await vm.assign(to: user, by: userManager.currentUser) }
             }
         }

@@ -25,8 +25,8 @@ final class IssueDetailViewModel: ObservableObject {
     }
 
     func assign(to user: CampUser?, by actor: CampUser) async {
-        let oldAssignee = issue.assignedToId; let oldStatus = issue.status
-        issue.assignedToId = user?.id
+        let oldAssignee = issue.assigneeId; let oldStatus = issue.status
+        issue.assigneeId = user?.id
         issue.status = user != nil ? .assigned : .unassigned
         issue.updatedAt = Date()
         let action = user != nil ? "Assigned to \(user!.name)" : "Unassigned"
@@ -36,7 +36,7 @@ final class IssueDetailViewModel: ObservableObject {
             try await DataService.shared.updateIssue(issue)
             try await DataService.shared.insertIssueActivity(entry, issueId: issue.id)
         } catch {
-            issue.assignedToId = oldAssignee; issue.status = oldStatus
+            issue.assigneeId = oldAssignee; issue.status = oldStatus
             issue.activity.removeLast(); errorMessage = error.localizedDescription
         }
     }

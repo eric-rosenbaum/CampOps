@@ -20,7 +20,7 @@ final class DataService {
     func fetchIssues() async throws -> [Issue] {
         let rows: [IssueDBRow] = try await supabase.from("issues")
             .select().order("created_at", ascending: false).execute().value
-        let allActivity: [ActivityRow] = try await supabase.from("issue_activity")
+        let allActivity: [IssueActivityRow] = try await supabase.from("issue_activity")
             .select().order("created_at", ascending: true).execute().value
         let byIssue = Dictionary(grouping: allActivity, by: \.issueId)
         return rows.map { $0.toIssue(activity: (byIssue[$0.id] ?? []).map { $0.toEntry() }) }
@@ -50,7 +50,7 @@ final class DataService {
     func fetchTasks() async throws -> [ChecklistTask] {
         let rows: [ChecklistTaskDBRow] = try await supabase.from("checklist_tasks")
             .select().order("created_at", ascending: true).execute().value
-        let allActivity: [TaskActivityRow] = try await supabase.from("task_activity")
+        let allActivity: [TaskActivityRow] = try await supabase.from("checklist_activity")
             .select().order("created_at", ascending: true).execute().value
         let byTask = Dictionary(grouping: allActivity, by: \.taskId)
         return rows.map { $0.toTask(activity: (byTask[$0.id] ?? []).map { $0.toEntry() }) }
@@ -65,32 +65,32 @@ final class DataService {
             .eq("id", value: task.id).execute()
     }
 
+    func deleteTask(id: String) async throws {
+        try await supabase.from("checklist_tasks").delete().eq("id", value: id).execute()
+    }
+
     func insertTaskActivity(_ entry: ActivityEntry, taskId: String) async throws {
         let row: [String: String] = ["id": entry.id, "task_id": taskId,
             "user_id": entry.userId ?? "", "user_name": entry.userName, "action": entry.action]
-        try await supabase.from("task_activity").insert(row).execute()
+        try await supabase.from("checklist_activity").insert(row).execute()
     }
 
     // MARK: - Seasons
 
-    func fetchActiveSeason() async throws -> Season? {
+    func fetchLatestSeason() async throws -> Season? {
         let seasons: [Season] = try await supabase.from("seasons")
-            .select().eq("is_active", value: true).limit(1).execute().value
+            .select().order("created_at", ascending: false).limit(1).execute().value
         return seasons.first
     }
 
-    func insertSeason(_ season: Season) async throws {
-        try await supabase.from("seasons").insert(season).execute()
-    }
-
-    func deactivateAllSeasons() async throws {
-        try await supabase.from("seasons").update(["is_active": false]).execute()
+    func upsertSeason(_ season: Season) async throws {
+        try await supabase.from("seasons").upsert(season).execute()
     }
 }
 
 // MARK: - Private row types
 
-private struct ActivityRow: Codable {
+private struct IssueActivityRow: Codable {
     let id: String; let issueId: String; let userId: String?
     let userName: String; let action: String; let createdAt: Date
     enum CodingKeys: String, CodingKey {
@@ -117,18 +117,20 @@ private struct TaskActivityRow: Codable {
 private struct IssueInsert: Encodable {
     let id, title: String; let description: String?
     let location, priority, status: String
-    let assignedToId: String?; let reportedById: String
+    let assigneeId: String?; let reportedById: String
     let estimatedCost: Double?; let actualCost: Double?; let photoUrl: String?
     enum CodingKeys: String, CodingKey {
         case id, title, description, location, priority, status
-        case assignedToId = "assigned_to_id"; case reportedById = "reported_by_id"
-        case estimatedCost = "estimated_cost"; case actualCost = "actual_cost"
-        case photoUrl = "photo_url"
+        case assigneeId    = "assignee_id"
+        case reportedById  = "reported_by_id"
+        case estimatedCost = "estimated_cost"
+        case actualCost    = "actual_cost"
+        case photoUrl      = "photo_url"
     }
     init(issue: Issue) {
         id = issue.id; title = issue.title; description = issue.description
         location = issue.location.rawValue; priority = issue.priority.rawValue
-        status = issue.status.rawValue; assignedToId = issue.assignedToId
+        status = issue.status.rawValue; assigneeId = issue.assigneeId
         reportedById = issue.reportedById; estimatedCost = issue.estimatedCost
         actualCost = issue.actualCost; photoUrl = issue.photoUrl
     }
@@ -137,63 +139,60 @@ private struct IssueInsert: Encodable {
 private struct IssueUpdate: Encodable {
     let title: String; let description: String?
     let location, priority, status: String
-    let assignedToId: String?; let estimatedCost: Double?
+    let assigneeId: String?; let estimatedCost: Double?
     let actualCost: Double?; let photoUrl: String?; let updatedAt: Date
     enum CodingKeys: String, CodingKey {
         case title, description, location, priority, status
-        case assignedToId = "assigned_to_id"; case estimatedCost = "estimated_cost"
-        case actualCost = "actual_cost"; case photoUrl = "photo_url"
-        case updatedAt = "updated_at"
+        case assigneeId    = "assignee_id"
+        case estimatedCost = "estimated_cost"
+        case actualCost    = "actual_cost"
+        case photoUrl      = "photo_url"
+        case updatedAt     = "updated_at"
     }
     init(issue: Issue) {
         title = issue.title; description = issue.description
         location = issue.location.rawValue; priority = issue.priority.rawValue
-        status = issue.status.rawValue; assignedToId = issue.assignedToId
+        status = issue.status.rawValue; assigneeId = issue.assigneeId
         estimatedCost = issue.estimatedCost; actualCost = issue.actualCost
         photoUrl = issue.photoUrl; updatedAt = Date()
     }
 }
 
 private struct TaskInsert: Encodable {
-    let id, title: String; let description: String?
-    let phase, status: String; let assignedToId: String?
-    let dueDate: String?; let estimatedCost: Double?; let actualCost: Double?
-    let isRecurring: Bool; let recurringInterval: String?; let seasonId: String
+    let id, title, description: String
+    let location, priority, status, phase: String
+    let assigneeId: String?; let daysRelativeToOpening: Int
+    let dueDate: String?; let isRecurring: Bool
     enum CodingKeys: String, CodingKey {
-        case id, title, description, phase, status
-        case assignedToId = "assigned_to_id"; case dueDate = "due_date"
-        case estimatedCost = "estimated_cost"; case actualCost = "actual_cost"
-        case isRecurring = "is_recurring"; case recurringInterval = "recurring_interval"
-        case seasonId = "season_id"
+        case id, title, description, location, priority, status, phase
+        case assigneeId            = "assignee_id"
+        case daysRelativeToOpening = "days_relative_to_opening"
+        case dueDate               = "due_date"
+        case isRecurring           = "is_recurring"
     }
     init(task: ChecklistTask) {
         id = task.id; title = task.title; description = task.description
-        phase = task.phase.rawValue; status = task.status.rawValue
-        assignedToId = task.assignedToId; dueDate = task.dueDate
-        estimatedCost = task.estimatedCost; actualCost = task.actualCost
-        isRecurring = task.isRecurring; recurringInterval = task.recurringInterval?.rawValue
-        seasonId = task.seasonId
+        location = task.location.rawValue; priority = task.priority.rawValue
+        status = task.status.rawValue; phase = task.phase.rawValue
+        assigneeId = task.assigneeId; daysRelativeToOpening = task.daysRelativeToOpening
+        dueDate = task.dueDate; isRecurring = task.isRecurring
     }
 }
 
 private struct TaskUpdate: Encodable {
-    let title: String; let description: String?
-    let phase, status: String; let assignedToId: String?
-    let dueDate: String?; let estimatedCost: Double?; let actualCost: Double?
-    let isRecurring: Bool; let recurringInterval: String?; let updatedAt: Date
+    let title, description: String
+    let location, priority, status, phase: String
+    let assigneeId: String?; let dueDate: String?; let updatedAt: Date
     enum CodingKeys: String, CodingKey {
-        case title, description, phase, status
-        case assignedToId = "assigned_to_id"; case dueDate = "due_date"
-        case estimatedCost = "estimated_cost"; case actualCost = "actual_cost"
-        case isRecurring = "is_recurring"; case recurringInterval = "recurring_interval"
-        case updatedAt = "updated_at"
+        case title, description, location, priority, status, phase
+        case assigneeId = "assignee_id"
+        case dueDate    = "due_date"
+        case updatedAt  = "updated_at"
     }
     init(task: ChecklistTask) {
         title = task.title; description = task.description
-        phase = task.phase.rawValue; status = task.status.rawValue
-        assignedToId = task.assignedToId; dueDate = task.dueDate
-        estimatedCost = task.estimatedCost; actualCost = task.actualCost
-        isRecurring = task.isRecurring; recurringInterval = task.recurringInterval?.rawValue
-        updatedAt = Date()
+        location = task.location.rawValue; priority = task.priority.rawValue
+        status = task.status.rawValue; phase = task.phase.rawValue
+        assigneeId = task.assigneeId; dueDate = task.dueDate; updatedAt = Date()
     }
 }

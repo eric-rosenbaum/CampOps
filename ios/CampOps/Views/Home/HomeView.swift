@@ -55,7 +55,7 @@ struct HomeView: View {
     private var statsGrid: some View {
         let open    = issueVM.issues.filter { $0.status != .resolved }
         let urgent  = open.filter { $0.priority == .urgent }
-        let mine    = checklistVM.tasks.filter { $0.assignedToId == userManager.currentUser.id && $0.status != .complete }
+        let mine    = checklistVM.tasks.filter { $0.assigneeId == userManager.currentUser.id && $0.status != .complete }
         let overdue = mine.filter { $0.dueDateRelative?.overdue == true }
         return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Spacing.md) {
             StatCard(label: "Open Issues",  value: "\(open.count)",    icon: "wrench.adjustable",           color: .forestMid)
@@ -84,7 +84,7 @@ struct HomeView: View {
 
     private var myTasksSection: some View {
         let mine = checklistVM.tasks.filter {
-            $0.assignedToId == userManager.currentUser.id && $0.status != .complete
+            $0.assigneeId == userManager.currentUser.id && $0.status != .complete
         }.prefix(3)
         return VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("My Tasks").font(.headline.weight(.semibold)).foregroundColor(.forest)

@@ -6,6 +6,7 @@ import {
   dbUpdateTask,
   dbAddTaskActivity,
   dbUpsertSeason,
+  dbDeleteTask,
 } from '@/lib/db';
 
 type FilterType = 'all' | 'pending' | 'in_progress' | 'complete';
@@ -28,6 +29,7 @@ interface ChecklistStore {
   updateTask: (id: string, patch: Partial<ChecklistTask>) => void;
   completeTask: (id: string) => void;
   addActivityEntry: (taskId: string, entry: ActivityEntry) => void;
+  deleteTask: (id: string) => void;
   activateNewSeason: (season: Season, currentUserName: string) => void;
 
   filteredTasks: () => ChecklistTask[];
@@ -107,6 +109,11 @@ export const useChecklistStore = create<ChecklistStore>((set, get) => ({
       ),
     }));
     dbUpdateTask(id, { status: 'complete', updatedAt: now });
+  },
+
+  deleteTask: (id) => {
+    set((state) => ({ tasks: state.tasks.filter((t) => t.id !== id) }));
+    dbDeleteTask(id);
   },
 
   addActivityEntry: (taskId, entry) => {

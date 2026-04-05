@@ -37,7 +37,15 @@ struct IssueListView: View {
         ScrollView {
             LazyVStack(spacing: Spacing.sm) {
                 ForEach(vm.filteredIssues) { issue in
-                    NavigationLink(value: issue) { IssueRow(issue: issue) }.buttonStyle(.plain)
+                    NavigationLink(value: issue) { IssueRow(issue: issue) }
+                    .buttonStyle(.plain)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            Task { await vm.delete(issue: issue) }
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
                 }
             }
             .padding(Spacing.md)

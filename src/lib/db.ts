@@ -301,6 +301,11 @@ export async function dbDeleteIssue(id: string): Promise<void> {
   if (error) console.error('[Supabase] Delete issue error:', error.message);
 }
 
+export async function dbDeleteTask(id: string): Promise<void> {
+  const { error } = await supabase.from('checklist_tasks').delete().eq('id', id);
+  if (error) console.error('[Supabase] Delete task error:', error.message);
+}
+
 // ─── Realtime subscriptions ───────────────────────────────────────────────────
 
 type IssueCallback = (issues: Issue[]) => void;

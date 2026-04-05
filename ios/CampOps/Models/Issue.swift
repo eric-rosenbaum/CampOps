@@ -7,7 +7,7 @@ struct Issue: Codable, Identifiable, Hashable {
     var location: CampLocation
     var priority: Priority
     var status: IssueStatus
-    var assignedToId: String?
+    var assigneeId: String?
     var reportedById: String
     var estimatedCost: Double?
     var actualCost: Double?
@@ -18,7 +18,7 @@ struct Issue: Codable, Identifiable, Hashable {
 
     enum CodingKeys: String, CodingKey {
         case id, title, description, location, priority, status
-        case assignedToId  = "assigned_to_id"
+        case assigneeId  = "assignee_id"
         case reportedById  = "reported_by_id"
         case estimatedCost = "estimated_cost"
         case actualCost    = "actual_cost"
@@ -35,7 +35,7 @@ struct Issue: Codable, Identifiable, Hashable {
         location: CampLocation,
         priority: Priority,
         status: IssueStatus = .unassigned,
-        assignedToId: String? = nil,
+        assigneeId: String? = nil,
         reportedById: String,
         estimatedCost: Double? = nil,
         actualCost: Double? = nil,
@@ -46,7 +46,7 @@ struct Issue: Codable, Identifiable, Hashable {
     ) {
         self.id = id; self.title = title; self.description = description
         self.location = location; self.priority = priority; self.status = status
-        self.assignedToId = assignedToId; self.reportedById = reportedById
+        self.assigneeId = assigneeId; self.reportedById = reportedById
         self.estimatedCost = estimatedCost; self.actualCost = actualCost
         self.photoUrl = photoUrl; self.createdAt = createdAt
         self.updatedAt = updatedAt; self.activity = activity
@@ -56,7 +56,7 @@ struct Issue: Codable, Identifiable, Hashable {
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 
     var reportedBy: CampUser? { CampUser.find(id: reportedById) }
-    var assignedTo: CampUser? { assignedToId.flatMap { CampUser.find(id: $0) } }
+    var assignedTo: CampUser? { assigneeId.flatMap { CampUser.find(id: $0) } }
 }
 
 struct IssueDBRow: Codable {
@@ -66,7 +66,7 @@ struct IssueDBRow: Codable {
     var location: CampLocation
     var priority: Priority
     var status: IssueStatus
-    var assignedToId: String?
+    var assigneeId: String?
     var reportedById: String
     var estimatedCost: Double?
     var actualCost: Double?
@@ -76,7 +76,7 @@ struct IssueDBRow: Codable {
 
     enum CodingKeys: String, CodingKey {
         case id, title, description, location, priority, status
-        case assignedToId  = "assigned_to_id"
+        case assigneeId  = "assignee_id"
         case reportedById  = "reported_by_id"
         case estimatedCost = "estimated_cost"
         case actualCost    = "actual_cost"
@@ -87,7 +87,7 @@ struct IssueDBRow: Codable {
 
     func toIssue(activity: [ActivityEntry] = []) -> Issue {
         Issue(id: id, title: title, description: description, location: location,
-              priority: priority, status: status, assignedToId: assignedToId,
+              priority: priority, status: status, assigneeId: assigneeId,
               reportedById: reportedById, estimatedCost: estimatedCost,
               actualCost: actualCost, photoUrl: photoUrl,
               createdAt: createdAt, updatedAt: updatedAt, activity: activity)

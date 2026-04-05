@@ -5,6 +5,9 @@ struct ChecklistDetailView: View {
     @EnvironmentObject private var vm: ChecklistViewModel
     let taskId: String
     @State private var showingAssignPicker = false
+    @State private var showingEdit = false
+    @State private var showingDeleteConfirm = false
+    @Environment(\.dismiss) private var dismiss
 
     private var task: ChecklistTask? { vm.tasks.first { $0.id == taskId } }
 
@@ -20,29 +23,32 @@ struct ChecklistDetailView: View {
     private func content(task: ChecklistTask) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
+                // Header
                 VStack(alignment: .leading, spacing: Spacing.sm) {
                     HStack {
                         ChecklistStatusBadge(status: task.status)
+                        PriorityBadge(priority: task.priority)
                         Label(task.phase == .pre ? "Pre-camp" : "Post-camp", systemImage: "flag")
                             .font(.caption).foregroundColor(.secondary)
                         Spacer()
                     }
                     Text(task.title).font(.title2.weight(.bold)).foregroundColor(.forest)
+                    Label(task.location.displayName, systemImage: "mappin.circle")
+                        .font(.caption).foregroundColor(.secondary)
                     if let (label, overdue) = task.dueDateRelative {
                         Text(label).font(.caption.weight(.medium))
                             .foregroundColor(overdue ? .priorityUrgent : .secondary)
                     }
                 }
-                if let desc = task.description {
+
+                if !task.description.isEmpty {
                     VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text("Description").font(.subheadline.weight(.semibold))
-                        Text(desc).font(.body).foregroundColor(.secondary)
+                        Text(task.description).font(.body).foregroundColor(.secondary)
                     }
                 }
-                if task.isRecurring, let interval = task.recurringInterval {
-                    Label("Repeats \(interval.rawValue)", systemImage: "repeat")
-                        .font(.caption).foregroundColor(.secondary)
-                }
+
+                // Assignment
                 VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text("Assigned to").font(.subheadline.weight(.semibold))
                     if userManager.can.assign {
@@ -62,6 +68,8 @@ struct ChecklistDetailView: View {
                         Text(task.assignedTo?.name ?? "Unassigned").font(.subheadline).foregroundColor(.secondary)
                     }
                 }
+
+                // Status actions
                 if task.status != .complete {
                     VStack(spacing: Spacing.sm) {
                         if task.status == .pending {
@@ -78,14 +86,40 @@ struct ChecklistDetailView: View {
                         }.buttonStyle(.borderedProminent).tint(.sage)
                     }
                 }
+
                 ActivityFeed(activity: task.activity)
             }
             .padding(Spacing.lg)
         }
+        .toolbar {
+            if userManager.can.createTask {
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Button { showingEdit = true } label: { Label("Edit Task", systemImage: "pencil") }
+                        Button(role: .destructive) { showingDeleteConfirm = true } label: {
+                            Label("Delete Task", systemImage: "trash")
+                        }
+                    } label: { Image(systemName: "ellipsis.circle") }
+                }
+            }
+        }
         .sheet(isPresented: $showingAssignPicker) {
-            AssignPickerSheet(currentAssigneeId: task.assignedToId) { user in
+            AssignPickerSheet(currentAssigneeId: task.assigneeId) { user in
                 Task { await vm.assign(task: task, to: user, by: userManager.currentUser) }
             }
         }
+        .sheet(isPresented: $showingEdit) {
+            AddTaskView(editingTask: task)
+                .environmentObject(userManager)
+                .environmentObject(vm)
+        }
+        .confirmationDialog("Delete this task?", isPresented: $showingDeleteConfirm, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                Task { await vm.deleteTask(task); dismiss() }
+            }
+        } message: { Text("This action cannot be undone.") }
+        .alert("Error", isPresented: .constant(vm.errorMessage != nil)) {
+            Button("OK") { vm.errorMessage = nil }
+        } message: { Text(vm.errorMessage ?? "") }
     }
 }

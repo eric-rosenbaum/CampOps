@@ -37,8 +37,8 @@ struct NewSeasonView: View {
         isSaving = true
         let season = Season(name: name.trimmingCharacters(in: .whitespaces),
                             openingDate: df.string(from: openingDate),
-                            closingDate: df.string(from: closingDate), isActive: true)
-        await vm.activateSeason(season, by: userManager.currentUser)
+                            closingDate: df.string(from: closingDate))
+        await vm.upsertSeason(season)
         isSaving = false; dismiss()
     }
 }

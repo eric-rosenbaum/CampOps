@@ -7,7 +7,7 @@ final class LogIssueViewModel: ObservableObject {
     @Published var description = ""
     @Published var location: CampLocation = .other
     @Published var priority: Priority = .normal
-    @Published var assignedToId: String? = nil
+    @Published var assigneeId: String? = nil
     @Published var estimatedCost = ""
     @Published var selectedPhoto: UIImage? = nil
     @Published var isSaving = false
@@ -22,7 +22,7 @@ final class LogIssueViewModel: ObservableObject {
             description = issue.description ?? ""
             location = issue.location
             priority = issue.priority
-            assignedToId = issue.assignedToId
+            assigneeId = issue.assigneeId
             estimatedCost = issue.estimatedCost.map { String($0) } ?? ""
         }
     }
@@ -41,7 +41,7 @@ final class LogIssueViewModel: ObservableObject {
             existing.title = title.trimmingCharacters(in: .whitespaces)
             existing.description = description.isEmpty ? nil : description
             existing.location = location; existing.priority = priority
-            existing.assignedToId = assignedToId; existing.estimatedCost = cost
+            existing.assigneeId = assigneeId; existing.estimatedCost = cost
             existing.photoUrl = photoUrl; existing.updatedAt = Date()
             let entry = ActivityEntry(id: UUID().uuidString, userId: user.id,
                                      userName: user.name, action: "Edited issue details")
@@ -53,8 +53,8 @@ final class LogIssueViewModel: ObservableObject {
             let issue = Issue(id: id, title: title.trimmingCharacters(in: .whitespaces),
                 description: description.isEmpty ? nil : description,
                 location: location, priority: priority,
-                status: assignedToId != nil ? .assigned : .unassigned,
-                assignedToId: assignedToId, reportedById: user.id,
+                status: assigneeId != nil ? .assigned : .unassigned,
+                assigneeId: assigneeId, reportedById: user.id,
                 estimatedCost: cost, photoUrl: photoUrl)
             let entry = ActivityEntry(id: UUID().uuidString, userId: user.id,
                                      userName: user.name, action: "Logged issue")

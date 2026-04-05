@@ -15,7 +15,7 @@ final class ChecklistViewModel: ObservableObject {
         isLoading = true; errorMessage = nil
         do {
             async let t = DataService.shared.fetchTasks()
-            async let s = DataService.shared.fetchActiveSeason()
+            async let s = DataService.shared.fetchLatestSeason()
             tasks = try await t; season = try await s
         } catch { errorMessage = error.localizedDescription }
         isLoading = false
@@ -23,7 +23,7 @@ final class ChecklistViewModel: ObservableObject {
 
     func refresh() async {
         async let t = try? await DataService.shared.fetchTasks()
-        async let s = try? await DataService.shared.fetchActiveSeason()
+        async let s = try? await DataService.shared.fetchLatestSeason()
         if let t = await t { tasks = t }
         if let s = await s { season = s }
     }
@@ -46,8 +46,8 @@ final class ChecklistViewModel: ObservableObject {
 
     func assign(task: ChecklistTask, to assignee: CampUser?, by actor: CampUser) async {
         guard let idx = tasks.firstIndex(where: { $0.id == task.id }) else { return }
-        let old = tasks[idx].assignedToId
-        tasks[idx].assignedToId = assignee?.id; tasks[idx].updatedAt = Date()
+        let old = tasks[idx].assigneeId
+        tasks[idx].assigneeId = assignee?.id; tasks[idx].updatedAt = Date()
         let action = assignee != nil ? "Assigned to \(assignee!.name)" : "Unassigned"
         let entry = ActivityEntry(id: UUID().uuidString, userId: actor.id, userName: actor.name, action: action)
         tasks[idx].activity.append(entry)
@@ -55,7 +55,7 @@ final class ChecklistViewModel: ObservableObject {
             try await DataService.shared.updateTask(tasks[idx])
             try await DataService.shared.insertTaskActivity(entry, taskId: task.id)
         } catch {
-            tasks[idx].assignedToId = old; tasks[idx].activity.removeLast()
+            tasks[idx].assigneeId = old; tasks[idx].activity.removeLast()
             errorMessage = error.localizedDescription
         }
     }
@@ -73,10 +73,35 @@ final class ChecklistViewModel: ObservableObject {
         }
     }
 
-    func activateSeason(_ season: Season, by user: CampUser) async {
+    func updateTask(_ updated: ChecklistTask, by user: CampUser) async {
+        guard let idx = tasks.firstIndex(where: { $0.id == updated.id }) else { return }
+        let old = tasks[idx]
+        tasks[idx] = updated; tasks[idx].updatedAt = Date()
+        let entry = ActivityEntry(id: UUID().uuidString, userId: user.id,
+                                  userName: user.name, action: "Edited task details")
+        tasks[idx].activity.append(entry)
         do {
-            try await DataService.shared.deactivateAllSeasons()
-            try await DataService.shared.insertSeason(season)
+            try await DataService.shared.updateTask(tasks[idx])
+            try await DataService.shared.insertTaskActivity(entry, taskId: updated.id)
+        } catch {
+            tasks[idx] = old
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteTask(_ task: ChecklistTask) async {
+        tasks.removeAll { $0.id == task.id }
+        do {
+            try await DataService.shared.deleteTask(id: task.id)
+        } catch {
+            tasks.append(task)
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func upsertSeason(_ season: Season) async {
+        do {
+            try await DataService.shared.upsertSeason(season)
             self.season = season
         } catch { errorMessage = error.localizedDescription }
     }

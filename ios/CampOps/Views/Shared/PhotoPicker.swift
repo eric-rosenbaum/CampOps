@@ -4,7 +4,10 @@ import PhotosUI
 struct PhotoPicker: View {
     @Binding var selectedImage: UIImage?
     var existingUrl: String? = nil
+
     @State private var pickerItem: PhotosPickerItem? = nil
+    @State private var showingSourcePicker = false
+    @State private var showingCamera = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
@@ -29,7 +32,7 @@ struct PhotoPicker: View {
                     }
                     .frame(maxWidth: .infinity).frame(height: 180)
                     .clipped().cornerRadius(Radius.md)
-                    PhotosPicker(selection: $pickerItem, matching: .images) {
+                    Button { showingSourcePicker = true } label: {
                         Text("Replace").font(.caption.weight(.medium))
                             .padding(.horizontal, Spacing.sm).padding(.vertical, 4)
                             .background(Color(.systemBackground).opacity(0.85))
@@ -37,7 +40,7 @@ struct PhotoPicker: View {
                     }
                 }
             } else {
-                PhotosPicker(selection: $pickerItem, matching: .images) {
+                Button { showingSourcePicker = true } label: {
                     Label("Add photo", systemImage: "camera")
                         .font(.subheadline).foregroundColor(.sage)
                         .frame(maxWidth: .infinity).frame(height: 100)
@@ -46,11 +49,56 @@ struct PhotoPicker: View {
                 }
             }
         }
+        .confirmationDialog("Add Photo", isPresented: $showingSourcePicker, titleVisibility: .visible) {
+            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                Button("Take Photo") { showingCamera = true }
+            }
+            PhotosPicker(selection: $pickerItem, matching: .images) {
+                Text("Choose from Library")
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .sheet(isPresented: $showingCamera) {
+            CameraView(image: $selectedImage)
+        }
         .onChange(of: pickerItem) { _, item in
             Task {
                 if let data = try? await item?.loadTransferable(type: Data.self),
                    let img = UIImage(data: data) { selectedImage = img }
             }
+        }
+    }
+}
+
+// MARK: - Camera wrapper
+
+private struct CameraView: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+    @Environment(\.dismiss) private var dismiss
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: CameraView
+        init(_ parent: CameraView) { self.parent = parent }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            parent.image = info[.originalImage] as? UIImage
+            parent.dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
         }
     }
 }

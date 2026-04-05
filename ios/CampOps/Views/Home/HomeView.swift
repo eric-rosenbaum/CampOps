@@ -14,6 +14,7 @@ struct HomeView: View {
                     myTasksSection
                 }
                 .padding(Spacing.lg)
+                .id(userManager.currentUser.id)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Camp Ops")

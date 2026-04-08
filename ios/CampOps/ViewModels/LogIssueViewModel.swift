@@ -5,7 +5,7 @@ import Combine
 final class LogIssueViewModel: ObservableObject {
     @Published var title = ""
     @Published var description = ""
-    @Published var location: CampLocation = .other
+    @Published var locations: [CampLocation] = [.other]
     @Published var priority: Priority = .normal
     @Published var assigneeId: String? = nil
     @Published var estimatedCost = ""
@@ -20,7 +20,7 @@ final class LogIssueViewModel: ObservableObject {
             editingIssue = issue
             title = issue.title
             description = issue.description ?? ""
-            location = issue.location
+            locations = issue.locations.isEmpty ? [.other] : issue.locations
             priority = issue.priority
             assigneeId = issue.assigneeId
             estimatedCost = issue.estimatedCost.map { String($0) } ?? ""
@@ -40,7 +40,7 @@ final class LogIssueViewModel: ObservableObject {
         if var existing = editingIssue {
             existing.title = title.trimmingCharacters(in: .whitespaces)
             existing.description = description.isEmpty ? nil : description
-            existing.location = location; existing.priority = priority
+            existing.locations = locations; existing.priority = priority
             existing.assigneeId = assigneeId; existing.estimatedCost = cost
             existing.photoUrl = photoUrl; existing.updatedAt = Date()
             let entry = ActivityEntry(id: UUID().uuidString, userId: user.id,
@@ -52,7 +52,7 @@ final class LogIssueViewModel: ObservableObject {
         } else {
             let issue = Issue(id: id, title: title.trimmingCharacters(in: .whitespaces),
                 description: description.isEmpty ? nil : description,
-                location: location, priority: priority,
+                locations: locations, priority: priority,
                 status: assigneeId != nil ? .assigned : .unassigned,
                 assigneeId: assigneeId, reportedById: user.id,
                 estimatedCost: cost, photoUrl: photoUrl)

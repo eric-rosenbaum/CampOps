@@ -10,7 +10,7 @@ struct AddTaskView: View {
     @State private var title = ""
     @State private var description = ""
     @State private var phase: ChecklistPhase = .pre
-    @State private var location: CampLocation = .other
+    @State private var locations: [CampLocation] = []
     @State private var priority: Priority = .normal
     @State private var assigneeId: String? = nil
     @State private var dueDateString = ""
@@ -32,8 +32,15 @@ struct AddTaskView: View {
                         Text("Pre-camp").tag(ChecklistPhase.pre)
                         Text("Post-camp").tag(ChecklistPhase.post)
                     }
-                    Picker("Location", selection: $location) {
-                        ForEach(CampLocation.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                    NavigationLink {
+                        LocationPickerView(selected: $locations)
+                    } label: {
+                        HStack {
+                            Text("Location")
+                            Spacer()
+                            Text(locations.isEmpty ? "None" : locations.map(\.displayName).joined(separator: ", "))
+                                .foregroundColor(.secondary).lineLimit(1)
+                        }
                     }
                     Picker("Priority", selection: $priority) {
                         ForEach(Priority.allCases, id: \.self) { Text($0.displayName).tag($0) }
@@ -65,7 +72,7 @@ struct AddTaskView: View {
     private func populate() {
         guard let t = editingTask else { return }
         title = t.title; description = t.description
-        phase = t.phase; location = t.location; priority = t.priority
+        phase = t.phase; locations = t.locations; priority = t.priority
         assigneeId = t.assigneeId; dueDateString = t.dueDate ?? ""
         daysRelative = String(t.daysRelativeToOpening)
     }
@@ -76,7 +83,7 @@ struct AddTaskView: View {
             var updated = existing
             updated.title = title.trimmingCharacters(in: .whitespaces)
             updated.description = description
-            updated.phase = phase; updated.location = location; updated.priority = priority
+            updated.phase = phase; updated.locations = locations; updated.priority = priority
             updated.assigneeId = assigneeId
             updated.dueDate = dueDateString.isEmpty ? nil : dueDateString
             updated.daysRelativeToOpening = Int(daysRelative) ?? existing.daysRelativeToOpening
@@ -85,7 +92,7 @@ struct AddTaskView: View {
             let task = ChecklistTask(
                 title: title.trimmingCharacters(in: .whitespaces),
                 description: description,
-                location: location, priority: priority,
+                locations: locations, priority: priority,
                 assigneeId: assigneeId, phase: phase,
                 daysRelativeToOpening: Int(daysRelative) ?? 0,
                 dueDate: dueDateString.isEmpty ? nil : dueDateString)

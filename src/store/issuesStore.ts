@@ -187,7 +187,7 @@ export const useIssuesStore = create<IssuesStore>((set, get) => ({
       result = result.filter(
         (i) =>
           i.title.toLowerCase().includes(q) ||
-          i.location.toLowerCase().includes(q),
+          i.locations.some((l) => l.toLowerCase().includes(q)),
       );
     }
 

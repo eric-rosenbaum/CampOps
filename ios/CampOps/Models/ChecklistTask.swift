@@ -4,7 +4,7 @@ struct ChecklistTask: Codable, Identifiable, Hashable {
     let id: String
     var title: String
     var description: String
-    var location: CampLocation
+    var locations: [CampLocation]
     var priority: Priority
     var status: ChecklistStatus
     var assigneeId: String?
@@ -17,7 +17,7 @@ struct ChecklistTask: Codable, Identifiable, Hashable {
     var activity: [ActivityEntry]
 
     enum CodingKeys: String, CodingKey {
-        case id, title, description, location, priority, status, phase
+        case id, title, description, locations, priority, status, phase
         case assigneeId             = "assignee_id"
         case daysRelativeToOpening  = "days_relative_to_opening"
         case dueDate                = "due_date"
@@ -31,7 +31,7 @@ struct ChecklistTask: Codable, Identifiable, Hashable {
         id: String = UUID().uuidString,
         title: String,
         description: String = "",
-        location: CampLocation = .other,
+        locations: [CampLocation] = [],
         priority: Priority = .normal,
         status: ChecklistStatus = .pending,
         assigneeId: String? = nil,
@@ -44,7 +44,7 @@ struct ChecklistTask: Codable, Identifiable, Hashable {
         activity: [ActivityEntry] = []
     ) {
         self.id = id; self.title = title; self.description = description
-        self.location = location; self.priority = priority; self.status = status
+        self.locations = locations; self.priority = priority; self.status = status
         self.assigneeId = assigneeId; self.phase = phase
         self.daysRelativeToOpening = daysRelativeToOpening; self.dueDate = dueDate
         self.isRecurring = isRecurring; self.createdAt = createdAt
@@ -62,7 +62,7 @@ struct ChecklistTaskDBRow: Codable {
     let id: String
     var title: String
     var description: String
-    var location: CampLocation
+    var locations: [CampLocation]
     var priority: Priority
     var status: ChecklistStatus
     var assigneeId: String?
@@ -74,7 +74,7 @@ struct ChecklistTaskDBRow: Codable {
     var updatedAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case id, title, description, location, priority, status, phase
+        case id, title, description, locations, priority, status, phase
         case assigneeId             = "assignee_id"
         case daysRelativeToOpening  = "days_relative_to_opening"
         case dueDate                = "due_date"
@@ -85,7 +85,7 @@ struct ChecklistTaskDBRow: Codable {
 
     func toTask(activity: [ActivityEntry] = []) -> ChecklistTask {
         ChecklistTask(id: id, title: title, description: description,
-                      location: location, priority: priority, status: status,
+                      locations: locations, priority: priority, status: status,
                       assigneeId: assigneeId, phase: phase,
                       daysRelativeToOpening: daysRelativeToOpening, dueDate: dueDate,
                       isRecurring: isRecurring, createdAt: createdAt,

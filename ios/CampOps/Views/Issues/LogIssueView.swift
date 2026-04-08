@@ -19,8 +19,15 @@ struct LogIssueView: View {
                     TextField("Description", text: $vm.description, axis: .vertical).lineLimit(3...6)
                 }
                 Section("Location & Priority") {
-                    Picker("Location", selection: $vm.location) {
-                        ForEach(CampLocation.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                    NavigationLink {
+                        LocationPickerView(selected: $vm.locations)
+                    } label: {
+                        HStack {
+                            Text("Location")
+                            Spacer()
+                            Text(vm.locations.isEmpty ? "None" : vm.locations.map(\.displayName).joined(separator: ", "))
+                                .foregroundColor(.secondary).lineLimit(1)
+                        }
                     }
                     Picker("Priority", selection: $vm.priority) {
                         ForEach(Priority.allCases, id: \.self) { Text($0.displayName).tag($0) }

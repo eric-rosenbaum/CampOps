@@ -163,7 +163,7 @@ export const useChecklistStore = create<ChecklistStore>((set, get) => ({
       result = result.filter(
         (t) =>
           t.title.toLowerCase().includes(q) ||
-          t.location.toLowerCase().includes(q),
+          t.locations.some((l) => l.toLowerCase().includes(q)),
       );
     }
 
@@ -192,10 +192,11 @@ export const useChecklistStore = create<ChecklistStore>((set, get) => ({
     const tasks = get().tasks.filter((t) => t.phase === p);
     const map: Record<string, { total: number; complete: number }> = {};
     for (const t of tasks) {
-      const loc = t.location as Location;
-      if (!map[loc]) map[loc] = { total: 0, complete: 0 };
-      map[loc].total++;
-      if (t.status === 'complete') map[loc].complete++;
+      for (const loc of t.locations) {
+        if (!map[loc]) map[loc] = { total: 0, complete: 0 };
+        map[loc].total++;
+        if (t.status === 'complete') map[loc].complete++;
+      }
     }
     return map;
   },

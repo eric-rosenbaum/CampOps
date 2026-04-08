@@ -39,7 +39,7 @@ export const SEED_ISSUES: Issue[] = [
     title: 'Dock ramp — broken plank, safety hazard',
     description:
       'Third plank from the end is cracked through. Campers using the dock for kayak launch this afternoon. Needs to be roped off or repaired before the 2pm activity block.',
-    location: 'Waterfront',
+    locations: ['Waterfront'],
     priority: 'urgent',
     status: 'assigned',
     assigneeId: 'u2',
@@ -75,7 +75,7 @@ export const SEED_ISSUES: Issue[] = [
     title: 'Walk-in refrigerator not holding temperature',
     description:
       'Temp reading 48°F, should be below 40°F. Compressor making intermittent clicking noise. Health code risk — food safety issue. Need emergency HVAC/refrigeration tech.',
-    location: 'Dining Hall',
+    locations: ['Dining Hall'],
     priority: 'urgent',
     status: 'unassigned',
     assigneeId: null,
@@ -104,7 +104,7 @@ export const SEED_ISSUES: Issue[] = [
     title: 'Cabin 7 — screen door off hinges',
     description:
       'Screen door in Cabin 7 has come off the bottom hinge. Door is hanging at an angle. Need to re-hang and possibly replace hinge hardware.',
-    location: 'Cabins',
+    locations: ['Cabins'],
     priority: 'high',
     status: 'assigned',
     assigneeId: 'u2',
@@ -140,7 +140,7 @@ export const SEED_ISSUES: Issue[] = [
     title: 'Art barn roof leak above supply storage',
     description:
       'Active drip in the north corner of the Art Barn, directly above the paper and canvas storage. Tarped the supplies temporarily. Need roofer to assess — likely flashing failure.',
-    location: 'Art Barn',
+    locations: ['Art Barn'],
     priority: 'high',
     status: 'unassigned',
     assigneeId: null,
@@ -169,7 +169,7 @@ export const SEED_ISSUES: Issue[] = [
     title: 'Pool pump making unusual noise',
     description:
       'Main circulation pump is producing a high-pitched whine during operation. Flow rate appears normal but noise started yesterday. Likely bearing wear — may need pump replacement.',
-    location: 'Aquatics',
+    locations: ['Aquatics'],
     priority: 'normal',
     status: 'in_progress',
     assigneeId: 'u2',
@@ -205,7 +205,7 @@ export const SEED_ISSUES: Issue[] = [
     title: 'Main lodge — two light fixtures out',
     description:
       'Two overhead fluorescent fixtures in the main lodge common area have failed. Replaced bulbs — no change. Likely ballast issue. Non-urgent but affects evening activities.',
-    location: 'Main Lodge',
+    locations: ['Main Lodge'],
     priority: 'normal',
     status: 'resolved',
     assigneeId: 'u2',
@@ -248,7 +248,7 @@ export const SEED_ISSUES: Issue[] = [
     title: 'Athletic field irrigation head broken',
     description:
       'One of the pop-up irrigation heads on field 2 is broken — stuck in the up position and spraying sideways. Needs to be replaced before it becomes a trip hazard.',
-    location: 'Athletic Fields',
+    locations: ['Athletic Fields'],
     priority: 'normal',
     status: 'unassigned',
     assigneeId: null,
@@ -277,7 +277,7 @@ export const SEED_ISSUES: Issue[] = [
     title: 'Health center — exam table padding torn',
     description:
       'The vinyl padding on the exam table has a tear approximately 8 inches long on the seat edge. Needs to be replaced before next medical check-in. Infection control concern.',
-    location: 'Health Center',
+    locations: ['Health Center'],
     priority: 'high',
     status: 'in_progress',
     assigneeId: 'u3',
@@ -313,7 +313,7 @@ export const SEED_ISSUES: Issue[] = [
     id: 'i9',
     title: 'Waterfront dock — loose railing section',
     description: 'South railing section had two loose bolts. Tightened and reinforced.',
-    location: 'Waterfront',
+    locations: ['Waterfront'],
     priority: 'high',
     status: 'resolved',
     assigneeId: 'u2',
@@ -341,7 +341,7 @@ export const SEED_ISSUES: Issue[] = [
     id: 'i10',
     title: 'Dining hall — dishwasher drain clog',
     description: 'Commercial dishwasher draining slowly. Cleared grease buildup from drain line.',
-    location: 'Dining Hall',
+    locations: ['Dining Hall'],
     priority: 'normal',
     status: 'resolved',
     assigneeId: 'u4',
@@ -374,7 +374,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     title: 'Inspect all cabin beds and mattresses',
     description:
       'Check all bunk frames for structural integrity, inspect mattresses for damage or mold. Replace any mattresses that fail inspection.',
-    location: 'Cabins',
+    locations: ['Cabins'],
     priority: 'high',
     status: 'complete',
     assigneeId: 'u2',
@@ -399,7 +399,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     title: 'Waterfront dock safety inspection',
     description:
       'Full structural inspection of main dock, kayak launch, and swim area roping. Check all hardware, flotation, and safety equipment.',
-    location: 'Waterfront',
+    locations: ['Waterfront'],
     priority: 'urgent',
     status: 'complete',
     assigneeId: 'u2',
@@ -424,7 +424,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     title: 'Test all smoke and CO detectors',
     description:
       'Test every smoke detector and carbon monoxide detector in all buildings. Replace batteries in all units regardless of current charge. Log results.',
-    location: 'Main Lodge',
+    locations: ['Main Lodge'],
     priority: 'urgent',
     status: 'complete',
     assigneeId: 'u4',
@@ -449,7 +449,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     title: 'Deep clean dining hall kitchen equipment',
     description:
       'Commercial deep clean of all cooking equipment, hoods, filters, walk-in cooler/freezer, and dishwashing station. Must pass health inspection standard.',
-    location: 'Dining Hall',
+    locations: ['Dining Hall'],
     priority: 'high',
     status: 'complete',
     assigneeId: 'u3',
@@ -474,7 +474,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     title: 'Pool chemistry baseline and shock treatment',
     description:
       'Test all pool water parameters (pH, chlorine, alkalinity, cyanuric acid). Perform opening shock treatment. Verify all safety equipment in place.',
-    location: 'Aquatics',
+    locations: ['Aquatics'],
     priority: 'urgent',
     status: 'in_progress',
     assigneeId: 'u2',
@@ -499,7 +499,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     title: 'Restock health center supplies',
     description:
       'Inventory all first aid supplies, medications (where permitted), and medical equipment. Restock to opening-day par levels. Check all expiration dates.',
-    location: 'Health Center',
+    locations: ['Health Center'],
     priority: 'normal',
     status: 'pending',
     assigneeId: 'u3',
@@ -516,7 +516,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     title: 'Paint touch-up on cabin exteriors',
     description:
       'Touch up peeling or damaged exterior paint on all cabin buildings. Focus on trim, door frames, and shutters. Use color-matched paint from maintenance storage.',
-    location: 'Cabins',
+    locations: ['Cabins'],
     priority: 'normal',
     status: 'pending',
     assigneeId: null,
@@ -533,7 +533,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     title: 'Athletic field line marking',
     description:
       'Re-stripe all athletic field boundary lines, penalty areas, and center markings. Use field-safe chalk or paint. Include basketball court and volleyball court.',
-    location: 'Athletic Fields',
+    locations: ['Athletic Fields'],
     priority: 'normal',
     status: 'pending',
     assigneeId: null,
@@ -551,7 +551,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     title: 'Drain and winterize pool',
     description:
       'Lower pool water level, add winterizing chemicals, blow out all lines, install winter cover. Drain all pumps and filters. Document closing chemistry readings.',
-    location: 'Aquatics',
+    locations: ['Aquatics'],
     priority: 'high',
     status: 'pending',
     assigneeId: 'u2',
@@ -568,7 +568,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     title: 'Deep clean all cabins',
     description:
       'Full deep clean of all cabin interiors: sweep, mop, wipe down all surfaces, clean windows, launder linens. Remove all personal items left by campers.',
-    location: 'Cabins',
+    locations: ['Cabins'],
     priority: 'high',
     status: 'pending',
     assigneeId: null,
@@ -585,7 +585,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     title: 'Inventory and store athletic equipment',
     description:
       'Count and condition-check all athletic equipment. Clean and store in proper storage areas. Flag any items needing replacement before next season.',
-    location: 'Athletic Fields',
+    locations: ['Athletic Fields'],
     priority: 'normal',
     status: 'pending',
     assigneeId: 'u4',
@@ -602,7 +602,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     title: 'Roof and gutter inspection before winter',
     description:
       'Inspect all building roofs for damage, missing shingles, or flashing issues. Clean all gutters and downspouts. Seal any gaps before winter weather.',
-    location: 'Main Lodge',
+    locations: ['Main Lodge'],
     priority: 'high',
     status: 'pending',
     assigneeId: null,

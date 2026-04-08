@@ -39,10 +39,10 @@ export function TaskCard({ task, selected, onClick, compact = false }: Props) {
           <div className="flex-1 min-w-0">
             <p className="text-[14px] font-semibold text-forest leading-snug truncate">{task.title}</p>
             <p className="text-[11px] text-forest/50 mt-0.5">
-              {task.location} · Updated {relativeTime(task.updatedAt)}
+              {task.locations.join(' · ')} · Updated {relativeTime(task.updatedAt)}
             </p>
             <div className="flex flex-wrap gap-1.5 mt-2">
-              <TagPill label={task.location} variant="location" />
+              {task.locations.map((l) => <TagPill key={l} label={l} variant="location" />)}
               {dueInfo && (
                 <span className={`text-[11px] font-medium ${dueInfo.overdue ? 'text-red' : 'text-forest/60'}`}>
                   {dueInfo.label}

@@ -1,5 +1,10 @@
 import { useState } from 'react';
 import type { ChecklistTask, ChecklistStatus, Priority, Location } from '@/lib/types';
+
+const LOCATIONS: Location[] = [
+  'Waterfront', 'Dining Hall', 'Cabins', 'Art Barn', 'Aquatics',
+  'Athletic Fields', 'Main Lodge', 'Health Center', 'Other',
+];
 import { SEED_USERS } from '@/lib/seedData';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useAuth } from '@/lib/auth';
@@ -12,11 +17,6 @@ interface Props {
   task: ChecklistTask;
 }
 
-const LOCATIONS: Location[] = [
-  'Waterfront','Dining Hall','Cabins','Art Barn','Aquatics',
-  'Athletic Fields','Main Lodge','Health Center','Other',
-];
-
 export function TaskDetail({ task }: Props) {
   const { updateTask, completeTask, addActivityEntry, deleteTask, selectTask } = useChecklistStore();
   const { currentUser, can } = useAuth();
@@ -26,7 +26,7 @@ export function TaskDetail({ task }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDescription, setEditDescription] = useState(task.description);
-  const [editLocation, setEditLocation] = useState<Location>(task.location);
+  const [editLocations, setEditLocations] = useState<Location[]>(task.locations);
   const [editPriority, setEditPriority] = useState<Priority>(task.priority);
   const [editPhase, setEditPhase] = useState<'pre' | 'post'>(task.phase);
   const [editDueDate, setEditDueDate] = useState(task.dueDate ?? '');
@@ -67,7 +67,7 @@ export function TaskDetail({ task }: Props) {
     updateTask(task.id, {
       title: editTitle.trim(),
       description: editDescription,
-      location: editLocation,
+      locations: editLocations,
       priority: editPriority,
       phase: editPhase,
       dueDate: editDueDate || null,
@@ -113,10 +113,24 @@ export function TaskDetail({ task }: Props) {
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Location</label>
-            <select value={editLocation} onChange={(e) => setEditLocation(e.target.value as Location)} className={selectClass}>
-              {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
-            </select>
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Locations</label>
+            <div className="grid grid-cols-2 gap-1">
+              {LOCATIONS.map((l) => (
+                <label key={l} className="flex items-center gap-1.5 text-[13px] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="w-3.5 h-3.5 accent-sage"
+                    checked={editLocations.includes(l)}
+                    onChange={(e) => {
+                      setEditLocations(e.target.checked
+                        ? [...editLocations, l]
+                        : editLocations.filter((x) => x !== l));
+                    }}
+                  />
+                  {l}
+                </label>
+              ))}
+            </div>
           </div>
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Priority</label>
@@ -160,7 +174,7 @@ export function TaskDetail({ task }: Props) {
           )}
         </div>
         <p className="text-[11px] text-forest/50 mt-1">
-          {task.location} · {task.phase === 'pre' ? 'Pre-camp' : 'Post-camp'} · Logged {formatDate(task.createdAt)}
+          {task.locations.join(' · ')} · {task.phase === 'pre' ? 'Pre-camp' : 'Post-camp'} · Logged {formatDate(task.createdAt)}
         </p>
       </div>
 

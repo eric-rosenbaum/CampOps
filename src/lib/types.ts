@@ -38,7 +38,7 @@ export interface Issue {
   id: string;
   title: string;
   description: string;
-  location: Location;
+  locations: Location[];
   priority: Priority;
   status: IssueStatus;
   assigneeId: string | null;
@@ -59,7 +59,7 @@ export interface ChecklistTask {
   id: string;
   title: string;
   description: string;
-  location: Location;
+  locations: Location[];
   priority: Priority;
   status: ChecklistStatus;
   assigneeId: string | null;

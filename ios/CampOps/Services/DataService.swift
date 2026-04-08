@@ -116,11 +116,11 @@ private struct TaskActivityRow: Codable {
 
 private struct IssueInsert: Encodable {
     let id, title: String; let description: String?
-    let location, priority, status: String
+    let locations: [String]; let priority, status: String
     let assigneeId: String?; let reportedById: String
     let estimatedCost: Double?; let actualCost: Double?; let photoUrl: String?
     enum CodingKeys: String, CodingKey {
-        case id, title, description, location, priority, status
+        case id, title, description, locations, priority, status
         case assigneeId    = "assignee_id"
         case reportedById  = "reported_by_id"
         case estimatedCost = "estimated_cost"
@@ -129,7 +129,7 @@ private struct IssueInsert: Encodable {
     }
     init(issue: Issue) {
         id = issue.id; title = issue.title; description = issue.description
-        location = issue.location.rawValue; priority = issue.priority.rawValue
+        locations = issue.locations.map(\.rawValue); priority = issue.priority.rawValue
         status = issue.status.rawValue; assigneeId = issue.assigneeId
         reportedById = issue.reportedById; estimatedCost = issue.estimatedCost
         actualCost = issue.actualCost; photoUrl = issue.photoUrl
@@ -138,11 +138,11 @@ private struct IssueInsert: Encodable {
 
 private struct IssueUpdate: Encodable {
     let title: String; let description: String?
-    let location, priority, status: String
+    let locations: [String]; let priority, status: String
     let assigneeId: String?; let estimatedCost: Double?
     let actualCost: Double?; let photoUrl: String?; let updatedAt: Date
     enum CodingKeys: String, CodingKey {
-        case title, description, location, priority, status
+        case title, description, locations, priority, status
         case assigneeId    = "assignee_id"
         case estimatedCost = "estimated_cost"
         case actualCost    = "actual_cost"
@@ -151,7 +151,7 @@ private struct IssueUpdate: Encodable {
     }
     init(issue: Issue) {
         title = issue.title; description = issue.description
-        location = issue.location.rawValue; priority = issue.priority.rawValue
+        locations = issue.locations.map(\.rawValue); priority = issue.priority.rawValue
         status = issue.status.rawValue; assigneeId = issue.assigneeId
         estimatedCost = issue.estimatedCost; actualCost = issue.actualCost
         photoUrl = issue.photoUrl; updatedAt = Date()
@@ -160,11 +160,11 @@ private struct IssueUpdate: Encodable {
 
 private struct TaskInsert: Encodable {
     let id, title, description: String
-    let location, priority, status, phase: String
+    let locations: [String]; let priority, status, phase: String
     let assigneeId: String?; let daysRelativeToOpening: Int
     let dueDate: String?; let isRecurring: Bool
     enum CodingKeys: String, CodingKey {
-        case id, title, description, location, priority, status, phase
+        case id, title, description, locations, priority, status, phase
         case assigneeId            = "assignee_id"
         case daysRelativeToOpening = "days_relative_to_opening"
         case dueDate               = "due_date"
@@ -172,7 +172,7 @@ private struct TaskInsert: Encodable {
     }
     init(task: ChecklistTask) {
         id = task.id; title = task.title; description = task.description
-        location = task.location.rawValue; priority = task.priority.rawValue
+        locations = task.locations.map(\.rawValue); priority = task.priority.rawValue
         status = task.status.rawValue; phase = task.phase.rawValue
         assigneeId = task.assigneeId; daysRelativeToOpening = task.daysRelativeToOpening
         dueDate = task.dueDate; isRecurring = task.isRecurring
@@ -181,17 +181,17 @@ private struct TaskInsert: Encodable {
 
 private struct TaskUpdate: Encodable {
     let title, description: String
-    let location, priority, status, phase: String
+    let locations: [String]; let priority, status, phase: String
     let assigneeId: String?; let dueDate: String?; let updatedAt: Date
     enum CodingKeys: String, CodingKey {
-        case title, description, location, priority, status, phase
+        case title, description, locations, priority, status, phase
         case assigneeId = "assignee_id"
         case dueDate    = "due_date"
         case updatedAt  = "updated_at"
     }
     init(task: ChecklistTask) {
         title = task.title; description = task.description
-        location = task.location.rawValue; priority = task.priority.rawValue
+        locations = task.locations.map(\.rawValue); priority = task.priority.rawValue
         status = task.status.rawValue; phase = task.phase.rawValue
         assigneeId = task.assigneeId; dueDate = task.dueDate; updatedAt = Date()
     }

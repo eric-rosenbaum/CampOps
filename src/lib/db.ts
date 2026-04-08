@@ -15,7 +15,7 @@ function issueToRow(issue: Issue) {
     id: issue.id,
     title: issue.title,
     description: issue.description,
-    location: issue.location,
+    locations: issue.locations,
     priority: issue.priority,
     status: issue.status,
     assignee_id: issue.assigneeId,
@@ -37,7 +37,7 @@ function rowToIssue(row: Record<string, unknown>, activityLog: ActivityEntry[]):
     id: row.id as string,
     title: row.title as string,
     description: (row.description as string) ?? '',
-    location: row.location as Issue['location'],
+    locations: ((row.locations as string[]) ?? []) as Issue['locations'],
     priority: row.priority as Issue['priority'],
     status: row.status as Issue['status'],
     assigneeId: (row.assignee_id as string) ?? null,
@@ -60,7 +60,7 @@ function taskToRow(task: ChecklistTask) {
     id: task.id,
     title: task.title,
     description: task.description,
-    location: task.location,
+    locations: task.locations,
     priority: task.priority,
     status: task.status,
     assignee_id: task.assigneeId,
@@ -78,7 +78,7 @@ function rowToTask(row: Record<string, unknown>, activityLog: ActivityEntry[]): 
     id: row.id as string,
     title: row.title as string,
     description: (row.description as string) ?? '',
-    location: row.location as ChecklistTask['location'],
+    locations: ((row.locations as string[]) ?? []) as ChecklistTask['locations'],
     priority: row.priority as ChecklistTask['priority'],
     status: row.status as ChecklistTask['status'],
     assigneeId: (row.assignee_id as string) ?? null,
@@ -205,7 +205,7 @@ export async function dbUpdateIssue(id: string, patch: Partial<Issue>) {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.description !== undefined) row.description = patch.description;
-  if (patch.location !== undefined) row.location = patch.location;
+  if (patch.locations !== undefined) row.locations = patch.locations;
   if (patch.priority !== undefined) row.priority = patch.priority;
   if (patch.status !== undefined) row.status = patch.status;
   if (patch.assigneeId !== undefined) row.assignee_id = patch.assigneeId;
@@ -240,7 +240,7 @@ export async function dbUpdateTask(id: string, patch: Partial<ChecklistTask>) {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.description !== undefined) row.description = patch.description;
-  if (patch.location !== undefined) row.location = patch.location;
+  if (patch.locations !== undefined) row.locations = patch.locations;
   if (patch.priority !== undefined) row.priority = patch.priority;
   if (patch.status !== undefined) row.status = patch.status;
   if (patch.assigneeId !== undefined) row.assignee_id = patch.assigneeId;

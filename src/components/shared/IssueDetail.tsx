@@ -102,7 +102,7 @@ export function IssueDetail({ issue }: Props) {
       <div className="px-5 pt-5 pb-4 border-b border-border">
         <h2 className="text-[15px] font-semibold text-forest leading-snug">{issue.title}</h2>
         <p className="text-[11px] text-forest/50 mt-1">
-          {issue.location} · Logged {reporter ? `by ${reporter.name}` : ''} {formatDate(issue.createdAt)}
+          {issue.locations.join(' · ')} · Logged {reporter ? `by ${reporter.name}` : ''} {formatDate(issue.createdAt)}
         </p>
       </div>
 

@@ -17,7 +17,7 @@ final class IssueListViewModel: ObservableObject {
             result = result.filter {
                 $0.title.lowercased().contains(q) ||
                 ($0.description?.lowercased().contains(q) ?? false) ||
-                $0.location.rawValue.lowercased().contains(q)
+                $0.locations.contains { $0.rawValue.lowercased().contains(q) }
             }
         }
         if let s = filterStatus   { result = result.filter { $0.status == s } }

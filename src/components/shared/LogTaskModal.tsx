@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { useForm } from 'react-hook-form';
@@ -16,7 +17,6 @@ const LOCATIONS: Location[] = [
 
 interface FormValues {
   title: string;
-  location: Location;
   priority: Priority;
   description: string;
   assigneeId: string;
@@ -30,10 +30,11 @@ export function LogTaskModal() {
   const { currentUser, can } = useAuth();
   const currentUserId = currentUser.id;
 
+  const [locations, setLocations] = useState<Location[]>(['Waterfront']);
+
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     defaultValues: {
       priority: 'normal',
-      location: 'Waterfront',
       phase: activePhase,
       daysRelativeToOpening: -7,
     },
@@ -50,7 +51,7 @@ export function LogTaskModal() {
       id: generateId(),
       title: data.title,
       description: data.description,
-      location: data.location,
+      locations,
       priority: data.priority,
       status: 'pending',
       assigneeId: data.assigneeId || null,
@@ -94,21 +95,32 @@ export function LogTaskModal() {
           {errors.title && <p className={errorClass}>{errors.title.message}</p>}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelClass}>Location *</label>
-            <select {...register('location', { required: true })} className={inputClass}>
-              {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
-            </select>
+        <div>
+          <label className={labelClass}>Location * {locations.length === 0 && <span className="text-red text-[11px]">Select at least one</span>}</label>
+          <div className="grid grid-cols-3 gap-1.5 p-2.5 bg-white border border-border rounded-btn">
+            {LOCATIONS.map((l) => (
+              <label key={l} className="flex items-center gap-1.5 text-[13px] cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="w-3.5 h-3.5 accent-sage flex-shrink-0"
+                  checked={locations.includes(l)}
+                  onChange={(e) => {
+                    setLocations(e.target.checked ? [...locations, l] : locations.filter((x) => x !== l));
+                  }}
+                />
+                {l}
+              </label>
+            ))}
           </div>
-          <div>
-            <label className={labelClass}>Priority *</label>
-            <select {...register('priority', { required: true })} className={inputClass}>
-              <option value="normal">Normal</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
-          </div>
+        </div>
+
+        <div>
+          <label className={labelClass}>Priority *</label>
+          <select {...register('priority', { required: true })} className={inputClass}>
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
         </div>
 
         <div>

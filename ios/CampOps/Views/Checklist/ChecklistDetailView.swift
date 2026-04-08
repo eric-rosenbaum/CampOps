@@ -33,7 +33,7 @@ struct ChecklistDetailView: View {
                         Spacer()
                     }
                     Text(task.title).font(.title2.weight(.bold)).foregroundColor(.forest)
-                    Label(task.location.displayName, systemImage: "mappin.circle")
+                    Label(task.locations.map(\.displayName).joined(separator: ", "), systemImage: "mappin.circle")
                         .font(.caption).foregroundColor(.secondary)
                     if let (label, overdue) = task.dueDateRelative {
                         Text(label).font(.caption.weight(.medium))

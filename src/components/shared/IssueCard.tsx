@@ -52,7 +52,7 @@ export function IssueCard({ issue, selected, onClick, compact = false }: Props) 
               </p>
             )}
             <div className="flex flex-wrap gap-1.5 mt-2">
-              <TagPill label={issue.location} variant="location" />
+              {issue.locations.map((l) => <TagPill key={l} label={l} variant="location" />)}
               <TagPill label={statusLabel[issue.status] ?? issue.status} />
               {issue.estimatedCostDisplay && issue.status !== 'resolved' && (
                 <TagPill label={`Est. ${issue.estimatedCostDisplay}`} variant="cost" />

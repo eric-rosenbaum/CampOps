@@ -18,7 +18,6 @@ const LOCATIONS: Location[] = [
 
 interface FormValues {
   title: string;
-  location: Location;
   priority: Priority;
   description: string;
   assigneeId: string;
@@ -35,6 +34,7 @@ export function LogIssueModal() {
   const currentUserId = currentUser.id;
   const editingIssue = editingIssueId ? issues.find((i) => i.id === editingIssueId) : null;
 
+  const [locations, setLocations] = useState<Location[]>(['Waterfront']);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [removeExistingPhoto, setRemoveExistingPhoto] = useState(false);
@@ -42,7 +42,6 @@ export function LogIssueModal() {
   const { register, handleSubmit, watch, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
     defaultValues: {
       priority: 'normal',
-      location: 'Waterfront',
       isRecurring: false,
       recurringInterval: 'weekly',
     },
@@ -56,9 +55,9 @@ export function LogIssueModal() {
     setRemoveExistingPhoto(false);
 
     if (editingIssue) {
+      setLocations(editingIssue.locations.length > 0 ? editingIssue.locations : ['Waterfront']);
       reset({
         title: editingIssue.title,
-        location: editingIssue.location,
         priority: editingIssue.priority,
         description: editingIssue.description,
         assigneeId: editingIssue.assigneeId ?? '',
@@ -68,9 +67,9 @@ export function LogIssueModal() {
         recurringInterval: editingIssue.recurringInterval ?? 'weekly',
       });
     } else {
+      setLocations(['Waterfront']);
       reset({
         priority: 'normal',
-        location: 'Waterfront',
         isRecurring: false,
         recurringInterval: 'weekly',
         title: '',
@@ -137,7 +136,7 @@ export function LogIssueModal() {
 
       updateIssue(editingIssue.id, {
         title: data.title,
-        location: data.location,
+        locations,
         priority: data.priority,
         description: data.description,
         assigneeId,
@@ -189,7 +188,7 @@ export function LogIssueModal() {
         id,
         title: data.title,
         description: data.description,
-        location: data.location,
+        locations,
         priority: data.priority,
         status: assigneeId ? 'assigned' : 'unassigned',
         assigneeId,
@@ -234,13 +233,26 @@ export function LogIssueModal() {
           {errors.title && <p className={errorClass}>{errors.title.message}</p>}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelClass}>Location *</label>
-            <select {...register('location', { required: true })} className={inputClass}>
-              {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
-            </select>
+        <div>
+          <label className={labelClass}>Location * {locations.length === 0 && <span className="text-red text-[11px]">Select at least one</span>}</label>
+          <div className="grid grid-cols-3 gap-1.5 p-2.5 bg-white border border-border rounded-btn">
+            {LOCATIONS.map((l) => (
+              <label key={l} className="flex items-center gap-1.5 text-[13px] cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="w-3.5 h-3.5 accent-sage flex-shrink-0"
+                  checked={locations.includes(l)}
+                  onChange={(e) => {
+                    setLocations(e.target.checked ? [...locations, l] : locations.filter((x) => x !== l));
+                  }}
+                />
+                {l}
+              </label>
+            ))}
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Priority *</label>
             <select {...register('priority', { required: true })} className={inputClass}>

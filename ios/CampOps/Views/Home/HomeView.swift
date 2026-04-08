@@ -24,9 +24,9 @@ struct HomeView: View {
                 }
             }
         }
-        .task {
+        .task(id: userManager.currentUser.id) {
             if issueVM.issues.isEmpty { await issueVM.load() }
-            if checklistVM.tasks.isEmpty { await checklistVM.load() }
+            await checklistVM.load()
         }
     }
 

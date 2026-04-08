@@ -4,7 +4,7 @@ struct Issue: Codable, Identifiable, Hashable {
     let id: String
     var title: String
     var description: String?
-    var location: CampLocation
+    var locations: [CampLocation]
     var priority: Priority
     var status: IssueStatus
     var assigneeId: String?
@@ -17,7 +17,7 @@ struct Issue: Codable, Identifiable, Hashable {
     var activity: [ActivityEntry]
 
     enum CodingKeys: String, CodingKey {
-        case id, title, description, location, priority, status
+        case id, title, description, locations, priority, status
         case assigneeId  = "assignee_id"
         case reportedById  = "reported_by_id"
         case estimatedCost = "estimated_cost"
@@ -32,7 +32,7 @@ struct Issue: Codable, Identifiable, Hashable {
         id: String = UUID().uuidString,
         title: String,
         description: String? = nil,
-        location: CampLocation,
+        locations: [CampLocation],
         priority: Priority,
         status: IssueStatus = .unassigned,
         assigneeId: String? = nil,
@@ -45,7 +45,7 @@ struct Issue: Codable, Identifiable, Hashable {
         activity: [ActivityEntry] = []
     ) {
         self.id = id; self.title = title; self.description = description
-        self.location = location; self.priority = priority; self.status = status
+        self.locations = locations; self.priority = priority; self.status = status
         self.assigneeId = assigneeId; self.reportedById = reportedById
         self.estimatedCost = estimatedCost; self.actualCost = actualCost
         self.photoUrl = photoUrl; self.createdAt = createdAt
@@ -63,7 +63,7 @@ struct IssueDBRow: Codable {
     let id: String
     var title: String
     var description: String?
-    var location: CampLocation
+    var locations: [CampLocation]
     var priority: Priority
     var status: IssueStatus
     var assigneeId: String?
@@ -75,7 +75,7 @@ struct IssueDBRow: Codable {
     var updatedAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case id, title, description, location, priority, status
+        case id, title, description, locations, priority, status
         case assigneeId  = "assignee_id"
         case reportedById  = "reported_by_id"
         case estimatedCost = "estimated_cost"
@@ -86,7 +86,7 @@ struct IssueDBRow: Codable {
     }
 
     func toIssue(activity: [ActivityEntry] = []) -> Issue {
-        Issue(id: id, title: title, description: description, location: location,
+        Issue(id: id, title: title, description: description, locations: locations,
               priority: priority, status: status, assigneeId: assigneeId,
               reportedById: reportedById, estimatedCost: estimatedCost,
               actualCost: actualCost, photoUrl: photoUrl,

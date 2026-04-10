@@ -78,3 +78,95 @@ export interface Season {
   openingDate: string;
   closingDate: string;
 }
+
+// ─── Pool Management ──────────────────────────────────────────────────────────
+
+export interface ChemicalReading {
+  id: string;
+  freeChlorine: number;
+  ph: number;
+  alkalinity: number;
+  cyanuricAcid: number;
+  waterTemp: number;
+  calciumHardness: number | null;
+  timeOfDay: string;
+  loggedById: string;
+  loggedByName: string;
+  correctiveAction: string | null;
+  poolStatus: 'open_all_clear' | 'open_monitoring' | 'closed_corrective' | 'closed_retest';
+  createdAt: string;
+}
+
+export type EquipmentStatus = 'ok' | 'warn' | 'alert';
+export type EquipmentType = 'pump' | 'filter' | 'heater' | 'chlorinator' | 'safety' | 'other';
+export type ServiceType = 'routine_maintenance' | 'repair' | 'inspection' | 'part_replacement' | 'vendor_service';
+
+export interface PoolEquipment {
+  id: string;
+  name: string;
+  type: EquipmentType;
+  status: EquipmentStatus;
+  statusDetail: string;
+  lastServiced: string | null;
+  nextServiceDue: string | null;
+  vendor: string | null;
+  specs: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ServiceLogEntry {
+  id: string;
+  equipmentId: string;
+  serviceType: ServiceType;
+  datePerformed: string;
+  performedBy: string;
+  notes: string | null;
+  cost: number | null;
+  nextServiceDue: string | null;
+  createdAt: string;
+}
+
+export type InspectionStatus = 'ok' | 'due' | 'overdue';
+export type InspectionResult = 'passed' | 'passed_with_notes' | 'conditional' | 'failed';
+
+export interface PoolInspection {
+  id: string;
+  name: string;
+  frequency: string;
+  authority: string;
+  standard: string | null;
+  status: InspectionStatus;
+  lastCompleted: string | null;
+  nextDue: string | null;
+  history: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InspectionLogEntry {
+  id: string;
+  inspectionId: string;
+  inspectionDate: string;
+  conductedBy: string;
+  result: InspectionResult;
+  notes: string | null;
+  nextDue: string | null;
+  createdAt: string;
+}
+
+export type SeasonalPhase = 'opening' | 'in_season' | 'closing';
+
+export interface SeasonalTask {
+  id: string;
+  title: string;
+  detail: string | null;
+  phase: SeasonalPhase;
+  isComplete: boolean;
+  completedBy: string | null;
+  completedDate: string | null;
+  assignees: string[];
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}

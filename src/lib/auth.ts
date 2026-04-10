@@ -14,14 +14,15 @@ import type { Role } from '@/lib/types';
 // ─── Permission definitions ────────────────────────────────────────────────
 
 const ROLE_PERMISSIONS = {
-  createIssue:       ['doe', 'facilities_manager'],
-  createTask:        ['doe', 'facilities_manager'],
-  assign:            ['doe', 'facilities_manager'],
-  enterActualCost:   ['doe', 'facilities_manager'],
-  activateNewSeason: ['doe', 'facilities_manager'],
-  updateStatus:      ['doe', 'facilities_manager', 'maintenance_staff'],
-  markResolved:      ['doe', 'facilities_manager', 'maintenance_staff'],
-  markComplete:      ['doe', 'facilities_manager', 'maintenance_staff'],
+  createIssue:            ['doe', 'facilities_manager'],
+  createTask:             ['doe', 'facilities_manager'],
+  assign:                 ['doe', 'facilities_manager'],
+  enterActualCost:        ['doe', 'facilities_manager'],
+  activateNewSeason:      ['doe', 'facilities_manager'],
+  managePoolChecklist:    ['doe', 'facilities_manager'],
+  updateStatus:           ['doe', 'facilities_manager', 'maintenance_staff'],
+  markResolved:           ['doe', 'facilities_manager', 'maintenance_staff'],
+  markComplete:           ['doe', 'facilities_manager', 'maintenance_staff'],
 } satisfies Record<string, Role[]>;
 
 export type Permission = keyof typeof ROLE_PERMISSIONS;

@@ -1,4 +1,4 @@
-import type { User, Issue, ChecklistTask, Season } from './types';
+import type { User, Issue, ChecklistTask, Season, ChemicalReading, PoolEquipment, PoolInspection, SeasonalTask } from './types';
 
 export const SEED_USERS: User[] = [
   { id: '10000000-0000-0000-0000-000000000001', name: 'Jordan M.', role: 'doe', initials: 'JM' },
@@ -365,6 +365,69 @@ export const SEED_ISSUES: Issue[] = [
       },
     ],
   },
+];
+
+// ─── Pool seed data ───────────────────────────────────────────────────────────
+
+export const SEED_POOL_READINGS: ChemicalReading[] = [
+  { id: 'pr1', freeChlorine: 0.8, ph: 7.4, alkalinity: 88, cyanuricAcid: 38, waterTemp: 74, calciumHardness: null, timeOfDay: '7:30am', loggedById: '10000000-0000-0000-0000-000000000002', loggedByName: 'Tom H.', correctiveAction: null, poolStatus: 'closed_corrective', createdAt: '2025-07-07T07:30:00.000Z' },
+  { id: 'pr2', freeChlorine: 1.8, ph: 7.5, alkalinity: 95, cyanuricAcid: 40, waterTemp: 73, calciumHardness: null, timeOfDay: '7:15am', loggedById: '10000000-0000-0000-0000-000000000001', loggedByName: 'Jordan M.', correctiveAction: null, poolStatus: 'open_all_clear', createdAt: '2025-07-06T07:15:00.000Z' },
+  { id: 'pr3', freeChlorine: 1.4, ph: 7.6, alkalinity: 94, cyanuricAcid: 40, waterTemp: 76, calciumHardness: null, timeOfDay: '3:00pm', loggedById: '10000000-0000-0000-0000-000000000002', loggedByName: 'Tom H.', correctiveAction: null, poolStatus: 'open_all_clear', createdAt: '2025-07-06T15:00:00.000Z' },
+  { id: 'pr4', freeChlorine: 2.1, ph: 7.4, alkalinity: 98, cyanuricAcid: 39, waterTemp: 72, calciumHardness: null, timeOfDay: '7:20am', loggedById: '10000000-0000-0000-0000-000000000001', loggedByName: 'Jordan M.', correctiveAction: null, poolStatus: 'open_all_clear', createdAt: '2025-07-05T07:20:00.000Z' },
+  { id: 'pr5', freeChlorine: 2.4, ph: 7.9, alkalinity: 100, cyanuricAcid: 42, waterTemp: 75, calciumHardness: null, timeOfDay: '7:10am', loggedById: '10000000-0000-0000-0000-000000000002', loggedByName: 'Tom H.', correctiveAction: null, poolStatus: 'open_all_clear', createdAt: '2025-07-04T07:10:00.000Z' },
+  { id: 'pr6', freeChlorine: 1.9, ph: 7.5, alkalinity: 102, cyanuricAcid: 41, waterTemp: 73, calciumHardness: null, timeOfDay: '7:30am', loggedById: '10000000-0000-0000-0000-000000000001', loggedByName: 'Jordan M.', correctiveAction: null, poolStatus: 'open_all_clear', createdAt: '2025-07-03T07:30:00.000Z' },
+  { id: 'pr7', freeChlorine: 2.2, ph: 7.3, alkalinity: 105, cyanuricAcid: 38, waterTemp: 71, calciumHardness: null, timeOfDay: '7:00am', loggedById: '10000000-0000-0000-0000-000000000002', loggedByName: 'Tom H.', correctiveAction: null, poolStatus: 'open_all_clear', createdAt: '2025-07-02T07:00:00.000Z' },
+];
+
+export const SEED_POOL_EQUIPMENT: PoolEquipment[] = [
+  { id: 'pe1', name: 'Main circulation pump', type: 'pump', status: 'warn', statusDetail: 'Unusual noise', lastServiced: '2025-05-15', nextServiceDue: '2025-07-10', vendor: 'AquaPro Services', specs: '1.5 HP', createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-06T00:00:00.000Z' },
+  { id: 'pe2', name: 'Sand filter system', type: 'filter', status: 'ok', statusDetail: 'Normal', lastServiced: '2025-07-03', nextServiceDue: '2025-07-10', vendor: 'AquaPro Services', specs: '48" tank', createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-03T00:00:00.000Z' },
+  { id: 'pe3', name: 'Pool heater', type: 'heater', status: 'warn', statusDetail: 'Operational', lastServiced: '2025-01-10', nextServiceDue: '2025-07-21', vendor: 'AquaPro Services', specs: '400k BTU', createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-01-10T00:00:00.000Z' },
+  { id: 'pe4', name: 'Automatic chlorinator', type: 'chlorinator', status: 'ok', statusDetail: 'Low — refill soon', lastServiced: '2025-07-01', nextServiceDue: null, vendor: null, specs: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-01T00:00:00.000Z' },
+  { id: 'pe5', name: 'Safety & rescue equipment', type: 'safety', status: 'ok', statusDetail: 'All present', lastServiced: '2025-06-21', nextServiceDue: null, vendor: null, specs: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-21T00:00:00.000Z' },
+];
+
+export const SEED_POOL_INSPECTIONS: PoolInspection[] = [
+  { id: 'pi1', name: 'Health dept. water quality inspection', frequency: 'Every 30 days', authority: 'County Health Department', standard: 'State law required', status: 'overdue', lastCompleted: '2025-06-04', nextDue: '2025-07-04', history: ['Jun 4', 'May 5', 'Apr 7'], createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-07T00:00:00.000Z' },
+  { id: 'pi2', name: 'ACA waterfront safety inspection', frequency: 'Weekly during session', authority: 'Internal', standard: 'ACA Standard WS-4', status: 'due', lastCompleted: '2025-07-02', nextDue: '2025-07-09', history: ['Jul 2', 'Jun 25', 'Jun 18', 'Jun 11'], createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-02T00:00:00.000Z' },
+  { id: 'pi3', name: 'Pool equipment monthly service check', frequency: 'Monthly', authority: 'AquaPro Services', standard: null, status: 'due', lastCompleted: '2025-06-15', nextDue: '2025-07-15', history: ['Jun 15', 'May 15', 'Apr 15'], createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-15T00:00:00.000Z' },
+  { id: 'pi4', name: 'Lifeguard certification verification', frequency: 'Before each session', authority: 'ACA & Red Cross', standard: null, status: 'ok', lastCompleted: '2025-06-21', nextDue: '2025-08-31', history: ['Alex R.', 'Sam K.', 'Dana L.', 'Chris M.'], createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-21T00:00:00.000Z' },
+  { id: 'pi5', name: 'Pre-season pool opening inspection', frequency: 'Annual', authority: 'Jordan M. + AquaPro', standard: null, status: 'ok', lastCompleted: '2025-06-18', nextDue: '2026-05-01', history: ['Structural', 'Equipment', 'Safety gear', 'Water quality'], createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-18T00:00:00.000Z' },
+];
+
+export const SEED_POOL_SEASONAL_TASKS: SeasonalTask[] = [
+  // Opening (8 tasks, all complete)
+  { id: 'st1', title: 'Remove pool cover and inspect for winter damage', detail: null, phase: 'opening', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-01', assignees: ['Tom H.'], sortOrder: 1, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-01T00:00:00.000Z' },
+  { id: 'st2', title: 'Inspect pool shell, coping, and tile for cracks or damage', detail: null, phase: 'opening', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-03', assignees: ['Tom H.', 'Vendor'], sortOrder: 2, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-03T00:00:00.000Z' },
+  { id: 'st3', title: 'Reconnect and prime all equipment — pump, filter, heater', detail: null, phase: 'opening', isComplete: true, completedBy: 'AquaPro Services', completedDate: '2025-06-05', assignees: ['AquaPro Services'], sortOrder: 3, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-05T00:00:00.000Z' },
+  { id: 'st4', title: 'Shock pool and balance all chemical levels', detail: null, phase: 'opening', isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-06-10', assignees: ['Jordan M.'], sortOrder: 4, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-10T00:00:00.000Z' },
+  { id: 'st5', title: 'Verify all safety equipment present and in good condition', detail: null, phase: 'opening', isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-06-12', assignees: ['Jordan M.'], sortOrder: 5, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-12T00:00:00.000Z' },
+  { id: 'st6', title: 'Verify all lifeguard certifications current', detail: null, phase: 'opening', isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-06-14', assignees: ['Jordan M.'], sortOrder: 6, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-14T00:00:00.000Z' },
+  { id: 'st7', title: 'Pass health department pre-season inspection', detail: null, phase: 'opening', isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-06-18', assignees: ['Jordan M.'], sortOrder: 7, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-18T00:00:00.000Z' },
+  { id: 'st8', title: 'Post all required signage — depth markers, rules, emergency contacts', detail: null, phase: 'opening', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-20', assignees: ['Tom H.'], sortOrder: 8, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-20T00:00:00.000Z' },
+  // In-season (13 tasks, 9 done, 4 open)
+  { id: 'st9',  title: 'Daily chemical readings — AM and PM', detail: '2x daily during session · automated reminder at 7am and 2pm', phase: 'in_season', isComplete: true, completedBy: null, completedDate: null, assignees: [], sortOrder: 1, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-07T00:00:00.000Z' },
+  { id: 'st10', title: 'Weekly ACA waterfront inspection', detail: null, phase: 'in_season', isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-07-02', assignees: ['Jordan M.'], sortOrder: 2, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-02T00:00:00.000Z' },
+  { id: 'st11', title: 'Backwash sand filter', detail: null, phase: 'in_season', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-07-03', assignees: ['Tom H.'], sortOrder: 3, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-03T00:00:00.000Z' },
+  { id: 'st12', title: 'Weekly equipment visual inspection', detail: null, phase: 'in_season', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-07-04', assignees: ['Tom H.'], sortOrder: 4, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-04T00:00:00.000Z' },
+  { id: 'st13', title: 'Verify lifeguard daily sign-in complete', detail: null, phase: 'in_season', isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-07-05', assignees: ['Jordan M.'], sortOrder: 5, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-05T00:00:00.000Z' },
+  { id: 'st14', title: 'Check pool deck surface for hazards', detail: null, phase: 'in_season', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-07-05', assignees: ['Tom H.'], sortOrder: 6, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-05T00:00:00.000Z' },
+  { id: 'st15', title: 'Test emergency phone and communication system', detail: null, phase: 'in_season', isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-06-30', assignees: ['Jordan M.'], sortOrder: 7, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-30T00:00:00.000Z' },
+  { id: 'st16', title: 'Inspect and lubricate gate and fence hardware', detail: null, phase: 'in_season', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-28', assignees: ['Tom H.'], sortOrder: 8, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-28T00:00:00.000Z' },
+  { id: 'st17', title: 'Clean and inspect pool deck furniture', detail: null, phase: 'in_season', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-27', assignees: ['Tom H.'], sortOrder: 9, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-27T00:00:00.000Z' },
+  { id: 'st18', title: 'Monthly health department water quality inspection', detail: 'County required · Currently overdue — contact county health office', phase: 'in_season', isComplete: false, completedBy: null, completedDate: null, assignees: ['Jordan M.'], sortOrder: 10, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'st19', title: 'Monthly equipment service — AquaPro', detail: null, phase: 'in_season', isComplete: false, completedBy: null, completedDate: null, assignees: ['AquaPro Services'], sortOrder: 11, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'st20', title: 'Refill chlorine tablet feeder', detail: 'Tablet level currently low', phase: 'in_season', isComplete: false, completedBy: null, completedDate: null, assignees: ['Tom H.'], sortOrder: 12, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'st21', title: 'Pump motor service — unusual noise investigation', detail: null, phase: 'in_season', isComplete: false, completedBy: null, completedDate: null, assignees: ['AquaPro Services'], sortOrder: 13, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  // Closing (8 tasks, 0 done)
+  { id: 'st22', title: 'Superchlorinate pool before closing', detail: 'Scheduled for Aug 10 after last swim period', phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: [], sortOrder: 1, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'st23', title: 'Drain pool to winter level and plug returns', detail: null, phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: [], sortOrder: 2, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'st24', title: 'Blow out all plumbing lines — winterize', detail: null, phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: ['AquaPro Services'], sortOrder: 3, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'st25', title: 'Remove, clean, and store all safety equipment', detail: null, phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: [], sortOrder: 4, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'st26', title: 'End-of-season equipment inspection and service report', detail: null, phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: ['AquaPro Services'], sortOrder: 5, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'st27', title: 'Install winter safety cover', detail: null, phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: [], sortOrder: 6, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'st28', title: 'Document end-of-season condition report with photos', detail: null, phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: [], sortOrder: 7, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'st29', title: 'Final health department close-out inspection', detail: null, phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: ['Jordan M.'], sortOrder: 8, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
 ];
 
 export const SEED_TASKS: ChecklistTask[] = [

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Wrench, ClipboardList, TreePine } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Wrench, ClipboardList, TreePine, Waves } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { section: 'Facilities', items: [
     { path: '/issues', label: 'Issues & Repairs', icon: Wrench, end: false },
     { path: '/pre-post', label: 'Pre/Post Camp', icon: ClipboardList, end: false },
+    { path: '/pool', label: 'Pool Management', icon: Waves, end: false },
   ]},
 ];
 

@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CampOps — Pool Management</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --forest: #1a2e1a; --forest-mid: #2d4a2d; --sage: #7aab6e; --sage-light: #a8c99f;
+  --cream: #f5f2eb; --cream-dark: #ede9df;
+  --amber: #c47d08; --amber-bg: #fef5e4; --amber-text: #7d4e00;
+  --red: #c0392b; --red-bg: #fdecea; --red-text: #7a1a1a;
+  --green: #1e6b1e; --green-bg: #eaf3e8;
+  --blue: #185fa5; --blue-bg: #e6f1fb; --blue-text: #0c447c;
+  --text-primary: #1a2e1a; --text-secondary: #4a6741; --text-muted: #7a9472;
+  --border: #d4cfc4; --white: #ffffff;
+}
+html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--text-primary); }
+.app { display: flex; height: 100vh; overflow: hidden; }
+
+/* Sidebar */
+.sidebar { width: 224px; background: var(--forest); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+.sidebar-logo { padding: 22px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.logo-mark { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; color: var(--sage-light); letter-spacing: 0.08em; text-transform: uppercase; }
+.logo-sub { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 3px; }
+.sidebar-nav { padding: 10px 0; flex: 1; }
+.nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(255,255,255,0.22); padding: 10px 20px 4px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.5); cursor: pointer; border-left: 2px solid transparent; transition: all 0.15s; }
+.nav-item:hover { color: rgba(255,255,255,0.82); background: rgba(255,255,255,0.05); }
+.nav-item.active { color: var(--sage-light); background: rgba(122,171,110,0.14); border-left-color: var(--sage); }
+.nav-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.sidebar-footer { padding: 14px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
+.camp-name { color: rgba(255,255,255,0.65); font-weight: 500; font-size: 12px; }
+.camp-user { color: rgba(255,255,255,0.3); font-size: 11px; margin-top: 2px; }
+
+/* Main */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.page-title { font-size: 18px; font-weight: 600; }
+.page-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.topbar-right { display: flex; gap: 10px; align-items: center; }
+
+.btn { padding: 8px 16px; border-radius: 7px; font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: var(--forest); color: white; }
+.btn-primary:hover { background: var(--forest-mid); }
+.btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--cream-dark); }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+
+/* Tabs */
+.tab-bar { background: var(--white); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; flex-shrink: 0; }
+.tab { padding: 12px 20px; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; user-select: none; }
+.tab:hover { color: var(--text-secondary); }
+.tab.active { color: var(--forest); border-bottom-color: var(--sage); font-weight: 600; }
+
+.content { flex: 1; overflow-y: auto; padding: 24px 28px; display: none; }
+.content.active { display: block; }
+
+/* Status row */
+.status-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+.status-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+.status-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.status-val { font-size: 26px; font-weight: 600; font-family: 'DM Mono', monospace; margin-top: 5px; }
+.status-hint { font-size: 11px; margin-top: 3px; }
+.status-card.ok .status-val { color: var(--green); }
+.status-card.ok .status-hint { color: var(--text-muted); }
+.status-card.warn .status-val { color: var(--amber); }
+.status-card.warn .status-hint { color: var(--amber); }
+.status-card.alert .status-val { color: var(--red); }
+.status-card.alert .status-hint { color: var(--red); }
+.status-card.neutral .status-val { color: var(--text-primary); }
+.status-card.neutral .status-hint { color: var(--text-muted); }
+
+/* Alert banner */
+.alert-banner { background: var(--red-bg); border: 1px solid #f5c0bc; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+.alert-icon { width: 20px; height: 20px; background: var(--red); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; font-weight: 700; flex-shrink: 0; }
+.alert-text { font-size: 13px; color: var(--red-text); flex: 1; line-height: 1.5; }
+.alert-action { font-size: 12px; font-weight: 600; color: var(--red); cursor: pointer; white-space: nowrap; border: 1px solid var(--red); padding: 5px 12px; border-radius: 5px; background: transparent; font-family: 'DM Sans', sans-serif; }
+.alert-action:hover { background: var(--red-bg); }
+
+/* Warn banner */
+.warn-banner { background: var(--amber-bg); border: 1px solid #f5d98a; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+.warn-icon { width: 20px; height: 20px; background: var(--amber); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; font-weight: 700; flex-shrink: 0; }
+.warn-text { font-size: 13px; color: var(--amber-text); flex: 1; line-height: 1.5; }
+
+/* Section header */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-title { font-size: 14px; font-weight: 600; }
+
+/* Range reference */
+.range-ref { background: var(--blue-bg); border: 1px solid #b5d4f4; border-radius: 10px; padding: 14px 18px; margin-bottom: 24px; }
+.range-ref-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--blue-text); margin-bottom: 10px; }
+.range-ref-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; }
+.range-item-label { font-size: 11px; color: var(--blue-text); font-weight: 500; margin-bottom: 2px; }
+.range-item-val { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--blue-text); font-weight: 600; }
+
+/* Chemical log table */
+.log-table { background: var(--white); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
+.log-table-head { display: grid; grid-template-columns: 110px 1fr 1fr 1fr 1fr 1fr 100px; padding: 10px 18px; background: var(--cream-dark); border-bottom: 1px solid var(--border); }
+.log-table-head span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.log-row { display: grid; grid-template-columns: 110px 1fr 1fr 1fr 1fr 1fr 100px; padding: 12px 18px; border-bottom: 1px solid var(--cream-dark); align-items: center; transition: background 0.12s; cursor: pointer; }
+.log-row:last-child { border-bottom: none; }
+.log-row:hover { background: var(--cream-dark); }
+.log-date { font-size: 12px; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+.log-val { font-size: 13px; font-weight: 500; font-family: 'DM Mono', monospace; }
+.log-val.ok { color: var(--green); }
+.log-val.warn { color: var(--amber); }
+.log-val.alert { color: var(--red); }
+.log-who { font-size: 12px; color: var(--text-muted); }
+.range-badge { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.range-alert { background: var(--red-bg); color: var(--red); }
+.range-warn { background: var(--amber-bg); color: var(--amber-text); }
+
+/* ── EQUIPMENT TAB ── */
+.equip-summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+.equip-stat { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+.equip-stat-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.equip-stat-val { font-size: 28px; font-weight: 600; font-family: 'DM Mono', monospace; margin-top: 4px; color: var(--text-primary); }
+.equip-stat-val.ok { color: var(--green); }
+.equip-stat-val.warn { color: var(--amber); }
+.equip-stat-val.alert { color: var(--red); }
+.equip-stat-hint { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+.equip-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+
+.equip-card { background: var(--white); border: 1px solid var(--border); border-left: 3px solid transparent; border-radius: 10px; padding: 16px 20px; cursor: pointer; transition: all 0.15s; }
+.equip-card:hover { box-shadow: 0 2px 10px rgba(26,46,26,0.08); }
+.equip-card.ok { border-left-color: var(--sage); }
+.equip-card.warn { border-left-color: var(--amber); }
+.equip-card.alert { border-left-color: var(--red); }
+
+.equip-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.equip-card-title { font-size: 14px; font-weight: 600; }
+.equip-card-badges { display: flex; gap: 6px; align-items: center; }
+
+.badge { font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.badge-ok { background: var(--green-bg); color: var(--green); }
+.badge-warn { background: var(--amber-bg); color: var(--amber-text); }
+.badge-alert { background: var(--red-bg); color: var(--red); }
+.badge-neutral { background: var(--cream-dark); color: var(--text-secondary); }
+
+.equip-card-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.equip-field-label { font-size: 11px; color: var(--text-muted); font-weight: 500; margin-bottom: 3px; }
+.equip-field-val { font-size: 13px; font-weight: 500; color: var(--text-primary); font-family: 'DM Mono', monospace; }
+.equip-field-val.ok { color: var(--green); }
+.equip-field-val.warn { color: var(--amber); }
+.equip-field-val.alert { color: var(--red); }
+
+.equip-card-footer { display: flex; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--cream-dark); }
+
+/* ── INSPECTIONS TAB ── */
+.insp-summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+
+.insp-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+
+.insp-card { background: var(--white); border: 1px solid var(--border); border-left: 3px solid transparent; border-radius: 10px; padding: 16px 20px; cursor: pointer; transition: all 0.15s; }
+.insp-card:hover { box-shadow: 0 2px 10px rgba(26,46,26,0.08); }
+.insp-card.ok { border-left-color: var(--sage); }
+.insp-card.due { border-left-color: var(--amber); }
+.insp-card.overdue { border-left-color: var(--red); }
+
+.insp-card-header { display: flex; align-items: flex-start; justify-content: space-between; }
+.insp-card-left { flex: 1; }
+.insp-card-title { font-size: 14px; font-weight: 600; }
+.insp-card-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
+.insp-card-right { text-align: right; flex-shrink: 0; margin-left: 16px; }
+.insp-card-date { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text-muted); }
+.insp-card-next { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+
+.insp-history { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--cream-dark); display: flex; gap: 6px; flex-wrap: wrap; }
+.insp-history-item { font-size: 11px; background: var(--cream-dark); color: var(--text-secondary); padding: 3px 8px; border-radius: 4px; font-family: 'DM Mono', monospace; }
+
+.insp-card-footer { display: flex; gap: 8px; margin-top: 12px; }
+
+/* Modal base */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(20,36,20,0.5); z-index: 200; align-items: center; justify-content: center; }
+.overlay.open { display: flex; }
+.modal { background: var(--white); border-radius: 14px; width: 480px; max-height: 90vh; overflow-y: auto; padding: 28px; box-shadow: 0 16px 48px rgba(20,36,20,0.22); }
+.modal-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.modal-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
+.fg { margin-bottom: 14px; }
+.fl { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 5px; }
+.fi, .fs, .ft { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-primary); background: var(--white); outline: none; transition: border-color 0.15s; }
+.fi:focus, .fs:focus, .ft:focus { border-color: var(--sage); }
+.ft { resize: vertical; min-height: 70px; }
+.frow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.frow3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.modal-btns { display: flex; gap: 10px; margin-top: 22px; }
+.modal-btns .btn-primary { flex: 1; }
+.reading-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
+.reading-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+.reading-range { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+/* Seasonal checklist */
+.season-progress { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin-bottom: 24px; display: flex; align-items: center; gap: 24px; }
+.season-progress-info { flex: 1; }
+.season-progress-label { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.prog-bar-bg { background: var(--cream-dark); border-radius: 99px; height: 8px; }
+.prog-bar-fill { background: var(--sage); border-radius: 99px; height: 8px; }
+.prog-meta { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+.season-stats { display: flex; gap: 20px; flex-shrink: 0; }
+.sstat-val { font-size: 22px; font-weight: 600; font-family: 'DM Mono', monospace; text-align: center; }
+.sstat-val.green { color: var(--green); }
+.sstat-val.amber { color: var(--amber); }
+.sstat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-top: 2px; }
+
+.season-area { margin-bottom: 24px; }
+.season-area-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer; user-select: none; }
+.season-area-label { font-size: 13px; font-weight: 600; }
+.season-area-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.badge-done { background: var(--green-bg); color: var(--green); }
+.badge-partial { background: var(--amber-bg); color: var(--amber-text); }
+.badge-open { background: var(--red-bg); color: var(--red); }
+.season-area-count { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+.mini-bar-bg { height: 3px; background: var(--cream-dark); border-radius: 99px; margin-bottom: 8px; }
+.mini-bar-fill { height: 3px; border-radius: 99px; background: var(--sage); }
+
+.stask-list { display: flex; flex-direction: column; gap: 2px; }
+.stask { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; cursor: pointer; background: var(--white); border: 1px solid transparent; transition: background 0.12s; }
+.stask:hover { background: var(--cream-dark); }
+.stask.checked { opacity: 0.6; }
+.stask-check { width: 18px; height: 18px; border: 1.5px solid var(--border); border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; background: var(--white); }
+.stask-check.done { background: var(--sage); border-color: var(--sage); }
+.stask-check.done::after { content: '✓'; font-size: 11px; color: white; font-weight: 700; }
+.stask-body { flex: 1; }
+.stask-name { font-size: 13px; }
+.stask-name.done { text-decoration: line-through; color: var(--text-muted); }
+.stask-detail { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.stask-tags { display: flex; gap: 6px; margin-top: 4px; }
+.stag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+.stag-who { background: var(--blue-bg); color: var(--blue-text); }
+.stag-done { background: var(--green-bg); color: var(--green); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">CampOps</div>
+      <div class="logo-sub">Operations Platform</div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-label">Today</div>
+      <div class="nav-item"><div class="nav-dot"></div> Dashboard</div>
+      <div class="nav-item"><div class="nav-dot"></div> My tasks</div>
+      <div class="nav-label">Facilities</div>
+      <div class="nav-item"><div class="nav-dot"></div> Issues &amp; repairs</div>
+      <div class="nav-item"><div class="nav-dot"></div> Pre/post camp</div>
+      <div class="nav-item active"><div class="nav-dot"></div> Pool management</div>
+      <div class="nav-item"><div class="nav-dot"></div> Safety &amp; compliance</div>
+      <div class="nav-item"><div class="nav-dot"></div> Asset &amp; vehicles</div>
+      <div class="nav-item"><div class="nav-dot"></div> Building systems</div>
+      <div class="nav-label">Operations</div>
+      <div class="nav-item"><div class="nav-dot"></div> Staff &amp; labor</div>
+      <div class="nav-item"><div class="nav-dot"></div> Vendors &amp; orders</div>
+      <div class="nav-label">Finance</div>
+      <div class="nav-item"><div class="nav-dot"></div> Cost tracker</div>
+      <div class="nav-item"><div class="nav-dot"></div> Benchmarks</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="camp-name">Pinecrest Summer Camp</div>
+      <div class="camp-user">Jordan M. — Ops Director</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Pool management</div>
+        <div class="page-sub">Main pool · Session 2 · Jun 23 – Jul 18 · Last reading today 7:30am</div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn btn-ghost">Export log</button>
+        <button class="btn btn-primary" onclick="openModal('readingModal')">+ Log reading</button>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchTab(this,'tab-chemical')">Chemical log</div>
+      <div class="tab" onclick="switchTab(this,'tab-equipment')">Equipment</div>
+      <div class="tab" onclick="switchTab(this,'tab-inspections')">Inspections</div>
+      <div class="tab" onclick="switchTab(this,'tab-seasonal')">Seasonal checklist</div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         TAB 1: CHEMICAL LOG
+    ══════════════════════════════════════════ -->
+    <div class="content active" id="tab-chemical">
+      <div class="status-row">
+        <div class="status-card alert">
+          <div class="status-label">Free chlorine</div>
+          <div class="status-val">0.8 ppm</div>
+          <div class="status-hint">Below range — action needed</div>
+        </div>
+        <div class="status-card ok">
+          <div class="status-label">pH level</div>
+          <div class="status-val">7.4</div>
+          <div class="status-hint">Within range</div>
+        </div>
+        <div class="status-card warn">
+          <div class="status-label">Total alkalinity</div>
+          <div class="status-val">88 ppm</div>
+          <div class="status-hint">Slightly low — monitor</div>
+        </div>
+        <div class="status-card ok">
+          <div class="status-label">Water temp</div>
+          <div class="status-val">74°F</div>
+          <div class="status-hint">Normal range</div>
+        </div>
+      </div>
+
+      <div class="alert-banner">
+        <div class="alert-icon">!</div>
+        <div class="alert-text">Free chlorine reading of 0.8 ppm is below the required minimum of 1.0 ppm. Pool should not be opened for campers until chlorine is adjusted and re-tested.</div>
+        <button class="alert-action" onclick="openModal('readingModal')">Log corrective action</button>
+      </div>
+
+      <div class="range-ref">
+        <div class="range-ref-title">Acceptable ranges — health dept. &amp; ACA standards</div>
+        <div class="range-ref-grid">
+          <div><div class="range-item-label">Free chlorine</div><div class="range-item-val">1.0 – 3.0 ppm</div></div>
+          <div><div class="range-item-label">pH</div><div class="range-item-val">7.2 – 7.8</div></div>
+          <div><div class="range-item-label">Total alkalinity</div><div class="range-item-val">80 – 120 ppm</div></div>
+          <div><div class="range-item-label">Cyanuric acid</div><div class="range-item-val">30 – 50 ppm</div></div>
+          <div><div class="range-item-label">Water temp</div><div class="range-item-val">68°F – 82°F</div></div>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Chemical readings — last 7 days</div>
+      </div>
+
+      <div class="log-table">
+        <div class="log-table-head">
+          <span>Date / time</span><span>Free Cl (ppm)</span><span>pH</span><span>Alkalinity</span><span>Cyanuric</span><span>Temp (°F)</span><span>Logged by</span>
+        </div>
+        <div class="log-row">
+          <div class="log-date">Jul 7 · 7:30am</div>
+          <div class="log-val alert">0.8 <span class="range-badge range-alert">Low</span></div>
+          <div class="log-val ok">7.4</div>
+          <div class="log-val warn">88 <span class="range-badge range-warn">Low</span></div>
+          <div class="log-val ok">38</div><div class="log-val ok">74°</div><div class="log-who">Tom H.</div>
+        </div>
+        <div class="log-row">
+          <div class="log-date">Jul 6 · 7:15am</div>
+          <div class="log-val ok">1.8</div><div class="log-val ok">7.5</div><div class="log-val ok">95</div><div class="log-val ok">40</div><div class="log-val ok">73°</div><div class="log-who">Jordan M.</div>
+        </div>
+        <div class="log-row">
+          <div class="log-date">Jul 6 · 3:00pm</div>
+          <div class="log-val ok">1.4</div><div class="log-val ok">7.6</div><div class="log-val ok">94</div><div class="log-val ok">40</div><div class="log-val ok">76°</div><div class="log-who">Tom H.</div>
+        </div>
+        <div class="log-row">
+          <div class="log-date">Jul 5 · 7:20am</div>
+          <div class="log-val ok">2.1</div><div class="log-val ok">7.4</div><div class="log-val ok">98</div><div class="log-val ok">39</div><div class="log-val ok">72°</div><div class="log-who">Jordan M.</div>
+        </div>
+        <div class="log-row">
+          <div class="log-date">Jul 4 · 7:10am</div>
+          <div class="log-val ok">2.4</div>
+          <div class="log-val warn">7.9 <span class="range-badge range-warn">High</span></div>
+          <div class="log-val ok">100</div><div class="log-val ok">42</div><div class="log-val ok">75°</div><div class="log-who">Tom H.</div>
+        </div>
+        <div class="log-row">
+          <div class="log-date">Jul 3 · 7:30am</div>
+          <div class="log-val ok">1.9</div><div class="log-val ok">7.5</div><div class="log-val ok">102</div><div class="log-val ok">41</div><div class="log-val ok">73°</div><div class="log-who">Jordan M.</div>
+        </div>
+        <div class="log-row">
+          <div class="log-date">Jul 2 · 7:00am</div>
+          <div class="log-val ok">2.2</div><div class="log-val ok">7.3</div><div class="log-val ok">105</div><div class="log-val ok">38</div><div class="log-val ok">71°</div><div class="log-who">Tom H.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         TAB 2: EQUIPMENT
+    ══════════════════════════════════════════ -->
+    <div class="content" id="tab-equipment">
+
+      <div class="equip-summary">
+        <div class="equip-stat">
+          <div class="equip-stat-label">Total equipment</div>
+          <div class="equip-stat-val neutral" style="color:var(--text-primary)">7</div>
+          <div class="equip-stat-hint">Items tracked</div>
+        </div>
+        <div class="equip-stat">
+          <div class="equip-stat-label">Operational</div>
+          <div class="equip-stat-val ok">5</div>
+          <div class="equip-stat-hint">Running normally</div>
+        </div>
+        <div class="equip-stat">
+          <div class="equip-stat-label">Service due</div>
+          <div class="equip-stat-val warn">1</div>
+          <div class="equip-stat-hint">Needs attention soon</div>
+        </div>
+        <div class="equip-stat">
+          <div class="equip-stat-label">Needs repair</div>
+          <div class="equip-stat-val alert">1</div>
+          <div class="equip-stat-hint">Issue flagged</div>
+        </div>
+      </div>
+
+      <div class="warn-banner">
+        <div class="warn-icon">!</div>
+        <div class="warn-text">Pool pump motor is making unusual noise — service scheduled for Jul 10. Continue monitoring. Heater service is also coming due within 14 days.</div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Equipment registry</div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('addEquipModal')">+ Add equipment</button>
+      </div>
+
+      <div class="equip-list">
+
+        <!-- Pump -->
+        <div class="equip-card warn">
+          <div class="equip-card-header">
+            <div class="equip-card-title">Main circulation pump</div>
+            <div class="equip-card-badges">
+              <span class="badge badge-warn">Service needed</span>
+              <span class="badge badge-neutral">1.5 HP</span>
+            </div>
+          </div>
+          <div class="equip-card-grid">
+            <div>
+              <div class="equip-field-label">Status</div>
+              <div class="equip-field-val warn">Unusual noise</div>
+            </div>
+            <div>
+              <div class="equip-field-label">Last serviced</div>
+              <div class="equip-field-val">May 15, 2025</div>
+            </div>
+            <div>
+              <div class="equip-field-label">Next service due</div>
+              <div class="equip-field-val warn">Jul 10, 2025</div>
+            </div>
+            <div>
+              <div class="equip-field-label">Vendor</div>
+              <div class="equip-field-val">AquaPro Services</div>
+            </div>
+          </div>
+          <div class="equip-card-footer">
+            <button class="btn btn-ghost btn-sm" onclick="openModal('logServiceModal')">Log service</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)">Flag issue</button>
+            <button class="btn btn-ghost btn-sm">View history</button>
+          </div>
+        </div>
+
+        <!-- Filter -->
+        <div class="equip-card ok">
+          <div class="equip-card-header">
+            <div class="equip-card-title">Sand filter system</div>
+            <div class="equip-card-badges">
+              <span class="badge badge-ok">Operational</span>
+              <span class="badge badge-neutral">48" tank</span>
+            </div>
+          </div>
+          <div class="equip-card-grid">
+            <div>
+              <div class="equip-field-label">Status</div>
+              <div class="equip-field-val ok">Normal</div>
+            </div>
+            <div>
+              <div class="equip-field-label">Last backwashed</div>
+              <div class="equip-field-val">Jul 3, 2025</div>
+            </div>
+            <div>
+              <div class="equip-field-label">Next backwash due</div>
+              <div class="equip-field-val ok">Jul 10, 2025</div>
+            </div>
+            <div>
+              <div class="equip-field-label">Sand replaced</div>
+              <div class="equip-field-val">Apr 2024</div>
+            </div>
+          </div>
+          <div class="equip-card-footer">
+            <button class="btn btn-ghost btn-sm" onclick="openModal('logServiceModal')">Log service</button>
+            <button class="btn btn-ghost btn-sm">View history</button>
+          </div>
+        </div>
+
+        <!-- Heater -->
+        <div class="equip-card warn">
+          <div class="equip-card-header">
+            <div class="equip-card-title">Pool heater</div>
+            <div class="equip-card-badges">
+              <span class="badge badge-warn">Service due soon</span>
+              <span class="badge badge-neutral">400k BTU</span>
+            </div>
+          </div>
+          <div class="equip-card-grid">
+            <div>
+              <div class="equip-field-label">Status</div>
+              <div class="equip-field-val ok">Operational</div>
+            </div>
+            <div>
+              <div class="equip-field-label">Last serviced</div>
+              <div class="equip-field-val">Jan 10, 2025</div>
+            </div>
+            <div>
+              <div class="equip-field-label">Next service due</div>
+              <div class="equip-field-val warn">Jul 21, 2025</div>
+            </div>
+            <div>
+              <div class="equip-field-label">Fuel type</div>
+              <div class="equip-field-val">Natural gas</div>
+            </div>
+          </div>
+          <div class="equip-card-footer">
+            <button class="btn btn-ghost btn-sm" onclick="openModal('logServiceModal')">Log service</button>
+            <button class="btn btn-ghost btn-sm">View history</button>
+          </div>
+        </div>
+
+        <!-- Chlorinator -->
+        <div class="equip-card ok">
+          <div class="equip-card-header">
+            <div class="equip-card-title">Automatic chlorinator</div>
+            <div class="equip-card-badges">
+              <span class="badge badge-ok">Operational</span>
+            </div>
+          </div>
+          <div class="equip-card-grid">
+            <div>
+              <div class="equip-field-label">Status</div>
+              <div class="equip-field-val ok">Normal</div>
+            </div>
+            <div>
+              <div class="equip-field-label">Last refilled</div>
+              <div class="equip-field-val">Jul 1, 2025</div>
+            </div>
+            <div>
+              <div class="equip-field-label">Tablet level</div>
+              <div class="equip-field-val warn">Low — refill soon</div>
+            </div>
+            <div>
+              <div class="equip-field-label">Setting</div>
+              <div class="equip-field-val">4 of 10</div>
+            </div>
+          </div>
+          <div class="equip-card-footer">
+            <button class="btn btn-ghost btn-sm" onclick="openModal('logServiceModal')">Log service</button>
+            <button class="btn btn-ghost btn-sm">View history</button>
+          </div>
+        </div>
+
+        <!-- Safety equipment -->
+        <div class="equip-card ok">
+          <div class="equip-card-header">
+            <div class="equip-card-title">Safety &amp; rescue equipment</div>
+            <div class="equip-card-badges">
+              <span class="badge badge-ok">All present</span>
+            </div>
+          </div>
+          <div class="equip-card-grid">
+            <div>
+              <div class="equip-field-label">Rescue tubes</div>
+              <div class="equip-field-val ok">4 of 4</div>
+            </div>
+            <div>
+              <div class="equip-field-label">Life rings</div>
+              <div class="equip-field-val ok">2 of 2</div>
+            </div>
+            <div>
+              <div class="equip-field-label">Reaching pole</div>
+              <div class="equip-field-val ok">Present</div>
+            </div>
+            <div>
+              <div class="equip-field-label">AED device</div>
+              <div class="equip-field-val ok">Present &amp; charged</div>
+            </div>
+          </div>
+          <div class="equip-card-footer">
+            <button class="btn btn-ghost btn-sm" onclick="openModal('logServiceModal')">Log check</button>
+            <button class="btn btn-ghost btn-sm">View history</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         TAB 3: INSPECTIONS
+    ══════════════════════════════════════════ -->
+    <div class="content" id="tab-inspections">
+
+      <div class="insp-summary">
+        <div class="equip-stat">
+          <div class="equip-stat-label">Completed</div>
+          <div class="equip-stat-val ok">4</div>
+          <div class="equip-stat-hint">This session</div>
+        </div>
+        <div class="equip-stat">
+          <div class="equip-stat-label">Coming due</div>
+          <div class="equip-stat-val warn">2</div>
+          <div class="equip-stat-hint">Within 14 days</div>
+        </div>
+        <div class="equip-stat">
+          <div class="equip-stat-label">Overdue</div>
+          <div class="equip-stat-val alert">1</div>
+          <div class="equip-stat-hint">Needs immediate action</div>
+        </div>
+        <div class="equip-stat">
+          <div class="equip-stat-label">Next inspection</div>
+          <div class="equip-stat-val neutral" style="font-size:18px;color:var(--text-primary)">Jul 9</div>
+          <div class="equip-stat-hint">ACA waterfront check</div>
+        </div>
+      </div>
+
+      <div class="alert-banner">
+        <div class="alert-icon">!</div>
+        <div class="alert-text">Health department water quality inspection is overdue by 3 days. This is required to remain in compliance. Contact your county health office to reschedule immediately.</div>
+        <button class="alert-action">Log contact made</button>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Inspection schedule</div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('logInspModal')">+ Log inspection</button>
+      </div>
+
+      <div class="insp-list">
+
+        <!-- Overdue -->
+        <div class="insp-card overdue">
+          <div class="insp-card-header">
+            <div class="insp-card-left">
+              <div class="insp-card-title">Health dept. water quality inspection</div>
+              <div class="insp-card-meta">Required every 30 days · County Health Department · Mandated by state law</div>
+            </div>
+            <div class="insp-card-right">
+              <div><span class="badge badge-alert">Overdue 3 days</span></div>
+              <div class="insp-card-date" style="margin-top:6px">Due: Jul 4</div>
+              <div class="insp-card-next">Next: Jul 7 (ASAP)</div>
+            </div>
+          </div>
+          <div class="insp-history">
+            <span style="font-size:11px;color:var(--text-muted);margin-right:4px">Past inspections:</span>
+            <span class="insp-history-item">Jun 4</span>
+            <span class="insp-history-item">May 5</span>
+            <span class="insp-history-item">Apr 7</span>
+          </div>
+          <div class="insp-card-footer">
+            <button class="btn btn-primary btn-sm" onclick="openModal('logInspModal')">Log inspection</button>
+            <button class="btn btn-ghost btn-sm">View requirements</button>
+          </div>
+        </div>
+
+        <!-- Due soon -->
+        <div class="insp-card due">
+          <div class="insp-card-header">
+            <div class="insp-card-left">
+              <div class="insp-card-title">ACA waterfront safety inspection</div>
+              <div class="insp-card-meta">Required weekly during session · Internal · ACA Standard WS-4</div>
+            </div>
+            <div class="insp-card-right">
+              <div><span class="badge badge-warn">Due in 2 days</span></div>
+              <div class="insp-card-date" style="margin-top:6px">Due: Jul 9</div>
+              <div class="insp-card-next">Frequency: Weekly</div>
+            </div>
+          </div>
+          <div class="insp-history">
+            <span style="font-size:11px;color:var(--text-muted);margin-right:4px">Past inspections:</span>
+            <span class="insp-history-item">Jul 2</span>
+            <span class="insp-history-item">Jun 25</span>
+            <span class="insp-history-item">Jun 18</span>
+            <span class="insp-history-item">Jun 11</span>
+          </div>
+          <div class="insp-card-footer">
+            <button class="btn btn-primary btn-sm" onclick="openModal('logInspModal')">Log inspection</button>
+            <button class="btn btn-ghost btn-sm">View checklist</button>
+          </div>
+        </div>
+
+        <!-- Due soon -->
+        <div class="insp-card due">
+          <div class="insp-card-header">
+            <div class="insp-card-left">
+              <div class="insp-card-title">Pool equipment monthly service check</div>
+              <div class="insp-card-meta">Required monthly · AquaPro Services · Covers pump, filter, heater, chlorinator</div>
+            </div>
+            <div class="insp-card-right">
+              <div><span class="badge badge-warn">Due in 8 days</span></div>
+              <div class="insp-card-date" style="margin-top:6px">Due: Jul 15</div>
+              <div class="insp-card-next">Frequency: Monthly</div>
+            </div>
+          </div>
+          <div class="insp-history">
+            <span style="font-size:11px;color:var(--text-muted);margin-right:4px">Past service:</span>
+            <span class="insp-history-item">Jun 15</span>
+            <span class="insp-history-item">May 15</span>
+            <span class="insp-history-item">Apr 15</span>
+          </div>
+          <div class="insp-card-footer">
+            <button class="btn btn-primary btn-sm" onclick="openModal('logInspModal')">Log service</button>
+            <button class="btn btn-ghost btn-sm">Contact vendor</button>
+          </div>
+        </div>
+
+        <!-- OK -->
+        <div class="insp-card ok">
+          <div class="insp-card-header">
+            <div class="insp-card-left">
+              <div class="insp-card-title">Lifeguard certification verification</div>
+              <div class="insp-card-meta">Required before session opens · All lifeguards on duty · ACA &amp; Red Cross</div>
+            </div>
+            <div class="insp-card-right">
+              <div><span class="badge badge-ok">Completed</span></div>
+              <div class="insp-card-date" style="margin-top:6px">Completed: Jun 21</div>
+              <div class="insp-card-next">Valid through: Aug 31</div>
+            </div>
+          </div>
+          <div class="insp-history">
+            <span style="font-size:11px;color:var(--text-muted);margin-right:4px">Lifeguards verified:</span>
+            <span class="insp-history-item">Alex R.</span>
+            <span class="insp-history-item">Sam K.</span>
+            <span class="insp-history-item">Dana L.</span>
+            <span class="insp-history-item">Chris M.</span>
+          </div>
+          <div class="insp-card-footer">
+            <button class="btn btn-ghost btn-sm">View records</button>
+          </div>
+        </div>
+
+        <!-- OK -->
+        <div class="insp-card ok">
+          <div class="insp-card-header">
+            <div class="insp-card-left">
+              <div class="insp-card-title">Pre-season pool opening inspection</div>
+              <div class="insp-card-meta">Required once before first session · Jordan M. + AquaPro · Full system check</div>
+            </div>
+            <div class="insp-card-right">
+              <div><span class="badge badge-ok">Completed</span></div>
+              <div class="insp-card-date" style="margin-top:6px">Completed: Jun 18</div>
+              <div class="insp-card-next">Annual · next: May 2026</div>
+            </div>
+          </div>
+          <div class="insp-history">
+            <span style="font-size:11px;color:var(--text-muted);margin-right:4px">Items checked:</span>
+            <span class="insp-history-item">Structural</span>
+            <span class="insp-history-item">Equipment</span>
+            <span class="insp-history-item">Safety gear</span>
+            <span class="insp-history-item">Water quality</span>
+          </div>
+          <div class="insp-card-footer">
+            <button class="btn btn-ghost btn-sm">View report</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         TAB 4: SEASONAL CHECKLIST
+    ══════════════════════════════════════════ -->
+    <div class="content" id="tab-seasonal">
+
+      <div class="season-progress">
+        <div class="season-progress-info">
+          <div class="season-progress-label">Opening checklist — Session 1 complete · Session 2 in progress</div>
+          <div class="prog-bar-bg"><div class="prog-bar-fill" id="season-bar" style="width:68%"></div></div>
+          <div class="prog-meta">17 of 25 tasks complete · Pool opened Jun 23 · Closing checklist begins Aug 10</div>
+        </div>
+        <div class="season-stats">
+          <div><div class="sstat-val green" id="season-done">17</div><div class="sstat-label">Done</div></div>
+          <div><div class="sstat-val amber">8</div><div class="sstat-label">Open</div></div>
+        </div>
+      </div>
+
+      <!-- Opening area -->
+      <div class="season-area">
+        <div class="season-area-header">
+          <span class="season-area-label">Pre-season opening</span>
+          <span class="season-area-badge badge-done">8 of 8 done</span>
+          <span class="season-area-count">8 tasks</span>
+        </div>
+        <div class="mini-bar-bg"><div class="mini-bar-fill" style="width:100%"></div></div>
+        <div class="stask-list">
+          <div class="stask checked" onclick="toggleStask(this)">
+            <div class="stask-check done"></div>
+            <div class="stask-body">
+              <div class="stask-name done">Remove pool cover and inspect for winter damage</div>
+              <div class="stask-tags"><span class="stag stag-who">Tom H.</span><span class="stag stag-done">Done Jun 1</span></div>
+            </div>
+          </div>
+          <div class="stask checked" onclick="toggleStask(this)">
+            <div class="stask-check done"></div>
+            <div class="stask-body">
+              <div class="stask-name done">Inspect pool shell, coping, and tile for cracks or damage</div>
+              <div class="stask-tags"><span class="stag stag-who">Tom H. + Vendor</span><span class="stag stag-done">Done Jun 3</span></div>
+            </div>
+          </div>
+          <div class="stask checked" onclick="toggleStask(this)">
+            <div class="stask-check done"></div>
+            <div class="stask-body">
+              <div class="stask-name done">Reconnect and prime all equipment — pump, filter, heater</div>
+              <div class="stask-tags"><span class="stag stag-who">AquaPro Services</span><span class="stag stag-done">Done Jun 5</span></div>
+            </div>
+          </div>
+          <div class="stask checked" onclick="toggleStask(this)">
+            <div class="stask-check done"></div>
+            <div class="stask-body">
+              <div class="stask-name done">Shock pool and balance all chemical levels</div>
+              <div class="stask-tags"><span class="stag stag-who">Jordan M.</span><span class="stag stag-done">Done Jun 10</span></div>
+            </div>
+          </div>
+          <div class="stask checked" onclick="toggleStask(this)">
+            <div class="stask-check done"></div>
+            <div class="stask-body">
+              <div class="stask-name done">Verify all safety equipment present and in good condition</div>
+              <div class="stask-tags"><span class="stag stag-who">Jordan M.</span><span class="stag stag-done">Done Jun 12</span></div>
+            </div>
+          </div>
+          <div class="stask checked" onclick="toggleStask(this)">
+            <div class="stask-check done"></div>
+            <div class="stask-body">
+              <div class="stask-name done">Verify all lifeguard certifications current</div>
+              <div class="stask-tags"><span class="stag stag-who">Jordan M.</span><span class="stag stag-done">Done Jun 14</span></div>
+            </div>
+          </div>
+          <div class="stask checked" onclick="toggleStask(this)">
+            <div class="stask-check done"></div>
+            <div class="stask-body">
+              <div class="stask-name done">Pass health department pre-season inspection</div>
+              <div class="stask-tags"><span class="stag stag-who">Jordan M.</span><span class="stag stag-done">Done Jun 18</span></div>
+            </div>
+          </div>
+          <div class="stask checked" onclick="toggleStask(this)">
+            <div class="stask-check done"></div>
+            <div class="stask-body">
+              <div class="stask-name done">Post all required signage — depth markers, rules, emergency contacts</div>
+              <div class="stask-tags"><span class="stag stag-who">Tom H.</span><span class="stag stag-done">Done Jun 20</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- In-season area -->
+      <div class="season-area">
+        <div class="season-area-header">
+          <span class="season-area-label">In-season maintenance</span>
+          <span class="season-area-badge badge-partial">9 of 13 done</span>
+          <span class="season-area-count">13 tasks · recurring</span>
+        </div>
+        <div class="mini-bar-bg"><div class="mini-bar-fill" style="width:69%"></div></div>
+        <div class="stask-list">
+          <div class="stask checked" onclick="toggleStask(this)">
+            <div class="stask-check done"></div>
+            <div class="stask-body">
+              <div class="stask-name done">Daily chemical readings — AM and PM</div>
+              <div class="stask-detail">2x daily during session · automated reminder at 7am and 2pm</div>
+            </div>
+          </div>
+          <div class="stask checked" onclick="toggleStask(this)">
+            <div class="stask-check done"></div>
+            <div class="stask-body">
+              <div class="stask-name done">Weekly ACA waterfront inspection</div>
+              <div class="stask-tags"><span class="stag stag-who">Jordan M.</span><span class="stag stag-done">Last: Jul 2</span></div>
+            </div>
+          </div>
+          <div class="stask checked" onclick="toggleStask(this)">
+            <div class="stask-check done"></div>
+            <div class="stask-body">
+              <div class="stask-name done">Backwash sand filter</div>
+              <div class="stask-tags"><span class="stag stag-who">Tom H.</span><span class="stag stag-done">Last: Jul 3</span></div>
+            </div>
+          </div>
+          <div class="stask" onclick="toggleStask(this)">
+            <div class="stask-check"></div>
+            <div class="stask-body">
+              <div class="stask-name">Monthly health department water quality inspection</div>
+              <div class="stask-detail">County required · Currently overdue — contact county health office</div>
+              <div class="stask-tags"><span class="stag stag-who">Jordan M.</span></div>
+            </div>
+          </div>
+          <div class="stask" onclick="toggleStask(this)">
+            <div class="stask-check"></div>
+            <div class="stask-body">
+              <div class="stask-name">Monthly equipment service — AquaPro</div>
+              <div class="stask-tags"><span class="stag stag-who">AquaPro Services</span></div>
+            </div>
+          </div>
+          <div class="stask" onclick="toggleStask(this)">
+            <div class="stask-check"></div>
+            <div class="stask-body">
+              <div class="stask-name">Refill chlorine tablet feeder</div>
+              <div class="stask-detail">Tablet level currently low</div>
+              <div class="stask-tags"><span class="stag stag-who">Tom H.</span></div>
+            </div>
+          </div>
+          <div class="stask" onclick="toggleStask(this)">
+            <div class="stask-check"></div>
+            <div class="stask-body">
+              <div class="stask-name">Pump motor service — unusual noise investigation</div>
+              <div class="stask-tags"><span class="stag stag-who">AquaPro Services</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Closing area -->
+      <div class="season-area">
+        <div class="season-area-header">
+          <span class="season-area-label">End-of-season closing</span>
+          <span class="season-area-badge badge-open">Not started</span>
+          <span class="season-area-count">8 tasks · begins Aug 10</span>
+        </div>
+        <div class="mini-bar-bg"><div class="mini-bar-fill" style="width:0%"></div></div>
+        <div class="stask-list">
+          <div class="stask" onclick="toggleStask(this)">
+            <div class="stask-check"></div>
+            <div class="stask-body">
+              <div class="stask-name">Superchlorinate pool before closing</div>
+              <div class="stask-detail">Scheduled for Aug 10 after last swim period</div>
+            </div>
+          </div>
+          <div class="stask" onclick="toggleStask(this)">
+            <div class="stask-check"></div>
+            <div class="stask-body">
+              <div class="stask-name">Drain pool to winter level and plug returns</div>
+            </div>
+          </div>
+          <div class="stask" onclick="toggleStask(this)">
+            <div class="stask-check"></div>
+            <div class="stask-body">
+              <div class="stask-name">Blow out all plumbing lines — winterize</div>
+              <div class="stask-tags"><span class="stag stag-who">AquaPro Services</span></div>
+            </div>
+          </div>
+          <div class="stask" onclick="toggleStask(this)">
+            <div class="stask-check"></div>
+            <div class="stask-body">
+              <div class="stask-name">Remove, clean, and store all safety equipment</div>
+            </div>
+          </div>
+          <div class="stask" onclick="toggleStask(this)">
+            <div class="stask-check"></div>
+            <div class="stask-body">
+              <div class="stask-name">End-of-season equipment inspection and service report</div>
+              <div class="stask-tags"><span class="stag stag-who">AquaPro Services</span></div>
+            </div>
+          </div>
+          <div class="stask" onclick="toggleStask(this)">
+            <div class="stask-check"></div>
+            <div class="stask-body">
+              <div class="stask-name">Install winter safety cover</div>
+            </div>
+          </div>
+          <div class="stask" onclick="toggleStask(this)">
+            <div class="stask-check"></div>
+            <div class="stask-body">
+              <div class="stask-name">Document end-of-season condition report with photos</div>
+            </div>
+          </div>
+          <div class="stask" onclick="toggleStask(this)">
+            <div class="stask-check"></div>
+            <div class="stask-body">
+              <div class="stask-name">Final health department close-out inspection</div>
+              <div class="stask-tags"><span class="stag stag-who">Jordan M.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Log Reading Modal -->
+<div class="overlay" id="readingModal" onclick="closeOutside(event,'readingModal')">
+  <div class="modal">
+    <div class="modal-title">Log chemical reading</div>
+    <div class="modal-sub">Main pool · Today, Jul 7 2025</div>
+    <div class="reading-grid">
+      <div><div class="reading-label">Free chlorine</div><input class="fi" type="number" step="0.1" placeholder="ppm"><div class="reading-range">Range: 1.0 – 3.0 ppm</div></div>
+      <div><div class="reading-label">pH</div><input class="fi" type="number" step="0.1" placeholder="pH"><div class="reading-range">Range: 7.2 – 7.8</div></div>
+      <div><div class="reading-label">Alkalinity</div><input class="fi" type="number" placeholder="ppm"><div class="reading-range">Range: 80 – 120 ppm</div></div>
+      <div><div class="reading-label">Cyanuric acid</div><input class="fi" type="number" placeholder="ppm"><div class="reading-range">Range: 30 – 50 ppm</div></div>
+      <div><div class="reading-label">Water temp</div><input class="fi" type="number" placeholder="°F"><div class="reading-range">Range: 68 – 82°F</div></div>
+      <div><div class="reading-label">Calcium hardness</div><input class="fi" type="number" placeholder="ppm"><div class="reading-range">Range: 200 – 400 ppm</div></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Time</label><input class="fi" type="time" value="07:30"></div>
+      <div class="fg"><label class="fl">Logged by</label><select class="fs"><option>Jordan M.</option><option>Tom H.</option><option>Pool staff</option></select></div>
+    </div>
+    <div class="fg"><label class="fl">Corrective action taken</label><input class="fi" type="text" placeholder="e.g. Added 2 lbs shock, retest in 2 hrs"></div>
+    <div class="fg"><label class="fl">Pool status</label><select class="fs"><option>Open — all readings in range</option><option>Open — monitoring</option><option>Closed — corrective action in progress</option><option>Closed — awaiting re-test</option></select></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('readingModal')">Save reading</button><button class="btn btn-ghost" onclick="closeModal('readingModal')">Cancel</button></div>
+  </div>
+</div>
+
+<!-- Log Service Modal -->
+<div class="overlay" id="logServiceModal" onclick="closeOutside(event,'logServiceModal')">
+  <div class="modal">
+    <div class="modal-title">Log equipment service</div>
+    <div class="modal-sub">Record a service, maintenance, or repair event</div>
+    <div class="fg"><label class="fl">Equipment</label><select class="fs"><option>Main circulation pump</option><option>Sand filter system</option><option>Pool heater</option><option>Automatic chlorinator</option><option>Safety &amp; rescue equipment</option></select></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Service type</label><select class="fs"><option>Routine maintenance</option><option>Repair</option><option>Inspection</option><option>Part replacement</option><option>Vendor service</option></select></div>
+      <div class="fg"><label class="fl">Date performed</label><input class="fi" type="date"></div>
+    </div>
+    <div class="fg"><label class="fl">Performed by</label><select class="fs"><option>Tom H. (Maintenance)</option><option>Jordan M. (Ops)</option><option>AquaPro Services</option><option>Other vendor</option></select></div>
+    <div class="fg"><label class="fl">Notes</label><textarea class="ft" placeholder="Describe what was done, any findings, parts replaced..."></textarea></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Cost</label><input class="fi" type="text" placeholder="$0"></div>
+      <div class="fg"><label class="fl">Next service due</label><input class="fi" type="date"></div>
+    </div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('logServiceModal')">Save service record</button><button class="btn btn-ghost" onclick="closeModal('logServiceModal')">Cancel</button></div>
+  </div>
+</div>
+
+<!-- Log Inspection Modal -->
+<div class="overlay" id="logInspModal" onclick="closeOutside(event,'logInspModal')">
+  <div class="modal">
+    <div class="modal-title">Log inspection</div>
+    <div class="modal-sub">Record a completed inspection or compliance check</div>
+    <div class="fg"><label class="fl">Inspection type</label><select class="fs"><option>Health dept. water quality</option><option>ACA waterfront safety</option><option>Equipment monthly service</option><option>Lifeguard certification</option><option>Pre-season opening</option><option>End-of-season closing</option><option>Other</option></select></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Inspection date</label><input class="fi" type="date"></div>
+      <div class="fg"><label class="fl">Conducted by</label><select class="fs"><option>Jordan M. (Ops)</option><option>County Health Dept.</option><option>ACA Inspector</option><option>AquaPro Services</option></select></div>
+    </div>
+    <div class="fg"><label class="fl">Result</label><select class="fs"><option>Passed — no issues</option><option>Passed with notes</option><option>Conditional — corrections required</option><option>Failed — pool closed</option></select></div>
+    <div class="fg"><label class="fl">Notes / findings</label><textarea class="ft" placeholder="Document any findings, corrective actions required, or follow-up items..."></textarea></div>
+    <div class="fg"><label class="fl">Next inspection due</label><input class="fi" type="date"></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('logInspModal')">Save inspection record</button><button class="btn btn-ghost" onclick="closeModal('logInspModal')">Cancel</button></div>
+  </div>
+</div>
+
+<!-- Add Equipment Modal -->
+<div class="overlay" id="addEquipModal" onclick="closeOutside(event,'addEquipModal')">
+  <div class="modal">
+    <div class="modal-title">Add equipment</div>
+    <div class="modal-sub">Add a piece of pool equipment to track</div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Equipment name</label><input class="fi" type="text" placeholder="e.g. Main circulation pump"></div>
+      <div class="fg"><label class="fl">Type</label><select class="fs"><option>Pump</option><option>Filter</option><option>Heater</option><option>Chlorinator</option><option>Safety equipment</option><option>Other</option></select></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Manufacturer</label><input class="fi" type="text" placeholder="Brand / model"></div>
+      <div class="fg"><label class="fl">Install date</label><input class="fi" type="date"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Service vendor</label><input class="fi" type="text" placeholder="Vendor name"></div>
+      <div class="fg"><label class="fl">Service frequency</label><select class="fs"><option>Weekly</option><option>Monthly</option><option>Quarterly</option><option>Annually</option><option>As needed</option></select></div>
+    </div>
+    <div class="fg"><label class="fl">Notes</label><textarea class="ft" placeholder="Any additional details about this equipment..."></textarea></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('addEquipModal')">Add equipment</button><button class="btn btn-ghost" onclick="closeModal('addEquipModal')">Cancel</button></div>
+  </div>
+</div>
+
+<script>
+function switchTab(el, tabId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeOutside(e, id) { if (e.target.id === id) closeModal(id); }
+
+function toggleStask(el) {
+  el.classList.toggle('checked');
+  const check = el.querySelector('.stask-check');
+  const name = el.querySelector('.stask-name');
+  check.classList.toggle('done');
+  name.classList.toggle('done');
+}
+</script>
+
+</body>
+</html>

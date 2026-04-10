@@ -6,7 +6,11 @@
 
 import { supabase } from './supabase';
 import { SEED_USERS } from './seedData';
-import type { Issue, ChecklistTask, ActivityEntry, Season } from './types';
+import type {
+  Issue, ChecklistTask, ActivityEntry, Season,
+  ChemicalReading, PoolEquipment, ServiceLogEntry,
+  PoolInspection, InspectionLogEntry, SeasonalTask,
+} from './types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -328,6 +332,211 @@ export function subscribeToIssues(onUpdate: IssueCallback): () => void {
         return rowToIssue(row as Record<string, unknown>, log);
       });
       onUpdate(issues);
+    })
+    .subscribe();
+
+  return () => { supabase.removeChannel(channel); };
+}
+
+// ─── Pool write functions ─────────────────────────────────────────────────────
+
+export async function dbAddChemicalReading(r: ChemicalReading) {
+  const { error } = await supabase.from('pool_chemical_readings').insert({
+    id: r.id, free_chlorine: r.freeChlorine, ph: r.ph, alkalinity: r.alkalinity,
+    cyanuric_acid: r.cyanuricAcid, water_temp: r.waterTemp, calcium_hardness: r.calciumHardness,
+    time_of_day: r.timeOfDay, logged_by_id: r.loggedById, logged_by_name: r.loggedByName,
+    corrective_action: r.correctiveAction, pool_status: r.poolStatus, created_at: r.createdAt,
+  });
+  if (error) console.error('dbAddChemicalReading error:', error.message);
+}
+
+export async function dbAddEquipment(e: PoolEquipment) {
+  const { error } = await supabase.from('pool_equipment').insert({
+    id: e.id, name: e.name, type: e.type, status: e.status, status_detail: e.statusDetail,
+    last_serviced: e.lastServiced, next_service_due: e.nextServiceDue, vendor: e.vendor,
+    specs: e.specs, created_at: e.createdAt, updated_at: e.updatedAt,
+  });
+  if (error) console.error('dbAddEquipment error:', error.message);
+}
+
+export async function dbAddServiceLog(entry: ServiceLogEntry) {
+  const { error } = await supabase.from('pool_service_log').insert({
+    id: entry.id, equipment_id: entry.equipmentId, service_type: entry.serviceType,
+    date_performed: entry.datePerformed, performed_by: entry.performedBy,
+    notes: entry.notes, cost: entry.cost, next_service_due: entry.nextServiceDue,
+    created_at: entry.createdAt,
+  });
+  if (error) console.error('dbAddServiceLog error:', error.message);
+}
+
+export async function dbUpdateInspection(insp: PoolInspection) {
+  const { error } = await supabase.from('pool_inspections').update({
+    status: insp.status, last_completed: insp.lastCompleted,
+    next_due: insp.nextDue, history: insp.history, updated_at: new Date().toISOString(),
+  }).eq('id', insp.id);
+  if (error) console.error('dbUpdateInspection error:', error.message);
+}
+
+export async function dbAddInspectionLog(entry: InspectionLogEntry, knownInspectionIds: string[]) {
+  // Only set the FK if the inspectionId is a real row in pool_inspections
+  const inspectionId = knownInspectionIds.includes(entry.inspectionId) ? entry.inspectionId : null;
+  const { error } = await supabase.from('pool_inspection_log').insert({
+    id: entry.id, inspection_id: inspectionId, inspection_date: entry.inspectionDate,
+    conducted_by: entry.conductedBy, result: entry.result, notes: entry.notes,
+    next_due: entry.nextDue, created_at: entry.createdAt,
+  });
+  if (error) console.error('dbAddInspectionLog error:', error.message);
+}
+
+export async function dbAddSeasonalTask(task: SeasonalTask) {
+  const { error } = await supabase.from('pool_seasonal_tasks').insert({
+    id: task.id, title: task.title, detail: task.detail, phase: task.phase,
+    is_complete: task.isComplete, completed_by: task.completedBy,
+    completed_date: task.completedDate, assignees: task.assignees,
+    sort_order: task.sortOrder, created_at: task.createdAt, updated_at: task.updatedAt,
+  });
+  if (error) console.error('dbAddSeasonalTask error:', error.message);
+}
+
+export async function dbUpdateSeasonalTask(id: string, patch: Partial<SeasonalTask>) {
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.title !== undefined) row.title = patch.title;
+  if (patch.detail !== undefined) row.detail = patch.detail;
+  if (patch.phase !== undefined) row.phase = patch.phase;
+  if (patch.assignees !== undefined) row.assignees = patch.assignees;
+  if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder;
+  const { error } = await supabase.from('pool_seasonal_tasks').update(row).eq('id', id);
+  if (error) console.error('dbUpdateSeasonalTask error:', error.message);
+}
+
+export async function dbDeleteSeasonalTask(id: string) {
+  const { error } = await supabase.from('pool_seasonal_tasks').delete().eq('id', id);
+  if (error) console.error('dbDeleteSeasonalTask error:', error.message);
+}
+
+export async function dbUpdateInspectionLog(id: string, patch: Partial<InspectionLogEntry>) {
+  const row: Record<string, unknown> = {};
+  if (patch.inspectionDate !== undefined) row.inspection_date = patch.inspectionDate;
+  if (patch.conductedBy !== undefined) row.conducted_by = patch.conductedBy;
+  if (patch.result !== undefined) row.result = patch.result;
+  if (patch.notes !== undefined) row.notes = patch.notes;
+  if (patch.nextDue !== undefined) row.next_due = patch.nextDue;
+  const { error } = await supabase.from('pool_inspection_log').update(row).eq('id', id);
+  if (error) console.error('dbUpdateInspectionLog error:', error.message);
+}
+
+export async function dbDeleteInspectionLog(id: string) {
+  const { error } = await supabase.from('pool_inspection_log').delete().eq('id', id);
+  if (error) console.error('dbDeleteInspectionLog error:', error.message);
+}
+
+export async function dbToggleSeasonalTask(
+  id: string, isComplete: boolean, completedBy: string | null, completedDate: string | null,
+) {
+  const { error } = await supabase.from('pool_seasonal_tasks').update({
+    is_complete: isComplete, completed_by: completedBy,
+    completed_date: completedDate, updated_at: new Date().toISOString(),
+  }).eq('id', id);
+  if (error) console.error('dbToggleSeasonalTask error:', error.message);
+}
+
+// ─── Pool read/subscribe ──────────────────────────────────────────────────────
+
+type PoolDataCallback = (data: {
+  readings: ChemicalReading[];
+  equipment: PoolEquipment[];
+  serviceLog: ServiceLogEntry[];
+  inspections: PoolInspection[];
+  inspectionLog: InspectionLogEntry[];
+  seasonalTasks: SeasonalTask[];
+}) => void;
+
+async function loadPoolData() {
+  const [rRes, eRes, slRes, iRes, ilRes, stRes] = await Promise.all([
+    supabase.from('pool_chemical_readings').select('*').order('created_at', { ascending: false }),
+    supabase.from('pool_equipment').select('*').order('created_at', { ascending: true }),
+    supabase.from('pool_service_log').select('*').order('created_at', { ascending: false }),
+    supabase.from('pool_inspections').select('*').order('created_at', { ascending: true }),
+    supabase.from('pool_inspection_log').select('*').order('created_at', { ascending: false }),
+    supabase.from('pool_seasonal_tasks').select('*').order('sort_order', { ascending: true }),
+  ]);
+
+  const readings: ChemicalReading[] = (rRes.data ?? []).map((r) => ({
+    id: r.id, freeChlorine: r.free_chlorine, ph: r.ph, alkalinity: r.alkalinity,
+    cyanuricAcid: r.cyanuric_acid, waterTemp: r.water_temp,
+    calciumHardness: r.calcium_hardness ?? null, timeOfDay: r.time_of_day,
+    loggedById: r.logged_by_id, loggedByName: r.logged_by_name,
+    correctiveAction: r.corrective_action ?? null, poolStatus: r.pool_status,
+    createdAt: r.created_at,
+  }));
+
+  const equipment: PoolEquipment[] = (eRes.data ?? []).map((e) => ({
+    id: e.id, name: e.name, type: e.type, status: e.status,
+    statusDetail: e.status_detail ?? '', lastServiced: e.last_serviced ?? null,
+    nextServiceDue: e.next_service_due ?? null, vendor: e.vendor ?? null,
+    specs: e.specs ?? null, createdAt: e.created_at, updatedAt: e.updated_at,
+  }));
+
+  const serviceLog: ServiceLogEntry[] = (slRes.data ?? []).map((s) => ({
+    id: s.id, equipmentId: s.equipment_id, serviceType: s.service_type,
+    datePerformed: s.date_performed, performedBy: s.performed_by,
+    notes: s.notes ?? null, cost: s.cost ?? null,
+    nextServiceDue: s.next_service_due ?? null, createdAt: s.created_at,
+  }));
+
+  const inspections: PoolInspection[] = (iRes.data ?? []).map((i) => ({
+    id: i.id, name: i.name, frequency: i.frequency, authority: i.authority,
+    standard: i.standard ?? null, status: i.status,
+    lastCompleted: i.last_completed ?? null, nextDue: i.next_due ?? null,
+    history: i.history ?? [], createdAt: i.created_at, updatedAt: i.updated_at,
+  }));
+
+  const inspectionLog: InspectionLogEntry[] = (ilRes.data ?? []).map((il) => ({
+    id: il.id, inspectionId: il.inspection_id, inspectionDate: il.inspection_date,
+    conductedBy: il.conducted_by, result: il.result,
+    notes: il.notes ?? null, nextDue: il.next_due ?? null, createdAt: il.created_at,
+  }));
+
+  const seasonalTasks: SeasonalTask[] = (stRes.data ?? []).map((t) => ({
+    id: t.id, title: t.title, detail: t.detail ?? null, phase: t.phase,
+    isComplete: t.is_complete, completedBy: t.completed_by ?? null,
+    completedDate: t.completed_date ?? null, assignees: t.assignees ?? [],
+    sortOrder: t.sort_order, createdAt: t.created_at, updatedAt: t.updated_at,
+  }));
+
+  return { readings, equipment, serviceLog, inspections, inspectionLog, seasonalTasks };
+}
+
+export async function loadPoolFromSupabase() {
+  try {
+    return await loadPoolData();
+  } catch (e) {
+    console.error('[Supabase] loadPoolFromSupabase threw:', e);
+    return null;
+  }
+}
+
+let poolChannelCount = 0;
+
+export function subscribeToPool(onUpdate: PoolDataCallback): () => void {
+  const channelName = `pool-channel-${++poolChannelCount}`;
+  const channel = supabase
+    .channel(channelName)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'pool_chemical_readings' }, async () => {
+      const data = await loadPoolData();
+      onUpdate(data);
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'pool_equipment' }, async () => {
+      const data = await loadPoolData();
+      onUpdate(data);
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'pool_seasonal_tasks' }, async () => {
+      const data = await loadPoolData();
+      onUpdate(data);
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'pool_inspections' }, async () => {
+      const data = await loadPoolData();
+      onUpdate(data);
     })
     .subscribe();
 

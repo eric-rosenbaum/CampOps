@@ -4,6 +4,7 @@ struct ContentView: View {
     @StateObject private var userManager   = UserManager.shared
     @StateObject private var issueVM       = IssueListViewModel()
     @StateObject private var checklistVM   = ChecklistViewModel()
+    @StateObject private var poolVM        = PoolViewModel()
     @StateObject private var syncService   = SyncService.shared
 
     var body: some View {
@@ -14,15 +15,19 @@ struct ContentView: View {
                 .tabItem { Label("Issues", systemImage: "wrench.adjustable") }
             ChecklistView()
                 .tabItem { Label("Checklist", systemImage: "checklist") }
+            PoolView()
+                .tabItem { Label("Pool", systemImage: "drop.fill") }
         }
         .environmentObject(userManager)
         .environmentObject(issueVM)
         .environmentObject(checklistVM)
+        .environmentObject(poolVM)
         .task {
             try? await DataService.shared.upsertUsers()
             await syncService.subscribeToChanges(
                 onIssueChange: { await issueVM.refresh() },
-                onTaskChange:  { await checklistVM.refresh() }
+                onTaskChange:  { await checklistVM.refresh() },
+                onPoolChange:  { await poolVM.refresh() }
             )
         }
     }

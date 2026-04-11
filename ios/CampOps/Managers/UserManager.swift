@@ -28,12 +28,13 @@ final class UserManager: ObservableObject {
 
 struct Permissions {
     let role: UserRole
-    var createIssue:       Bool { role == .doe || role == .facilitiesManager }
-    var createTask:        Bool { role == .doe || role == .facilitiesManager }
-    var assign:            Bool { role == .doe || role == .facilitiesManager }
-    var enterActualCost:   Bool { role == .doe || role == .facilitiesManager }
-    var activateNewSeason: Bool { role == .doe || role == .facilitiesManager }
-    var updateStatus:      Bool { true }
-    var markResolved:      Bool { true }
-    var markComplete:      Bool { true }
+    var createIssue:          Bool { role == .doe || role == .facilitiesManager }
+    var createTask:           Bool { role == .doe || role == .facilitiesManager }
+    var assign:               Bool { role == .doe || role == .facilitiesManager }
+    var enterActualCost:      Bool { role == .doe || role == .facilitiesManager }
+    var activateNewSeason:    Bool { role == .doe || role == .facilitiesManager }
+    var managePoolChecklist:  Bool { role == .doe || role == .facilitiesManager }
+    var updateStatus:         Bool { true }
+    var markResolved:         Bool { true }
+    var markComplete:         Bool { true }
 }

@@ -46,6 +46,20 @@
 		49E5A7A72F81A74E007122C8 /* Season.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A7602F81A74E007122C8 /* Season.swift */; };
 		49E5A7A82F81A74E007122C8 /* SupabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A7652F81A74E007122C8 /* SupabaseService.swift */; };
 		49E5A7A92F81A74E007122C8 /* CampOpsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A7542F81A74E007122C8 /* CampOpsApp.swift */; };
+		EAE0E17CC036495ABEA01CB9 /* PoolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42C2CB70B347BC90227634 /* PoolModels.swift */; };
+		786AFB57FE1B46CAACE4B233 /* PoolViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFFDB5F5149246DBA7B89BE2 /* PoolViewModel.swift */; };
+		098654F0635D443FBD888CB3 /* PoolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE9C53F010A345E8AFD9998A /* PoolView.swift */; };
+		D40F01F478024760AC12F977 /* ChemicalLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C731083B94C0429FA6E58489 /* ChemicalLogView.swift */; };
+		5B589BFDD399482BB23863AC /* EquipmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A545123C36D45BDA79AC88F /* EquipmentView.swift */; };
+		AB40B402F97F4A1D88BE62F9 /* InspectionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 056A6929B97F46219B40AE59 /* InspectionsView.swift */; };
+		C5EFD4391EE843B589C82DCF /* SeasonalChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B8CADF2E1664949855B8D39 /* SeasonalChecklistView.swift */; };
+		97B5181D02D84A38ABAB4C0F /* LogReadingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 536C65218CAF4A678F4119AE /* LogReadingSheet.swift */; };
+		6C37B2F484F64902B56CE431 /* AddEquipmentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49FE3052C060472DB71623F7 /* AddEquipmentSheet.swift */; };
+		F60317A74FD04EC5A07B805F /* LogServiceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8DA05DEC97D4C7687293CB2 /* LogServiceSheet.swift */; };
+		5F6FA241C91846B3B4CC5E4E /* LogInspectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0673E06503684F13818562DF /* LogInspectionSheet.swift */; };
+		EA3ABD352EF147ED9DB5DBE3 /* SeasonalTaskSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45646E326FE747B2BA612636 /* SeasonalTaskSheet.swift */; };
+		A81F1771C9214E1B81A66135 /* ChemFieldChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65F10BCFDB9D40AD877961AA /* ChemFieldChartView.swift */; };
+		ECB51F38C8ED42F3BB9D5AD2 /* EquipmentDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F4640B8F4E34B749F9B1410 /* EquipmentDetailSheet.swift */; };
 		49E5A7AC2F81A914007122C8 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 49E5A7AB2F81A914007122C8 /* Auth */; };
 		49E5A7AE2F81A914007122C8 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 49E5A7AD2F81A914007122C8 /* Functions */; };
 		49E5A7B02F81A914007122C8 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 49E5A7AF2F81A914007122C8 /* PostgREST */; };
@@ -95,6 +109,20 @@
 		49E5A7802F81A74E007122C8 /* PriorityBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriorityBadge.swift; sourceTree = "<group>"; };
 		49E5A7812F81A74E007122C8 /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
 		49E5A7822F81A74E007122C8 /* UserPickerRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPickerRow.swift; sourceTree = "<group>"; };
+		8B42C2CB70B347BC90227634 /* PoolModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoolModels.swift; sourceTree = "<group>"; };
+		BFFDB5F5149246DBA7B89BE2 /* PoolViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoolViewModel.swift; sourceTree = "<group>"; };
+		AE9C53F010A345E8AFD9998A /* PoolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoolView.swift; sourceTree = "<group>"; };
+		C731083B94C0429FA6E58489 /* ChemicalLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChemicalLogView.swift; sourceTree = "<group>"; };
+		4A545123C36D45BDA79AC88F /* EquipmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentView.swift; sourceTree = "<group>"; };
+		056A6929B97F46219B40AE59 /* InspectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectionsView.swift; sourceTree = "<group>"; };
+		6B8CADF2E1664949855B8D39 /* SeasonalChecklistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeasonalChecklistView.swift; sourceTree = "<group>"; };
+		536C65218CAF4A678F4119AE /* LogReadingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogReadingSheet.swift; sourceTree = "<group>"; };
+		49FE3052C060472DB71623F7 /* AddEquipmentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddEquipmentSheet.swift; sourceTree = "<group>"; };
+		F8DA05DEC97D4C7687293CB2 /* LogServiceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogServiceSheet.swift; sourceTree = "<group>"; };
+		0673E06503684F13818562DF /* LogInspectionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogInspectionSheet.swift; sourceTree = "<group>"; };
+		45646E326FE747B2BA612636 /* SeasonalTaskSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeasonalTaskSheet.swift; sourceTree = "<group>"; };
+		65F10BCFDB9D40AD877961AA /* ChemFieldChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChemFieldChartView.swift; sourceTree = "<group>"; };
+		2F4640B8F4E34B749F9B1410 /* EquipmentDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentDetailSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -192,6 +220,7 @@
 				49E5A75D2F81A74E007122C8 /* AppEnums.swift */,
 				49E5A75E2F81A74E007122C8 /* ChecklistTask.swift */,
 				49E5A75F2F81A74E007122C8 /* Issue.swift */,
+				8B42C2CB70B347BC90227634 /* PoolModels.swift */,
 				49E5A7602F81A74E007122C8 /* Season.swift */,
 				49E5A7612F81A74E007122C8 /* User.swift */,
 			);
@@ -216,6 +245,7 @@
 				49E5A7692F81A74E007122C8 /* IssueDetailViewModel.swift */,
 				49E5A76A2F81A74E007122C8 /* IssueListViewModel.swift */,
 				49E5A76B2F81A74E007122C8 /* LogIssueViewModel.swift */,
+				BFFDB5F5149246DBA7B89BE2 /* PoolViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -275,12 +305,32 @@
 			path = Shared;
 			sourceTree = "<group>";
 		};
+		B32326992A274F88B466F2A6 /* Pool */ = {
+			isa = PBXGroup;
+			children = (
+				AE9C53F010A345E8AFD9998A /* PoolView.swift */,
+				C731083B94C0429FA6E58489 /* ChemicalLogView.swift */,
+				65F10BCFDB9D40AD877961AA /* ChemFieldChartView.swift */,
+				4A545123C36D45BDA79AC88F /* EquipmentView.swift */,
+				2F4640B8F4E34B749F9B1410 /* EquipmentDetailSheet.swift */,
+				056A6929B97F46219B40AE59 /* InspectionsView.swift */,
+				6B8CADF2E1664949855B8D39 /* SeasonalChecklistView.swift */,
+				536C65218CAF4A678F4119AE /* LogReadingSheet.swift */,
+				49FE3052C060472DB71623F7 /* AddEquipmentSheet.swift */,
+				F8DA05DEC97D4C7687293CB2 /* LogServiceSheet.swift */,
+				0673E06503684F13818562DF /* LogInspectionSheet.swift */,
+				45646E326FE747B2BA612636 /* SeasonalTaskSheet.swift */,
+			);
+			path = Pool;
+			sourceTree = "<group>";
+		};
 		49E5A7842F81A74E007122C8 /* Views */ = {
 			isa = PBXGroup;
 			children = (
 				49E5A7722F81A74E007122C8 /* Checklist */,
 				49E5A7742F81A74E007122C8 /* Home */,
 				49E5A7792F81A74E007122C8 /* Issues */,
+				B32326992A274F88B466F2A6 /* Pool */,
 				49E5A77B2F81A74E007122C8 /* Profile */,
 				49E5A7832F81A74E007122C8 /* Shared */,
 			);
@@ -416,6 +466,20 @@
 				49E5A7A72F81A74E007122C8 /* Season.swift in Sources */,
 				49E5A7A82F81A74E007122C8 /* SupabaseService.swift in Sources */,
 				49E5A7A92F81A74E007122C8 /* CampOpsApp.swift in Sources */,
+				EAE0E17CC036495ABEA01CB9 /* PoolModels.swift in Sources */,
+				786AFB57FE1B46CAACE4B233 /* PoolViewModel.swift in Sources */,
+				098654F0635D443FBD888CB3 /* PoolView.swift in Sources */,
+				D40F01F478024760AC12F977 /* ChemicalLogView.swift in Sources */,
+				5B589BFDD399482BB23863AC /* EquipmentView.swift in Sources */,
+				AB40B402F97F4A1D88BE62F9 /* InspectionsView.swift in Sources */,
+				C5EFD4391EE843B589C82DCF /* SeasonalChecklistView.swift in Sources */,
+				97B5181D02D84A38ABAB4C0F /* LogReadingSheet.swift in Sources */,
+				6C37B2F484F64902B56CE431 /* AddEquipmentSheet.swift in Sources */,
+				F60317A74FD04EC5A07B805F /* LogServiceSheet.swift in Sources */,
+				5F6FA241C91846B3B4CC5E4E /* LogInspectionSheet.swift in Sources */,
+				EA3ABD352EF147ED9DB5DBE3 /* SeasonalTaskSheet.swift in Sources */,
+				A81F1771C9214E1B81A66135 /* ChemFieldChartView.swift in Sources */,
+				ECB51F38C8ED42F3BB9D5AD2 /* EquipmentDetailSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

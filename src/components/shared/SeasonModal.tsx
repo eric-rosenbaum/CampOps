@@ -9,6 +9,7 @@ interface FormValues {
   name: string;
   openingDate: string;
   closingDate: string;
+  acaInspectionDate: string;
 }
 
 export function SeasonModal() {
@@ -29,6 +30,7 @@ export function SeasonModal() {
         name: data.name,
         openingDate: data.openingDate,
         closingDate: data.closingDate,
+        acaInspectionDate: data.acaInspectionDate || null,
       },
       currentUser.name,
     );
@@ -77,6 +79,16 @@ export function SeasonModal() {
             />
             {errors.closingDate && <p className={errorClass}>{errors.closingDate.message}</p>}
           </div>
+        </div>
+
+        <div>
+          <label className={labelClass}>ACA inspection date (optional)</label>
+          <input
+            type="date"
+            {...register('acaInspectionDate')}
+            className={inputClass}
+          />
+          <p className="text-[11px] text-forest/40 mt-1">If your camp has an upcoming ACA accreditation visit, enter the date to track it in Safety & Compliance.</p>
         </div>
 
         <div className="flex gap-2 pt-2">

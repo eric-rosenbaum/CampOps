@@ -77,6 +77,7 @@ export interface Season {
   name: string;
   openingDate: string;
   closingDate: string;
+  acaInspectionDate: string | null;
 }
 
 // ─── Pool Management ──────────────────────────────────────────────────────────
@@ -156,6 +157,120 @@ export interface InspectionLogEntry {
 }
 
 export type SeasonalPhase = 'opening' | 'in_season' | 'closing';
+
+// ─── Safety & Compliance ──────────────────────────────────────────────────────
+
+export type SafetyCategory = 'fire' | 'water' | 'kitchen';
+
+export type SafetyItemType =
+  | 'extinguisher'
+  | 'smoke_alarm'
+  | 'co_alarm'
+  | 'hood_fan'
+  | 'refrigeration'
+  | 'health_inspection'
+  | 'waterfront_check'
+  | 'life_ring'
+  | 'rescue_tube'
+  | 'rescue_board';
+
+export type SafetyFrequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annually';
+
+export interface SafetyItem {
+  id: string;
+  name: string;
+  category: SafetyCategory;
+  type: SafetyItemType;
+  location: string;
+  unitCount: number;
+  frequency: SafetyFrequency;
+  frequencyDays: number;
+  lastInspected: string | null;
+  nextDue: string | null;
+  vendor: string | null;
+  notes: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SafetyInspectionResult = 'passed' | 'passed_with_notes' | 'action_taken' | 'failed';
+
+export interface SafetyInspectionLog {
+  id: string;
+  itemId: string | null;
+  category: SafetyCategory;
+  locationNote: string;
+  inspectionDate: string;
+  completedBy: string;
+  result: SafetyInspectionResult;
+  notes: string | null;
+  cost: number | null;
+  nextDue: string | null;
+  createdAt: string;
+}
+
+export type DrillType =
+  | 'fire_evacuation'
+  | 'nighttime_cabin'
+  | 'missing_swimmer'
+  | 'severe_weather'
+  | 'medical_emergency'
+  | 'other';
+
+export type DrillStatus = 'scheduled' | 'completed' | 'cancelled';
+
+export interface EmergencyDrill {
+  id: string;
+  drillType: DrillType;
+  drillName: string | null;
+  status: DrillStatus;
+  scheduledDate: string;
+  completedDate: string | null;
+  lead: string;
+  participantCount: number | null;
+  responseTime: string | null;
+  allAccounted: boolean | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SafetyStaff {
+  id: string;
+  name: string;
+  title: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CertType = 'cpr_aed' | 'mandatory_reporter' | 'lifeguard' | 'first_aid' | 'wsi' | 'other';
+
+export interface StaffCertification {
+  id: string;
+  staffId: string;
+  certType: CertType;
+  certName: string;
+  issuedDate: string | null;
+  expiryDate: string | null;
+  provider: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SafetyTempLog {
+  id: string;
+  itemId: string;
+  logDate: string;
+  session: 'am' | 'pm';
+  temperature: number;
+  inRange: boolean;
+  loggedBy: string;
+  notes: string | null;
+  createdAt: string;
+}
 
 export interface SeasonalTask {
   id: string;

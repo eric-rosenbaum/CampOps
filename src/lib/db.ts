@@ -10,6 +10,8 @@ import type {
   Issue, ChecklistTask, ActivityEntry, Season,
   ChemicalReading, PoolEquipment, ServiceLogEntry,
   PoolInspection, InspectionLogEntry, SeasonalTask,
+  SafetyItem, SafetyInspectionLog, EmergencyDrill,
+  SafetyStaff, StaffCertification, SafetyTempLog,
 } from './types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -192,6 +194,7 @@ async function loadFromSupabase(): Promise<{
         name: seasonRows[0].name,
         openingDate: seasonRows[0].opening_date,
         closingDate: seasonRows[0].closing_date,
+        acaInspectionDate: seasonRows[0].aca_inspection_date ?? null,
       }
     : null;
 
@@ -271,6 +274,7 @@ export async function dbUpsertSeason(season: Season) {
     name: season.name,
     opening_date: season.openingDate,
     closing_date: season.closingDate,
+    aca_inspection_date: season.acaInspectionDate ?? null,
   }, { onConflict: 'id' });
   if (error) console.error('dbUpsertSeason error:', error.message);
 }
@@ -558,5 +562,311 @@ export function subscribeToTasks(onUpdate: TaskCallback): () => void {
     })
     .subscribe();
 
+  return () => { supabase.removeChannel(channel); };
+}
+
+// ─── Safety & Compliance ──────────────────────────────────────────────────────
+
+type SafetyData = {
+  items: SafetyItem[];
+  inspectionLog: SafetyInspectionLog[];
+  drills: EmergencyDrill[];
+  staff: SafetyStaff[];
+  certifications: StaffCertification[];
+  tempLogs: SafetyTempLog[];
+};
+
+function rowToSafetyItem(r: Record<string, unknown>): SafetyItem {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    category: r.category as SafetyItem['category'],
+    type: r.type as SafetyItem['type'],
+    location: (r.location as string) ?? '',
+    unitCount: (r.unit_count as number) ?? 1,
+    frequency: r.frequency as SafetyItem['frequency'],
+    frequencyDays: r.frequency_days as number,
+    lastInspected: (r.last_inspected as string) ?? null,
+    nextDue: (r.next_due as string) ?? null,
+    vendor: (r.vendor as string) ?? null,
+    notes: (r.notes as string) ?? null,
+    metadata: (r.metadata as Record<string, unknown>) ?? {},
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToSafetyLog(r: Record<string, unknown>): SafetyInspectionLog {
+  return {
+    id: r.id as string,
+    itemId: (r.item_id as string) ?? null,
+    category: r.category as SafetyInspectionLog['category'],
+    locationNote: (r.location_note as string) ?? '',
+    inspectionDate: r.inspection_date as string,
+    completedBy: r.completed_by as string,
+    result: r.result as SafetyInspectionLog['result'],
+    notes: (r.notes as string) ?? null,
+    cost: (r.cost as number) ?? null,
+    nextDue: (r.next_due as string) ?? null,
+    createdAt: r.created_at as string,
+  };
+}
+
+function rowToDrill(r: Record<string, unknown>): EmergencyDrill {
+  return {
+    id: r.id as string,
+    drillType: r.drill_type as EmergencyDrill['drillType'],
+    drillName: (r.drill_name as string) ?? null,
+    status: r.status as EmergencyDrill['status'],
+    scheduledDate: r.scheduled_date as string,
+    completedDate: (r.completed_date as string) ?? null,
+    lead: (r.lead as string) ?? '',
+    participantCount: (r.participant_count as number) ?? null,
+    responseTime: (r.response_time as string) ?? null,
+    allAccounted: (r.all_accounted as boolean) ?? null,
+    notes: (r.notes as string) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToSafetyStaff(r: Record<string, unknown>): SafetyStaff {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    title: (r.title as string) ?? '',
+    isActive: (r.is_active as boolean) ?? true,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToCert(r: Record<string, unknown>): StaffCertification {
+  return {
+    id: r.id as string,
+    staffId: r.staff_id as string,
+    certType: r.cert_type as StaffCertification['certType'],
+    certName: r.cert_name as string,
+    issuedDate: (r.issued_date as string) ?? null,
+    expiryDate: (r.expiry_date as string) ?? null,
+    provider: (r.provider as string) ?? null,
+    notes: (r.notes as string) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToTempLog(r: Record<string, unknown>): SafetyTempLog {
+  return {
+    id: r.id as string,
+    itemId: r.item_id as string,
+    logDate: r.log_date as string,
+    session: r.session as 'am' | 'pm',
+    temperature: r.temperature as number,
+    inRange: r.in_range as boolean,
+    loggedBy: r.logged_by as string,
+    notes: (r.notes as string) ?? null,
+    createdAt: r.created_at as string,
+  };
+}
+
+async function loadSafetyData(): Promise<SafetyData> {
+  const [itemsRes, logRes, drillsRes, staffRes, certsRes, tempRes] = await Promise.all([
+    supabase.from('safety_items').select('*').order('created_at', { ascending: true }),
+    supabase.from('safety_inspection_log').select('*').order('created_at', { ascending: false }),
+    supabase.from('safety_drills').select('*').order('scheduled_date', { ascending: true }),
+    supabase.from('safety_staff').select('*').order('name', { ascending: true }),
+    supabase.from('staff_certifications').select('*').order('created_at', { ascending: false }),
+    supabase.from('safety_temp_logs').select('*').order('log_date', { ascending: false }),
+  ]);
+
+  return {
+    items: (itemsRes.data ?? []).map((r) => rowToSafetyItem(r as Record<string, unknown>)),
+    inspectionLog: (logRes.data ?? []).map((r) => rowToSafetyLog(r as Record<string, unknown>)),
+    drills: (drillsRes.data ?? []).map((r) => rowToDrill(r as Record<string, unknown>)),
+    staff: (staffRes.data ?? []).map((r) => rowToSafetyStaff(r as Record<string, unknown>)),
+    certifications: (certsRes.data ?? []).map((r) => rowToCert(r as Record<string, unknown>)),
+    tempLogs: (tempRes.data ?? []).map((r) => rowToTempLog(r as Record<string, unknown>)),
+  };
+}
+
+export async function loadSafetyFromSupabase(): Promise<SafetyData | null> {
+  try {
+    return await loadSafetyData();
+  } catch (e) {
+    console.error('[Supabase] loadSafetyFromSupabase threw:', e);
+    return null;
+  }
+}
+
+export async function dbAddSafetyItem(item: SafetyItem) {
+  const { error } = await supabase.from('safety_items').insert({
+    id: item.id, name: item.name, category: item.category, type: item.type,
+    location: item.location, unit_count: item.unitCount, frequency: item.frequency,
+    frequency_days: item.frequencyDays, last_inspected: item.lastInspected,
+    next_due: item.nextDue, vendor: item.vendor, notes: item.notes,
+    metadata: item.metadata, created_at: item.createdAt, updated_at: item.updatedAt,
+  });
+  if (error) console.error('dbAddSafetyItem error:', error.message);
+}
+
+export async function dbUpdateSafetyItem(id: string, patch: Partial<SafetyItem>) {
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.name !== undefined) row.name = patch.name;
+  if (patch.location !== undefined) row.location = patch.location;
+  if (patch.unitCount !== undefined) row.unit_count = patch.unitCount;
+  if (patch.frequency !== undefined) row.frequency = patch.frequency;
+  if (patch.frequencyDays !== undefined) row.frequency_days = patch.frequencyDays;
+  if (patch.lastInspected !== undefined) row.last_inspected = patch.lastInspected;
+  if (patch.nextDue !== undefined) row.next_due = patch.nextDue;
+  if (patch.vendor !== undefined) row.vendor = patch.vendor;
+  if (patch.notes !== undefined) row.notes = patch.notes;
+  if (patch.metadata !== undefined) row.metadata = patch.metadata;
+  const { error } = await supabase.from('safety_items').update(row).eq('id', id);
+  if (error) console.error('dbUpdateSafetyItem error:', error.message);
+}
+
+export async function dbAddSafetyInspectionLog(entry: SafetyInspectionLog) {
+  const { error } = await supabase.from('safety_inspection_log').insert({
+    id: entry.id, item_id: entry.itemId, category: entry.category,
+    location_note: entry.locationNote, inspection_date: entry.inspectionDate,
+    completed_by: entry.completedBy, result: entry.result, notes: entry.notes,
+    cost: entry.cost, next_due: entry.nextDue, created_at: entry.createdAt,
+  });
+  if (error) console.error('dbAddSafetyInspectionLog error:', error.message);
+}
+
+export async function dbUpdateSafetyInspectionLog(id: string, patch: Partial<SafetyInspectionLog>) {
+  const row: Record<string, unknown> = {};
+  if (patch.itemId !== undefined) row.item_id = patch.itemId;
+  if (patch.category !== undefined) row.category = patch.category;
+  if (patch.locationNote !== undefined) row.location_note = patch.locationNote;
+  if (patch.inspectionDate !== undefined) row.inspection_date = patch.inspectionDate;
+  if (patch.completedBy !== undefined) row.completed_by = patch.completedBy;
+  if (patch.result !== undefined) row.result = patch.result;
+  if (patch.notes !== undefined) row.notes = patch.notes;
+  if (patch.cost !== undefined) row.cost = patch.cost;
+  if (patch.nextDue !== undefined) row.next_due = patch.nextDue;
+  const { error } = await supabase.from('safety_inspection_log').update(row).eq('id', id);
+  if (error) console.error('dbUpdateSafetyInspectionLog error:', error.message);
+}
+
+export async function dbDeleteSafetyInspectionLog(id: string) {
+  const { error } = await supabase.from('safety_inspection_log').delete().eq('id', id);
+  if (error) console.error('dbDeleteSafetyInspectionLog error:', error.message);
+}
+
+export async function dbAddSafetyDrill(drill: EmergencyDrill) {
+  const { error } = await supabase.from('safety_drills').insert({
+    id: drill.id, drill_type: drill.drillType, drill_name: drill.drillName,
+    status: drill.status, scheduled_date: drill.scheduledDate,
+    completed_date: drill.completedDate, lead: drill.lead,
+    participant_count: drill.participantCount, response_time: drill.responseTime,
+    all_accounted: drill.allAccounted, notes: drill.notes,
+    created_at: drill.createdAt, updated_at: drill.updatedAt,
+  });
+  if (error) console.error('dbAddSafetyDrill error:', error.message);
+}
+
+export async function dbUpdateSafetyDrill(id: string, patch: Partial<EmergencyDrill>) {
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.drillType !== undefined) row.drill_type = patch.drillType;
+  if (patch.drillName !== undefined) row.drill_name = patch.drillName;
+  if (patch.status !== undefined) row.status = patch.status;
+  if (patch.scheduledDate !== undefined) row.scheduled_date = patch.scheduledDate;
+  if (patch.completedDate !== undefined) row.completed_date = patch.completedDate;
+  if (patch.lead !== undefined) row.lead = patch.lead;
+  if (patch.participantCount !== undefined) row.participant_count = patch.participantCount;
+  if (patch.responseTime !== undefined) row.response_time = patch.responseTime;
+  if (patch.allAccounted !== undefined) row.all_accounted = patch.allAccounted;
+  if (patch.notes !== undefined) row.notes = patch.notes;
+  const { error } = await supabase.from('safety_drills').update(row).eq('id', id);
+  if (error) console.error('dbUpdateSafetyDrill error:', error.message);
+}
+
+export async function dbDeleteSafetyDrill(id: string) {
+  const { error } = await supabase.from('safety_drills').delete().eq('id', id);
+  if (error) console.error('dbDeleteSafetyDrill error:', error.message);
+}
+
+export async function dbDeleteSafetyItem(id: string) {
+  const { error } = await supabase.from('safety_items').delete().eq('id', id);
+  if (error) console.error('dbDeleteSafetyItem error:', error.message);
+}
+
+export async function dbDeleteSafetyStaff(id: string) {
+  const { error } = await supabase.from('safety_staff').delete().eq('id', id);
+  if (error) console.error('dbDeleteSafetyStaff error:', error.message);
+}
+
+export async function dbAddSafetyStaff(staff: SafetyStaff) {
+  const { error } = await supabase.from('safety_staff').insert({
+    id: staff.id, name: staff.name, title: staff.title,
+    is_active: staff.isActive, created_at: staff.createdAt, updated_at: staff.updatedAt,
+  });
+  if (error) console.error('dbAddSafetyStaff error:', error.message);
+}
+
+export async function dbUpdateSafetyStaff(id: string, patch: Partial<SafetyStaff>) {
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.name !== undefined) row.name = patch.name;
+  if (patch.title !== undefined) row.title = patch.title;
+  if (patch.isActive !== undefined) row.is_active = patch.isActive;
+  const { error } = await supabase.from('safety_staff').update(row).eq('id', id);
+  if (error) console.error('dbUpdateSafetyStaff error:', error.message);
+}
+
+export async function dbAddStaffCert(cert: StaffCertification) {
+  const { error } = await supabase.from('staff_certifications').insert({
+    id: cert.id, staff_id: cert.staffId, cert_type: cert.certType,
+    cert_name: cert.certName, issued_date: cert.issuedDate, expiry_date: cert.expiryDate,
+    provider: cert.provider, notes: cert.notes,
+    created_at: cert.createdAt, updated_at: cert.updatedAt,
+  });
+  if (error) console.error('dbAddStaffCert error:', error.message);
+}
+
+export async function dbUpdateStaffCert(id: string, patch: Partial<StaffCertification>) {
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.certType !== undefined) row.cert_type = patch.certType;
+  if (patch.certName !== undefined) row.cert_name = patch.certName;
+  if (patch.issuedDate !== undefined) row.issued_date = patch.issuedDate;
+  if (patch.expiryDate !== undefined) row.expiry_date = patch.expiryDate;
+  if (patch.provider !== undefined) row.provider = patch.provider;
+  if (patch.notes !== undefined) row.notes = patch.notes;
+  const { error } = await supabase.from('staff_certifications').update(row).eq('id', id);
+  if (error) console.error('dbUpdateStaffCert error:', error.message);
+}
+
+export async function dbDeleteStaffCert(id: string) {
+  const { error } = await supabase.from('staff_certifications').delete().eq('id', id);
+  if (error) console.error('dbDeleteStaffCert error:', error.message);
+}
+
+export async function dbAddSafetyTempLog(log: SafetyTempLog) {
+  const { error } = await supabase.from('safety_temp_logs').insert({
+    id: log.id, item_id: log.itemId, log_date: log.logDate, session: log.session,
+    temperature: log.temperature, in_range: log.inRange, logged_by: log.loggedBy,
+    notes: log.notes, created_at: log.createdAt,
+  });
+  if (error) console.error('dbAddSafetyTempLog error:', error.message);
+}
+
+let safetyChannelCount = 0;
+
+type SafetyDataCallback = (data: SafetyData) => void;
+
+export function subscribeToSafety(onUpdate: SafetyDataCallback): () => void {
+  const channelName = `safety-channel-${++safetyChannelCount}`;
+  const reload = async () => { onUpdate(await loadSafetyData()); };
+  const channel = supabase
+    .channel(channelName)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_items' }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_inspection_log' }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_drills' }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_staff' }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_certifications' }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_temp_logs' }, reload)
+    .subscribe();
   return () => { supabase.removeChannel(channel); };
 }

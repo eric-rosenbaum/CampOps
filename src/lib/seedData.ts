@@ -12,6 +12,7 @@ export const SEED_SEASON: Season = {
   name: 'Summer 2025',
   openingDate: '2025-06-23',
   closingDate: '2025-07-18',
+  acaInspectionDate: null,
 };
 
 // Reference timestamps relative to "today" concept — seeded as fixed ISO strings

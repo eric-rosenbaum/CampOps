@@ -23,6 +23,11 @@ const ROLE_PERMISSIONS = {
   updateStatus:           ['doe', 'facilities_manager', 'maintenance_staff'],
   markResolved:           ['doe', 'facilities_manager', 'maintenance_staff'],
   markComplete:           ['doe', 'facilities_manager', 'maintenance_staff'],
+  // Safety & Compliance
+  manageSafetyItems:      ['doe', 'facilities_manager'],
+  manageSafetyStaff:      ['doe'],
+  manageSafetyCerts:      ['doe'],
+  logSafetyInspection:    ['doe', 'facilities_manager', 'maintenance_staff'],
 } satisfies Record<string, Role[]>;
 
 export type Permission = keyof typeof ROLE_PERMISSIONS;

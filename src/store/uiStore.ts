@@ -16,6 +16,23 @@ interface UIStore {
   logInspectionForId: string | null;
   editingInspectionLogEntryId: string | null;
   editingSeasonalTaskId: string | null;
+  // Safety modals
+  isSafetyLogInspectionModalOpen: boolean;
+  logInspectionForSafetyItemId: string | null;
+  editingInspectionLogId: string | null;
+  isSafetyAddItemModalOpen: boolean;
+  addItemModalDefaultType: string | null;
+  editingSafetyItemId: string | null;
+  isLogDrillModalOpen: boolean;
+  drillModalMode: 'schedule' | 'complete';
+  editingDrillId: string | null;
+  isLogTempModalOpen: boolean;
+  logTempForItemId: string | null;
+  isSafetyAddStaffModalOpen: boolean;
+  editingSafetyStaffId: string | null;
+  isStaffCertModalOpen: boolean;
+  editingStaffCertId: string | null;
+  staffCertForStaffId: string | null;
 
   openLogIssueModal: () => void;
   openEditIssueModal: (id: string) => void;
@@ -28,6 +45,15 @@ interface UIStore {
   openAddEquipmentModal: () => void;
   openSeasonalTaskModal: (taskId?: string) => void;
   openEditInspectionLogModal: (entryId: string) => void;
+  // Safety modal openers
+  openSafetyLogInspectionModal: (itemId?: string) => void;
+  openEditInspectionLogModal: (logId: string) => void;
+  openSafetyAddItemModal: (opts?: { type?: string; itemId?: string }) => void;
+  openScheduleDrillModal: () => void;
+  openLogDrillModal: (drillId?: string) => void;
+  openLogTempModal: (itemId?: string) => void;
+  openSafetyAddStaffModal: (staffId?: string) => void;
+  openStaffCertModal: (opts?: { certId?: string; staffId?: string }) => void;
   closeAllModals: () => void;
   setCurrentUser: (id: string) => void;
 }
@@ -47,6 +73,23 @@ export const useUIStore = create<UIStore>((set) => ({
   logInspectionForId: null,
   editingInspectionLogEntryId: null,
   editingSeasonalTaskId: null,
+  // Safety modals
+  isSafetyLogInspectionModalOpen: false,
+  logInspectionForSafetyItemId: null,
+  editingInspectionLogId: null,
+  isSafetyAddItemModalOpen: false,
+  addItemModalDefaultType: null,
+  editingSafetyItemId: null,
+  isLogDrillModalOpen: false,
+  drillModalMode: 'complete',
+  editingDrillId: null,
+  isLogTempModalOpen: false,
+  logTempForItemId: null,
+  isSafetyAddStaffModalOpen: false,
+  editingSafetyStaffId: null,
+  isStaffCertModalOpen: false,
+  editingStaffCertId: null,
+  staffCertForStaffId: null,
 
   openLogIssueModal: () =>
     set({ isLogIssueModalOpen: true, editingIssueId: null }),
@@ -74,6 +117,39 @@ export const useUIStore = create<UIStore>((set) => ({
   openSeasonalTaskModal: (taskId) =>
     set({ isSeasonalTaskModalOpen: true, editingSeasonalTaskId: taskId ?? null }),
 
+  // Safety modal openers
+  openSafetyLogInspectionModal: (itemId) =>
+    set({ isSafetyLogInspectionModalOpen: true, logInspectionForSafetyItemId: itemId ?? null, editingInspectionLogId: null }),
+
+  openEditInspectionLogModal: (logId) =>
+    set({ isSafetyLogInspectionModalOpen: true, editingInspectionLogId: logId, logInspectionForSafetyItemId: null }),
+
+  openSafetyAddItemModal: (opts) =>
+    set({
+      isSafetyAddItemModalOpen: true,
+      addItemModalDefaultType: opts?.type ?? null,
+      editingSafetyItemId: opts?.itemId ?? null,
+    }),
+
+  openScheduleDrillModal: () =>
+    set({ isLogDrillModalOpen: true, drillModalMode: 'schedule', editingDrillId: null }),
+
+  openLogDrillModal: (drillId) =>
+    set({ isLogDrillModalOpen: true, drillModalMode: 'complete', editingDrillId: drillId ?? null }),
+
+  openLogTempModal: (itemId) =>
+    set({ isLogTempModalOpen: true, logTempForItemId: itemId ?? null }),
+
+  openSafetyAddStaffModal: (staffId) =>
+    set({ isSafetyAddStaffModalOpen: true, editingSafetyStaffId: staffId ?? null }),
+
+  openStaffCertModal: (opts) =>
+    set({
+      isStaffCertModalOpen: true,
+      editingStaffCertId: opts?.certId ?? null,
+      staffCertForStaffId: opts?.staffId ?? null,
+    }),
+
   closeAllModals: () =>
     set({
       isLogIssueModalOpen: false,
@@ -89,6 +165,22 @@ export const useUIStore = create<UIStore>((set) => ({
       logInspectionForId: null,
       editingInspectionLogEntryId: null,
       editingSeasonalTaskId: null,
+      // Safety modals
+      isSafetyLogInspectionModalOpen: false,
+      logInspectionForSafetyItemId: null,
+      editingInspectionLogId: null,
+      isSafetyAddItemModalOpen: false,
+      addItemModalDefaultType: null,
+      editingSafetyItemId: null,
+      isLogDrillModalOpen: false,
+      editingDrillId: null,
+      isLogTempModalOpen: false,
+      logTempForItemId: null,
+      isSafetyAddStaffModalOpen: false,
+      editingSafetyStaffId: null,
+      isStaffCertModalOpen: false,
+      editingStaffCertId: null,
+      staffCertForStaffId: null,
     }),
 
   setCurrentUser: (id: string) => set({ currentUserId: id }),

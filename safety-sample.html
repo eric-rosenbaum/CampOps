@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CampOps — Safety &amp; Compliance</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --forest: #1a2e1a; --forest-mid: #2d4a2d; --sage: #7aab6e; --sage-light: #a8c99f;
+  --cream: #f5f2eb; --cream-dark: #ede9df;
+  --amber: #c47d08; --amber-bg: #fef5e4; --amber-text: #7d4e00;
+  --red: #c0392b; --red-bg: #fdecea; --red-text: #7a1a1a;
+  --green: #1e6b1e; --green-bg: #eaf3e8;
+  --blue: #185fa5; --blue-bg: #e6f1fb; --blue-text: #0c447c;
+  --text-primary: #1a2e1a; --text-secondary: #4a6741; --text-muted: #7a9472;
+  --border: #d4cfc4; --white: #ffffff;
+}
+html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--text-primary); }
+.app { display: flex; height: 100vh; overflow: hidden; }
+
+/* Sidebar */
+.sidebar { width: 224px; background: var(--forest); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+.sidebar-logo { padding: 22px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.logo-mark { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; color: var(--sage-light); letter-spacing: 0.08em; text-transform: uppercase; }
+.logo-sub { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 3px; }
+.sidebar-nav { padding: 10px 0; flex: 1; }
+.nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(255,255,255,0.22); padding: 10px 20px 4px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.5); cursor: pointer; border-left: 2px solid transparent; transition: all 0.15s; }
+.nav-item:hover { color: rgba(255,255,255,0.82); background: rgba(255,255,255,0.05); }
+.nav-item.active { color: var(--sage-light); background: rgba(122,171,110,0.14); border-left-color: var(--sage); }
+.nav-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.sidebar-footer { padding: 14px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
+.camp-name { color: rgba(255,255,255,0.65); font-weight: 500; font-size: 12px; }
+.camp-user { color: rgba(255,255,255,0.3); font-size: 11px; margin-top: 2px; }
+
+/* Main */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.page-title { font-size: 18px; font-weight: 600; }
+.page-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.topbar-right { display: flex; gap: 10px; align-items: center; }
+.btn { padding: 8px 16px; border-radius: 7px; font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: var(--forest); color: white; }
+.btn-primary:hover { background: var(--forest-mid); }
+.btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--cream-dark); }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-danger { background: transparent; color: var(--red); border: 1px solid var(--red); }
+.btn-danger:hover { background: var(--red-bg); }
+
+/* Tabs */
+.tab-bar { background: var(--white); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; flex-shrink: 0; }
+.tab { padding: 12px 20px; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; user-select: none; }
+.tab:hover { color: var(--text-secondary); }
+.tab.active { color: var(--forest); border-bottom-color: var(--sage); font-weight: 600; }
+.content { flex: 1; overflow-y: auto; padding: 24px 28px; display: none; }
+.content.active { display: block; }
+
+/* Stat cards */
+.stat-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+.stat-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+.stat-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.stat-val { font-size: 28px; font-weight: 600; font-family: 'DM Mono', monospace; margin-top: 5px; }
+.stat-hint { font-size: 11px; margin-top: 3px; }
+.stat-card.ok .stat-val { color: var(--green); } .stat-card.ok .stat-hint { color: var(--text-muted); }
+.stat-card.warn .stat-val { color: var(--amber); } .stat-card.warn .stat-hint { color: var(--amber); }
+.stat-card.alert .stat-val { color: var(--red); } .stat-card.alert .stat-hint { color: var(--red); }
+.stat-card.neutral .stat-val { color: var(--text-primary); } .stat-card.neutral .stat-hint { color: var(--text-muted); }
+
+/* Alert / warn banners */
+.alert-banner { background: var(--red-bg); border: 1px solid #f5c0bc; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+.alert-icon { width: 20px; height: 20px; background: var(--red); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: 700; flex-shrink: 0; }
+.alert-text { font-size: 13px; color: var(--red-text); flex: 1; line-height: 1.5; }
+.alert-btn { font-size: 12px; font-weight: 600; color: var(--red); cursor: pointer; white-space: nowrap; border: 1px solid var(--red); padding: 5px 12px; border-radius: 5px; background: transparent; font-family: 'DM Sans', sans-serif; }
+.warn-banner { background: var(--amber-bg); border: 1px solid #f5d98a; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+.warn-icon { width: 20px; height: 20px; background: var(--amber); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: 700; flex-shrink: 0; }
+.warn-text { font-size: 13px; color: var(--amber-text); flex: 1; line-height: 1.5; }
+
+/* Section header */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; margin-top: 8px; }
+.section-title { font-size: 14px; font-weight: 600; }
+
+/* Item cards — shared pattern */
+.item-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+.item-card { background: var(--white); border: 1px solid var(--border); border-left: 3px solid transparent; border-radius: 10px; padding: 16px 20px; cursor: pointer; transition: all 0.15s; }
+.item-card:hover { box-shadow: 0 2px 10px rgba(26,46,26,0.08); }
+.item-card.ok { border-left-color: var(--sage); }
+.item-card.warn { border-left-color: var(--amber); }
+.item-card.alert { border-left-color: var(--red); }
+
+.item-header { display: flex; align-items: flex-start; justify-content: space-between; }
+.item-left { flex: 1; }
+.item-title { font-size: 14px; font-weight: 600; }
+.item-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
+.item-right { text-align: right; flex-shrink: 0; margin-left: 16px; }
+.item-date { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text-muted); }
+.item-next { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+
+.item-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--cream-dark); }
+.item-field-label { font-size: 11px; color: var(--text-muted); font-weight: 500; margin-bottom: 3px; }
+.item-field-val { font-size: 13px; font-weight: 500; font-family: 'DM Mono', monospace; }
+.item-field-val.ok { color: var(--green); }
+.item-field-val.warn { color: var(--amber); }
+.item-field-val.alert { color: var(--red); }
+.item-field-val.plain { font-family: 'DM Sans', sans-serif; color: var(--text-primary); }
+
+.item-footer { display: flex; gap: 8px; margin-top: 12px; }
+
+/* Badges */
+.badge { font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; display: inline-block; }
+.badge-ok { background: var(--green-bg); color: var(--green); }
+.badge-warn { background: var(--amber-bg); color: var(--amber-text); }
+.badge-alert { background: var(--red-bg); color: var(--red); }
+.badge-neutral { background: var(--cream-dark); color: var(--text-secondary); }
+.badge-blue { background: var(--blue-bg); color: var(--blue-text); }
+
+/* Location tag chips */
+.location-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.loc-tag { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 4px; background: var(--cream-dark); color: var(--text-secondary); }
+
+/* Progress bar */
+.prog-wrap { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin-bottom: 24px; display: flex; align-items: center; gap: 24px; }
+.prog-info { flex: 1; }
+.prog-label { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.prog-bar-bg { background: var(--cream-dark); border-radius: 99px; height: 8px; }
+.prog-bar-fill { border-radius: 99px; height: 8px; }
+.prog-bar-fill.green { background: var(--sage); }
+.prog-bar-fill.amber { background: var(--amber); }
+.prog-meta { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+.prog-stats { display: flex; gap: 20px; flex-shrink: 0; }
+.pstat-val { font-size: 22px; font-weight: 600; font-family: 'DM Mono', monospace; text-align: center; }
+.pstat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-top: 2px; }
+
+/* Inspection history dots */
+.hist-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.hist-chip { font-size: 11px; background: var(--cream-dark); color: var(--text-secondary); padding: 3px 8px; border-radius: 4px; font-family: 'DM Mono', monospace; }
+
+/* Checklist tasks */
+.stask-list { display: flex; flex-direction: column; gap: 2px; }
+.stask { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; cursor: pointer; background: var(--white); border: 1px solid transparent; transition: background 0.12s; }
+.stask:hover { background: var(--cream-dark); }
+.stask.checked { opacity: 0.6; }
+.stask-check { width: 18px; height: 18px; border: 1.5px solid var(--border); border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; background: var(--white); }
+.stask-check.done { background: var(--sage); border-color: var(--sage); }
+.stask-check.done::after { content: '✓'; font-size: 11px; color: white; font-weight: 700; }
+.stask-name { font-size: 13px; }
+.stask-name.done { text-decoration: line-through; color: var(--text-muted); }
+.stask-detail { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.stask-tags { display: flex; gap: 6px; margin-top: 4px; }
+.stag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+.stag-who { background: var(--blue-bg); color: var(--blue-text); }
+.stag-done { background: var(--green-bg); color: var(--green); }
+.stag-due { background: var(--cream-dark); color: var(--text-secondary); }
+.stag-alert { background: var(--red-bg); color: var(--red); }
+
+.area-block { margin-bottom: 24px; }
+.area-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.area-label { font-size: 13px; font-weight: 600; }
+.area-count { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+.mini-bar-bg { height: 3px; background: var(--cream-dark); border-radius: 99px; margin-bottom: 8px; }
+.mini-bar-fill { height: 3px; border-radius: 99px; background: var(--sage); }
+
+/* Modal */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(20,36,20,0.5); z-index: 200; align-items: center; justify-content: center; }
+.overlay.open { display: flex; }
+.modal { background: var(--white); border-radius: 14px; width: 480px; max-height: 90vh; overflow-y: auto; padding: 28px; box-shadow: 0 16px 48px rgba(20,36,20,0.22); }
+.modal-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.modal-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
+.fg { margin-bottom: 14px; }
+.fl { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 5px; }
+.fi, .fs, .ft { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-primary); background: var(--white); outline: none; transition: border-color 0.15s; }
+.fi:focus, .fs:focus, .ft:focus { border-color: var(--sage); }
+.ft { resize: vertical; min-height: 70px; }
+.frow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-btns { display: flex; gap: 10px; margin-top: 22px; }
+.modal-btns .btn-primary { flex: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">CampOps</div>
+      <div class="logo-sub">Operations Platform</div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-label">Today</div>
+      <div class="nav-item"><div class="nav-dot"></div> Dashboard</div>
+      <div class="nav-item"><div class="nav-dot"></div> My tasks</div>
+      <div class="nav-label">Facilities</div>
+      <div class="nav-item"><div class="nav-dot"></div> Issues &amp; repairs</div>
+      <div class="nav-item"><div class="nav-dot"></div> Pre/post camp</div>
+      <div class="nav-item"><div class="nav-dot"></div> Pool management</div>
+      <div class="nav-item active"><div class="nav-dot"></div> Safety &amp; compliance</div>
+      <div class="nav-item"><div class="nav-dot"></div> Asset &amp; vehicles</div>
+      <div class="nav-item"><div class="nav-dot"></div> Building systems</div>
+      <div class="nav-label">Operations</div>
+      <div class="nav-item"><div class="nav-dot"></div> Staff &amp; labor</div>
+      <div class="nav-item"><div class="nav-dot"></div> Vendors &amp; orders</div>
+      <div class="nav-label">Finance</div>
+      <div class="nav-item"><div class="nav-dot"></div> Cost tracker</div>
+      <div class="nav-item"><div class="nav-dot"></div> Benchmarks</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="camp-name">Pinecrest Summer Camp</div>
+      <div class="camp-user">Jordan M. — Ops Director</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Safety &amp; compliance</div>
+        <div class="page-sub">Pinecrest Summer Camp · Session 2 · Jun 23 – Jul 18 · Last audit Jul 1</div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn btn-ghost">Export compliance report</button>
+        <button class="btn btn-primary" onclick="openModal('logModal')">+ Log inspection</button>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchTab(this,'tab-overview')">Overview</div>
+      <div class="tab" onclick="switchTab(this,'tab-fire')">Fire safety</div>
+      <div class="tab" onclick="switchTab(this,'tab-water')">Water safety</div>
+      <div class="tab" onclick="switchTab(this,'tab-kitchen')">Kitchen</div>
+      <div class="tab" onclick="switchTab(this,'tab-drills')">Drills &amp; training</div>
+    </div>
+
+    <!-- ══ TAB 1: OVERVIEW ══ -->
+    <div class="content active" id="tab-overview">
+
+      <div class="stat-row">
+        <div class="stat-card alert">
+          <div class="stat-label">Overdue items</div>
+          <div class="stat-val">2</div>
+          <div class="stat-hint">Require immediate action</div>
+        </div>
+        <div class="stat-card warn">
+          <div class="stat-label">Due this week</div>
+          <div class="stat-val">4</div>
+          <div class="stat-hint">Coming up soon</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">Compliant items</div>
+          <div class="stat-val">31</div>
+          <div class="stat-hint">Up to date</div>
+        </div>
+        <div class="stat-card neutral">
+          <div class="stat-label">ACA inspection</div>
+          <div class="stat-val" style="font-size:18px;margin-top:8px">Aug 5</div>
+          <div class="stat-hint">29 days away</div>
+        </div>
+      </div>
+
+      <div class="alert-banner">
+        <div class="alert-icon">!</div>
+        <div class="alert-text">Dining hall hood fan cleaning is overdue by 6 days. This is required by fire code every 90 days. Contact your cleaning vendor immediately — operating with an overdue hood fan creates fire and insurance risk.</div>
+        <button class="alert-btn" onclick="openModal('logModal')">Log action</button>
+      </div>
+
+      <div class="alert-banner">
+        <div class="alert-icon">!</div>
+        <div class="alert-text">Cabin 4 smoke alarm failed its last weekly test. The alarm has been flagged and a replacement has been ordered — confirm installation before camper occupancy tonight.</div>
+        <button class="alert-btn" onclick="openModal('logModal')">Log fix</button>
+      </div>
+
+      <div class="warn-banner">
+        <div class="warn-icon">!</div>
+        <div class="warn-text">4 items due this week: Main lodge fire extinguisher inspection (Jul 9), waterfront emergency drill (Jul 10), arts barn sprinkler test (Jul 11), and staff CPR recertification reminder (Jul 12).</div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Compliance summary by category</div>
+      </div>
+
+      <div class="prog-wrap">
+        <div class="prog-info">
+          <div class="prog-label">Fire safety</div>
+          <div class="prog-bar-bg"><div class="prog-bar-fill green" style="width:78%"></div></div>
+          <div class="prog-meta">14 of 18 items current · 2 overdue · 2 due this week</div>
+        </div>
+        <div class="prog-stats">
+          <div><div class="pstat-val" style="color:var(--red)">2</div><div class="pstat-label">Overdue</div></div>
+          <div><div class="pstat-val" style="color:var(--amber)">2</div><div class="pstat-label">Due soon</div></div>
+          <div><div class="pstat-val" style="color:var(--green)">14</div><div class="pstat-label">Current</div></div>
+        </div>
+      </div>
+
+      <div class="prog-wrap">
+        <div class="prog-info">
+          <div class="prog-label">Water safety</div>
+          <div class="prog-bar-bg"><div class="prog-bar-fill green" style="width:90%"></div></div>
+          <div class="prog-meta">9 of 10 items current · 1 due this week</div>
+        </div>
+        <div class="prog-stats">
+          <div><div class="pstat-val" style="color:var(--red)">0</div><div class="pstat-label">Overdue</div></div>
+          <div><div class="pstat-val" style="color:var(--amber)">1</div><div class="pstat-label">Due soon</div></div>
+          <div><div class="pstat-val" style="color:var(--green)">9</div><div class="pstat-label">Current</div></div>
+        </div>
+      </div>
+
+      <div class="prog-wrap">
+        <div class="prog-info">
+          <div class="prog-label">Kitchen safety</div>
+          <div class="prog-bar-bg"><div class="prog-bar-fill amber" style="width:67%"></div></div>
+          <div class="prog-meta">6 of 9 items current · 1 overdue · 1 due this week</div>
+        </div>
+        <div class="prog-stats">
+          <div><div class="pstat-val" style="color:var(--red)">1</div><div class="pstat-label">Overdue</div></div>
+          <div><div class="pstat-val" style="color:var(--amber)">1</div><div class="pstat-label">Due soon</div></div>
+          <div><div class="pstat-val" style="color:var(--green)">6</div><div class="pstat-label">Current</div></div>
+        </div>
+      </div>
+
+      <div class="prog-wrap">
+        <div class="prog-info">
+          <div class="prog-label">Drills &amp; training</div>
+          <div class="prog-bar-bg"><div class="prog-bar-fill green" style="width:100%"></div></div>
+          <div class="prog-meta">All items current · Next drill scheduled Jul 10</div>
+        </div>
+        <div class="prog-stats">
+          <div><div class="pstat-val" style="color:var(--red)">0</div><div class="pstat-label">Overdue</div></div>
+          <div><div class="pstat-val" style="color:var(--amber)">0</div><div class="pstat-label">Due soon</div></div>
+          <div><div class="pstat-val" style="color:var(--green)">6</div><div class="pstat-label">Current</div></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ TAB 2: FIRE SAFETY ══ -->
+    <div class="content" id="tab-fire">
+
+      <div class="stat-row">
+        <div class="stat-card neutral">
+          <div class="stat-label">Extinguishers</div>
+          <div class="stat-val" style="color:var(--text-primary)">24</div>
+          <div class="stat-hint">Total on property</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">Inspected</div>
+          <div class="stat-val">22</div>
+          <div class="stat-hint">Current this month</div>
+        </div>
+        <div class="stat-card alert">
+          <div class="stat-label">Overdue</div>
+          <div class="stat-val">2</div>
+          <div class="stat-hint">Need inspection now</div>
+        </div>
+        <div class="stat-card warn">
+          <div class="stat-label">Next service</div>
+          <div class="stat-val" style="font-size:18px;margin-top:8px">Jul 9</div>
+          <div class="stat-hint">Main lodge — 2 days</div>
+        </div>
+      </div>
+
+      <div class="alert-banner">
+        <div class="alert-icon">!</div>
+        <div class="alert-text">Cabin 4 smoke alarm failed weekly test on Jul 5. Replacement unit ordered — confirm installation completed before tonight's occupancy.</div>
+        <button class="alert-btn" onclick="openModal('logModal')">Mark resolved</button>
+      </div>
+
+      <!-- Fire Extinguishers -->
+      <div class="section-header">
+        <div class="section-title">Fire extinguishers</div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('addItemModal')">+ Add unit</button>
+      </div>
+
+      <div class="item-list">
+        <div class="item-card alert">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Dining hall — kitchen (x2)</div>
+              <div class="item-meta">Type: Class K · Required monthly inspection · Last: May 28</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-alert">Overdue 40 days</span>
+              <div class="item-date" style="margin-top:6px">Due: Jun 28</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Units</div><div class="item-field-val plain">2 of 2</div></div>
+            <div><div class="item-field-label">Last inspection</div><div class="item-field-val alert">May 28</div></div>
+            <div><div class="item-field-label">Expiry</div><div class="item-field-val plain">Dec 2025</div></div>
+            <div><div class="item-field-label">Inspector</div><div class="item-field-val plain">SafeGuard Co.</div></div>
+          </div>
+          <div class="item-footer">
+            <button class="btn btn-primary btn-sm" onclick="openModal('logModal')">Log inspection</button>
+            <button class="btn btn-ghost btn-sm">Contact vendor</button>
+          </div>
+        </div>
+
+        <div class="item-card warn">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Main lodge — entrance and great room (x3)</div>
+              <div class="item-meta">Type: ABC dry chemical · Monthly inspection · Last: Jun 9</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-warn">Due in 2 days</span>
+              <div class="item-date" style="margin-top:6px">Due: Jul 9</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Units</div><div class="item-field-val plain">3 of 3</div></div>
+            <div><div class="item-field-label">Last inspection</div><div class="item-field-val ok">Jun 9</div></div>
+            <div><div class="item-field-label">Expiry</div><div class="item-field-val plain">Mar 2026</div></div>
+            <div><div class="item-field-label">Inspector</div><div class="item-field-val plain">Tom H.</div></div>
+          </div>
+          <div class="item-footer">
+            <button class="btn btn-primary btn-sm" onclick="openModal('logModal')">Log inspection</button>
+            <button class="btn btn-ghost btn-sm">View history</button>
+          </div>
+        </div>
+
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Cabins 1–12 (x12)</div>
+              <div class="item-meta">Type: ABC dry chemical · Monthly inspection · All inspected Jun 30</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">Current</span>
+              <div class="item-date" style="margin-top:6px">Next: Jul 30</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Units</div><div class="item-field-val ok">12 of 12</div></div>
+            <div><div class="item-field-label">Last inspection</div><div class="item-field-val ok">Jun 30</div></div>
+            <div><div class="item-field-label">Expiry</div><div class="item-field-val plain">Jun 2026</div></div>
+            <div><div class="item-field-label">Inspector</div><div class="item-field-val plain">Tom H.</div></div>
+          </div>
+          <div class="item-footer">
+            <button class="btn btn-ghost btn-sm">View history</button>
+          </div>
+        </div>
+
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Art barn, health center, waterfront shed (x4)</div>
+              <div class="item-meta">Type: ABC dry chemical · Monthly inspection · Last: Jul 1</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">Current</span>
+              <div class="item-date" style="margin-top:6px">Next: Aug 1</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Units</div><div class="item-field-val ok">4 of 4</div></div>
+            <div><div class="item-field-label">Last inspection</div><div class="item-field-val ok">Jul 1</div></div>
+            <div><div class="item-field-label">Expiry</div><div class="item-field-val plain">Jan 2026</div></div>
+            <div><div class="item-field-label">Inspector</div><div class="item-field-val plain">Jordan M.</div></div>
+          </div>
+          <div class="item-footer">
+            <button class="btn btn-ghost btn-sm">View history</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Smoke & CO Alarms -->
+      <div class="section-header">
+        <div class="section-title">Smoke &amp; carbon monoxide alarms</div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('logModal')">Log weekly test</button>
+      </div>
+
+      <div class="item-list">
+        <div class="item-card alert">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Cabin 4 — smoke alarm</div>
+              <div class="item-meta">Failed weekly test Jul 5 · Replacement unit ordered · Hardwired + battery backup</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-alert">Failed — replace</span>
+              <div class="item-date" style="margin-top:6px">Failed: Jul 5</div>
+            </div>
+          </div>
+          <div class="item-footer">
+            <button class="btn btn-primary btn-sm" onclick="openModal('logModal')">Confirm replacement</button>
+            <button class="btn btn-ghost btn-sm">View history</button>
+          </div>
+        </div>
+
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">All other cabins (x11), lodge, dining hall, health center</div>
+              <div class="item-meta">Weekly test completed Jul 7 · All passed · Batteries replaced pre-season</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">All passed</span>
+              <div class="item-date" style="margin-top:6px">Next test: Jul 14</div>
+            </div>
+          </div>
+          <div class="item-footer">
+            <button class="btn btn-ghost btn-sm">View test log</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sprinkler Systems -->
+      <div class="section-header">
+        <div class="section-title">Sprinkler systems</div>
+      </div>
+
+      <div class="item-list">
+        <div class="item-card warn">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Art barn sprinkler system</div>
+              <div class="item-meta">Quarterly test required · Last: Apr 11 · Vendor: FireGuard Systems</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-warn">Due in 4 days</span>
+              <div class="item-date" style="margin-top:6px">Due: Jul 11</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">System type</div><div class="item-field-val plain">Wet pipe</div></div>
+            <div><div class="item-field-label">Last tested</div><div class="item-field-val warn">Apr 11</div></div>
+            <div><div class="item-field-label">Frequency</div><div class="item-field-val plain">Quarterly</div></div>
+            <div><div class="item-field-label">Vendor</div><div class="item-field-val plain">FireGuard Systems</div></div>
+          </div>
+          <div class="item-footer">
+            <button class="btn btn-primary btn-sm" onclick="openModal('logModal')">Log test</button>
+            <button class="btn btn-ghost btn-sm">Contact vendor</button>
+          </div>
+        </div>
+
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Dining hall sprinkler system</div>
+              <div class="item-meta">Quarterly test required · Last: Jun 15 · Vendor: FireGuard Systems</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">Current</span>
+              <div class="item-date" style="margin-top:6px">Next: Sep 15</div>
+            </div>
+          </div>
+          <div class="item-footer">
+            <button class="btn btn-ghost btn-sm">View history</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TAB 3: WATER SAFETY ══ -->
+    <div class="content" id="tab-water">
+
+      <div class="stat-row">
+        <div class="stat-card ok">
+          <div class="stat-label">Lifeguards on duty</div>
+          <div class="stat-val">4</div>
+          <div class="stat-hint">All certified current</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">Rescue equipment</div>
+          <div class="stat-val">100%</div>
+          <div class="stat-hint">All items present</div>
+        </div>
+        <div class="stat-card warn">
+          <div class="stat-label">Next drill</div>
+          <div class="stat-val" style="font-size:18px;margin-top:8px">Jul 10</div>
+          <div class="stat-hint">Emergency response drill</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">ACA waterfront</div>
+          <div class="stat-val">Pass</div>
+          <div class="stat-hint">Last checked Jul 2</div>
+        </div>
+      </div>
+
+      <!-- Lifeguard certifications -->
+      <div class="section-header">
+        <div class="section-title">Lifeguard certifications</div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('addItemModal')">+ Add lifeguard</button>
+      </div>
+
+      <div class="item-list">
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Alex R. — Head lifeguard</div>
+              <div class="item-meta">Red Cross Lifeguarding · CPR/AED · First Aid · WSI certified</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">All current</span>
+              <div class="item-date" style="margin-top:6px">Expires: Dec 2025</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Lifeguard cert</div><div class="item-field-val ok">Current</div></div>
+            <div><div class="item-field-label">CPR/AED</div><div class="item-field-val ok">Current</div></div>
+            <div><div class="item-field-label">First aid</div><div class="item-field-val ok">Current</div></div>
+            <div><div class="item-field-label">WSI</div><div class="item-field-val ok">Current</div></div>
+          </div>
+        </div>
+
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Sam K. — Lifeguard</div>
+              <div class="item-meta">Red Cross Lifeguarding · CPR/AED · First Aid</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">All current</span>
+              <div class="item-date" style="margin-top:6px">Expires: Aug 2025</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Lifeguard cert</div><div class="item-field-val ok">Current</div></div>
+            <div><div class="item-field-label">CPR/AED</div><div class="item-field-val ok">Current</div></div>
+            <div><div class="item-field-label">First aid</div><div class="item-field-val ok">Current</div></div>
+            <div><div class="item-field-label">WSI</div><div class="item-field-val plain">N/A</div></div>
+          </div>
+        </div>
+
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Dana L. — Lifeguard</div>
+              <div class="item-meta">Red Cross Lifeguarding · CPR/AED · First Aid</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">All current</span>
+              <div class="item-date" style="margin-top:6px">Expires: Nov 2025</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Lifeguard cert</div><div class="item-field-val ok">Current</div></div>
+            <div><div class="item-field-label">CPR/AED</div><div class="item-field-val ok">Current</div></div>
+            <div><div class="item-field-label">First aid</div><div class="item-field-val ok">Current</div></div>
+            <div><div class="item-field-label">WSI</div><div class="item-field-val plain">N/A</div></div>
+          </div>
+        </div>
+
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Chris M. — Lifeguard</div>
+              <div class="item-meta">Red Cross Lifeguarding · CPR/AED · First Aid</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">All current</span>
+              <div class="item-date" style="margin-top:6px">Expires: Sep 2025</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Lifeguard cert</div><div class="item-field-val ok">Current</div></div>
+            <div><div class="item-field-label">CPR/AED</div><div class="item-field-val ok">Current</div></div>
+            <div><div class="item-field-label">First aid</div><div class="item-field-val ok">Current</div></div>
+            <div><div class="item-field-label">WSI</div><div class="item-field-val plain">N/A</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Waterfront rescue equipment -->
+      <div class="section-header">
+        <div class="section-title">Waterfront rescue equipment</div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('logModal')">Log daily check</button>
+      </div>
+
+      <div class="item-list">
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Daily waterfront safety check</div>
+              <div class="item-meta">Required every operating day · Covers all rescue equipment, signage, and station setup</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">Completed today</span>
+              <div class="item-date" style="margin-top:6px">Jul 7 · 8:00am</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Rescue tubes</div><div class="item-field-val ok">4 present</div></div>
+            <div><div class="item-field-label">Life rings</div><div class="item-field-val ok">2 present</div></div>
+            <div><div class="item-field-label">Reaching pole</div><div class="item-field-val ok">Present</div></div>
+            <div><div class="item-field-label">Spine board</div><div class="item-field-val ok">Present</div></div>
+          </div>
+          <div class="hist-row">
+            <span style="font-size:11px;color:var(--text-muted);margin-right:4px">Recent checks:</span>
+            <span class="hist-chip">Jul 7</span>
+            <span class="hist-chip">Jul 6</span>
+            <span class="hist-chip">Jul 5</span>
+            <span class="hist-chip">Jul 4</span>
+            <span class="hist-chip">Jul 3</span>
+            <span class="hist-chip">Jul 2</span>
+            <span class="hist-chip">Jul 1</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TAB 4: KITCHEN ══ -->
+    <div class="content" id="tab-kitchen">
+
+      <div class="stat-row">
+        <div class="stat-card alert">
+          <div class="stat-label">Hood fan cleaning</div>
+          <div class="stat-val">Overdue</div>
+          <div class="stat-hint">6 days past due</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">Health permit</div>
+          <div class="stat-val">Valid</div>
+          <div class="stat-hint">Expires Dec 31</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">Last inspection</div>
+          <div class="stat-val">Jun 18</div>
+          <div class="stat-hint">Passed — no violations</div>
+        </div>
+        <div class="stat-card warn">
+          <div class="stat-label">Temp logs</div>
+          <div class="stat-val">Today</div>
+          <div class="stat-hint">AM log done · PM pending</div>
+        </div>
+      </div>
+
+      <div class="alert-banner">
+        <div class="alert-icon">!</div>
+        <div class="alert-text">Dining hall hood fan cleaning is overdue by 6 days. Fire code requires cleaning every 90 days. Operating with an overdue hood fan voids your fire insurance coverage and creates ACA non-compliance. Schedule your vendor immediately.</div>
+        <button class="alert-btn" onclick="openModal('logModal')">Log scheduling</button>
+      </div>
+
+      <!-- Hood fans -->
+      <div class="section-header">
+        <div class="section-title">Kitchen hood fan cleaning</div>
+      </div>
+
+      <div class="item-list">
+        <div class="item-card alert">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Dining hall — main kitchen hood (x2 fans)</div>
+              <div class="item-meta">Fire code required every 90 days · Vendor: CleanVent Pro · Last: Apr 1</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-alert">Overdue 6 days</span>
+              <div class="item-date" style="margin-top:6px">Due: Jul 1</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Hood units</div><div class="item-field-val plain">2 fans</div></div>
+            <div><div class="item-field-label">Last cleaned</div><div class="item-field-val alert">Apr 1</div></div>
+            <div><div class="item-field-label">Frequency</div><div class="item-field-val plain">Every 90 days</div></div>
+            <div><div class="item-field-label">Vendor</div><div class="item-field-val plain">CleanVent Pro</div></div>
+          </div>
+          <div class="hist-row">
+            <span style="font-size:11px;color:var(--text-muted);margin-right:4px">Cleaning history:</span>
+            <span class="hist-chip">Apr 1</span>
+            <span class="hist-chip">Jan 2</span>
+            <span class="hist-chip">Oct 3</span>
+            <span class="hist-chip">Jul 5 (2024)</span>
+          </div>
+          <div class="item-footer">
+            <button class="btn btn-primary btn-sm" onclick="openModal('logModal')">Log cleaning</button>
+            <button class="btn btn-ghost btn-sm">Contact CleanVent Pro</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Temperature logs -->
+      <div class="section-header">
+        <div class="section-title">Refrigeration temperature logs</div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('logModal')">+ Log temps</button>
+      </div>
+
+      <div class="item-list">
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Walk-in refrigerator</div>
+              <div class="item-meta">Required range: 35°F – 41°F · Logged twice daily · Health dept. required</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">In range</span>
+              <div class="item-date" style="margin-top:6px">Last: Jul 7 · 7:00am</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">AM reading</div><div class="item-field-val ok">38°F</div></div>
+            <div><div class="item-field-label">PM reading</div><div class="item-field-val plain">— pending</div></div>
+            <div><div class="item-field-label">Required range</div><div class="item-field-val plain">35–41°F</div></div>
+            <div><div class="item-field-label">Logged by</div><div class="item-field-val plain">Dana K.</div></div>
+          </div>
+        </div>
+
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Walk-in freezer</div>
+              <div class="item-meta">Required range: 0°F – 10°F · Logged twice daily</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">In range</span>
+              <div class="item-date" style="margin-top:6px">Last: Jul 7 · 7:00am</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">AM reading</div><div class="item-field-val ok">4°F</div></div>
+            <div><div class="item-field-label">PM reading</div><div class="item-field-val plain">— pending</div></div>
+            <div><div class="item-field-label">Required range</div><div class="item-field-val plain">0–10°F</div></div>
+            <div><div class="item-field-label">Logged by</div><div class="item-field-val plain">Dana K.</div></div>
+          </div>
+        </div>
+
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Reach-in refrigerators (x3)</div>
+              <div class="item-meta">Required range: 35°F – 41°F · Daily log · Prep station, salad station, beverage</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">All in range</span>
+              <div class="item-date" style="margin-top:6px">Last: Jul 7 · 7:15am</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Prep station</div><div class="item-field-val ok">37°F</div></div>
+            <div><div class="item-field-label">Salad station</div><div class="item-field-val ok">39°F</div></div>
+            <div><div class="item-field-label">Beverage</div><div class="item-field-val ok">38°F</div></div>
+            <div><div class="item-field-label">Logged by</div><div class="item-field-val plain">Dana K.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Health inspection -->
+      <div class="section-header">
+        <div class="section-title">Health department inspections</div>
+      </div>
+
+      <div class="item-list">
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">County health department — kitchen inspection</div>
+              <div class="item-meta">Annual · County Board of Health · Covers food storage, temps, sanitation, equipment</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">Passed</span>
+              <div class="item-date" style="margin-top:6px">Inspected: Jun 18</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Result</div><div class="item-field-val ok">Pass</div></div>
+            <div><div class="item-field-label">Score</div><div class="item-field-val ok">96/100</div></div>
+            <div><div class="item-field-label">Violations</div><div class="item-field-val ok">0</div></div>
+            <div><div class="item-field-label">Next due</div><div class="item-field-val plain">Jun 2026</div></div>
+          </div>
+          <div class="item-footer">
+            <button class="btn btn-ghost btn-sm">View report</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TAB 5: DRILLS & TRAINING ══ -->
+    <div class="content" id="tab-drills">
+
+      <div class="stat-row">
+        <div class="stat-card ok">
+          <div class="stat-label">Fire drills</div>
+          <div class="stat-val">3</div>
+          <div class="stat-hint">Completed this season</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">Staff CPR certified</div>
+          <div class="stat-val">100%</div>
+          <div class="stat-hint">All 42 staff current</div>
+        </div>
+        <div class="stat-card warn">
+          <div class="stat-label">Next drill</div>
+          <div class="stat-val" style="font-size:18px;margin-top:8px">Jul 10</div>
+          <div class="stat-hint">Waterfront emergency</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">ACA requirement</div>
+          <div class="stat-val">Met</div>
+          <div class="stat-hint">All mandatory drills done</div>
+        </div>
+      </div>
+
+      <!-- Drills log -->
+      <div class="section-header">
+        <div class="section-title">Emergency drills</div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('logDrillModal')">+ Log drill</button>
+      </div>
+
+      <div class="item-list">
+        <div class="item-card warn">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Waterfront missing swimmer drill</div>
+              <div class="item-meta">ACA required · Once per session · All waterfront and ops staff · ~30 min</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-warn">Scheduled Jul 10</span>
+              <div class="item-date" style="margin-top:6px">3 days away</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Lead</div><div class="item-field-val plain">Jordan M.</div></div>
+            <div><div class="item-field-label">Participants</div><div class="item-field-val plain">All waterfront staff</div></div>
+            <div><div class="item-field-label">Last run</div><div class="item-field-val plain">Jun 25</div></div>
+            <div><div class="item-field-label">Frequency</div><div class="item-field-val plain">Weekly</div></div>
+          </div>
+          <div class="item-footer">
+            <button class="btn btn-primary btn-sm" onclick="openModal('logDrillModal')">Log when complete</button>
+          </div>
+        </div>
+
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Full camp fire evacuation drill</div>
+              <div class="item-meta">ACA required · Monthly during session · All campers and staff · Timed</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">Completed</span>
+              <div class="item-date" style="margin-top:6px">Jul 3 · 10:15am</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Evacuation time</div><div class="item-field-val ok">4m 12s</div></div>
+            <div><div class="item-field-label">Participants</div><div class="item-field-val plain">312 total</div></div>
+            <div><div class="item-field-label">Issues noted</div><div class="item-field-val ok">None</div></div>
+            <div><div class="item-field-label">Next drill</div><div class="item-field-val plain">Aug 3</div></div>
+          </div>
+          <div class="hist-row">
+            <span style="font-size:11px;color:var(--text-muted);margin-right:4px">Drill history:</span>
+            <span class="hist-chip">Jul 3 — 4m 12s</span>
+            <span class="hist-chip">Jun 7 — 4m 48s</span>
+            <span class="hist-chip">Pre-season — 5m 30s</span>
+          </div>
+        </div>
+
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Cabin fire drill — nighttime</div>
+              <div class="item-meta">ACA required · Once per session at night · All campers and cabin staff</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">Completed</span>
+              <div class="item-date" style="margin-top:6px">Jun 28 · 11:00pm</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Evacuation time</div><div class="item-field-val ok">3m 55s</div></div>
+            <div><div class="item-field-label">All accounted</div><div class="item-field-val ok">Yes</div></div>
+            <div><div class="item-field-label">Issues noted</div><div class="item-field-val plain">Cabin 9 slow</div></div>
+            <div><div class="item-field-label">Follow-up</div><div class="item-field-val plain">Reviewed Jun 29</div></div>
+          </div>
+        </div>
+
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Severe weather / shelter-in-place drill</div>
+              <div class="item-meta">Required once per season · All campers and staff · All shelter locations verified</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">Completed</span>
+              <div class="item-date" style="margin-top:6px">Jun 15 · 2:00pm</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Shelter time</div><div class="item-field-val ok">2m 40s</div></div>
+            <div><div class="item-field-label">Locations used</div><div class="item-field-val plain">Lodge, dining hall</div></div>
+            <div><div class="item-field-label">Issues noted</div><div class="item-field-val ok">None</div></div>
+            <div><div class="item-field-label">Next required</div><div class="item-field-val plain">Pre-season 2026</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Staff training -->
+      <div class="section-header">
+        <div class="section-title">Staff safety training</div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('addItemModal')">+ Add staff member</button>
+      </div>
+
+      <div class="item-list">
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">CPR / AED certification — all staff (42)</div>
+              <div class="item-meta">Required for all staff before camp opens · Red Cross or equivalent · 2-year validity</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">100% current</span>
+              <div class="item-date" style="margin-top:6px">Verified: Jun 20</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Staff certified</div><div class="item-field-val ok">42 of 42</div></div>
+            <div><div class="item-field-label">Earliest expiry</div><div class="item-field-val warn">Sep 2025</div></div>
+            <div><div class="item-field-label">Training provider</div><div class="item-field-val plain">Red Cross</div></div>
+            <div><div class="item-field-label">Recert reminder</div><div class="item-field-val plain">Aug 15</div></div>
+          </div>
+          <div class="item-footer">
+            <button class="btn btn-ghost btn-sm">View all records</button>
+          </div>
+        </div>
+
+        <div class="item-card ok">
+          <div class="item-header">
+            <div class="item-left">
+              <div class="item-title">Mandatory reporter training — all staff</div>
+              <div class="item-meta">Required annually · Child abuse identification and reporting · State mandated</div>
+            </div>
+            <div class="item-right">
+              <span class="badge badge-ok">100% complete</span>
+              <div class="item-date" style="margin-top:6px">Completed: Jun 18</div>
+            </div>
+          </div>
+          <div class="item-grid">
+            <div><div class="item-field-label">Staff trained</div><div class="item-field-val ok">42 of 42</div></div>
+            <div><div class="item-field-label">Format</div><div class="item-field-val plain">Online + sign-off</div></div>
+            <div><div class="item-field-label">Validity</div><div class="item-field-val plain">Annual</div></div>
+            <div><div class="item-field-label">Next required</div><div class="item-field-val plain">Jun 2026</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Generic Log Modal -->
+<div class="overlay" id="logModal" onclick="closeOutside(event,'logModal')">
+  <div class="modal">
+    <div class="modal-title">Log inspection / action</div>
+    <div class="modal-sub">Record a completed inspection, corrective action, or compliance event</div>
+    <div class="fg"><label class="fl">Category</label>
+      <select class="fs">
+        <option>Fire extinguisher inspection</option>
+        <option>Smoke / CO alarm test</option>
+        <option>Sprinkler test</option>
+        <option>Hood fan cleaning</option>
+        <option>Temperature log</option>
+        <option>Waterfront safety check</option>
+        <option>Health dept. inspection</option>
+        <option>Corrective action taken</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Location / item</label><input class="fi" type="text" placeholder="e.g. Dining hall kitchen, Cabin 4, Main lodge"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Date</label><input class="fi" type="date"></div>
+      <div class="fg"><label class="fl">Completed by</label>
+        <select class="fs">
+          <option>Jordan M. (Ops)</option>
+          <option>Tom H. (Maintenance)</option>
+          <option>Dana K. (Food Svc)</option>
+          <option>External vendor</option>
+          <option>County inspector</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Result</label>
+      <select class="fs">
+        <option>Passed — no issues</option>
+        <option>Passed with notes</option>
+        <option>Action taken — resolved</option>
+        <option>Failed — follow-up required</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Notes</label><textarea class="ft" placeholder="Document findings, actions taken, or follow-up required..."></textarea></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Cost (if any)</label><input class="fi" type="text" placeholder="$0"></div>
+      <div class="fg"><label class="fl">Next due date</label><input class="fi" type="date"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="closeModal('logModal')">Save record</button>
+      <button class="btn btn-ghost" onclick="closeModal('logModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Log Drill Modal -->
+<div class="overlay" id="logDrillModal" onclick="closeOutside(event,'logDrillModal')">
+  <div class="modal">
+    <div class="modal-title">Log emergency drill</div>
+    <div class="modal-sub">Record a completed drill with timing and participant details</div>
+    <div class="fg"><label class="fl">Drill type</label>
+      <select class="fs">
+        <option>Full camp fire evacuation</option>
+        <option>Nighttime cabin fire drill</option>
+        <option>Waterfront missing swimmer</option>
+        <option>Severe weather / shelter-in-place</option>
+        <option>Medical emergency response</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Date &amp; time</label><input class="fi" type="datetime-local"></div>
+      <div class="fg"><label class="fl">Lead by</label><select class="fs"><option>Jordan M.</option><option>Alex R. (Head LG)</option><option>Camp Director</option></select></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Total participants</label><input class="fi" type="number" placeholder="0"></div>
+      <div class="fg"><label class="fl">Evacuation / response time</label><input class="fi" type="text" placeholder="e.g. 4m 12s"></div>
+    </div>
+    <div class="fg"><label class="fl">All participants accounted for?</label><select class="fs"><option>Yes — all accounted for</option><option>No — issue during drill</option></select></div>
+    <div class="fg"><label class="fl">Issues noted / follow-up</label><textarea class="ft" placeholder="Any problems, slow areas, or actions needed after this drill..."></textarea></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="closeModal('logDrillModal')">Save drill record</button>
+      <button class="btn btn-ghost" onclick="closeModal('logDrillModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Item Modal -->
+<div class="overlay" id="addItemModal" onclick="closeOutside(event,'addItemModal')">
+  <div class="modal">
+    <div class="modal-title">Add item to track</div>
+    <div class="modal-sub">Add a new safety or compliance item to your registry</div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Item type</label>
+        <select class="fs">
+          <option>Fire extinguisher</option>
+          <option>Smoke alarm</option>
+          <option>CO alarm</option>
+          <option>Sprinkler system</option>
+          <option>Hood fan</option>
+          <option>Refrigeration unit</option>
+          <option>Lifeguard certification</option>
+          <option>Staff training record</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Location</label><input class="fi" type="text" placeholder="Building or area"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Inspection frequency</label>
+        <select class="fs"><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Quarterly</option><option>Annually</option></select>
+      </div>
+      <div class="fg"><label class="fl">Last inspected</label><input class="fi" type="date"></div>
+    </div>
+    <div class="fg"><label class="fl">Responsible vendor / person</label><input class="fi" type="text" placeholder="Name or company"></div>
+    <div class="fg"><label class="fl">Notes</label><textarea class="ft" placeholder="Any additional details..."></textarea></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="closeModal('addItemModal')">Add item</button>
+      <button class="btn btn-ghost" onclick="closeModal('addItemModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(el, tabId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeOutside(e, id) { if (e.target.id === id) closeModal(id); }
+function toggleStask(el) {
+  el.classList.toggle('checked');
+  el.querySelector('.stask-check').classList.toggle('done');
+  el.querySelector('.stask-name').classList.toggle('done');
+}
+</script>
+</body>
+</html>

@@ -8,7 +8,9 @@ import { FireSafetyTab } from '@/components/safety/FireSafetyTab';
 import { WaterSafetyTab } from '@/components/safety/WaterSafetyTab';
 import { KitchenTab } from '@/components/safety/KitchenTab';
 import { DrillsTab } from '@/components/safety/DrillsTab';
+import { StaffTab } from '@/components/safety/StaffTab';
 import { LogInspectionModal } from '@/components/safety/LogInspectionModal';
+import { AddLicenseModal } from '@/components/safety/AddLicenseModal';
 import { LogDrillModal } from '@/components/safety/LogDrillModal';
 import { AddSafetyItemModal } from '@/components/safety/AddSafetyItemModal';
 import { LogTempModal } from '@/components/safety/LogTempModal';
@@ -21,6 +23,7 @@ const TABS: { id: SafetyTab; label: string }[] = [
   { id: 'water', label: 'Water safety' },
   { id: 'kitchen', label: 'Kitchen' },
   { id: 'drills', label: 'Drills & training' },
+  { id: 'staff', label: 'Staff & certs' },
 ];
 
 function exportComplianceReport(
@@ -178,6 +181,7 @@ export function SafetyCompliance() {
     isLogTempModalOpen,
     isSafetyAddStaffModalOpen,
     isStaffCertModalOpen,
+    isAddLicenseModalOpen,
     openSafetyLogInspectionModal,
   } = useUIStore();
 
@@ -232,6 +236,7 @@ export function SafetyCompliance() {
         {activeTab === 'water'    && <WaterSafetyTab />}
         {activeTab === 'kitchen'  && <KitchenTab />}
         {activeTab === 'drills'   && <DrillsTab />}
+        {activeTab === 'staff'    && <StaffTab />}
       </div>
 
       {/* Modals */}
@@ -241,6 +246,7 @@ export function SafetyCompliance() {
       {isLogTempModalOpen && <LogTempModal />}
       {isSafetyAddStaffModalOpen && <AddStaffModal />}
       {isStaffCertModalOpen && <StaffCertModal />}
+      {isAddLicenseModalOpen && <AddLicenseModal />}
     </div>
   );
 }

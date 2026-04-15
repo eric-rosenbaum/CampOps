@@ -4,7 +4,9 @@ import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { Button } from '@/components/shared/Button';
-import type { SafetyStaff, StaffCertification } from '@/lib/types';
+import { generateId } from '@/lib/utils';
+import { addDays } from 'date-fns';
+import type { SafetyStaff, StaffCertification, SafetyInspectionLog, SafetyItem } from '@/lib/types';
 
 const LIFEGUARD_CERT_TYPES = ['lifeguard', 'cpr_aed', 'first_aid', 'wsi'] as const;
 
@@ -114,16 +116,48 @@ const RESULT_LABELS: Record<string, string> = {
   failed: 'Failed',
 };
 
-function WaterfrontItemCard({ item, onLog, onEdit }: { item: import('@/lib/types').SafetyItem; onLog: () => void; onEdit: () => void }) {
+function WaterfrontItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () => void; onEdit: () => void }) {
   const status = safetyItemStatus(item);
-  const { recentLogsForItem } = useSafetyStore();
+  const { recentLogsForItem, addInspectionLog } = useSafetyStore();
   const { openEditInspectionLogModal } = useUIStore();
+  const { currentUser } = useAuth();
   const [showHistory, setShowHistory] = useState(false);
+  const [logging, setLogging] = useState(false);
   const recentLogs = recentLogsForItem(item.id, 7);
   const historyLogs = recentLogsForItem(item.id, 20);
   const borderCls = status === 'alert' ? 'border-l-red' : status === 'warn' ? 'border-l-amber' : 'border-l-sage';
   const meta = item.metadata as Record<string, string>;
   const isEquip = ['life_ring', 'rescue_tube', 'rescue_board'].includes(item.type);
+
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const alreadyLoggedToday = recentLogs.some((l) => l.inspectionDate === todayStr);
+
+  function freqDays(freq: string): number {
+    if (freq === 'weekly') return 7;
+    if (freq === 'monthly') return 30;
+    return 1; // daily
+  }
+
+  async function handleQuickLog() {
+    if (logging) return;
+    setLogging(true);
+    const nextDue = addDays(today, freqDays(item.frequency)).toISOString().split('T')[0];
+    const log: SafetyInspectionLog = {
+      id: generateId(),
+      safetyItemId: item.id,
+      inspectionDate: todayStr,
+      completedBy: currentUser?.name ?? 'Staff',
+      result: 'passed',
+      notes: null,
+      cost: null,
+      nextDue,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await addInspectionLog(log);
+    setLogging(false);
+  }
 
   return (
     <div className={`bg-white border border-border border-l-[3px] ${borderCls} rounded-card px-5 py-4`}>
@@ -167,8 +201,21 @@ function WaterfrontItemCard({ item, onLog, onEdit }: { item: import('@/lib/types
         </div>
       )}
 
-      <div className="flex gap-2 mt-3">
-        <Button variant="primary" size="sm" onClick={onLog}>{isEquip ? 'Log inspection' : 'Log check'}</Button>
+      <div className="flex items-center gap-2 mt-3">
+        {isEquip ? (
+          <Button variant="primary" size="sm" onClick={onLog}>Log inspection</Button>
+        ) : alreadyLoggedToday ? (
+          <span className="text-[11px] text-green-muted-text font-semibold">✓ Logged today</span>
+        ) : (
+          <Button variant="primary" size="sm" onClick={handleQuickLog} disabled={logging}>
+            {logging ? 'Logging…' : '✓ Log today\'s check'}
+          </Button>
+        )}
+        {!isEquip && (
+          <button onClick={onLog} className="text-[11px] text-forest/40 hover:text-sage cursor-pointer">
+            + Add notes
+          </button>
+        )}
         <Button variant="ghost" size="sm" onClick={onEdit}>Edit</Button>
         <Button variant="ghost" size="sm" onClick={() => setShowHistory((v) => !v)}>
           {showHistory ? 'Hide history' : 'View history'}

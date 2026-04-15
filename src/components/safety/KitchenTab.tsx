@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { useSafetyStore, safetyItemStatus } from '@/store/safetyStore';
+import { useSafetyStore, safetyItemStatus, certExpiryStatus } from '@/store/safetyStore';
 import { useUIStore } from '@/store/uiStore';
+import { useAuth } from '@/lib/auth';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { Button } from '@/components/shared/Button';
-import type { SafetyItem } from '@/lib/types';
+import { generateId } from '@/lib/utils';
+import type { SafetyItem, SafetyTempLog } from '@/lib/types';
 
 const RESULT_LABELS: Record<string, string> = {
   passed: 'Passed',
@@ -18,15 +20,6 @@ function statusBorderClass(status: 'ok' | 'warn' | 'alert') {
   return 'border-l-sage';
 }
 
-function permitExpiryStatus(permitExpiry: string | null): 'valid' | 'expiring' | 'expired' | 'unknown' {
-  if (!permitExpiry) return 'unknown';
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const exp = new Date(permitExpiry + 'T00:00:00');
-  const diffDays = Math.round((exp.getTime() - today.getTime()) / 86400000);
-  if (diffDays < 0) return 'expired';
-  if (diffDays <= 30) return 'expiring';
-  return 'valid';
-}
 
 function StatusBadge({ status, nextDue }: { status: 'ok' | 'warn' | 'alert'; nextDue: string | null }) {
   if (status === 'alert') {
@@ -38,6 +31,66 @@ function StatusBadge({ status, nextDue }: { status: 'ok' | 'warn' | 'alert'; nex
     return <span className="text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide bg-amber-bg text-amber-text">Due in {days} day{days === 1 ? '' : 's'}</span>;
   }
   return <span className="text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide bg-green-muted-bg text-green-muted-text">Current</span>;
+}
+
+function QuickTempInput({ session, item, loggedBy, onLog }: {
+  session: 'am' | 'pm';
+  item: SafetyItem;
+  loggedBy: string;
+  onLog: (log: SafetyTempLog) => void;
+}) {
+  const [value, setValue] = useState('');
+  const tempMin = item.metadata.temp_min as number | undefined;
+  const tempMax = item.metadata.temp_max as number | undefined;
+  const temp = value ? parseFloat(value) : null;
+  const inRange = temp !== null && tempMin !== undefined && tempMax !== undefined
+    ? temp >= tempMin && temp <= tempMax
+    : null;
+
+  function handleLog() {
+    if (!value || temp === null) return;
+    const now = new Date().toISOString();
+    const log: SafetyTempLog = {
+      id: generateId(),
+      itemId: item.id,
+      logDate: now.slice(0, 10),
+      session,
+      temperature: temp,
+      inRange: inRange ?? true,
+      loggedBy,
+      notes: null,
+      createdAt: now,
+    };
+    onLog(log);
+    setValue('');
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] font-semibold text-forest/40 uppercase w-5">{session}</span>
+      <input
+        type="number"
+        step="0.1"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleLog()}
+        className="w-20 text-[13px] font-mono bg-white border border-border rounded-btn px-2 py-1 focus:outline-none focus:border-sage"
+        placeholder="°F"
+      />
+      {inRange !== null && (
+        <span className={`text-[11px] font-semibold ${inRange ? 'text-green-muted-text' : 'text-red'}`}>
+          {inRange ? '✓' : '✗'}
+        </span>
+      )}
+      <button
+        onClick={handleLog}
+        disabled={!value}
+        className="text-[11px] font-semibold text-white bg-sage px-2.5 py-1 rounded disabled:opacity-30 cursor-pointer disabled:cursor-default hover:bg-sage/90 transition-colors"
+      >
+        Log
+      </button>
+    </div>
+  );
 }
 
 function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () => void; onEdit: () => void }) {
@@ -93,43 +146,31 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
         </div>
       )}
 
-      {item.type === 'health_inspection' && (() => {
-        const permitExpiry = (meta.permit_expiry as string) ?? null;
-        const ps = permitExpiryStatus(permitExpiry);
-        return (
-          <div className="grid grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
-            <div>
-              <p className="text-[10px] text-forest/40 font-medium mb-0.5">Permit status</p>
-              <p className={`text-[12px] font-semibold ${ps === 'valid' ? 'text-green-muted-text' : ps === 'expiring' ? 'text-amber-text' : ps === 'expired' ? 'text-red' : 'text-forest/30'}`}>
-                {ps === 'valid' ? 'Valid' : ps === 'expiring' ? 'Expiring soon' : ps === 'expired' ? 'Expired' : 'Not on file'}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] text-forest/40 font-medium mb-0.5">Permit expiry</p>
-              <p className={`text-[12px] font-semibold font-mono ${ps === 'expired' ? 'text-red' : ps === 'expiring' ? 'text-amber-text' : 'text-forest/70'}`}>
-                {permitExpiry ? new Date(permitExpiry + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] text-forest/40 font-medium mb-0.5">Last result</p>
-              <p className={`text-[12px] font-semibold ${
-                recentLogs[0]?.result === 'failed' ? 'text-red' :
-                recentLogs[0]?.result === 'passed_with_notes' || recentLogs[0]?.result === 'action_taken' ? 'text-amber-text' :
-                recentLogs[0]?.result === 'passed' ? 'text-green-muted-text' :
-                'text-forest/40'
-              }`}>
-                {recentLogs[0] ? (RESULT_LABELS[recentLogs[0].result] ?? recentLogs[0].result) : '—'}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] text-forest/40 font-medium mb-0.5">Last inspected</p>
-              <p className="text-[12px] font-semibold font-mono text-forest/70">
-                {item.lastInspected ? new Date(item.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
-              </p>
-            </div>
+      {item.type === 'health_inspection' && (
+        <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-cream-dark">
+          <div>
+            <p className="text-[10px] text-forest/40 font-medium mb-0.5">Inspecting authority</p>
+            <p className="text-[12px] font-medium text-forest">{item.vendor ?? '—'}</p>
           </div>
-        );
-      })()}
+          <div>
+            <p className="text-[10px] text-forest/40 font-medium mb-0.5">Last result</p>
+            <p className={`text-[12px] font-semibold ${
+              recentLogs[0]?.result === 'failed' ? 'text-red' :
+              recentLogs[0]?.result === 'passed_with_notes' || recentLogs[0]?.result === 'action_taken' ? 'text-amber-text' :
+              recentLogs[0]?.result === 'passed' ? 'text-green-muted-text' :
+              'text-forest/40'
+            }`}>
+              {recentLogs[0] ? (RESULT_LABELS[recentLogs[0].result] ?? recentLogs[0].result) : '—'}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] text-forest/40 font-medium mb-0.5">Last inspected</p>
+            <p className="text-[12px] font-semibold font-mono text-forest/70">
+              {item.lastInspected ? new Date(item.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {recentLogs.length > 0 && item.type === 'hood_fan' && (
         <div className="flex items-center gap-2 mt-3 pt-3 border-t border-cream-dark flex-wrap">
@@ -191,8 +232,9 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
 }
 
 function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
-  const { tempLogsForItem, tempLogs } = useSafetyStore();
-  const { openLogTempModal } = useUIStore();
+  const { tempLogsForItem, tempLogs, addTempLog } = useSafetyStore();
+  const { openLogTempModal, openEditTempLogModal } = useUIStore();
+  const { currentUser } = useAuth();
   const today = new Date().toISOString().slice(0, 10);
   const { am, pm } = tempLogsForItem(item.id, today);
   const meta = item.metadata as Record<string, number>;
@@ -261,11 +303,22 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
         </div>
       </div>
 
+      {/* Quick inline log */}
+      {(!am || !pm) && (
+        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-cream-dark flex-wrap">
+          <span className="text-[11px] text-forest/40 font-medium">Quick log:</span>
+          {!am && (
+            <QuickTempInput session="am" item={item} loggedBy={currentUser.name} onLog={addTempLog} />
+          )}
+          {!pm && (
+            <QuickTempInput session="pm" item={item} loggedBy={currentUser.name} onLog={addTempLog} />
+          )}
+        </div>
+      )}
+
       <div className="flex gap-2 mt-3">
-        {!am && <Button variant="primary" size="sm" onClick={() => openLogTempModal(item.id)}>Log AM temp</Button>}
-        {am && !pm && <Button variant="primary" size="sm" onClick={() => openLogTempModal(item.id)}>Log PM temp</Button>}
-        {am && pm && <Button variant="ghost" size="sm" onClick={() => openLogTempModal(item.id)}>Log reading</Button>}
-        <Button variant="ghost" size="sm" onClick={onEdit}>Edit</Button>
+        {(am && pm) && <Button variant="ghost" size="sm" onClick={() => openLogTempModal(item.id)}>Correct a reading</Button>}
+        <Button variant="ghost" size="sm" onClick={onEdit}>Edit unit</Button>
         <Button variant="ghost" size="sm" onClick={() => setShowHistory((v) => !v)}>
           {showHistory ? 'Hide history' : 'View history'}
         </Button>
@@ -278,27 +331,38 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
             <p className="text-[11px] text-forest/30 italic">No temperature logs yet.</p>
           ) : (
             <div className="space-y-0">
-              <div className="grid grid-cols-4 gap-3 mb-1">
+              <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 mb-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-forest/30">Date</span>
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-forest/30">AM</span>
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-forest/30">PM</span>
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-forest/30">Logged by</span>
+                <span></span>
               </div>
               {historyDates.map(([date, { am: amLog, pm: pmLog }]) => {
                 const anyOutOfRange = (amLog && !amLog.inRange) || (pmLog && !pmLog.inRange);
                 return (
-                  <div key={date} className={`grid grid-cols-4 gap-3 py-1.5 border-t border-cream-dark text-[11px] ${anyOutOfRange ? 'bg-red-bg/30 -mx-1 px-1 rounded' : ''}`}>
+                  <div key={date} className={`grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 py-1.5 border-t border-cream-dark text-[11px] ${anyOutOfRange ? 'bg-red-bg/30 -mx-1 px-1 rounded' : ''}`}>
                     <span className="font-mono text-forest/60">
                       {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       {date === today ? <span className="text-sage ml-1 font-semibold">today</span> : ''}
                     </span>
-                    <span className={`font-mono font-semibold ${amLog ? (amLog.inRange ? 'text-green-muted-text' : 'text-red') : 'text-forest/25'}`}>
+                    <button
+                      onClick={() => amLog && openEditTempLogModal(amLog.id)}
+                      className={`font-mono font-semibold text-left ${amLog ? ((amLog.inRange ? 'text-green-muted-text' : 'text-red') + ' hover:underline cursor-pointer') : 'text-forest/25 cursor-default'}`}
+                    >
                       {amLog ? `${amLog.temperature}°F` : '—'}
-                    </span>
-                    <span className={`font-mono font-semibold ${pmLog ? (pmLog.inRange ? 'text-green-muted-text' : 'text-red') : 'text-forest/25'}`}>
+                    </button>
+                    <button
+                      onClick={() => pmLog && openEditTempLogModal(pmLog.id)}
+                      className={`font-mono font-semibold text-left ${pmLog ? ((pmLog.inRange ? 'text-green-muted-text' : 'text-red') + ' hover:underline cursor-pointer') : 'text-forest/25 cursor-default'}`}
+                    >
                       {pmLog ? `${pmLog.temperature}°F` : '—'}
-                    </span>
+                    </button>
                     <span className="text-forest/40 truncate">{amLog?.loggedBy ?? pmLog?.loggedBy ?? '—'}</span>
+                    <div className="flex gap-2">
+                      {amLog && <button onClick={() => openEditTempLogModal(amLog.id)} className="text-forest/30 hover:text-sage cursor-pointer">Edit AM</button>}
+                      {pmLog && <button onClick={() => openEditTempLogModal(pmLog.id)} className="text-forest/30 hover:text-sage cursor-pointer">Edit PM</button>}
+                    </div>
                   </div>
                 );
               })}
@@ -311,8 +375,8 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
 }
 
 export function KitchenTab() {
-  const { itemsByType, categoryStats } = useSafetyStore();
-  const { openSafetyLogInspectionModal, openSafetyAddItemModal, openLogTempModal } = useUIStore();
+  const { itemsByType, categoryStats, licenses } = useSafetyStore();
+  const { openSafetyLogInspectionModal, openSafetyAddItemModal, openLogTempModal, openAddLicenseModal } = useUIStore();
   const openEditItem = (itemId: string) => openSafetyAddItemModal({ itemId });
   const addHoodFan = () => openSafetyAddItemModal({ type: 'hood_fan' });
   const addRefrigeration = () => openSafetyAddItemModal({ type: 'refrigeration' });
@@ -347,19 +411,27 @@ export function KitchenTab() {
           <p className="text-meta text-forest/40 mt-0.5">{hoodFans.length} unit group{hoodFans.length === 1 ? '' : 's'}</p>
         </div>
         {(() => {
-          const permitExpiry = (healthInspections[0]?.metadata as Record<string, string> | undefined)?.permit_expiry ?? null;
-          const ps = permitExpiryStatus(permitExpiry);
-          const expiryLabel = permitExpiry
-            ? `Expires ${new Date(permitExpiry + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-            : 'Expiry date not on file';
+          const healthPermit = licenses.find((l) => l.licenseType === 'health_permit');
+          const ps = healthPermit ? certExpiryStatus(healthPermit.expiryDate) : null;
+          const expiryLabel = healthPermit?.expiryDate
+            ? `Expires ${new Date(healthPermit.expiryDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+            : healthPermit ? 'Expiry not on file' : 'Not on file';
           return (
-            <div className={`bg-white border border-border rounded-card px-4 py-4 ${ps === 'expired' ? 'border-l-[3px] border-l-red' : ps === 'expiring' ? 'border-l-[3px] border-l-amber' : ''}`}>
+            <div
+              className={`bg-white border border-border rounded-card px-4 py-4 ${ps === 'expired' ? 'border-l-[3px] border-l-red' : ps === 'expiring' ? 'border-l-[3px] border-l-amber' : ''}`}
+            >
               <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Health permit</p>
-              <p className={`font-mono font-semibold text-stat mt-1 ${ps === 'valid' ? 'text-green-muted-text' : ps === 'expiring' ? 'text-amber' : ps === 'expired' ? 'text-red' : 'text-forest/30'}`}>
-                {ps === 'valid' ? 'Valid' : ps === 'expiring' ? 'Expiring' : ps === 'expired' ? 'Expired' : '—'}
+              <p className={`font-mono font-semibold text-stat mt-1 ${ps === 'ok' ? 'text-green-muted-text' : ps === 'expiring' ? 'text-amber' : ps === 'expired' ? 'text-red' : 'text-forest/30'}`}>
+                {ps === 'ok' ? 'Valid' : ps === 'expiring' ? 'Expiring' : ps === 'expired' ? 'Expired' : '—'}
               </p>
               <p className={`text-meta mt-0.5 ${ps === 'expired' ? 'text-red' : ps === 'expiring' ? 'text-amber-text' : 'text-forest/40'}`}>
-                {expiryLabel}
+                {healthPermit ? (
+                  expiryLabel
+                ) : (
+                  <button onClick={() => openAddLicenseModal()} className="text-sage hover:underline cursor-pointer">
+                    + Add health permit
+                  </button>
+                )}
               </p>
             </div>
           );

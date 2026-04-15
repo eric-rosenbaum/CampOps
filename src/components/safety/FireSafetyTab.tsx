@@ -190,15 +190,27 @@ export function FireSafetyTab() {
         </div>
       </div>
 
-      {/* Alert banners */}
-      {overdue.map((item) => (
+      {/* Alert banners — consolidated */}
+      {overdue.length === 1 && (
         <AlertBanner
-          key={item.id}
           variant="alert"
-          message={`${item.name} inspection is overdue. This is required by fire code. Log the inspection or contact your vendor immediately.`}
-          action={{ label: 'Log inspection', onClick: () => openSafetyLogInspectionModal(item.id) }}
+          message={`${overdue[0].name} inspection is overdue. This is required by fire code. Log the inspection or contact your vendor immediately.`}
+          action={{ label: 'Log inspection', onClick: () => openSafetyLogInspectionModal(overdue[0].id) }}
         />
-      ))}
+      )}
+      {overdue.length > 1 && (
+        <div className="bg-red-bg border border-red/20 rounded-card px-4 py-3.5 mb-4">
+          <p className="text-[12px] font-semibold text-red mb-1.5">{overdue.length} fire safety items are overdue — required by fire code</p>
+          <ul className="text-[11px] text-red/80 space-y-0.5">
+            {overdue.map((item) => (
+              <li key={item.id} className="flex items-center justify-between">
+                <span>• {item.name}</span>
+                <button onClick={() => openSafetyLogInspectionModal(item.id)} className="text-red font-semibold hover:underline cursor-pointer ml-4">Log</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Fire extinguishers */}
       <div className="flex items-center justify-between mb-3 mt-2">

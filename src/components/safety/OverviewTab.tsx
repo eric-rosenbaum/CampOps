@@ -1,7 +1,16 @@
-import { useSafetyStore, safetyItemStatus, DRILL_TYPE_LABELS } from '@/store/safetyStore';
-import { useChecklistStore } from '@/store/checklistStore';
+import { useSafetyStore, safetyItemStatus, certExpiryStatus, CERT_TYPE_LABELS, DRILL_TYPE_LABELS } from '@/store/safetyStore';
 import { useUIStore } from '@/store/uiStore';
-import { AlertBanner } from '@/components/shared/AlertBanner';
+import { useChecklistStore } from '@/store/checklistStore';
+import type { LicenseType } from '@/lib/types';
+
+const LICENSE_TYPE_LABELS: Record<LicenseType, string> = {
+  health_permit: 'Health permit',
+  state_camping: 'State camping license',
+  food_service: 'Food service license',
+  boating: 'Boating / watercraft permit',
+  aca_accreditation: 'ACA accreditation',
+  other: 'License / permit',
+};
 
 function ProgressBar({ label, ok, warn, alert, total }: { label: string; ok: number; warn: number; alert: number; total: number }) {
   const pct = total === 0 ? 100 : Math.round((ok / total) * 100);
@@ -39,9 +48,12 @@ function ProgressBar({ label, ok, warn, alert, total }: { label: string; ok: num
 }
 
 export function OverviewTab() {
-  const { allStats, overdueItems, dueSoonItems, categoryStats, drills } = useSafetyStore();
+  const {
+    allStats, overdueItems, dueSoonItems, categoryStats, drills,
+    staffWithCerts, licenses, items, tempLogs,
+  } = useSafetyStore();
   const { season } = useChecklistStore();
-  const { openSafetyLogInspectionModal } = useUIStore();
+  const { openSafetyLogInspectionModal, openAddLicenseModal } = useUIStore();
 
   const { overdue, dueSoon, compliant } = allStats();
   const overdue_items = overdueItems();
@@ -52,10 +64,10 @@ export function OverviewTab() {
   const kitchenSt = categoryStats('kitchen');
 
   const completedDrills = drills.filter((d) => d.status === 'completed').length;
-  const drillsWarn = drills.filter((d) => d.status === 'scheduled' && safetyItemStatus({ nextDue: d.scheduledDate } as never) !== 'alert').length;
+  const scheduledDrills = drills.filter((d) => d.status === 'scheduled').length;
   const drillStats = {
     ok: completedDrills,
-    warn: drillsWarn,
+    warn: scheduledDrills,
     alert: 0,
     total: drills.filter((d) => d.status !== 'cancelled').length,
   };
@@ -65,8 +77,95 @@ export function OverviewTab() {
     ? Math.round((new Date(acaDate + 'T00:00:00').getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24))
     : null;
 
-  // Group due-soon items for the warning banner
-  const dueSoonNames = due_soon_items.slice(0, 4).map((i) => i.name);
+  // Build action items list
+  type ActionItem = { id: string; variant: 'alert' | 'warn'; message: string; action?: () => void; actionLabel?: string };
+  const actionItems: ActionItem[] = [];
+
+  // Overdue safety items
+  overdue_items.forEach((item) => {
+    actionItems.push({
+      id: `item-${item.id}`,
+      variant: 'alert',
+      message: `${item.name} inspection is overdue`,
+      action: () => openSafetyLogInspectionModal(item.id),
+      actionLabel: 'Log now',
+    });
+  });
+
+  // Expired licenses
+  licenses.filter((l) => certExpiryStatus(l.expiryDate) === 'expired').forEach((l) => {
+    actionItems.push({
+      id: `lic-expired-${l.id}`,
+      variant: 'alert',
+      message: `${l.name} has expired`,
+      action: () => openAddLicenseModal(l.id),
+      actionLabel: 'Update',
+    });
+  });
+
+  // Expired staff certs
+  staffWithCerts().forEach(({ staff, certs }) => {
+    certs.filter((c) => certExpiryStatus(c.expiryDate) === 'expired').forEach((c) => {
+      actionItems.push({
+        id: `cert-expired-${c.id}`,
+        variant: 'alert',
+        message: `${staff.name}'s ${CERT_TYPE_LABELS[c.certType]} has expired`,
+      });
+    });
+  });
+
+  // Items due soon
+  due_soon_items.forEach((item) => {
+    actionItems.push({
+      id: `soon-${item.id}`,
+      variant: 'warn',
+      message: `${item.name} inspection due ${item.nextDue ? `${new Date(item.nextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'soon'}`,
+      action: () => openSafetyLogInspectionModal(item.id),
+      actionLabel: 'Log',
+    });
+  });
+
+  // Expiring licenses (within 30 days)
+  licenses.filter((l) => certExpiryStatus(l.expiryDate) === 'expiring').forEach((l) => {
+    actionItems.push({
+      id: `lic-expiring-${l.id}`,
+      variant: 'warn',
+      message: `${l.name} expires ${l.expiryDate ? new Date(l.expiryDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'soon'}`,
+      action: () => openAddLicenseModal(l.id),
+      actionLabel: 'Update',
+    });
+  });
+
+  // Expiring staff certs (30 days)
+  staffWithCerts().forEach(({ staff, certs }) => {
+    certs.filter((c) => certExpiryStatus(c.expiryDate) === 'expiring').forEach((c) => {
+      actionItems.push({
+        id: `cert-expiring-${c.id}`,
+        variant: 'warn',
+        message: `${staff.name}'s ${CERT_TYPE_LABELS[c.certType]} expires ${c.expiryDate ? new Date(c.expiryDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'soon'}`,
+      });
+    });
+  });
+
+  // Missing today's temp logs
+  const today = new Date().toISOString().slice(0, 10);
+  const refrigerationItems = items.filter((i) => i.type === 'refrigeration');
+  refrigerationItems.forEach((item) => {
+    const todayLogs = tempLogs.filter((l) => l.itemId === item.id && l.logDate === today);
+    const hasAm = todayLogs.some((l) => l.session === 'am');
+    const hasPm = todayLogs.some((l) => l.session === 'pm');
+    if (!hasAm || !hasPm) {
+      const missing = !hasAm && !hasPm ? 'AM and PM readings' : !hasAm ? 'AM reading' : 'PM reading';
+      actionItems.push({
+        id: `temp-${item.id}`,
+        variant: 'warn',
+        message: `${item.name}: missing today's ${missing}`,
+      });
+    }
+  });
+
+  const alerts = actionItems.filter((a) => a.variant === 'alert');
+  const warnings = actionItems.filter((a) => a.variant === 'warn');
 
   return (
     <div>
@@ -107,32 +206,118 @@ export function OverviewTab() {
         </div>
       </div>
 
-      {/* Overdue banners */}
-      {overdue_items.map((item) => (
-        <AlertBanner
-          key={item.id}
-          variant="alert"
-          message={`${item.name} inspection is overdue${item.nextDue ? ` since ${new Date(item.nextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}. This item requires immediate attention to maintain compliance.`}
-          action={{ label: 'Log action', onClick: () => openSafetyLogInspectionModal(item.id) }}
-        />
-      ))}
+      {/* Action items */}
+      {actionItems.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-[14px] font-semibold text-forest mb-3">Needs attention</h3>
 
-      {/* Due-soon banner */}
-      {due_soon_items.length > 0 && (
-        <div className="bg-amber-bg border border-amber/30 rounded-card px-4 py-3.5 mb-5 flex items-center gap-3">
-          <div className="w-5 h-5 rounded-full bg-amber flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0">!</div>
-          <p className="text-[13px] text-amber-text flex-1 leading-relaxed">
-            {due_soon_items.length} item{due_soon_items.length === 1 ? '' : 's'} due this week:
-            {' '}{dueSoonNames.join(', ')}{due_soon_items.length > 4 ? `, and ${due_soon_items.length - 4} more` : ''}.
-          </p>
+          {alerts.length > 0 && (
+            <div className="bg-red-bg border border-red/20 rounded-card px-4 py-3.5 mb-3">
+              <p className="text-[12px] font-semibold text-red mb-2">
+                {alerts.length} item{alerts.length === 1 ? '' : 's'} require immediate action
+              </p>
+              <div className="space-y-2">
+                {alerts.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between">
+                    <span className="text-[12px] text-red/80">• {item.message}</span>
+                    {item.action && (
+                      <button onClick={item.action} className="text-[11px] font-semibold text-red hover:underline cursor-pointer flex-shrink-0 ml-4">
+                        {item.actionLabel}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {warnings.length > 0 && (
+            <div className="bg-amber-bg border border-amber/20 rounded-card px-4 py-3.5">
+              <p className="text-[12px] font-semibold text-amber-text mb-2">
+                {warnings.length} item{warnings.length === 1 ? '' : 's'} need attention soon
+              </p>
+              <div className="space-y-2">
+                {warnings.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between">
+                    <span className="text-[12px] text-amber-text/80">• {item.message}</span>
+                    {item.action && (
+                      <button onClick={item.action} className="text-[11px] font-semibold text-amber-text hover:underline cursor-pointer flex-shrink-0 ml-4">
+                        {item.actionLabel}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {actionItems.length === 0 && (fireSt.total + waterSt.total + kitchenSt.total) > 0 && (
+        <div className="bg-green-muted-bg border border-green-muted-text/20 rounded-card px-4 py-3.5 mb-6">
+          <p className="text-[13px] font-semibold text-green-muted-text">All compliance items are current — no action needed.</p>
+        </div>
+      )}
+
+      {/* Permits & Licenses */}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[14px] font-semibold text-forest">Permits & licenses</h3>
+        <button
+          onClick={() => openAddLicenseModal()}
+          className="text-[12px] text-sage font-medium hover:underline cursor-pointer"
+        >
+          + Add permit
+        </button>
+      </div>
+
+      {licenses.length === 0 ? (
+        <div className="bg-white border border-border rounded-card px-5 py-6 text-center mb-6">
+          <p className="text-[13px] text-forest/40">No permits or licenses on file.</p>
+          <button onClick={() => openAddLicenseModal()} className="text-[12px] text-sage font-medium mt-1 cursor-pointer hover:underline">
+            + Add health permit, state camping license, or other permit
+          </button>
+        </div>
+      ) : (
+        <div className="bg-white border border-border rounded-card mb-6 overflow-hidden">
+          {licenses.map((lic, i, arr) => {
+            const status = certExpiryStatus(lic.expiryDate);
+            const badge =
+              status === 'expired' ? { text: 'Expired', cls: 'bg-red-bg text-red' } :
+              status === 'expiring' ? { text: 'Expiring soon', cls: 'bg-amber-bg text-amber-text' } :
+              lic.expiryDate ? { text: 'Valid', cls: 'bg-green-muted-bg text-green-muted-text' } :
+              { text: 'No expiry on file', cls: 'bg-cream-dark text-forest/40' };
+            return (
+              <div
+                key={lic.id}
+                className={`flex items-center justify-between px-4 py-3 ${i < arr.length - 1 ? 'border-b border-cream-dark' : ''}`}
+              >
+                <div className="flex-1 min-w-0 pr-4">
+                  <p className="text-[13px] font-medium text-forest">{lic.name}</p>
+                  <p className="text-[11px] text-forest/40 mt-0.5">
+                    {LICENSE_TYPE_LABELS[lic.licenseType]}
+                    {lic.issuingAuthority ? ` · ${lic.issuingAuthority}` : ''}
+                    {lic.expiryDate ? ` · Expires ${new Date(lic.expiryDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-tag uppercase tracking-wide ${badge.cls}`}>
+                    {badge.text}
+                  </span>
+                  <button
+                    onClick={() => openAddLicenseModal(lic.id)}
+                    className="text-[11px] text-forest/40 hover:text-forest cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* Category progress */}
-      <div className="flex items-center justify-between mb-3.5 mt-2">
-        <h3 className="text-[14px] font-semibold text-forest">Compliance summary by category</h3>
-      </div>
-
+      <h3 className="text-[14px] font-semibold text-forest mb-3.5">Compliance summary by category</h3>
       <ProgressBar label="Fire safety" {...fireSt} />
       <ProgressBar label="Water safety" {...waterSt} />
       <ProgressBar label="Kitchen safety" {...kitchenSt} />
@@ -150,7 +335,7 @@ export function OverviewTab() {
         </p>
       )}
 
-      {/* Next scheduled drills */}
+      {/* Upcoming drills */}
       {drills.filter((d) => d.status === 'scheduled').length > 0 && (
         <div className="mt-6">
           <h3 className="text-[14px] font-semibold text-forest mb-3">Upcoming drills</h3>

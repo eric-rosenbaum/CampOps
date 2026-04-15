@@ -24,8 +24,6 @@ interface FormValues {
   tempMax: string;
   // Waterfront rescue equipment
   condition: string;
-  // Health inspection
-  permitExpiry: string;
 }
 
 // ─── Type metadata ─────────────────────────────────────────────────────────────
@@ -146,7 +144,6 @@ export function AddSafetyItemModal() {
       tempMin: meta.temp_min != null ? String(meta.temp_min) : '',
       tempMax: meta.temp_max != null ? String(meta.temp_max) : '',
       condition: (meta.condition as string) ?? '',
-      permitExpiry: (meta.permit_expiry as string) ?? '',
     },
   });
 
@@ -177,10 +174,6 @@ export function AddSafetyItemModal() {
     if (isWaterfrontEquip(itemType)) {
       if (data.condition) metadata.condition = data.condition;
     }
-    if (itemType === 'health_inspection') {
-      if (data.permitExpiry) metadata.permit_expiry = data.permitExpiry;
-    }
-
     if (editing) {
       updateItem(editing.id, {
         name: data.name,
@@ -320,15 +313,6 @@ export function AddSafetyItemModal() {
               <option value="fair">Fair — needs attention</option>
               <option value="poor">Poor — replace soon</option>
             </select>
-          </div>
-        )}
-
-        {/* Health inspection-specific */}
-        {itemType === 'health_inspection' && (
-          <div>
-            <label className={lc}>Permit expiry date</label>
-            <input {...register('permitExpiry')} type="date" className={ic} />
-            <p className="text-[11px] text-forest/40 mt-1">The date printed on your health department permit.</p>
           </div>
         )}
 

@@ -28,11 +28,14 @@ interface UIStore {
   editingDrillId: string | null;
   isLogTempModalOpen: boolean;
   logTempForItemId: string | null;
+  editingTempLogId: string | null;
   isSafetyAddStaffModalOpen: boolean;
   editingSafetyStaffId: string | null;
   isStaffCertModalOpen: boolean;
   editingStaffCertId: string | null;
   staffCertForStaffId: string | null;
+  isAddLicenseModalOpen: boolean;
+  editingLicenseId: string | null;
 
   openLogIssueModal: () => void;
   openEditIssueModal: (id: string) => void;
@@ -52,8 +55,10 @@ interface UIStore {
   openScheduleDrillModal: () => void;
   openLogDrillModal: (drillId?: string) => void;
   openLogTempModal: (itemId?: string) => void;
+  openEditTempLogModal: (logId: string) => void;
   openSafetyAddStaffModal: (staffId?: string) => void;
   openStaffCertModal: (opts?: { certId?: string; staffId?: string }) => void;
+  openAddLicenseModal: (licenseId?: string) => void;
   closeAllModals: () => void;
   setCurrentUser: (id: string) => void;
 }
@@ -85,11 +90,14 @@ export const useUIStore = create<UIStore>((set) => ({
   editingDrillId: null,
   isLogTempModalOpen: false,
   logTempForItemId: null,
+  editingTempLogId: null,
   isSafetyAddStaffModalOpen: false,
   editingSafetyStaffId: null,
   isStaffCertModalOpen: false,
   editingStaffCertId: null,
   staffCertForStaffId: null,
+  isAddLicenseModalOpen: false,
+  editingLicenseId: null,
 
   openLogIssueModal: () =>
     set({ isLogIssueModalOpen: true, editingIssueId: null }),
@@ -138,7 +146,10 @@ export const useUIStore = create<UIStore>((set) => ({
     set({ isLogDrillModalOpen: true, drillModalMode: 'complete', editingDrillId: drillId ?? null }),
 
   openLogTempModal: (itemId) =>
-    set({ isLogTempModalOpen: true, logTempForItemId: itemId ?? null }),
+    set({ isLogTempModalOpen: true, logTempForItemId: itemId ?? null, editingTempLogId: null }),
+
+  openEditTempLogModal: (logId) =>
+    set({ isLogTempModalOpen: true, editingTempLogId: logId, logTempForItemId: null }),
 
   openSafetyAddStaffModal: (staffId) =>
     set({ isSafetyAddStaffModalOpen: true, editingSafetyStaffId: staffId ?? null }),
@@ -149,6 +160,9 @@ export const useUIStore = create<UIStore>((set) => ({
       editingStaffCertId: opts?.certId ?? null,
       staffCertForStaffId: opts?.staffId ?? null,
     }),
+
+  openAddLicenseModal: (licenseId) =>
+    set({ isAddLicenseModalOpen: true, editingLicenseId: licenseId ?? null }),
 
   closeAllModals: () =>
     set({
@@ -176,11 +190,14 @@ export const useUIStore = create<UIStore>((set) => ({
       editingDrillId: null,
       isLogTempModalOpen: false,
       logTempForItemId: null,
+      editingTempLogId: null,
       isSafetyAddStaffModalOpen: false,
       editingSafetyStaffId: null,
       isStaffCertModalOpen: false,
       editingStaffCertId: null,
       staffCertForStaffId: null,
+      isAddLicenseModalOpen: false,
+      editingLicenseId: null,
     }),
 
   setCurrentUser: (id: string) => set({ currentUserId: id }),

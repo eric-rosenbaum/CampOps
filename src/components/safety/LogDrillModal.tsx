@@ -215,6 +215,21 @@ export function LogDrillModal() {
           ) : (
             <Button type="button" variant="ghost" onClick={closeAllModals}>Cancel</Button>
           )}
+          {existingDrill && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-red hover:bg-red-bg"
+              onClick={() => {
+                if (window.confirm('Delete this drill record? This cannot be undone.')) {
+                  deleteDrill(existingDrill.id);
+                  closeAllModals();
+                }
+              }}
+            >
+              Delete
+            </Button>
+          )}
         </div>
       </form>
     </Modal>

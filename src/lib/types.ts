@@ -162,6 +162,27 @@ export type SeasonalPhase = 'opening' | 'in_season' | 'closing';
 
 export type SafetyCategory = 'fire' | 'water' | 'kitchen';
 
+export type LicenseType =
+  | 'health_permit'
+  | 'state_camping'
+  | 'food_service'
+  | 'boating'
+  | 'aca_accreditation'
+  | 'other';
+
+export interface SafetyLicense {
+  id: string;
+  name: string;
+  licenseType: LicenseType;
+  issuingAuthority: string | null;
+  licenseNumber: string | null;
+  issuedDate: string | null;
+  expiryDate: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type SafetyItemType =
   | 'extinguisher'
   | 'smoke_alarm'

@@ -11,7 +11,7 @@ import type {
   ChemicalReading, PoolEquipment, ServiceLogEntry,
   PoolInspection, InspectionLogEntry, SeasonalTask,
   SafetyItem, SafetyInspectionLog, EmergencyDrill,
-  SafetyStaff, StaffCertification, SafetyTempLog,
+  SafetyStaff, StaffCertification, SafetyTempLog, SafetyLicense,
 } from './types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -574,6 +574,7 @@ type SafetyData = {
   staff: SafetyStaff[];
   certifications: StaffCertification[];
   tempLogs: SafetyTempLog[];
+  licenses: SafetyLicense[];
 };
 
 function rowToSafetyItem(r: Record<string, unknown>): SafetyItem {
@@ -670,14 +671,30 @@ function rowToTempLog(r: Record<string, unknown>): SafetyTempLog {
   };
 }
 
+function rowToLicense(r: Record<string, unknown>): SafetyLicense {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    licenseType: r.license_type as SafetyLicense['licenseType'],
+    issuingAuthority: (r.issuing_authority as string) ?? null,
+    licenseNumber: (r.license_number as string) ?? null,
+    issuedDate: (r.issued_date as string) ?? null,
+    expiryDate: (r.expiry_date as string) ?? null,
+    notes: (r.notes as string) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
 async function loadSafetyData(): Promise<SafetyData> {
-  const [itemsRes, logRes, drillsRes, staffRes, certsRes, tempRes] = await Promise.all([
+  const [itemsRes, logRes, drillsRes, staffRes, certsRes, tempRes, licRes] = await Promise.all([
     supabase.from('safety_items').select('*').order('created_at', { ascending: true }),
     supabase.from('safety_inspection_log').select('*').order('created_at', { ascending: false }),
     supabase.from('safety_drills').select('*').order('scheduled_date', { ascending: true }),
     supabase.from('safety_staff').select('*').order('name', { ascending: true }),
     supabase.from('staff_certifications').select('*').order('created_at', { ascending: false }),
     supabase.from('safety_temp_logs').select('*').order('log_date', { ascending: false }),
+    supabase.from('safety_licenses').select('*').order('name', { ascending: true }),
   ]);
 
   return {
@@ -687,6 +704,7 @@ async function loadSafetyData(): Promise<SafetyData> {
     staff: (staffRes.data ?? []).map((r) => rowToSafetyStaff(r as Record<string, unknown>)),
     certifications: (certsRes.data ?? []).map((r) => rowToCert(r as Record<string, unknown>)),
     tempLogs: (tempRes.data ?? []).map((r) => rowToTempLog(r as Record<string, unknown>)),
+    licenses: (licRes.data ?? []).map((r) => rowToLicense(r as Record<string, unknown>)),
   };
 }
 
@@ -852,6 +870,51 @@ export async function dbAddSafetyTempLog(log: SafetyTempLog) {
   if (error) console.error('dbAddSafetyTempLog error:', error.message);
 }
 
+export async function dbUpdateSafetyTempLog(id: string, patch: Partial<SafetyTempLog>) {
+  const col: Record<string, unknown> = {};
+  if (patch.temperature !== undefined) col.temperature = patch.temperature;
+  if (patch.session !== undefined) col.session = patch.session;
+  if (patch.logDate !== undefined) col.log_date = patch.logDate;
+  if (patch.loggedBy !== undefined) col.logged_by = patch.loggedBy;
+  if (patch.inRange !== undefined) col.in_range = patch.inRange;
+  if (patch.notes !== undefined) col.notes = patch.notes;
+  const { error } = await supabase.from('safety_temp_logs').update(col).eq('id', id);
+  if (error) console.error('dbUpdateSafetyTempLog error:', error.message);
+}
+
+export async function dbDeleteSafetyTempLog(id: string) {
+  const { error } = await supabase.from('safety_temp_logs').delete().eq('id', id);
+  if (error) console.error('dbDeleteSafetyTempLog error:', error.message);
+}
+
+export async function dbAddSafetyLicense(lic: SafetyLicense) {
+  const { error } = await supabase.from('safety_licenses').insert({
+    id: lic.id, name: lic.name, license_type: lic.licenseType,
+    issuing_authority: lic.issuingAuthority, license_number: lic.licenseNumber,
+    issued_date: lic.issuedDate, expiry_date: lic.expiryDate,
+    notes: lic.notes, created_at: lic.createdAt, updated_at: lic.updatedAt,
+  });
+  if (error) console.error('dbAddSafetyLicense error:', error.message);
+}
+
+export async function dbUpdateSafetyLicense(id: string, patch: Partial<SafetyLicense>) {
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.name !== undefined) row.name = patch.name;
+  if (patch.licenseType !== undefined) row.license_type = patch.licenseType;
+  if (patch.issuingAuthority !== undefined) row.issuing_authority = patch.issuingAuthority;
+  if (patch.licenseNumber !== undefined) row.license_number = patch.licenseNumber;
+  if (patch.issuedDate !== undefined) row.issued_date = patch.issuedDate;
+  if (patch.expiryDate !== undefined) row.expiry_date = patch.expiryDate;
+  if (patch.notes !== undefined) row.notes = patch.notes;
+  const { error } = await supabase.from('safety_licenses').update(row).eq('id', id);
+  if (error) console.error('dbUpdateSafetyLicense error:', error.message);
+}
+
+export async function dbDeleteSafetyLicense(id: string) {
+  const { error } = await supabase.from('safety_licenses').delete().eq('id', id);
+  if (error) console.error('dbDeleteSafetyLicense error:', error.message);
+}
+
 let safetyChannelCount = 0;
 
 type SafetyDataCallback = (data: SafetyData) => void;
@@ -867,6 +930,7 @@ export function subscribeToSafety(onUpdate: SafetyDataCallback): () => void {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_staff' }, reload)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_certifications' }, reload)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_temp_logs' }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_licenses' }, reload)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
 }

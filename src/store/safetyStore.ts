@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type {
   SafetyItem, SafetyInspectionLog, EmergencyDrill,
-  SafetyStaff, StaffCertification, SafetyTempLog,
+  SafetyStaff, StaffCertification, SafetyTempLog, SafetyLicense,
   SafetyCategory, CertType,
 } from '@/lib/types';
 import {
@@ -10,10 +10,11 @@ import {
   dbAddSafetyDrill, dbUpdateSafetyDrill, dbDeleteSafetyDrill,
   dbAddSafetyStaff, dbUpdateSafetyStaff, dbDeleteSafetyStaff,
   dbAddStaffCert, dbUpdateStaffCert, dbDeleteStaffCert,
-  dbAddSafetyTempLog,
+  dbAddSafetyTempLog, dbUpdateSafetyTempLog, dbDeleteSafetyTempLog,
+  dbAddSafetyLicense, dbUpdateSafetyLicense, dbDeleteSafetyLicense,
 } from '@/lib/db';
 
-export type SafetyTab = 'overview' | 'fire' | 'water' | 'kitchen' | 'drills';
+export type SafetyTab = 'overview' | 'fire' | 'water' | 'kitchen' | 'drills' | 'staff';
 
 export const FREQUENCY_DAYS: Record<SafetyItem['frequency'], number> = {
   daily: 1,
@@ -71,6 +72,7 @@ interface SafetyStore {
   staff: SafetyStaff[];
   certifications: StaffCertification[];
   tempLogs: SafetyTempLog[];
+  licenses: SafetyLicense[];
 
   setActiveTab: (tab: SafetyTab) => void;
   setItems: (items: SafetyItem[]) => void;
@@ -79,6 +81,7 @@ interface SafetyStore {
   setStaff: (staff: SafetyStaff[]) => void;
   setCertifications: (certs: StaffCertification[]) => void;
   setTempLogs: (logs: SafetyTempLog[]) => void;
+  setLicenses: (licenses: SafetyLicense[]) => void;
 
   // Items
   addItem: (item: SafetyItem) => void;
@@ -107,6 +110,13 @@ interface SafetyStore {
 
   // Temp logs
   addTempLog: (log: SafetyTempLog) => void;
+  updateTempLog: (id: string, patch: Partial<SafetyTempLog>) => void;
+  deleteTempLog: (id: string) => void;
+
+  // Licenses
+  addLicense: (lic: SafetyLicense) => void;
+  updateLicense: (id: string, patch: Partial<SafetyLicense>) => void;
+  deleteLicense: (id: string) => void;
 
   // Selectors
   itemsByCategory: (category: SafetyCategory) => SafetyItem[];
@@ -131,6 +141,7 @@ export const useSafetyStore = create<SafetyStore>((set, get) => ({
   staff: [],
   certifications: [],
   tempLogs: [],
+  licenses: [],
 
   setActiveTab: (tab) => set({ activeTab: tab }),
   setItems: (items) => set({ items }),
@@ -139,6 +150,7 @@ export const useSafetyStore = create<SafetyStore>((set, get) => ({
   setStaff: (staff) => set({ staff }),
   setCertifications: (certs) => set({ certifications: certs }),
   setTempLogs: (logs) => set({ tempLogs: logs }),
+  setLicenses: (licenses) => set({ licenses }),
 
   addItem: (item) => {
     set((s) => ({ items: [...s.items, item] }));
@@ -244,6 +256,34 @@ export const useSafetyStore = create<SafetyStore>((set, get) => ({
   addTempLog: (log) => {
     set((s) => ({ tempLogs: [log, ...s.tempLogs] }));
     dbAddSafetyTempLog(log);
+  },
+
+  updateTempLog: (id, patch) => {
+    set((s) => ({ tempLogs: s.tempLogs.map((l) => l.id === id ? { ...l, ...patch } : l) }));
+    dbUpdateSafetyTempLog(id, patch);
+  },
+
+  deleteTempLog: (id) => {
+    set((s) => ({ tempLogs: s.tempLogs.filter((l) => l.id !== id) }));
+    dbDeleteSafetyTempLog(id);
+  },
+
+  addLicense: (lic) => {
+    set((s) => ({ licenses: [...s.licenses, lic].sort((a, b) => a.name.localeCompare(b.name)) }));
+    dbAddSafetyLicense(lic);
+  },
+
+  updateLicense: (id, patch) => {
+    const now = new Date().toISOString();
+    set((s) => ({
+      licenses: s.licenses.map((l) => l.id === id ? { ...l, ...patch, updatedAt: now } : l),
+    }));
+    dbUpdateSafetyLicense(id, patch);
+  },
+
+  deleteLicense: (id) => {
+    set((s) => ({ licenses: s.licenses.filter((l) => l.id !== id) }));
+    dbDeleteSafetyLicense(id);
   },
 
   // Selectors

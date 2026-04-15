@@ -18,7 +18,7 @@ function AppInit() {
   const setTasks = useChecklistStore((s) => s.setTasks);
   const setSeason = useChecklistStore((s) => s.setSeason);
   const { setChemicalReadings, setEquipment, setServiceLog, setInspections, setInspectionLog, setSeasonalTasks } = usePoolStore();
-  const { setItems, setInspectionLog: setSafetyLog, setDrills, setStaff, setCertifications, setTempLogs } = useSafetyStore();
+  const { setItems, setInspectionLog: setSafetyLog, setDrills, setStaff, setCertifications, setTempLogs, setLicenses } = useSafetyStore();
 
   useEffect(() => {
     let unsubIssues: (() => void) | null = null;
@@ -67,6 +67,7 @@ function AppInit() {
       setStaff(data.staff);
       setCertifications(data.certifications);
       setTempLogs(data.tempLogs);
+      setLicenses(data.licenses);
 
       unsubSafety = subscribeToSafety((d) => {
         setItems(d.items);
@@ -75,6 +76,7 @@ function AppInit() {
         setStaff(d.staff);
         setCertifications(d.certifications);
         setTempLogs(d.tempLogs);
+        setLicenses(d.licenses);
       });
     });
 
@@ -84,7 +86,7 @@ function AppInit() {
       unsubPool?.();
       unsubSafety?.();
     };
-  }, [setIssues, setTasks, setSeason, setChemicalReadings, setEquipment, setServiceLog, setInspections, setInspectionLog, setSeasonalTasks, setItems, setSafetyLog, setDrills, setStaff, setCertifications, setTempLogs]);
+  }, [setIssues, setTasks, setSeason, setChemicalReadings, setEquipment, setServiceLog, setInspections, setInspectionLog, setSeasonalTasks, setItems, setSafetyLog, setDrills, setStaff, setCertifications, setTempLogs, setLicenses]);
 
   return null;
 }

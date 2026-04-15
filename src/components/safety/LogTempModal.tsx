@@ -20,10 +20,11 @@ const ic = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2
 const lc = 'block text-[12px] font-medium text-forest/70 mb-1';
 
 export function LogTempModal() {
-  const { closeAllModals, logTempForItemId } = useUIStore();
-  const { items, addTempLog } = useSafetyStore();
+  const { closeAllModals, logTempForItemId, editingTempLogId } = useUIStore();
+  const { items, tempLogs, addTempLog, updateTempLog, deleteTempLog } = useSafetyStore();
   const { currentUser } = useAuth();
 
+  const existingLog = editingTempLogId ? tempLogs.find((l) => l.id === editingTempLogId) ?? null : null;
   const refrigerationItems = items.filter((i) => i.type === 'refrigeration');
 
   const now = new Date();
@@ -31,10 +32,12 @@ export function LogTempModal() {
 
   const { register, handleSubmit, watch, formState: { isSubmitting } } = useForm<FormValues>({
     defaultValues: {
-      itemId: logTempForItemId ?? (refrigerationItems[0]?.id ?? ''),
-      logDate: now.toISOString().slice(0, 10),
-      session: defaultSession,
-      loggedBy: currentUser.name,
+      itemId: existingLog?.itemId ?? logTempForItemId ?? (refrigerationItems[0]?.id ?? ''),
+      logDate: existingLog?.logDate ?? now.toISOString().slice(0, 10),
+      session: existingLog?.session ?? defaultSession,
+      temperature: existingLog?.temperature?.toString() ?? '',
+      loggedBy: existingLog?.loggedBy ?? currentUser.name,
+      notes: existingLog?.notes ?? '',
     },
   });
 
@@ -50,7 +53,6 @@ export function LogTempModal() {
     : null;
 
   function onSubmit(data: FormValues) {
-    const now = new Date().toISOString();
     const item = items.find((i) => i.id === data.itemId);
     const min = item?.metadata?.temp_min as number | undefined;
     const max = item?.metadata?.temp_max as number | undefined;
@@ -59,30 +61,55 @@ export function LogTempModal() {
       ? temp >= min && temp <= max
       : true;
 
-    const log: SafetyTempLog = {
-      id: generateId(),
-      itemId: data.itemId,
-      logDate: data.logDate,
-      session: data.session,
-      temperature: temp,
-      inRange: inRangeCalc,
-      loggedBy: data.loggedBy,
-      notes: data.notes || null,
-      createdAt: now,
-    };
+    if (existingLog) {
+      updateTempLog(existingLog.id, {
+        itemId: data.itemId,
+        logDate: data.logDate,
+        session: data.session,
+        temperature: temp,
+        inRange: inRangeCalc,
+        loggedBy: data.loggedBy,
+        notes: data.notes || null,
+      });
+    } else {
+      const log: SafetyTempLog = {
+        id: generateId(),
+        itemId: data.itemId,
+        logDate: data.logDate,
+        session: data.session,
+        temperature: temp,
+        inRange: inRangeCalc,
+        loggedBy: data.loggedBy,
+        notes: data.notes || null,
+        createdAt: new Date().toISOString(),
+      };
+      addTempLog(log);
+    }
 
-    addTempLog(log);
+    closeAllModals();
+  }
+
+  function handleDelete() {
+    if (!existingLog) return;
+    if (!window.confirm('Delete this temperature reading? This cannot be undone.')) return;
+    deleteTempLog(existingLog.id);
     closeAllModals();
   }
 
   return (
-    <Modal title="Log temperature reading" onClose={closeAllModals} width="440px">
+    <Modal
+      title={existingLog ? 'Edit temperature reading' : 'Log temperature reading'}
+      onClose={closeAllModals}
+      width="440px"
+    >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <p className="text-[13px] text-forest/50 -mt-1">Record an AM or PM refrigeration temperature reading.</p>
+        {!existingLog && (
+          <p className="text-[13px] text-forest/50 -mt-1">Record an AM or PM refrigeration temperature reading.</p>
+        )}
 
         <div>
           <label className={lc}>Refrigeration unit *</label>
-          <select {...register('itemId', { required: true })} className={ic}>
+          <select {...register('itemId', { required: true })} className={ic} disabled={!!existingLog}>
             {refrigerationItems.length === 0 && (
               <option value="">No refrigeration units set up yet</option>
             )}
@@ -139,9 +166,15 @@ export function LogTempModal() {
 
         <div className="flex gap-2 pt-1">
           <Button type="submit" className="flex-1 justify-center" disabled={isSubmitting || refrigerationItems.length === 0}>
-            Save reading
+            {existingLog ? 'Save changes' : 'Save reading'}
           </Button>
-          <Button type="button" variant="ghost" onClick={closeAllModals}>Cancel</Button>
+          {existingLog ? (
+            <Button type="button" variant="ghost" onClick={handleDelete} className="text-red hover:bg-red-bg">
+              Delete
+            </Button>
+          ) : (
+            <Button type="button" variant="ghost" onClick={closeAllModals}>Cancel</Button>
+          )}
         </div>
       </form>
     </Modal>

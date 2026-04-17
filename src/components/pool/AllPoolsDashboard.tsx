@@ -91,7 +91,7 @@ function PoolStatusCard({ pool }: { pool: CampPool }) {
               <div>
                 <p className="text-meta text-forest/40 mb-0.5">Free Cl</p>
                 <p className={`text-body font-mono font-semibold ${getChemicalStatus('freeChlorine', latest.freeChlorine) === 'ok' ? 'text-forest' : getChemicalStatus('freeChlorine', latest.freeChlorine) === 'warn' ? 'text-amber' : 'text-red'}`}>
-                  {latest.freeChlorine} ppm
+                  {latest.freeChlorine.toFixed(1)} ppm
                 </p>
               </div>
               <div>

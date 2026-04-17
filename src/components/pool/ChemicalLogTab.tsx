@@ -34,7 +34,7 @@ function ValCell({ field, value }: { field: ChemicalField; value: number }) {
 
   return (
     <div className={`font-mono text-body font-medium ${statusColor(status)}`}>
-      {field === 'waterTemp' ? `${value}°` : value}
+      {field === 'waterTemp' ? `${Math.round(value)}°` : field === 'freeChlorine' || field === 'ph' ? value.toFixed(1) : Math.round(value)}
       {isOutOfRange && (
         <span
           className={`ml-1.5 text-label font-semibold px-1.5 py-0.5 rounded-tag uppercase tracking-wide ${
@@ -74,7 +74,7 @@ export function ChemicalLogTab() {
     ? [
         {
           field: 'freeChlorine',
-          displayVal: `${latest.freeChlorine} ppm`,
+          displayVal: `${latest.freeChlorine.toFixed(1)} ppm`,
           hint: getChemicalStatus('freeChlorine', latest.freeChlorine) === 'alert'
             ? 'Below range — action needed'
             : getChemicalStatus('freeChlorine', latest.freeChlorine) === 'warn'

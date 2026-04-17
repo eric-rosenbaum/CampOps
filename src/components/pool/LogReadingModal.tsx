@@ -14,7 +14,7 @@ interface FormValues {
   cyanuricAcid: string;
   waterTemp: string;
   calciumHardness: string;
-  timeOfDay: string;
+  readingTime: string;
   correctiveAction: string;
   poolStatus: ChemicalReading['poolStatus'];
 }
@@ -25,12 +25,17 @@ const rangeClass = 'text-meta text-forest/40 mt-1';
 
 export function LogReadingModal() {
   const { closeAllModals } = useUIStore();
-  const { addChemicalReading } = usePoolStore();
+  const { addChemicalReading, activePool, activePoolId } = usePoolStore();
   const { currentUser } = useAuth();
+
+  const pool = activePool();
+  const now = new Date();
+  // Format for datetime-local input: YYYY-MM-DDTHH:mm
+  const defaultReadingTime = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   const { register, handleSubmit, watch, formState: { isSubmitting } } = useForm<FormValues>({
     defaultValues: {
-      timeOfDay: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase(),
+      readingTime: defaultReadingTime,
       poolStatus: 'open_all_clear',
     },
   });
@@ -44,21 +49,23 @@ export function LogReadingModal() {
   }
 
   function onSubmit(data: FormValues) {
-    const now = new Date().toISOString();
+    if (!activePoolId) return;
+    const createdAt = new Date().toISOString();
     const reading: ChemicalReading = {
       id: generateId(),
+      poolId: activePoolId,
       freeChlorine: parseFloat(data.freeChlorine),
       ph: parseFloat(data.ph),
       alkalinity: parseFloat(data.alkalinity),
       cyanuricAcid: parseFloat(data.cyanuricAcid),
       waterTemp: parseFloat(data.waterTemp),
       calciumHardness: data.calciumHardness ? parseFloat(data.calciumHardness) : null,
-      timeOfDay: data.timeOfDay,
+      readingTime: new Date(data.readingTime).toISOString(),
       loggedById: currentUser.id,
       loggedByName: currentUser.name,
       correctiveAction: data.correctiveAction || null,
       poolStatus: data.poolStatus,
-      createdAt: now,
+      createdAt,
     };
     addChemicalReading(reading);
     closeAllModals();
@@ -77,7 +84,9 @@ export function LogReadingModal() {
   return (
     <Modal title="Log chemical reading" onClose={closeAllModals} width="520px">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <p className="text-secondary text-forest/50 -mt-1">Main pool · {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+        <p className="text-secondary text-forest/50 -mt-1">
+          {pool?.name ?? 'Pool'} · {now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+        </p>
 
         {/* Reading fields grid */}
         <div className="grid grid-cols-3 gap-3">
@@ -124,8 +133,8 @@ export function LogReadingModal() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelClass}>Time</label>
-            <input {...register('timeOfDay')} type="text" className={inputClass} placeholder="e.g. 7:30am" />
+            <label className={labelClass}>Reading time *</label>
+            <input {...register('readingTime', { required: true })} type="datetime-local" className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Logged by</label>
@@ -157,7 +166,7 @@ export function LogReadingModal() {
         </div>
 
         <div className="flex gap-2 pt-1">
-          <Button type="submit" className="flex-1 justify-center" disabled={isSubmitting}>
+          <Button type="submit" className="flex-1 justify-center" disabled={isSubmitting || !activePoolId}>
             Save reading
           </Button>
           <Button type="button" variant="ghost" onClick={closeAllModals}>Cancel</Button>

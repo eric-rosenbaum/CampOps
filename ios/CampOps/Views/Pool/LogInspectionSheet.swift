@@ -4,6 +4,7 @@ struct LogInspectionSheet: View {
     @EnvironmentObject private var userManager: UserManager
     @Environment(\.dismiss) private var dismiss
 
+    let poolId: String
     let inspections: [PoolInspection]
     let editing: PoolInspectionLog?
     var preselectedId: String? = nil
@@ -111,6 +112,7 @@ struct LogInspectionSheet: View {
         isSaving = true
         let entry = PoolInspectionLog(
             id: editing?.id ?? UUID().uuidString,
+            poolId: editing?.poolId ?? poolId,
             inspectionId: selectedId.isEmpty ? nil : selectedId,
             inspectionDate: inspectionDate.yyyyMMdd,
             conductedBy: conductedBy,

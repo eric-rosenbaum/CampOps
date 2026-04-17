@@ -3,6 +3,7 @@ import SwiftUI
 struct SeasonalTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
 
+    let poolId: String
     let editing: PoolSeasonalTask?
     let defaultPhase: SeasonalPhase
     let onAdd: (PoolSeasonalTask) async -> Void
@@ -125,6 +126,7 @@ struct SeasonalTaskSheet: View {
         } else {
             let task = PoolSeasonalTask(
                 id: UUID().uuidString,
+                poolId: poolId,
                 title: title,
                 detail: detail.isEmpty ? nil : detail,
                 phase: phase,

@@ -23,7 +23,7 @@ struct ChemicalLogView: View {
                 }
 
                 // Readings log
-                if !vm.readings.isEmpty {
+                if !vm.filteredReadings.isEmpty {
                     readingsSection
                 }
             }
@@ -35,6 +35,7 @@ struct ChemicalLogView: View {
         }
         .sheet(item: $editingReading) { reading in
             LogReadingSheet(
+                poolId: reading.poolId,
                 editing: reading,
                 onSave: { updated in await vm.updateReading(updated) },
                 onDelete: { id in await vm.deleteReading(id: id) }
@@ -102,11 +103,12 @@ struct ChemicalLogView: View {
 
                 Divider()
 
-                ForEach(Array(vm.readings.enumerated()), id: \.element.id) { idx, r in
+                let sortedReadings = vm.filteredReadings.sorted { $0.readingTime > $1.readingTime }
+                ForEach(Array(sortedReadings.enumerated()), id: \.element.id) { idx, r in
                     Button {
                         editingReading = r
                     } label: {
-                        ReadingRow(reading: r, isLast: idx == vm.readings.count - 1)
+                        ReadingRow(reading: r, isLast: idx == sortedReadings.count - 1)
                     }
                     .buttonStyle(.plain)
                 }
@@ -210,10 +212,10 @@ private struct ReadingRow: View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(reading.createdAt.dateOnlyDisplay)
+                    Text(reading.readingTime.readingTimeDisplay)
                         .font(.subheadline)
                         .foregroundColor(.forest)
-                    Text(reading.timeOfDay + " · " + reading.loggedByName)
+                    Text(reading.loggedByName)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

@@ -13,6 +13,7 @@ interface UIStore {
   isAddEquipmentModalOpen: boolean;
   isSeasonalTaskModalOpen: boolean;
   logServiceForEquipmentId: string | null;
+  editingServiceLogId: string | null;
   logInspectionForId: string | null;
   editingInspectionLogEntryId: string | null;
   editingSeasonalTaskId: string | null;
@@ -36,6 +37,13 @@ interface UIStore {
   staffCertForStaffId: string | null;
   isAddLicenseModalOpen: boolean;
   editingLicenseId: string | null;
+  // Pool admin modals
+  isAddEditPoolModalOpen: boolean;
+  editingPoolId: string | null;
+  isFlagIssueModalOpen: boolean;
+  flagIssueEquipmentId: string | null;
+  isEquipmentHistoryModalOpen: boolean;
+  historyEquipmentId: string | null;
 
   openLogIssueModal: () => void;
   openEditIssueModal: (id: string) => void;
@@ -44,10 +52,11 @@ interface UIStore {
   // Pool modal openers
   openLogReadingModal: () => void;
   openLogServiceModal: (equipmentId?: string) => void;
+  openEditServiceLogModal: (logId: string) => void;
   openLogInspectionModal: (inspectionId?: string) => void;
   openAddEquipmentModal: () => void;
   openSeasonalTaskModal: (taskId?: string) => void;
-  openEditInspectionLogModal: (entryId: string) => void;
+  openEditPoolInspectionLogModal: (entryId: string) => void;
   // Safety modal openers
   openSafetyLogInspectionModal: (itemId?: string) => void;
   openEditInspectionLogModal: (logId: string) => void;
@@ -59,6 +68,9 @@ interface UIStore {
   openSafetyAddStaffModal: (staffId?: string) => void;
   openStaffCertModal: (opts?: { certId?: string; staffId?: string }) => void;
   openAddLicenseModal: (licenseId?: string) => void;
+  openAddEditPoolModal: (poolId?: string) => void;
+  openFlagIssueModal: (equipmentId: string) => void;
+  openEquipmentHistoryModal: (equipmentId: string) => void;
   closeAllModals: () => void;
   setCurrentUser: (id: string) => void;
 }
@@ -75,6 +87,7 @@ export const useUIStore = create<UIStore>((set) => ({
   isAddEquipmentModalOpen: false,
   isSeasonalTaskModalOpen: false,
   logServiceForEquipmentId: null,
+  editingServiceLogId: null,
   logInspectionForId: null,
   editingInspectionLogEntryId: null,
   editingSeasonalTaskId: null,
@@ -98,6 +111,12 @@ export const useUIStore = create<UIStore>((set) => ({
   staffCertForStaffId: null,
   isAddLicenseModalOpen: false,
   editingLicenseId: null,
+  isAddEditPoolModalOpen: false,
+  editingPoolId: null,
+  isFlagIssueModalOpen: false,
+  flagIssueEquipmentId: null,
+  isEquipmentHistoryModalOpen: false,
+  historyEquipmentId: null,
 
   openLogIssueModal: () =>
     set({ isLogIssueModalOpen: true, editingIssueId: null }),
@@ -112,12 +131,15 @@ export const useUIStore = create<UIStore>((set) => ({
   openLogReadingModal: () => set({ isLogReadingModalOpen: true }),
 
   openLogServiceModal: (equipmentId) =>
-    set({ isLogServiceModalOpen: true, logServiceForEquipmentId: equipmentId ?? null }),
+    set({ isLogServiceModalOpen: true, logServiceForEquipmentId: equipmentId ?? null, editingServiceLogId: null }),
+
+  openEditServiceLogModal: (logId) =>
+    set({ isLogServiceModalOpen: true, editingServiceLogId: logId, logServiceForEquipmentId: null }),
 
   openLogInspectionModal: (inspectionId) =>
     set({ isLogInspectionModalOpen: true, logInspectionForId: inspectionId ?? null, editingInspectionLogEntryId: null }),
 
-  openEditInspectionLogModal: (entryId) =>
+  openEditPoolInspectionLogModal: (entryId) =>
     set({ isLogInspectionModalOpen: true, editingInspectionLogEntryId: entryId, logInspectionForId: null }),
 
   openAddEquipmentModal: () => set({ isAddEquipmentModalOpen: true }),
@@ -164,6 +186,15 @@ export const useUIStore = create<UIStore>((set) => ({
   openAddLicenseModal: (licenseId) =>
     set({ isAddLicenseModalOpen: true, editingLicenseId: licenseId ?? null }),
 
+  openAddEditPoolModal: (poolId) =>
+    set({ isAddEditPoolModalOpen: true, editingPoolId: poolId ?? null }),
+
+  openFlagIssueModal: (equipmentId) =>
+    set({ isFlagIssueModalOpen: true, flagIssueEquipmentId: equipmentId }),
+
+  openEquipmentHistoryModal: (equipmentId) =>
+    set({ isEquipmentHistoryModalOpen: true, historyEquipmentId: equipmentId }),
+
   closeAllModals: () =>
     set({
       isLogIssueModalOpen: false,
@@ -176,6 +207,7 @@ export const useUIStore = create<UIStore>((set) => ({
       isAddEquipmentModalOpen: false,
       isSeasonalTaskModalOpen: false,
       logServiceForEquipmentId: null,
+      editingServiceLogId: null,
       logInspectionForId: null,
       editingInspectionLogEntryId: null,
       editingSeasonalTaskId: null,
@@ -198,6 +230,12 @@ export const useUIStore = create<UIStore>((set) => ({
       staffCertForStaffId: null,
       isAddLicenseModalOpen: false,
       editingLicenseId: null,
+      isAddEditPoolModalOpen: false,
+      editingPoolId: null,
+      isFlagIssueModalOpen: false,
+      flagIssueEquipmentId: null,
+      isEquipmentHistoryModalOpen: false,
+      historyEquipmentId: null,
     }),
 
   setCurrentUser: (id: string) => set({ currentUserId: id }),

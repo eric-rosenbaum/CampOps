@@ -14,15 +14,18 @@ function statusBorderColor(status: PoolInspection['status']) {
 
 function StatusBadge({ status, nextDue }: { status: PoolInspection['status']; nextDue: string | null }) {
   if (status === 'overdue') {
+    const daysOverdue = nextDue
+      ? Math.round((Date.now() - new Date(nextDue).getTime()) / (1000 * 60 * 60 * 24))
+      : null;
     return (
       <span className="text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide bg-red-bg text-red">
-        Overdue 3 days
+        Overdue{daysOverdue != null && daysOverdue > 0 ? ` ${daysOverdue} day${daysOverdue === 1 ? '' : 's'}` : ''}
       </span>
     );
   }
   if (status === 'due' && nextDue) {
     const daysUntil = Math.round(
-      (new Date(nextDue).getTime() - new Date('2025-07-07').getTime()) / (1000 * 60 * 60 * 24)
+      (new Date(nextDue).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
     );
     return (
       <span className="text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide bg-amber-bg text-amber-text">
@@ -108,9 +111,11 @@ function InspectionLogRow({
 }
 
 export function InspectionsTab() {
-  const { inspections, inspectionLog } = usePoolStore();
-  const { openLogInspectionModal, openEditInspectionLogModal } = useUIStore();
+  const { activeInspections, activeInspectionLog } = usePoolStore();
+  const { openLogInspectionModal, openEditPoolInspectionLogModal } = useUIStore();
 
+  const inspections = activeInspections();
+  const inspectionLog = activeInspectionLog();
   const completed = inspections.filter((i) => i.status === 'ok').length;
   const comingDue = inspections.filter((i) => i.status === 'due').length;
   const overdue = inspections.filter((i) => i.status === 'overdue').length;
@@ -240,7 +245,7 @@ export function InspectionsTab() {
                   entry={entry}
                   inspections={inspections}
                   isLast={idx === arr.length - 1}
-                  onEdit={() => openEditInspectionLogModal(entry.id)}
+                  onEdit={() => openEditPoolInspectionLogModal(entry.id)}
                 />
               ))}
           </div>

@@ -3,6 +3,41 @@ import SwiftUI
 
 // MARK: - Enums
 
+enum PoolType: String, Codable, CaseIterable {
+    case pool = "pool"
+    case lake = "lake"
+    case pond = "pond"
+    case river = "river"
+    case waterfront = "waterfront"
+    case other = "other"
+
+    var displayName: String {
+        switch self {
+        case .pool:       return "Pool"
+        case .lake:       return "Lake"
+        case .pond:       return "Pond"
+        case .river:      return "River"
+        case .waterfront: return "Waterfront"
+        case .other:      return "Other"
+        }
+    }
+
+    /// Chemical pools require chlorine/pH tracking; waterfront types do not.
+    var isChemical: Bool {
+        return self == .pool || self == .other
+    }
+
+    var icon: String {
+        switch self {
+        case .pool:                 return "drop.fill"
+        case .lake, .waterfront:   return "water.waves"
+        case .pond:                 return "circle.dotted"
+        case .river:                return "arrow.left.and.right"
+        case .other:                return "questionmark.circle"
+        }
+    }
+}
+
 enum EquipmentStatus: String, Codable {
     case ok, warn, alert
     var displayName: String {
@@ -218,15 +253,35 @@ func chemStatus(field: ChemField, value: Double) -> ChemStatus {
 
 // MARK: - Models
 
+struct CampPool: Codable, Identifiable {
+    let id: String
+    var name: String
+    var type: PoolType
+    var isActive: Bool
+    var notes: String?
+    var sortOrder: Int
+    let createdAt: Date
+    var updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, type, notes
+        case isActive   = "is_active"
+        case sortOrder  = "sort_order"
+        case createdAt  = "created_at"
+        case updatedAt  = "updated_at"
+    }
+}
+
 struct ChemicalReading: Codable, Identifiable {
     let id: String
+    let poolId: String
     let freeChlorine: Double
     let ph: Double
     let alkalinity: Double
     let cyanuricAcid: Double
     let waterTemp: Double
     let calciumHardness: Double?
-    let timeOfDay: String
+    let readingTime: Date
     let loggedById: String
     let loggedByName: String
     let correctiveAction: String?
@@ -235,12 +290,13 @@ struct ChemicalReading: Codable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id
+        case poolId           = "pool_id"
         case freeChlorine     = "free_chlorine"
         case ph, alkalinity
         case cyanuricAcid     = "cyanuric_acid"
         case waterTemp        = "water_temp"
         case calciumHardness  = "calcium_hardness"
-        case timeOfDay        = "time_of_day"
+        case readingTime      = "reading_time"
         case loggedById       = "logged_by_id"
         case loggedByName     = "logged_by_name"
         case correctiveAction = "corrective_action"
@@ -251,6 +307,7 @@ struct ChemicalReading: Codable, Identifiable {
 
 struct PoolEquipment: Codable, Identifiable {
     let id: String
+    var poolId: String
     var name: String
     var type: EquipmentType
     var status: EquipmentStatus
@@ -263,7 +320,9 @@ struct PoolEquipment: Codable, Identifiable {
     var updatedAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case id, name, type, status
+        case id
+        case poolId         = "pool_id"
+        case name, type, status
         case statusDetail   = "status_detail"
         case lastServiced   = "last_serviced"
         case nextServiceDue = "next_service_due"
@@ -275,6 +334,7 @@ struct PoolEquipment: Codable, Identifiable {
 
 struct PoolServiceLog: Codable, Identifiable {
     let id: String
+    let poolId: String
     let equipmentId: String?
     let serviceType: PoolServiceType
     let datePerformed: String
@@ -286,6 +346,7 @@ struct PoolServiceLog: Codable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id
+        case poolId         = "pool_id"
         case equipmentId    = "equipment_id"
         case serviceType    = "service_type"
         case datePerformed  = "date_performed"
@@ -298,6 +359,7 @@ struct PoolServiceLog: Codable, Identifiable {
 
 struct PoolInspection: Codable, Identifiable {
     let id: String
+    var poolId: String
     var name: String
     var frequency: String
     var authority: String
@@ -310,7 +372,9 @@ struct PoolInspection: Codable, Identifiable {
     var updatedAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case id, name, frequency, authority, standard, status
+        case id
+        case poolId        = "pool_id"
+        case name, frequency, authority, standard, status
         case lastCompleted = "last_completed"
         case nextDue       = "next_due"
         case history
@@ -321,6 +385,7 @@ struct PoolInspection: Codable, Identifiable {
 
 struct PoolInspectionLog: Codable, Identifiable {
     let id: String
+    var poolId: String
     var inspectionId: String?
     var inspectionDate: String
     var conductedBy: String
@@ -331,12 +396,13 @@ struct PoolInspectionLog: Codable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id
-        case inspectionId  = "inspection_id"
+        case poolId         = "pool_id"
+        case inspectionId   = "inspection_id"
         case inspectionDate = "inspection_date"
-        case conductedBy   = "conducted_by"
+        case conductedBy    = "conducted_by"
         case result, notes
-        case nextDue       = "next_due"
-        case createdAt     = "created_at"
+        case nextDue        = "next_due"
+        case createdAt      = "created_at"
     }
 
     func typeName(inspections: [PoolInspection]) -> String {
@@ -358,6 +424,7 @@ struct PoolInspectionLog: Codable, Identifiable {
 
 struct PoolSeasonalTask: Codable, Identifiable {
     let id: String
+    var poolId: String
     var title: String
     var detail: String?
     var phase: SeasonalPhase
@@ -370,7 +437,9 @@ struct PoolSeasonalTask: Codable, Identifiable {
     var updatedAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case id, title, detail, phase
+        case id
+        case poolId        = "pool_id"
+        case title, detail, phase
         case isComplete    = "is_complete"
         case completedBy   = "completed_by"
         case completedDate = "completed_date"
@@ -389,6 +458,14 @@ extension Date {
         f.dateFormat = "yyyy-MM-dd"
         f.locale = Locale(identifier: "en_US_POSIX")
         f.timeZone = TimeZone(identifier: "UTC")
+        return f.string(from: self)
+    }
+
+    /// e.g. "Apr 15 · 9:30 AM"
+    var readingTimeDisplay: String {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d · h:mm a"
+        f.locale = Locale(identifier: "en_US")
         return f.string(from: self)
     }
 }

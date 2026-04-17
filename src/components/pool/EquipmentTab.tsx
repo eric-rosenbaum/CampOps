@@ -2,6 +2,8 @@ import { usePoolStore } from '@/store/poolStore';
 import { useUIStore } from '@/store/uiStore';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { Button } from '@/components/shared/Button';
+import { FlagIssueModal } from './FlagIssueModal';
+import { EquipmentHistoryModal } from './EquipmentHistoryModal';
 import type { PoolEquipment } from '@/lib/types';
 
 function statusBorderColor(status: PoolEquipment['status']) {
@@ -87,15 +89,26 @@ function getEquipmentFields(equip: PoolEquipment): { label: string; value: strin
 }
 
 export function EquipmentTab() {
-  const { equipment } = usePoolStore();
-  const { openLogServiceModal, openAddEquipmentModal } = useUIStore();
+  const { activeEquipment, deleteEquipment } = usePoolStore();
+  const {
+    openLogServiceModal, openAddEquipmentModal,
+    openFlagIssueModal, openEquipmentHistoryModal,
+    isFlagIssueModalOpen, isEquipmentHistoryModalOpen,
+  } = useUIStore();
 
+  const equipment = activeEquipment();
   const total = equipment.length;
   const operational = equipment.filter((e) => e.status === 'ok').length;
   const serviceDue = equipment.filter((e) => e.status === 'warn').length;
   const needsRepair = equipment.filter((e) => e.status === 'alert').length;
 
   const warnEquip = equipment.filter((e) => e.status === 'warn' || e.status === 'alert');
+
+  function handleDelete(equip: PoolEquipment) {
+    if (window.confirm(`Delete "${equip.name}"? This cannot be undone.`)) {
+      deleteEquipment(equip.id);
+    }
+  }
 
   return (
     <div>
@@ -132,6 +145,10 @@ export function EquipmentTab() {
         <Button variant="ghost" size="sm" onClick={openAddEquipmentModal}>+ Add equipment</Button>
       </div>
 
+      {equipment.length === 0 && (
+        <p className="text-body text-forest/40 text-center py-10">No equipment added yet.</p>
+      )}
+
       <div className="flex flex-col gap-2.5">
         {equipment.map((equip) => {
           const fields = getEquipmentFields(equip);
@@ -162,21 +179,44 @@ export function EquipmentTab() {
                 <Button variant="ghost" size="sm" onClick={() => openLogServiceModal(equip.id)}>
                   Log service
                 </Button>
-                {equip.status !== 'alert' && (
+                {equip.status === 'ok' ? (
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-red border-red/30 hover:bg-red-bg"
+                    className="text-red/70 hover:text-red hover:bg-red-bg"
+                    onClick={() => openFlagIssueModal(equip.id)}
                   >
                     Flag issue
                   </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-amber hover:bg-amber-bg"
+                    onClick={() => openFlagIssueModal(equip.id)}
+                  >
+                    Edit issue
+                  </Button>
                 )}
-                <Button variant="ghost" size="sm">View history</Button>
+                <Button variant="ghost" size="sm" onClick={() => openEquipmentHistoryModal(equip.id)}>
+                  View history
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto text-red/60 hover:text-red hover:bg-red-bg"
+                  onClick={() => handleDelete(equip)}
+                >
+                  Delete
+                </Button>
               </div>
             </div>
           );
         })}
       </div>
+
+      {isFlagIssueModalOpen && <FlagIssueModal />}
+      {isEquipmentHistoryModalOpen && <EquipmentHistoryModal />}
     </div>
   );
 }

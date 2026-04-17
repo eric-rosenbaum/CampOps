@@ -168,7 +168,7 @@ function PhaseSection({ phase, label, subtitle, tasks, canManage, onToggle, onEd
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function SeasonalChecklistTab() {
-  const { seasonalTasks, toggleSeasonalTask, deleteSeasonalTask, seasonalProgress } = usePoolStore();
+  const { activeSeasonalTasks, toggleSeasonalTask, deleteSeasonalTask, seasonalProgress } = usePoolStore();
   const { isSeasonalTaskModalOpen, editingSeasonalTaskId, openSeasonalTaskModal, closeAllModals } = useUIStore();
   const { currentUser, can } = useAuth();
 
@@ -177,9 +177,10 @@ export function SeasonalChecklistTab() {
   const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
 
   const [addingPhase, setAddingPhase] = useState<SeasonalPhase | undefined>();
+  const tasks = activeSeasonalTasks();
 
   const byPhase = (phase: SeasonalPhase) =>
-    [...seasonalTasks.filter((t) => t.phase === phase)].sort((a, b) => a.sortOrder - b.sortOrder);
+    [...tasks.filter((t) => t.phase === phase)].sort((a, b) => a.sortOrder - b.sortOrder);
 
   function handleAdd(phase: SeasonalPhase) {
     setAddingPhase(phase);

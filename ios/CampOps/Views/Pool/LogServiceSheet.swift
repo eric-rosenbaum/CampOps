@@ -5,7 +5,10 @@ struct LogServiceSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let equipment: [PoolEquipment]
+    var editing: PoolServiceLog? = nil
     let onSave: (PoolServiceLog) async -> Void
+    var onUpdate: ((PoolServiceLog) async -> Void)? = nil
+    var onDelete: ((String) async -> Void)? = nil
 
     @State private var selectedEquipmentId: String = ""
     @State private var serviceType: PoolServiceType = .routineMaintenance
@@ -16,6 +19,9 @@ struct LogServiceSheet: View {
     @State private var nextServiceDue: Date = Date().addingTimeInterval(30 * 24 * 3600)
     @State private var hasNextService = false
     @State private var isSaving = false
+    @State private var showingDeleteConfirm = false
+
+    private var isEditing: Bool { editing != nil }
 
     var body: some View {
         NavigationStack {
@@ -59,33 +65,85 @@ struct LogServiceSheet: View {
                         DatePicker("Next due", selection: $nextServiceDue, displayedComponents: .date)
                     }
                 }
+
+                if isEditing {
+                    Section {
+                        Button(role: .destructive) { showingDeleteConfirm = true } label: {
+                            HStack {
+                                Spacer()
+                                Text("Delete service record")
+                                Spacer()
+                            }
+                        }
+                    }
+                }
             }
-            .navigationTitle("Log service")
+            .navigationTitle(isEditing ? "Edit service record" : "Log service")
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear { performedBy = userManager.currentUser.name }
+            .onAppear { prefill() }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
+                    Button(isEditing ? "Save" : "Save") { save() }
                         .disabled(performedBy.isEmpty || isSaving)
                 }
             }
+            .confirmationDialog("Delete this service record?", isPresented: $showingDeleteConfirm, titleVisibility: .visible) {
+                Button("Delete", role: .destructive) {
+                    guard let entry = editing else { return }
+                    Task { await onDelete?(entry.id); dismiss() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This cannot be undone.")
+            }
         }
+    }
+
+    private func prefill() {
+        if let e = editing {
+            selectedEquipmentId = e.equipmentId ?? ""
+            serviceType = e.serviceType
+            if let d = parseDate(e.datePerformed) { datePerformed = d }
+            performedBy = e.performedBy
+            notes = e.notes ?? ""
+            costText = e.cost != nil ? String(format: "%.2f", e.cost!) : ""
+            if let next = e.nextServiceDue, let d = parseDate(next) {
+                hasNextService = true
+                nextServiceDue = d
+            }
+        } else {
+            performedBy = userManager.currentUser.name
+        }
+    }
+
+    private func parseDate(_ s: String) -> Date? {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f.date(from: s)
     }
 
     private func save() {
         isSaving = true
         let entry = PoolServiceLog(
-            id: UUID().uuidString,
+            id: editing?.id ?? UUID().uuidString,
+            poolId: editing?.poolId ?? "",
             equipmentId: selectedEquipmentId.isEmpty ? nil : selectedEquipmentId,
             serviceType: serviceType,
             datePerformed: datePerformed.yyyyMMdd,
             performedBy: performedBy,
             notes: notes.isEmpty ? nil : notes,
-            cost: Double(costText),
+            cost: Double(costText.replacingOccurrences(of: "$", with: "").replacingOccurrences(of: ",", with: "")),
             nextServiceDue: hasNextService ? nextServiceDue.yyyyMMdd : nil,
-            createdAt: Date()
+            createdAt: editing?.createdAt ?? Date()
         )
-        Task { await onSave(entry); dismiss() }
+        Task {
+            if isEditing {
+                await onUpdate?(entry)
+            } else {
+                await onSave(entry)
+            }
+            dismiss()
+        }
     }
 }

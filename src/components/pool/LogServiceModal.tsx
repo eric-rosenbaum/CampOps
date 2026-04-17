@@ -20,20 +20,28 @@ const inputClass = 'w-full text-body bg-white border border-border rounded-btn p
 const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
 
 export function LogServiceModal() {
-  const { closeAllModals, logServiceForEquipmentId } = useUIStore();
-  const { equipment, addServiceLog } = usePoolStore();
+  const { closeAllModals, logServiceForEquipmentId, editingServiceLogId } = useUIStore();
+  const { activeEquipment, serviceLog, addServiceLog, updateServiceLog, deleteServiceLog, activePoolId } = usePoolStore();
+  const equipment = activeEquipment();
 
-  const { register, handleSubmit, formState: { isSubmitting } } = useForm<FormValues>({
+  const editing = editingServiceLogId
+    ? serviceLog.find((e) => e.id === editingServiceLogId) ?? null
+    : null;
+
+  const { register, handleSubmit, formState: { isSubmitting, errors } } = useForm<FormValues>({
     defaultValues: {
-      equipmentId: logServiceForEquipmentId ?? '',
-      serviceType: 'routine_maintenance',
-      datePerformed: new Date().toISOString().slice(0, 10),
+      equipmentId: editing?.equipmentId ?? logServiceForEquipmentId ?? '',
+      serviceType: editing?.serviceType ?? 'routine_maintenance',
+      datePerformed: editing?.datePerformed ?? new Date().toISOString().slice(0, 10),
+      performedBy: editing?.performedBy ?? '',
+      notes: editing?.notes ?? '',
+      cost: editing?.cost != null ? String(editing.cost) : '',
+      nextServiceDue: editing?.nextServiceDue ?? '',
     },
   });
 
   function onSubmit(data: FormValues) {
-    const entry: ServiceLogEntry = {
-      id: generateId(),
+    const parsed: Partial<ServiceLogEntry> = {
       equipmentId: data.equipmentId,
       serviceType: data.serviceType,
       datePerformed: data.datePerformed,
@@ -41,16 +49,44 @@ export function LogServiceModal() {
       notes: data.notes || null,
       cost: data.cost ? parseFloat(data.cost.replace(/[$,]/g, '')) : null,
       nextServiceDue: data.nextServiceDue || null,
-      createdAt: new Date().toISOString(),
     };
-    addServiceLog(entry);
+
+    if (editing) {
+      updateServiceLog(editing.id, parsed);
+    } else {
+      addServiceLog({
+        id: generateId(),
+        poolId: activePoolId ?? '',
+        equipmentId: data.equipmentId,
+        serviceType: data.serviceType,
+        datePerformed: data.datePerformed,
+        performedBy: data.performedBy,
+        notes: data.notes || null,
+        cost: parsed.cost ?? null,
+        nextServiceDue: data.nextServiceDue || null,
+        createdAt: new Date().toISOString(),
+      });
+    }
     closeAllModals();
   }
 
+  function handleDelete() {
+    if (!editing) return;
+    if (window.confirm('Delete this service record? This cannot be undone.')) {
+      deleteServiceLog(editing.id);
+      closeAllModals();
+    }
+  }
+
   return (
-    <Modal title="Log equipment service" onClose={closeAllModals}>
+    <Modal
+      title={editing ? 'Edit service record' : 'Log equipment service'}
+      onClose={closeAllModals}
+    >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <p className="text-secondary text-forest/50 -mt-1">Record a service, maintenance, or repair event</p>
+        {!editing && (
+          <p className="text-secondary text-forest/50 -mt-1">Record a service, maintenance, or repair event</p>
+        )}
 
         <div>
           <label className={labelClass}>Equipment *</label>
@@ -86,6 +122,7 @@ export function LogServiceModal() {
             className={inputClass}
             placeholder="Name or vendor"
           />
+          {errors.performedBy && <p className="text-meta text-red mt-0.5">Required</p>}
         </div>
 
         <div>
@@ -111,9 +148,20 @@ export function LogServiceModal() {
 
         <div className="flex gap-2 pt-1">
           <Button type="submit" className="flex-1 justify-center" disabled={isSubmitting}>
-            Save service record
+            {editing ? 'Save changes' : 'Save service record'}
           </Button>
-          <Button type="button" variant="ghost" onClick={closeAllModals}>Cancel</Button>
+          {editing ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-red hover:bg-red-bg hover:text-red"
+              onClick={handleDelete}
+            >
+              Delete
+            </Button>
+          ) : (
+            <Button type="button" variant="ghost" onClick={closeAllModals}>Cancel</Button>
+          )}
         </div>
       </form>
     </Modal>

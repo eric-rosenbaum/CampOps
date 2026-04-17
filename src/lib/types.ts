@@ -82,15 +82,29 @@ export interface Season {
 
 // ─── Pool Management ──────────────────────────────────────────────────────────
 
+export type PoolType = 'pool' | 'lake' | 'pond' | 'river' | 'waterfront' | 'other';
+
+export interface CampPool {
+  id: string;
+  name: string;
+  type: PoolType;
+  isActive: boolean;
+  notes: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ChemicalReading {
   id: string;
+  poolId: string;
   freeChlorine: number;
   ph: number;
   alkalinity: number;
   cyanuricAcid: number;
   waterTemp: number;
   calciumHardness: number | null;
-  timeOfDay: string;
+  readingTime: string;
   loggedById: string;
   loggedByName: string;
   correctiveAction: string | null;
@@ -104,6 +118,7 @@ export type ServiceType = 'routine_maintenance' | 'repair' | 'inspection' | 'par
 
 export interface PoolEquipment {
   id: string;
+  poolId: string;
   name: string;
   type: EquipmentType;
   status: EquipmentStatus;
@@ -118,6 +133,7 @@ export interface PoolEquipment {
 
 export interface ServiceLogEntry {
   id: string;
+  poolId: string;
   equipmentId: string;
   serviceType: ServiceType;
   datePerformed: string;
@@ -133,6 +149,7 @@ export type InspectionResult = 'passed' | 'passed_with_notes' | 'conditional' | 
 
 export interface PoolInspection {
   id: string;
+  poolId: string;
   name: string;
   frequency: string;
   authority: string;
@@ -147,6 +164,7 @@ export interface PoolInspection {
 
 export interface InspectionLogEntry {
   id: string;
+  poolId: string;
   inspectionId: string;
   inspectionDate: string;
   conductedBy: string;
@@ -295,6 +313,7 @@ export interface SafetyTempLog {
 
 export interface SeasonalTask {
   id: string;
+  poolId: string;
   title: string;
   detail: string | null;
   phase: SeasonalPhase;

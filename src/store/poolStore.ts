@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type {
+  CampPool,
   ChemicalReading,
   PoolEquipment,
   ServiceLogEntry,
@@ -7,11 +8,19 @@ import type {
   InspectionLogEntry,
   SeasonalTask,
   SeasonalPhase,
+  PoolType,
 } from '@/lib/types';
 import {
+  dbAddPool,
+  dbUpdatePool,
+  dbDeletePool,
   dbAddChemicalReading,
   dbAddEquipment,
+  dbUpdateEquipment,
+  dbDeleteEquipment,
   dbAddServiceLog,
+  dbUpdateServiceLog,
+  dbDeleteServiceLog,
   dbUpdateInspection,
   dbAddInspectionLog,
   dbUpdateInspectionLog,
@@ -61,10 +70,29 @@ export function getChemicalStatus(field: ChemicalField, value: number): 'ok' | '
   }
 }
 
+// ─── Pool type helpers ────────────────────────────────────────────────────────
+
+const WATERFRONT_TYPES: PoolType[] = ['lake', 'pond', 'river', 'waterfront'];
+
+export function isWaterfrontType(type: PoolType): boolean {
+  return WATERFRONT_TYPES.includes(type);
+}
+
+export const POOL_TYPE_LABELS: Record<PoolType, string> = {
+  pool: 'Swimming pool',
+  lake: 'Lake',
+  pond: 'Pond',
+  river: 'River',
+  waterfront: 'Waterfront',
+  other: 'Other (chemical)',
+};
+
 // ─── Store interface ──────────────────────────────────────────────────────────
 
 interface PoolStore {
   activeTab: PoolTab;
+  activePoolId: string | null;
+  pools: CampPool[];
   chemicalReadings: ChemicalReading[];
   equipment: PoolEquipment[];
   serviceLog: ServiceLogEntry[];
@@ -73,8 +101,10 @@ interface PoolStore {
   seasonalTasks: SeasonalTask[];
 
   setActiveTab: (tab: PoolTab) => void;
+  setActivePool: (id: string | null) => void;
 
   // Data setters (called from AppInit when Supabase loads)
+  setPools: (rows: CampPool[]) => void;
   setChemicalReadings: (rows: ChemicalReading[]) => void;
   setEquipment: (rows: PoolEquipment[]) => void;
   setServiceLog: (rows: ServiceLogEntry[]) => void;
@@ -82,10 +112,19 @@ interface PoolStore {
   setInspectionLog: (rows: InspectionLogEntry[]) => void;
   setSeasonalTasks: (rows: SeasonalTask[]) => void;
 
+  // Pool CRUD
+  addPool: (pool: CampPool) => void;
+  updatePool: (pool: CampPool) => void;
+  deletePool: (id: string) => void;
+
   // Mutations
   addChemicalReading: (reading: ChemicalReading) => void;
   addEquipment: (equip: PoolEquipment) => void;
+  updateEquipment: (equip: PoolEquipment) => void;
+  deleteEquipment: (id: string) => void;
   addServiceLog: (entry: ServiceLogEntry) => void;
+  updateServiceLog: (id: string, patch: Partial<ServiceLogEntry>) => void;
+  deleteServiceLog: (id: string) => void;
   addInspectionLog: (entry: InspectionLogEntry, updatedInspection: PoolInspection | null) => void;
   updateInspectionLog: (id: string, patch: Partial<InspectionLogEntry>) => void;
   deleteInspectionLog: (id: string) => void;
@@ -94,7 +133,13 @@ interface PoolStore {
   updateSeasonalTask: (id: string, patch: Partial<SeasonalTask>) => void;
   deleteSeasonalTask: (id: string) => void;
 
-  // Selectors
+  // Selectors (scoped to activePoolId)
+  activePool: () => CampPool | null;
+  activeReadings: () => ChemicalReading[];
+  activeEquipment: () => PoolEquipment[];
+  activeInspections: () => PoolInspection[];
+  activeInspectionLog: () => InspectionLogEntry[];
+  activeSeasonalTasks: () => SeasonalTask[];
   latestReading: () => ChemicalReading | null;
   outOfRangeAlerts: () => string[];
   seasonalProgress: () => { total: number; done: number };
@@ -105,6 +150,8 @@ interface PoolStore {
 
 export const usePoolStore = create<PoolStore>((set, get) => ({
   activeTab: 'chemical',
+  activePoolId: null,
+  pools: [],
   chemicalReadings: [],
   equipment: [],
   serviceLog: [],
@@ -113,7 +160,9 @@ export const usePoolStore = create<PoolStore>((set, get) => ({
   seasonalTasks: [],
 
   setActiveTab: (tab) => set({ activeTab: tab }),
+  setActivePool: (id) => set({ activePoolId: id }),
 
+  setPools: (rows) => set({ pools: rows }),
   setChemicalReadings: (rows) => set({ chemicalReadings: rows }),
   setEquipment: (rows) => set({ equipment: rows }),
   setServiceLog: (rows) => set({ serviceLog: rows }),
@@ -121,10 +170,32 @@ export const usePoolStore = create<PoolStore>((set, get) => ({
   setInspectionLog: (rows) => set({ inspectionLog: rows }),
   setSeasonalTasks: (rows) => set({ seasonalTasks: rows }),
 
-  addChemicalReading: (reading) => {
+  addPool: (pool) => {
+    set((s) => ({ pools: [...s.pools, pool] }));
+    dbAddPool(pool);
+  },
+
+  updatePool: (pool) => {
+    set((s) => ({ pools: s.pools.map((p) => p.id === pool.id ? pool : p) }));
+    dbUpdatePool(pool);
+  },
+
+  deletePool: (id) => {
     set((s) => ({
-      chemicalReadings: [reading, ...s.chemicalReadings],
+      pools: s.pools.filter((p) => p.id !== id),
+      activePoolId: s.activePoolId === id ? null : s.activePoolId,
+      chemicalReadings: s.chemicalReadings.filter((r) => r.poolId !== id),
+      equipment: s.equipment.filter((e) => e.poolId !== id),
+      serviceLog: s.serviceLog.filter((sl) => sl.poolId !== id),
+      inspections: s.inspections.filter((i) => i.poolId !== id),
+      inspectionLog: s.inspectionLog.filter((e) => e.poolId !== id),
+      seasonalTasks: s.seasonalTasks.filter((t) => t.poolId !== id),
     }));
+    dbDeletePool(id);
+  },
+
+  addChemicalReading: (reading) => {
+    set((s) => ({ chemicalReadings: [reading, ...s.chemicalReadings] }));
     dbAddChemicalReading(reading);
   },
 
@@ -133,9 +204,49 @@ export const usePoolStore = create<PoolStore>((set, get) => ({
     dbAddEquipment(equip);
   },
 
+  updateEquipment: (equip) => {
+    set((s) => ({ equipment: s.equipment.map((e) => e.id === equip.id ? equip : e) }));
+    dbUpdateEquipment(equip);
+  },
+
+  deleteEquipment: (id) => {
+    set((s) => ({ equipment: s.equipment.filter((e) => e.id !== id) }));
+    dbDeleteEquipment(id);
+  },
+
   addServiceLog: (entry) => {
-    set((s) => ({ serviceLog: [entry, ...s.serviceLog] }));
+    const now = new Date().toISOString();
+    set((s) => {
+      const updatedEquipment = entry.equipmentId
+        ? s.equipment.map((e) => {
+            if (e.id !== entry.equipmentId) return e;
+            return {
+              ...e,
+              lastServiced: entry.datePerformed,
+              nextServiceDue: entry.nextServiceDue ?? e.nextServiceDue,
+              updatedAt: now,
+            };
+          })
+        : s.equipment;
+      return { serviceLog: [entry, ...s.serviceLog], equipment: updatedEquipment };
+    });
     dbAddServiceLog(entry);
+    if (entry.equipmentId) {
+      const equip = get().equipment.find((e) => e.id === entry.equipmentId);
+      if (equip) dbUpdateEquipment(equip);
+    }
+  },
+
+  updateServiceLog: (id, patch) => {
+    set((s) => ({
+      serviceLog: s.serviceLog.map((e) => e.id === id ? { ...e, ...patch } : e),
+    }));
+    dbUpdateServiceLog(id, patch);
+  },
+
+  deleteServiceLog: (id) => {
+    set((s) => ({ serviceLog: s.serviceLog.filter((e) => e.id !== id) }));
+    dbDeleteServiceLog(id);
   },
 
   addInspectionLog: (entry, updatedInspection) => {
@@ -202,11 +313,48 @@ export const usePoolStore = create<PoolStore>((set, get) => ({
     if (task) dbToggleSeasonalTask(task.id, task.isComplete, task.completedBy, task.completedDate);
   },
 
+  // ─── Scoped selectors ───────────────────────────────────────────────────────
+
+  activePool: () => {
+    const { pools, activePoolId } = get();
+    return pools.find((p) => p.id === activePoolId) ?? null;
+  },
+
+  activeReadings: () => {
+    const { chemicalReadings, activePoolId } = get();
+    if (!activePoolId) return chemicalReadings;
+    return chemicalReadings.filter((r) => r.poolId === activePoolId);
+  },
+
+  activeEquipment: () => {
+    const { equipment, activePoolId } = get();
+    if (!activePoolId) return equipment;
+    return equipment.filter((e) => e.poolId === activePoolId);
+  },
+
+  activeInspections: () => {
+    const { inspections, activePoolId } = get();
+    if (!activePoolId) return inspections;
+    return inspections.filter((i) => i.poolId === activePoolId);
+  },
+
+  activeInspectionLog: () => {
+    const { inspectionLog, activePoolId } = get();
+    if (!activePoolId) return inspectionLog;
+    return inspectionLog.filter((e) => e.poolId === activePoolId);
+  },
+
+  activeSeasonalTasks: () => {
+    const { seasonalTasks, activePoolId } = get();
+    if (!activePoolId) return seasonalTasks;
+    return seasonalTasks.filter((t) => t.poolId === activePoolId);
+  },
+
   latestReading: () => {
-    const { chemicalReadings } = get();
-    if (chemicalReadings.length === 0) return null;
-    return [...chemicalReadings].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    const readings = get().activeReadings();
+    if (readings.length === 0) return null;
+    return [...readings].sort(
+      (a, b) => new Date(b.readingTime).getTime() - new Date(a.readingTime).getTime()
     )[0];
   },
 
@@ -224,12 +372,12 @@ export const usePoolStore = create<PoolStore>((set, get) => ({
   },
 
   seasonalProgress: () => {
-    const { seasonalTasks } = get();
-    return { total: seasonalTasks.length, done: seasonalTasks.filter((t) => t.isComplete).length };
+    const tasks = get().activeSeasonalTasks();
+    return { total: tasks.length, done: tasks.filter((t) => t.isComplete).length };
   },
 
   seasonalProgressByPhase: (phase) => {
-    const tasks = get().seasonalTasks.filter((t) => t.phase === phase);
+    const tasks = get().activeSeasonalTasks().filter((t) => t.phase === phase);
     return { total: tasks.length, done: tasks.filter((t) => t.isComplete).length };
   },
 }));

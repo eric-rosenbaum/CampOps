@@ -8,11 +8,12 @@ struct EquipmentDetailSheet: View {
     let equipment: PoolEquipment
     @State private var showingEdit = false
     @State private var showingLogService = false
+    @State private var showingFlagIssue = false
     @State private var showingDeleteConfirm = false
+    @State private var editingServiceLog: PoolServiceLog? = nil
 
     private var serviceLog: [PoolServiceLog] { vm.serviceLogFor(equipmentId: equipment.id) }
 
-    // Reflect live updates from vm
     private var live: PoolEquipment {
         vm.equipment.first(where: { $0.id == equipment.id }) ?? equipment
     }
@@ -46,6 +47,10 @@ struct EquipmentDetailSheet: View {
                         Button { showingLogService = true } label: {
                             Label("Log service", systemImage: "wrench.adjustable")
                         }
+                        Button { showingFlagIssue = true } label: {
+                            Label(live.status == .ok ? "Flag issue" : "Edit issue",
+                                  systemImage: live.status == .ok ? "exclamationmark.triangle" : "pencil.circle")
+                        }
                         Button { showingEdit = true } label: {
                             Label("Edit equipment", systemImage: "pencil")
                         }
@@ -58,7 +63,7 @@ struct EquipmentDetailSheet: View {
                 }
             }
             .sheet(isPresented: $showingEdit) {
-                AddEquipmentSheet(editing: live, onSave: { updated in
+                AddEquipmentSheet(poolId: live.poolId, editing: live, onSave: { updated in
                     await vm.updateEquipment(updated)
                 }, onDelete: { id in
                     await vm.deleteEquipment(id: id)
@@ -66,10 +71,24 @@ struct EquipmentDetailSheet: View {
                 })
             }
             .sheet(isPresented: $showingLogService) {
-                LogServiceSheet(equipment: vm.equipment) { entry in
+                LogServiceSheet(equipment: vm.equipment, onSave: { entry in
                     await vm.addServiceLog(entry)
-                }
+                })
                 .environmentObject(userManager)
+            }
+            .sheet(item: $editingServiceLog) { entry in
+                LogServiceSheet(
+                    equipment: vm.equipment,
+                    editing: entry,
+                    onSave: { _ in },
+                    onUpdate: { updated in await vm.updateServiceLog(updated) },
+                    onDelete: { id in await vm.deleteServiceLog(id: id) }
+                )
+                .environmentObject(userManager)
+            }
+            .sheet(isPresented: $showingFlagIssue) {
+                FlagIssueSheet(equipment: live)
+                    .environmentObject(vm)
             }
             .confirmationDialog("Delete \(live.name)?", isPresented: $showingDeleteConfirm, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {
@@ -105,7 +124,7 @@ struct EquipmentDetailSheet: View {
                         .clipShape(Capsule())
                 }
 
-                if !live.statusDetail.isEmpty {
+                if !live.statusDetail.isEmpty && live.statusDetail != "Normal" {
                     Text(live.statusDetail).font(.subheadline).foregroundColor(.secondary)
                 }
 
@@ -118,13 +137,24 @@ struct EquipmentDetailSheet: View {
                     }
                 }
 
-                Button { showingLogService = true } label: {
-                    Label("Log service", systemImage: "wrench.adjustable")
-                        .font(.subheadline.weight(.medium))
+                HStack(spacing: Spacing.sm) {
+                    Button { showingLogService = true } label: {
+                        Label("Log service", systemImage: "wrench.adjustable")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.sage)
+                    .controlSize(.small)
+
+                    Button { showingFlagIssue = true } label: {
+                        Label(live.status == .ok ? "Flag issue" : "Edit issue",
+                              systemImage: live.status == .ok ? "exclamationmark.triangle" : "pencil.circle")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(live.status == .ok ? .red : .orange)
+                    .controlSize(.small)
                 }
-                .buttonStyle(.bordered)
-                .tint(.sage)
-                .controlSize(.small)
             }
             .padding(Spacing.md)
         }
@@ -141,7 +171,11 @@ struct EquipmentDetailSheet: View {
 
             VStack(spacing: 0) {
                 ForEach(Array(serviceLog.enumerated()), id: \.element.id) { idx, entry in
-                    ServiceLogRow(entry: entry, isLast: idx == serviceLog.count - 1)
+                    ServiceLogRow(entry: entry, isLast: idx == serviceLog.count - 1) {
+                        editingServiceLog = entry
+                    } onDelete: {
+                        Task { await vm.deleteServiceLog(id: entry.id) }
+                    }
                 }
             }
             .background(Color(.systemBackground))
@@ -166,6 +200,8 @@ struct EquipmentDetailSheet: View {
 private struct ServiceLogRow: View {
     let entry: PoolServiceLog
     let isLast: Bool
+    let onEdit: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -190,6 +226,17 @@ private struct ServiceLogRow: View {
 
             if !isLast { Divider().padding(.leading, Spacing.md) }
         }
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) { onDelete() } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            Button { onEdit() } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            .tint(.blue)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { onEdit() }
     }
 }
 

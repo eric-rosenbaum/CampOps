@@ -17,7 +17,7 @@ function AppInit() {
   const setIssues = useIssuesStore((s) => s.setIssues);
   const setTasks = useChecklistStore((s) => s.setTasks);
   const setSeason = useChecklistStore((s) => s.setSeason);
-  const { setChemicalReadings, setEquipment, setServiceLog, setInspections, setInspectionLog, setSeasonalTasks } = usePoolStore();
+  const { setPools, setChemicalReadings, setEquipment, setServiceLog, setInspections, setInspectionLog, setSeasonalTasks } = usePoolStore();
   const { setItems, setInspectionLog: setSafetyLog, setDrills, setStaff, setCertifications, setTempLogs, setLicenses } = useSafetyStore();
 
   useEffect(() => {
@@ -42,6 +42,7 @@ function AppInit() {
 
     loadPoolFromSupabase().then((data) => {
       if (!data) return;
+      setPools(data.pools);
       setChemicalReadings(data.readings);
       setEquipment(data.equipment);
       setServiceLog(data.serviceLog);
@@ -50,6 +51,7 @@ function AppInit() {
       setSeasonalTasks(data.seasonalTasks);
 
       unsubPool = subscribeToPool((d) => {
+        setPools(d.pools);
         setChemicalReadings(d.readings);
         setEquipment(d.equipment);
         setServiceLog(d.serviceLog);
@@ -86,7 +88,7 @@ function AppInit() {
       unsubPool?.();
       unsubSafety?.();
     };
-  }, [setIssues, setTasks, setSeason, setChemicalReadings, setEquipment, setServiceLog, setInspections, setInspectionLog, setSeasonalTasks, setItems, setSafetyLog, setDrills, setStaff, setCertifications, setTempLogs, setLicenses]);
+  }, [setIssues, setTasks, setSeason, setPools, setChemicalReadings, setEquipment, setServiceLog, setInspections, setInspectionLog, setSeasonalTasks, setItems, setSafetyLog, setDrills, setStaff, setCertifications, setTempLogs, setLicenses]);
 
   return null;
 }

@@ -119,7 +119,7 @@ function UserCombobox({
 
 export function SeasonalTaskModal({ defaultPhase }: { defaultPhase?: SeasonalPhase }) {
   const { closeAllModals, editingSeasonalTaskId } = useUIStore();
-  const { seasonalTasks, addSeasonalTask, updateSeasonalTask } = usePoolStore();
+  const { seasonalTasks, addSeasonalTask, updateSeasonalTask, activePoolId } = usePoolStore();
 
   const editing = editingSeasonalTaskId
     ? seasonalTasks.find((t) => t.id === editingSeasonalTaskId) ?? null
@@ -155,10 +155,12 @@ export function SeasonalTaskModal({ defaultPhase }: { defaultPhase?: SeasonalPha
         assignees,
       });
     } else {
-      const phaseTasks = seasonalTasks.filter((t) => t.phase === data.phase);
+      if (!activePoolId) return;
+      const phaseTasks = seasonalTasks.filter((t) => t.phase === data.phase && t.poolId === activePoolId);
       const maxOrder = phaseTasks.reduce((m, t) => Math.max(m, t.sortOrder), 0);
       const task: SeasonalTask = {
         id: generateId(),
+        poolId: activePoolId,
         title: data.title,
         detail: data.detail || null,
         phase: data.phase,

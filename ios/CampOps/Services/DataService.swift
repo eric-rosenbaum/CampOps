@@ -75,11 +75,41 @@ final class DataService {
         try await supabase.from("checklist_activity").insert(row).execute()
     }
 
+    // MARK: - Pool: Pools CRUD
+
+    func fetchPools() async throws -> [CampPool] {
+        try await supabase.from("pools")
+            .select().order("sort_order", ascending: true).execute().value
+    }
+
+    func insertPool(_ pool: CampPool) async throws {
+        try await supabase.from("pools").insert(PoolInsert(pool)).execute()
+    }
+
+    func updatePool(_ pool: CampPool) async throws {
+        try await supabase.from("pools").update(PoolUpdate(pool))
+            .eq("id", value: pool.id).execute()
+    }
+
+    func deletePool(id: String) async throws {
+        try await supabase.from("pools").delete().eq("id", value: id).execute()
+    }
+
+    func deleteAllPoolData() async throws {
+        try await supabase.from("pool_inspection_log").delete().neq("id", value: "").execute()
+        try await supabase.from("pool_service_log").delete().neq("id", value: "").execute()
+        try await supabase.from("pool_seasonal_tasks").delete().neq("id", value: "").execute()
+        try await supabase.from("pool_inspections").delete().neq("id", value: "").execute()
+        try await supabase.from("pool_equipment").delete().neq("id", value: "").execute()
+        try await supabase.from("pool_chemical_readings").delete().neq("id", value: "").execute()
+        try await supabase.from("pools").delete().neq("id", value: "").execute()
+    }
+
     // MARK: - Pool: Chemical Readings
 
     func fetchChemicalReadings() async throws -> [ChemicalReading] {
         try await supabase.from("pool_chemical_readings")
-            .select().order("created_at", ascending: false).execute().value
+            .select().order("reading_time", ascending: false).execute().value
     }
 
     func insertChemicalReading(_ r: ChemicalReading) async throws {
@@ -124,6 +154,15 @@ final class DataService {
 
     func insertPoolServiceLog(_ entry: PoolServiceLog) async throws {
         try await supabase.from("pool_service_log").insert(ServiceLogInsert(entry)).execute()
+    }
+
+    func updatePoolServiceLog(_ entry: PoolServiceLog) async throws {
+        try await supabase.from("pool_service_log").update(ServiceLogUpdate(entry))
+            .eq("id", value: entry.id).execute()
+    }
+
+    func deletePoolServiceLog(id: String) async throws {
+        try await supabase.from("pool_service_log").delete().eq("id", value: id).execute()
     }
 
     // MARK: - Pool: Inspections
@@ -307,19 +346,61 @@ private struct TaskUpdate: Encodable {
 
 // MARK: - Pool encode types
 
+private struct PoolInsert: Encodable {
+    let id, name, type: String
+    let isActive: Bool
+    let notes: String?
+    let sortOrder: Int
+    let createdAt, updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case id, name, type, notes
+        case isActive  = "is_active"
+        case sortOrder = "sort_order"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+    init(_ p: CampPool) {
+        id = p.id; name = p.name; type = p.type.rawValue
+        isActive = p.isActive; notes = p.notes; sortOrder = p.sortOrder
+        createdAt = p.createdAt; updatedAt = p.updatedAt
+    }
+}
+
+private struct PoolUpdate: Encodable {
+    let name, type: String
+    let isActive: Bool
+    let notes: String?
+    let sortOrder: Int
+    let updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case name, type, notes
+        case isActive  = "is_active"
+        case sortOrder = "sort_order"
+        case updatedAt = "updated_at"
+    }
+    init(_ p: CampPool) {
+        name = p.name; type = p.type.rawValue
+        isActive = p.isActive; notes = p.notes; sortOrder = p.sortOrder
+        updatedAt = Date()
+    }
+}
+
 private struct ChemReadingUpdate: Encodable {
-    let timeOfDay, poolStatus: String
+    let readingTime: Date
+    let poolStatus: String
     let freeChlorine, ph, alkalinity, cyanuricAcid, waterTemp: Double
     let calciumHardness: Double?
     let correctiveAction: String?
     enum CodingKeys: String, CodingKey {
-        case freeChlorine = "free_chlorine"; case ph; case alkalinity
-        case cyanuricAcid = "cyanuric_acid"; case waterTemp = "water_temp"
-        case calciumHardness = "calcium_hardness"; case timeOfDay = "time_of_day"
-        case correctiveAction = "corrective_action"; case poolStatus = "pool_status"
+        case freeChlorine     = "free_chlorine"; case ph; case alkalinity
+        case cyanuricAcid     = "cyanuric_acid"; case waterTemp = "water_temp"
+        case calciumHardness  = "calcium_hardness"
+        case readingTime      = "reading_time"
+        case correctiveAction = "corrective_action"
+        case poolStatus       = "pool_status"
     }
     init(_ r: ChemicalReading) {
-        timeOfDay = r.timeOfDay; poolStatus = r.poolStatus.rawValue
+        readingTime = r.readingTime; poolStatus = r.poolStatus.rawValue
         freeChlorine = r.freeChlorine; ph = r.ph; alkalinity = r.alkalinity
         cyanuricAcid = r.cyanuricAcid; waterTemp = r.waterTemp
         calciumHardness = r.calciumHardness; correctiveAction = r.correctiveAction
@@ -327,21 +408,26 @@ private struct ChemReadingUpdate: Encodable {
 }
 
 private struct ChemReadingInsert: Encodable {
-    let id, timeOfDay, loggedById, loggedByName, poolStatus: String
+    let id, poolId, loggedById, loggedByName, poolStatus: String
+    let readingTime: Date
     let freeChlorine, ph, alkalinity, cyanuricAcid, waterTemp: Double
     let calciumHardness: Double?
     let correctiveAction: String?
     let createdAt: Date
     enum CodingKeys: String, CodingKey {
-        case id; case freeChlorine = "free_chlorine"; case ph; case alkalinity
-        case cyanuricAcid = "cyanuric_acid"; case waterTemp = "water_temp"
-        case calciumHardness = "calcium_hardness"; case timeOfDay = "time_of_day"
-        case loggedById = "logged_by_id"; case loggedByName = "logged_by_name"
+        case id
+        case poolId           = "pool_id"
+        case freeChlorine     = "free_chlorine"; case ph; case alkalinity
+        case cyanuricAcid     = "cyanuric_acid"; case waterTemp = "water_temp"
+        case calciumHardness  = "calcium_hardness"
+        case readingTime      = "reading_time"
+        case loggedById       = "logged_by_id"; case loggedByName = "logged_by_name"
         case correctiveAction = "corrective_action"; case poolStatus = "pool_status"
-        case createdAt = "created_at"
+        case createdAt        = "created_at"
     }
     init(_ r: ChemicalReading) {
-        id = r.id; timeOfDay = r.timeOfDay; loggedById = r.loggedById
+        id = r.id; poolId = r.poolId
+        readingTime = r.readingTime; loggedById = r.loggedById
         loggedByName = r.loggedByName; poolStatus = r.poolStatus.rawValue
         freeChlorine = r.freeChlorine; ph = r.ph; alkalinity = r.alkalinity
         cyanuricAcid = r.cyanuricAcid; waterTemp = r.waterTemp
@@ -351,20 +437,22 @@ private struct ChemReadingInsert: Encodable {
 }
 
 private struct EquipmentInsert: Encodable {
-    let id, name, type, status, statusDetail: String
+    let id, poolId, name, type, status, statusDetail: String
     let lastServiced, nextServiceDue, vendor, specs: String?
     let createdAt, updatedAt: Date
     enum CodingKeys: String, CodingKey {
-        case id, name, type, status
-        case statusDetail = "status_detail"; case lastServiced = "last_serviced"
+        case id
+        case poolId       = "pool_id"
+        case name, type, status
+        case statusDetail   = "status_detail"; case lastServiced = "last_serviced"
         case nextServiceDue = "next_service_due"; case vendor; case specs
         case createdAt = "created_at"; case updatedAt = "updated_at"
     }
     init(_ e: PoolEquipment) {
-        id = e.id; name = e.name; type = e.type.rawValue; status = e.status.rawValue
-        statusDetail = e.statusDetail; lastServiced = e.lastServiced
-        nextServiceDue = e.nextServiceDue; vendor = e.vendor; specs = e.specs
-        createdAt = e.createdAt; updatedAt = e.updatedAt
+        id = e.id; poolId = e.poolId; name = e.name; type = e.type.rawValue
+        status = e.status.rawValue; statusDetail = e.statusDetail
+        lastServiced = e.lastServiced; nextServiceDue = e.nextServiceDue
+        vendor = e.vendor; specs = e.specs; createdAt = e.createdAt; updatedAt = e.updatedAt
     }
 }
 
@@ -387,21 +475,43 @@ private struct EquipmentUpdate: Encodable {
 }
 
 private struct ServiceLogInsert: Encodable {
-    let id, serviceType, datePerformed, performedBy: String
+    let id, poolId, serviceType, datePerformed, performedBy: String
     let equipmentId, notes, nextServiceDue: String?
     let cost: Double?
     let createdAt: Date
     enum CodingKeys: String, CodingKey {
-        case id; case equipmentId = "equipment_id"; case serviceType = "service_type"
+        case id
+        case poolId       = "pool_id"
+        case equipmentId  = "equipment_id"; case serviceType = "service_type"
         case datePerformed = "date_performed"; case performedBy = "performed_by"
         case notes; case cost; case nextServiceDue = "next_service_due"
         case createdAt = "created_at"
     }
     init(_ e: PoolServiceLog) {
-        id = e.id; equipmentId = e.equipmentId; serviceType = e.serviceType.rawValue
+        id = e.id; poolId = e.poolId; equipmentId = e.equipmentId
+        serviceType = e.serviceType.rawValue; datePerformed = e.datePerformed
+        performedBy = e.performedBy; notes = e.notes; cost = e.cost
+        nextServiceDue = e.nextServiceDue; createdAt = e.createdAt
+    }
+}
+
+private struct ServiceLogUpdate: Encodable {
+    let equipmentId: String?
+    let serviceType, datePerformed, performedBy: String
+    let notes, nextServiceDue: String?
+    let cost: Double?
+    let updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case equipmentId  = "equipment_id"; case serviceType = "service_type"
+        case datePerformed = "date_performed"; case performedBy = "performed_by"
+        case notes; case cost; case nextServiceDue = "next_service_due"
+        case updatedAt = "updated_at"
+    }
+    init(_ e: PoolServiceLog) {
+        equipmentId = e.equipmentId; serviceType = e.serviceType.rawValue
         datePerformed = e.datePerformed; performedBy = e.performedBy
         notes = e.notes; cost = e.cost; nextServiceDue = e.nextServiceDue
-        createdAt = e.createdAt
+        updatedAt = Date()
     }
 }
 
@@ -419,18 +529,20 @@ private struct InspectionUpdate: Encodable {
 }
 
 private struct InspectionLogInsert: Encodable {
-    let id, inspectionDate, conductedBy, result: String
+    let id, poolId, inspectionDate, conductedBy, result: String
     let inspectionId, notes, nextDue: String?
     let createdAt: Date
     enum CodingKeys: String, CodingKey {
-        case id; case inspectionId = "inspection_id"
+        case id
+        case poolId         = "pool_id"
+        case inspectionId   = "inspection_id"
         case inspectionDate = "inspection_date"; case conductedBy = "conducted_by"
         case result; case notes; case nextDue = "next_due"; case createdAt = "created_at"
     }
     init(_ e: PoolInspectionLog) {
-        id = e.id; inspectionId = e.inspectionId; inspectionDate = e.inspectionDate
-        conductedBy = e.conductedBy; result = e.result.rawValue
-        notes = e.notes; nextDue = e.nextDue; createdAt = e.createdAt
+        id = e.id; poolId = e.poolId; inspectionId = e.inspectionId
+        inspectionDate = e.inspectionDate; conductedBy = e.conductedBy
+        result = e.result.rawValue; notes = e.notes; nextDue = e.nextDue; createdAt = e.createdAt
     }
 }
 
@@ -449,18 +561,20 @@ private struct InspectionLogUpdate: Encodable {
 }
 
 private struct SeasonalTaskInsert: Encodable {
-    let id, title, phase: String
+    let id, poolId, title, phase: String
     let detail, completedBy, completedDate: String?
     let isComplete: Bool; let assignees: [String]; let sortOrder: Int
     let createdAt, updatedAt: Date
     enum CodingKeys: String, CodingKey {
-        case id, title, detail, phase
-        case isComplete = "is_complete"; case completedBy = "completed_by"
+        case id
+        case poolId        = "pool_id"
+        case title, detail, phase
+        case isComplete    = "is_complete"; case completedBy = "completed_by"
         case completedDate = "completed_date"; case assignees
-        case sortOrder = "sort_order"; case createdAt = "created_at"; case updatedAt = "updated_at"
+        case sortOrder     = "sort_order"; case createdAt = "created_at"; case updatedAt = "updated_at"
     }
     init(_ t: PoolSeasonalTask) {
-        id = t.id; title = t.title; detail = t.detail; phase = t.phase.rawValue
+        id = t.id; poolId = t.poolId; title = t.title; detail = t.detail; phase = t.phase.rawValue
         isComplete = t.isComplete; completedBy = t.completedBy; completedDate = t.completedDate
         assignees = t.assignees; sortOrder = t.sortOrder; createdAt = t.createdAt; updatedAt = t.updatedAt
     }

@@ -53,6 +53,7 @@ struct InspectionsView: View {
         .background(Color(.systemGroupedBackground))
         .sheet(isPresented: $showingLog) {
             LogInspectionSheet(
+                poolId: vm.activePoolId ?? "",
                 inspections: vm.inspections,
                 editing: nil,
                 preselectedId: logForInspectionId
@@ -63,6 +64,7 @@ struct InspectionsView: View {
         }
         .sheet(item: $editingEntry) { entry in
             LogInspectionSheet(
+                poolId: vm.activePoolId ?? "",
                 inspections: vm.inspections,
                 editing: entry
             ) { _ in } onDelete: { id in
@@ -214,7 +216,12 @@ private struct InspStatusBadge: View {
         switch status {
         case .ok:      return nextDue.map { "Valid through \($0.localDateDisplay)" } ?? "Completed"
         case .due:     return nextDue.map { "Due \($0.localDateDisplay)" } ?? "Due soon"
-        case .overdue: return "Overdue"
+        case .overdue:
+            if let due = nextDue, let d = parseYMD(due) {
+                let days = Calendar.current.dateComponents([.day], from: d, to: Date()).day ?? 0
+                if days > 0 { return "Overdue \(days) day\(days == 1 ? "" : "s")" }
+            }
+            return "Overdue"
         }
     }
     private var bg: Color {
@@ -222,6 +229,9 @@ private struct InspStatusBadge: View {
     }
     private var fg: Color {
         switch status { case .ok: return .greenText; case .due: return .amberText; case .overdue: return .priorityUrgent }
+    }
+    private func parseYMD(_ s: String) -> Date? {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.date(from: s)
     }
 }
 

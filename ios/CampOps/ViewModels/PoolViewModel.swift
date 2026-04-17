@@ -3,6 +3,8 @@ import Combine
 
 @MainActor
 final class PoolViewModel: ObservableObject {
+    @Published var pools: [CampPool] = []
+    @Published var activePoolId: String? = nil  // nil = All Pools overview
     @Published var readings: [ChemicalReading] = []
     @Published var equipment: [PoolEquipment] = []
     @Published var serviceLog: [PoolServiceLog] = []
@@ -12,10 +14,49 @@ final class PoolViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
-    // MARK: - Computed
+    // MARK: - Active pool
+
+    var activePool: CampPool? {
+        guard let id = activePoolId else { return nil }
+        return pools.first { $0.id == id }
+    }
+
+    // MARK: - Filtered computed properties
+
+    var filteredReadings: [ChemicalReading] {
+        guard let id = activePoolId else { return readings }
+        return readings.filter { $0.poolId == id }
+    }
+
+    var filteredEquipment: [PoolEquipment] {
+        guard let id = activePoolId else { return equipment }
+        return equipment.filter { $0.poolId == id }
+    }
+
+    var filteredInspections: [PoolInspection] {
+        guard let id = activePoolId else { return inspections }
+        return inspections.filter { $0.poolId == id }
+    }
+
+    var filteredInspectionLog: [PoolInspectionLog] {
+        guard let id = activePoolId else { return inspectionLog }
+        return inspectionLog.filter { $0.poolId == id }
+    }
+
+    var filteredSeasonalTasks: [PoolSeasonalTask] {
+        guard let id = activePoolId else { return seasonalTasks }
+        return seasonalTasks.filter { $0.poolId == id }
+    }
+
+    var filteredServiceLog: [PoolServiceLog] {
+        guard let id = activePoolId else { return serviceLog }
+        return serviceLog.filter { $0.poolId == id }
+    }
+
+    // MARK: - Computed (using filtered variants)
 
     var latestReading: ChemicalReading? {
-        readings.max { $0.createdAt < $1.createdAt }
+        filteredReadings.max { $0.readingTime < $1.readingTime }
     }
 
     var alertMessages: [(level: ChemStatus, message: String)] {
@@ -37,11 +78,11 @@ final class PoolViewModel: ObservableObject {
     }
 
     func tasksForPhase(_ phase: SeasonalPhase) -> [PoolSeasonalTask] {
-        seasonalTasks.filter { $0.phase == phase }.sorted { $0.sortOrder < $1.sortOrder }
+        filteredSeasonalTasks.filter { $0.phase == phase }.sorted { $0.sortOrder < $1.sortOrder }
     }
 
     var seasonalProgress: (done: Int, total: Int) {
-        (seasonalTasks.filter { $0.isComplete }.count, seasonalTasks.count)
+        (filteredSeasonalTasks.filter { $0.isComplete }.count, filteredSeasonalTasks.count)
     }
 
     func progressForPhase(_ phase: SeasonalPhase) -> (done: Int, total: Int) {
@@ -50,30 +91,78 @@ final class PoolViewModel: ObservableObject {
     }
 
     func serviceLogFor(equipmentId: String) -> [PoolServiceLog] {
-        serviceLog.filter { $0.equipmentId == equipmentId }.sorted { $0.datePerformed > $1.datePerformed }
+        filteredServiceLog.filter { $0.equipmentId == equipmentId }.sorted { $0.datePerformed > $1.datePerformed }
     }
 
     // MARK: - Load
 
     func load() async {
         isLoading = true
-        await fetchAll()
+        await loadAllData()
         isLoading = false
     }
 
-    func refresh() async { await fetchAll() }
+    func refresh() async { await loadAllData() }
 
-    private func fetchAll() async {
+    func loadAllData() async {
         do {
-            async let r  = DataService.shared.fetchChemicalReadings()
-            async let e  = DataService.shared.fetchPoolEquipment()
-            async let sl = DataService.shared.fetchPoolServiceLog()
-            async let i  = DataService.shared.fetchPoolInspections()
-            async let il = DataService.shared.fetchPoolInspectionLog()
-            async let st = DataService.shared.fetchPoolSeasonalTasks()
-            let (r2, e2, sl2, i2, il2, st2) = try await (r, e, sl, i, il, st)
-            readings = r2; equipment = e2; serviceLog = sl2
+            async let p   = DataService.shared.fetchPools()
+            async let r   = DataService.shared.fetchChemicalReadings()
+            async let e   = DataService.shared.fetchPoolEquipment()
+            async let sl  = DataService.shared.fetchPoolServiceLog()
+            async let i   = DataService.shared.fetchPoolInspections()
+            async let il  = DataService.shared.fetchPoolInspectionLog()
+            async let st  = DataService.shared.fetchPoolSeasonalTasks()
+            let (p2, r2, e2, sl2, i2, il2, st2) = try await (p, r, e, sl, i, il, st)
+            pools = p2; readings = r2; equipment = e2; serviceLog = sl2
             inspections = i2; inspectionLog = il2; seasonalTasks = st2
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Pool CRUD
+
+    func fetchPools() async {
+        do { pools = try await DataService.shared.fetchPools() }
+        catch { errorMessage = error.localizedDescription }
+    }
+
+    func addPool(_ pool: CampPool) async {
+        pools.append(pool)
+        do { try await DataService.shared.insertPool(pool) }
+        catch { pools.removeAll { $0.id == pool.id }; errorMessage = error.localizedDescription }
+    }
+
+    func updatePool(_ pool: CampPool) async {
+        guard let idx = pools.firstIndex(where: { $0.id == pool.id }) else { return }
+        let old = pools[idx]
+        pools[idx] = pool
+        do { try await DataService.shared.updatePool(pool) }
+        catch { pools[idx] = old; errorMessage = error.localizedDescription }
+    }
+
+    func deletePool(id: String) async {
+        guard let idx = pools.firstIndex(where: { $0.id == id }) else { return }
+        let old = pools[idx]
+        pools.remove(at: idx)
+        if activePoolId == id { activePoolId = nil }
+        readings.removeAll { $0.poolId == id }
+        equipment.removeAll { $0.poolId == id }
+        serviceLog.removeAll { $0.poolId == id }
+        inspections.removeAll { $0.poolId == id }
+        inspectionLog.removeAll { $0.poolId == id }
+        seasonalTasks.removeAll { $0.poolId == id }
+        do { try await DataService.shared.deletePool(id: id) }
+        catch { pools.insert(old, at: idx); errorMessage = error.localizedDescription }
+    }
+
+    func deleteAllPoolData() async {
+        do {
+            try await DataService.shared.deleteAllPoolData()
+            pools = []; readings = []; equipment = []; serviceLog = []
+            inspections = []; inspectionLog = []; seasonalTasks = []
+            activePoolId = nil
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -131,7 +220,6 @@ final class PoolViewModel: ObservableObject {
 
     func addServiceLog(_ entry: PoolServiceLog) async {
         serviceLog.insert(entry, at: 0)
-        // Update equipment's last serviced / next service due
         if let eqId = entry.equipmentId, let idx = equipment.firstIndex(where: { $0.id == eqId }) {
             equipment[idx].lastServiced = entry.datePerformed
             if let next = entry.nextServiceDue { equipment[idx].nextServiceDue = next }
@@ -143,6 +231,22 @@ final class PoolViewModel: ObservableObject {
                 try await DataService.shared.updatePoolEquipment(eq)
             }
         } catch { errorMessage = error.localizedDescription }
+    }
+
+    func updateServiceLog(_ entry: PoolServiceLog) async {
+        guard let idx = serviceLog.firstIndex(where: { $0.id == entry.id }) else { return }
+        let old = serviceLog[idx]
+        serviceLog[idx] = entry
+        do { try await DataService.shared.updatePoolServiceLog(entry) }
+        catch { serviceLog[idx] = old; errorMessage = error.localizedDescription }
+    }
+
+    func deleteServiceLog(id: String) async {
+        guard let idx = serviceLog.firstIndex(where: { $0.id == id }) else { return }
+        let old = serviceLog[idx]
+        serviceLog.remove(at: idx)
+        do { try await DataService.shared.deletePoolServiceLog(id: id) }
+        catch { serviceLog.insert(old, at: idx); errorMessage = error.localizedDescription }
     }
 
     // MARK: - Inspections

@@ -3,6 +3,7 @@ import SwiftUI
 struct AddEquipmentSheet: View {
     @Environment(\.dismiss) private var dismiss
 
+    let poolId: String
     var editing: PoolEquipment? = nil
     let onSave: (PoolEquipment) async -> Void
     var onDelete: ((String) async -> Void)? = nil
@@ -104,6 +105,7 @@ struct AddEquipmentSheet: View {
         let now = Date()
         let equip = PoolEquipment(
             id: editing?.id ?? UUID().uuidString,
+            poolId: editing?.poolId ?? poolId,
             name: name,
             type: type,
             status: status,

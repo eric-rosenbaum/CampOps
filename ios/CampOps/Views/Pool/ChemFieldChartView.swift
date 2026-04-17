@@ -51,7 +51,7 @@ struct ChemFieldChartView: View {
                         .foregroundColor(.forest)
                     Text(field.unit).font(.subheadline).foregroundColor(.secondary)
                 }
-                Text(r.createdAt.dateOnlyDisplay + " · " + r.timeOfDay)
+                Text(r.readingTime.readingTimeDisplay)
                     .font(.caption).foregroundColor(.secondary)
             }
             Spacer()

@@ -60,6 +60,9 @@
 		EA3ABD352EF147ED9DB5DBE3 /* SeasonalTaskSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45646E326FE747B2BA612636 /* SeasonalTaskSheet.swift */; };
 		A81F1771C9214E1B81A66135 /* ChemFieldChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65F10BCFDB9D40AD877961AA /* ChemFieldChartView.swift */; };
 		ECB51F38C8ED42F3BB9D5AD2 /* EquipmentDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F4640B8F4E34B749F9B1410 /* EquipmentDetailSheet.swift */; };
+		3A1C2D4E5F6A7B8C9D0E1F2A /* AllPoolsOverview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7A8B9C0D1E2F /* AllPoolsOverview.swift */; };
+		4B5C6D7E8F9A0B1C2D3E4F5A /* AddPoolSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6B7C8D9E0F1A2B3C4D5E6F /* AddPoolSheet.swift */; };
+		6C7D8E9F0A1B2C3D4E5F6A7B /* FlagIssueSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8E9F0A1B2C3D4E5F6A7B8C /* FlagIssueSheet.swift */; };
 		49E5A7AC2F81A914007122C8 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 49E5A7AB2F81A914007122C8 /* Auth */; };
 		49E5A7AE2F81A914007122C8 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 49E5A7AD2F81A914007122C8 /* Functions */; };
 		49E5A7B02F81A914007122C8 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 49E5A7AF2F81A914007122C8 /* PostgREST */; };
@@ -123,6 +126,9 @@
 		45646E326FE747B2BA612636 /* SeasonalTaskSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeasonalTaskSheet.swift; sourceTree = "<group>"; };
 		65F10BCFDB9D40AD877961AA /* ChemFieldChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChemFieldChartView.swift; sourceTree = "<group>"; };
 		2F4640B8F4E34B749F9B1410 /* EquipmentDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentDetailSheet.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F7A8B9C0D1E2F /* AllPoolsOverview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllPoolsOverview.swift; sourceTree = "<group>"; };
+		5A6B7C8D9E0F1A2B3C4D5E6F /* AddPoolSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddPoolSheet.swift; sourceTree = "<group>"; };
+		7D8E9F0A1B2C3D4E5F6A7B8C /* FlagIssueSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlagIssueSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -309,6 +315,9 @@
 			isa = PBXGroup;
 			children = (
 				AE9C53F010A345E8AFD9998A /* PoolView.swift */,
+				1A2B3C4D5E6F7A8B9C0D1E2F /* AllPoolsOverview.swift */,
+				5A6B7C8D9E0F1A2B3C4D5E6F /* AddPoolSheet.swift */,
+				7D8E9F0A1B2C3D4E5F6A7B8C /* FlagIssueSheet.swift */,
 				C731083B94C0429FA6E58489 /* ChemicalLogView.swift */,
 				65F10BCFDB9D40AD877961AA /* ChemFieldChartView.swift */,
 				4A545123C36D45BDA79AC88F /* EquipmentView.swift */,
@@ -480,6 +489,9 @@
 				EA3ABD352EF147ED9DB5DBE3 /* SeasonalTaskSheet.swift in Sources */,
 				A81F1771C9214E1B81A66135 /* ChemFieldChartView.swift in Sources */,
 				ECB51F38C8ED42F3BB9D5AD2 /* EquipmentDetailSheet.swift in Sources */,
+				3A1C2D4E5F6A7B8C9D0E1F2A /* AllPoolsOverview.swift in Sources */,
+				4B5C6D7E8F9A0B1C2D3E4F5A /* AddPoolSheet.swift in Sources */,
+				6C7D8E9F0A1B2C3D4E5F6A7B /* FlagIssueSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

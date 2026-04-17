@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FilterPill } from '@/components/shared/FilterPill';
 import { SearchInput } from '@/components/shared/SearchInput';
@@ -8,10 +8,100 @@ import { LogTaskModal } from '@/components/shared/LogTaskModal';
 import { SeasonModal } from '@/components/shared/SeasonModal';
 import { Button } from '@/components/shared/Button';
 import { useChecklistStore } from '@/store/checklistStore';
+import { usePoolStore } from '@/store/poolStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { format } from 'date-fns';
-import { Plus, Calendar } from 'lucide-react';
+import { Plus, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
+
+// ─── Pool seasonal tasks section ─────────────────────────────────────────────
+
+function PoolSeasonalSection({ activePhase }: { activePhase: 'pre' | 'post' }) {
+  const { pools, seasonalTasks, toggleSeasonalTask } = usePoolStore();
+  const { currentUser } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Map checklist phase → pool seasonal phase
+  const poolPhase = activePhase === 'pre' ? 'opening' : 'closing';
+
+  const phaseTasks = seasonalTasks.filter((t) => t.phase === poolPhase);
+  if (phaseTasks.length === 0) return null;
+
+  // Group by pool
+  const byPool: Record<string, { poolName: string; tasks: typeof phaseTasks }> = {};
+  for (const task of phaseTasks) {
+    const pool = pools.find((p) => p.id === task.poolId);
+    const poolName = pool?.name ?? 'Unknown pool';
+    if (!byPool[task.poolId]) byPool[task.poolId] = { poolName, tasks: [] };
+    byPool[task.poolId].tasks.push(task);
+  }
+
+  const totalDone = phaseTasks.filter((t) => t.isComplete).length;
+  const totalCount = phaseTasks.length;
+  const allDone = totalDone === totalCount;
+
+  return (
+    <div className="bg-white rounded-card border border-border mb-4">
+      <button
+        type="button"
+        onClick={() => setCollapsed((c) => !c)}
+        className="w-full flex items-center gap-3 p-4 text-left hover:bg-cream-dark/40 transition-colors rounded-card"
+      >
+        <span className="text-[13px] font-semibold text-forest flex-1">
+          Pool & waterfront — {poolPhase === 'opening' ? 'opening tasks' : 'closing tasks'}
+        </span>
+        <span className={`text-label font-semibold px-2 py-0.5 rounded-tag uppercase tracking-wide ${
+          allDone ? 'bg-green-muted-bg text-green-muted-text' :
+          totalDone > 0 ? 'bg-amber-bg text-amber-text' : 'bg-cream-dark text-forest/40'
+        }`}>
+          {totalDone}/{totalCount}
+        </span>
+        {collapsed ? <ChevronRight className="w-4 h-4 text-forest/40" /> : <ChevronDown className="w-4 h-4 text-forest/40" />}
+      </button>
+
+      {!collapsed && (
+        <div className="border-t border-border px-4 pb-3">
+          {Object.entries(byPool).map(([poolId, { poolName, tasks }]) => (
+            <div key={poolId} className="mt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/40 mb-1.5">{poolName}</p>
+              <div className="flex flex-col gap-0.5">
+                {tasks.sort((a, b) => a.sortOrder - b.sortOrder).map((task) => (
+                  <div
+                    key={task.id}
+                    className={`flex items-start gap-3 px-2 py-2 rounded-btn transition-colors hover:bg-cream-dark/60 ${task.isComplete ? 'opacity-60' : ''}`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleSeasonalTask(task.id, currentUser.name)}
+                      className={`w-[17px] h-[17px] rounded-tag border flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
+                        task.isComplete ? 'bg-sage border-sage' : 'bg-white border-border hover:border-sage'
+                      }`}
+                    >
+                      {task.isComplete && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-[13px] ${task.isComplete ? 'line-through text-forest/40' : 'text-forest'}`}>
+                        {task.title}
+                      </p>
+                      {task.detail && (
+                        <p className="text-[11px] text-forest/40 mt-0.5">{task.detail}</p>
+                      )}
+                      {task.isComplete && task.completedDate && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-tag bg-green-muted-bg text-green-muted-text uppercase tracking-wide mt-1 inline-block">
+                          Done {new Date(task.completedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type FilterType = 'all' | 'pending' | 'in_progress' | 'complete';
 
@@ -135,6 +225,9 @@ export function PrePostCamp() {
                 </div>
               )}
             </div>
+
+            {/* Pool & waterfront tasks */}
+            <PoolSeasonalSection activePhase={activePhase} />
 
             {/* Filter bar */}
             <div className="flex items-center justify-between mb-4">

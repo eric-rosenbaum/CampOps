@@ -51,21 +51,22 @@ function ValCell({ field, value }: { field: ChemicalField; value: number }) {
 }
 
 function formatReadingDate(row: ChemicalReading) {
-  const d = new Date(row.createdAt);
-  return `${format(d, 'MMM d')} · ${row.timeOfDay}`;
+  const d = new Date(row.readingTime);
+  return `${format(d, 'MMM d')} · ${format(d, 'h:mm a')}`;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function ChemicalLogTab() {
-  const { chemicalReadings, outOfRangeAlerts, latestReading } = usePoolStore();
+  const { activeReadings, outOfRangeAlerts, latestReading } = usePoolStore();
   const { openLogReadingModal } = useUIStore();
 
   const latest = latestReading();
   const alerts = outOfRangeAlerts();
+  const readings = activeReadings();
 
-  const sorted = [...chemicalReadings].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  const sorted = [...readings].sort(
+    (a, b) => new Date(b.readingTime).getTime() - new Date(a.readingTime).getTime()
   );
 
   // Status card for each key reading from the latest entry

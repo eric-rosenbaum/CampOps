@@ -27,11 +27,14 @@ struct SeasonalChecklistView: View {
         }
         .background(Color(.systemGroupedBackground))
         .sheet(item: $editingTask) { task in
-            SeasonalTaskSheet(editing: task, defaultPhase: task.phase) { _ in } onSave: { updated in
-                await vm.updateSeasonalTask(updated)
-            } onDelete: { id in
-                await vm.deleteSeasonalTask(id: id)
-            }
+            SeasonalTaskSheet(
+                poolId: task.poolId,
+                editing: task,
+                defaultPhase: task.phase,
+                onAdd: { _ in },
+                onSave: { updated in await vm.updateSeasonalTask(updated) },
+                onDelete: { id in await vm.deleteSeasonalTask(id: id) }
+            )
         }
     }
 

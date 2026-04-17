@@ -21,7 +21,8 @@ const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
 
 export function LogInspectionModal() {
   const { closeAllModals, logInspectionForId, editingInspectionLogEntryId } = useUIStore();
-  const { inspections, inspectionLog, addInspectionLog, updateInspectionLog, deleteInspectionLog } = usePoolStore();
+  const { activeInspections, inspectionLog, addInspectionLog, updateInspectionLog, deleteInspectionLog, activePoolId } = usePoolStore();
+  const inspections = activeInspections();
   const { currentUser } = useAuth();
 
   const editing = editingInspectionLogEntryId
@@ -57,6 +58,7 @@ export function LogInspectionModal() {
 
     const entry: InspectionLogEntry = {
       id: generateId(),
+      poolId: activePoolId ?? '',
       inspectionId: data.inspectionId,
       inspectionDate: data.inspectionDate,
       conductedBy: data.conductedBy,
@@ -79,7 +81,7 @@ export function LogInspectionModal() {
       };
       addInspectionLog(entry, updated);
     } else {
-      addInspectionLog(entry, null as unknown as PoolInspection);
+      addInspectionLog(entry, null);
     }
     closeAllModals();
   }

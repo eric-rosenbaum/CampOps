@@ -4,6 +4,7 @@ struct LogReadingSheet: View {
     @EnvironmentObject private var userManager: UserManager
     @Environment(\.dismiss) private var dismiss
 
+    let poolId: String
     var editing: ChemicalReading? = nil
     let onSave: (ChemicalReading) async -> Void
     var onDelete: ((String) async -> Void)? = nil
@@ -13,15 +14,12 @@ struct LogReadingSheet: View {
     @State private var alkalinity: Double = 100
     @State private var cyanuricAcid: Double = 40
     @State private var waterTemp: Double = 76
-    @State private var calciumHardness: Double? = nil
     @State private var calcHardnessText: String = ""
-    @State private var timeOfDay: String = "Morning"
+    @State private var readingTime: Date = Date()
     @State private var poolStatus: PoolStatusValue = .openAllClear
     @State private var correctiveAction: String = ""
     @State private var isSaving = false
     @State private var showingDeleteConfirm = false
-
-    private let timeOptions = ["Morning", "Midday", "Afternoon", "Evening"]
 
     var body: some View {
         NavigationStack {
@@ -45,25 +43,15 @@ struct LogReadingSheet: View {
                 }
 
                 Section("Details") {
-                    Picker("Time of day", selection: $timeOfDay) {
-                        ForEach(timeOptions, id: \.self) { Text($0).tag($0) }
-                    }
+                    DatePicker("Reading time", selection: $readingTime, displayedComponents: [.date, .hourAndMinute])
                     Picker("Pool status", selection: $poolStatus) {
                         ForEach(PoolStatusValue.allCases, id: \.self) { s in
                             Text(s.displayName).tag(s)
                         }
                     }
-                    if editing == nil {
-                        LabeledContent("Logged by") {
-                            Text(userManager.currentUser.name).foregroundColor(.secondary)
-                        }
-                    } else if let e = editing {
-                        LabeledContent("Logged by") {
-                            Text(e.loggedByName).foregroundColor(.secondary)
-                        }
-                        LabeledContent("Date") {
-                            Text(e.createdAt.dateOnlyDisplay).foregroundColor(.secondary)
-                        }
+                    LabeledContent("Logged by") {
+                        Text(editing?.loggedByName ?? userManager.currentUser.name)
+                            .foregroundColor(.secondary)
                     }
                 }
 
@@ -87,9 +75,8 @@ struct LogReadingSheet: View {
                     alkalinity = e.alkalinity
                     cyanuricAcid = e.cyanuricAcid
                     waterTemp = e.waterTemp
-                    calciumHardness = e.calciumHardness
                     calcHardnessText = e.calciumHardness.map { String($0) } ?? ""
-                    timeOfDay = e.timeOfDay
+                    readingTime = e.readingTime
                     poolStatus = e.poolStatus
                     correctiveAction = e.correctiveAction ?? ""
                 }
@@ -117,10 +104,11 @@ struct LogReadingSheet: View {
         isSaving = true
         let reading = ChemicalReading(
             id: editing?.id ?? UUID().uuidString,
+            poolId: editing?.poolId ?? poolId,
             freeChlorine: freeChlorine, ph: ph, alkalinity: alkalinity,
             cyanuricAcid: cyanuricAcid, waterTemp: waterTemp,
             calciumHardness: Double(calcHardnessText),
-            timeOfDay: timeOfDay,
+            readingTime: readingTime,
             loggedById: editing?.loggedById ?? userManager.currentUser.id,
             loggedByName: editing?.loggedByName ?? userManager.currentUser.name,
             correctiveAction: correctiveAction.isEmpty ? nil : correctiveAction,

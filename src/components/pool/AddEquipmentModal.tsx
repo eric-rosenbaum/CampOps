@@ -21,16 +21,18 @@ const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
 
 export function AddEquipmentModal() {
   const { closeAllModals } = useUIStore();
-  const { addEquipment } = usePoolStore();
+  const { addEquipment, activePoolId } = usePoolStore();
 
   const { register, handleSubmit, formState: { isSubmitting, errors } } = useForm<FormValues>({
     defaultValues: { type: 'pump', serviceFrequency: 'monthly' },
   });
 
   function onSubmit(data: FormValues) {
+    if (!activePoolId) return;
     const now = new Date().toISOString();
     const equip: PoolEquipment = {
       id: generateId(),
+      poolId: activePoolId,
       name: data.name,
       type: data.type,
       status: 'ok',

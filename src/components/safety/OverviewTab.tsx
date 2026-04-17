@@ -1,4 +1,4 @@
-import { useSafetyStore, safetyItemStatus, certExpiryStatus, CERT_TYPE_LABELS, DRILL_TYPE_LABELS } from '@/store/safetyStore';
+import { useSafetyStore, certExpiryStatus, CERT_TYPE_LABELS, DRILL_TYPE_LABELS } from '@/store/safetyStore';
 import { useUIStore } from '@/store/uiStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import type { LicenseType } from '@/lib/types';

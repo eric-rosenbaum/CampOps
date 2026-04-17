@@ -145,7 +145,9 @@ function WaterfrontItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: 
     const nextDue = addDays(today, freqDays(item.frequency)).toISOString().split('T')[0];
     const log: SafetyInspectionLog = {
       id: generateId(),
-      safetyItemId: item.id,
+      itemId: item.id,
+      category: item.category,
+      locationNote: item.location,
       inspectionDate: todayStr,
       completedBy: currentUser?.name ?? 'Staff',
       result: 'passed',
@@ -153,7 +155,6 @@ function WaterfrontItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: 
       cost: null,
       nextDue,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
     await addInspectionLog(log);
     setLogging(false);

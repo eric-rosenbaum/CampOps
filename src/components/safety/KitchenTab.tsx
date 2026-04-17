@@ -95,7 +95,6 @@ function QuickTempInput({ session, item, loggedBy, onLog }: {
 
 function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () => void; onEdit: () => void }) {
   const status = safetyItemStatus(item);
-  const meta = item.metadata as Record<string, unknown>;
   const { recentLogsForItem } = useSafetyStore();
   const { openEditInspectionLogModal } = useUIStore();
   const recentLogs = recentLogsForItem(item.id, 5);

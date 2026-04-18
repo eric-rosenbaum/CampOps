@@ -325,3 +325,108 @@ export interface SeasonalTask {
   createdAt: string;
   updatedAt: string;
 }
+
+// ─── Assets & Vehicles ────────────────────────────────────────────────────────
+
+export type AssetCategory = 'vehicle' | 'golf_cart' | 'watercraft' | 'large_equipment' | 'trailer' | 'other';
+
+export type AssetStatus = 'available' | 'checked_out' | 'in_service' | 'retired';
+
+export type AssetServiceType =
+  | 'oil_change' | 'tire_rotation' | 'tire_replacement'
+  | 'brake_service' | 'battery' | 'belt_replacement'
+  | 'fluid_top_off' | 'filter_replacement'
+  | 'state_inspection' | 'dot_inspection' | 'annual_inspection'
+  | 'hull_inspection' | 'engine_service' | 'blade_sharpening'
+  | 'cleaning' | 'repair' | 'other';
+
+export type AssetMaintenancePhase = 'pre_season' | 'in_season' | 'post_season';
+
+export type FuelLevel = 'empty' | 'quarter' | 'half' | 'three_quarter' | 'full';
+
+export type CheckoutCondition = 'no_issues' | 'minor_note' | 'needs_attention';
+
+export interface CampAsset {
+  id: string;
+  name: string;
+  category: AssetCategory;
+  subtype: string;
+  make: string | null;
+  model: string | null;
+  year: number | null;
+  serialNumber: string | null;
+  licensePlate: string | null;
+  registrationExpiry: string | null;
+  storageLocation: string;
+  status: AssetStatus;
+  currentOdometer: number | null;
+  currentHours: number | null;
+  tracksOdometer: boolean;
+  tracksHours: boolean;
+  notes: string | null;
+  isActive: boolean;
+  // Watercraft-specific
+  hullId: string | null;
+  uscgRegistration: string | null;
+  uscgRegistrationExpiry: string | null;
+  capacity: number | null;
+  motorType: string | null;
+  hasLifejackets: boolean | null;
+  lifejacketCount: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssetCheckout {
+  id: string;
+  assetId: string;
+  checkedOutBy: string;
+  purpose: string;
+  checkedOutAt: string;
+  expectedReturnAt: string;
+  returnedAt: string | null;
+  startOdometer: number | null;
+  endOdometer: number | null;
+  startHours: number | null;
+  endHours: number | null;
+  fuelLevelOut: FuelLevel | null;
+  fuelLevelIn: FuelLevel | null;
+  checkoutNotes: string | null;
+  returnNotes: string | null;
+  returnCondition: CheckoutCondition | null;
+  createdIssueId: string | null;
+  loggedBy: string;
+  createdAt: string;
+}
+
+export interface AssetServiceRecord {
+  id: string;
+  assetId: string;
+  serviceType: AssetServiceType;
+  datePerformed: string;
+  performedBy: string;
+  vendor: string | null;
+  description: string | null;
+  odometerAtService: number | null;
+  hoursAtService: number | null;
+  cost: number | null;
+  nextServiceDate: string | null;
+  nextServiceOdometer: number | null;
+  nextServiceHours: number | null;
+  isInspection: boolean;
+  createdAt: string;
+}
+
+export interface AssetMaintenanceTask {
+  id: string;
+  assetId: string;
+  phase: AssetMaintenancePhase;
+  title: string;
+  detail: string | null;
+  isComplete: boolean;
+  completedBy: string | null;
+  completedDate: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}

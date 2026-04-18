@@ -12,6 +12,7 @@ import type {
   PoolInspection, InspectionLogEntry, SeasonalTask,
   SafetyItem, SafetyInspectionLog, EmergencyDrill,
   SafetyStaff, StaffCertification, SafetyTempLog, SafetyLicense,
+  CampAsset, AssetCheckout, AssetServiceRecord, AssetMaintenanceTask,
 } from './types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -980,6 +981,280 @@ export async function dbUpdateSafetyLicense(id: string, patch: Partial<SafetyLic
 export async function dbDeleteSafetyLicense(id: string) {
   const { error } = await supabase.from('safety_licenses').delete().eq('id', id);
   if (error) console.error('dbDeleteSafetyLicense error:', error.message);
+}
+
+// ─── Assets & Vehicles ───────────────────────────────────────────────────────
+
+function rowToAsset(r: Record<string, unknown>): CampAsset {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    category: r.category as CampAsset['category'],
+    subtype: (r.subtype as string) ?? '',
+    make: (r.make as string) ?? null,
+    model: (r.model as string) ?? null,
+    year: (r.year as number) ?? null,
+    serialNumber: (r.serial_number as string) ?? null,
+    licensePlate: (r.license_plate as string) ?? null,
+    registrationExpiry: (r.registration_expiry as string) ?? null,
+    storageLocation: (r.storage_location as string) ?? '',
+    status: r.status as CampAsset['status'],
+    currentOdometer: (r.current_odometer as number) ?? null,
+    currentHours: (r.current_hours as number) ?? null,
+    tracksOdometer: (r.tracks_odometer as boolean) ?? false,
+    tracksHours: (r.tracks_hours as boolean) ?? false,
+    notes: (r.notes as string) ?? null,
+    isActive: (r.is_active as boolean) ?? true,
+    hullId: (r.hull_id as string) ?? null,
+    uscgRegistration: (r.uscg_registration as string) ?? null,
+    uscgRegistrationExpiry: (r.uscg_registration_expiry as string) ?? null,
+    capacity: (r.capacity as number) ?? null,
+    motorType: (r.motor_type as string) ?? null,
+    hasLifejackets: (r.has_lifejackets as boolean) ?? null,
+    lifejacketCount: (r.lifejacket_count as number) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToCheckout(r: Record<string, unknown>): AssetCheckout {
+  return {
+    id: r.id as string,
+    assetId: r.asset_id as string,
+    checkedOutBy: r.checked_out_by as string,
+    purpose: (r.purpose as string) ?? '',
+    checkedOutAt: r.checked_out_at as string,
+    expectedReturnAt: r.expected_return_at as string,
+    returnedAt: (r.returned_at as string) ?? null,
+    startOdometer: (r.start_odometer as number) ?? null,
+    endOdometer: (r.end_odometer as number) ?? null,
+    startHours: (r.start_hours as number) ?? null,
+    endHours: (r.end_hours as number) ?? null,
+    fuelLevelOut: (r.fuel_level_out as AssetCheckout['fuelLevelOut']) ?? null,
+    fuelLevelIn: (r.fuel_level_in as AssetCheckout['fuelLevelIn']) ?? null,
+    checkoutNotes: (r.checkout_notes as string) ?? null,
+    returnNotes: (r.return_notes as string) ?? null,
+    returnCondition: (r.return_condition as AssetCheckout['returnCondition']) ?? null,
+    createdIssueId: (r.created_issue_id as string) ?? null,
+    loggedBy: (r.logged_by as string) ?? '',
+    createdAt: r.created_at as string,
+  };
+}
+
+function rowToServiceRecord(r: Record<string, unknown>): AssetServiceRecord {
+  return {
+    id: r.id as string,
+    assetId: r.asset_id as string,
+    serviceType: r.service_type as AssetServiceRecord['serviceType'],
+    datePerformed: r.date_performed as string,
+    performedBy: (r.performed_by as string) ?? '',
+    vendor: (r.vendor as string) ?? null,
+    description: (r.description as string) ?? null,
+    odometerAtService: (r.odometer_at_service as number) ?? null,
+    hoursAtService: (r.hours_at_service as number) ?? null,
+    cost: (r.cost as number) ?? null,
+    nextServiceDate: (r.next_service_date as string) ?? null,
+    nextServiceOdometer: (r.next_service_odometer as number) ?? null,
+    nextServiceHours: (r.next_service_hours as number) ?? null,
+    isInspection: (r.is_inspection as boolean) ?? false,
+    createdAt: r.created_at as string,
+  };
+}
+
+function rowToMaintenanceTask(r: Record<string, unknown>): AssetMaintenanceTask {
+  return {
+    id: r.id as string,
+    assetId: r.asset_id as string,
+    phase: r.phase as AssetMaintenanceTask['phase'],
+    title: r.title as string,
+    detail: (r.detail as string) ?? null,
+    isComplete: (r.is_complete as boolean) ?? false,
+    completedBy: (r.completed_by as string) ?? null,
+    completedDate: (r.completed_date as string) ?? null,
+    sortOrder: (r.sort_order as number) ?? 0,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+export type AssetData = {
+  assets: CampAsset[];
+  checkouts: AssetCheckout[];
+  serviceRecords: AssetServiceRecord[];
+  maintenanceTasks: AssetMaintenanceTask[];
+};
+
+async function loadAssetData(): Promise<AssetData> {
+  const [aRes, cRes, sRes, mRes] = await Promise.all([
+    supabase.from('camp_assets').select('*').order('created_at', { ascending: true }),
+    supabase.from('asset_checkouts').select('*').order('checked_out_at', { ascending: false }),
+    supabase.from('asset_service_records').select('*').order('date_performed', { ascending: false }),
+    supabase.from('asset_maintenance_tasks').select('*').order('sort_order', { ascending: true }),
+  ]);
+  return {
+    assets: (aRes.data ?? []).map((r) => rowToAsset(r as Record<string, unknown>)),
+    checkouts: (cRes.data ?? []).map((r) => rowToCheckout(r as Record<string, unknown>)),
+    serviceRecords: (sRes.data ?? []).map((r) => rowToServiceRecord(r as Record<string, unknown>)),
+    maintenanceTasks: (mRes.data ?? []).map((r) => rowToMaintenanceTask(r as Record<string, unknown>)),
+  };
+}
+
+export async function loadAssetsFromSupabase(): Promise<AssetData | null> {
+  try {
+    return await loadAssetData();
+  } catch (e) {
+    console.error('[Supabase] loadAssetsFromSupabase threw:', e);
+    return null;
+  }
+}
+
+export async function dbUpsertAsset(a: CampAsset) {
+  const { error } = await supabase.from('camp_assets').upsert({
+    id: a.id, name: a.name, category: a.category, subtype: a.subtype,
+    make: a.make, model: a.model, year: a.year, serial_number: a.serialNumber,
+    license_plate: a.licensePlate, registration_expiry: a.registrationExpiry,
+    storage_location: a.storageLocation, status: a.status,
+    current_odometer: a.currentOdometer, current_hours: a.currentHours,
+    tracks_odometer: a.tracksOdometer, tracks_hours: a.tracksHours,
+    notes: a.notes, is_active: a.isActive,
+    hull_id: a.hullId, uscg_registration: a.uscgRegistration,
+    uscg_registration_expiry: a.uscgRegistrationExpiry, capacity: a.capacity,
+    motor_type: a.motorType, has_lifejackets: a.hasLifejackets,
+    lifejacket_count: a.lifejacketCount,
+    created_at: a.createdAt, updated_at: a.updatedAt,
+  }, { onConflict: 'id' });
+  if (error) console.error('dbUpsertAsset error:', error.message);
+}
+
+export async function dbUpdateAssetStatus(id: string, status: CampAsset['status'], patch?: { currentOdometer?: number | null; currentHours?: number | null }) {
+  const row: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+  if (patch?.currentOdometer !== undefined) row.current_odometer = patch.currentOdometer;
+  if (patch?.currentHours !== undefined) row.current_hours = patch.currentHours;
+  const { error } = await supabase.from('camp_assets').update(row).eq('id', id);
+  if (error) console.error('dbUpdateAssetStatus error:', error.message);
+}
+
+export async function dbDeleteAsset(id: string) {
+  const { error } = await supabase.from('camp_assets').delete().eq('id', id);
+  if (error) console.error('dbDeleteAsset error:', error.message);
+}
+
+export async function dbAddCheckout(c: AssetCheckout) {
+  const { error } = await supabase.from('asset_checkouts').insert({
+    id: c.id, asset_id: c.assetId, checked_out_by: c.checkedOutBy,
+    purpose: c.purpose, checked_out_at: c.checkedOutAt,
+    expected_return_at: c.expectedReturnAt, returned_at: c.returnedAt,
+    start_odometer: c.startOdometer, end_odometer: c.endOdometer,
+    start_hours: c.startHours, end_hours: c.endHours,
+    fuel_level_out: c.fuelLevelOut, fuel_level_in: c.fuelLevelIn,
+    checkout_notes: c.checkoutNotes, return_notes: c.returnNotes,
+    return_condition: c.returnCondition, created_issue_id: c.createdIssueId,
+    logged_by: c.loggedBy, created_at: c.createdAt,
+  });
+  if (error) console.error('dbAddCheckout error:', error.message);
+}
+
+export async function dbReturnAsset(checkoutId: string, fields: {
+  returnedAt: string; endOdometer: number | null; endHours: number | null;
+  fuelLevelIn: AssetCheckout['fuelLevelIn']; returnNotes: string | null;
+  returnCondition: AssetCheckout['returnCondition']; createdIssueId: string | null;
+}) {
+  const { error } = await supabase.from('asset_checkouts').update({
+    returned_at: fields.returnedAt,
+    end_odometer: fields.endOdometer,
+    end_hours: fields.endHours,
+    fuel_level_in: fields.fuelLevelIn,
+    return_notes: fields.returnNotes,
+    return_condition: fields.returnCondition,
+    created_issue_id: fields.createdIssueId,
+  }).eq('id', checkoutId);
+  if (error) console.error('dbReturnAsset error:', error.message);
+}
+
+export async function dbAddAssetServiceRecord(r: AssetServiceRecord) {
+  const { error } = await supabase.from('asset_service_records').insert({
+    id: r.id, asset_id: r.assetId, service_type: r.serviceType,
+    date_performed: r.datePerformed, performed_by: r.performedBy,
+    vendor: r.vendor, description: r.description,
+    odometer_at_service: r.odometerAtService, hours_at_service: r.hoursAtService,
+    cost: r.cost, next_service_date: r.nextServiceDate,
+    next_service_odometer: r.nextServiceOdometer, next_service_hours: r.nextServiceHours,
+    is_inspection: r.isInspection, created_at: r.createdAt,
+  });
+  if (error) console.error('dbAddAssetServiceRecord error:', error.message);
+}
+
+export async function dbDeleteAssetServiceRecord(id: string) {
+  const { error } = await supabase.from('asset_service_records').delete().eq('id', id);
+  if (error) console.error('dbDeleteAssetServiceRecord error:', error.message);
+}
+
+export async function dbUpdateAssetServiceRecord(r: AssetServiceRecord) {
+  const { error } = await supabase.from('asset_service_records').update({
+    service_type: r.serviceType, date_performed: r.datePerformed, performed_by: r.performedBy,
+    vendor: r.vendor, description: r.description,
+    odometer_at_service: r.odometerAtService, hours_at_service: r.hoursAtService,
+    cost: r.cost, next_service_date: r.nextServiceDate,
+    next_service_odometer: r.nextServiceOdometer, next_service_hours: r.nextServiceHours,
+    is_inspection: r.isInspection,
+  }).eq('id', r.id);
+  if (error) console.error('dbUpdateAssetServiceRecord error:', error.message);
+}
+
+export async function dbUpdateCheckout(c: AssetCheckout) {
+  const { error } = await supabase.from('asset_checkouts').update({
+    checked_out_by: c.checkedOutBy, purpose: c.purpose,
+    expected_return_at: c.expectedReturnAt, checked_out_at: c.checkedOutAt,
+    start_odometer: c.startOdometer, start_hours: c.startHours,
+    fuel_level_out: c.fuelLevelOut, checkout_notes: c.checkoutNotes,
+    returned_at: c.returnedAt, end_odometer: c.endOdometer, end_hours: c.endHours,
+    fuel_level_in: c.fuelLevelIn, return_notes: c.returnNotes,
+    return_condition: c.returnCondition,
+  }).eq('id', c.id);
+  if (error) console.error('dbUpdateCheckout error:', error.message);
+}
+
+export async function dbDeleteCheckout(id: string) {
+  const { error } = await supabase.from('asset_checkouts').delete().eq('id', id);
+  if (error) console.error('dbDeleteCheckout error:', error.message);
+}
+
+export async function dbUpsertMaintenanceTask(t: AssetMaintenanceTask) {
+  const { error } = await supabase.from('asset_maintenance_tasks').upsert({
+    id: t.id, asset_id: t.assetId, phase: t.phase, title: t.title, detail: t.detail,
+    is_complete: t.isComplete, completed_by: t.completedBy, completed_date: t.completedDate,
+    sort_order: t.sortOrder, created_at: t.createdAt, updated_at: t.updatedAt,
+  }, { onConflict: 'id' });
+  if (error) console.error('dbUpsertMaintenanceTask error:', error.message);
+}
+
+export async function dbToggleMaintenanceTask(id: string, isComplete: boolean, completedBy: string | null, completedDate: string | null) {
+  const { error } = await supabase.from('asset_maintenance_tasks').update({
+    is_complete: isComplete, completed_by: completedBy,
+    completed_date: completedDate, updated_at: new Date().toISOString(),
+  }).eq('id', id);
+  if (error) console.error('dbToggleMaintenanceTask error:', error.message);
+}
+
+export async function dbDeleteMaintenanceTask(id: string) {
+  const { error } = await supabase.from('asset_maintenance_tasks').delete().eq('id', id);
+  if (error) console.error('dbDeleteMaintenanceTask error:', error.message);
+}
+
+let assetChannelCount = 0;
+
+type AssetDataCallback = (data: AssetData) => void;
+
+export function subscribeToAssets(onUpdate: AssetDataCallback): () => void {
+  const channelName = `assets-channel-${++assetChannelCount}`;
+  const reload = async () => { onUpdate(await loadAssetData()); };
+  const tables = ['camp_assets', 'asset_checkouts', 'asset_service_records', 'asset_maintenance_tasks'];
+  let channel = supabase.channel(channelName);
+  for (const table of tables) {
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, reload);
+  }
+  channel.subscribe();
+  return () => { supabase.removeChannel(channel); };
 }
 
 let safetyChannelCount = 0;

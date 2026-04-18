@@ -7,11 +7,13 @@ import { IssuesRepairs } from '@/pages/IssuesRepairs';
 import { PrePostCamp } from '@/pages/PrePostCamp';
 import { PoolManagement } from '@/pages/PoolManagement';
 import { SafetyCompliance } from '@/pages/SafetyCompliance';
-import { initializeSupabase, subscribeToIssues, subscribeToTasks, loadPoolFromSupabase, subscribeToPool, loadSafetyFromSupabase, subscribeToSafety } from '@/lib/db';
+import AssetVehicles from '@/pages/AssetVehicles';
+import { initializeSupabase, subscribeToIssues, subscribeToTasks, loadPoolFromSupabase, subscribeToPool, loadSafetyFromSupabase, subscribeToSafety, loadAssetsFromSupabase, subscribeToAssets, type AssetData } from '@/lib/db';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { usePoolStore } from '@/store/poolStore';
 import { useSafetyStore } from '@/store/safetyStore';
+import { useAssetStore } from '@/store/assetStore';
 
 function AppInit() {
   const setIssues = useIssuesStore((s) => s.setIssues);
@@ -19,12 +21,14 @@ function AppInit() {
   const setSeason = useChecklistStore((s) => s.setSeason);
   const { setPools, setChemicalReadings, setEquipment, setServiceLog, setInspections, setInspectionLog, setSeasonalTasks } = usePoolStore();
   const { setItems, setInspectionLog: setSafetyLog, setDrills, setStaff, setCertifications, setTempLogs, setLicenses } = useSafetyStore();
+  const { setAssets, setCheckouts, setServiceRecords, setMaintenanceTasks } = useAssetStore();
 
   useEffect(() => {
     let unsubIssues: (() => void) | null = null;
     let unsubTasks: (() => void) | null = null;
     let unsubPool: (() => void) | null = null;
     let unsubSafety: (() => void) | null = null;
+    let unsubAssets: (() => void) | null = null;
 
     initializeSupabase().then((data) => {
       if (!data) {
@@ -82,13 +86,29 @@ function AppInit() {
       });
     });
 
+    loadAssetsFromSupabase().then((data: AssetData | null) => {
+      if (!data) return;
+      setAssets(data.assets);
+      setCheckouts(data.checkouts);
+      setServiceRecords(data.serviceRecords);
+      setMaintenanceTasks(data.maintenanceTasks);
+
+      unsubAssets = subscribeToAssets((d) => {
+        setAssets(d.assets);
+        setCheckouts(d.checkouts);
+        setServiceRecords(d.serviceRecords);
+        setMaintenanceTasks(d.maintenanceTasks);
+      });
+    });
+
     return () => {
       unsubIssues?.();
       unsubTasks?.();
       unsubPool?.();
       unsubSafety?.();
+      unsubAssets?.();
     };
-  }, [setIssues, setTasks, setSeason, setPools, setChemicalReadings, setEquipment, setServiceLog, setInspections, setInspectionLog, setSeasonalTasks, setItems, setSafetyLog, setDrills, setStaff, setCertifications, setTempLogs, setLicenses]);
+  }, [setIssues, setTasks, setSeason, setPools, setChemicalReadings, setEquipment, setServiceLog, setInspections, setInspectionLog, setSeasonalTasks, setItems, setSafetyLog, setDrills, setStaff, setCertifications, setTempLogs, setLicenses, setAssets, setCheckouts, setServiceRecords, setMaintenanceTasks]);
 
   return null;
 }
@@ -105,6 +125,7 @@ export default function App() {
           <Route path="/pre-post" element={<PrePostCamp />} />
           <Route path="/pool" element={<PoolManagement />} />
           <Route path="/safety" element={<SafetyCompliance />} />
+          <Route path="/assets" element={<AssetVehicles />} />
         </Route>
       </Routes>
     </BrowserRouter>

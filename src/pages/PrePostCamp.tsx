@@ -9,6 +9,7 @@ import { SeasonModal } from '@/components/shared/SeasonModal';
 import { Button } from '@/components/shared/Button';
 import { useChecklistStore } from '@/store/checklistStore';
 import { usePoolStore } from '@/store/poolStore';
+import { useAssetStore } from '@/store/assetStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { format } from 'date-fns';
@@ -97,6 +98,104 @@ function PoolSeasonalSection({ activePhase }: { activePhase: 'pre' | 'post' }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Asset maintenance section ────────────────────────────────────────────────
+
+function AssetMaintenanceSection({ activePhase }: { activePhase: 'pre' | 'post' }) {
+  const { assets, maintenanceTasks, maintenanceProgressForAsset, toggleMaintenanceTask } = useAssetStore();
+  const { currentUser } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
+
+  const maintPhase = activePhase === 'pre' ? 'pre_season' : 'post_season';
+
+  const phaseTasks = maintenanceTasks.filter((t) => t.phase === maintPhase);
+  if (phaseTasks.length === 0) return null;
+
+  // Group by asset
+  const byAsset: Record<string, { assetName: string; tasks: typeof phaseTasks }> = {};
+  for (const task of phaseTasks) {
+    const asset = assets.find((a) => a.id === task.assetId);
+    if (!asset || !asset.isActive) continue;
+    if (!byAsset[task.assetId]) byAsset[task.assetId] = { assetName: asset.name, tasks: [] };
+    byAsset[task.assetId].tasks.push(task);
+  }
+
+  const assetIds = Object.keys(byAsset);
+  if (assetIds.length === 0) return null;
+
+  const totalDone = phaseTasks.filter((t) => t.isComplete).length;
+  const totalCount = phaseTasks.length;
+  const allDone = totalDone === totalCount;
+
+  return (
+    <div className="bg-white rounded-card border border-border mb-4">
+      <button
+        type="button"
+        onClick={() => setCollapsed((c) => !c)}
+        className="w-full flex items-center gap-3 p-4 text-left hover:bg-cream-dark/40 transition-colors rounded-card"
+      >
+        <span className="text-[13px] font-semibold text-forest flex-1">
+          Assets & vehicles — {maintPhase === 'pre_season' ? 'pre-season prep' : 'post-season storage'}
+        </span>
+        <span className={`text-label font-semibold px-2 py-0.5 rounded-tag uppercase tracking-wide ${
+          allDone ? 'bg-green-muted-bg text-green-muted-text' :
+          totalDone > 0 ? 'bg-amber-bg text-amber-text' : 'bg-cream-dark text-forest/40'
+        }`}>
+          {totalDone}/{totalCount}
+        </span>
+        {collapsed ? <ChevronRight className="w-4 h-4 text-forest/40" /> : <ChevronDown className="w-4 h-4 text-forest/40" />}
+      </button>
+
+      {!collapsed && (
+        <div className="border-t border-border px-4 pb-3">
+          {assetIds.map((assetId) => {
+            const { assetName, tasks } = byAsset[assetId];
+            const progress = maintenanceProgressForAsset(assetId, maintPhase);
+            return (
+              <div key={assetId} className="mt-3">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/40">{assetName}</p>
+                  <span className="text-[10px] text-forest/30">{progress.done}/{progress.total}</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  {tasks.sort((a, b) => a.sortOrder - b.sortOrder).map((task) => (
+                    <div
+                      key={task.id}
+                      className={`flex items-start gap-3 px-2 py-2 rounded-btn transition-colors hover:bg-cream-dark/60 ${task.isComplete ? 'opacity-60' : ''}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleMaintenanceTask(task.id, assetId, !task.isComplete, currentUser.name)}
+                        className={`w-[17px] h-[17px] rounded-tag border flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
+                          task.isComplete ? 'bg-sage border-sage' : 'bg-white border-border hover:border-sage'
+                        }`}
+                      >
+                        {task.isComplete && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[13px] ${task.isComplete ? 'line-through text-forest/40' : 'text-forest'}`}>
+                          {task.title}
+                        </p>
+                        {task.detail && (
+                          <p className="text-[11px] text-forest/40 mt-0.5">{task.detail}</p>
+                        )}
+                        {task.isComplete && task.completedDate && (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-tag bg-green-muted-bg text-green-muted-text uppercase tracking-wide mt-1 inline-block">
+                            Done {new Date(task.completedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -228,6 +327,9 @@ export function PrePostCamp() {
 
             {/* Pool & waterfront tasks */}
             <PoolSeasonalSection activePhase={activePhase} />
+
+            {/* Asset maintenance tasks */}
+            <AssetMaintenanceSection activePhase={activePhase} />
 
             {/* Filter bar */}
             <div className="flex items-center justify-between mb-4">

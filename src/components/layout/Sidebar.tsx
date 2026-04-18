@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Wrench, ClipboardList, TreePine, Waves, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Wrench, ClipboardList, TreePine, Waves, ShieldCheck, Truck } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
     { path: '/pre-post', label: 'Pre/Post Camp', icon: ClipboardList, end: false },
     { path: '/pool', label: 'Pool Management', icon: Waves, end: false },
     { path: '/safety', label: 'Safety & Compliance', icon: ShieldCheck, end: false },
+    { path: '/assets', label: 'Assets & Vehicles', icon: Truck, end: false },
   ]},
 ];
 

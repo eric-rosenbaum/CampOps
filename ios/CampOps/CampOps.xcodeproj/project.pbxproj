@@ -63,6 +63,15 @@
 		3A1C2D4E5F6A7B8C9D0E1F2A /* AllPoolsOverview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7A8B9C0D1E2F /* AllPoolsOverview.swift */; };
 		4B5C6D7E8F9A0B1C2D3E4F5A /* AddPoolSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6B7C8D9E0F1A2B3C4D5E6F /* AddPoolSheet.swift */; };
 		6C7D8E9F0A1B2C3D4E5F6A7B /* FlagIssueSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8E9F0A1B2C3D4E5F6A7B8C /* FlagIssueSheet.swift */; };
+		B1C2D3E4F5A6B7C8D9E0F1A2 /* AssetModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* AssetModels.swift */; };
+		B2C3D4E5F6A7B8C9D0E1F2A3 /* AssetViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B3C4D5E6F7A8B9C0D1E2F3 /* AssetViewModel.swift */; };
+		B3C4D5E6F7A8B9C0D1E2F3A4 /* AssetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3B4C5D6E7F8A9B0C1D2E3F4 /* AssetView.swift */; };
+		B4C5D6E7F8A9B0C1D2E3F4A5 /* AddAssetSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B5C6D7E8F9A0B1C2D3E4F5 /* AddAssetSheet.swift */; };
+		B5C6D7E8F9A0B1C2D3E4F5A6 /* AssetDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B6C7D8E9F0A1B2C3D4E5F6 /* AssetDetailSheet.swift */; };
+		B6C7D8E9F0A1B2C3D4E5F6A7 /* CheckoutAssetSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B7C8D9E0F1A2B3C4D5E6F7 /* CheckoutAssetSheet.swift */; };
+		B7C8D9E0F1A2B3C4D5E6F7A8 /* ReturnAssetSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B8C9D0E1F2A3B4C5D6E7F8 /* ReturnAssetSheet.swift */; };
+		B8C9D0E1F2A3B4C5D6E7F8A9 /* LogAssetServiceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8B9C0D1E2F3A4B5C6D7E8F9 /* LogAssetServiceSheet.swift */; };
+		B9C0D1E2F3A4B5C6D7E8F9A0 /* AddMaintenanceTaskSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B0C1D2E3F4A5B6C7D8E9F0 /* AddMaintenanceTaskSheet.swift */; };
 		49E5A7AC2F81A914007122C8 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 49E5A7AB2F81A914007122C8 /* Auth */; };
 		49E5A7AE2F81A914007122C8 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 49E5A7AD2F81A914007122C8 /* Functions */; };
 		49E5A7B02F81A914007122C8 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 49E5A7AF2F81A914007122C8 /* PostgREST */; };
@@ -129,6 +138,15 @@
 		1A2B3C4D5E6F7A8B9C0D1E2F /* AllPoolsOverview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllPoolsOverview.swift; sourceTree = "<group>"; };
 		5A6B7C8D9E0F1A2B3C4D5E6F /* AddPoolSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddPoolSheet.swift; sourceTree = "<group>"; };
 		7D8E9F0A1B2C3D4E5F6A7B8C /* FlagIssueSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlagIssueSheet.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* AssetModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetModels.swift; sourceTree = "<group>"; };
+		A2B3C4D5E6F7A8B9C0D1E2F3 /* AssetViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetViewModel.swift; sourceTree = "<group>"; };
+		A3B4C5D6E7F8A9B0C1D2E3F4 /* AssetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetView.swift; sourceTree = "<group>"; };
+		A4B5C6D7E8F9A0B1C2D3E4F5 /* AddAssetSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddAssetSheet.swift; sourceTree = "<group>"; };
+		A5B6C7D8E9F0A1B2C3D4E5F6 /* AssetDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetDetailSheet.swift; sourceTree = "<group>"; };
+		A6B7C8D9E0F1A2B3C4D5E6F7 /* CheckoutAssetSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckoutAssetSheet.swift; sourceTree = "<group>"; };
+		A7B8C9D0E1F2A3B4C5D6E7F8 /* ReturnAssetSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnAssetSheet.swift; sourceTree = "<group>"; };
+		A8B9C0D1E2F3A4B5C6D7E8F9 /* LogAssetServiceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogAssetServiceSheet.swift; sourceTree = "<group>"; };
+		A9B0C1D2E3F4A5B6C7D8E9F0 /* AddMaintenanceTaskSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMaintenanceTaskSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -227,6 +245,7 @@
 				49E5A75E2F81A74E007122C8 /* ChecklistTask.swift */,
 				49E5A75F2F81A74E007122C8 /* Issue.swift */,
 				8B42C2CB70B347BC90227634 /* PoolModels.swift */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* AssetModels.swift */,
 				49E5A7602F81A74E007122C8 /* Season.swift */,
 				49E5A7612F81A74E007122C8 /* User.swift */,
 			);
@@ -252,6 +271,7 @@
 				49E5A76A2F81A74E007122C8 /* IssueListViewModel.swift */,
 				49E5A76B2F81A74E007122C8 /* LogIssueViewModel.swift */,
 				BFFDB5F5149246DBA7B89BE2 /* PoolViewModel.swift */,
+				A2B3C4D5E6F7A8B9C0D1E2F3 /* AssetViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -333,9 +353,24 @@
 			path = Pool;
 			sourceTree = "<group>";
 		};
+		C1D2E3F4A5B6C7D8E9F0A1B2 /* Assets */ = {
+			isa = PBXGroup;
+			children = (
+				A3B4C5D6E7F8A9B0C1D2E3F4 /* AssetView.swift */,
+				A4B5C6D7E8F9A0B1C2D3E4F5 /* AddAssetSheet.swift */,
+				A5B6C7D8E9F0A1B2C3D4E5F6 /* AssetDetailSheet.swift */,
+				A6B7C8D9E0F1A2B3C4D5E6F7 /* CheckoutAssetSheet.swift */,
+				A7B8C9D0E1F2A3B4C5D6E7F8 /* ReturnAssetSheet.swift */,
+				A8B9C0D1E2F3A4B5C6D7E8F9 /* LogAssetServiceSheet.swift */,
+				A9B0C1D2E3F4A5B6C7D8E9F0 /* AddMaintenanceTaskSheet.swift */,
+			);
+			path = Assets;
+			sourceTree = "<group>";
+		};
 		49E5A7842F81A74E007122C8 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				C1D2E3F4A5B6C7D8E9F0A1B2 /* Assets */,
 				49E5A7722F81A74E007122C8 /* Checklist */,
 				49E5A7742F81A74E007122C8 /* Home */,
 				49E5A7792F81A74E007122C8 /* Issues */,
@@ -492,6 +527,15 @@
 				3A1C2D4E5F6A7B8C9D0E1F2A /* AllPoolsOverview.swift in Sources */,
 				4B5C6D7E8F9A0B1C2D3E4F5A /* AddPoolSheet.swift in Sources */,
 				6C7D8E9F0A1B2C3D4E5F6A7B /* FlagIssueSheet.swift in Sources */,
+				B1C2D3E4F5A6B7C8D9E0F1A2 /* AssetModels.swift in Sources */,
+				B2C3D4E5F6A7B8C9D0E1F2A3 /* AssetViewModel.swift in Sources */,
+				B3C4D5E6F7A8B9C0D1E2F3A4 /* AssetView.swift in Sources */,
+				B4C5D6E7F8A9B0C1D2E3F4A5 /* AddAssetSheet.swift in Sources */,
+				B5C6D7E8F9A0B1C2D3E4F5A6 /* AssetDetailSheet.swift in Sources */,
+				B6C7D8E9F0A1B2C3D4E5F6A7 /* CheckoutAssetSheet.swift in Sources */,
+				B7C8D9E0F1A2B3C4D5E6F7A8 /* ReturnAssetSheet.swift in Sources */,
+				B8C9D0E1F2A3B4C5D6E7F8A9 /* LogAssetServiceSheet.swift in Sources */,
+				B9C0D1E2F3A4B5C6D7E8F9A0 /* AddMaintenanceTaskSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

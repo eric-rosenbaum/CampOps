@@ -1,4 +1,5 @@
 import { useSafetyStore, certExpiryStatus, CERT_TYPE_LABELS, DRILL_TYPE_LABELS } from '@/store/safetyStore';
+import { useAssetStore, SERVICE_TYPE_LABELS } from '@/store/assetStore';
 import { useUIStore } from '@/store/uiStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import type { LicenseType } from '@/lib/types';
@@ -52,6 +53,7 @@ export function OverviewTab() {
     allStats, overdueItems, dueSoonItems, categoryStats, drills,
     staffWithCerts, licenses, items, tempLogs,
   } = useSafetyStore();
+  const { assets, serviceRecords } = useAssetStore();
   const { season } = useChecklistStore();
   const { openSafetyLogInspectionModal, openAddLicenseModal } = useUIStore();
 
@@ -359,6 +361,87 @@ export function OverviewTab() {
             ))}
         </div>
       )}
+
+      {/* Asset compliance — registrations & inspections */}
+      <AssetComplianceSection assets={assets} serviceRecords={serviceRecords} />
+    </div>
+  );
+}
+
+function AssetComplianceSection({
+  assets,
+  serviceRecords,
+}: {
+  assets: import('@/lib/types').CampAsset[];
+  serviceRecords: import('@/lib/types').AssetServiceRecord[];
+}) {
+  const today = new Date().toISOString().split('T')[0];
+  const soonDate = new Date();
+  soonDate.setDate(soonDate.getDate() + 30);
+  const soonStr = soonDate.toISOString().split('T')[0];
+
+  const activeAssets = assets.filter((a) => a.isActive && a.status !== 'retired');
+
+  // Registration expiry rows
+  type RegRow = { assetName: string; expiry: string; status: 'expired' | 'expiring' | 'ok' };
+  const regRows: RegRow[] = [];
+  for (const a of activeAssets) {
+    if (!a.registrationExpiry) continue;
+    const status = a.registrationExpiry < today ? 'expired' : a.registrationExpiry <= soonStr ? 'expiring' : 'ok';
+    if (status !== 'ok') regRows.push({ assetName: a.name, expiry: a.registrationExpiry, status });
+  }
+
+  // Inspection records
+  type InspRow = { assetName: string; serviceType: string; nextDate: string; status: 'overdue' | 'due_soon' };
+  const inspRows: InspRow[] = [];
+  const seenAssets = new Set<string>();
+  for (const r of serviceRecords) {
+    if (!r.isInspection || !r.nextServiceDate) continue;
+    if (seenAssets.has(r.assetId + r.serviceType)) continue;
+    const asset = activeAssets.find((a) => a.id === r.assetId);
+    if (!asset) continue;
+    const status = r.nextServiceDate < today ? 'overdue' : r.nextServiceDate <= soonStr ? 'due_soon' : null;
+    if (status) {
+      inspRows.push({ assetName: asset.name, serviceType: r.serviceType, nextDate: r.nextServiceDate, status });
+      seenAssets.add(r.assetId + r.serviceType);
+    }
+  }
+
+  if (regRows.length === 0 && inspRows.length === 0) return null;
+
+  return (
+    <div className="mt-6">
+      <h3 className="text-[14px] font-semibold text-forest mb-3">Asset registrations & inspections</h3>
+      <div className="bg-white border border-border rounded-card overflow-hidden">
+        {regRows.map((row, i) => (
+          <div key={`reg-${i}`} className={`flex items-center justify-between px-4 py-3 ${i < regRows.length + inspRows.length - 1 ? 'border-b border-cream-dark' : ''}`}>
+            <div>
+              <p className="text-[13px] font-medium text-forest">{row.assetName} — Registration</p>
+              <p className="text-[11px] text-forest/40 mt-0.5">
+                {row.status === 'expired' ? 'Expired ' : 'Expires '}
+                {new Date(row.expiry + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
+            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide ${row.status === 'expired' ? 'bg-red-bg text-red' : 'bg-amber-bg text-amber-text'}`}>
+              {row.status === 'expired' ? 'Expired' : 'Expiring soon'}
+            </span>
+          </div>
+        ))}
+        {inspRows.map((row, i) => (
+          <div key={`insp-${i}`} className={`flex items-center justify-between px-4 py-3 ${i < inspRows.length - 1 ? 'border-b border-cream-dark' : ''}`}>
+            <div>
+              <p className="text-[13px] font-medium text-forest">{row.assetName} — {SERVICE_TYPE_LABELS[row.serviceType] ?? row.serviceType}</p>
+              <p className="text-[11px] text-forest/40 mt-0.5">
+                {row.status === 'overdue' ? 'Was due ' : 'Due '}
+                {new Date(row.nextDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
+            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide ${row.status === 'overdue' ? 'bg-red-bg text-red' : 'bg-amber-bg text-amber-text'}`}>
+              {row.status === 'overdue' ? 'Overdue' : 'Due soon'}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

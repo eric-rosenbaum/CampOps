@@ -222,6 +222,86 @@ final class DataService {
             .eq("id", value: task.id).execute()
     }
 
+    // MARK: - Assets
+
+    func fetchAssets() async throws -> [CampAsset] {
+        try await supabase.from("camp_assets")
+            .select().order("created_at", ascending: true).execute().value
+    }
+
+    func insertAsset(_ asset: CampAsset) async throws {
+        try await supabase.from("camp_assets").insert(AssetInsert(asset)).execute()
+    }
+
+    func updateAsset(_ asset: CampAsset) async throws {
+        try await supabase.from("camp_assets").update(AssetUpdate(asset))
+            .eq("id", value: asset.id).execute()
+    }
+
+    func deleteAsset(id: String) async throws {
+        try await supabase.from("camp_assets").delete().eq("id", value: id).execute()
+    }
+
+    // MARK: - Asset Checkouts
+
+    func fetchAssetCheckouts() async throws -> [AssetCheckout] {
+        try await supabase.from("asset_checkouts")
+            .select().order("checked_out_at", ascending: false).execute().value
+    }
+
+    func insertAssetCheckout(_ checkout: AssetCheckout) async throws {
+        try await supabase.from("asset_checkouts").insert(AssetCheckoutInsert(checkout)).execute()
+    }
+
+    func updateAssetCheckout(_ checkout: AssetCheckout) async throws {
+        try await supabase.from("asset_checkouts").update(AssetCheckoutUpdate(checkout))
+            .eq("id", value: checkout.id).execute()
+    }
+
+    func deleteAssetCheckout(id: String) async throws {
+        try await supabase.from("asset_checkouts").delete().eq("id", value: id).execute()
+    }
+
+    // MARK: - Asset Service Records
+
+    func fetchAssetServiceRecords() async throws -> [AssetServiceRecord] {
+        try await supabase.from("asset_service_records")
+            .select().order("created_at", ascending: false).execute().value
+    }
+
+    func insertAssetServiceRecord(_ record: AssetServiceRecord) async throws {
+        try await supabase.from("asset_service_records").insert(AssetServiceRecordInsert(record)).execute()
+    }
+
+    func updateAssetServiceRecord(_ record: AssetServiceRecord) async throws {
+        try await supabase.from("asset_service_records").update(AssetServiceRecordUpdate(record))
+            .eq("id", value: record.id).execute()
+    }
+
+    func deleteAssetServiceRecord(id: String) async throws {
+        try await supabase.from("asset_service_records").delete().eq("id", value: id).execute()
+    }
+
+    // MARK: - Asset Maintenance Tasks
+
+    func fetchAssetMaintenanceTasks() async throws -> [AssetMaintenanceTask] {
+        try await supabase.from("asset_maintenance_tasks")
+            .select().order("sort_order", ascending: true).execute().value
+    }
+
+    func insertAssetMaintenanceTask(_ task: AssetMaintenanceTask) async throws {
+        try await supabase.from("asset_maintenance_tasks").insert(AssetMaintenanceTaskInsert(task)).execute()
+    }
+
+    func updateAssetMaintenanceTask(_ task: AssetMaintenanceTask) async throws {
+        try await supabase.from("asset_maintenance_tasks").update(AssetMaintenanceTaskUpdate(task))
+            .eq("id", value: task.id).execute()
+    }
+
+    func deleteAssetMaintenanceTask(id: String) async throws {
+        try await supabase.from("asset_maintenance_tasks").delete().eq("id", value: id).execute()
+    }
+
     // MARK: - Seasons
 
     func fetchLatestSeason() async throws -> Season? {
@@ -602,5 +682,272 @@ private struct SeasonalTaskToggle: Encodable {
     init(_ t: PoolSeasonalTask) {
         isComplete = t.isComplete; completedBy = t.completedBy
         completedDate = t.completedDate; updatedAt = Date()
+    }
+}
+
+// MARK: - Asset encode types
+
+private struct AssetInsert: Encodable {
+    let id, name, category, subtype, storageLocation, status: String
+    let make, model, serialNumber, licensePlate, registrationExpiry: String?
+    let year: Int?
+    let currentOdometer, currentHours: Double?
+    let tracksOdometer, tracksHours, isActive: Bool
+    let notes: String?
+    let hullId, uscgRegistration, uscgRegistrationExpiry, motorType: String?
+    let capacity: Int?
+    let hasLifejackets: Bool?
+    let lifejacketCount: Int?
+    let createdAt, updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case id, name, category, subtype, make, model, year, notes, status, capacity
+        case serialNumber           = "serial_number"
+        case licensePlate           = "license_plate"
+        case registrationExpiry     = "registration_expiry"
+        case storageLocation        = "storage_location"
+        case currentOdometer        = "current_odometer"
+        case currentHours           = "current_hours"
+        case tracksOdometer         = "tracks_odometer"
+        case tracksHours            = "tracks_hours"
+        case isActive               = "is_active"
+        case hullId                 = "hull_id"
+        case uscgRegistration       = "uscg_registration"
+        case uscgRegistrationExpiry = "uscg_registration_expiry"
+        case motorType              = "motor_type"
+        case hasLifejackets         = "has_lifejackets"
+        case lifejacketCount        = "lifejacket_count"
+        case createdAt              = "created_at"
+        case updatedAt              = "updated_at"
+    }
+    init(_ a: CampAsset) {
+        id = a.id; name = a.name; category = a.category.rawValue; subtype = a.subtype
+        storageLocation = a.storageLocation; status = a.status.rawValue
+        make = a.make; model = a.model; year = a.year; serialNumber = a.serialNumber
+        licensePlate = a.licensePlate; registrationExpiry = a.registrationExpiry
+        currentOdometer = a.currentOdometer; currentHours = a.currentHours
+        tracksOdometer = a.tracksOdometer; tracksHours = a.tracksHours
+        isActive = a.isActive; notes = a.notes; hullId = a.hullId
+        uscgRegistration = a.uscgRegistration; uscgRegistrationExpiry = a.uscgRegistrationExpiry
+        motorType = a.motorType; capacity = a.capacity
+        hasLifejackets = a.hasLifejackets; lifejacketCount = a.lifejacketCount
+        createdAt = a.createdAt; updatedAt = a.updatedAt
+    }
+}
+
+private struct AssetUpdate: Encodable {
+    let name, category, subtype, storageLocation, status: String
+    let make, model, serialNumber, licensePlate, registrationExpiry: String?
+    let year: Int?
+    let currentOdometer, currentHours: Double?
+    let tracksOdometer, tracksHours, isActive: Bool
+    let notes: String?
+    let hullId, uscgRegistration, uscgRegistrationExpiry, motorType: String?
+    let capacity: Int?
+    let hasLifejackets: Bool?
+    let lifejacketCount: Int?
+    let updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case name, category, subtype, make, model, year, notes, status, capacity
+        case serialNumber           = "serial_number"
+        case licensePlate           = "license_plate"
+        case registrationExpiry     = "registration_expiry"
+        case storageLocation        = "storage_location"
+        case currentOdometer        = "current_odometer"
+        case currentHours           = "current_hours"
+        case tracksOdometer         = "tracks_odometer"
+        case tracksHours            = "tracks_hours"
+        case isActive               = "is_active"
+        case hullId                 = "hull_id"
+        case uscgRegistration       = "uscg_registration"
+        case uscgRegistrationExpiry = "uscg_registration_expiry"
+        case motorType              = "motor_type"
+        case hasLifejackets         = "has_lifejackets"
+        case lifejacketCount        = "lifejacket_count"
+        case updatedAt              = "updated_at"
+    }
+    init(_ a: CampAsset) {
+        name = a.name; category = a.category.rawValue; subtype = a.subtype
+        storageLocation = a.storageLocation; status = a.status.rawValue
+        make = a.make; model = a.model; year = a.year; serialNumber = a.serialNumber
+        licensePlate = a.licensePlate; registrationExpiry = a.registrationExpiry
+        currentOdometer = a.currentOdometer; currentHours = a.currentHours
+        tracksOdometer = a.tracksOdometer; tracksHours = a.tracksHours
+        isActive = a.isActive; notes = a.notes; hullId = a.hullId
+        uscgRegistration = a.uscgRegistration; uscgRegistrationExpiry = a.uscgRegistrationExpiry
+        motorType = a.motorType; capacity = a.capacity
+        hasLifejackets = a.hasLifejackets; lifejacketCount = a.lifejacketCount
+        updatedAt = Date()
+    }
+}
+
+private struct AssetCheckoutInsert: Encodable {
+    let id, assetId, checkedOutBy, purpose, loggedBy: String
+    let checkedOutAt, expectedReturnAt: Date
+    let startOdometer, endOdometer, startHours, endHours: Double?
+    let fuelLevelOut, fuelLevelIn: String?
+    let checkoutNotes, returnNotes, returnCondition: String?
+    let returnedAt: Date?
+    let createdAt: Date
+    enum CodingKeys: String, CodingKey {
+        case id, purpose
+        case assetId          = "asset_id"
+        case checkedOutBy     = "checked_out_by"
+        case checkedOutAt     = "checked_out_at"
+        case expectedReturnAt = "expected_return_at"
+        case returnedAt       = "returned_at"
+        case startOdometer    = "start_odometer"
+        case endOdometer      = "end_odometer"
+        case startHours       = "start_hours"
+        case endHours         = "end_hours"
+        case fuelLevelOut     = "fuel_level_out"
+        case fuelLevelIn      = "fuel_level_in"
+        case checkoutNotes    = "checkout_notes"
+        case returnNotes      = "return_notes"
+        case returnCondition  = "return_condition"
+        case loggedBy         = "logged_by"
+        case createdAt        = "created_at"
+    }
+    init(_ c: AssetCheckout) {
+        id = c.id; assetId = c.assetId; checkedOutBy = c.checkedOutBy
+        purpose = c.purpose; loggedBy = c.loggedBy
+        checkedOutAt = c.checkedOutAt; expectedReturnAt = c.expectedReturnAt
+        returnedAt = c.returnedAt
+        startOdometer = c.startOdometer; endOdometer = c.endOdometer
+        startHours = c.startHours; endHours = c.endHours
+        fuelLevelOut = c.fuelLevelOut?.rawValue; fuelLevelIn = c.fuelLevelIn?.rawValue
+        checkoutNotes = c.checkoutNotes; returnNotes = c.returnNotes
+        returnCondition = c.returnCondition?.rawValue; createdAt = c.createdAt
+    }
+}
+
+private struct AssetCheckoutUpdate: Encodable {
+    let checkedOutBy, purpose: String
+    let expectedReturnAt: Date
+    let returnedAt: Date?
+    let endOdometer, endHours: Double?
+    let fuelLevelIn: String?
+    let checkoutNotes, returnNotes, returnCondition: String?
+    enum CodingKeys: String, CodingKey {
+        case purpose
+        case checkedOutBy     = "checked_out_by"
+        case expectedReturnAt = "expected_return_at"
+        case returnedAt       = "returned_at"
+        case endOdometer      = "end_odometer"
+        case endHours         = "end_hours"
+        case fuelLevelIn      = "fuel_level_in"
+        case checkoutNotes    = "checkout_notes"
+        case returnNotes      = "return_notes"
+        case returnCondition  = "return_condition"
+    }
+    init(_ c: AssetCheckout) {
+        checkedOutBy = c.checkedOutBy; purpose = c.purpose
+        expectedReturnAt = c.expectedReturnAt; returnedAt = c.returnedAt
+        endOdometer = c.endOdometer; endHours = c.endHours
+        fuelLevelIn = c.fuelLevelIn?.rawValue
+        checkoutNotes = c.checkoutNotes; returnNotes = c.returnNotes
+        returnCondition = c.returnCondition?.rawValue
+    }
+}
+
+private struct AssetServiceRecordInsert: Encodable {
+    let id, assetId, serviceType, datePerformed, performedBy: String
+    let vendor, description: String?
+    let odometerAtService, hoursAtService, cost: Double?
+    let nextServiceDate: String?
+    let nextServiceOdometer, nextServiceHours: Double?
+    let isInspection: Bool
+    let createdAt: Date
+    enum CodingKeys: String, CodingKey {
+        case id, description, vendor, cost
+        case assetId             = "asset_id"
+        case serviceType         = "service_type"
+        case datePerformed       = "date_performed"
+        case performedBy         = "performed_by"
+        case odometerAtService   = "odometer_at_service"
+        case hoursAtService      = "hours_at_service"
+        case nextServiceDate     = "next_service_date"
+        case nextServiceOdometer = "next_service_odometer"
+        case nextServiceHours    = "next_service_hours"
+        case isInspection        = "is_inspection"
+        case createdAt           = "created_at"
+    }
+    init(_ r: AssetServiceRecord) {
+        id = r.id; assetId = r.assetId; serviceType = r.serviceType.rawValue
+        datePerformed = r.datePerformed; performedBy = r.performedBy
+        vendor = r.vendor; description = r.description
+        odometerAtService = r.odometerAtService; hoursAtService = r.hoursAtService
+        cost = r.cost; nextServiceDate = r.nextServiceDate
+        nextServiceOdometer = r.nextServiceOdometer; nextServiceHours = r.nextServiceHours
+        isInspection = r.isInspection; createdAt = r.createdAt
+    }
+}
+
+private struct AssetServiceRecordUpdate: Encodable {
+    let serviceType, datePerformed, performedBy: String
+    let vendor, description: String?
+    let odometerAtService, hoursAtService, cost: Double?
+    let nextServiceDate: String?
+    let nextServiceOdometer, nextServiceHours: Double?
+    let isInspection: Bool
+    enum CodingKeys: String, CodingKey {
+        case description, vendor, cost
+        case serviceType         = "service_type"
+        case datePerformed       = "date_performed"
+        case performedBy         = "performed_by"
+        case odometerAtService   = "odometer_at_service"
+        case hoursAtService      = "hours_at_service"
+        case nextServiceDate     = "next_service_date"
+        case nextServiceOdometer = "next_service_odometer"
+        case nextServiceHours    = "next_service_hours"
+        case isInspection        = "is_inspection"
+    }
+    init(_ r: AssetServiceRecord) {
+        serviceType = r.serviceType.rawValue; datePerformed = r.datePerformed
+        performedBy = r.performedBy; vendor = r.vendor; description = r.description
+        odometerAtService = r.odometerAtService; hoursAtService = r.hoursAtService
+        cost = r.cost; nextServiceDate = r.nextServiceDate
+        nextServiceOdometer = r.nextServiceOdometer; nextServiceHours = r.nextServiceHours
+        isInspection = r.isInspection
+    }
+}
+
+private struct AssetMaintenanceTaskInsert: Encodable {
+    let id, assetId, phase, title: String
+    let detail, completedBy, completedDate: String?
+    let isComplete: Bool; let sortOrder: Int
+    let createdAt, updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case id, phase, title, detail
+        case assetId       = "asset_id"
+        case isComplete    = "is_complete"
+        case completedBy   = "completed_by"
+        case completedDate = "completed_date"
+        case sortOrder     = "sort_order"
+        case createdAt     = "created_at"
+        case updatedAt     = "updated_at"
+    }
+    init(_ t: AssetMaintenanceTask) {
+        id = t.id; assetId = t.assetId; phase = t.phase.rawValue; title = t.title
+        detail = t.detail; completedBy = t.completedBy; completedDate = t.completedDate
+        isComplete = t.isComplete; sortOrder = t.sortOrder
+        createdAt = t.createdAt; updatedAt = t.updatedAt
+    }
+}
+
+private struct AssetMaintenanceTaskUpdate: Encodable {
+    let phase, title: String; let detail, completedBy, completedDate: String?
+    let isComplete: Bool; let sortOrder: Int; let updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case phase, title, detail
+        case isComplete    = "is_complete"
+        case completedBy   = "completed_by"
+        case completedDate = "completed_date"
+        case sortOrder     = "sort_order"
+        case updatedAt     = "updated_at"
+    }
+    init(_ t: AssetMaintenanceTask) {
+        phase = t.phase.rawValue; title = t.title; detail = t.detail
+        completedBy = t.completedBy; completedDate = t.completedDate
+        isComplete = t.isComplete; sortOrder = t.sortOrder; updatedAt = Date()
     }
 }

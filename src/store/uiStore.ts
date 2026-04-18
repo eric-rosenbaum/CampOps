@@ -44,6 +44,21 @@ interface UIStore {
   flagIssueEquipmentId: string | null;
   isEquipmentHistoryModalOpen: boolean;
   historyEquipmentId: string | null;
+  // Asset modals
+  isAddEditAssetModalOpen: boolean;
+  editingAssetId: string | null;
+  isCheckoutModalOpen: boolean;
+  checkoutAssetId: string | null;
+  isReturnModalOpen: boolean;
+  returnCheckoutId: string | null;
+  returnAssetId: string | null;
+  isLogAssetServiceModalOpen: boolean;
+  logServiceForAssetId: string | null;
+  editingServiceRecordId: string | null;
+  editingCheckoutId: string | null;
+  isAddMaintenanceTaskModalOpen: boolean;
+  maintenanceTaskAssetId: string | null;
+  editingMaintenanceTaskId: string | null;
 
   openLogIssueModal: () => void;
   openEditIssueModal: (id: string) => void;
@@ -71,6 +86,16 @@ interface UIStore {
   openAddEditPoolModal: (poolId?: string) => void;
   openFlagIssueModal: (equipmentId: string) => void;
   openEquipmentHistoryModal: (equipmentId: string) => void;
+  // Asset modal openers
+  openAddAssetModal: () => void;
+  openEditAssetModal: (assetId: string) => void;
+  openCheckoutModal: (assetId: string) => void;
+  openEditCheckoutModal: (checkoutId: string, assetId: string) => void;
+  openReturnModal: (checkoutId: string, assetId: string) => void;
+  openLogAssetServiceModal: (assetId: string) => void;
+  openEditServiceRecordModal: (recordId: string, assetId: string) => void;
+  openAddMaintenanceTaskModal: (assetId: string) => void;
+  openEditMaintenanceTaskModal: (assetId: string, taskId: string) => void;
   closeAllModals: () => void;
   setCurrentUser: (id: string) => void;
 }
@@ -117,6 +142,21 @@ export const useUIStore = create<UIStore>((set) => ({
   flagIssueEquipmentId: null,
   isEquipmentHistoryModalOpen: false,
   historyEquipmentId: null,
+  // Asset modals
+  isAddEditAssetModalOpen: false,
+  editingAssetId: null,
+  isCheckoutModalOpen: false,
+  checkoutAssetId: null,
+  isReturnModalOpen: false,
+  returnCheckoutId: null,
+  returnAssetId: null,
+  isLogAssetServiceModalOpen: false,
+  logServiceForAssetId: null,
+  editingServiceRecordId: null,
+  editingCheckoutId: null,
+  isAddMaintenanceTaskModalOpen: false,
+  maintenanceTaskAssetId: null,
+  editingMaintenanceTaskId: null,
 
   openLogIssueModal: () =>
     set({ isLogIssueModalOpen: true, editingIssueId: null }),
@@ -195,6 +235,33 @@ export const useUIStore = create<UIStore>((set) => ({
   openEquipmentHistoryModal: (equipmentId) =>
     set({ isEquipmentHistoryModalOpen: true, historyEquipmentId: equipmentId }),
 
+  openAddAssetModal: () =>
+    set({ isAddEditAssetModalOpen: true, editingAssetId: null }),
+
+  openEditAssetModal: (assetId) =>
+    set({ isAddEditAssetModalOpen: true, editingAssetId: assetId }),
+
+  openCheckoutModal: (assetId) =>
+    set({ isCheckoutModalOpen: true, checkoutAssetId: assetId, editingCheckoutId: null }),
+
+  openEditCheckoutModal: (checkoutId, assetId) =>
+    set({ isCheckoutModalOpen: true, checkoutAssetId: assetId, editingCheckoutId: checkoutId }),
+
+  openReturnModal: (checkoutId, assetId) =>
+    set({ isReturnModalOpen: true, returnCheckoutId: checkoutId, returnAssetId: assetId }),
+
+  openLogAssetServiceModal: (assetId) =>
+    set({ isLogAssetServiceModalOpen: true, logServiceForAssetId: assetId, editingServiceRecordId: null }),
+
+  openEditServiceRecordModal: (recordId, assetId) =>
+    set({ isLogAssetServiceModalOpen: true, logServiceForAssetId: assetId, editingServiceRecordId: recordId }),
+
+  openAddMaintenanceTaskModal: (assetId) =>
+    set({ isAddMaintenanceTaskModalOpen: true, maintenanceTaskAssetId: assetId, editingMaintenanceTaskId: null }),
+
+  openEditMaintenanceTaskModal: (assetId, taskId) =>
+    set({ isAddMaintenanceTaskModalOpen: true, maintenanceTaskAssetId: assetId, editingMaintenanceTaskId: taskId }),
+
   closeAllModals: () =>
     set({
       isLogIssueModalOpen: false,
@@ -236,6 +303,21 @@ export const useUIStore = create<UIStore>((set) => ({
       flagIssueEquipmentId: null,
       isEquipmentHistoryModalOpen: false,
       historyEquipmentId: null,
+      // Asset modals
+      isAddEditAssetModalOpen: false,
+      editingAssetId: null,
+      isCheckoutModalOpen: false,
+      checkoutAssetId: null,
+      isReturnModalOpen: false,
+      returnCheckoutId: null,
+      returnAssetId: null,
+      isLogAssetServiceModalOpen: false,
+      logServiceForAssetId: null,
+      editingServiceRecordId: null,
+      editingCheckoutId: null,
+      isAddMaintenanceTaskModalOpen: false,
+      maintenanceTaskAssetId: null,
+      editingMaintenanceTaskId: null,
     }),
 
   setCurrentUser: (id: string) => set({ currentUserId: id }),

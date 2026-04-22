@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useSafetyStore, certExpiryStatus, CERT_TYPE_LABELS } from '@/store/safetyStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
@@ -100,9 +101,10 @@ function CertSummaryCard({ certType }: { certType: CertType }) {
 }
 
 export function StaffTab() {
-  const { staff, certSummary } = useSafetyStore();
+  const { staff, certSummary, updateStaff } = useSafetyStore();
   const { openSafetyAddStaffModal, openStaffCertModal } = useUIStore();
   const { can } = useAuth();
+  const [showInactive, setShowInactive] = useState(false);
 
   const activeStaff = staff.filter((s) => s.isActive);
   const inactiveStaff = staff.filter((s) => !s.isActive);
@@ -208,9 +210,48 @@ export function StaffTab() {
             </div>
           ))}
           {inactiveStaff.length > 0 && (
-            <div className="px-4 py-2 border-t border-cream-dark bg-cream">
-              <p className="text-[11px] text-forest/30">{inactiveStaff.length} inactive staff member{inactiveStaff.length === 1 ? '' : 's'} (hidden)</p>
-            </div>
+            <>
+              <button
+                onClick={() => setShowInactive(v => !v)}
+                className="w-full flex items-center justify-between px-4 py-2 border-t border-cream-dark bg-cream hover:bg-cream-dark transition-colors"
+              >
+                <p className="text-[11px] text-forest/40">
+                  {inactiveStaff.length} inactive staff member{inactiveStaff.length === 1 ? '' : 's'}
+                </p>
+                {showInactive
+                  ? <ChevronUp className="w-3.5 h-3.5 text-forest/30" />
+                  : <ChevronDown className="w-3.5 h-3.5 text-forest/30" />}
+              </button>
+              {showInactive && inactiveStaff.map((s, i, arr) => (
+                <div
+                  key={s.id}
+                  className={`flex items-center justify-between px-4 py-2.5 bg-cream/50 ${i < arr.length - 1 ? 'border-b border-cream-dark' : ''}`}
+                >
+                  <div>
+                    <span className="text-[13px] font-medium text-forest/40">{s.name}</span>
+                    <span className="text-[11px] text-forest/30 ml-2">{s.title}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {can('manageSafetyStaff') && (
+                      <>
+                        <button
+                          onClick={() => updateStaff(s.id, { isActive: true })}
+                          className="text-[11px] text-sage hover:underline cursor-pointer font-medium"
+                        >
+                          Reactivate
+                        </button>
+                        <button
+                          onClick={() => openSafetyAddStaffModal(s.id)}
+                          className="text-[11px] text-forest/30 hover:text-forest cursor-pointer"
+                        >
+                          Edit
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </>
           )}
         </div>
       )}

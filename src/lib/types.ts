@@ -82,7 +82,7 @@ export interface Season {
 
 // ─── Pool Management ──────────────────────────────────────────────────────────
 
-export type PoolType = 'pool' | 'lake' | 'pond' | 'river' | 'waterfront' | 'other';
+export type PoolType = 'pool' | 'waterfront' | 'other';
 
 export interface CampPool {
   id: string;

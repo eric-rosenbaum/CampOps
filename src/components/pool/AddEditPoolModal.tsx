@@ -67,7 +67,7 @@ export function AddEditPoolModal() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {!editing && (
           <p className="text-[13px] text-forest/50 -mt-1">
-            Add a swimming pool, lake, pond, or other aquatic location.
+            Add a swimming pool, waterfront, or other aquatic location.
           </p>
         )}
 
@@ -90,7 +90,7 @@ export function AddEditPoolModal() {
             ))}
           </select>
           <p className="text-[11px] text-forest/40 mt-1">
-            Swimming pools and "other" types include the chemical log. Lakes, ponds, rivers, and waterfront locations use equipment + inspection tracking only.
+            Swimming pools and "other" types include the chemical log. Waterfront locations use equipment + inspection tracking only.
           </p>
         </div>
 

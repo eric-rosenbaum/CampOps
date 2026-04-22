@@ -72,7 +72,7 @@ export function getChemicalStatus(field: ChemicalField, value: number): 'ok' | '
 
 // ─── Pool type helpers ────────────────────────────────────────────────────────
 
-const WATERFRONT_TYPES: PoolType[] = ['lake', 'pond', 'river', 'waterfront'];
+const WATERFRONT_TYPES: PoolType[] = ['waterfront'];
 
 export function isWaterfrontType(type: PoolType): boolean {
   return WATERFRONT_TYPES.includes(type);
@@ -80,9 +80,6 @@ export function isWaterfrontType(type: PoolType): boolean {
 
 export const POOL_TYPE_LABELS: Record<PoolType, string> = {
   pool: 'Swimming pool',
-  lake: 'Lake',
-  pond: 'Pond',
-  river: 'River',
   waterfront: 'Waterfront',
   other: 'Other (chemical)',
 };

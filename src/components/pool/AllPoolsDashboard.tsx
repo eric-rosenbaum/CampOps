@@ -167,7 +167,7 @@ export function AllPoolsDashboard() {
         <div className="bg-white border border-border rounded-card px-4 py-4">
           <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Waterfront</p>
           <p className="font-mono text-stat font-semibold text-forest mt-1">{waterfrontPools.length}</p>
-          <p className="text-meta text-forest/40 mt-0.5">Lakes, ponds, rivers</p>
+          <p className="text-meta text-forest/40 mt-0.5">Waterfront locations</p>
         </div>
       </div>
 

@@ -11,9 +11,10 @@ struct PoolView: View {
     @State private var showingLogService    = false
     @State private var showingLogInspection = false
     @State private var addTaskPhase: SeasonalPhase? = nil
-    @State private var showingAddPool       = false
-    @State private var editingPool: CampPool? = nil
+    @State private var showingAddPool          = false
+    @State private var editingPool: CampPool?  = nil
     @State private var showingDeleteAllConfirm = false
+    @State private var showingScanStrip        = false
 
     var body: some View {
         NavigationStack {
@@ -68,6 +69,10 @@ struct PoolView: View {
         }
         .sheet(isPresented: $showingLogReading) {
             LogReadingSheet(poolId: vm.activePoolId ?? "", onSave: { await vm.addReading($0) })
+                .environmentObject(userManager)
+        }
+        .sheet(isPresented: $showingScanStrip) {
+            ScanStripSheet(poolId: vm.activePoolId ?? "", onSave: { await vm.addReading($0) })
                 .environmentObject(userManager)
         }
         .sheet(isPresented: $showingAddEquipment) {
@@ -219,7 +224,14 @@ struct PoolView: View {
 
         switch resolvedTab {
         case .chemical:
-            Button { showingLogReading = true } label: { Image(systemName: "plus") }
+            Menu {
+                Button { showingScanStrip = true } label: {
+                    Label("Scan test strip", systemImage: "camera.viewfinder")
+                }
+                Button { showingLogReading = true } label: {
+                    Label("Manual entry", systemImage: "pencil")
+                }
+            } label: { Image(systemName: "plus") }
         case .equipment:
             Menu {
                 Button("Add equipment") { showingAddEquipment = true }

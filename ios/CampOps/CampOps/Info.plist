@@ -18,6 +18,6 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>CampOps uses your photo library to attach photos to issues.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>CampOps uses your camera to take photos of issues.</string>
+	<string>CampOps uses your camera to photograph maintenance issues and scan pool chemical test strips.</string>
 </dict>
 </plist>

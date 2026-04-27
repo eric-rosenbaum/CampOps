@@ -4,17 +4,15 @@ import { Modal } from './Modal';
 import { Button } from './Button';
 import { useUIStore } from '@/store/uiStore';
 import { useIssuesStore } from '@/store/issuesStore';
-import { SEED_USERS } from '@/lib/seedData';
+import { useCampStore } from '@/store/campStore';
+
+const DEFAULT_LOCATIONS = ['Waterfront', 'Dining Hall', 'Main Lodge', 'Health Center', 'Kitchen', 'Athletic Fields', 'Maintenance', 'Other'];
 import { useAuth } from '@/lib/auth';
 import { dbUploadPhoto, dbDeletePhoto } from '@/lib/db';
 import type { Issue, Location, Priority, RecurringInterval } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { Camera, X } from 'lucide-react';
 
-const LOCATIONS: Location[] = [
-  'Waterfront', 'Dining Hall', 'Cabins', 'Art Barn', 'Aquatics',
-  'Athletic Fields', 'Main Lodge', 'Health Center', 'Other',
-];
 
 interface FormValues {
   title: string;
@@ -31,7 +29,8 @@ export function LogIssueModal() {
   const { isLogIssueModalOpen, editingIssueId, closeAllModals } = useUIStore();
   const { addIssue, updateIssue, addActivityEntry, selectIssue, issues } = useIssuesStore();
   const { currentUser, can } = useAuth();
-  const currentUserId = currentUser.id;
+  const members = useCampStore((s) => s.members);
+  const campLocations = useCampStore((s) => s.currentCamp?.locations ?? DEFAULT_LOCATIONS);
   const editingIssue = editingIssueId ? issues.find((i) => i.id === editingIssueId) : null;
 
   const [locations, setLocations] = useState<Location[]>(['Waterfront']);
@@ -120,7 +119,7 @@ export function LogIssueModal() {
   async function onSubmit(data: FormValues) {
     const now = new Date().toISOString();
     const assigneeId = data.assigneeId || null;
-    const assignee = SEED_USERS.find((u) => u.id === assigneeId);
+    const assigneeName = assigneeId ? (members.find((m) => m.userId === assigneeId)?.fullName ?? null) : null;
     const { display, value } = parseCost(data.costEstimate);
 
     if (editingIssue) {
@@ -150,7 +149,7 @@ export function LogIssueModal() {
       });
       addActivityEntry(editingIssue.id, {
         id: generateId(),
-        userId: currentUserId,
+        userId: currentUser.id,
         userName: currentUser.name,
         action: `Issue edited by ${currentUser.name}`,
         timestamp: now,
@@ -168,18 +167,18 @@ export function LogIssueModal() {
       const activityLog = [
         {
           id: generateId(),
-          userId: currentUserId,
+          userId: currentUser.id,
           userName: currentUser.name,
           action: `Issue logged by ${currentUser.name}`,
           timestamp: now,
         },
       ];
-      if (assigneeId && assignee) {
+      if (assigneeId && assigneeName) {
         activityLog.push({
           id: generateId(),
-          userId: currentUserId,
+          userId: currentUser.id,
           userName: currentUser.name,
-          action: `Assigned to ${assignee.name} by ${currentUser.name}`,
+          action: `Assigned to ${assigneeName} by ${currentUser.name}`,
           timestamp: now,
         });
       }
@@ -192,7 +191,7 @@ export function LogIssueModal() {
         priority: data.priority,
         status: assigneeId ? 'assigned' : 'unassigned',
         assigneeId,
-        reportedById: currentUserId,
+        reportedById: currentUser.id,
         estimatedCostDisplay: display,
         estimatedCostValue: value,
         actualCost: null,
@@ -236,7 +235,7 @@ export function LogIssueModal() {
         <div>
           <label className={labelClass}>Location * {locations.length === 0 && <span className="text-red text-[11px]">Select at least one</span>}</label>
           <div className="grid grid-cols-3 gap-1.5 p-2.5 bg-white border border-border rounded-btn">
-            {LOCATIONS.map((l) => (
+            {campLocations.map((l) => (
               <label key={l} className="flex items-center gap-1.5 text-[13px] cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -279,8 +278,8 @@ export function LogIssueModal() {
               <label className={labelClass}>Assign to</label>
               <select {...register('assigneeId')} className={inputClass}>
                 <option value="">Unassigned</option>
-                {SEED_USERS.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
+                {members.map((m) => (
+                  <option key={m.userId} value={m.userId}>{m.fullName}</option>
                 ))}
               </select>
             </div>

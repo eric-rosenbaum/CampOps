@@ -1,11 +1,8 @@
 import { useState } from 'react';
 import type { ChecklistTask, ChecklistStatus, Priority, Location } from '@/lib/types';
 
-const LOCATIONS: Location[] = [
-  'Waterfront', 'Dining Hall', 'Cabins', 'Art Barn', 'Aquatics',
-  'Athletic Fields', 'Main Lodge', 'Health Center', 'Other',
-];
-import { SEED_USERS } from '@/lib/seedData';
+const DEFAULT_LOCATIONS = ['Waterfront', 'Dining Hall', 'Main Lodge', 'Health Center', 'Kitchen', 'Athletic Fields', 'Maintenance', 'Other'];
+import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useAuth } from '@/lib/auth';
 import { PriorityBadge } from './PriorityBadge';
@@ -20,7 +17,9 @@ interface Props {
 export function TaskDetail({ task }: Props) {
   const { updateTask, completeTask, addActivityEntry, deleteTask, selectTask } = useChecklistStore();
   const { currentUser, can } = useAuth();
-  const currentUserId = currentUser.id;
+  const members = useCampStore((s) => s.members);
+  const campLocations = useCampStore((s) => s.currentCamp?.locations ?? DEFAULT_LOCATIONS);
+  const memberName = (userId: string | null) => userId ? (members.find((m) => m.userId === userId)?.fullName ?? null) : null;
 
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -31,24 +30,24 @@ export function TaskDetail({ task }: Props) {
   const [editPhase, setEditPhase] = useState<'pre' | 'post'>(task.phase);
   const [editDueDate, setEditDueDate] = useState(task.dueDate ?? '');
 
-  const assignee = SEED_USERS.find((u) => u.id === task.assigneeId);
+  const assigneeName = memberName(task.assigneeId);
 
   function handleStatusChange(newStatus: ChecklistStatus) {
     updateTask(task.id, { status: newStatus });
     addActivityEntry(task.id, {
-      id: generateId(), userId: currentUserId, userName: currentUser.name,
+      id: generateId(), userId: currentUser.id, userName: currentUser.name,
       action: `Status changed to ${newStatus.replace('_', ' ')} by ${currentUser.name}`,
       timestamp: new Date().toISOString(),
     });
   }
 
   function handleAssigneeChange(assigneeId: string) {
-    const newAssignee = SEED_USERS.find((u) => u.id === assigneeId);
+    const newName = assigneeId ? (memberName(assigneeId) ?? 'unknown') : null;
     updateTask(task.id, { assigneeId: assigneeId || null });
     addActivityEntry(task.id, {
-      id: generateId(), userId: currentUserId, userName: currentUser.name,
+      id: generateId(), userId: currentUser.id, userName: currentUser.name,
       action: assigneeId
-        ? `Assigned to ${newAssignee?.name ?? 'unknown'} by ${currentUser.name}`
+        ? `Assigned to ${newName} by ${currentUser.name}`
         : `Unassigned by ${currentUser.name}`,
       timestamp: new Date().toISOString(),
     });
@@ -57,7 +56,7 @@ export function TaskDetail({ task }: Props) {
   function handleComplete() {
     completeTask(task.id);
     addActivityEntry(task.id, {
-      id: generateId(), userId: currentUserId, userName: currentUser.name,
+      id: generateId(), userId: currentUser.id, userName: currentUser.name,
       action: `Marked complete by ${currentUser.name}`,
       timestamp: new Date().toISOString(),
     });
@@ -73,7 +72,7 @@ export function TaskDetail({ task }: Props) {
       dueDate: editDueDate || null,
     });
     addActivityEntry(task.id, {
-      id: generateId(), userId: currentUserId, userName: currentUser.name,
+      id: generateId(), userId: currentUser.id, userName: currentUser.name,
       action: `Edited by ${currentUser.name}`,
       timestamp: new Date().toISOString(),
     });
@@ -115,7 +114,7 @@ export function TaskDetail({ task }: Props) {
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Locations</label>
             <div className="grid grid-cols-2 gap-1">
-              {LOCATIONS.map((l) => (
+              {campLocations.map((l) => (
                 <label key={l} className="flex items-center gap-1.5 text-[13px] cursor-pointer">
                   <input
                     type="checkbox"
@@ -224,10 +223,10 @@ export function TaskDetail({ task }: Props) {
               <select value={task.assigneeId ?? ''} onChange={(e) => handleAssigneeChange(e.target.value)}
                 className={`${selectClass} w-36`}>
                 <option value="">Unassigned</option>
-                {SEED_USERS.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                {members.map((m) => <option key={m.userId} value={m.userId}>{m.fullName}</option>)}
               </select>
-            ) : assignee ? (
-              <span className="text-[13px] font-medium text-forest">{assignee.name}</span>
+            ) : assigneeName ? (
+              <span className="text-[13px] font-medium text-forest">{assigneeName}</span>
             ) : (
               <span className="text-[13px] font-medium text-red">Unassigned</span>
             )}

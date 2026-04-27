@@ -3,23 +3,20 @@ import { IssueCard } from '@/components/shared/IssueCard';
 import { TaskCard } from '@/components/shared/TaskCard';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useChecklistStore } from '@/store/checklistStore';
-import { useUIStore } from '@/store/uiStore';
-import { SEED_USERS } from '@/lib/seedData';
+import { useAuth } from '@/lib/auth';
 import { Link } from 'react-router-dom';
 
 export function MyTasks() {
   const { issues, selectIssue } = useIssuesStore();
   const { tasks } = useChecklistStore();
-  const { currentUserId } = useUIStore();
-
-  const currentUser = SEED_USERS.find((u) => u.id === currentUserId) ?? SEED_USERS[0];
+  const { currentUser } = useAuth();
 
   const myIssues = issues.filter(
-    (i) => i.assigneeId === currentUserId && i.status !== 'resolved',
+    (i) => i.assigneeId === currentUser.id && i.status !== 'resolved',
   );
 
   const myTasks = tasks.filter(
-    (t) => t.assigneeId === currentUserId && t.status !== 'complete',
+    (t) => t.assigneeId === currentUser.id && t.status !== 'complete',
   );
 
   const totalCount = myIssues.length + myTasks.length;
@@ -32,7 +29,6 @@ export function MyTasks() {
       />
 
       <div className="flex-1 overflow-y-auto px-7 py-6">
-        {/* My open issues */}
         <div className="mb-8">
           <h2 className="text-[13px] font-semibold uppercase tracking-wide text-forest/50 mb-3">
             My open issues
@@ -57,7 +53,6 @@ export function MyTasks() {
           )}
         </div>
 
-        {/* My checklist tasks */}
         <div>
           <h2 className="text-[13px] font-semibold uppercase tracking-wide text-forest/50 mb-3">
             My checklist tasks

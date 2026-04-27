@@ -1,5 +1,5 @@
 import type { Issue } from '@/lib/types';
-import { SEED_USERS } from '@/lib/seedData';
+import { useCampStore } from '@/store/campStore';
 import { TagPill } from './TagPill';
 import { relativeTime, formatDate } from '@/lib/utils';
 
@@ -30,8 +30,10 @@ const statusLabel: Record<string, string> = {
 };
 
 export function IssueCard({ issue, selected, onClick, compact = false }: Props) {
-  const reporter = SEED_USERS.find((u) => u.id === issue.reportedById);
-  const assignee = SEED_USERS.find((u) => u.id === issue.assigneeId);
+  const members = useCampStore((s) => s.members);
+  const memberName = (userId: string | null) => userId ? (members.find((m) => m.userId === userId)?.fullName ?? null) : null;
+  const reporterName = memberName(issue.reportedById);
+  const assigneeName = memberName(issue.assigneeId);
 
   return (
     <div
@@ -46,9 +48,9 @@ export function IssueCard({ issue, selected, onClick, compact = false }: Props) 
           <div className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${priorityDotColor[issue.priority]}`} />
           <div className="flex-1 min-w-0">
             <p className="text-[14px] font-semibold text-forest leading-snug truncate">{issue.title}</p>
-            {reporter && (
+            {reporterName && (
               <p className="text-[11px] text-forest/50 mt-0.5">
-                Reported by {reporter.name} · {relativeTime(issue.createdAt)}
+                Reported by {reporterName} · {relativeTime(issue.createdAt)}
               </p>
             )}
             <div className="flex flex-wrap gap-1.5 mt-2">
@@ -64,8 +66,8 @@ export function IssueCard({ issue, selected, onClick, compact = false }: Props) 
           </div>
         </div>
         <div className="text-right flex-shrink-0">
-          {assignee ? (
-            <p className="text-[12px] font-medium text-forest/70">{assignee.name}</p>
+          {assigneeName ? (
+            <p className="text-[12px] font-medium text-forest/70">{assigneeName}</p>
           ) : (
             <p className="text-[12px] font-medium text-red">Unassigned</p>
           )}

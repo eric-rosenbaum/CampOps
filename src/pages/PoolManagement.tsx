@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Waves } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { Button } from '@/components/shared/Button';
 import { ChemicalLogTab } from '@/components/pool/ChemicalLogTab';
@@ -15,7 +15,6 @@ import { AddEditPoolModal } from '@/components/pool/AddEditPoolModal';
 import { usePoolStore, type PoolTab, isWaterfrontType, POOL_TYPE_LABELS } from '@/store/poolStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
-import { dbDeleteAllPoolData } from '@/lib/db';
 
 const CHEM_TABS: { id: PoolTab; label: string }[] = [
   { id: 'chemical', label: 'Chemical log' },
@@ -35,8 +34,6 @@ export function PoolManagement() {
     pools, activePoolId, activeTab,
     setActivePool, setActiveTab,
     latestReading, activePool,
-    setPools, setChemicalReadings, setEquipment,
-    setServiceLog, setInspections, setInspectionLog, setSeasonalTasks,
   } = usePoolStore();
   const {
     isLogReadingModalOpen, isLogServiceModalOpen,
@@ -44,7 +41,8 @@ export function PoolManagement() {
     isAddEditPoolModalOpen,
     openLogReadingModal, openAddEditPoolModal,
   } = useUIStore();
-  const { can } = useAuth();
+  const { role } = useAuth();
+  const isAdmin = role === 'admin';
 
   const pool = activePool();
   const isWaterfront = pool ? isWaterfrontType(pool.type) : false;
@@ -58,19 +56,6 @@ export function PoolManagement() {
     ? `Last reading ${format(new Date(latest.readingTime), 'MMM d · h:mm a')}`
     : 'No readings yet';
 
-  async function handleDeleteAllData() {
-    if (!window.confirm('Delete ALL pool data? This permanently removes all pools, readings, equipment, inspections, and seasonal tasks. This cannot be undone.')) return;
-    await dbDeleteAllPoolData();
-    setPools([]);
-    setChemicalReadings([]);
-    setEquipment([]);
-    setServiceLog([]);
-    setInspections([]);
-    setInspectionLog([]);
-    setSeasonalTasks([]);
-    setActivePool(null);
-  }
-
   const subtitle = pool
     ? `${POOL_TYPE_LABELS[pool.type]}${!isWaterfront ? ` · ${lastReadingText}` : ''}`
     : `${pools.length} location${pools.length !== 1 ? 's' : ''} · Select a pool to log data`;
@@ -82,17 +67,10 @@ export function PoolManagement() {
         subtitle={subtitle}
         actions={
           <div className="flex gap-2">
-            {can('managePool') && (
-              <>
-                {!pool && (
-                  <Button variant="ghost" size="sm" className="text-red/70 hover:text-red hover:bg-red-bg" onClick={handleDeleteAllData}>
-                    Delete all data
-                  </Button>
-                )}
-                <Button variant="ghost" size="sm" onClick={() => openAddEditPoolModal(pool?.id)}>
-                  {pool ? 'Edit pool' : 'Manage pools'}
-                </Button>
-              </>
+            {isAdmin && (
+              <Button variant="ghost" size="sm" onClick={() => openAddEditPoolModal(pool?.id)}>
+                {pool ? 'Edit pool' : 'Manage pools'}
+              </Button>
             )}
             {pool && !isWaterfront && (
               <Button size="sm" onClick={openLogReadingModal}>+ Log reading</Button>
@@ -137,7 +115,7 @@ export function PoolManagement() {
           ))}
 
           {/* Add pool shortcut */}
-          {can('managePool') && (
+          {isAdmin && (
             <button
               onClick={() => openAddEditPoolModal()}
               className="px-3 py-3 text-body text-forest/30 border-b-2 border-transparent hover:text-forest/60 transition-colors flex-shrink-0"
@@ -179,7 +157,26 @@ export function PoolManagement() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto px-7 py-6">
-        {!activePoolId && <AllPoolsDashboard />}
+        {pools.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
+            <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
+              <Waves className="w-7 h-7 text-stone-400" />
+            </div>
+            <h3 className="text-[15px] font-semibold text-forest mb-1.5">No pools set up yet</h3>
+            <p className="text-[13px] text-forest/50 mb-5 leading-relaxed">
+              Add your first pool or waterfront location to start logging chemical readings, inspections, and equipment.
+            </p>
+            {isAdmin && (
+              <button
+                onClick={() => openAddEditPoolModal()}
+                className="bg-forest text-cream text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-forest/90 transition-colors"
+              >
+                Add pool location
+              </button>
+            )}
+          </div>
+        )}
+        {pools.length > 0 && !activePoolId && <AllPoolsDashboard />}
 
         {activePoolId && effectiveTab === 'chemical' && <ChemicalLogTab />}
         {activePoolId && effectiveTab === 'equipment' && <EquipmentTab />}

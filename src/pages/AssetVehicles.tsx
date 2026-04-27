@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import { useAssetStore, type AssetPageTab } from '@/store/assetStore';
 import { useUIStore } from '@/store/uiStore';
+import { useAuth } from '@/lib/auth';
 import { FleetOverviewTab } from '@/components/assets/FleetOverviewTab';
 import { CheckedOutTab } from '@/components/assets/CheckedOutTab';
 import { MaintenanceDueTab } from '@/components/assets/MaintenanceDueTab';
@@ -22,6 +23,8 @@ const PAGE_TABS: { id: AssetPageTab; label: string }[] = [
 export default function AssetVehicles() {
   const { activePageTab, setPageTab, activeAssetId, currentlyCheckedOut, overdueCheckouts, maintenanceOverdue } = useAssetStore();
   const { openAddAssetModal } = useUIStore();
+  const { role } = useAuth();
+  const isAdmin = role === 'admin';
 
   const checkedOutCount = currentlyCheckedOut().length;
   const overdueCount = overdueCheckouts().length;
@@ -41,12 +44,14 @@ export default function AssetVehicles() {
           <h1 className="text-page-title font-semibold text-forest">Assets & Vehicles</h1>
           <p className="text-meta text-forest/50 mt-0.5">Fleet management, checkout tracking, and service history</p>
         </div>
-        <button
-          onClick={openAddAssetModal}
-          className="flex items-center gap-2 px-4 py-2 text-body font-medium bg-forest text-cream rounded-btn hover:bg-forest/90 transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Add asset
-        </button>
+        {isAdmin && (
+          <button
+            onClick={openAddAssetModal}
+            className="flex items-center gap-2 px-4 py-2 text-body font-medium bg-forest text-cream rounded-btn hover:bg-forest/90 transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Add asset
+          </button>
+        )}
       </div>
 
       {/* Tab strip */}

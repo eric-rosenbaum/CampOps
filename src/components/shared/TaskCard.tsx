@@ -1,5 +1,5 @@
 import type { ChecklistTask } from '@/lib/types';
-import { SEED_USERS } from '@/lib/seedData';
+import { useCampStore } from '@/store/campStore';
 import { TagPill } from './TagPill';
 import { relativeTime, relativeDueDate } from '@/lib/utils';
 
@@ -23,7 +23,8 @@ const priorityDotColor = {
 };
 
 export function TaskCard({ task, selected, onClick, compact = false }: Props) {
-  const assignee = SEED_USERS.find((u) => u.id === task.assigneeId);
+  const members = useCampStore((s) => s.members);
+  const assigneeName = task.assigneeId ? (members.find((m) => m.userId === task.assigneeId)?.fullName ?? null) : null;
 
   const dueInfo = task.dueDate ? relativeDueDate(task.dueDate) : null;
 
@@ -53,8 +54,8 @@ export function TaskCard({ task, selected, onClick, compact = false }: Props) {
           </div>
         </div>
         <div className="text-right flex-shrink-0">
-          {assignee ? (
-            <p className="text-[12px] font-medium text-forest/70">{assignee.name}</p>
+          {assigneeName ? (
+            <p className="text-[12px] font-medium text-forest/70">{assigneeName}</p>
           ) : (
             <p className="text-[12px] font-medium text-red">Unassigned</p>
           )}

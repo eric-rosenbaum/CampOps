@@ -30,6 +30,8 @@ export const DRILL_TYPE_LABELS: Record<EmergencyDrill['drillType'], string> = {
   missing_swimmer: 'Waterfront missing swimmer',
   severe_weather: 'Severe weather / shelter-in-place',
   medical_emergency: 'Medical emergency response',
+  active_shooter: 'Active shooter / lockdown',
+  missing_camper: 'Missing camper',
   other: 'Other',
 };
 

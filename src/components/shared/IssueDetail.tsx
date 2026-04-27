@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Issue, IssueStatus } from '@/lib/types';
-import { SEED_USERS } from '@/lib/seedData';
+import { useCampStore } from '@/store/campStore';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
@@ -18,27 +18,27 @@ export function IssueDetail({ issue }: Props) {
   const { updateIssue, resolveIssue, reopenIssue, addActivityEntry, deleteIssue } = useIssuesStore();
   const { openEditIssueModal } = useUIStore();
   const { currentUser, can } = useAuth();
-  const currentUserId = currentUser.id;
+  const members = useCampStore((s) => s.members);
+  const memberName = (userId: string | null) => userId ? (members.find((m) => m.userId === userId)?.fullName ?? null) : null;
 
   const [showResolveForm, setShowResolveForm] = useState(false);
   const [actualCostInput, setActualCostInput] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Reset transient UI state when switching issues
   useEffect(() => {
     setShowResolveForm(false);
     setActualCostInput('');
     setShowDeleteConfirm(false);
   }, [issue.id]);
 
-  const assignee = SEED_USERS.find((u) => u.id === issue.assigneeId);
-  const reporter = SEED_USERS.find((u) => u.id === issue.reportedById);
+  const assigneeName = memberName(issue.assigneeId);
+  const reporterName = memberName(issue.reportedById);
 
   function handleStatusChange(newStatus: IssueStatus) {
     updateIssue(issue.id, { status: newStatus });
     addActivityEntry(issue.id, {
       id: generateId(),
-      userId: currentUserId,
+      userId: currentUser.id,
       userName: currentUser.name,
       action: `Status changed to ${newStatus.replace('_', ' ')} by ${currentUser.name}`,
       timestamp: new Date().toISOString(),
@@ -46,7 +46,7 @@ export function IssueDetail({ issue }: Props) {
   }
 
   function handleAssigneeChange(assigneeId: string) {
-    const newAssignee = SEED_USERS.find((u) => u.id === assigneeId);
+    const newName = assigneeId ? (memberName(assigneeId) ?? 'unknown') : null;
     const newStatus = assigneeId ? 'assigned' : 'unassigned';
     updateIssue(issue.id, {
       assigneeId: assigneeId || null,
@@ -54,10 +54,10 @@ export function IssueDetail({ issue }: Props) {
     });
     addActivityEntry(issue.id, {
       id: generateId(),
-      userId: currentUserId,
+      userId: currentUser.id,
       userName: currentUser.name,
       action: assigneeId
-        ? `Assigned to ${newAssignee?.name ?? 'unknown'} by ${currentUser.name}`
+        ? `Assigned to ${newName} by ${currentUser.name}`
         : `Unassigned by ${currentUser.name}`,
       timestamp: new Date().toISOString(),
     });
@@ -68,7 +68,7 @@ export function IssueDetail({ issue }: Props) {
     resolveIssue(issue.id, cost);
     addActivityEntry(issue.id, {
       id: generateId(),
-      userId: currentUserId,
+      userId: currentUser.id,
       userName: currentUser.name,
       action: cost != null
         ? `Marked resolved by ${currentUser.name} — actual cost $${cost.toLocaleString()}`
@@ -83,7 +83,7 @@ export function IssueDetail({ issue }: Props) {
     reopenIssue(issue.id);
     addActivityEntry(issue.id, {
       id: generateId(),
-      userId: currentUserId,
+      userId: currentUser.id,
       userName: currentUser.name,
       action: `Reopened by ${currentUser.name}`,
       timestamp: new Date().toISOString(),
@@ -102,7 +102,7 @@ export function IssueDetail({ issue }: Props) {
       <div className="px-5 pt-5 pb-4 border-b border-border">
         <h2 className="text-[15px] font-semibold text-forest leading-snug">{issue.title}</h2>
         <p className="text-[11px] text-forest/50 mt-1">
-          {issue.locations.join(' · ')} · Logged {reporter ? `by ${reporter.name}` : ''} {formatDate(issue.createdAt)}
+          {issue.locations.join(' · ')} · Logged {reporterName ? `by ${reporterName}` : ''} {formatDate(issue.createdAt)}
         </p>
       </div>
 
@@ -138,12 +138,12 @@ export function IssueDetail({ issue }: Props) {
                 className={`${selectClass} w-36`}
               >
                 <option value="">Unassigned</option>
-                {SEED_USERS.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
+                {members.map((m) => (
+                  <option key={m.userId} value={m.userId}>{m.fullName}</option>
                 ))}
               </select>
-            ) : assignee ? (
-              <span className="text-[13px] font-medium text-forest">{assignee.name}</span>
+            ) : assigneeName ? (
+              <span className="text-[13px] font-medium text-forest">{assigneeName}</span>
             ) : (
               <span className="text-[13px] font-medium text-red">Unassigned</span>
             )}

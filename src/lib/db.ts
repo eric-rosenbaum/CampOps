@@ -1,11 +1,4 @@
-/**
- * Supabase sync layer.
- * - initializeSupabase(): on app load, seeds DB from seedData if empty, then loads into stores.
- * - Individual write functions mirror each Zustand mutation to Supabase.
- */
-
 import { supabase } from './supabase';
-import { SEED_USERS } from './seedData';
 import type {
   Issue, ChecklistTask, ActivityEntry, Season,
   CampPool, ChemicalReading, PoolEquipment, ServiceLogEntry,
@@ -15,11 +8,17 @@ import type {
   CampAsset, AssetCheckout, AssetServiceRecord, AssetMaintenanceTask,
 } from './types';
 
+// ─── Camp ID ──────────────────────────────────────────────────────────────────
+// Set by campStore when a camp is selected, used by all write functions.
+let _campId = '';
+export function setCampId(id: string) { _campId = id; }
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function issueToRow(issue: Issue) {
   return {
     id: issue.id,
+    camp_id: _campId,
     title: issue.title,
     description: issue.description,
     locations: issue.locations,
@@ -65,6 +64,7 @@ function rowToIssue(row: Record<string, unknown>, activityLog: ActivityEntry[]):
 function taskToRow(task: ChecklistTask) {
   return {
     id: task.id,
+    camp_id: _campId,
     title: task.title,
     description: task.description,
     locations: task.locations,
@@ -111,98 +111,52 @@ function activityRowToEntry(row: Record<string, unknown>): ActivityEntry {
 
 // ─── Initialization ───────────────────────────────────────────────────────────
 
-export async function initializeSupabase(): Promise<{
+export async function initializeSupabase(campId: string): Promise<{
   issues: Issue[];
   tasks: ChecklistTask[];
   season: Season | null;
 } | null> {
-  console.log('[Supabase] initializeSupabase() called');
-  console.log('[Supabase] URL:', import.meta.env.VITE_SUPABASE_URL);
-  console.log('[Supabase] Key set:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
-
   try {
-    // Always ensure users exist (required for FK constraints on issues/activity)
-    const userRows = SEED_USERS.map((u) => ({ id: u.id, name: u.name, role: u.role, initials: u.initials }));
-    const { error: ue } = await supabase.from('users').upsert(userRows, { onConflict: 'id' });
-    if (ue) console.error('[Supabase] User upsert error:', ue.message);
+    const [issueRows, activityRows, taskRows, taskActivityRows, seasonRows] = await Promise.all([
+      supabase.from('issues').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
+      supabase.from('issue_activity').select('*').order('created_at', { ascending: false }),
+      supabase.from('checklist_tasks').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
+      supabase.from('checklist_activity').select('*').order('created_at', { ascending: false }),
+      supabase.from('seasons').select('*').eq('camp_id', campId).order('created_at', { ascending: false }).limit(1),
+    ]);
 
-    const data = await loadFromSupabase();
-    console.log('[Supabase] Loaded:', data.issues.length, 'issues,', data.tasks.length, 'tasks');
-    return data;
+    const issues: Issue[] = (issueRows.data ?? []).map((row) => {
+      const log = (activityRows.data ?? [])
+        .filter((a) => a.issue_id === row.id)
+        .map(activityRowToEntry);
+      return rowToIssue(row as Record<string, unknown>, log);
+    });
+
+    const tasks: ChecklistTask[] = (taskRows.data ?? []).map((row) => {
+      const log = (taskActivityRows.data ?? [])
+        .filter((a) => a.task_id === row.id)
+        .map(activityRowToEntry);
+      return rowToTask(row as Record<string, unknown>, log);
+    });
+
+    const season: Season | null = seasonRows.data?.[0]
+      ? {
+          id: seasonRows.data[0].id,
+          name: seasonRows.data[0].name,
+          openingDate: seasonRows.data[0].opening_date,
+          closingDate: seasonRows.data[0].closing_date,
+          acaInspectionDate: seasonRows.data[0].aca_inspection_date ?? null,
+        }
+      : null;
+
+    return { issues, tasks, season };
   } catch (e) {
     console.error('[Supabase] initializeSupabase threw:', e);
     return null;
   }
 }
 
-
-async function loadFromSupabase(): Promise<{
-  issues: Issue[];
-  tasks: ChecklistTask[];
-  season: Season | null;
-}> {
-  // Load issues + activity
-  const { data: issueRows, error: ie } = await supabase
-    .from('issues')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (ie) console.error('Load issues error:', ie.message);
-
-  const { data: activityRows, error: ae } = await supabase
-    .from('issue_activity')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (ae) console.error('Load issue_activity error:', ae.message);
-
-  const issues: Issue[] = (issueRows ?? []).map((row) => {
-    const log = (activityRows ?? [])
-      .filter((a) => a.issue_id === row.id)
-      .map(activityRowToEntry);
-    return rowToIssue(row as Record<string, unknown>, log);
-  });
-
-  // Load tasks + activity
-  const { data: taskRows, error: te } = await supabase
-    .from('checklist_tasks')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (te) console.error('Load tasks error:', te.message);
-
-  const { data: taskActivityRows, error: tae } = await supabase
-    .from('checklist_activity')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (tae) console.error('Load checklist_activity error:', tae.message);
-
-  const tasks: ChecklistTask[] = (taskRows ?? []).map((row) => {
-    const log = (taskActivityRows ?? [])
-      .filter((a) => a.task_id === row.id)
-      .map(activityRowToEntry);
-    return rowToTask(row as Record<string, unknown>, log);
-  });
-
-  // Load latest season
-  const { data: seasonRows, error: se } = await supabase
-    .from('seasons')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(1);
-  if (se) console.error('Load season error:', se.message);
-
-  const season: Season | null = seasonRows?.[0]
-    ? {
-        id: seasonRows[0].id,
-        name: seasonRows[0].name,
-        openingDate: seasonRows[0].opening_date,
-        closingDate: seasonRows[0].closing_date,
-        acaInspectionDate: seasonRows[0].aca_inspection_date ?? null,
-      }
-    : null;
-
-  return { issues, tasks, season };
-}
-
-// ─── Write functions (called alongside Zustand mutations) ─────────────────────
+// ─── Write functions ──────────────────────────────────────────────────────────
 
 export async function dbUpsertIssue(issue: Issue) {
   const { error } = await supabase.from('issues').upsert(issueToRow(issue), { onConflict: 'id' });
@@ -272,6 +226,7 @@ export async function dbAddTaskActivity(taskId: string, entry: ActivityEntry) {
 export async function dbUpsertSeason(season: Season) {
   const { error } = await supabase.from('seasons').upsert({
     id: season.id,
+    camp_id: _campId,
     name: season.name,
     opening_date: season.openingDate,
     closing_date: season.closingDate,
@@ -285,14 +240,15 @@ export async function dbUpsertSeason(season: Season) {
 const PHOTO_BUCKET = 'issue-photos';
 
 export async function dbUploadPhoto(file: File, issueId: string): Promise<string | null> {
+  const path = `${_campId}/${issueId}`;
   const { error } = await supabase.storage
     .from(PHOTO_BUCKET)
-    .upload(issueId, file, { upsert: true, contentType: file.type });
+    .upload(path, file, { upsert: true, contentType: file.type });
   if (error) {
     console.error('[Supabase] Photo upload error:', error.message);
     return null;
   }
-  const { data } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(issueId);
+  const { data } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
 
@@ -320,17 +276,15 @@ export async function dbDeleteTask(id: string): Promise<void> {
 type IssueCallback = (issues: Issue[]) => void;
 type TaskCallback = (tasks: ChecklistTask[]) => void;
 
-// Each call creates a uniquely-named channel so React StrictMode's double-invoke
-// doesn't hit "cannot add callbacks after subscribe()" on the same channel name.
 let issueChannelCount = 0;
 let taskChannelCount = 0;
 
-export function subscribeToIssues(onUpdate: IssueCallback): () => void {
+export function subscribeToIssues(campId: string, onUpdate: IssueCallback): () => void {
   const channelName = `issues-channel-${++issueChannelCount}`;
   const channel = supabase
     .channel(channelName)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'issues' }, async () => {
-      const { data: issueRows } = await supabase.from('issues').select('*').order('created_at', { ascending: false });
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'issues', filter: `camp_id=eq.${campId}` }, async () => {
+      const { data: issueRows } = await supabase.from('issues').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
       const { data: activityRows } = await supabase.from('issue_activity').select('*').order('created_at', { ascending: false });
       const issues: Issue[] = (issueRows ?? []).map((row) => {
         const log = (activityRows ?? []).filter((a) => a.issue_id === row.id).map(activityRowToEntry);
@@ -343,13 +297,32 @@ export function subscribeToIssues(onUpdate: IssueCallback): () => void {
   return () => { supabase.removeChannel(channel); };
 }
 
+export function subscribeToTasks(campId: string, onUpdate: TaskCallback): () => void {
+  const channelName = `tasks-channel-${++taskChannelCount}`;
+  const channel = supabase
+    .channel(channelName)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_tasks', filter: `camp_id=eq.${campId}` }, async () => {
+      const { data: taskRows } = await supabase.from('checklist_tasks').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
+      const { data: taskActivityRows } = await supabase.from('checklist_activity').select('*').order('created_at', { ascending: false });
+      const tasks: ChecklistTask[] = (taskRows ?? []).map((row) => {
+        const log = (taskActivityRows ?? []).filter((a) => a.task_id === row.id).map(activityRowToEntry);
+        return rowToTask(row as Record<string, unknown>, log);
+      });
+      onUpdate(tasks);
+    })
+    .subscribe();
+
+  return () => { supabase.removeChannel(channel); };
+}
+
 // ─── Pool write functions ─────────────────────────────────────────────────────
 
 export async function dbAddChemicalReading(r: ChemicalReading) {
   const { error } = await supabase.from('pool_chemical_readings').insert({
-    id: r.id, pool_id: r.poolId, free_chlorine: r.freeChlorine, ph: r.ph, alkalinity: r.alkalinity,
-    cyanuric_acid: r.cyanuricAcid, water_temp: r.waterTemp, calcium_hardness: r.calciumHardness,
-    reading_time: r.readingTime, logged_by_id: r.loggedById, logged_by_name: r.loggedByName,
+    id: r.id, camp_id: _campId, pool_id: r.poolId, free_chlorine: r.freeChlorine, ph: r.ph,
+    alkalinity: r.alkalinity, cyanuric_acid: r.cyanuricAcid, water_temp: r.waterTemp,
+    calcium_hardness: r.calciumHardness, reading_time: r.readingTime,
+    logged_by_id: r.loggedById, logged_by_name: r.loggedByName,
     corrective_action: r.correctiveAction, pool_status: r.poolStatus, created_at: r.createdAt,
   });
   if (error) console.error('dbAddChemicalReading error:', error.message);
@@ -357,7 +330,7 @@ export async function dbAddChemicalReading(r: ChemicalReading) {
 
 export async function dbAddEquipment(e: PoolEquipment) {
   const { error } = await supabase.from('pool_equipment').insert({
-    id: e.id, pool_id: e.poolId, name: e.name, type: e.type, status: e.status,
+    id: e.id, camp_id: _campId, pool_id: e.poolId, name: e.name, type: e.type, status: e.status,
     status_detail: e.statusDetail, last_serviced: e.lastServiced,
     next_service_due: e.nextServiceDue, vendor: e.vendor,
     specs: e.specs, created_at: e.createdAt, updated_at: e.updatedAt,
@@ -381,7 +354,7 @@ export async function dbDeleteEquipment(id: string) {
 
 export async function dbAddServiceLog(entry: ServiceLogEntry) {
   const { error } = await supabase.from('pool_service_log').insert({
-    id: entry.id, pool_id: entry.poolId, equipment_id: entry.equipmentId,
+    id: entry.id, camp_id: _campId, pool_id: entry.poolId, equipment_id: entry.equipmentId,
     service_type: entry.serviceType, date_performed: entry.datePerformed,
     performed_by: entry.performedBy, notes: entry.notes, cost: entry.cost,
     next_service_due: entry.nextServiceDue, created_at: entry.createdAt,
@@ -416,10 +389,9 @@ export async function dbUpdateInspection(insp: PoolInspection) {
 }
 
 export async function dbAddInspectionLog(entry: InspectionLogEntry, knownInspectionIds: string[]) {
-  // Only set the FK if the inspectionId is a real row in pool_inspections
   const inspectionId = knownInspectionIds.includes(entry.inspectionId) ? entry.inspectionId : null;
   const { error } = await supabase.from('pool_inspection_log').insert({
-    id: entry.id, pool_id: entry.poolId, inspection_id: inspectionId,
+    id: entry.id, camp_id: _campId, pool_id: entry.poolId, inspection_id: inspectionId,
     inspection_date: entry.inspectionDate, conducted_by: entry.conductedBy,
     result: entry.result, notes: entry.notes, next_due: entry.nextDue, created_at: entry.createdAt,
   });
@@ -428,10 +400,11 @@ export async function dbAddInspectionLog(entry: InspectionLogEntry, knownInspect
 
 export async function dbAddSeasonalTask(task: SeasonalTask) {
   const { error } = await supabase.from('pool_seasonal_tasks').insert({
-    id: task.id, pool_id: task.poolId, title: task.title, detail: task.detail,
-    phase: task.phase, is_complete: task.isComplete, completed_by: task.completedBy,
-    completed_date: task.completedDate, assignees: task.assignees,
-    sort_order: task.sortOrder, created_at: task.createdAt, updated_at: task.updatedAt,
+    id: task.id, camp_id: _campId, pool_id: task.poolId, title: task.title,
+    detail: task.detail, phase: task.phase, is_complete: task.isComplete,
+    completed_by: task.completedBy, completed_date: task.completedDate,
+    assignees: task.assignees, sort_order: task.sortOrder,
+    created_at: task.createdAt, updated_at: task.updatedAt,
   });
   if (error) console.error('dbAddSeasonalTask error:', error.message);
 }
@@ -490,15 +463,15 @@ type PoolDataCallback = (data: {
   seasonalTasks: SeasonalTask[];
 }) => void;
 
-async function loadPoolData() {
+async function loadPoolData(campId: string) {
   const [poolRes, rRes, eRes, slRes, iRes, ilRes, stRes] = await Promise.all([
-    supabase.from('pools').select('*').order('sort_order', { ascending: true }),
-    supabase.from('pool_chemical_readings').select('*').order('reading_time', { ascending: false }),
-    supabase.from('pool_equipment').select('*').order('created_at', { ascending: true }),
-    supabase.from('pool_service_log').select('*').order('created_at', { ascending: false }),
-    supabase.from('pool_inspections').select('*').order('created_at', { ascending: true }),
-    supabase.from('pool_inspection_log').select('*').order('created_at', { ascending: false }),
-    supabase.from('pool_seasonal_tasks').select('*').order('sort_order', { ascending: true }),
+    supabase.from('pools').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+    supabase.from('pool_chemical_readings').select('*').eq('camp_id', campId).order('reading_time', { ascending: false }),
+    supabase.from('pool_equipment').select('*').eq('camp_id', campId).order('created_at', { ascending: true }),
+    supabase.from('pool_service_log').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
+    supabase.from('pool_inspections').select('*').eq('camp_id', campId).order('created_at', { ascending: true }),
+    supabase.from('pool_inspection_log').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
+    supabase.from('pool_seasonal_tasks').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
   ]);
 
   const pools: CampPool[] = (poolRes.data ?? []).map((p) => ({
@@ -554,9 +527,9 @@ async function loadPoolData() {
   return { pools, readings, equipment, serviceLog, inspections, inspectionLog, seasonalTasks };
 }
 
-export async function loadPoolFromSupabase() {
+export async function loadPoolFromSupabase(campId: string) {
   try {
-    return await loadPoolData();
+    return await loadPoolData(campId);
   } catch (e) {
     console.error('[Supabase] loadPoolFromSupabase threw:', e);
     return null;
@@ -567,7 +540,7 @@ export async function loadPoolFromSupabase() {
 
 export async function dbAddPool(pool: CampPool) {
   const { error } = await supabase.from('pools').insert({
-    id: pool.id, name: pool.name, type: pool.type, is_active: pool.isActive,
+    id: pool.id, camp_id: _campId, name: pool.name, type: pool.type, is_active: pool.isActive,
     notes: pool.notes, sort_order: pool.sortOrder,
     created_at: pool.createdAt, updated_at: pool.updatedAt,
   });
@@ -588,48 +561,28 @@ export async function dbDeletePool(id: string) {
 }
 
 export async function dbDeleteAllPoolData() {
-  // Delete in dependency order
-  await supabase.from('pool_inspection_log').delete().neq('id', '');
-  await supabase.from('pool_service_log').delete().neq('id', '');
-  await supabase.from('pool_seasonal_tasks').delete().neq('id', '');
-  await supabase.from('pool_inspections').delete().neq('id', '');
-  await supabase.from('pool_equipment').delete().neq('id', '');
-  await supabase.from('pool_chemical_readings').delete().neq('id', '');
-  await supabase.from('pools').delete().neq('id', '');
+  await supabase.from('pool_inspection_log').delete().eq('camp_id', _campId);
+  await supabase.from('pool_service_log').delete().eq('camp_id', _campId);
+  await supabase.from('pool_seasonal_tasks').delete().eq('camp_id', _campId);
+  await supabase.from('pool_inspections').delete().eq('camp_id', _campId);
+  await supabase.from('pool_equipment').delete().eq('camp_id', _campId);
+  await supabase.from('pool_chemical_readings').delete().eq('camp_id', _campId);
+  await supabase.from('pools').delete().eq('camp_id', _campId);
 }
 
 let poolChannelCount = 0;
 
-export function subscribeToPool(onUpdate: PoolDataCallback): () => void {
+export function subscribeToPool(campId: string, onUpdate: PoolDataCallback): () => void {
   const channelName = `pool-channel-${++poolChannelCount}`;
   const tables = ['pools', 'pool_chemical_readings', 'pool_equipment', 'pool_service_log', 'pool_seasonal_tasks', 'pool_inspections', 'pool_inspection_log'];
   let channel = supabase.channel(channelName);
   for (const table of tables) {
-    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, async () => {
-      const data = await loadPoolData();
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, async () => {
+      const data = await loadPoolData(campId);
       onUpdate(data);
     });
   }
   channel.subscribe();
-
-  return () => { supabase.removeChannel(channel); };
-}
-
-export function subscribeToTasks(onUpdate: TaskCallback): () => void {
-  const channelName = `tasks-channel-${++taskChannelCount}`;
-  const channel = supabase
-    .channel(channelName)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_tasks' }, async () => {
-      const { data: taskRows } = await supabase.from('checklist_tasks').select('*').order('created_at', { ascending: false });
-      const { data: taskActivityRows } = await supabase.from('checklist_activity').select('*').order('created_at', { ascending: false });
-      const tasks: ChecklistTask[] = (taskRows ?? []).map((row) => {
-        const log = (taskActivityRows ?? []).filter((a) => a.task_id === row.id).map(activityRowToEntry);
-        return rowToTask(row as Record<string, unknown>, log);
-      });
-      onUpdate(tasks);
-    })
-    .subscribe();
-
   return () => { supabase.removeChannel(channel); };
 }
 
@@ -754,15 +707,15 @@ function rowToLicense(r: Record<string, unknown>): SafetyLicense {
   };
 }
 
-async function loadSafetyData(): Promise<SafetyData> {
+async function loadSafetyData(campId: string): Promise<SafetyData> {
   const [itemsRes, logRes, drillsRes, staffRes, certsRes, tempRes, licRes] = await Promise.all([
-    supabase.from('safety_items').select('*').order('created_at', { ascending: true }),
-    supabase.from('safety_inspection_log').select('*').order('created_at', { ascending: false }),
-    supabase.from('safety_drills').select('*').order('scheduled_date', { ascending: true }),
-    supabase.from('safety_staff').select('*').order('name', { ascending: true }),
-    supabase.from('staff_certifications').select('*').order('created_at', { ascending: false }),
-    supabase.from('safety_temp_logs').select('*').order('log_date', { ascending: false }),
-    supabase.from('safety_licenses').select('*').order('name', { ascending: true }),
+    supabase.from('safety_items').select('*').eq('camp_id', campId).order('created_at', { ascending: true }),
+    supabase.from('safety_inspection_log').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
+    supabase.from('safety_drills').select('*').eq('camp_id', campId).order('scheduled_date', { ascending: true }),
+    supabase.from('safety_staff').select('*').eq('camp_id', campId).order('name', { ascending: true }),
+    supabase.from('staff_certifications').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
+    supabase.from('safety_temp_logs').select('*').eq('camp_id', campId).order('log_date', { ascending: false }),
+    supabase.from('safety_licenses').select('*').eq('camp_id', campId).order('name', { ascending: true }),
   ]);
 
   return {
@@ -776,9 +729,9 @@ async function loadSafetyData(): Promise<SafetyData> {
   };
 }
 
-export async function loadSafetyFromSupabase(): Promise<SafetyData | null> {
+export async function loadSafetyFromSupabase(campId: string): Promise<SafetyData | null> {
   try {
-    return await loadSafetyData();
+    return await loadSafetyData(campId);
   } catch (e) {
     console.error('[Supabase] loadSafetyFromSupabase threw:', e);
     return null;
@@ -787,7 +740,7 @@ export async function loadSafetyFromSupabase(): Promise<SafetyData | null> {
 
 export async function dbAddSafetyItem(item: SafetyItem) {
   const { error } = await supabase.from('safety_items').insert({
-    id: item.id, name: item.name, category: item.category, type: item.type,
+    id: item.id, camp_id: _campId, name: item.name, category: item.category, type: item.type,
     location: item.location, unit_count: item.unitCount, frequency: item.frequency,
     frequency_days: item.frequencyDays, last_inspected: item.lastInspected,
     next_due: item.nextDue, vendor: item.vendor, notes: item.notes,
@@ -814,7 +767,7 @@ export async function dbUpdateSafetyItem(id: string, patch: Partial<SafetyItem>)
 
 export async function dbAddSafetyInspectionLog(entry: SafetyInspectionLog) {
   const { error } = await supabase.from('safety_inspection_log').insert({
-    id: entry.id, item_id: entry.itemId, category: entry.category,
+    id: entry.id, camp_id: _campId, item_id: entry.itemId, category: entry.category,
     location_note: entry.locationNote, inspection_date: entry.inspectionDate,
     completed_by: entry.completedBy, result: entry.result, notes: entry.notes,
     cost: entry.cost, next_due: entry.nextDue, created_at: entry.createdAt,
@@ -844,7 +797,7 @@ export async function dbDeleteSafetyInspectionLog(id: string) {
 
 export async function dbAddSafetyDrill(drill: EmergencyDrill) {
   const { error } = await supabase.from('safety_drills').insert({
-    id: drill.id, drill_type: drill.drillType, drill_name: drill.drillName,
+    id: drill.id, camp_id: _campId, drill_type: drill.drillType, drill_name: drill.drillName,
     status: drill.status, scheduled_date: drill.scheduledDate,
     completed_date: drill.completedDate, lead: drill.lead,
     participant_count: drill.participantCount, response_time: drill.responseTime,
@@ -887,7 +840,7 @@ export async function dbDeleteSafetyStaff(id: string) {
 
 export async function dbAddSafetyStaff(staff: SafetyStaff) {
   const { error } = await supabase.from('safety_staff').insert({
-    id: staff.id, name: staff.name, title: staff.title,
+    id: staff.id, camp_id: _campId, name: staff.name, title: staff.title,
     is_active: staff.isActive, created_at: staff.createdAt, updated_at: staff.updatedAt,
   });
   if (error) console.error('dbAddSafetyStaff error:', error.message);
@@ -904,7 +857,7 @@ export async function dbUpdateSafetyStaff(id: string, patch: Partial<SafetyStaff
 
 export async function dbAddStaffCert(cert: StaffCertification) {
   const { error } = await supabase.from('staff_certifications').insert({
-    id: cert.id, staff_id: cert.staffId, cert_type: cert.certType,
+    id: cert.id, camp_id: _campId, staff_id: cert.staffId, cert_type: cert.certType,
     cert_name: cert.certName, issued_date: cert.issuedDate, expiry_date: cert.expiryDate,
     provider: cert.provider, notes: cert.notes,
     created_at: cert.createdAt, updated_at: cert.updatedAt,
@@ -931,9 +884,9 @@ export async function dbDeleteStaffCert(id: string) {
 
 export async function dbAddSafetyTempLog(log: SafetyTempLog) {
   const { error } = await supabase.from('safety_temp_logs').insert({
-    id: log.id, item_id: log.itemId, log_date: log.logDate, session: log.session,
-    temperature: log.temperature, in_range: log.inRange, logged_by: log.loggedBy,
-    notes: log.notes, created_at: log.createdAt,
+    id: log.id, camp_id: _campId, item_id: log.itemId, log_date: log.logDate,
+    session: log.session, temperature: log.temperature, in_range: log.inRange,
+    logged_by: log.loggedBy, notes: log.notes, created_at: log.createdAt,
   });
   if (error) console.error('dbAddSafetyTempLog error:', error.message);
 }
@@ -957,7 +910,7 @@ export async function dbDeleteSafetyTempLog(id: string) {
 
 export async function dbAddSafetyLicense(lic: SafetyLicense) {
   const { error } = await supabase.from('safety_licenses').insert({
-    id: lic.id, name: lic.name, license_type: lic.licenseType,
+    id: lic.id, camp_id: _campId, name: lic.name, license_type: lic.licenseType,
     issuing_authority: lic.issuingAuthority, license_number: lic.licenseNumber,
     issued_date: lic.issuedDate, expiry_date: lic.expiryDate,
     notes: lic.notes, created_at: lic.createdAt, updated_at: lic.updatedAt,
@@ -981,6 +934,25 @@ export async function dbUpdateSafetyLicense(id: string, patch: Partial<SafetyLic
 export async function dbDeleteSafetyLicense(id: string) {
   const { error } = await supabase.from('safety_licenses').delete().eq('id', id);
   if (error) console.error('dbDeleteSafetyLicense error:', error.message);
+}
+
+let safetyChannelCount = 0;
+type SafetyDataCallback = (data: SafetyData) => void;
+
+export function subscribeToSafety(campId: string, onUpdate: SafetyDataCallback): () => void {
+  const channelName = `safety-channel-${++safetyChannelCount}`;
+  const reload = async () => { onUpdate(await loadSafetyData(campId)); };
+  const channel = supabase
+    .channel(channelName)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_items', filter: `camp_id=eq.${campId}` }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_inspection_log', filter: `camp_id=eq.${campId}` }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_drills', filter: `camp_id=eq.${campId}` }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_staff', filter: `camp_id=eq.${campId}` }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_certifications', filter: `camp_id=eq.${campId}` }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_temp_logs', filter: `camp_id=eq.${campId}` }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_licenses', filter: `camp_id=eq.${campId}` }, reload)
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
 }
 
 // ─── Assets & Vehicles ───────────────────────────────────────────────────────
@@ -1084,12 +1056,12 @@ export type AssetData = {
   maintenanceTasks: AssetMaintenanceTask[];
 };
 
-async function loadAssetData(): Promise<AssetData> {
+async function loadAssetData(campId: string): Promise<AssetData> {
   const [aRes, cRes, sRes, mRes] = await Promise.all([
-    supabase.from('camp_assets').select('*').order('created_at', { ascending: true }),
-    supabase.from('asset_checkouts').select('*').order('checked_out_at', { ascending: false }),
-    supabase.from('asset_service_records').select('*').order('date_performed', { ascending: false }),
-    supabase.from('asset_maintenance_tasks').select('*').order('sort_order', { ascending: true }),
+    supabase.from('camp_assets').select('*').eq('camp_id', campId).order('created_at', { ascending: true }),
+    supabase.from('asset_checkouts').select('*').eq('camp_id', campId).order('checked_out_at', { ascending: false }),
+    supabase.from('asset_service_records').select('*').eq('camp_id', campId).order('date_performed', { ascending: false }),
+    supabase.from('asset_maintenance_tasks').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
   ]);
   return {
     assets: (aRes.data ?? []).map((r) => rowToAsset(r as Record<string, unknown>)),
@@ -1099,9 +1071,9 @@ async function loadAssetData(): Promise<AssetData> {
   };
 }
 
-export async function loadAssetsFromSupabase(): Promise<AssetData | null> {
+export async function loadAssetsFromSupabase(campId: string): Promise<AssetData | null> {
   try {
-    return await loadAssetData();
+    return await loadAssetData(campId);
   } catch (e) {
     console.error('[Supabase] loadAssetsFromSupabase threw:', e);
     return null;
@@ -1110,7 +1082,7 @@ export async function loadAssetsFromSupabase(): Promise<AssetData | null> {
 
 export async function dbUpsertAsset(a: CampAsset) {
   const { error } = await supabase.from('camp_assets').upsert({
-    id: a.id, name: a.name, category: a.category, subtype: a.subtype,
+    id: a.id, camp_id: _campId, name: a.name, category: a.category, subtype: a.subtype,
     make: a.make, model: a.model, year: a.year, serial_number: a.serialNumber,
     license_plate: a.licensePlate, registration_expiry: a.registrationExpiry,
     storage_location: a.storageLocation, status: a.status,
@@ -1141,7 +1113,7 @@ export async function dbDeleteAsset(id: string) {
 
 export async function dbAddCheckout(c: AssetCheckout) {
   const { error } = await supabase.from('asset_checkouts').insert({
-    id: c.id, asset_id: c.assetId, checked_out_by: c.checkedOutBy,
+    id: c.id, camp_id: _campId, asset_id: c.assetId, checked_out_by: c.checkedOutBy,
     purpose: c.purpose, checked_out_at: c.checkedOutAt,
     expected_return_at: c.expectedReturnAt, returned_at: c.returnedAt,
     start_odometer: c.startOdometer, end_odometer: c.endOdometer,
@@ -1173,7 +1145,7 @@ export async function dbReturnAsset(checkoutId: string, fields: {
 
 export async function dbAddAssetServiceRecord(r: AssetServiceRecord) {
   const { error } = await supabase.from('asset_service_records').insert({
-    id: r.id, asset_id: r.assetId, service_type: r.serviceType,
+    id: r.id, camp_id: _campId, asset_id: r.assetId, service_type: r.serviceType,
     date_performed: r.datePerformed, performed_by: r.performedBy,
     vendor: r.vendor, description: r.description,
     odometer_at_service: r.odometerAtService, hours_at_service: r.hoursAtService,
@@ -1221,9 +1193,10 @@ export async function dbDeleteCheckout(id: string) {
 
 export async function dbUpsertMaintenanceTask(t: AssetMaintenanceTask) {
   const { error } = await supabase.from('asset_maintenance_tasks').upsert({
-    id: t.id, asset_id: t.assetId, phase: t.phase, title: t.title, detail: t.detail,
-    is_complete: t.isComplete, completed_by: t.completedBy, completed_date: t.completedDate,
-    sort_order: t.sortOrder, created_at: t.createdAt, updated_at: t.updatedAt,
+    id: t.id, camp_id: _campId, asset_id: t.assetId, phase: t.phase, title: t.title,
+    detail: t.detail, is_complete: t.isComplete, completed_by: t.completedBy,
+    completed_date: t.completedDate, sort_order: t.sortOrder,
+    created_at: t.createdAt, updated_at: t.updatedAt,
   }, { onConflict: 'id' });
   if (error) console.error('dbUpsertMaintenanceTask error:', error.message);
 }
@@ -1242,37 +1215,16 @@ export async function dbDeleteMaintenanceTask(id: string) {
 }
 
 let assetChannelCount = 0;
-
 type AssetDataCallback = (data: AssetData) => void;
 
-export function subscribeToAssets(onUpdate: AssetDataCallback): () => void {
+export function subscribeToAssets(campId: string, onUpdate: AssetDataCallback): () => void {
   const channelName = `assets-channel-${++assetChannelCount}`;
-  const reload = async () => { onUpdate(await loadAssetData()); };
+  const reload = async () => { onUpdate(await loadAssetData(campId)); };
   const tables = ['camp_assets', 'asset_checkouts', 'asset_service_records', 'asset_maintenance_tasks'];
   let channel = supabase.channel(channelName);
   for (const table of tables) {
-    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, reload);
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, reload);
   }
   channel.subscribe();
-  return () => { supabase.removeChannel(channel); };
-}
-
-let safetyChannelCount = 0;
-
-type SafetyDataCallback = (data: SafetyData) => void;
-
-export function subscribeToSafety(onUpdate: SafetyDataCallback): () => void {
-  const channelName = `safety-channel-${++safetyChannelCount}`;
-  const reload = async () => { onUpdate(await loadSafetyData()); };
-  const channel = supabase
-    .channel(channelName)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_items' }, reload)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_inspection_log' }, reload)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_drills' }, reload)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_staff' }, reload)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_certifications' }, reload)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_temp_logs' }, reload)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_licenses' }, reload)
-    .subscribe();
   return () => { supabase.removeChannel(channel); };
 }

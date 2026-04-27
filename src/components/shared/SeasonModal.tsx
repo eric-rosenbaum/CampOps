@@ -3,7 +3,7 @@ import { Modal } from './Modal';
 import { Button } from './Button';
 import { useUIStore } from '@/store/uiStore';
 import { useChecklistStore } from '@/store/checklistStore';
-import { SEED_USERS } from '@/lib/seedData';
+import { useAuth } from '@/lib/auth';
 
 interface FormValues {
   name: string;
@@ -13,9 +13,9 @@ interface FormValues {
 }
 
 export function SeasonModal() {
-  const { isSeasonModalOpen, closeAllModals, currentUserId } = useUIStore();
+  const { isSeasonModalOpen, closeAllModals } = useUIStore();
   const { activateNewSeason, season } = useChecklistStore();
-  const currentUser = SEED_USERS.find((u) => u.id === currentUserId) ?? SEED_USERS[0];
+  const { currentUser } = useAuth();
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     defaultValues: {

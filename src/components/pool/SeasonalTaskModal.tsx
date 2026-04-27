@@ -5,7 +5,7 @@ import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useUIStore } from '@/store/uiStore';
 import { usePoolStore } from '@/store/poolStore';
-import { SEED_USERS } from '@/lib/seedData';
+import { useCampStore } from '@/store/campStore';
 import { generateId } from '@/lib/utils';
 import type { SeasonalPhase, SeasonalTask } from '@/lib/types';
 
@@ -31,14 +31,15 @@ function UserCombobox({
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const members = useCampStore((s) => s.members);
 
   const matches = query.trim()
-    ? SEED_USERS.filter(
-        (u) =>
-          u.name.toLowerCase().includes(query.toLowerCase()) &&
-          !assignees.includes(u.name)
+    ? members.filter(
+        (m) =>
+          m.fullName.toLowerCase().includes(query.toLowerCase()) &&
+          !assignees.includes(m.fullName)
       )
-    : SEED_USERS.filter((u) => !assignees.includes(u.name));
+    : members.filter((m) => !assignees.includes(m.fullName));
 
   function select(name: string) {
     onAdd(name);
@@ -50,7 +51,7 @@ function UserCombobox({
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (matches.length > 0) select(matches[0].name);
+      if (matches.length > 0) select(matches[0].fullName);
     } else if (e.key === 'Escape') {
       setOpen(false);
     }
@@ -87,18 +88,18 @@ function UserCombobox({
           ref={listRef}
           className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-border rounded-btn shadow-lg overflow-hidden"
         >
-          {matches.map((u) => (
+          {matches.map((m) => (
             <button
-              key={u.id}
+              key={m.userId}
               type="button"
-              onMouseDown={(e) => { e.preventDefault(); select(u.name); }}
+              onMouseDown={(e) => { e.preventDefault(); select(m.fullName); }}
               className="w-full text-left px-3 py-2 text-body text-forest hover:bg-cream-dark transition-colors flex items-center gap-2"
             >
               <span className="w-6 h-6 rounded-full bg-sage/20 text-sage flex items-center justify-center text-[10px] font-bold flex-shrink-0">
-                {u.initials}
+                {m.fullName.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()}
               </span>
-              <span>{u.name}</span>
-              <span className="text-meta text-forest/30 ml-auto capitalize">{u.role.replace('_', ' ')}</span>
+              <span>{m.fullName}</span>
+              <span className="text-meta text-forest/30 ml-auto capitalize">{m.role}</span>
             </button>
           ))}
         </div>

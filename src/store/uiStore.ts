@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 
 interface UIStore {
-  currentUserId: string;
   isLogIssueModalOpen: boolean;
   isLogTaskModalOpen: boolean;
   isSeasonModalOpen: boolean;
@@ -97,11 +96,9 @@ interface UIStore {
   openAddMaintenanceTaskModal: (assetId: string) => void;
   openEditMaintenanceTaskModal: (assetId: string, taskId: string) => void;
   closeAllModals: () => void;
-  setCurrentUser: (id: string) => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
-  currentUserId: '10000000-0000-0000-0000-000000000001',
   isLogIssueModalOpen: false,
   isLogTaskModalOpen: false,
   isSeasonModalOpen: false,
@@ -320,5 +317,4 @@ export const useUIStore = create<UIStore>((set) => ({
       editingMaintenanceTaskId: null,
     }),
 
-  setCurrentUser: (id: string) => set({ currentUserId: id }),
 }));

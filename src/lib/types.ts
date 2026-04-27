@@ -13,16 +13,7 @@ export type IssueStatus = 'unassigned' | 'assigned' | 'in_progress' | 'resolved'
 
 export type ChecklistStatus = 'pending' | 'in_progress' | 'complete';
 
-export type Location =
-  | 'Waterfront'
-  | 'Dining Hall'
-  | 'Cabins'
-  | 'Art Barn'
-  | 'Aquatics'
-  | 'Athletic Fields'
-  | 'Main Lodge'
-  | 'Health Center'
-  | 'Other';
+export type Location = string;
 
 export type RecurringInterval = 'daily' | 'weekly' | 'monthly' | 'annually';
 
@@ -255,6 +246,8 @@ export type DrillType =
   | 'missing_swimmer'
   | 'severe_weather'
   | 'medical_emergency'
+  | 'active_shooter'
+  | 'missing_camper'
   | 'other';
 
 export type DrillStatus = 'scheduled' | 'completed' | 'cancelled';

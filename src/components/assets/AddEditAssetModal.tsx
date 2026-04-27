@@ -3,8 +3,11 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useAssetStore, SUBTYPES_BY_CATEGORY } from '@/store/assetStore';
 import { useUIStore } from '@/store/uiStore';
+import { useCampStore } from '@/store/campStore';
 import { generateId } from '@/lib/utils';
 import type { CampAsset, AssetCategory, AssetStatus } from '@/lib/types';
+
+const DEFAULT_LOCATIONS = ['Maintenance Shed', 'Barn', 'Garage', 'Waterfront', 'Athletic Fields', 'Other'];
 
 const CATEGORIES: { value: AssetCategory; label: string }[] = [
   { value: 'golf_cart', label: 'Golf Cart / Utility Cart' },
@@ -24,6 +27,7 @@ const STATUSES: { value: AssetStatus; label: string }[] = [
 export function AddEditAssetModal() {
   const { assets, addAsset, updateAsset } = useAssetStore();
   const { isAddEditAssetModalOpen, editingAssetId, closeAllModals } = useUIStore();
+  const campLocations = useCampStore((s) => s.currentCamp?.locations ?? DEFAULT_LOCATIONS);
 
   const editing = editingAssetId ? assets.find((a) => a.id === editingAssetId) : null;
 
@@ -200,7 +204,12 @@ export function AddEditAssetModal() {
                 </div>
                 <div>
                   <label className="text-body font-medium text-forest mb-1 block">Storage location <span className="text-red">*</span></label>
-                  <input value={storageLocation} onChange={(e) => setStorageLocation(e.target.value)} placeholder="Maintenance Shed, Barn…" className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />
+                  <select value={storageLocation} onChange={(e) => setStorageLocation(e.target.value)} className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage bg-white">
+                    <option value="">Select location…</option>
+                    {campLocations.map((loc) => (
+                      <option key={loc} value={loc}>{loc}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>

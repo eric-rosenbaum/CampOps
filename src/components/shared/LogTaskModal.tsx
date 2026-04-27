@@ -4,16 +4,13 @@ import { Button } from './Button';
 import { useForm } from 'react-hook-form';
 import { useUIStore } from '@/store/uiStore';
 import { useChecklistStore } from '@/store/checklistStore';
-import { SEED_USERS } from '@/lib/seedData';
+import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import type { ChecklistTask, Location, Priority } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { addDays } from 'date-fns';
 
-const LOCATIONS: Location[] = [
-  'Waterfront', 'Dining Hall', 'Cabins', 'Art Barn', 'Aquatics',
-  'Athletic Fields', 'Main Lodge', 'Health Center', 'Other',
-];
+const DEFAULT_LOCATIONS = ['Waterfront', 'Dining Hall', 'Main Lodge', 'Health Center', 'Kitchen', 'Athletic Fields', 'Maintenance', 'Other'];
 
 interface FormValues {
   title: string;
@@ -28,7 +25,8 @@ export function LogTaskModal() {
   const { isLogTaskModalOpen, closeAllModals } = useUIStore();
   const { addTask, season, activePhase } = useChecklistStore();
   const { currentUser, can } = useAuth();
-  const currentUserId = currentUser.id;
+  const members = useCampStore((s) => s.members);
+  const campLocations = useCampStore((s) => s.currentCamp?.locations ?? DEFAULT_LOCATIONS);
 
   const [locations, setLocations] = useState<Location[]>(['Waterfront']);
 
@@ -64,7 +62,7 @@ export function LogTaskModal() {
       activityLog: [
         {
           id: generateId(),
-          userId: currentUserId,
+          userId: currentUser.id,
           userName: currentUser.name,
           action: `Task logged by ${currentUser.name}`,
           timestamp: now,
@@ -98,7 +96,7 @@ export function LogTaskModal() {
         <div>
           <label className={labelClass}>Location * {locations.length === 0 && <span className="text-red text-[11px]">Select at least one</span>}</label>
           <div className="grid grid-cols-3 gap-1.5 p-2.5 bg-white border border-border rounded-btn">
-            {LOCATIONS.map((l) => (
+            {campLocations.map((l) => (
               <label key={l} className="flex items-center gap-1.5 text-[13px] cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -158,8 +156,8 @@ export function LogTaskModal() {
             <label className={labelClass}>Assign to</label>
             <select {...register('assigneeId')} className={inputClass}>
               <option value="">Unassigned</option>
-              {SEED_USERS.map((u) => (
-                <option key={u.id} value={u.id}>{u.name}</option>
+              {members.map((m) => (
+                <option key={m.userId} value={m.userId}>{m.fullName}</option>
               ))}
             </select>
           </div>

@@ -38,7 +38,8 @@ export function AssetDetailPanel() {
     deleteCheckout, updateCheckout,
   } = useAssetStore();
   const { openEditAssetModal, openCheckoutModal, openReturnModal, openLogAssetServiceModal, openEditServiceRecordModal, openAddMaintenanceTaskModal, openEditMaintenanceTaskModal, openEditCheckoutModal } = useUIStore();
-  const { currentUser } = useAuth();
+  const { currentUser, role } = useAuth();
+  const isAdmin = role === 'admin';
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [activeMaintPhase, setActiveMaintPhase] = useState<AssetMaintenancePhase>('pre_season');
@@ -75,16 +76,20 @@ export function AssetDetailPanel() {
           </p>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => openEditAssetModal(asset.id)} className="p-1.5 text-forest/40 hover:text-forest transition-colors rounded">
-            <Pencil className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleDelete}
-            className={`p-1.5 transition-colors rounded ${confirmDelete ? 'text-red hover:text-red/80' : 'text-forest/40 hover:text-forest'}`}
-            title={confirmDelete ? 'Click again to confirm delete' : 'Delete asset'}
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {isAdmin && (
+            <>
+              <button onClick={() => openEditAssetModal(asset.id)} className="p-1.5 text-forest/40 hover:text-forest transition-colors rounded">
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleDelete}
+                className={`p-1.5 transition-colors rounded ${confirmDelete ? 'text-red hover:text-red/80' : 'text-forest/40 hover:text-forest'}`}
+                title={confirmDelete ? 'Click again to confirm delete' : 'Delete asset'}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
+          )}
           <button onClick={() => { setActiveAsset(null); setConfirmDelete(false); }} className="p-1.5 text-forest/40 hover:text-forest transition-colors rounded">
             <X className="w-4 h-4" />
           </button>

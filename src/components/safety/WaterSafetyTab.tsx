@@ -1,12 +1,9 @@
-import { useState } from 'react';
 import { useSafetyStore, safetyItemStatus, certExpiryStatus, CERT_TYPE_LABELS } from '@/store/safetyStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { Button } from '@/components/shared/Button';
-import { generateId } from '@/lib/utils';
-import { addDays } from 'date-fns';
-import type { SafetyStaff, StaffCertification, SafetyInspectionLog, SafetyItem } from '@/lib/types';
+import type { SafetyStaff, StaffCertification } from '@/lib/types';
 
 const LIFEGUARD_CERT_TYPES = ['lifeguard', 'cpr_aed', 'first_aid', 'wsi'] as const;
 
@@ -102,166 +99,10 @@ function LifeguardCard({
   );
 }
 
-const WATERFRONT_TYPE_LABELS: Record<string, string> = {
-  life_ring: 'Life ring',
-  rescue_tube: 'Rescue tube',
-  rescue_board: 'Rescue board',
-  waterfront_check: 'Daily check',
-};
-
-const RESULT_LABELS: Record<string, string> = {
-  passed: 'Passed',
-  passed_with_notes: 'Passed w/ notes',
-  action_taken: 'Action taken',
-  failed: 'Failed',
-};
-
-function WaterfrontItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () => void; onEdit: () => void }) {
-  const status = safetyItemStatus(item);
-  const { recentLogsForItem, addInspectionLog } = useSafetyStore();
-  const { openEditInspectionLogModal } = useUIStore();
-  const { currentUser } = useAuth();
-  const [showHistory, setShowHistory] = useState(false);
-  const [logging, setLogging] = useState(false);
-  const recentLogs = recentLogsForItem(item.id, 7);
-  const historyLogs = recentLogsForItem(item.id, 20);
-  const borderCls = status === 'alert' ? 'border-l-red' : status === 'warn' ? 'border-l-amber' : 'border-l-sage';
-  const meta = item.metadata as Record<string, string>;
-  const isEquip = ['life_ring', 'rescue_tube', 'rescue_board'].includes(item.type);
-
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-  const alreadyLoggedToday = recentLogs.some((l) => l.inspectionDate === todayStr);
-
-  function freqDays(freq: string): number {
-    if (freq === 'weekly') return 7;
-    if (freq === 'monthly') return 30;
-    return 1; // daily
-  }
-
-  async function handleQuickLog() {
-    if (logging) return;
-    setLogging(true);
-    const nextDue = addDays(today, freqDays(item.frequency)).toISOString().split('T')[0];
-    const log: SafetyInspectionLog = {
-      id: generateId(),
-      itemId: item.id,
-      category: item.category,
-      locationNote: item.location,
-      inspectionDate: todayStr,
-      completedBy: currentUser?.name ?? 'Staff',
-      result: 'passed',
-      notes: null,
-      cost: null,
-      nextDue,
-      createdAt: new Date().toISOString(),
-    };
-    await addInspectionLog(log);
-    setLogging(false);
-  }
-
-  return (
-    <div className={`bg-white border border-border border-l-[3px] ${borderCls} rounded-card px-5 py-4`}>
-      <div className="flex items-start justify-between">
-        <div className="flex-1 pr-4">
-          <h4 className="text-[13px] font-semibold text-forest">{item.name}</h4>
-          <p className="text-[11px] text-forest/40 mt-0.5">
-            {WATERFRONT_TYPE_LABELS[item.type] ?? item.type} · {item.location}
-            {item.unitCount > 1 ? ` · ×${item.unitCount}` : ''}
-            {meta.condition ? ` · ${meta.condition.charAt(0).toUpperCase() + meta.condition.slice(1)} condition` : ''}
-            {!isEquip ? ` · Required ${item.frequency}` : ''}
-            {item.notes ? ` · ${item.notes}` : ''}
-          </p>
-        </div>
-        <div className="text-right flex-shrink-0">
-          {status === 'ok' && item.lastInspected ? (
-            <span className="text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide bg-green-muted-bg text-green-muted-text">
-              {isEquip ? 'Checked' : 'Completed today'}
-            </span>
-          ) : status === 'alert' ? (
-            <span className="text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide bg-red-bg text-red">Overdue</span>
-          ) : (
-            <span className="text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide bg-amber-bg text-amber-text">Due today</span>
-          )}
-          {item.lastInspected && (
-            <p className="font-mono text-[12px] text-forest/40 mt-1.5">
-              Last: {new Date(item.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {recentLogs.length > 0 && !isEquip && (
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-cream-dark flex-wrap">
-          <span className="text-[11px] text-forest/40 mr-1">Recent checks:</span>
-          {recentLogs.map((log) => (
-            <span key={log.id} className="text-[11px] bg-cream-dark text-forest/60 px-2 py-0.5 rounded-tag font-mono">
-              {new Date(log.inspectionDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="flex items-center gap-2 mt-3">
-        {isEquip ? (
-          <Button variant="primary" size="sm" onClick={onLog}>Log inspection</Button>
-        ) : alreadyLoggedToday ? (
-          <span className="text-[11px] text-green-muted-text font-semibold">✓ Logged today</span>
-        ) : (
-          <Button variant="primary" size="sm" onClick={handleQuickLog} disabled={logging}>
-            {logging ? 'Logging…' : '✓ Log today\'s check'}
-          </Button>
-        )}
-        {!isEquip && (
-          <button onClick={onLog} className="text-[11px] text-forest/40 hover:text-sage cursor-pointer">
-            + Add notes
-          </button>
-        )}
-        <Button variant="ghost" size="sm" onClick={onEdit}>Edit</Button>
-        <Button variant="ghost" size="sm" onClick={() => setShowHistory((v) => !v)}>
-          {showHistory ? 'Hide history' : 'View history'}
-        </Button>
-      </div>
-
-      {showHistory && (
-        <div className="mt-3 pt-3 border-t border-cream-dark">
-          <p className="text-[11px] font-semibold text-forest/50 mb-2">Inspection history</p>
-          {historyLogs.length === 0 ? (
-            <p className="text-[11px] text-forest/30 italic">No inspections logged yet.</p>
-          ) : (
-            <div className="space-y-1.5">
-              {historyLogs.map((log) => {
-                const resultColor =
-                  log.result === 'passed' ? 'text-green-muted-text' :
-                  log.result === 'failed' ? 'text-red' : 'text-amber-text';
-                return (
-                  <div key={log.id} className="flex items-start gap-4 text-[11px]">
-                    <span className="font-mono text-forest/60 flex-shrink-0">
-                      {new Date(log.inspectionDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                    <span className="text-forest/40 flex-shrink-0">{log.completedBy}</span>
-                    <span className={`font-semibold flex-shrink-0 ${resultColor}`}>{RESULT_LABELS[log.result] ?? log.result}</span>
-                    {log.notes && <span className="text-forest/40 truncate flex-1">{log.notes}</span>}
-                    <button
-                      onClick={() => openEditInspectionLogModal(log.id)}
-                      className="flex-shrink-0 text-forest/30 hover:text-sage cursor-pointer ml-auto"
-                    >
-                      Edit
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function WaterSafetyTab() {
   const { staffWithCerts, certSummary, itemsByCategory, categoryStats } = useSafetyStore();
-  const { openSafetyLogInspectionModal, openSafetyAddItemModal, openSafetyAddStaffModal, openStaffCertModal } = useUIStore();
+  const { openSafetyLogInspectionModal, openSafetyAddStaffModal, openStaffCertModal } = useUIStore();
   const { can } = useAuth();
 
   const allStaffWithCerts = staffWithCerts();
@@ -347,49 +188,6 @@ export function WaterSafetyTab() {
         </div>
       )}
 
-      {/* Waterfront rescue equipment */}
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[14px] font-semibold text-forest">Waterfront rescue equipment & checks</h3>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => openSafetyLogInspectionModal()}>Log daily check</Button>
-          {can('manageSafetyItems') && (
-            <>
-              <Button variant="ghost" size="sm" onClick={() => openSafetyAddItemModal({ type: 'life_ring' })}>+ Life ring</Button>
-              <Button variant="ghost" size="sm" onClick={() => openSafetyAddItemModal({ type: 'rescue_tube' })}>+ Rescue tube</Button>
-              <Button variant="ghost" size="sm" onClick={() => openSafetyAddItemModal({ type: 'rescue_board' })}>+ Rescue board</Button>
-              <Button variant="ghost" size="sm" onClick={() => openSafetyAddItemModal({ type: 'waterfront_check' })}>+ Daily check</Button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {waterfrontItems.length === 0 ? (
-        <div className="bg-white border border-border rounded-card px-5 py-8 text-center">
-          <p className="text-[13px] text-forest/40">No waterfront safety items set up yet.</p>
-          {can('manageSafetyItems') && (
-            <div className="flex justify-center gap-3 mt-1 flex-wrap">
-              <button onClick={() => openSafetyAddItemModal({ type: 'life_ring' })} className="text-[12px] text-sage font-medium cursor-pointer hover:underline">+ Life ring</button>
-              <span className="text-forest/20">·</span>
-              <button onClick={() => openSafetyAddItemModal({ type: 'rescue_tube' })} className="text-[12px] text-sage font-medium cursor-pointer hover:underline">+ Rescue tube</button>
-              <span className="text-forest/20">·</span>
-              <button onClick={() => openSafetyAddItemModal({ type: 'rescue_board' })} className="text-[12px] text-sage font-medium cursor-pointer hover:underline">+ Rescue board</button>
-              <span className="text-forest/20">·</span>
-              <button onClick={() => openSafetyAddItemModal({ type: 'waterfront_check' })} className="text-[12px] text-sage font-medium cursor-pointer hover:underline">+ Daily check</button>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {waterfrontItems.map((item) => (
-            <WaterfrontItemCard
-              key={item.id}
-              item={item}
-              onLog={() => openSafetyLogInspectionModal(item.id)}
-              onEdit={() => openSafetyAddItemModal({ itemId: item.id })}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

@@ -116,7 +116,6 @@ function exportComplianceReport(
       </tbody>
     </table>
   `}
-  <h3>Waterfront Safety Checks</h3>${itemTable(items.filter(i => i.type === 'waterfront_check'))}
 
   <h2>Kitchen Safety</h2>
   <h3>Hood Fan Cleaning</h3>${itemTable(items.filter(i => i.type === 'hood_fan'))}

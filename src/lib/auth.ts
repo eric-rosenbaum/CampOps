@@ -1,60 +1,76 @@
-/**
- * Auth abstraction layer.
- *
- * TODAY: reads the impersonated user from uiStore (no real auth).
- * LATER: replace the body of `useAuth()` to read from supabase.auth.getUser()
- *        and fetch the user's role from the `users` table. The return shape
- *        must stay the same so all callers continue to work unchanged.
- */
-
-import { useUIStore } from '@/store/uiStore';
-import { SEED_USERS } from '@/lib/seedData';
-import type { Role } from '@/lib/types';
+import { useAuthStore } from '@/store/authStore';
+import { useCampStore } from '@/store/campStore';
+import type { CampRole } from '@/store/campStore';
 
 // ─── Permission definitions ────────────────────────────────────────────────
 
 const ROLE_PERMISSIONS = {
-  createIssue:            ['doe', 'facilities_manager'],
-  createTask:             ['doe', 'facilities_manager'],
-  assign:                 ['doe', 'facilities_manager'],
-  enterActualCost:        ['doe', 'facilities_manager'],
-  activateNewSeason:      ['doe', 'facilities_manager'],
-  managePool:             ['doe', 'facilities_manager'],
-  managePoolChecklist:    ['doe', 'facilities_manager'],
-  updateStatus:           ['doe', 'facilities_manager', 'maintenance_staff'],
-  markResolved:           ['doe', 'facilities_manager', 'maintenance_staff'],
-  markComplete:           ['doe', 'facilities_manager', 'maintenance_staff'],
-  // Safety & Compliance
-  manageSafetyItems:      ['doe', 'facilities_manager'],
-  manageSafetyStaff:      ['doe'],
-  manageSafetyCerts:      ['doe'],
-  logSafetyInspection:    ['doe', 'facilities_manager', 'maintenance_staff'],
-} satisfies Record<string, Role[]>;
+  // Any authenticated camp member
+  viewAll:              ['admin', 'staff', 'viewer'] as CampRole[],
+  // Staff + admin operations
+  createIssue:          ['admin', 'staff'] as CampRole[],
+  updateIssue:          ['admin', 'staff'] as CampRole[],
+  createTask:           ['admin', 'staff'] as CampRole[],
+  updateTask:           ['admin', 'staff'] as CampRole[],
+  assign:               ['admin', 'staff'] as CampRole[],
+  updateStatus:         ['admin', 'staff'] as CampRole[],
+  markResolved:         ['admin', 'staff'] as CampRole[],
+  markComplete:         ['admin', 'staff'] as CampRole[],
+  logChemicalReading:   ['admin', 'staff'] as CampRole[],
+  managePool:           ['admin', 'staff'] as CampRole[],
+  managePoolChecklist:  ['admin', 'staff'] as CampRole[],
+  logSafetyInspection:  ['admin', 'staff'] as CampRole[],
+  manageSafetyItems:    ['admin', 'staff'] as CampRole[],
+  manageAssets:         ['admin', 'staff'] as CampRole[],
+  // Admin-only operations
+  enterActualCost:      ['admin'] as CampRole[],
+  activateNewSeason:    ['admin'] as CampRole[],
+  manageSafetyStaff:    ['admin'] as CampRole[],
+  manageSafetyCerts:    ['admin'] as CampRole[],
+  manageMembers:        ['admin'] as CampRole[],
+  manageCampSettings:   ['admin'] as CampRole[],
+};
 
 export type Permission = keyof typeof ROLE_PERMISSIONS;
 
-export const ROLE_LABELS: Record<Role, string> = {
-  doe:                'Ops Director',
-  facilities_manager: 'Facilities Manager',
-  maintenance_staff:  'Maintenance Staff',
+export const ROLE_LABELS: Record<CampRole, string> = {
+  admin:  'Administrator',
+  staff:  'Staff',
+  viewer: 'Viewer',
 };
 
 // ─── Hook ──────────────────────────────────────────────────────────────────
 
 export function useAuth() {
-  // ↓ Swap this block for supabase.auth.getUser() when adding real auth
-  const { currentUserId } = useUIStore();
-  const currentUser = SEED_USERS.find((u) => u.id === currentUserId) ?? SEED_USERS[0];
-  // ↑ end of mock-auth block
+  const { user, profile } = useAuthStore();
+  const { currentMember } = useCampStore();
+
+  const fullName = profile?.fullName ?? user?.email ?? '';
+  const initials = fullName
+    .split(' ')
+    .map((n) => n[0] ?? '')
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  const currentUser = {
+    id: user?.id ?? '',
+    name: fullName,
+    initials,
+    email: user?.email ?? '',
+  };
+
+  const role: CampRole = currentMember?.role ?? 'viewer';
 
   function can(permission: Permission): boolean {
-    return (ROLE_PERMISSIONS[permission] as Role[]).includes(currentUser.role);
+    return ROLE_PERMISSIONS[permission].includes(role);
   }
 
   return {
     currentUser,
-    role: currentUser.role,
-    roleLabel: ROLE_LABELS[currentUser.role],
+    role,
+    department: currentMember?.department ?? null,
+    roleLabel: ROLE_LABELS[role],
     can,
   };
 }

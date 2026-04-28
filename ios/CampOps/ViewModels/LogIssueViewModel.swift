@@ -5,7 +5,7 @@ import Combine
 final class LogIssueViewModel: ObservableObject {
     @Published var title = ""
     @Published var description = ""
-    @Published var locations: [CampLocation] = [.other]
+    @Published var locations: [String] = []
     @Published var priority: Priority = .normal
     @Published var assigneeId: String? = nil
     @Published var estimatedCost = ""
@@ -20,7 +20,7 @@ final class LogIssueViewModel: ObservableObject {
             editingIssue = issue
             title = issue.title
             description = issue.description ?? ""
-            locations = issue.locations.isEmpty ? [.other] : issue.locations
+            locations = issue.locations
             priority = issue.priority
             assigneeId = issue.assigneeId
             estimatedCost = issue.estimatedCost.map { String($0) } ?? ""

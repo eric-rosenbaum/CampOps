@@ -48,7 +48,7 @@ struct AddTaskView: View {
     @State private var title = ""
     @State private var description = ""
     @State private var phase: ChecklistPhase = .pre
-    @State private var locations: [CampLocation] = []
+    @State private var locations: [String] = []
     @State private var priority: Priority = .normal
     @State private var assigneeId: String? = nil
     @State private var selectedTiming: TimingOption = preBuckets[0]
@@ -79,7 +79,7 @@ struct AddTaskView: View {
                         HStack {
                             Text("Location")
                             Spacer()
-                            Text(locations.isEmpty ? "None" : locations.map(\.displayName).joined(separator: ", "))
+                            Text(locations.isEmpty ? "None" : locations.joined(separator: ", "))
                                 .foregroundColor(.secondary).lineLimit(1)
                         }
                     }

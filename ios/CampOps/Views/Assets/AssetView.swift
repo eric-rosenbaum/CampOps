@@ -165,7 +165,7 @@ struct AssetCard: View {
                         .foregroundStyle(Color.forest.opacity(0.5))
                 }
                 Spacer()
-                AssetStatusBadge(status: asset.status)
+                AssetStatusBadge(status: checkout != nil ? .checkedOut : asset.status)
             }
 
             if asset.tracksOdometer || asset.tracksHours || !asset.storageLocation.isEmpty {

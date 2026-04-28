@@ -185,7 +185,12 @@ struct AssetDetailSheet: View {
     func tabContent(asset: CampAsset) -> some View {
         switch activeTab {
         case .overview:
-            OverviewTab(asset: asset, onCheckout: asset.status == .available ? { checkingOut = true } : nil)
+            OverviewTab(
+                asset: asset,
+                activeCheckout: vm.activeCheckout(for: assetId),
+                onCheckout: vm.activeCheckout(for: assetId) == nil ? { checkingOut = true } : nil,
+                onReturn: { co in returningCheckout = co }
+            )
         case .checkouts:
             CheckoutsTab(
                 asset: asset,
@@ -221,12 +226,55 @@ struct AssetDetailSheet: View {
 
 private struct OverviewTab: View {
     let asset: CampAsset
+    var activeCheckout: AssetCheckout? = nil
     var onCheckout: (() -> Void)? = nil
+    var onReturn: ((AssetCheckout) -> Void)? = nil
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if let onCheckout {
+                if let co = activeCheckout {
+                    // Checked-out banner
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Label("Currently Checked Out", systemImage: "arrow.up.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Color.blue)
+                            Spacer()
+                            if co.expectedReturnAt < Date() {
+                                Label("Overdue", systemImage: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(Color.priorityUrgent)
+                            }
+                        }
+                        InfoRow(label: "Checked out by", value: co.checkedOutBy)
+                        InfoRow(label: "Purpose", value: co.purpose)
+                        InfoRow(label: co.expectedReturnAt < Date() ? "Was due" : "Expected return",
+                                value: co.expectedReturnAt.readingTimeDisplay)
+                        if let notes = co.checkoutNotes, !notes.isEmpty {
+                            InfoRow(label: "Notes", value: notes)
+                        }
+                        Button {
+                            onReturn?(co)
+                        } label: {
+                            Label("Return Asset", systemImage: "arrow.down.left")
+                                .font(.system(size: 15, weight: .semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .foregroundStyle(.white)
+                                .background(Color.sage)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(14)
+                    .background(Color.white)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(co.expectedReturnAt < Date() ? Color.priorityUrgent.opacity(0.4) : Color.blue.opacity(0.3), lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                } else if let onCheckout {
                     Button(action: onCheckout) {
                         Label("Check Out", systemImage: "arrow.up.right")
                             .font(.system(size: 15, weight: .semibold))

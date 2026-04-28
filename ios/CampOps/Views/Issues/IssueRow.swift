@@ -12,7 +12,7 @@ struct IssueRow: View {
             }
             Text(issue.title).font(.subheadline.weight(.semibold)).lineLimit(2)
             HStack(spacing: Spacing.sm) {
-                Label(issue.locations.map(\.displayName).joined(separator: ", "), systemImage: "mappin.circle")
+                Label(issue.locations.joined(separator: ", "), systemImage: "mappin.circle")
                     .font(.caption).foregroundColor(.secondary)
                 Spacer()
                 if let assignee = issue.assignedTo {

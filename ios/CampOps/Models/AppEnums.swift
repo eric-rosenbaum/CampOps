@@ -68,19 +68,6 @@ enum ChecklistStatus: String, Codable, CaseIterable {
     }
 }
 
-enum CampLocation: String, Codable, CaseIterable {
-    case waterfront     = "Waterfront"
-    case diningHall     = "Dining Hall"
-    case cabins         = "Cabins"
-    case artBarn        = "Art Barn"
-    case aquatics       = "Aquatics"
-    case athleticFields = "Athletic Fields"
-    case mainLodge      = "Main Lodge"
-    case healthCenter   = "Health Center"
-    case other          = "Other"
-
-    var displayName: String { rawValue }
-}
 
 enum RecurringInterval: String, Codable {
     case daily = "daily"

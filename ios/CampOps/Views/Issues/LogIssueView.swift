@@ -4,6 +4,7 @@ struct LogIssueView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var authManager: AuthManager
     @StateObject private var vm: LogIssueViewModel
+    @FocusState private var costFocused: Bool
     var onSave: (Issue) -> Void
 
     init(editing issue: Issue? = nil, onSave: @escaping (Issue) -> Void) {
@@ -25,7 +26,7 @@ struct LogIssueView: View {
                         HStack {
                             Text("Location")
                             Spacer()
-                            Text(vm.locations.isEmpty ? "None" : vm.locations.map(\.displayName).joined(separator: ", "))
+                            Text(vm.locations.isEmpty ? "None" : vm.locations.joined(separator: ", "))
                                 .foregroundColor(.secondary).lineLimit(1)
                         }
                     }
@@ -40,7 +41,9 @@ struct LogIssueView: View {
                     }
                 }
                 Section("Cost") {
-                    TextField("Estimated cost ($)", text: $vm.estimatedCost).keyboardType(.decimalPad)
+                    TextField("Estimated cost ($)", text: $vm.estimatedCost)
+                        .keyboardType(.decimalPad)
+                        .focused($costFocused)
                 }
                 Section("Photo") {
                     PhotoPicker(selectedImage: $vm.selectedPhoto, existingUrl: vm.editingIssue?.photoUrl)
@@ -48,6 +51,7 @@ struct LogIssueView: View {
                                                   bottom: Spacing.sm, trailing: Spacing.md))
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(vm.editingIssue == nil ? "Log Issue" : "Edit Issue")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -55,6 +59,9 @@ struct LogIssueView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { Task { await saveIssue() } }
                         .disabled(!vm.isValid || vm.isSaving)
+                }
+                ToolbarItem(placement: .keyboard) {
+                    HStack { Spacer(); Button("Done") { costFocused = false } }
                 }
             }
             .alert("Error", isPresented: .constant(vm.errorMessage != nil)) {

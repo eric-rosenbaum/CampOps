@@ -101,7 +101,12 @@ final class AssetViewModel: ObservableObject {
         if let idx = assets.firstIndex(where: { $0.id == checkout.assetId }) {
             assets[idx].status = .checkedOut
         }
-        do { try await DataService.shared.insertAssetCheckout(checkout) }
+        do {
+            try await DataService.shared.insertAssetCheckout(checkout)
+            if let asset = assets.first(where: { $0.id == checkout.assetId }) {
+                try await DataService.shared.updateAsset(asset)
+            }
+        }
         catch {
             checkouts.removeAll { $0.id == checkout.id }
             if let idx = assets.firstIndex(where: { $0.id == checkout.assetId }) {

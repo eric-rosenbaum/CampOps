@@ -4,7 +4,7 @@ struct ChecklistTask: Codable, Identifiable, Hashable {
     let id: String
     var title: String
     var description: String
-    var locations: [CampLocation]
+    var locations: [String]
     var priority: Priority
     var status: ChecklistStatus
     var assigneeId: String?
@@ -31,7 +31,7 @@ struct ChecklistTask: Codable, Identifiable, Hashable {
         id: String = UUID().uuidString,
         title: String,
         description: String = "",
-        locations: [CampLocation] = [],
+        locations: [String] = [],
         priority: Priority = .normal,
         status: ChecklistStatus = .pending,
         assigneeId: String? = nil,
@@ -62,7 +62,7 @@ struct ChecklistTaskDBRow: Codable {
     let id: String
     var title: String
     var description: String
-    var locations: [CampLocation]
+    var locations: [String]
     var priority: Priority
     var status: ChecklistStatus
     var assigneeId: String?

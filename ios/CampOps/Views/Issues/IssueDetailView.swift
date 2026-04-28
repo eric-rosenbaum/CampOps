@@ -21,7 +21,7 @@ struct IssueDetailView: View {
                     Text(vm.issue.title).font(.title2.weight(.bold)).foregroundColor(.forest)
                     HStack(spacing: Spacing.sm) {
                         StatusBadge(status: vm.issue.status)
-                        Label(vm.issue.locations.map(\.displayName).joined(separator: ", "), systemImage: "mappin.circle")
+                        Label(vm.issue.locations.joined(separator: ", "), systemImage: "mappin.circle")
                             .font(.caption).foregroundColor(.secondary)
                     }
                     Text("Reported by \(vm.issue.reportedBy?.name ?? "Unknown") · \(vm.issue.createdAt.dateTimeDisplay)")

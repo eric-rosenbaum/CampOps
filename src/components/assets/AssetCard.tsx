@@ -32,8 +32,9 @@ export function AssetCard({ asset, onClick }: { asset: CampAsset; onClick: () =>
   const { currentCheckoutForAsset, serviceHistoryForAsset } = useAssetStore();
   const { openCheckoutModal, openReturnModal, openLogAssetServiceModal } = useUIStore();
 
-  const style = statusStyle(asset.status);
   const checkout = currentCheckoutForAsset(asset.id);
+  const effectiveStatus = checkout ? 'checked_out' as const : asset.status;
+  const style = statusStyle(effectiveStatus);
   const serviceHistory = serviceHistoryForAsset(asset.id);
   const nextServiceDate = serviceHistory.find((r) => r.nextServiceDate)?.nextServiceDate ?? null;
   const svcStatus = nextServiceStatus(nextServiceDate);
@@ -52,7 +53,7 @@ export function AssetCard({ asset, onClick }: { asset: CampAsset; onClick: () =>
 
           <div className="flex items-center gap-3 mt-1.5 flex-wrap">
             <span className={`text-label font-semibold px-2 py-0.5 rounded-tag uppercase tracking-wide ${style.bg} ${style.text}`}>
-              {ASSET_STATUS_LABELS[asset.status]}
+              {ASSET_STATUS_LABELS[effectiveStatus]}
             </span>
 
             {checkout && (
@@ -81,7 +82,7 @@ export function AssetCard({ asset, onClick }: { asset: CampAsset; onClick: () =>
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-          {asset.status === 'available' && (
+          {effectiveStatus === 'available' && (
             <button
               onClick={() => openCheckoutModal(asset.id)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-forest/60 hover:text-forest transition-colors"
@@ -89,7 +90,7 @@ export function AssetCard({ asset, onClick }: { asset: CampAsset; onClick: () =>
               <LogIn className="w-3.5 h-3.5" /> Check out
             </button>
           )}
-          {asset.status === 'checked_out' && checkout && (
+          {effectiveStatus === 'checked_out' && checkout && (
             <button
               onClick={() => openReturnModal(checkout.id, asset.id)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-forest/60 hover:text-forest transition-colors"

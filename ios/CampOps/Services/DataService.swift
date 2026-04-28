@@ -32,7 +32,7 @@ final class DataService {
     }
 
     func insertIssueActivity(_ entry: ActivityEntry, issueId: String) async throws {
-        let row: [String: String] = ["id": entry.id, "issue_id": issueId,
+        let row: [String: String] = ["id": entry.id, "camp_id": campId, "issue_id": issueId,
             "user_id": entry.userId ?? "", "user_name": entry.userName, "action": entry.action]
         try await supabase.from("issue_activity").insert(row).execute()
     }
@@ -62,7 +62,7 @@ final class DataService {
     }
 
     func insertTaskActivity(_ entry: ActivityEntry, taskId: String) async throws {
-        let row: [String: String] = ["id": entry.id, "task_id": taskId,
+        let row: [String: String] = ["id": entry.id, "camp_id": campId, "task_id": taskId,
             "user_id": entry.userId ?? "", "user_name": entry.userName, "action": entry.action]
         try await supabase.from("checklist_activity").insert(row).execute()
     }
@@ -350,7 +350,7 @@ private struct IssueInsert: Encodable {
     init(issue: Issue) {
         id = issue.id; campId = DataService.shared.campId
         title = issue.title; description = issue.description
-        locations = issue.locations.map(\.rawValue); priority = issue.priority.rawValue
+        locations = issue.locations; priority = issue.priority.rawValue
         status = issue.status.rawValue; assigneeId = issue.assigneeId
         reportedById = issue.reportedById; estimatedCost = issue.estimatedCost
         actualCost = issue.actualCost; photoUrl = issue.photoUrl
@@ -372,7 +372,7 @@ private struct IssueUpdate: Encodable {
     }
     init(issue: Issue) {
         title = issue.title; description = issue.description
-        locations = issue.locations.map(\.rawValue); priority = issue.priority.rawValue
+        locations = issue.locations; priority = issue.priority.rawValue
         status = issue.status.rawValue; assigneeId = issue.assigneeId
         estimatedCost = issue.estimatedCost; actualCost = issue.actualCost
         photoUrl = issue.photoUrl; updatedAt = Date()
@@ -395,7 +395,7 @@ private struct TaskInsert: Encodable {
     init(task: ChecklistTask) {
         id = task.id; campId = DataService.shared.campId
         title = task.title; description = task.description
-        locations = task.locations.map(\.rawValue); priority = task.priority.rawValue
+        locations = task.locations; priority = task.priority.rawValue
         status = task.status.rawValue; phase = task.phase.rawValue
         assigneeId = task.assigneeId; daysRelativeToOpening = task.daysRelativeToOpening
         dueDate = task.dueDate; isRecurring = task.isRecurring
@@ -414,7 +414,7 @@ private struct TaskUpdate: Encodable {
     }
     init(task: ChecklistTask) {
         title = task.title; description = task.description
-        locations = task.locations.map(\.rawValue); priority = task.priority.rawValue
+        locations = task.locations; priority = task.priority.rawValue
         status = task.status.rawValue; phase = task.phase.rawValue
         assigneeId = task.assigneeId; dueDate = task.dueDate; updatedAt = Date()
     }
@@ -486,7 +486,7 @@ private struct ChemReadingUpdate: Encodable {
 }
 
 private struct ChemReadingInsert: Encodable {
-    let id, poolId, loggedById, loggedByName, poolStatus: String
+    let id, campId, poolId, loggedById, loggedByName, poolStatus: String
     let readingTime: Date
     let freeChlorine, ph, alkalinity, cyanuricAcid, waterTemp: Double
     let calciumHardness: Double?
@@ -494,6 +494,7 @@ private struct ChemReadingInsert: Encodable {
     let createdAt: Date
     enum CodingKeys: String, CodingKey {
         case id
+        case campId           = "camp_id"
         case poolId           = "pool_id"
         case freeChlorine     = "free_chlorine"; case ph; case alkalinity
         case cyanuricAcid     = "cyanuric_acid"; case waterTemp = "water_temp"
@@ -504,7 +505,7 @@ private struct ChemReadingInsert: Encodable {
         case createdAt        = "created_at"
     }
     init(_ r: ChemicalReading) {
-        id = r.id; poolId = r.poolId
+        id = r.id; campId = DataService.shared.campId; poolId = r.poolId
         readingTime = r.readingTime; loggedById = r.loggedById
         loggedByName = r.loggedByName; poolStatus = r.poolStatus.rawValue
         freeChlorine = r.freeChlorine; ph = r.ph; alkalinity = r.alkalinity
@@ -515,11 +516,12 @@ private struct ChemReadingInsert: Encodable {
 }
 
 private struct EquipmentInsert: Encodable {
-    let id, poolId, name, type, status, statusDetail: String
+    let id, campId, poolId, name, type, status, statusDetail: String
     let lastServiced, nextServiceDue, vendor, specs: String?
     let createdAt, updatedAt: Date
     enum CodingKeys: String, CodingKey {
         case id
+        case campId       = "camp_id"
         case poolId       = "pool_id"
         case name, type, status
         case statusDetail   = "status_detail"; case lastServiced = "last_serviced"
@@ -527,7 +529,8 @@ private struct EquipmentInsert: Encodable {
         case createdAt = "created_at"; case updatedAt = "updated_at"
     }
     init(_ e: PoolEquipment) {
-        id = e.id; poolId = e.poolId; name = e.name; type = e.type.rawValue
+        id = e.id; campId = DataService.shared.campId; poolId = e.poolId
+        name = e.name; type = e.type.rawValue
         status = e.status.rawValue; statusDetail = e.statusDetail
         lastServiced = e.lastServiced; nextServiceDue = e.nextServiceDue
         vendor = e.vendor; specs = e.specs; createdAt = e.createdAt; updatedAt = e.updatedAt
@@ -553,12 +556,13 @@ private struct EquipmentUpdate: Encodable {
 }
 
 private struct ServiceLogInsert: Encodable {
-    let id, poolId, serviceType, datePerformed, performedBy: String
+    let id, campId, poolId, serviceType, datePerformed, performedBy: String
     let equipmentId, notes, nextServiceDue: String?
     let cost: Double?
     let createdAt: Date
     enum CodingKeys: String, CodingKey {
         case id
+        case campId       = "camp_id"
         case poolId       = "pool_id"
         case equipmentId  = "equipment_id"; case serviceType = "service_type"
         case datePerformed = "date_performed"; case performedBy = "performed_by"
@@ -566,7 +570,8 @@ private struct ServiceLogInsert: Encodable {
         case createdAt = "created_at"
     }
     init(_ e: PoolServiceLog) {
-        id = e.id; poolId = e.poolId; equipmentId = e.equipmentId
+        id = e.id; campId = DataService.shared.campId; poolId = e.poolId
+        equipmentId = e.equipmentId
         serviceType = e.serviceType.rawValue; datePerformed = e.datePerformed
         performedBy = e.performedBy; notes = e.notes; cost = e.cost
         nextServiceDue = e.nextServiceDue; createdAt = e.createdAt
@@ -607,18 +612,20 @@ private struct InspectionUpdate: Encodable {
 }
 
 private struct InspectionLogInsert: Encodable {
-    let id, poolId, inspectionDate, conductedBy, result: String
+    let id, campId, poolId, inspectionDate, conductedBy, result: String
     let inspectionId, notes, nextDue: String?
     let createdAt: Date
     enum CodingKeys: String, CodingKey {
         case id
+        case campId         = "camp_id"
         case poolId         = "pool_id"
         case inspectionId   = "inspection_id"
         case inspectionDate = "inspection_date"; case conductedBy = "conducted_by"
         case result; case notes; case nextDue = "next_due"; case createdAt = "created_at"
     }
     init(_ e: PoolInspectionLog) {
-        id = e.id; poolId = e.poolId; inspectionId = e.inspectionId
+        id = e.id; campId = DataService.shared.campId; poolId = e.poolId
+        inspectionId = e.inspectionId
         inspectionDate = e.inspectionDate; conductedBy = e.conductedBy
         result = e.result.rawValue; notes = e.notes; nextDue = e.nextDue; createdAt = e.createdAt
     }
@@ -639,12 +646,13 @@ private struct InspectionLogUpdate: Encodable {
 }
 
 private struct SeasonalTaskInsert: Encodable {
-    let id, poolId, title, phase: String
+    let id, campId, poolId, title, phase: String
     let detail, completedBy, completedDate: String?
     let isComplete: Bool; let assignees: [String]; let sortOrder: Int
     let createdAt, updatedAt: Date
     enum CodingKeys: String, CodingKey {
         case id
+        case campId        = "camp_id"
         case poolId        = "pool_id"
         case title, detail, phase
         case isComplete    = "is_complete"; case completedBy = "completed_by"
@@ -652,7 +660,8 @@ private struct SeasonalTaskInsert: Encodable {
         case sortOrder     = "sort_order"; case createdAt = "created_at"; case updatedAt = "updated_at"
     }
     init(_ t: PoolSeasonalTask) {
-        id = t.id; poolId = t.poolId; title = t.title; detail = t.detail; phase = t.phase.rawValue
+        id = t.id; campId = DataService.shared.campId; poolId = t.poolId
+        title = t.title; detail = t.detail; phase = t.phase.rawValue
         isComplete = t.isComplete; completedBy = t.completedBy; completedDate = t.completedDate
         assignees = t.assignees; sortOrder = t.sortOrder; createdAt = t.createdAt; updatedAt = t.updatedAt
     }
@@ -781,7 +790,7 @@ private struct AssetUpdate: Encodable {
 }
 
 private struct AssetCheckoutInsert: Encodable {
-    let id, assetId, checkedOutBy, purpose, loggedBy: String
+    let id, campId, assetId, checkedOutBy, purpose, loggedBy: String
     let checkedOutAt, expectedReturnAt: Date
     let startOdometer, endOdometer, startHours, endHours: Double?
     let fuelLevelOut, fuelLevelIn: String?
@@ -790,6 +799,7 @@ private struct AssetCheckoutInsert: Encodable {
     let createdAt: Date
     enum CodingKeys: String, CodingKey {
         case id, purpose
+        case campId           = "camp_id"
         case assetId          = "asset_id"
         case checkedOutBy     = "checked_out_by"
         case checkedOutAt     = "checked_out_at"
@@ -808,7 +818,8 @@ private struct AssetCheckoutInsert: Encodable {
         case createdAt        = "created_at"
     }
     init(_ c: AssetCheckout) {
-        id = c.id; assetId = c.assetId; checkedOutBy = c.checkedOutBy
+        id = c.id; campId = DataService.shared.campId; assetId = c.assetId
+        checkedOutBy = c.checkedOutBy
         purpose = c.purpose; loggedBy = c.loggedBy
         checkedOutAt = c.checkedOutAt; expectedReturnAt = c.expectedReturnAt
         returnedAt = c.returnedAt
@@ -850,7 +861,7 @@ private struct AssetCheckoutUpdate: Encodable {
 }
 
 private struct AssetServiceRecordInsert: Encodable {
-    let id, assetId, serviceType, datePerformed, performedBy: String
+    let id, campId, assetId, serviceType, datePerformed, performedBy: String
     let vendor, description: String?
     let odometerAtService, hoursAtService, cost: Double?
     let nextServiceDate: String?
@@ -859,6 +870,7 @@ private struct AssetServiceRecordInsert: Encodable {
     let createdAt: Date
     enum CodingKeys: String, CodingKey {
         case id, description, vendor, cost
+        case campId              = "camp_id"
         case assetId             = "asset_id"
         case serviceType         = "service_type"
         case datePerformed       = "date_performed"
@@ -872,7 +884,8 @@ private struct AssetServiceRecordInsert: Encodable {
         case createdAt           = "created_at"
     }
     init(_ r: AssetServiceRecord) {
-        id = r.id; assetId = r.assetId; serviceType = r.serviceType.rawValue
+        id = r.id; campId = DataService.shared.campId; assetId = r.assetId
+        serviceType = r.serviceType.rawValue
         datePerformed = r.datePerformed; performedBy = r.performedBy
         vendor = r.vendor; description = r.description
         odometerAtService = r.odometerAtService; hoursAtService = r.hoursAtService
@@ -912,12 +925,13 @@ private struct AssetServiceRecordUpdate: Encodable {
 }
 
 private struct AssetMaintenanceTaskInsert: Encodable {
-    let id, assetId, phase, title: String
+    let id, campId, assetId, phase, title: String
     let detail, completedBy, completedDate: String?
     let isComplete: Bool; let sortOrder: Int
     let createdAt, updatedAt: Date
     enum CodingKeys: String, CodingKey {
         case id, phase, title, detail
+        case campId        = "camp_id"
         case assetId       = "asset_id"
         case isComplete    = "is_complete"
         case completedBy   = "completed_by"
@@ -927,7 +941,8 @@ private struct AssetMaintenanceTaskInsert: Encodable {
         case updatedAt     = "updated_at"
     }
     init(_ t: AssetMaintenanceTask) {
-        id = t.id; assetId = t.assetId; phase = t.phase.rawValue; title = t.title
+        id = t.id; campId = DataService.shared.campId; assetId = t.assetId
+        phase = t.phase.rawValue; title = t.title
         detail = t.detail; completedBy = t.completedBy; completedDate = t.completedDate
         isComplete = t.isComplete; sortOrder = t.sortOrder
         createdAt = t.createdAt; updatedAt = t.updatedAt

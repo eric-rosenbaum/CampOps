@@ -93,6 +93,7 @@ struct CheckoutAssetSheet: View {
                                         )
                                         .clipShape(RoundedRectangle(cornerRadius: 6))
                                 }
+                                .buttonStyle(.borderless)
                             }
                         }
                         .padding(.vertical, 4)

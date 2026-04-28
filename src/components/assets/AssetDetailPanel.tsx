@@ -172,13 +172,13 @@ function OverviewTab({ asset, checkout, isOverdue, onCheckout, onReturn, onServi
     <div className="space-y-4">
       {/* Status row */}
       <div className="flex items-center gap-3 flex-wrap">
-        <StatusBadge status={asset.status} />
-        {asset.status === 'available' && (
+        <StatusBadge status={checkout ? 'checked_out' : asset.status} />
+        {!checkout && (
           <button onClick={onCheckout} className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-forest/60 hover:text-forest transition-colors">
             <LogIn className="w-3.5 h-3.5" /> Check out
           </button>
         )}
-        {asset.status === 'checked_out' && (
+        {checkout && (
           <button onClick={onReturn} className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-forest/60 hover:text-forest transition-colors">
             <RotateCcw className="w-3.5 h-3.5" /> Return
           </button>

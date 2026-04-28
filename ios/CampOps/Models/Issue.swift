@@ -4,7 +4,7 @@ struct Issue: Codable, Identifiable, Hashable {
     let id: String
     var title: String
     var description: String?
-    var locations: [CampLocation]
+    var locations: [String]
     var priority: Priority
     var status: IssueStatus
     var assigneeId: String?
@@ -32,7 +32,7 @@ struct Issue: Codable, Identifiable, Hashable {
         id: String = UUID().uuidString,
         title: String,
         description: String? = nil,
-        locations: [CampLocation],
+        locations: [String],
         priority: Priority,
         status: IssueStatus = .unassigned,
         assigneeId: String? = nil,
@@ -63,7 +63,7 @@ struct IssueDBRow: Codable {
     let id: String
     var title: String
     var description: String?
-    var locations: [CampLocation]
+    var locations: [String]
     var priority: Priority
     var status: IssueStatus
     var assigneeId: String?

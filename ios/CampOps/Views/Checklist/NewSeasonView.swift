@@ -2,7 +2,7 @@ import SwiftUI
 
 struct NewSeasonView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var vm: ChecklistViewModel
     @State private var name = ""
     @State private var openingDate = Date()

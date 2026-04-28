@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct IssueListView: View {
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var vm: IssueListViewModel
     @State private var showingLogIssue = false
 
@@ -19,7 +19,7 @@ struct IssueListView: View {
             .navigationTitle("Issues & Repairs")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) { UserMenuButton() }
-                if userManager.can.createIssue {
+                if authManager.can.createIssue {
                     ToolbarItem(placement: .primaryAction) {
                         Button { showingLogIssue = true } label: { Image(systemName: "plus") }
                     }

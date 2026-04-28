@@ -5,7 +5,6 @@ import { SearchInput } from '@/components/shared/SearchInput';
 import { TaskCard } from '@/components/shared/TaskCard';
 import { TaskDetail } from '@/components/shared/TaskDetail';
 import { LogTaskModal } from '@/components/shared/LogTaskModal';
-import { SeasonModal } from '@/components/shared/SeasonModal';
 import { Button } from '@/components/shared/Button';
 import { useChecklistStore } from '@/store/checklistStore';
 import { usePoolStore } from '@/store/poolStore';
@@ -13,7 +12,7 @@ import { useAssetStore } from '@/store/assetStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { format } from 'date-fns';
-import { Plus, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight } from 'lucide-react';
 
 // ─── Pool seasonal tasks section ─────────────────────────────────────────────
 
@@ -217,7 +216,7 @@ export function PrePostCamp() {
     selectedTaskId, selectTask, filteredTasks, tasks,
     season, completionPercent, completionByLocation,
   } = useChecklistStore();
-  const { openLogTaskModal, openSeasonModal, isLogTaskModalOpen, isSeasonModalOpen } = useUIStore();
+  const { openLogTaskModal, isLogTaskModalOpen } = useUIStore();
   const { can } = useAuth();
 
   const filtered = filteredTasks();
@@ -245,12 +244,6 @@ export function PrePostCamp() {
         subtitle={subtitle}
         actions={
           <div className="flex items-center gap-2">
-            {can('activateNewSeason') && (
-              <Button variant="ghost" size="sm" onClick={openSeasonModal}>
-                <Calendar className="w-3.5 h-3.5" />
-                New season
-              </Button>
-            )}
             {can('createTask') && (
               <Button size="sm" onClick={openLogTaskModal}>
                 <Plus className="w-3.5 h-3.5" />
@@ -392,7 +385,6 @@ export function PrePostCamp() {
       </div>
 
       {isLogTaskModalOpen && <LogTaskModal />}
-      {isSeasonModalOpen && <SeasonModal />}
     </div>
   );
 }

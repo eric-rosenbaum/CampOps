@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ChecklistDetailView: View {
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var vm: ChecklistViewModel
     let taskId: String
     @State private var showingAssignPicker = false
@@ -51,7 +51,7 @@ struct ChecklistDetailView: View {
                 // Assignment
                 VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text("Assigned to").font(.subheadline.weight(.semibold))
-                    if userManager.can.assign {
+                    if authManager.can.assign {
                         Button { showingAssignPicker = true } label: {
                             HStack {
                                 if let a = task.assignedTo {
@@ -74,13 +74,13 @@ struct ChecklistDetailView: View {
                     VStack(spacing: Spacing.sm) {
                         if task.status == .pending {
                             Button {
-                                Task { await vm.updateTaskStatus(task, to: .inProgress, by: userManager.currentUser) }
+                                Task { await vm.updateTaskStatus(task, to: .inProgress, by: authManager.currentUser) }
                             } label: {
                                 Label("Mark In Progress", systemImage: "play.circle").frame(maxWidth: .infinity)
                             }.buttonStyle(.borderedProminent).tint(.forestMid)
                         }
                         Button {
-                            Task { await vm.updateTaskStatus(task, to: .complete, by: userManager.currentUser) }
+                            Task { await vm.updateTaskStatus(task, to: .complete, by: authManager.currentUser) }
                         } label: {
                             Label("Mark Complete", systemImage: "checkmark.circle").frame(maxWidth: .infinity)
                         }.buttonStyle(.borderedProminent).tint(.sage)
@@ -92,7 +92,7 @@ struct ChecklistDetailView: View {
             .padding(Spacing.lg)
         }
         .toolbar {
-            if userManager.can.createTask {
+            if authManager.can.createTask {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button { showingEdit = true } label: { Label("Edit Task", systemImage: "pencil") }
@@ -105,12 +105,12 @@ struct ChecklistDetailView: View {
         }
         .sheet(isPresented: $showingAssignPicker) {
             AssignPickerSheet(currentAssigneeId: task.assigneeId) { user in
-                Task { await vm.assign(task: task, to: user, by: userManager.currentUser) }
+                Task { await vm.assign(task: task, to: user, by: authManager.currentUser) }
             }
         }
         .sheet(isPresented: $showingEdit) {
             AddTaskView(editingTask: task)
-                .environmentObject(userManager)
+                .environmentObject(authManager)
                 .environmentObject(vm)
         }
         .confirmationDialog("Delete this task?", isPresented: $showingDeleteConfirm, titleVisibility: .visible) {

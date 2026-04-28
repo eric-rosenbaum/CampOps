@@ -2,7 +2,7 @@ import SwiftUI
 
 struct EquipmentDetailSheet: View {
     @EnvironmentObject private var vm: PoolViewModel
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
 
     let equipment: PoolEquipment
@@ -74,7 +74,7 @@ struct EquipmentDetailSheet: View {
                 LogServiceSheet(equipment: vm.equipment, onSave: { entry in
                     await vm.addServiceLog(entry)
                 })
-                .environmentObject(userManager)
+                .environmentObject(authManager)
             }
             .sheet(item: $editingServiceLog) { entry in
                 LogServiceSheet(
@@ -84,7 +84,7 @@ struct EquipmentDetailSheet: View {
                     onUpdate: { updated in await vm.updateServiceLog(updated) },
                     onDelete: { id in await vm.deleteServiceLog(id: id) }
                 )
-                .environmentObject(userManager)
+                .environmentObject(authManager)
             }
             .sheet(isPresented: $showingFlagIssue) {
                 FlagIssueSheet(equipment: live)

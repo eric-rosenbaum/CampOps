@@ -90,7 +90,7 @@ function rowToTask(row: Record<string, unknown>, activityLog: ActivityEntry[]): 
     status: row.status as ChecklistTask['status'],
     assigneeId: (row.assignee_id as string) ?? null,
     phase: row.phase as 'pre' | 'post',
-    daysRelativeToOpening: row.days_relative_to_opening as number,
+    daysRelativeToOpening: row.days_relative_to_opening as number | null,
     dueDate: (row.due_date as string) ?? null,
     isRecurring: true,
     createdAt: row.created_at as string,
@@ -184,6 +184,7 @@ export async function dbUpdateIssue(id: string, patch: Partial<Issue>) {
 export async function dbAddIssueActivity(issueId: string, entry: ActivityEntry) {
   const { error } = await supabase.from('issue_activity').insert({
     id: entry.id,
+    camp_id: _campId,
     issue_id: issueId,
     user_id: entry.userId === 'system' ? null : entry.userId,
     user_name: entry.userName,
@@ -214,6 +215,7 @@ export async function dbUpdateTask(id: string, patch: Partial<ChecklistTask>) {
 export async function dbAddTaskActivity(taskId: string, entry: ActivityEntry) {
   const { error } = await supabase.from('checklist_activity').insert({
     id: entry.id,
+    camp_id: _campId,
     task_id: taskId,
     user_id: entry.userId === 'system' ? null : entry.userId,
     user_name: entry.userName,

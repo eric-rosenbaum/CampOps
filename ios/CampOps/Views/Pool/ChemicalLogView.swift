@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ChemicalLogView: View {
     @EnvironmentObject private var vm: PoolViewModel
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @State private var chartField: ChemField?
     @State private var editingReading: ChemicalReading?
 
@@ -40,7 +40,7 @@ struct ChemicalLogView: View {
                 onSave: { updated in await vm.updateReading(updated) },
                 onDelete: { id in await vm.deleteReading(id: id) }
             )
-            .environmentObject(userManager)
+            .environmentObject(authManager)
         }
     }
 

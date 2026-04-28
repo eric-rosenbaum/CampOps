@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct IssueDetailView: View {
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var listVM: IssueListViewModel
     @StateObject private var vm: IssueDetailViewModel
     @Environment(\.dismiss) private var dismiss
@@ -49,7 +49,7 @@ struct IssueDetailView: View {
                 // Assignment
                 VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text("Assigned to").font(.subheadline.weight(.semibold))
-                    if userManager.can.assign {
+                    if authManager.can.assign {
                         Button { showingAssignPicker = true } label: {
                             HStack {
                                 if let a = vm.issue.assignedTo {
@@ -88,7 +88,7 @@ struct IssueDetailView: View {
                     VStack(spacing: Spacing.sm) {
                         if vm.issue.status == .assigned {
                             Button {
-                                Task { await vm.updateStatus(.inProgress, by: userManager.currentUser) }
+                                Task { await vm.updateStatus(.inProgress, by: authManager.currentUser) }
                             } label: {
                                 Label("Mark In Progress", systemImage: "wrench.and.screwdriver").frame(maxWidth: .infinity)
                             }.buttonStyle(.borderedProminent).tint(.forestMid)
@@ -104,7 +104,7 @@ struct IssueDetailView: View {
         }
         .navigationTitle("Issue").navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if userManager.can.createIssue {
+            if authManager.can.createIssue {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button { showingEdit = true } label: { Label("Edit Issue", systemImage: "pencil") }
@@ -123,12 +123,12 @@ struct IssueDetailView: View {
         }
         .sheet(isPresented: $showingAssignPicker) {
             AssignPickerSheet(currentAssigneeId: vm.issue.assigneeId) { user in
-                Task { await vm.assign(to: user, by: userManager.currentUser) }
+                Task { await vm.assign(to: user, by: authManager.currentUser) }
             }
         }
         .sheet(isPresented: $showingResolveSheet) {
-            ResolveSheet(canEnterCost: userManager.can.enterActualCost) { cost in
-                Task { await vm.resolve(actualCost: cost, by: userManager.currentUser) }
+            ResolveSheet(canEnterCost: authManager.can.enterActualCost) { cost in
+                Task { await vm.resolve(actualCost: cost, by: authManager.currentUser) }
             }
         }
         .confirmationDialog("Delete this issue?", isPresented: $showingDeleteConfirm, titleVisibility: .visible) {

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct InspectionsView: View {
     @EnvironmentObject private var vm: PoolViewModel
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @State private var editingEntry: PoolInspectionLog?
     @State private var logForInspectionId: String?
     @State private var showingLog = false
@@ -60,7 +60,7 @@ struct InspectionsView: View {
             ) { entry in
                 await vm.addInspectionLog(entry)
             } onDelete: { _ in }
-                .environmentObject(userManager)
+                .environmentObject(authManager)
         }
         .sheet(item: $editingEntry) { entry in
             LogInspectionSheet(
@@ -72,7 +72,7 @@ struct InspectionsView: View {
             } onUpdate: { updated in
                 await vm.updateInspectionLog(updated)
             }
-            .environmentObject(userManager)
+            .environmentObject(authManager)
         }
     }
 

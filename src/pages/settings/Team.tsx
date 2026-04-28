@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { UserPlus, Copy, Check, Trash2, Plus, Link2, Mail } from 'lucide-react';
 import { useCampStore } from '@/store/campStore';
-import type { MemberWithProfile, CampRole, Department, Invitation, JoinCode } from '@/store/campStore';
+import type { CampRole, Department, Invitation, JoinCode } from '@/store/campStore';
 
 const ROLE_LABELS: Record<CampRole, string> = {
   admin: 'Admin', staff: 'Staff', viewer: 'Viewer',
@@ -14,17 +14,15 @@ const DEPT_LABELS: Record<string, string> = {
 
 export function Team() {
   const {
-    currentCamp, currentMember,
-    loadMembers, inviteMember, removeMember, updateMemberRole,
+    currentCamp, currentMember, members,
+    inviteMember, removeMember, updateMemberRole,
     loadInvitations, revokeInvitation,
     loadJoinCodes, generateJoinCode, revokeJoinCode,
   } = useCampStore();
   const campId = currentCamp?.id ?? '';
 
-  const [members, setMembers] = useState<MemberWithProfile[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [joinCodes, setJoinCodes] = useState<JoinCode[]>([]);
-  const [loading, setLoading] = useState(true);
 
   // Invite by email
   const [showInviteForm, setShowInviteForm] = useState(false);
@@ -47,16 +45,13 @@ export function Team() {
 
   const reload = useCallback(async () => {
     if (!campId) return;
-    const [m, inv, codes] = await Promise.all([
-      loadMembers(campId),
+    const [inv, codes] = await Promise.all([
       loadInvitations(campId),
       loadJoinCodes(campId),
     ]);
-    setMembers(m);
     setInvitations(inv);
     setJoinCodes(codes);
-    setLoading(false);
-  }, [campId, loadMembers, loadInvitations, loadJoinCodes]);
+  }, [campId, loadInvitations, loadJoinCodes]);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -121,7 +116,6 @@ export function Team() {
     return `Expires ${d.toLocaleDateString()}`;
   }
 
-  if (loading) return <div className="p-7 text-[13px] text-forest/40">Loading…</div>;
 
   return (
     <div className="p-7 max-w-3xl">

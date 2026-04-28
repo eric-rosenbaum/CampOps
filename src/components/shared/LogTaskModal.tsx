@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from './Modal';
 import { Button } from './Button';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useUIStore } from '@/store/uiStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useCampStore } from '@/store/campStore';
@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth';
 import type { ChecklistTask, Location, Priority } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { addDays } from 'date-fns';
+import { getBuckets, bucketValueToString, stringToBucketValue } from '@/lib/timingBuckets';
 
 const DEFAULT_LOCATIONS = ['Waterfront', 'Dining Hall', 'Main Lodge', 'Health Center', 'Kitchen', 'Athletic Fields', 'Maintenance', 'Other'];
 
@@ -18,7 +19,7 @@ interface FormValues {
   description: string;
   assigneeId: string;
   phase: 'pre' | 'post';
-  daysRelativeToOpening: number;
+  timingBucket: string;
 }
 
 export function LogTaskModal() {
@@ -30,20 +31,30 @@ export function LogTaskModal() {
 
   const [locations, setLocations] = useState<Location[]>(['Waterfront']);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, control, setValue, formState: { errors } } = useForm<FormValues>({
     defaultValues: {
       priority: 'normal',
       phase: activePhase,
-      daysRelativeToOpening: -7,
+      timingBucket: activePhase === 'post' ? '0' : '-7',
     },
   });
 
+  const phase = useWatch({ control, name: 'phase' }) as 'pre' | 'post';
+  const buckets = getBuckets(phase);
+
+  useEffect(() => {
+    setValue('timingBucket', phase === 'post' ? '0' : '-7');
+  }, [phase, setValue]);
+
   function onSubmit(data: FormValues) {
     const now = new Date().toISOString();
-    const daysRel = Number(data.daysRelativeToOpening);
-    const dueDate = season
-      ? addDays(new Date(season.openingDate), daysRel).toISOString().split('T')[0]
-      : null;
+    const daysRel = stringToBucketValue(data.timingBucket);
+
+    let dueDate: string | null = null;
+    if (daysRel !== null && season) {
+      const baseDate = data.phase === 'post' ? season.closingDate : season.openingDate;
+      dueDate = addDays(new Date(baseDate), daysRel).toISOString().split('T')[0];
+    }
 
     const task: ChecklistTask = {
       id: generateId(),
@@ -140,14 +151,14 @@ export function LogTaskModal() {
             </select>
           </div>
           <div>
-            <label className={labelClass}>Days relative to opening *</label>
-            <input
-              type="number"
-              {...register('daysRelativeToOpening', { required: true, valueAsNumber: true })}
-              className={inputClass}
-              placeholder="-7 (7 days before)"
-            />
-            {errors.daysRelativeToOpening && <p className={errorClass}>Required</p>}
+            <label className={labelClass}>Timing *</label>
+            <select {...register('timingBucket', { required: true })} className={inputClass}>
+              {buckets.map((b) => (
+                <option key={bucketValueToString(b.value)} value={bucketValueToString(b.value)}>
+                  {b.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

@@ -1,27 +1,19 @@
 import SwiftUI
 
-/// Toolbar button that lets any user switch the active user from a dropdown menu.
+/// Toolbar avatar button that opens the profile sheet.
 struct UserMenuButton: View {
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
+    @State private var showingProfile = false
 
     var body: some View {
-        Menu {
-            ForEach(CampUser.seedUsers) { user in
-                Button {
-                    userManager.switchUser(to: user)
-                } label: {
-                    HStack {
-                        Text(user.name)
-                        Text("· \(user.role.displayName)")
-                            .foregroundColor(.secondary)
-                    }
-                    if user.id == userManager.currentUser.id {
-                        Image(systemName: "checkmark")
-                    }
-                }
-            }
+        Button {
+            showingProfile = true
         } label: {
-            AvatarCircle(initials: userManager.currentUser.initials, size: 32)
+            AvatarCircle(initials: authManager.currentUser.initials, size: 32)
+        }
+        .sheet(isPresented: $showingProfile) {
+            ProfileView()
+                .environmentObject(authManager)
         }
     }
 }

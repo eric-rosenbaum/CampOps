@@ -151,15 +151,15 @@ function CampDataLoader() {
 function AppBootstrap({ children }: { children: React.ReactNode }) {
   const initialize = useAuthStore((s) => s.initialize);
   const loadMyCamps = useCampStore((s) => s.loadMyCamps);
-  const session = useAuthStore((s) => s.session);
+  const sessionUserId = useAuthStore((s) => s.session?.user?.id ?? null);
 
   useEffect(() => {
     initialize();
   }, [initialize]);
 
   useEffect(() => {
-    if (session) loadMyCamps();
-  }, [session, loadMyCamps]);
+    if (sessionUserId) loadMyCamps();
+  }, [sessionUserId, loadMyCamps]);
 
   return <>{children}</>;
 }

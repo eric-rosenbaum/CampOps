@@ -3,7 +3,7 @@ import SwiftUI
 enum PoolTab: Equatable { case chemical, equipment, inspections, seasonal }
 
 struct PoolView: View {
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var vm: PoolViewModel
     @State private var activeTab: PoolTab = .chemical
     @State private var showingLogReading    = false
@@ -11,10 +11,7 @@ struct PoolView: View {
     @State private var showingLogService    = false
     @State private var showingLogInspection = false
     @State private var addTaskPhase: SeasonalPhase? = nil
-    @State private var showingAddPool          = false
-    @State private var editingPool: CampPool?  = nil
-    @State private var showingDeleteAllConfirm = false
-    @State private var showingScanStrip        = false
+    @State private var showingScanStrip = false
 
     var body: some View {
         NavigationStack {
@@ -39,48 +36,22 @@ struct PoolView: View {
                 if vm.activePoolId != nil {
                     ToolbarItem(placement: .primaryAction) { addButton }
                 }
-                if userManager.can.managePoolChecklist {
-                    ToolbarItem(placement: .primaryAction) {
-                        Menu {
-                            Button {
-                                showingAddPool = true
-                            } label: {
-                                Label("Add pool / waterfront", systemImage: "plus.circle")
-                            }
-                            if vm.activePool != nil {
-                                Button {
-                                    editingPool = vm.activePool
-                                } label: {
-                                    Label("Edit \(vm.activePool?.name ?? "pool")", systemImage: "pencil")
-                                }
-                            }
-                            Divider()
-                            Button(role: .destructive) {
-                                showingDeleteAllConfirm = true
-                            } label: {
-                                Label("Delete all pool data", systemImage: "trash")
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
-                        }
-                    }
-                }
             }
         }
         .sheet(isPresented: $showingLogReading) {
             LogReadingSheet(poolId: vm.activePoolId ?? "", onSave: { await vm.addReading($0) })
-                .environmentObject(userManager)
+                .environmentObject(authManager)
         }
         .sheet(isPresented: $showingScanStrip) {
             ScanStripSheet(poolId: vm.activePoolId ?? "", onSave: { await vm.addReading($0) })
-                .environmentObject(userManager)
+                .environmentObject(authManager)
         }
         .sheet(isPresented: $showingAddEquipment) {
             AddEquipmentSheet(poolId: vm.activePoolId ?? "", onSave: { await vm.addEquipment($0) })
         }
         .sheet(isPresented: $showingLogService) {
             LogServiceSheet(equipment: vm.filteredEquipment) { await vm.addServiceLog($0) }
-                .environmentObject(userManager)
+                .environmentObject(authManager)
         }
         .sheet(isPresented: $showingLogInspection) {
             LogInspectionSheet(
@@ -90,7 +61,7 @@ struct PoolView: View {
                 onAdd: { entry in await vm.addInspectionLog(entry) },
                 onDelete: { _ in }
             )
-            .environmentObject(userManager)
+            .environmentObject(authManager)
         }
         .sheet(item: $addTaskPhase) { phase in
             SeasonalTaskSheet(
@@ -100,24 +71,6 @@ struct PoolView: View {
                 onAdd: { task in await vm.addSeasonalTask(task) },
                 onSave: { task in await vm.updateSeasonalTask(task) }
             )
-        }
-        .sheet(isPresented: $showingAddPool) {
-            AddPoolSheet(vm: vm)
-        }
-        .sheet(item: $editingPool) { pool in
-            AddPoolSheet(vm: vm, editingPool: pool)
-        }
-        .confirmationDialog(
-            "Delete all pool data?",
-            isPresented: $showingDeleteAllConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("Delete all data", role: .destructive) {
-                Task { await vm.deleteAllPoolData() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This will permanently delete all pools, readings, equipment, inspections, and seasonal tasks.")
         }
         .task { await vm.load() }
     }
@@ -240,7 +193,7 @@ struct PoolView: View {
         case .inspections:
             Button { showingLogInspection = true } label: { Image(systemName: "plus") }
         case .seasonal:
-            if userManager.can.managePoolChecklist {
+            if authManager.can.managePoolChecklist {
                 Button { addTaskPhase = .opening } label: { Image(systemName: "plus") }
             } else {
                 EmptyView()

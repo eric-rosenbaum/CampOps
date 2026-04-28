@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SeasonalChecklistView: View {
     @EnvironmentObject private var vm: PoolViewModel
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @Binding var addTaskPhase: SeasonalPhase?
     @State private var editingTask: PoolSeasonalTask?
 
@@ -15,8 +15,8 @@ struct SeasonalChecklistView: View {
                         phase: phase,
                         tasks: vm.tasksForPhase(phase),
                         progress: vm.progressForPhase(phase),
-                        canManage: userManager.can.managePoolChecklist,
-                        onToggle: { id in Task { await vm.toggleSeasonalTask(id: id, userName: userManager.currentUser.name) } },
+                        canManage: authManager.can.managePoolChecklist,
+                        onToggle: { id in Task { await vm.toggleSeasonalTask(id: id, userName: authManager.currentUser.name) } },
                         onEdit: { task in editingTask = task },
                         onDelete: { id in Task { await vm.deleteSeasonalTask(id: id) } },
                         onAdd: { phase in addTaskPhase = phase }

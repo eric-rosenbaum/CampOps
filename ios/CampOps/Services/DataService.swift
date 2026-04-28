@@ -4,22 +4,14 @@ import Supabase
 final class DataService {
     static let shared = DataService()
     private var supabase: SupabaseClient { SupabaseService.shared.client }
+    fileprivate var campId: String { AuthManager.shared.currentCamp?.id ?? "" }
     private init() {}
-
-    // MARK: - Users
-
-    func upsertUsers() async throws {
-        let users = CampUser.seedUsers.map { u in
-            ["id": u.id, "name": u.name, "role": u.role.rawValue, "initials": u.initials]
-        }
-        try await supabase.from("users").upsert(users).execute()
-    }
 
     // MARK: - Issues
 
     func fetchIssues() async throws -> [Issue] {
         let rows: [IssueDBRow] = try await supabase.from("issues")
-            .select().order("created_at", ascending: false).execute().value
+            .select().eq("camp_id", value: campId).order("created_at", ascending: false).execute().value
         let allActivity: [IssueActivityRow] = try await supabase.from("issue_activity")
             .select().order("created_at", ascending: true).execute().value
         let byIssue = Dictionary(grouping: allActivity, by: \.issueId)
@@ -49,9 +41,9 @@ final class DataService {
 
     func fetchTasks() async throws -> [ChecklistTask] {
         let rows: [ChecklistTaskDBRow] = try await supabase.from("checklist_tasks")
-            .select().order("created_at", ascending: true).execute().value
-        let allActivity: [TaskActivityRow] = try await supabase.from("checklist_activity")
-            .select().order("created_at", ascending: true).execute().value
+            .select().eq("camp_id", value: campId).order("created_at", ascending: true).execute().value
+        let allActivity: [TaskActivityRow] = (try? await supabase.from("checklist_activity")
+            .select().order("created_at", ascending: true).execute().value) ?? []
         let byTask = Dictionary(grouping: allActivity, by: \.taskId)
         return rows.map { $0.toTask(activity: (byTask[$0.id] ?? []).map { $0.toEntry() }) }
     }
@@ -79,7 +71,7 @@ final class DataService {
 
     func fetchPools() async throws -> [CampPool] {
         try await supabase.from("pools")
-            .select().order("sort_order", ascending: true).execute().value
+            .select().eq("camp_id", value: campId).order("sort_order", ascending: true).execute().value
     }
 
     func insertPool(_ pool: CampPool) async throws {
@@ -226,7 +218,7 @@ final class DataService {
 
     func fetchAssets() async throws -> [CampAsset] {
         try await supabase.from("camp_assets")
-            .select().order("created_at", ascending: true).execute().value
+            .select().eq("camp_id", value: campId).order("created_at", ascending: true).execute().value
     }
 
     func insertAsset(_ asset: CampAsset) async throws {
@@ -306,7 +298,7 @@ final class DataService {
 
     func fetchLatestSeason() async throws -> Season? {
         let seasons: [Season] = try await supabase.from("seasons")
-            .select().order("created_at", ascending: false).limit(1).execute().value
+            .select().eq("camp_id", value: campId).order("created_at", ascending: false).limit(1).execute().value
         return seasons.first
     }
 
@@ -342,12 +334,13 @@ private struct TaskActivityRow: Codable {
 }
 
 private struct IssueInsert: Encodable {
-    let id, title: String; let description: String?
+    let id, campId, title: String; let description: String?
     let locations: [String]; let priority, status: String
     let assigneeId: String?; let reportedById: String
     let estimatedCost: Double?; let actualCost: Double?; let photoUrl: String?
     enum CodingKeys: String, CodingKey {
         case id, title, description, locations, priority, status
+        case campId        = "camp_id"
         case assigneeId    = "assignee_id"
         case reportedById  = "reported_by_id"
         case estimatedCost = "estimated_cost"
@@ -355,7 +348,8 @@ private struct IssueInsert: Encodable {
         case photoUrl      = "photo_url"
     }
     init(issue: Issue) {
-        id = issue.id; title = issue.title; description = issue.description
+        id = issue.id; campId = DataService.shared.campId
+        title = issue.title; description = issue.description
         locations = issue.locations.map(\.rawValue); priority = issue.priority.rawValue
         status = issue.status.rawValue; assigneeId = issue.assigneeId
         reportedById = issue.reportedById; estimatedCost = issue.estimatedCost
@@ -386,19 +380,21 @@ private struct IssueUpdate: Encodable {
 }
 
 private struct TaskInsert: Encodable {
-    let id, title, description: String
+    let id, campId, title, description: String
     let locations: [String]; let priority, status, phase: String
-    let assigneeId: String?; let daysRelativeToOpening: Int
+    let assigneeId: String?; let daysRelativeToOpening: Int?
     let dueDate: String?; let isRecurring: Bool
     enum CodingKeys: String, CodingKey {
         case id, title, description, locations, priority, status, phase
+        case campId                = "camp_id"
         case assigneeId            = "assignee_id"
         case daysRelativeToOpening = "days_relative_to_opening"
         case dueDate               = "due_date"
         case isRecurring           = "is_recurring"
     }
     init(task: ChecklistTask) {
-        id = task.id; title = task.title; description = task.description
+        id = task.id; campId = DataService.shared.campId
+        title = task.title; description = task.description
         locations = task.locations.map(\.rawValue); priority = task.priority.rawValue
         status = task.status.rawValue; phase = task.phase.rawValue
         assigneeId = task.assigneeId; daysRelativeToOpening = task.daysRelativeToOpening
@@ -427,20 +423,22 @@ private struct TaskUpdate: Encodable {
 // MARK: - Pool encode types
 
 private struct PoolInsert: Encodable {
-    let id, name, type: String
+    let id, campId, name, type: String
     let isActive: Bool
     let notes: String?
     let sortOrder: Int
     let createdAt, updatedAt: Date
     enum CodingKeys: String, CodingKey {
         case id, name, type, notes
+        case campId    = "camp_id"
         case isActive  = "is_active"
         case sortOrder = "sort_order"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
     init(_ p: CampPool) {
-        id = p.id; name = p.name; type = p.type.rawValue
+        id = p.id; campId = DataService.shared.campId
+        name = p.name; type = p.type.rawValue
         isActive = p.isActive; notes = p.notes; sortOrder = p.sortOrder
         createdAt = p.createdAt; updatedAt = p.updatedAt
     }
@@ -688,7 +686,7 @@ private struct SeasonalTaskToggle: Encodable {
 // MARK: - Asset encode types
 
 private struct AssetInsert: Encodable {
-    let id, name, category, subtype, storageLocation, status: String
+    let id, campId, name, category, subtype, storageLocation, status: String
     let make, model, serialNumber, licensePlate, registrationExpiry: String?
     let year: Int?
     let currentOdometer, currentHours: Double?
@@ -701,6 +699,7 @@ private struct AssetInsert: Encodable {
     let createdAt, updatedAt: Date
     enum CodingKeys: String, CodingKey {
         case id, name, category, subtype, make, model, year, notes, status, capacity
+        case campId                 = "camp_id"
         case serialNumber           = "serial_number"
         case licensePlate           = "license_plate"
         case registrationExpiry     = "registration_expiry"
@@ -720,7 +719,8 @@ private struct AssetInsert: Encodable {
         case updatedAt              = "updated_at"
     }
     init(_ a: CampAsset) {
-        id = a.id; name = a.name; category = a.category.rawValue; subtype = a.subtype
+        id = a.id; campId = DataService.shared.campId
+        name = a.name; category = a.category.rawValue; subtype = a.subtype
         storageLocation = a.storageLocation; status = a.status.rawValue
         make = a.make; model = a.model; year = a.year; serialNumber = a.serialNumber
         licensePlate = a.licensePlate; registrationExpiry = a.registrationExpiry

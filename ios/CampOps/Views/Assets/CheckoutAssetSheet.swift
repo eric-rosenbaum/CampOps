@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct CheckoutAssetSheet: View {
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
 
     let asset: CampAsset
@@ -169,7 +169,7 @@ struct CheckoutAssetSheet: View {
             checkoutNotes: notes.isEmpty ? nil : notes,
             returnNotes: nil,
             returnCondition: nil,
-            loggedBy: userManager.currentUser.name,
+            loggedBy: authManager.currentUser.name,
             createdAt: now
         )
     }

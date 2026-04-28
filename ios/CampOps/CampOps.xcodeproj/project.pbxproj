@@ -19,7 +19,11 @@
 		49E5A78C2F81A74E007122C8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A7552F81A74E007122C8 /* ContentView.swift */; };
 		49E5A78D2F81A74E007122C8 /* ActivityEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A75C2F81A74E007122C8 /* ActivityEntry.swift */; };
 		49E5A78E2F81A74E007122C8 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A7812F81A74E007122C8 /* StatusBadge.swift */; };
-		49E5A78F2F81A74E007122C8 /* UserManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A75A2F81A74E007122C8 /* UserManager.swift */; };
+		CC1A2B3C4D5E6F7A8B9C0D1E /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1A2B3C4D5E6F7A8B9C0D1E /* AuthManager.swift */; };
+		CC2B3C4D5E6F7A8B9C0D1E2F /* CampModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD2B3C4D5E6F7A8B9C0D1E2F /* CampModels.swift */; };
+		CC3C4D5E6F7A8B9C0D1E2F3A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD3C4D5E6F7A8B9C0D1E2F3A /* LoginView.swift */; };
+		CC4D5E6F7A8B9C0D1E2F3A4B /* JoinCampView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD4D5E6F7A8B9C0D1E2F3A4B /* JoinCampView.swift */; };
+		CC5E6F7A8B9C0D1E2F3A4B5C /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD5E6F7A8B9C0D1E2F3A4B5C /* SignUpView.swift */; };
 		49E5A7902F81A74E007122C8 /* IssueRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A7772F81A74E007122C8 /* IssueRow.swift */; };
 		49E5A7912F81A74E007122C8 /* ChecklistDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A76E2F81A74E007122C8 /* ChecklistDetailView.swift */; };
 		49E5A7922F81A74E007122C8 /* AddTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A76D2F81A74E007122C8 /* AddTaskView.swift */; };
@@ -88,7 +92,11 @@
 		49E5A7552F81A74E007122C8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		49E5A7572F81A74E007122C8 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		49E5A7582F81A74E007122C8 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
-		49E5A75A2F81A74E007122C8 /* UserManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserManager.swift; sourceTree = "<group>"; };
+		DD1A2B3C4D5E6F7A8B9C0D1E /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		DD2B3C4D5E6F7A8B9C0D1E2F /* CampModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampModels.swift; sourceTree = "<group>"; };
+		DD3C4D5E6F7A8B9C0D1E2F3A /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		DD4D5E6F7A8B9C0D1E2F3A4B /* JoinCampView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinCampView.swift; sourceTree = "<group>"; };
+		DD5E6F7A8B9C0D1E2F3A4B5C /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
 		49E5A75C2F81A74E007122C8 /* ActivityEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityEntry.swift; sourceTree = "<group>"; };
 		49E5A75D2F81A74E007122C8 /* AppEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnums.swift; sourceTree = "<group>"; };
 		49E5A75E2F81A74E007122C8 /* ChecklistTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistTask.swift; sourceTree = "<group>"; };
@@ -236,7 +244,7 @@
 		49E5A75B2F81A74E007122C8 /* Managers */ = {
 			isa = PBXGroup;
 			children = (
-				49E5A75A2F81A74E007122C8 /* UserManager.swift */,
+				DD1A2B3C4D5E6F7A8B9C0D1E /* AuthManager.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -246,6 +254,7 @@
 			children = (
 				49E5A75C2F81A74E007122C8 /* ActivityEntry.swift */,
 				49E5A75D2F81A74E007122C8 /* AppEnums.swift */,
+				DD2B3C4D5E6F7A8B9C0D1E2F /* CampModels.swift */,
 				49E5A75E2F81A74E007122C8 /* ChecklistTask.swift */,
 				49E5A75F2F81A74E007122C8 /* Issue.swift */,
 				8B42C2CB70B347BC90227634 /* PoolModels.swift */,
@@ -373,9 +382,20 @@
 			path = Assets;
 			sourceTree = "<group>";
 		};
+		EE1A2B3C4D5E6F7A8B9C0D1E /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				DD3C4D5E6F7A8B9C0D1E2F3A /* LoginView.swift */,
+				DD4D5E6F7A8B9C0D1E2F3A4B /* JoinCampView.swift */,
+				DD5E6F7A8B9C0D1E2F3A4B5C /* SignUpView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
 		49E5A7842F81A74E007122C8 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				EE1A2B3C4D5E6F7A8B9C0D1E /* Auth */,
 				C1D2E3F4A5B6C7D8E9F0A1B2 /* Assets */,
 				49E5A7722F81A74E007122C8 /* Checklist */,
 				49E5A7742F81A74E007122C8 /* Home */,
@@ -489,7 +509,11 @@
 				49E5A78C2F81A74E007122C8 /* ContentView.swift in Sources */,
 				49E5A78D2F81A74E007122C8 /* ActivityEntry.swift in Sources */,
 				49E5A78E2F81A74E007122C8 /* StatusBadge.swift in Sources */,
-				49E5A78F2F81A74E007122C8 /* UserManager.swift in Sources */,
+				CC1A2B3C4D5E6F7A8B9C0D1E /* AuthManager.swift in Sources */,
+				CC2B3C4D5E6F7A8B9C0D1E2F /* CampModels.swift in Sources */,
+				CC3C4D5E6F7A8B9C0D1E2F3A /* LoginView.swift in Sources */,
+				CC4D5E6F7A8B9C0D1E2F3A4B /* JoinCampView.swift in Sources */,
+				CC5E6F7A8B9C0D1E2F3A4B5C /* SignUpView.swift in Sources */,
 				49E5A7902F81A74E007122C8 /* IssueRow.swift in Sources */,
 				49E5A7912F81A74E007122C8 /* ChecklistDetailView.swift in Sources */,
 				49E5A7922F81A74E007122C8 /* AddTaskView.swift in Sources */,

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SeasonalTaskSheet: View {
+    @EnvironmentObject private var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
 
     let poolId: String
@@ -19,7 +20,7 @@ struct SeasonalTaskSheet: View {
     @State private var isSaving = false
     @State private var showingDeleteConfirm = false
 
-    private var allUsers: [CampUser] { CampUser.seedUsers }
+    private var allUsers: [CampUser] { authManager.members }
 
     var body: some View {
         NavigationStack {

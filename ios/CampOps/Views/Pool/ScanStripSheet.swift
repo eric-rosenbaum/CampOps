@@ -2,7 +2,7 @@ import SwiftUI
 import PhotosUI
 
 struct ScanStripSheet: View {
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
 
     let poolId: String
@@ -243,7 +243,7 @@ struct ScanStripSheet: View {
                     }
                 }
                 LabeledContent("Logged by") {
-                    Text(userManager.currentUser.name).foregroundColor(.secondary)
+                    Text(authManager.currentUser.name).foregroundColor(.secondary)
                 }
             }
 
@@ -337,8 +337,8 @@ struct ScanStripSheet: View {
             cyanuricAcid: cyanuricAcid, waterTemp: waterTemp,
             calciumHardness: Double(calcHardnessText),
             readingTime: readingTime,
-            loggedById: userManager.currentUser.id,
-            loggedByName: userManager.currentUser.name,
+            loggedById: authManager.currentUser.id,
+            loggedByName: authManager.currentUser.name,
             correctiveAction: correctiveAction.isEmpty ? nil : correctiveAction,
             poolStatus: poolStatus, createdAt: Date()
         )

@@ -55,7 +55,7 @@ export interface ChecklistTask {
   status: ChecklistStatus;
   assigneeId: string | null;
   phase: 'pre' | 'post';
-  daysRelativeToOpening: number;
+  daysRelativeToOpening: number | null;
   dueDate: string | null;
   isRecurring: true;
   activityLog: ActivityEntry[];

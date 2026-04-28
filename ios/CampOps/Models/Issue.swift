@@ -55,8 +55,8 @@ struct Issue: Codable, Identifiable, Hashable {
     static func == (lhs: Issue, rhs: Issue) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 
-    var reportedBy: CampUser? { CampUser.find(id: reportedById) }
-    var assignedTo: CampUser? { assigneeId.flatMap { CampUser.find(id: $0) } }
+    var reportedBy: CampUser? { AuthManager.shared.members.first { $0.id == reportedById } }
+    var assignedTo: CampUser? { assigneeId.flatMap { id in AuthManager.shared.members.first { $0.id == id } } }
 }
 
 struct IssueDBRow: Codable {

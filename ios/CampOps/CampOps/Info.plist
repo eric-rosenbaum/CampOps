@@ -15,9 +15,11 @@
 	<string>https://fbfxeupqguzxrbyqojyg.supabase.co</string>
 	<key>SUPABASE_ANON_KEY</key>
 	<string>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZiZnhldXBxZ3V6eHJieXFvanlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMzAyNDksImV4cCI6MjA5MDcwNjI0OX0.Jl0QAxRSqBbZBsIbmkXPRlrnC9PNfsax1456Nqzson4</string>
+	<key>CFBundleDisplayName</key>
+	<string>CampCommand</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>CampOps uses your photo library to attach photos to issues.</string>
+	<string>CampCommand uses your photo library to attach photos to issues.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>CampOps uses your camera to photograph maintenance issues and scan pool chemical test strips.</string>
+	<string>CampCommand uses your camera to photograph maintenance issues and scan pool chemical test strips.</string>
 </dict>
 </plist>

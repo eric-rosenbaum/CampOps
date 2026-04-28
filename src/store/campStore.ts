@@ -187,11 +187,10 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     localStorage.setItem('campcommand_selected_camp_id', campId);
     setCampId(campId);
-    set({ currentCamp: camp, currentMember: member });
-    console.log('[campStore] selectCamp: set currentCamp, now loading members');
+    console.log('[campStore] selectCamp: loading members');
     const members = await get().loadMembers(campId);
     console.log('[campStore] selectCamp: loadMembers done', members.length);
-    set({ members });
+    set({ currentCamp: camp, currentMember: member, members });
     console.log('[campStore] selectCamp: done');
   },
 
@@ -327,6 +326,7 @@ export const useCampStore = create<CampState>((set, get) => ({
       .from('camp_members')
       .update({ is_active: false })
       .eq('id', memberId);
+    set((s) => ({ members: s.members.filter((m) => m.id !== memberId) }));
   },
 
   updateMemberRole: async (memberId, role, department) => {
@@ -334,6 +334,11 @@ export const useCampStore = create<CampState>((set, get) => ({
       .from('camp_members')
       .update({ role, department })
       .eq('id', memberId);
+    set((s) => ({
+      members: s.members.map((m) =>
+        m.id === memberId ? { ...m, role, department } : m
+      ),
+    }));
   },
 
   generateJoinCode: async (campId, role, dept, maxUses, days) => {

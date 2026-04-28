@@ -13,11 +13,10 @@ final class ChecklistViewModel: ObservableObject {
 
     func load() async {
         isLoading = true; errorMessage = nil
-        do {
-            async let t = DataService.shared.fetchTasks()
-            async let s = DataService.shared.fetchLatestSeason()
-            tasks = try await t; season = try await s
-        } catch { errorMessage = error.localizedDescription }
+        async let t = DataService.shared.fetchTasks()
+        async let s = DataService.shared.fetchLatestSeason()
+        if let fetched = try? await t { tasks = fetched }
+        if let fetched = try? await s { season = fetched }
         isLoading = false
     }
 

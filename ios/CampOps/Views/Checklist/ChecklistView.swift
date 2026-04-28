@@ -1,11 +1,10 @@
 import SwiftUI
 
 struct ChecklistView: View {
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var vm: ChecklistViewModel
     @EnvironmentObject private var poolVM: PoolViewModel
     @State private var showingAddTask = false
-    @State private var showingNewSeason = false
     @State private var selectedPhase: ChecklistPhase = .pre
 
     var body: some View {
@@ -13,8 +12,6 @@ struct ChecklistView: View {
             Group {
                 if vm.isLoading && vm.tasks.isEmpty {
                     ProgressView("Loading...").frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if vm.season == nil {
-                    noSeasonState
                 } else {
                     taskList
                 }
@@ -22,24 +19,14 @@ struct ChecklistView: View {
             .navigationTitle("Pre/Post Camp")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) { UserMenuButton() }
-                if userManager.can.createTask, vm.season != nil {
+                if authManager.can.createTask {
                     ToolbarItem(placement: .primaryAction) {
                         Button { showingAddTask = true } label: { Image(systemName: "plus") }
                     }
                 }
-                if userManager.can.activateNewSeason {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button { showingNewSeason = true } label: {
-                            Label("New Season", systemImage: "calendar.badge.plus")
-                        }
-                    }
-                }
             }
             .sheet(isPresented: $showingAddTask) {
-                AddTaskView().environmentObject(userManager).environmentObject(vm)
-            }
-            .sheet(isPresented: $showingNewSeason) {
-                NewSeasonView().environmentObject(userManager).environmentObject(vm)
+                AddTaskView().environmentObject(authManager).environmentObject(vm)
             }
         }
         .task { await vm.load() }
@@ -80,30 +67,17 @@ struct ChecklistView: View {
                     PoolSeasonalSection(
                         phase: selectedPhase,
                         poolVM: poolVM,
-                        currentUserName: userManager.currentUser.name
+                        currentUserName: authManager.currentUser.name
                     )
                 }
                 .padding(.horizontal, Spacing.md).padding(.bottom, Spacing.md)
             }
             .navigationDestination(for: String.self) { taskId in
-                ChecklistDetailView(taskId: taskId).environmentObject(userManager).environmentObject(vm)
+                ChecklistDetailView(taskId: taskId).environmentObject(authManager).environmentObject(vm)
             }
         }
     }
 
-    private var noSeasonState: some View {
-        VStack(spacing: Spacing.md) {
-            Image(systemName: "calendar.badge.exclamationmark").font(.system(size: 48)).foregroundColor(.sageLight)
-            Text("No Active Season").font(.headline)
-            Text("Create a new season to start adding pre/post-camp tasks.")
-                .font(.subheadline).foregroundColor(.secondary).multilineTextAlignment(.center)
-                .padding(.horizontal, Spacing.xl)
-            if userManager.can.activateNewSeason {
-                Button("Create Season") { showingNewSeason = true }
-                    .buttonStyle(.borderedProminent).tint(.sage)
-            }
-        }.frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
 }
 
 // MARK: - Pool seasonal section

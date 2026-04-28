@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ChecklistTask, ChecklistStatus, Priority, Location } from '@/lib/types';
+import { getBuckets, getBucketLabel, bucketValueToString, stringToBucketValue } from '@/lib/timingBuckets';
 
 const DEFAULT_LOCATIONS = ['Waterfront', 'Dining Hall', 'Main Lodge', 'Health Center', 'Kitchen', 'Athletic Fields', 'Maintenance', 'Other'];
 import { useCampStore } from '@/store/campStore';
@@ -28,7 +29,12 @@ export function TaskDetail({ task }: Props) {
   const [editLocations, setEditLocations] = useState<Location[]>(task.locations);
   const [editPriority, setEditPriority] = useState<Priority>(task.priority);
   const [editPhase, setEditPhase] = useState<'pre' | 'post'>(task.phase);
-  const [editDueDate, setEditDueDate] = useState(task.dueDate ?? '');
+  const [editTimingBucket, setEditTimingBucket] = useState(bucketValueToString(task.daysRelativeToOpening));
+
+  function handleEditPhaseChange(newPhase: 'pre' | 'post') {
+    setEditPhase(newPhase);
+    setEditTimingBucket(newPhase === 'post' ? '0' : '-7');
+  }
 
   const assigneeName = memberName(task.assigneeId);
 
@@ -63,13 +69,14 @@ export function TaskDetail({ task }: Props) {
   }
 
   function handleSaveEdit() {
+    const daysRel = stringToBucketValue(editTimingBucket);
     updateTask(task.id, {
       title: editTitle.trim(),
       description: editDescription,
       locations: editLocations,
       priority: editPriority,
       phase: editPhase,
-      dueDate: editDueDate || null,
+      daysRelativeToOpening: daysRel,
     });
     addActivityEntry(task.id, {
       id: generateId(), userId: currentUser.id, userName: currentUser.name,
@@ -106,7 +113,7 @@ export function TaskDetail({ task }: Props) {
           </div>
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Phase</label>
-            <select value={editPhase} onChange={(e) => setEditPhase(e.target.value as 'pre' | 'post')} className={selectClass}>
+            <select value={editPhase} onChange={(e) => handleEditPhaseChange(e.target.value as 'pre' | 'post')} className={selectClass}>
               <option value="pre">Pre-camp</option>
               <option value="post">Post-camp</option>
             </select>
@@ -140,8 +147,12 @@ export function TaskDetail({ task }: Props) {
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Due date</label>
-            <input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} className={inputClass} />
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Timing</label>
+            <select value={editTimingBucket} onChange={(e) => setEditTimingBucket(e.target.value)} className={selectClass}>
+              {getBuckets(editPhase).map((b) => (
+                <option key={bucketValueToString(b.value)} value={bucketValueToString(b.value)}>{b.label}</option>
+              ))}
+            </select>
           </div>
         </div>
         <div className="px-5 py-4 border-t border-border">
@@ -239,12 +250,7 @@ export function TaskDetail({ task }: Props) {
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 mb-1.5">Due date</p>
           <p className="text-[13px] text-forest/80">{task.dueDate ? formatDate(task.dueDate) : 'No due date set'}</p>
-          {task.daysRelativeToOpening < 0 && (
-            <p className="text-[11px] text-forest/45 mt-0.5">{Math.abs(task.daysRelativeToOpening)} days before opening</p>
-          )}
-          {task.daysRelativeToOpening > 0 && (
-            <p className="text-[11px] text-forest/45 mt-0.5">{task.daysRelativeToOpening} days after closing</p>
-          )}
+          <p className="text-[11px] text-forest/45 mt-0.5">{getBucketLabel(task.phase, task.daysRelativeToOpening)}</p>
         </div>
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 mb-1.5">Logged</p>

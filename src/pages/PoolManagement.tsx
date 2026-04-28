@@ -67,9 +67,9 @@ export function PoolManagement() {
         subtitle={subtitle}
         actions={
           <div className="flex gap-2">
-            {isAdmin && (
-              <Button variant="ghost" size="sm" onClick={() => openAddEditPoolModal(pool?.id)}>
-                {pool ? 'Edit pool' : 'Manage pools'}
+            {isAdmin && pool && (
+              <Button variant="ghost" size="sm" onClick={() => openAddEditPoolModal(pool.id)}>
+                Edit pool
               </Button>
             )}
             {pool && !isWaterfront && (
@@ -114,16 +114,6 @@ export function PoolManagement() {
             </button>
           ))}
 
-          {/* Add pool shortcut */}
-          {isAdmin && (
-            <button
-              onClick={() => openAddEditPoolModal()}
-              className="px-3 py-3 text-body text-forest/30 border-b-2 border-transparent hover:text-forest/60 transition-colors flex-shrink-0"
-              title="Add pool"
-            >
-              +
-            </button>
-          )}
         </div>
       </div>
 
@@ -163,17 +153,9 @@ export function PoolManagement() {
               <Waves className="w-7 h-7 text-stone-400" />
             </div>
             <h3 className="text-[15px] font-semibold text-forest mb-1.5">No pools set up yet</h3>
-            <p className="text-[13px] text-forest/50 mb-5 leading-relaxed">
-              Add your first pool or waterfront location to start logging chemical readings, inspections, and equipment.
+            <p className="text-[13px] text-forest/50 leading-relaxed">
+              Add pools and waterfront locations from <strong>Camp Info → Pools & Waterfront</strong>.
             </p>
-            {isAdmin && (
-              <button
-                onClick={() => openAddEditPoolModal()}
-                className="bg-forest text-cream text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-forest/90 transition-colors"
-              >
-                Add pool location
-              </button>
-            )}
           </div>
         )}
         {pools.length > 0 && !activePoolId && <AllPoolsDashboard />}

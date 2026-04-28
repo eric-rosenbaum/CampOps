@@ -73,7 +73,7 @@ export function Sidebar() {
               Settings
             </p>
             {[
-              { path: '/settings', label: 'Camp Settings', end: true },
+              { path: '/settings', label: 'Camp Info', end: true },
               { path: '/settings/team', label: 'Team', end: false },
             ].map((item) => (
               <NavLink

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct LogIssueView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @StateObject private var vm: LogIssueViewModel
     var onSave: (Issue) -> Void
 
@@ -36,7 +36,7 @@ struct LogIssueView: View {
                 Section("Assignment") {
                     Picker("Assign to", selection: $vm.assigneeId) {
                         Text("Unassigned").tag(String?.none)
-                        ForEach(CampUser.seedUsers, id: \.id) { Text($0.name).tag(Optional($0.id)) }
+                        ForEach(authManager.members, id: \.id) { Text($0.name).tag(Optional($0.id)) }
                     }
                 }
                 Section("Cost") {
@@ -65,7 +65,7 @@ struct LogIssueView: View {
 
     private func saveIssue() async {
         do {
-            let saved = try await vm.save(reportedBy: userManager.currentUser)
+            let saved = try await vm.save(reportedBy: authManager.currentUser)
             onSave(saved); dismiss()
         } catch { vm.errorMessage = error.localizedDescription }
     }

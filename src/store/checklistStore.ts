@@ -21,6 +21,7 @@ interface ChecklistStore {
 
   setTasks: (tasks: ChecklistTask[]) => void;
   setSeason: (s: Season) => void;
+  editSeason: (season: Season) => void;
   setPhase: (p: 'pre' | 'post') => void;
   setFilter: (f: FilterType) => void;
   setSearch: (q: string) => void;
@@ -37,8 +38,10 @@ interface ChecklistStore {
   completionByLocation: (phase?: 'pre' | 'post') => Record<string, { total: number; complete: number }>;
 }
 
-function computeDueDate(openingDate: string, daysRelative: number): string {
-  return addDays(new Date(openingDate), daysRelative).toISOString().split('T')[0];
+function computeDueDate(season: { openingDate: string; closingDate: string }, phase: 'pre' | 'post', daysRelative: number | null): string | null {
+  if (daysRelative === null) return null;
+  const baseDate = phase === 'post' ? season.closingDate : season.openingDate;
+  return addDays(new Date(baseDate), daysRelative).toISOString().split('T')[0];
 }
 
 export const useChecklistStore = create<ChecklistStore>((set, get) => ({
@@ -61,6 +64,11 @@ export const useChecklistStore = create<ChecklistStore>((set, get) => ({
   },
 
   setSeason: (s) => set({ season: s }),
+
+  editSeason: (season) => {
+    set({ season });
+    dbUpsertSeason(season);
+  },
 
   setPhase: (p) => {
     set({ activePhase: p, filter: 'all', searchQuery: '' });
@@ -132,7 +140,7 @@ export const useChecklistStore = create<ChecklistStore>((set, get) => ({
     const updatedTasks = get().tasks.map((t) => ({
       ...t,
       status: 'pending' as const,
-      dueDate: computeDueDate(season.openingDate, t.daysRelativeToOpening),
+      dueDate: computeDueDate(season, t.phase, t.daysRelativeToOpening),
       updatedAt: now,
       activityLog: [
         {

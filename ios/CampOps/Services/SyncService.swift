@@ -8,7 +8,7 @@ final class SyncService: ObservableObject {
     static let shared = SyncService()
     @Published var isOnline = true
     private let monitor = NWPathMonitor()
-    private let monitorQueue = DispatchQueue(label: "dev.campops.network")
+    private let monitorQueue = DispatchQueue(label: "dev.campcommand.network")
     private var channel: RealtimeChannelV2?
     private init() { startNetworkMonitor() }
 

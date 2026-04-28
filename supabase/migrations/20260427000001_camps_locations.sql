@@ -1,0 +1,1 @@
+ALTER TABLE camps ADD COLUMN IF NOT EXISTS locations text[] NOT NULL DEFAULT '{}';

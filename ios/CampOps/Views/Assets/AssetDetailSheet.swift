@@ -5,11 +5,10 @@ enum AssetDetailTab { case overview, checkouts, service, maintenance }
 struct AssetDetailSheet: View {
     let assetId: String
     @EnvironmentObject private var vm: AssetViewModel
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
 
     @State private var activeTab: AssetDetailTab = .overview
-    @State private var editingAsset = false
     @State private var checkingOut = false
     @State private var returningCheckout: AssetCheckout? = nil
     @State private var editingCheckout: AssetCheckout? = nil
@@ -41,18 +40,13 @@ struct AssetDetailSheet: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
-                        Button { editingAsset = true } label: {
-                            Label("Edit Asset", systemImage: "pencil")
-                        }
                         if asset?.status == .available {
                             Button { checkingOut = true } label: {
                                 Label("Check Out", systemImage: "arrow.up.right")
                             }
                         }
-                        Button(role: .destructive) {
-                            Task { await vm.deleteAsset(id: assetId); dismiss() }
-                        } label: {
-                            Label("Delete Asset", systemImage: "trash")
+                        Button { loggingService = true } label: {
+                            Label("Log Service", systemImage: "wrench")
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -60,45 +54,39 @@ struct AssetDetailSheet: View {
                 }
             }
         }
-        .sheet(isPresented: $editingAsset) {
-            if let asset {
-                AddAssetSheet(editing: asset, onSave: { await vm.updateAsset($0) })
-                    .environmentObject(userManager)
-            }
-        }
         .sheet(isPresented: $checkingOut) {
             if let asset {
                 CheckoutAssetSheet(asset: asset, editing: nil,
                     onSave: { await vm.checkOutAsset($0) })
-                    .environmentObject(userManager)
+                    .environmentObject(authManager)
             }
         }
         .sheet(item: $returningCheckout) { co in
             if let asset {
                 ReturnAssetSheet(asset: asset, checkout: co,
                     onSave: { await vm.returnAsset($0) })
-                    .environmentObject(userManager)
+                    .environmentObject(authManager)
             }
         }
         .sheet(item: $editingCheckout) { co in
             if let asset {
                 CheckoutAssetSheet(asset: asset, editing: co,
                     onSave: { await vm.updateCheckout($0) })
-                    .environmentObject(userManager)
+                    .environmentObject(authManager)
             }
         }
         .sheet(isPresented: $loggingService) {
             if let asset {
                 LogAssetServiceSheet(asset: asset, editing: nil,
                     onSave: { await vm.addServiceRecord($0) })
-                    .environmentObject(userManager)
+                    .environmentObject(authManager)
             }
         }
         .sheet(item: $editingServiceRecord) { record in
             if let asset {
                 LogAssetServiceSheet(asset: asset, editing: record,
                     onSave: { await vm.updateServiceRecord($0) })
-                    .environmentObject(userManager)
+                    .environmentObject(authManager)
             }
         }
         .sheet(item: $addingTask) { phase in
@@ -197,7 +185,7 @@ struct AssetDetailSheet: View {
     func tabContent(asset: CampAsset) -> some View {
         switch activeTab {
         case .overview:
-            OverviewTab(asset: asset)
+            OverviewTab(asset: asset, onCheckout: asset.status == .available ? { checkingOut = true } : nil)
         case .checkouts:
             CheckoutsTab(
                 asset: asset,
@@ -222,7 +210,7 @@ struct AssetDetailSheet: View {
                 tasks: vm.maintenanceTasks(for: assetId),
                 onAdd: { addingTask = $0 },
                 onEdit: { editingTask = $0 },
-                onToggle: { id in Task { await vm.toggleMaintenanceTask(id: id, userName: userManager.currentUser.name) } },
+                onToggle: { id in Task { await vm.toggleMaintenanceTask(id: id, userName: authManager.currentUser.name) } },
                 onDelete: { id in Task { await vm.deleteMaintenanceTask(id: id) } }
             )
         }
@@ -233,10 +221,23 @@ struct AssetDetailSheet: View {
 
 private struct OverviewTab: View {
     let asset: CampAsset
+    var onCheckout: (() -> Void)? = nil
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                if let onCheckout {
+                    Button(action: onCheckout) {
+                        Label("Check Out", systemImage: "arrow.up.right")
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .foregroundStyle(.white)
+                            .background(Color.sage)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
                 if asset.tracksOdometer || asset.tracksHours {
                     DetailSection(title: "Usage") {
                         if asset.tracksOdometer, let odo = asset.currentOdometer {

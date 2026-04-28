@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ReturnAssetSheet: View {
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
 
     let asset: CampAsset

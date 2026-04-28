@@ -1,19 +1,5 @@
 import SwiftUI
 
-enum UserRole: String, Codable {
-    case doe = "doe"
-    case facilitiesManager = "facilities_manager"
-    case maintenanceStaff = "maintenance_staff"
-
-    var displayName: String {
-        switch self {
-        case .doe: return "Ops Director"
-        case .facilitiesManager: return "Facilities Manager"
-        case .maintenanceStaff: return "Maintenance Staff"
-        }
-    }
-}
-
 enum Priority: String, Codable, CaseIterable {
     case urgent = "urgent"
     case high = "high"
@@ -83,15 +69,15 @@ enum ChecklistStatus: String, Codable, CaseIterable {
 }
 
 enum CampLocation: String, Codable, CaseIterable {
-    case waterfront = "Waterfront"
-    case diningHall = "Dining Hall"
-    case cabins = "Cabins"
-    case artBarn = "Art Barn"
-    case aquatics = "Aquatics"
+    case waterfront     = "Waterfront"
+    case diningHall     = "Dining Hall"
+    case cabins         = "Cabins"
+    case artBarn        = "Art Barn"
+    case aquatics       = "Aquatics"
     case athleticFields = "Athletic Fields"
-    case mainLodge = "Main Lodge"
-    case healthCenter = "Health Center"
-    case other = "Other"
+    case mainLodge      = "Main Lodge"
+    case healthCenter   = "Health Center"
+    case other          = "Other"
 
     var displayName: String { rawValue }
 }

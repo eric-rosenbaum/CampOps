@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LogServiceSheet: View {
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
 
     let equipment: [PoolEquipment]
@@ -113,7 +113,7 @@ struct LogServiceSheet: View {
                 nextServiceDue = d
             }
         } else {
-            performedBy = userManager.currentUser.name
+            performedBy = authManager.currentUser.name
         }
     }
 

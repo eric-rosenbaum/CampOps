@@ -3,11 +3,10 @@ import SwiftUI
 enum AssetTab: Equatable { case all, checkedOut }
 
 struct AssetView: View {
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var vm: AssetViewModel
     @State private var selectedCategory: AssetCategory? = nil
     @State private var activeTab: AssetTab = .all
-    @State private var addingAsset = false
     @State private var editingAsset: CampAsset? = nil
     @State private var detailAsset: CampAsset? = nil
     @State private var checkoutAsset: CampAsset? = nil
@@ -30,30 +29,21 @@ struct AssetView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) { UserMenuButton() }
-                ToolbarItem(placement: .primaryAction) {
-                    Button { addingAsset = true } label: {
-                        Image(systemName: "plus")
-                    }
-                }
             }
-        }
-        .sheet(isPresented: $addingAsset) {
-            AddAssetSheet(editing: nil, onSave: { await vm.addAsset($0) })
-                .environmentObject(userManager)
         }
         .sheet(item: $editingAsset) { asset in
             AddAssetSheet(editing: asset, onSave: { await vm.updateAsset($0) })
-                .environmentObject(userManager)
+                .environmentObject(authManager)
         }
         .sheet(item: $detailAsset) { asset in
             AssetDetailSheet(assetId: asset.id)
                 .environmentObject(vm)
-                .environmentObject(userManager)
+                .environmentObject(authManager)
         }
         .sheet(item: $checkoutAsset) { asset in
             CheckoutAssetSheet(asset: asset, editing: nil,
                 onSave: { await vm.checkOutAsset($0) })
-                .environmentObject(userManager)
+                .environmentObject(authManager)
         }
         .task { await vm.load() }
     }
@@ -120,24 +110,6 @@ struct AssetView: View {
                         ForEach(displayedAssets) { asset in
                             AssetCard(asset: asset, checkout: vm.activeCheckout(for: asset.id))
                                 .onTapGesture { detailAsset = asset }
-                                .contextMenu {
-                                    Button { detailAsset = asset } label: {
-                                        Label("View Details", systemImage: "info.circle")
-                                    }
-                                    if asset.status == .available {
-                                        Button { checkoutAsset = asset } label: {
-                                            Label("Check Out", systemImage: "arrow.up.right")
-                                        }
-                                    }
-                                    Button { editingAsset = asset } label: {
-                                        Label("Edit Asset", systemImage: "pencil")
-                                    }
-                                    Button(role: .destructive) {
-                                        Task { await vm.deleteAsset(id: asset.id) }
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
                         }
                     }
                     .padding(16)
@@ -196,7 +168,7 @@ struct AssetCard: View {
                 AssetStatusBadge(status: asset.status)
             }
 
-            if asset.tracksOdometer || asset.tracksHours || asset.storageLocation.isEmpty == false {
+            if asset.tracksOdometer || asset.tracksHours || !asset.storageLocation.isEmpty {
                 HStack(spacing: 12) {
                     if !asset.storageLocation.isEmpty {
                         Label(asset.storageLocation, systemImage: "mappin")
@@ -230,10 +202,7 @@ struct AssetCard: View {
         }
         .padding(14)
         .background(Color.white)
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.border, lineWidth: 1)
-        )
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.border, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }

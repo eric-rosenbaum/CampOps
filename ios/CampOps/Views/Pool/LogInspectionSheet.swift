@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LogInspectionSheet: View {
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
 
     let poolId: String
@@ -93,7 +93,7 @@ struct LogInspectionSheet: View {
     }
 
     private func setupInitialValues() {
-        conductedBy = userManager.currentUser.name
+        conductedBy = authManager.currentUser.name
         if let e = editing {
             selectedId = e.inspectionId ?? ""
             if let d = e.inspectionDate.asLocalDate { inspectionDate = d }

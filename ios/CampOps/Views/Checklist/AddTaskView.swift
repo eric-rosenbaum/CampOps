@@ -1,8 +1,46 @@
 import SwiftUI
 
+struct TimingOption: Identifiable, Hashable {
+    let id: String
+    let label: String
+    let value: Int?
+
+    init(label: String, value: Int?) {
+        self.id = value.map { String($0) } ?? "none"
+        self.label = label
+        self.value = value
+    }
+}
+
+private let preBuckets: [TimingOption] = [
+    .init(label: "No due date", value: nil),
+    .init(label: "1 month before opening", value: -30),
+    .init(label: "2 weeks before opening", value: -14),
+    .init(label: "1 week before opening", value: -7),
+    .init(label: "3 days before opening", value: -3),
+    .init(label: "Opening day", value: 0),
+]
+
+private let postBuckets: [TimingOption] = [
+    .init(label: "No due date", value: nil),
+    .init(label: "Closing day", value: 0),
+    .init(label: "3 days after closing", value: 3),
+    .init(label: "1 week after closing", value: 7),
+    .init(label: "2 weeks after closing", value: 14),
+    .init(label: "1 month after closing", value: 30),
+]
+
+private func bucketsFor(_ phase: ChecklistPhase) -> [TimingOption] {
+    phase == .pre ? preBuckets : postBuckets
+}
+
+private func matchBucket(_ value: Int?, phase: ChecklistPhase) -> TimingOption {
+    bucketsFor(phase).first { $0.value == value } ?? bucketsFor(phase)[0]
+}
+
 struct AddTaskView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var vm: ChecklistViewModel
 
     var editingTask: ChecklistTask? = nil
@@ -13,12 +51,12 @@ struct AddTaskView: View {
     @State private var locations: [CampLocation] = []
     @State private var priority: Priority = .normal
     @State private var assigneeId: String? = nil
-    @State private var dueDateString = ""
-    @State private var daysRelative = ""
+    @State private var selectedTiming: TimingOption = preBuckets[0]
     @State private var isSaving = false
 
     private var isValid: Bool { !title.trimmingCharacters(in: .whitespaces).isEmpty }
     private var navTitle: String { editingTask == nil ? "Add Task" : "Edit Task" }
+    private var buckets: [TimingOption] { bucketsFor(phase) }
 
     var body: some View {
         NavigationStack {
@@ -31,6 +69,9 @@ struct AddTaskView: View {
                     Picker("Phase", selection: $phase) {
                         Text("Pre-camp").tag(ChecklistPhase.pre)
                         Text("Post-camp").tag(ChecklistPhase.post)
+                    }
+                    .onChange(of: phase) { _, newPhase in
+                        selectedTiming = matchBucket(selectedTiming.value, phase: newPhase)
                     }
                     NavigationLink {
                         LocationPickerView(selected: $locations)
@@ -49,12 +90,15 @@ struct AddTaskView: View {
                 Section("Assignment") {
                     Picker("Assign to", selection: $assigneeId) {
                         Text("Unassigned").tag(String?.none)
-                        ForEach(CampUser.seedUsers, id: \.id) { Text($0.name).tag(Optional($0.id)) }
+                        ForEach(authManager.members, id: \.id) { Text($0.name).tag(Optional($0.id)) }
                     }
                 }
                 Section("Schedule") {
-                    TextField("Due date (YYYY-MM-DD)", text: $dueDateString).keyboardType(.numbersAndPunctuation)
-                    TextField("Days relative to opening (e.g. -7)", text: $daysRelative).keyboardType(.numbersAndPunctuation)
+                    Picker("Timing", selection: $selectedTiming) {
+                        ForEach(buckets) { option in
+                            Text(option.label).tag(option)
+                        }
+                    }
                 }
             }
             .navigationTitle(navTitle).navigationBarTitleDisplayMode(.inline)
@@ -73,8 +117,8 @@ struct AddTaskView: View {
         guard let t = editingTask else { return }
         title = t.title; description = t.description
         phase = t.phase; locations = t.locations; priority = t.priority
-        assigneeId = t.assigneeId; dueDateString = t.dueDate ?? ""
-        daysRelative = String(t.daysRelativeToOpening)
+        assigneeId = t.assigneeId
+        selectedTiming = matchBucket(t.daysRelativeToOpening, phase: t.phase)
     }
 
     private func save() async {
@@ -85,18 +129,17 @@ struct AddTaskView: View {
             updated.description = description
             updated.phase = phase; updated.locations = locations; updated.priority = priority
             updated.assigneeId = assigneeId
-            updated.dueDate = dueDateString.isEmpty ? nil : dueDateString
-            updated.daysRelativeToOpening = Int(daysRelative) ?? existing.daysRelativeToOpening
-            await vm.updateTask(updated, by: userManager.currentUser)
+            updated.daysRelativeToOpening = selectedTiming.value
+            updated.dueDate = nil
+            await vm.updateTask(updated, by: authManager.currentUser)
         } else {
             let task = ChecklistTask(
                 title: title.trimmingCharacters(in: .whitespaces),
                 description: description,
                 locations: locations, priority: priority,
                 assigneeId: assigneeId, phase: phase,
-                daysRelativeToOpening: Int(daysRelative) ?? 0,
-                dueDate: dueDateString.isEmpty ? nil : dueDateString)
-            await vm.addTask(task, by: userManager.currentUser)
+                daysRelativeToOpening: selectedTiming.value)
+            await vm.addTask(task, by: authManager.currentUser)
         }
         isSaving = false; dismiss()
     }

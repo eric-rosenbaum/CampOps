@@ -9,7 +9,7 @@ struct ChecklistTask: Codable, Identifiable, Hashable {
     var status: ChecklistStatus
     var assigneeId: String?
     var phase: ChecklistPhase
-    var daysRelativeToOpening: Int
+    var daysRelativeToOpening: Int?
     var dueDate: String?
     var isRecurring: Bool
     let createdAt: Date
@@ -36,7 +36,7 @@ struct ChecklistTask: Codable, Identifiable, Hashable {
         status: ChecklistStatus = .pending,
         assigneeId: String? = nil,
         phase: ChecklistPhase,
-        daysRelativeToOpening: Int = 0,
+        daysRelativeToOpening: Int? = nil,
         dueDate: String? = nil,
         isRecurring: Bool = true,
         createdAt: Date = Date(),
@@ -54,7 +54,7 @@ struct ChecklistTask: Codable, Identifiable, Hashable {
     static func == (lhs: ChecklistTask, rhs: ChecklistTask) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 
-    var assignedTo: CampUser? { assigneeId.flatMap { CampUser.find(id: $0) } }
+    var assignedTo: CampUser? { assigneeId.flatMap { id in AuthManager.shared.members.first { $0.id == id } } }
     var dueDateRelative: (label: String, overdue: Bool)? { dueDate?.relativeDueDate }
 }
 
@@ -67,7 +67,7 @@ struct ChecklistTaskDBRow: Codable {
     var status: ChecklistStatus
     var assigneeId: String?
     var phase: ChecklistPhase
-    var daysRelativeToOpening: Int
+    var daysRelativeToOpening: Int?
     var dueDate: String?
     var isRecurring: Bool
     let createdAt: Date

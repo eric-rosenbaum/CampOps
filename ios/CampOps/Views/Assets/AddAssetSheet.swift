@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AddAssetSheet: View {
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
 
     let editing: CampAsset?
@@ -39,7 +39,7 @@ struct AddAssetSheet: View {
 
     var isWatercraft: Bool { category == .watercraft }
 
-    var canSave: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty && !storageLocation.trimmingCharacters(in: .whitespaces).isEmpty }
+    var canSave: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty && !storageLocation.isEmpty }
 
     var body: some View {
         NavigationStack {
@@ -69,7 +69,17 @@ struct AddAssetSheet: View {
                         }
                     }
 
-                    TextField("Storage location", text: $storageLocation)
+                    let locations = authManager.currentCamp?.locations ?? []
+                    if locations.isEmpty {
+                        TextField("Storage location", text: $storageLocation)
+                    } else {
+                        Picker("Storage location", selection: $storageLocation) {
+                            Text("Select…").tag("")
+                            ForEach(locations, id: \.self) { loc in
+                                Text(loc).tag(loc)
+                            }
+                        }
+                    }
                 }
 
                 Section("Details") {

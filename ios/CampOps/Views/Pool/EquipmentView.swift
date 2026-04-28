@@ -2,7 +2,7 @@ import SwiftUI
 
 struct EquipmentView: View {
     @EnvironmentObject private var vm: PoolViewModel
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @Binding var showingLogService: Bool
     @State private var detailEquipment: PoolEquipment?
 
@@ -35,7 +35,7 @@ struct EquipmentView: View {
         .sheet(item: $detailEquipment) { equip in
             EquipmentDetailSheet(equipment: equip)
                 .environmentObject(vm)
-                .environmentObject(userManager)
+                .environmentObject(authManager)
         }
     }
 

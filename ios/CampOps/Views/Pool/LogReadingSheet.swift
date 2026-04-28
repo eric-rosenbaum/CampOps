@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LogReadingSheet: View {
-    @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
 
     let poolId: String
@@ -50,7 +50,7 @@ struct LogReadingSheet: View {
                         }
                     }
                     LabeledContent("Logged by") {
-                        Text(editing?.loggedByName ?? userManager.currentUser.name)
+                        Text(editing?.loggedByName ?? authManager.currentUser.name)
                             .foregroundColor(.secondary)
                     }
                 }
@@ -109,8 +109,8 @@ struct LogReadingSheet: View {
             cyanuricAcid: cyanuricAcid, waterTemp: waterTemp,
             calciumHardness: Double(calcHardnessText),
             readingTime: readingTime,
-            loggedById: editing?.loggedById ?? userManager.currentUser.id,
-            loggedByName: editing?.loggedByName ?? userManager.currentUser.name,
+            loggedById: editing?.loggedById ?? authManager.currentUser.id,
+            loggedByName: editing?.loggedByName ?? authManager.currentUser.name,
             correctiveAction: correctiveAction.isEmpty ? nil : correctiveAction,
             poolStatus: poolStatus,
             createdAt: editing?.createdAt ?? Date()

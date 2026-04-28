@@ -26,7 +26,7 @@ export function SeasonModal() {
   function onSubmit(data: FormValues) {
     activateNewSeason(
       {
-        id: `s${Date.now()}`,
+        id: crypto.randomUUID(),
         name: data.name,
         openingDate: data.openingDate,
         closingDate: data.closingDate,

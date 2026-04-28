@@ -8,12 +8,7 @@ struct UserPickerRow: View {
         Button(action: onTap) {
             HStack {
                 AvatarCircle(initials: user?.initials ?? "—", size: 32)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(user?.name ?? "Unassigned").font(.subheadline)
-                    if let role = user?.role {
-                        Text(role.displayName).font(.caption).foregroundColor(.secondary)
-                    }
-                }
+                Text(user?.name ?? "Unassigned").font(.subheadline)
                 Spacer()
                 if isSelected { Image(systemName: "checkmark").foregroundColor(.sage) }
             }

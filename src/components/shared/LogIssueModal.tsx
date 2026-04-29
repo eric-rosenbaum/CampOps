@@ -33,7 +33,7 @@ export function LogIssueModal() {
   const campLocations = useCampStore((s) => s.currentCamp?.locations ?? DEFAULT_LOCATIONS);
   const editingIssue = editingIssueId ? issues.find((i) => i.id === editingIssueId) : null;
 
-  const [locations, setLocations] = useState<Location[]>(['Waterfront']);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [removeExistingPhoto, setRemoveExistingPhoto] = useState(false);
@@ -54,7 +54,7 @@ export function LogIssueModal() {
     setRemoveExistingPhoto(false);
 
     if (editingIssue) {
-      setLocations(editingIssue.locations.length > 0 ? editingIssue.locations : ['Waterfront']);
+      setLocations(editingIssue.locations);
       reset({
         title: editingIssue.title,
         priority: editingIssue.priority,
@@ -66,7 +66,7 @@ export function LogIssueModal() {
         recurringInterval: editingIssue.recurringInterval ?? 'weekly',
       });
     } else {
-      setLocations(['Waterfront']);
+      setLocations([]);
       reset({
         priority: 'normal',
         isRecurring: false,
@@ -233,7 +233,7 @@ export function LogIssueModal() {
         </div>
 
         <div>
-          <label className={labelClass}>Location * {locations.length === 0 && <span className="text-red text-[11px]">Select at least one</span>}</label>
+          <label className={labelClass}>Location</label>
           <div className="grid grid-cols-3 gap-1.5 p-2.5 bg-white border border-border rounded-btn">
             {campLocations.map((l) => (
               <label key={l} className="flex items-center gap-1.5 text-[13px] cursor-pointer select-none">

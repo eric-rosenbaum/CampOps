@@ -354,13 +354,16 @@ export async function dbDeleteChemicalReading(id: string) {
 }
 
 export async function dbAddEquipment(e: PoolEquipment) {
-  const { error } = await supabase.from('pool_equipment').insert({
+  const row = {
     id: e.id, camp_id: _campId, pool_id: e.poolId, name: e.name, type: e.type, status: e.status,
     status_detail: e.statusDetail, last_serviced: e.lastServiced,
     next_service_due: e.nextServiceDue, vendor: e.vendor,
     specs: e.specs, created_at: e.createdAt, updated_at: e.updatedAt,
-  });
-  if (error) console.error('dbAddEquipment error:', error.message);
+  };
+  console.log('[dbAddEquipment] inserting', row);
+  const { data, error } = await supabase.from('pool_equipment').insert(row).select();
+  if (error) console.error('[dbAddEquipment] error:', error.code, error.message, error.details, error.hint);
+  else console.log('[dbAddEquipment] success:', data);
 }
 
 export async function dbUpdateEquipment(e: PoolEquipment) {
@@ -415,12 +418,15 @@ export async function dbUpdateInspection(insp: PoolInspection) {
 
 export async function dbAddInspectionLog(entry: InspectionLogEntry, knownInspectionIds: string[]) {
   const inspectionId = knownInspectionIds.includes(entry.inspectionId) ? entry.inspectionId : null;
-  const { error } = await supabase.from('pool_inspection_log').insert({
+  const row = {
     id: entry.id, camp_id: _campId, pool_id: entry.poolId, inspection_id: inspectionId,
     inspection_date: entry.inspectionDate, conducted_by: entry.conductedBy,
     result: entry.result, notes: entry.notes, next_due: entry.nextDue, created_at: entry.createdAt,
-  });
-  if (error) console.error('dbAddInspectionLog error:', error.message);
+  };
+  console.log('[dbAddInspectionLog] inserting', row);
+  const { data, error } = await supabase.from('pool_inspection_log').insert(row).select();
+  if (error) console.error('[dbAddInspectionLog] error:', error.code, error.message, error.details, error.hint);
+  else console.log('[dbAddInspectionLog] success:', data);
 }
 
 export async function dbAddSeasonalTask(task: SeasonalTask) {
@@ -563,13 +569,36 @@ export async function loadPoolFromSupabase(campId: string) {
 
 // ─── Pool CRUD ────────────────────────────────────────────────────────────────
 
+const POOL_DEFAULT_INSPECTIONS: { name: string; frequency: string; authority: string | null; standard: string | null; poolTypes: string[] }[] = [
+  { name: 'Health dept. water quality inspection', frequency: 'Every 30 days', authority: 'County Health Department', standard: 'State law required', poolTypes: ['pool', 'other'] },
+  { name: 'Pool equipment monthly service check', frequency: 'Monthly', authority: null, standard: null, poolTypes: ['pool', 'other'] },
+  { name: 'ACA waterfront safety inspection', frequency: 'Weekly during session', authority: 'Internal', standard: 'ACA Standard WS-4', poolTypes: ['waterfront', 'lake', 'river', 'pond'] },
+  { name: 'Lifeguard certification verification', frequency: 'Before each session', authority: 'ACA & Red Cross', standard: null, poolTypes: ['pool', 'waterfront', 'lake', 'river', 'pond', 'other'] },
+  { name: 'Pre-season opening inspection', frequency: 'Annual', authority: null, standard: null, poolTypes: ['pool', 'waterfront', 'lake', 'river', 'pond', 'other'] },
+];
+
 export async function dbAddPool(pool: CampPool) {
   const { error } = await supabase.from('pools').insert({
     id: pool.id, camp_id: _campId, name: pool.name, type: pool.type, is_active: pool.isActive,
     notes: pool.notes, sort_order: pool.sortOrder,
     created_at: pool.createdAt, updated_at: pool.updatedAt,
   });
-  if (error) console.error('dbAddPool error:', error.message);
+  if (error) { console.error('dbAddPool error:', error.message); return; }
+
+  const now = new Date().toISOString();
+  const inspections = POOL_DEFAULT_INSPECTIONS
+    .filter((t) => t.poolTypes.includes(pool.type))
+    .map((t) => ({
+      id: crypto.randomUUID(),
+      camp_id: _campId, pool_id: pool.id,
+      name: t.name, frequency: t.frequency, authority: t.authority, standard: t.standard,
+      status: 'due', last_completed: null, next_due: new Date().toISOString().split('T')[0],
+      history: [], created_at: now, updated_at: now,
+    }));
+  if (inspections.length > 0) {
+    const { error: iErr } = await supabase.from('pool_inspections').insert(inspections);
+    if (iErr) console.error('dbAddPool inspections error:', iErr.message);
+  }
 }
 
 export async function dbUpdatePool(pool: CampPool) {

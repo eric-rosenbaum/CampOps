@@ -102,6 +102,8 @@ struct IssueDetailView: View {
             }
             .padding(Spacing.lg)
         }
+        .task { await vm.refresh() }
+        .refreshable { await vm.refresh() }
         .navigationTitle("Issue").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if authManager.can.createIssue {

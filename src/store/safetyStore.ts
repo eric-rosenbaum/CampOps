@@ -14,7 +14,7 @@ import {
   dbAddSafetyLicense, dbUpdateSafetyLicense, dbDeleteSafetyLicense,
 } from '@/lib/db';
 
-export type SafetyTab = 'overview' | 'fire' | 'water' | 'kitchen' | 'drills' | 'staff';
+export type SafetyTab = 'overview' | 'fire' | 'kitchen' | 'drills' | 'staff';
 
 export const FREQUENCY_DAYS: Record<SafetyItem['frequency'], number> = {
   daily: 1,
@@ -133,6 +133,7 @@ interface SafetyStore {
   tempLogsForItem: (itemId: string, date?: string) => { am: SafetyTempLog | null; pm: SafetyTempLog | null };
   nextScheduledDrill: () => EmergencyDrill | null;
   completedDrillCount: (drillType?: EmergencyDrill['drillType']) => number;
+  failedLastInspectionItems: () => SafetyItem[];
 }
 
 export const useSafetyStore = create<SafetyStore>((set, get) => ({
@@ -372,5 +373,15 @@ export const useSafetyStore = create<SafetyStore>((set, get) => ({
     const drills = get().drills.filter((d) => d.status === 'completed');
     if (!drillType) return drills.length;
     return drills.filter((d) => d.drillType === drillType).length;
+  },
+
+  failedLastInspectionItems: () => {
+    const { items, inspectionLog } = get();
+    return items.filter((item) => {
+      const logs = inspectionLog
+        .filter((l) => l.itemId === item.id)
+        .sort((a, b) => b.inspectionDate.localeCompare(a.inspectionDate));
+      return logs.length > 0 && logs[0].result === 'failed';
+    });
   },
 }));

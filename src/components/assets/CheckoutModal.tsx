@@ -4,6 +4,7 @@ import { Button } from '@/components/shared/Button';
 import { useAssetStore, FUEL_LEVEL_LABELS } from '@/store/assetStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
+import { useCampStore } from '@/store/campStore';
 import { generateId } from '@/lib/utils';
 import type { FuelLevel } from '@/lib/types';
 
@@ -11,9 +12,10 @@ const FUEL_LEVELS: FuelLevel[] = ['empty', 'quarter', 'half', 'three_quarter', '
 const FUEL_SHOWS_FOR = new Set(['vehicle', 'golf_cart', 'watercraft']);
 
 export function CheckoutModal() {
-  const { assets, checkouts, checkOutAsset, updateCheckout, currentCheckoutForAsset, recentCheckoutNames } = useAssetStore();
+  const { assets, checkouts, checkOutAsset, updateCheckout, currentCheckoutForAsset } = useAssetStore();
   const { isCheckoutModalOpen, checkoutAssetId, editingCheckoutId, closeAllModals } = useUIStore();
   const { currentUser } = useAuth();
+  const members = useCampStore((s) => s.members);
 
   const asset = checkoutAssetId ? assets.find((a) => a.id === checkoutAssetId) : null;
   const editing = editingCheckoutId ? checkouts.find((c) => c.id === editingCheckoutId) : null;
@@ -31,8 +33,7 @@ export function CheckoutModal() {
   const [startHours, setStartHours] = useState('');
   const [fuelLevel, setFuelLevel] = useState<FuelLevel>('full');
   const [checkoutNotes, setCheckoutNotes] = useState('');
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const recentNames = recentCheckoutNames();
+
 
   useEffect(() => {
     if (editing) {
@@ -61,9 +62,6 @@ export function CheckoutModal() {
   }
 
   const showFuel = FUEL_SHOWS_FOR.has(asset.category);
-  const filteredSuggestions = checkedOutBy.trim()
-    ? recentNames.filter((n) => n.toLowerCase().includes(checkedOutBy.toLowerCase()) && n !== checkedOutBy)
-    : [];
 
   function handleSave() {
     if (!asset || !checkedOutBy.trim() || !purpose.trim()) return;
@@ -116,24 +114,28 @@ export function CheckoutModal() {
         </div>
 
         <div className="px-6 py-5 space-y-4">
-          <div className="relative">
+          <div>
             <label className="text-body font-medium text-forest mb-1 block">Checked out by <span className="text-red">*</span></label>
-            <input
-              value={checkedOutBy}
-              onChange={(e) => { setCheckedOutBy(e.target.value); setShowSuggestions(true); }}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-              placeholder="Staff member name…"
-              className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage"
-            />
-            {showSuggestions && filteredSuggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-border rounded-btn shadow-md z-10">
-                {filteredSuggestions.slice(0, 5).map((name) => (
-                  <button key={name} onMouseDown={() => { setCheckedOutBy(name); setShowSuggestions(false); }}
-                    className="w-full text-left px-3 py-2 text-body text-forest hover:bg-cream-dark transition-colors">
-                    {name}
-                  </button>
+            {members.length > 0 ? (
+              <select
+                value={checkedOutBy}
+                onChange={(e) => setCheckedOutBy(e.target.value)}
+                className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage bg-white"
+              >
+                <option value="">— Select staff member —</option>
+                {members.filter((m) => m.isActive).map((m) => (
+                  <option key={m.id} value={m.displayName ?? m.fullName}>
+                    {m.displayName ?? m.fullName}
+                  </option>
                 ))}
-              </div>
+              </select>
+            ) : (
+              <input
+                value={checkedOutBy}
+                onChange={(e) => setCheckedOutBy(e.target.value)}
+                placeholder="Staff member name…"
+                className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage"
+              />
             )}
           </div>
 

@@ -15,6 +15,7 @@ const CATEGORIES: { value: AssetCategory; label: string }[] = [
   { value: 'watercraft', label: 'Watercraft' },
   { value: 'large_equipment', label: 'Large Equipment' },
   { value: 'trailer', label: 'Trailer' },
+  { value: 'technology', label: 'Technology' },
   { value: 'other', label: 'Other' },
 ];
 

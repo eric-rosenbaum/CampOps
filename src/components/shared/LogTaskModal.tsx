@@ -20,6 +20,7 @@ interface FormValues {
   assigneeId: string;
   phase: 'pre' | 'post';
   timingBucket: string;
+  moduleTag: string;
 }
 
 export function LogTaskModal() {
@@ -36,6 +37,7 @@ export function LogTaskModal() {
       priority: 'normal',
       phase: activePhase,
       timingBucket: activePhase === 'post' ? '0' : '-7',
+      moduleTag: '',
     },
   });
 
@@ -68,6 +70,7 @@ export function LogTaskModal() {
       daysRelativeToOpening: daysRel,
       dueDate,
       isRecurring: true,
+      moduleTag: data.moduleTag || null,
       createdAt: now,
       updatedAt: now,
       activityLog: [
@@ -173,6 +176,15 @@ export function LogTaskModal() {
             </select>
           </div>
         )}
+
+        <div>
+          <label className={labelClass}>Tag as module (optional)</label>
+          <select {...register('moduleTag')} className={inputClass}>
+            <option value="">General</option>
+            <option value="pool">Pool management</option>
+            <option value="assets">Assets & vehicles</option>
+          </select>
+        </div>
 
         <div className="flex gap-2 pt-2">
           <Button type="submit" className="flex-1 justify-center">

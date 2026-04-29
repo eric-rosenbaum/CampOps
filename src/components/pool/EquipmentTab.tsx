@@ -56,13 +56,7 @@ function getEquipmentFields(equip: PoolEquipment): { label: string; value: strin
         : 'text-red',
   });
 
-  if (equip.type === 'safety') {
-    fields.push(
-      { label: 'Rescue tubes', value: '4 of 4', valueClass: 'text-green-muted-text' },
-      { label: 'Life rings', value: '2 of 2', valueClass: 'text-green-muted-text' },
-      { label: 'AED device', value: 'Present & charged', valueClass: 'text-green-muted-text' },
-    );
-  } else if (equip.type === 'chlorinator') {
+  if (equip.type === 'chlorinator') {
     fields.push(
       { label: 'Last refilled', value: equip.lastServiced ?? '—' },
       { label: 'Tablet level', value: equip.statusDetail, valueClass: 'text-amber' },

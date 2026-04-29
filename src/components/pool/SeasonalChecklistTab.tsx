@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
 import { usePoolStore } from '@/store/poolStore';
+import { useChecklistStore } from '@/store/checklistStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { SeasonalTaskModal } from './SeasonalTaskModal';
-import type { SeasonalPhase, SeasonalTask } from '@/lib/types';
+import type { SeasonalPhase, SeasonalTask, ChecklistTask } from '@/lib/types';
 
 // ─── Task row ─────────────────────────────────────────────────────────────────
 
@@ -167,8 +168,31 @@ function PhaseSection({ phase, label, subtitle, tasks, canManage, onToggle, onEd
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+function ChecklistTaskRow({ task, onToggle }: { task: ChecklistTask; onToggle: () => void }) {
+  const isDone = task.status === 'complete';
+  return (
+    <div className={`flex items-start gap-3 px-3.5 py-2.5 rounded-btn ${isDone ? 'opacity-60' : ''}`}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`w-[18px] h-[18px] rounded-tag border flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
+          isDone ? 'bg-sage border-sage' : 'bg-white border-border hover:border-sage'
+        }`}
+      >
+        {isDone && <span className="text-white text-[11px] font-bold leading-none">✓</span>}
+      </button>
+      <div className="flex-1 min-w-0">
+        <p className={`text-body ${isDone ? 'line-through text-forest/40' : 'text-forest'}`}>{task.title}</p>
+        {task.description && <p className="text-meta text-forest/40 mt-0.5">{task.description}</p>}
+      </div>
+      <span className="text-label text-forest/30 uppercase tracking-wide flex-shrink-0 mt-0.5">checklist</span>
+    </div>
+  );
+}
+
 export function SeasonalChecklistTab() {
   const { activeSeasonalTasks, toggleSeasonalTask, deleteSeasonalTask, seasonalProgress } = usePoolStore();
+  const { tasks: checklistTasks, completeTask, updateTask } = useChecklistStore();
   const { isSeasonalTaskModalOpen, editingSeasonalTaskId, openSeasonalTaskModal, closeAllModals } = useUIStore();
   const { currentUser, can } = useAuth();
 
@@ -197,11 +221,13 @@ export function SeasonalChecklistTab() {
     closeAllModals();
   }
 
-  const PHASES: { phase: SeasonalPhase; label: string; subtitle?: string }[] = [
-    { phase: 'opening', label: 'Pre-season opening' },
+  const PHASES: { phase: SeasonalPhase; label: string; subtitle?: string; checklistPhase?: 'pre' | 'post' }[] = [
+    { phase: 'opening', label: 'Pre-season opening', checklistPhase: 'pre' },
     { phase: 'in_season', label: 'In-season maintenance', subtitle: 'recurring' },
-    { phase: 'closing', label: 'End-of-season closing' },
+    { phase: 'closing', label: 'End-of-season closing', checklistPhase: 'post' },
   ];
+
+  const poolChecklistTasks = checklistTasks.filter((t) => t.moduleTag === 'pool');
 
   return (
     <div>
@@ -228,20 +254,46 @@ export function SeasonalChecklistTab() {
         </div>
       </div>
 
-      {PHASES.map(({ phase, label, subtitle }) => (
-        <PhaseSection
-          key={phase}
-          phase={phase}
-          label={label}
-          subtitle={subtitle}
-          tasks={byPhase(phase)}
-          canManage={canManage}
-          onToggle={(id) => toggleSeasonalTask(id, currentUser.name)}
-          onEdit={handleEdit}
-          onDelete={deleteSeasonalTask}
-          onAdd={handleAdd}
-        />
-      ))}
+      {PHASES.map(({ phase, label, subtitle, checklistPhase }) => {
+        const phaseChecklistTasks = checklistPhase
+          ? poolChecklistTasks.filter((t) => t.phase === checklistPhase)
+          : [];
+        return (
+          <div key={phase}>
+            <PhaseSection
+              phase={phase}
+              label={label}
+              subtitle={subtitle}
+              tasks={byPhase(phase)}
+              canManage={canManage}
+              onToggle={(id) => toggleSeasonalTask(id, currentUser.name)}
+              onEdit={handleEdit}
+              onDelete={deleteSeasonalTask}
+              onAdd={handleAdd}
+            />
+            {phaseChecklistTasks.length > 0 && (
+              <div className="mb-6 -mt-4 ml-0">
+                <p className="text-meta text-forest/40 font-medium px-3.5 mb-1">From pre/post checklist:</p>
+                <div className="flex flex-col gap-0.5">
+                  {phaseChecklistTasks.map((t) => (
+                    <ChecklistTaskRow
+                      key={t.id}
+                      task={t}
+                      onToggle={() => {
+                        if (t.status === 'complete') {
+                          updateTask(t.id, { status: 'pending' });
+                        } else {
+                          completeTask(t.id);
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       {isSeasonalTaskModalOpen && (
         <div onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}>

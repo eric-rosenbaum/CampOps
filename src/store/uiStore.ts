@@ -7,6 +7,7 @@ interface UIStore {
   editingIssueId: string | null;
   // Pool modals
   isLogReadingModalOpen: boolean;
+  editingReadingId: string | null;
   isLogServiceModalOpen: boolean;
   isLogInspectionModalOpen: boolean;
   isAddEquipmentModalOpen: boolean;
@@ -64,7 +65,7 @@ interface UIStore {
   openLogTaskModal: () => void;
   openSeasonModal: () => void;
   // Pool modal openers
-  openLogReadingModal: () => void;
+  openLogReadingModal: (readingId?: string) => void;
   openLogServiceModal: (equipmentId?: string) => void;
   openEditServiceLogModal: (logId: string) => void;
   openLogInspectionModal: (inspectionId?: string) => void;
@@ -104,6 +105,7 @@ export const useUIStore = create<UIStore>((set) => ({
   isSeasonModalOpen: false,
   editingIssueId: null,
   isLogReadingModalOpen: false,
+  editingReadingId: null,
   isLogServiceModalOpen: false,
   isLogInspectionModalOpen: false,
   isAddEquipmentModalOpen: false,
@@ -165,7 +167,7 @@ export const useUIStore = create<UIStore>((set) => ({
 
   openSeasonModal: () => set({ isSeasonModalOpen: true }),
 
-  openLogReadingModal: () => set({ isLogReadingModalOpen: true }),
+  openLogReadingModal: (readingId) => set({ isLogReadingModalOpen: true, editingReadingId: readingId ?? null }),
 
   openLogServiceModal: (equipmentId) =>
     set({ isLogServiceModalOpen: true, logServiceForEquipmentId: equipmentId ?? null, editingServiceLogId: null }),
@@ -266,6 +268,7 @@ export const useUIStore = create<UIStore>((set) => ({
       isSeasonModalOpen: false,
       editingIssueId: null,
       isLogReadingModalOpen: false,
+      editingReadingId: null,
       isLogServiceModalOpen: false,
       isLogInspectionModalOpen: false,
       isAddEquipmentModalOpen: false,

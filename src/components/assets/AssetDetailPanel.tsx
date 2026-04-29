@@ -149,7 +149,7 @@ export function AssetDetailPanel() {
             progressForPhase={(phase) => maintenanceProgressForAsset(asset.id, phase)}
             onToggle={(id, done) => toggleMaintenanceTask(id, asset.id, done, currentUser.name)}
             onAdd={() => openAddMaintenanceTaskModal(asset.id)}
-            onEdit={(taskId) => openEditMaintenanceTaskModal(taskId, asset.id)}
+            onEdit={(taskId) => openEditMaintenanceTaskModal(asset.id, taskId)}
             onDelete={deleteMaintenanceTask}
           />
         )}

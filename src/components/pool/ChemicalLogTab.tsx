@@ -58,7 +58,7 @@ function formatReadingDate(row: ChemicalReading) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function ChemicalLogTab() {
-  const { activeReadings, outOfRangeAlerts, latestReading } = usePoolStore();
+  const { activeReadings, outOfRangeAlerts, latestReading, deleteChemicalReading } = usePoolStore();
   const { openLogReadingModal } = useUIStore();
 
   const latest = latestReading();
@@ -103,7 +103,13 @@ export function ChemicalLogTab() {
       ]
     : [];
 
-  const colStyle = { gridTemplateColumns: '110px 1fr 1fr 1fr 1fr 1fr 100px' };
+  function handleDelete(id: string) {
+    if (window.confirm('Delete this reading? This cannot be undone.')) {
+      deleteChemicalReading(id);
+    }
+  }
+
+  const colStyle = { gridTemplateColumns: '110px 1fr 1fr 1fr 1fr 1fr 100px 80px' };
 
   return (
     <div>
@@ -189,7 +195,7 @@ export function ChemicalLogTab() {
           className="grid px-4 py-2.5 bg-cream-dark border-b border-border"
           style={colStyle}
         >
-          {['Date / time', 'Free Cl (ppm)', 'pH', 'Alkalinity', 'Cyanuric', 'Temp (°F)', 'Logged by'].map((h) => (
+          {['Date / time', 'Free Cl (ppm)', 'pH', 'Alkalinity', 'Cyanuric', 'Temp (°F)', 'Logged by', ''].map((h) => (
             <span key={h} className="text-meta font-semibold uppercase tracking-wide text-forest/40">
               {h}
             </span>
@@ -216,6 +222,22 @@ export function ChemicalLogTab() {
               <ValCell field="cyanuricAcid" value={row.cyanuricAcid} />
               <ValCell field="waterTemp" value={row.waterTemp} />
               <span className="text-secondary text-forest/50">{row.loggedByName}</span>
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => openLogReadingModal(row.id)}
+                  className="text-meta text-sage hover:text-forest transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(row.id)}
+                  className="text-meta text-red/60 hover:text-red transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           ))
         )}

@@ -10,9 +10,11 @@ final class PhotoService {
         guard let data = image.jpegData(compressionQuality: 0.8) else {
             throw PhotoError.compressionFailed
         }
-        try await storage.upload(issueId, data: data,
+        let campId = AuthManager.shared.currentCamp?.id ?? ""
+        let path = "\(campId)/\(issueId)"
+        try await storage.upload(path, data: data,
             options: FileOptions(contentType: "image/jpeg", upsert: true))
-        return try storage.getPublicURL(path: issueId).absoluteString
+        return try storage.getPublicURL(path: path).absoluteString
     }
 
     func deletePhoto(url: String) async throws {

@@ -42,6 +42,9 @@ export function Team() {
   const [codeGenerating, setCodeGenerating] = useState(false);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [roleError, setRoleError] = useState<string | null>(null);
+
+  const isAdmin = currentMember?.role === 'admin';
 
   const reload = useCallback(async () => {
     if (!campId) return;
@@ -130,39 +133,59 @@ export function Team() {
           <h2 className="text-[13px] font-semibold text-forest">Active members</h2>
         </div>
         <div className="divide-y divide-stone-100">
-          {members.map((m) => (
-            <div key={m.id} className="px-5 py-3 flex items-center gap-4">
-              <div className="w-8 h-8 rounded-full bg-forest text-cream text-[11px] font-semibold flex items-center justify-center flex-shrink-0">
-                {m.fullName.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium text-forest truncate">{m.fullName}</p>
-                {m.department && (
-                  <p className="text-[11px] text-forest/40">{DEPT_LABELS[m.department] ?? m.department}</p>
+          {roleError && (
+            <div className="px-5 py-2 bg-red-50 text-red-600 text-[12px]">{roleError}</div>
+          )}
+          {members.map((m) => {
+            const isSelf = m.userId === currentMember?.userId;
+            const locked = m.isCreator || isSelf || !isAdmin;
+            return (
+              <div key={m.id} className="px-5 py-3 flex items-center gap-4">
+                <div className="w-8 h-8 rounded-full bg-forest text-cream text-[11px] font-semibold flex items-center justify-center flex-shrink-0">
+                  {m.fullName.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[13px] font-medium text-forest truncate">{m.fullName}</p>
+                    {m.isCreator && (
+                      <span className="text-[10px] font-medium text-forest/40 bg-stone-100 px-1.5 py-0.5 rounded">Creator</span>
+                    )}
+                  </div>
+                  {m.department && (
+                    <p className="text-[11px] text-forest/40">{DEPT_LABELS[m.department] ?? m.department}</p>
+                  )}
+                </div>
+                <select
+                  value={m.role}
+                  disabled={locked}
+                  onChange={async (e) => {
+                    setRoleError(null);
+                    try {
+                      await updateMemberRole(m.id, e.target.value as CampRole, m.department);
+                      reload();
+                    } catch (err) {
+                      setRoleError(err instanceof Error ? err.message : 'Failed to update role');
+                    }
+                  }}
+                  className="text-[12px] border border-stone-200 rounded-md px-2 py-1 text-forest bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                {isAdmin && !isSelf && !m.isCreator && (
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Remove this member from the camp?')) return;
+                      await removeMember(m.id);
+                      reload();
+                    }}
+                    className="p-1.5 rounded hover:bg-red-50 text-stone-400 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 )}
               </div>
-              <select
-                value={m.role}
-                disabled={m.userId === currentMember?.userId}
-                onChange={(e) => updateMemberRole(m.id, e.target.value as CampRole, m.department).then(reload)}
-                className="text-[12px] border border-stone-200 rounded-md px-2 py-1 text-forest bg-white disabled:opacity-50"
-              >
-                {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-              {m.userId !== currentMember?.userId && (
-                <button
-                  onClick={async () => {
-                    if (!confirm('Remove this member from the camp?')) return;
-                    await removeMember(m.id);
-                    reload();
-                  }}
-                  className="p-1.5 rounded hover:bg-red-50 text-stone-400 hover:text-red-500 transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

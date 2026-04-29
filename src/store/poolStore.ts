@@ -15,6 +15,8 @@ import {
   dbUpdatePool,
   dbDeletePool,
   dbAddChemicalReading,
+  dbUpdateChemicalReading,
+  dbDeleteChemicalReading,
   dbAddEquipment,
   dbUpdateEquipment,
   dbDeleteEquipment,
@@ -116,6 +118,8 @@ interface PoolStore {
 
   // Mutations
   addChemicalReading: (reading: ChemicalReading) => void;
+  updateChemicalReading: (id: string, patch: Partial<ChemicalReading>) => void;
+  deleteChemicalReading: (id: string) => void;
   addEquipment: (equip: PoolEquipment) => void;
   updateEquipment: (equip: PoolEquipment) => void;
   deleteEquipment: (id: string) => void;
@@ -194,6 +198,18 @@ export const usePoolStore = create<PoolStore>((set, get) => ({
   addChemicalReading: (reading) => {
     set((s) => ({ chemicalReadings: [reading, ...s.chemicalReadings] }));
     dbAddChemicalReading(reading);
+  },
+
+  updateChemicalReading: (id, patch) => {
+    set((s) => ({
+      chemicalReadings: s.chemicalReadings.map((r) => r.id === id ? { ...r, ...patch } : r),
+    }));
+    dbUpdateChemicalReading(id, patch);
+  },
+
+  deleteChemicalReading: (id) => {
+    set((s) => ({ chemicalReadings: s.chemicalReadings.filter((r) => r.id !== id) }));
+    dbDeleteChemicalReading(id);
   },
 
   addEquipment: (equip) => {

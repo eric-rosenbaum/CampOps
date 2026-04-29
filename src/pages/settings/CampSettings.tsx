@@ -473,7 +473,7 @@ function PoolsTab() {
         )}
       </div>
 
-      {isAddEditPoolModalOpen && <AddEditPoolModal />}
+      {isAddEditPoolModalOpen && <AddEditPoolModal fromSettings />}
     </div>
   );
 }

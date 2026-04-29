@@ -3,10 +3,13 @@ import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useUIStore } from '@/store/uiStore';
 import { useSafetyStore, FREQUENCY_DAYS } from '@/store/safetyStore';
+import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import { generateId } from '@/lib/utils';
 import type { SafetyItem, SafetyItemType } from '@/lib/types';
 import { addDays } from 'date-fns';
+
+const DEFAULT_LOCATIONS = ['Waterfront', 'Dining Hall', 'Main Lodge', 'Health Center', 'Kitchen', 'Athletic Fields', 'Maintenance', 'Other'];
 
 interface FormValues {
   name: string;
@@ -124,6 +127,7 @@ function showVendor(type: SafetyItemType) {
 export function AddSafetyItemModal() {
   const { closeAllModals, addItemModalDefaultType, editingSafetyItemId } = useUIStore();
   const { items, addItem, updateItem, deleteItem } = useSafetyStore();
+  const campLocations = useCampStore((s) => s.currentCamp?.locations ?? DEFAULT_LOCATIONS);
   const { currentUser } = useAuth();
 
   const editing = editingSafetyItemId ? items.find((i) => i.id === editingSafetyItemId) ?? null : null;
@@ -250,11 +254,15 @@ export function AddSafetyItemModal() {
         <div className={showUnitCount(itemType) ? 'grid grid-cols-2 gap-3' : ''}>
           <div>
             <label className={lc}>Location *</label>
-            <input
+            <select
               {...register('location', { required: true })}
               className={errors.location ? icErr : ic}
-              placeholder="Building or area"
-            />
+            >
+              <option value="">— Select location —</option>
+              {campLocations.map((l) => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </select>
             {errors.location && <p className="text-[11px] text-red mt-1">Location is required.</p>}
           </div>
           {showUnitCount(itemType) && (

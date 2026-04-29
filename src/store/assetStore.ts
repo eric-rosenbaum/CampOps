@@ -19,6 +19,7 @@ export const ASSET_CATEGORY_LABELS: Record<AssetCategory, string> = {
   watercraft: 'Watercraft',
   large_equipment: 'Equipment',
   trailer: 'Trailer',
+  technology: 'Technology',
   other: 'Other',
 };
 
@@ -131,6 +132,15 @@ export const SUBTYPES_BY_CATEGORY: Record<AssetCategory, { value: string; label:
     { value: 'enclosed_trailer', label: 'Enclosed Trailer' },
     { value: 'flatbed', label: 'Flatbed Trailer' },
     { value: 'other_trailer', label: 'Other Trailer' },
+  ],
+  technology: [
+    { value: 'laptop', label: 'Laptop' },
+    { value: 'tablet', label: 'Tablet' },
+    { value: 'camera', label: 'Camera' },
+    { value: 'projector', label: 'Projector' },
+    { value: 'walkie_talkie', label: 'Walkie-Talkie' },
+    { value: 'speaker', label: 'Speaker / PA System' },
+    { value: 'other_tech', label: 'Other Tech' },
   ],
   other: [{ value: 'other', label: 'Other' }],
 };

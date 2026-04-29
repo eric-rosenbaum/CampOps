@@ -8,6 +8,7 @@ struct PhotoPicker: View {
     @State private var pickerItem: PhotosPickerItem? = nil
     @State private var showingSourcePicker = false
     @State private var showingCamera = false
+    @State private var showingLibrary = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
@@ -53,11 +54,10 @@ struct PhotoPicker: View {
             if UIImagePickerController.isSourceTypeAvailable(.camera) {
                 Button("Take Photo") { showingCamera = true }
             }
-            PhotosPicker(selection: $pickerItem, matching: .images) {
-                Text("Choose from Library")
-            }
+            Button("Choose from Library") { showingLibrary = true }
             Button("Cancel", role: .cancel) {}
         }
+        .photosPicker(isPresented: $showingLibrary, selection: $pickerItem, matching: .images)
         .sheet(isPresented: $showingCamera) {
             CameraView(image: $selectedImage)
         }

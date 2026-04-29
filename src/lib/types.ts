@@ -58,6 +58,7 @@ export interface ChecklistTask {
   daysRelativeToOpening: number | null;
   dueDate: string | null;
   isRecurring: true;
+  moduleTag?: string | null;
   activityLog: ActivityEntry[];
   createdAt: string;
   updatedAt: string;
@@ -321,7 +322,7 @@ export interface SeasonalTask {
 
 // ─── Assets & Vehicles ────────────────────────────────────────────────────────
 
-export type AssetCategory = 'vehicle' | 'golf_cart' | 'watercraft' | 'large_equipment' | 'trailer' | 'other';
+export type AssetCategory = 'vehicle' | 'golf_cart' | 'watercraft' | 'large_equipment' | 'trailer' | 'technology' | 'other';
 
 export type AssetStatus = 'available' | 'checked_out' | 'in_service' | 'retired';
 

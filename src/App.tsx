@@ -136,12 +136,32 @@ function CampDataLoader() {
       });
     });
 
+    // Refetch everything when the tab regains focus (catches any missed realtime events)
+    async function refetchAll() {
+      const [issuesData, poolData, safetyData, assetData] = await Promise.all([
+        initializeSupabase(campId),
+        loadPoolFromSupabase(campId),
+        loadSafetyFromSupabase(campId),
+        loadAssetsFromSupabase(campId),
+      ]);
+      if (issuesData) { setIssues(issuesData.issues); setTasks(issuesData.tasks); if (issuesData.season) setSeason(issuesData.season); }
+      if (poolData) { setPools(poolData.pools); setChemicalReadings(poolData.readings); setEquipment(poolData.equipment); setServiceLog(poolData.serviceLog); setInspections(poolData.inspections); setInspectionLog(poolData.inspectionLog); setSeasonalTasks(poolData.seasonalTasks); }
+      if (safetyData) { setItems(safetyData.items); setSafetyLog(safetyData.inspectionLog); setDrills(safetyData.drills); setStaff(safetyData.staff); setCertifications(safetyData.certifications); setTempLogs(safetyData.tempLogs); setLicenses(safetyData.licenses); }
+      if (assetData) { setAssets(assetData.assets); setCheckouts(assetData.checkouts); setServiceRecords(assetData.serviceRecords); setMaintenanceTasks(assetData.maintenanceTasks); }
+    }
+
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') refetchAll();
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       unsubIssues?.();
       unsubTasks?.();
       unsubPool?.();
       unsubSafety?.();
       unsubAssets?.();
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [campId]); // eslint-disable-line react-hooks/exhaustive-deps
 

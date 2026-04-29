@@ -75,6 +75,7 @@ function taskToRow(task: ChecklistTask) {
     days_relative_to_opening: task.daysRelativeToOpening,
     due_date: task.dueDate,
     is_recurring: task.isRecurring,
+    module_tag: task.moduleTag ?? null,
     created_at: task.createdAt,
     updated_at: task.updatedAt,
   };
@@ -93,6 +94,7 @@ function rowToTask(row: Record<string, unknown>, activityLog: ActivityEntry[]): 
     daysRelativeToOpening: row.days_relative_to_opening as number | null,
     dueDate: (row.due_date as string) ?? null,
     isRecurring: true,
+    moduleTag: (row.module_tag as string) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
     activityLog,
@@ -208,6 +210,7 @@ export async function dbUpdateTask(id: string, patch: Partial<ChecklistTask>) {
   if (patch.status !== undefined) row.status = patch.status;
   if (patch.assigneeId !== undefined) row.assignee_id = patch.assigneeId;
   if (patch.dueDate !== undefined) row.due_date = patch.dueDate;
+  if (patch.moduleTag !== undefined) row.module_tag = patch.moduleTag;
   const { error } = await supabase.from('checklist_tasks').update(row).eq('id', id);
   if (error) console.error('dbUpdateTask error:', error.message);
 }
@@ -328,6 +331,26 @@ export async function dbAddChemicalReading(r: ChemicalReading) {
     corrective_action: r.correctiveAction, pool_status: r.poolStatus, created_at: r.createdAt,
   });
   if (error) console.error('dbAddChemicalReading error:', error.message);
+}
+
+export async function dbUpdateChemicalReading(id: string, r: Partial<ChemicalReading>) {
+  const patch: Record<string, unknown> = {};
+  if (r.freeChlorine !== undefined) patch.free_chlorine = r.freeChlorine;
+  if (r.ph !== undefined) patch.ph = r.ph;
+  if (r.alkalinity !== undefined) patch.alkalinity = r.alkalinity;
+  if (r.cyanuricAcid !== undefined) patch.cyanuric_acid = r.cyanuricAcid;
+  if (r.waterTemp !== undefined) patch.water_temp = r.waterTemp;
+  if (r.calciumHardness !== undefined) patch.calcium_hardness = r.calciumHardness;
+  if (r.readingTime !== undefined) patch.reading_time = r.readingTime;
+  if (r.correctiveAction !== undefined) patch.corrective_action = r.correctiveAction;
+  if (r.poolStatus !== undefined) patch.pool_status = r.poolStatus;
+  const { error } = await supabase.from('pool_chemical_readings').update(patch).eq('id', id);
+  if (error) console.error('dbUpdateChemicalReading error:', error.message);
+}
+
+export async function dbDeleteChemicalReading(id: string) {
+  const { error } = await supabase.from('pool_chemical_readings').delete().eq('id', id);
+  if (error) console.error('dbDeleteChemicalReading error:', error.message);
 }
 
 export async function dbAddEquipment(e: PoolEquipment) {

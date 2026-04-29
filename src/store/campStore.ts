@@ -31,6 +31,7 @@ export interface Camp {
 export interface MemberWithProfile extends CampMember {
   fullName: string;
   email: string;
+  isCreator: boolean;
 }
 
 interface CampState {
@@ -233,17 +234,7 @@ export const useCampStore = create<CampState>((set, get) => ({
   },
 
   updateCamp: async (campId, data) => {
-    const update: Record<string, unknown> = {};
-    if (data.name !== undefined) update.name = data.name;
-    if (data.campType !== undefined) update.camp_type = data.campType;
-    if (data.state !== undefined) update.state = data.state;
-    if (data.modules !== undefined) update.modules = data.modules;
-    if (data.locations !== undefined) update.locations = data.locations;
-
-    const { error } = await supabase.from('camps').update(update).eq('id', campId);
-    if (error) console.error('[campStore] updateCamp error:', error);
-
-    // Update local store directly — no need to re-fetch the entire camp
+    // Optimistic update first so UI responds immediately
     const current = get().currentCamp;
     if (current && current.id === campId) {
       set({
@@ -257,6 +248,17 @@ export const useCampStore = create<CampState>((set, get) => ({
         },
       });
     }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.rpc as any)('update_camp', {
+      p_camp_id: campId,
+      p_name: data.name ?? null,
+      p_camp_type: data.campType ?? null,
+      p_state: data.state ?? null,
+      p_modules: data.modules ?? null,
+      p_locations: data.locations ?? null,
+    });
+    if (error) console.error('[campStore] updateCamp error:', error);
   },
 
   loadMembers: async (campId) => {
@@ -280,6 +282,9 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     const nameMap = new Map((profileRows ?? []).map(p => [p.id as string, p.full_name as string]));
 
+    // First row (ordered by created_at ASC) is the camp creator
+    const creatorUserId = memberRows[0]?.user_id ?? null;
+
     return memberRows.map(row => ({
       id: row.id,
       campId: row.camp_id,
@@ -290,6 +295,7 @@ export const useCampStore = create<CampState>((set, get) => ({
       isActive: row.is_active,
       fullName: nameMap.get(row.user_id) ?? row.display_name ?? 'Unknown',
       email: '',
+      isCreator: row.user_id === creatorUserId,
     }));
   },
 
@@ -330,10 +336,15 @@ export const useCampStore = create<CampState>((set, get) => ({
   },
 
   updateMemberRole: async (memberId, role, department) => {
-    await supabase
-      .from('camp_members')
-      .update({ role, department })
-      .eq('id', memberId);
+    const { error } = await supabase.rpc('update_member_role', {
+      p_member_id: memberId,
+      p_role: role,
+      p_department: department ?? null,
+    });
+    if (error) {
+      console.error('updateMemberRole error:', error.message);
+      throw new Error(error.message);
+    }
     set((s) => ({
       members: s.members.map((m) =>
         m.id === memberId ? { ...m, role, department } : m

@@ -44,7 +44,7 @@ export default function AssetVehicles() {
           <h1 className="text-page-title font-semibold text-forest">Assets & Vehicles</h1>
           <p className="text-meta text-forest/50 mt-0.5">Fleet management, checkout tracking, and service history</p>
         </div>
-        {isAdmin && (
+        {isAdmin && activePageTab === 'fleet' && (
           <button
             onClick={openAddAssetModal}
             className="flex items-center gap-2 px-4 py-2 text-body font-medium bg-forest text-cream rounded-btn hover:bg-forest/90 transition-colors"

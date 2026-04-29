@@ -10,10 +10,12 @@ import { Button } from '@/components/shared/Button';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useUIStore } from '@/store/uiStore';
 import { useChecklistStore } from '@/store/checklistStore';
+import { useSafetyStore } from '@/store/safetyStore';
 import { useAuth } from '@/lib/auth';
 import { formatCost } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Download, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 type FilterType = 'all' | 'urgent' | 'unassigned' | 'in_progress' | 'resolved';
 
@@ -34,7 +36,10 @@ export function IssuesRepairs() {
   } = useIssuesStore();
   const { openLogIssueModal, isLogIssueModalOpen } = useUIStore();
   const { season } = useChecklistStore();
+  const { failedLastInspectionItems } = useSafetyStore();
   const { can } = useAuth();
+
+  const failedDevices = failedLastInspectionItems();
 
   const filtered = filteredIssues();
   const selectedIssue = issues.find((i) => i.id === selectedIssueId);
@@ -82,6 +87,25 @@ export function IssuesRepairs() {
               <StatCard label="Resolved" value={resolvedCount()} hint="This session" />
               <StatCard label="Repair costs" value={formatCost(totalCosts())} hint="This session so far" variant="amber" />
             </div>
+
+            {/* Failed safety devices callout */}
+            {failedDevices.length > 0 && (
+              <div className="bg-red-bg border border-red/20 rounded-card px-4 py-3.5 mb-4">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[12px] font-semibold text-red">
+                    {failedDevices.length} safety device{failedDevices.length !== 1 ? 's' : ''} failed last inspection
+                  </p>
+                  <Link to="/safety" className="text-[11px] font-semibold text-red hover:underline">
+                    View in Safety →
+                  </Link>
+                </div>
+                <div className="space-y-0.5">
+                  {failedDevices.map((item) => (
+                    <p key={item.id} className="text-[11px] text-red/80">• {item.name} — {item.location}</p>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Filter bar */}
             <div className="flex items-center justify-between mb-4">

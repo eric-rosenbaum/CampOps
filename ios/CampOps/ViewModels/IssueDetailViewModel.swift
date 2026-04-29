@@ -58,5 +58,10 @@ final class IssueDetailViewModel: ObservableObject {
         }
     }
 
+    func refresh() async {
+        guard let fresh = try? await DataService.shared.fetchIssue(id: issue.id) else { return }
+        issue = fresh
+    }
+
     func applyEdit(_ updated: Issue) { issue = updated }
 }

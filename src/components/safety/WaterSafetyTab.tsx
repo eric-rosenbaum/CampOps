@@ -1,4 +1,6 @@
+import { useNavigate } from 'react-router-dom';
 import { useSafetyStore, safetyItemStatus, certExpiryStatus, CERT_TYPE_LABELS } from '@/store/safetyStore';
+import { usePoolStore } from '@/store/poolStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { AlertBanner } from '@/components/shared/AlertBanner';
@@ -101,19 +103,28 @@ function LifeguardCard({
 
 
 export function WaterSafetyTab() {
-  const { staffWithCerts, certSummary, itemsByCategory, categoryStats } = useSafetyStore();
+  const { staffWithCerts, certSummary, itemsByCategory } = useSafetyStore();
+  const { equipment, setActiveTab: setPoolTab, pools, setActivePool } = usePoolStore();
   const { openSafetyLogInspectionModal, openSafetyAddStaffModal, openStaffCertModal } = useUIStore();
   const { can } = useAuth();
+  const navigate = useNavigate();
 
   const allStaffWithCerts = staffWithCerts();
-  // Show all active staff in lifeguard certifications section
   const lifeguards = allStaffWithCerts.filter(({ staff }) => staff.isActive);
   const lgSummary = certSummary('lifeguard');
 
   const waterfrontItems = itemsByCategory('water');
-  const stats = categoryStats('water');
-
   const overdueWater = waterfrontItems.filter((i) => safetyItemStatus(i) === 'alert' && i.nextDue);
+
+  const safetyEquipment = equipment.filter((e) => e.type === 'safety');
+  const safetyEquipTotal = safetyEquipment.length;
+  const safetyEquipOk = safetyEquipment.filter((e) => e.status === 'ok').length;
+
+  function goToPoolEquipment() {
+    if (pools.length > 0) setActivePool(pools[0].id);
+    setPoolTab('equipment');
+    navigate('/pool');
+  }
 
   return (
     <div>
@@ -126,13 +137,17 @@ export function WaterSafetyTab() {
             {lgSummary.current > 0 ? `${lgSummary.current} cert${lgSummary.current === 1 ? '' : 's'} current` : 'None certified'}
           </p>
         </div>
-        <div className="bg-white border border-border rounded-card px-4 py-4">
+        <button
+          type="button"
+          onClick={goToPoolEquipment}
+          className="bg-white border border-border rounded-card px-4 py-4 text-left hover:border-sage/40 transition-colors"
+        >
           <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Rescue equipment</p>
-          <p className={`font-mono font-semibold text-stat mt-1 ${stats.ok > 0 ? 'text-green-muted-text' : 'text-forest/30'}`}>
-            {stats.total > 0 ? (stats.alert === 0 ? '100%' : `${Math.round((stats.ok / stats.total) * 100)}%`) : '—'}
+          <p className={`font-mono font-semibold text-stat mt-1 ${safetyEquipTotal > 0 ? (safetyEquipOk === safetyEquipTotal ? 'text-green-muted-text' : 'text-amber') : 'text-forest/30'}`}>
+            {safetyEquipTotal > 0 ? `${safetyEquipOk} of ${safetyEquipTotal}` : '—'}
           </p>
-          <p className="text-meta text-forest/40 mt-0.5">Checks current</p>
-        </div>
+          <p className="text-meta text-forest/40 mt-0.5">{safetyEquipTotal > 0 ? 'Items operational' : 'View pool equipment'}</p>
+        </button>
         <div className="bg-white border border-border rounded-card px-4 py-4">
           <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Expiring certs</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${lgSummary.expiring > 0 ? 'text-amber' : 'text-forest/30'}`}>{lgSummary.expiring}</p>

@@ -18,6 +18,15 @@ final class DataService {
         return rows.map { $0.toIssue(activity: (byIssue[$0.id] ?? []).map { $0.toEntry() }) }
     }
 
+    func fetchIssue(id: String) async throws -> Issue? {
+        let rows: [IssueDBRow] = try await supabase.from("issues")
+            .select().eq("id", value: id).limit(1).execute().value
+        guard let row = rows.first else { return nil }
+        let activity: [IssueActivityRow] = try await supabase.from("issue_activity")
+            .select().eq("issue_id", value: id).order("created_at", ascending: true).execute().value
+        return row.toIssue(activity: activity.map { $0.toEntry() })
+    }
+
     func insertIssue(_ issue: Issue) async throws {
         try await supabase.from("issues").insert(IssueInsert(issue: issue)).execute()
     }

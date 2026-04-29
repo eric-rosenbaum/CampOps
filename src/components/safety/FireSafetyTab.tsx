@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useSafetyStore, safetyItemStatus } from '@/store/safetyStore';
 import { useUIStore } from '@/store/uiStore';
-import { AlertBanner } from '@/components/shared/AlertBanner';
 import { Button } from '@/components/shared/Button';
 import type { SafetyItem } from '@/lib/types';
 
@@ -35,10 +34,16 @@ const RESULT_LABELS: Record<string, string> = {
 function ItemCard({ item, onLog }: { item: SafetyItem; onLog: () => void }) {
   const status = safetyItemStatus(item);
   const meta = item.metadata as Record<string, string>;
-  const { recentLogsForItem } = useSafetyStore();
-  const { openEditInspectionLogModal } = useUIStore();
+  const { recentLogsForItem, deleteItem } = useSafetyStore();
+  const { openEditInspectionLogModal, openSafetyAddItemModal } = useUIStore();
   const [showHistory, setShowHistory] = useState(false);
   const historyLogs = recentLogsForItem(item.id, 20);
+
+  function handleDelete() {
+    if (window.confirm(`Delete "${item.name}"? This will also remove all inspection logs for this item.`)) {
+      deleteItem(item.id);
+    }
+  }
 
   return (
     <div className={`bg-white border border-border border-l-[3px] ${statusBorderClass(status)} rounded-card px-5 py-4`}>
@@ -96,6 +101,17 @@ function ItemCard({ item, onLog }: { item: SafetyItem; onLog: () => void }) {
         <Button variant="ghost" size="sm" onClick={() => setShowHistory((v) => !v)}>
           {showHistory ? 'Hide history' : 'View history'}
         </Button>
+        <Button variant="ghost" size="sm" onClick={() => openSafetyAddItemModal({ itemId: item.id })}>
+          Edit
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto text-red/60 hover:text-red hover:bg-red-bg"
+          onClick={handleDelete}
+        >
+          Delete
+        </Button>
       </div>
 
       {showHistory && (
@@ -135,7 +151,7 @@ function ItemCard({ item, onLog }: { item: SafetyItem; onLog: () => void }) {
 }
 
 export function FireSafetyTab() {
-  const { itemsByType, categoryStats, overdueItems: getOverdue } = useSafetyStore();
+  const { itemsByType, categoryStats, failedLastInspectionItems } = useSafetyStore();
   const { openSafetyLogInspectionModal, openSafetyAddItemModal } = useUIStore();
 
   const extinguishers = itemsByType('extinguisher');
@@ -144,8 +160,9 @@ export function FireSafetyTab() {
   const allFireItems = [...extinguishers, ...smokeAlarms, ...coAlarms];
 
   const stats = categoryStats('fire');
-  const overdue = getOverdue().filter((i) => i.category === 'fire');
   const totalUnits = allFireItems.reduce((s, i) => s + i.unitCount, 0);
+
+  const failedItems = failedLastInspectionItems().filter((i) => i.category === 'fire');
 
   // Next service among warn items
   const nextWarn = allFireItems
@@ -156,7 +173,7 @@ export function FireSafetyTab() {
   return (
     <div>
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-3.5 mb-6">
+      <div className="grid grid-cols-5 gap-3.5 mb-6">
         <div className="bg-white border border-border rounded-card px-4 py-4">
           <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Extinguishers</p>
           <p className="font-mono font-semibold text-stat mt-1 text-forest">{extinguishers.reduce((s, i) => s + i.unitCount, 0)}</p>
@@ -171,6 +188,13 @@ export function FireSafetyTab() {
           <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Overdue</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${stats.alert > 0 ? 'text-red' : 'text-forest/30'}`}>{stats.alert}</p>
           <p className={`text-meta mt-0.5 ${stats.alert > 0 ? 'text-red' : 'text-forest/40'}`}>{stats.alert > 0 ? 'Need inspection now' : 'All current'}</p>
+        </div>
+        <div className={`bg-white border border-border rounded-card px-4 py-4 ${failedItems.length > 0 ? 'border-l-[3px] border-l-red' : ''}`}>
+          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Failed last test</p>
+          <p className={`font-mono font-semibold text-stat mt-1 ${failedItems.length > 0 ? 'text-red' : 'text-forest/30'}`}>{failedItems.length}</p>
+          <p className={`text-meta mt-0.5 ${failedItems.length > 0 ? 'text-red' : 'text-forest/40'}`}>
+            {failedItems.length > 0 ? 'Require follow-up' : 'All passed'}
+          </p>
         </div>
         <div className="bg-white border border-border rounded-card px-4 py-4">
           <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Next service</p>
@@ -190,25 +214,25 @@ export function FireSafetyTab() {
         </div>
       </div>
 
-      {/* Alert banners — consolidated */}
-      {overdue.length === 1 && (
-        <AlertBanner
-          variant="alert"
-          message={`${overdue[0].name} inspection is overdue. This is required by fire code. Log the inspection or contact your vendor immediately.`}
-          action={{ label: 'Log inspection', onClick: () => openSafetyLogInspectionModal(overdue[0].id) }}
-        />
-      )}
-      {overdue.length > 1 && (
+      {/* Failed devices card */}
+      {failedItems.length > 0 && (
         <div className="bg-red-bg border border-red/20 rounded-card px-4 py-3.5 mb-4">
-          <p className="text-[12px] font-semibold text-red mb-1.5">{overdue.length} fire safety items are overdue — required by fire code</p>
-          <ul className="text-[11px] text-red/80 space-y-0.5">
-            {overdue.map((item) => (
-              <li key={item.id} className="flex items-center justify-between">
-                <span>• {item.name}</span>
-                <button onClick={() => openSafetyLogInspectionModal(item.id)} className="text-red font-semibold hover:underline cursor-pointer ml-4">Log</button>
-              </li>
+          <p className="text-[12px] font-semibold text-red mb-2">
+            {failedItems.length} device{failedItems.length === 1 ? '' : 's'} failed last inspection
+          </p>
+          <div className="space-y-1.5">
+            {failedItems.map((item) => (
+              <div key={item.id} className="flex items-center justify-between">
+                <span className="text-[12px] text-red/80">• {item.name} — {item.location}</span>
+                <button
+                  onClick={() => openSafetyLogInspectionModal(item.id)}
+                  className="text-[11px] font-semibold text-red hover:underline cursor-pointer ml-4 flex-shrink-0"
+                >
+                  Log inspection
+                </button>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 

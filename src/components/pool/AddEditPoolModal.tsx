@@ -15,7 +15,7 @@ interface FormValues {
 const inputClass = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
 const labelClass = 'block text-[12px] font-medium text-forest/70 mb-1';
 
-export function AddEditPoolModal() {
+export function AddEditPoolModal({ fromSettings = false }: { fromSettings?: boolean }) {
   const { closeAllModals, editingPoolId } = useUIStore();
   const { pools, addPool, updatePool, deletePool } = usePoolStore();
 
@@ -108,20 +108,16 @@ export function AddEditPoolModal() {
           <Button type="submit" className="flex-1 justify-center" disabled={isSubmitting}>
             {editing ? 'Save changes' : 'Add pool'}
           </Button>
-          {editing ? (
-            <>
-              <Button type="button" variant="ghost" onClick={closeAllModals}>Cancel</Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-red hover:bg-red-bg hover:text-red"
-                onClick={handleDelete}
-              >
-                Delete
-              </Button>
-            </>
-          ) : (
-            <Button type="button" variant="ghost" onClick={closeAllModals}>Cancel</Button>
+          <Button type="button" variant="ghost" onClick={closeAllModals}>Cancel</Button>
+          {editing && fromSettings && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-red hover:bg-red-bg hover:text-red"
+              onClick={handleDelete}
+            >
+              Delete
+            </Button>
           )}
         </div>
       </form>

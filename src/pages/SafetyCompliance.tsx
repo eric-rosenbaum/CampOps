@@ -5,7 +5,6 @@ import { useUIStore } from '@/store/uiStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { OverviewTab } from '@/components/safety/OverviewTab';
 import { FireSafetyTab } from '@/components/safety/FireSafetyTab';
-import { WaterSafetyTab } from '@/components/safety/WaterSafetyTab';
 import { KitchenTab } from '@/components/safety/KitchenTab';
 import { DrillsTab } from '@/components/safety/DrillsTab';
 import { StaffTab } from '@/components/safety/StaffTab';
@@ -20,7 +19,6 @@ import { StaffCertModal } from '@/components/safety/StaffCertModal';
 const TABS: { id: SafetyTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'fire', label: 'Fire safety' },
-  { id: 'water', label: 'Water safety' },
   { id: 'kitchen', label: 'Kitchen' },
   { id: 'drills', label: 'Drills & training' },
   { id: 'staff', label: 'Staff & certs' },
@@ -232,7 +230,6 @@ export function SafetyCompliance() {
       <div className="flex-1 overflow-y-auto px-7 py-6">
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'fire'     && <FireSafetyTab />}
-        {activeTab === 'water'    && <WaterSafetyTab />}
         {activeTab === 'kitchen'  && <KitchenTab />}
         {activeTab === 'drills'   && <DrillsTab />}
         {activeTab === 'staff'    && <StaffTab />}

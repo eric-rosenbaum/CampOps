@@ -43,9 +43,7 @@ function statusLabel(equip: PoolEquipment): string {
 }
 
 function getEquipmentFields(equip: PoolEquipment): { label: string; value: string; valueClass?: string }[] {
-  const fields: { label: string; value: string; valueClass?: string }[] = [];
-
-  fields.push({
+  return [{
     label: 'Status',
     value: equip.statusDetail || equip.status,
     valueClass:
@@ -54,32 +52,7 @@ function getEquipmentFields(equip: PoolEquipment): { label: string; value: strin
         : equip.status === 'warn'
         ? 'text-amber'
         : 'text-red',
-  });
-
-  if (equip.type === 'chlorinator') {
-    fields.push(
-      { label: 'Last refilled', value: equip.lastServiced ?? '—' },
-      { label: 'Tablet level', value: equip.statusDetail, valueClass: 'text-amber' },
-      { label: 'Setting', value: '4 of 10' },
-    );
-  } else if (equip.type === 'filter') {
-    fields.push(
-      { label: 'Last backwashed', value: equip.lastServiced ?? '—' },
-      { label: 'Next backwash due', value: equip.nextServiceDue ?? '—', valueClass: equip.status === 'ok' ? 'text-green-muted-text' : 'text-amber' },
-      { label: 'Sand replaced', value: 'Apr 2024' },
-    );
-  } else {
-    if (equip.lastServiced) fields.push({ label: 'Last serviced', value: equip.lastServiced });
-    if (equip.nextServiceDue)
-      fields.push({
-        label: 'Next service due',
-        value: equip.nextServiceDue,
-        valueClass: equip.status === 'warn' ? 'text-amber' : undefined,
-      });
-    if (equip.vendor) fields.push({ label: 'Vendor', value: equip.vendor });
-  }
-
-  return fields;
+  }];
 }
 
 export function EquipmentTab() {

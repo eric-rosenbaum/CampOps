@@ -100,7 +100,7 @@ export const useCampStore = create<CampState>((set, get) => ({
     if (!user) { set({ isLoading: false }); return; }
     const { data, error } = await supabase
       .from('camp_members')
-      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, state, modules)')
+      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, state, modules, locations)')
       .eq('user_id', user.id)
       .eq('is_active', true);
 

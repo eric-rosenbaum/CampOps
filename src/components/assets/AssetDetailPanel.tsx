@@ -149,7 +149,6 @@ export function AssetDetailPanel() {
             progressForPhase={(phase) => maintenanceProgressForAsset(asset.id, phase)}
             onToggle={(id, done) => toggleMaintenanceTask(id, asset.id, done, currentUser.name)}
             onAdd={() => openAddMaintenanceTaskModal(asset.id)}
-            onEdit={(taskId) => openEditMaintenanceTaskModal(asset.id, taskId)}
             onDelete={deleteMaintenanceTask}
           />
         )}
@@ -405,7 +404,6 @@ function MaintenanceTab({ assetId, activeMaintPhase, setActiveMaintPhase, tasks,
   progressForPhase: (phase: AssetMaintenancePhase) => { total: number; done: number };
   onToggle: (id: string, done: boolean) => void;
   onAdd: () => void;
-  onEdit: (taskId: string) => void;
   onDelete: (id: string) => void;
 }) {
   void assetId; // used by parent to fetch tasks
@@ -457,9 +455,6 @@ function MaintenanceTab({ assetId, activeMaintPhase, setActiveMaintPhase, tasks,
               )}
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              <button onClick={() => onEdit(task.id)} className="p-1 text-forest/30 hover:text-forest transition-colors rounded">
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
               <button onClick={() => onDelete(task.id)} className="p-1 text-forest/30 hover:text-red transition-colors rounded">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>

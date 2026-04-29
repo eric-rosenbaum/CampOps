@@ -698,7 +698,7 @@ export function Dashboard() {
                     >
                       <div className="w-1.5 h-1.5 rounded-full bg-sage shrink-0" />
                       <p className="text-[12px] text-forest flex-1 min-w-0 truncate">{issue.title}</p>
-                      <p className="text-[10px] text-forest/35 shrink-0">{issue.location}</p>
+                      <p className="text-[10px] text-forest/35 shrink-0">{issue.locations?.[0]}</p>
                       <ChevronRight className="w-3 h-3 text-forest/25 group-hover:text-forest/50 shrink-0" />
                     </Link>
                   ))}

@@ -37,7 +37,7 @@ export function AssetDetailPanel() {
     toggleMaintenanceTask, deleteServiceRecord, deleteMaintenanceTask,
     deleteCheckout, updateCheckout,
   } = useAssetStore();
-  const { openEditAssetModal, openCheckoutModal, openReturnModal, openLogAssetServiceModal, openEditServiceRecordModal, openAddMaintenanceTaskModal, openEditMaintenanceTaskModal, openEditCheckoutModal } = useUIStore();
+  const { openEditAssetModal, openCheckoutModal, openReturnModal, openLogAssetServiceModal, openEditServiceRecordModal, openAddMaintenanceTaskModal, openEditCheckoutModal } = useUIStore();
   const { currentUser, role } = useAuth();
   const isAdmin = role === 'admin';
 
@@ -396,7 +396,7 @@ function ServiceTab({ records, onLogService, onEdit, onDelete }: {
 
 // ─── Maintenance tab ─────────────────────────────────────────────────────────
 
-function MaintenanceTab({ assetId, activeMaintPhase, setActiveMaintPhase, tasks, progressForPhase, onToggle, onAdd, onEdit, onDelete }: {
+function MaintenanceTab({ assetId, activeMaintPhase, setActiveMaintPhase, tasks, progressForPhase, onToggle, onAdd, onDelete }: {
   assetId: string;
   activeMaintPhase: AssetMaintenancePhase;
   setActiveMaintPhase: (p: AssetMaintenancePhase) => void;

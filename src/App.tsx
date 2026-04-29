@@ -138,6 +138,7 @@ function CampDataLoader() {
 
     // Refetch everything when the tab regains focus (catches any missed realtime events)
     async function refetchAll() {
+      if (!campId) return;
       const [issuesData, poolData, safetyData, assetData] = await Promise.all([
         initializeSupabase(campId),
         loadPoolFromSupabase(campId),

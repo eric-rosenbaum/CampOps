@@ -73,7 +73,7 @@ export function PoolManagement() {
               </Button>
             )}
             {pool && !isWaterfront && (
-              <Button size="sm" onClick={openLogReadingModal}>+ Log reading</Button>
+              <Button size="sm" onClick={() => openLogReadingModal()}>+ Log reading</Button>
             )}
           </div>
         }

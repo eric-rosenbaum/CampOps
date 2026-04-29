@@ -30,6 +30,9 @@ const SERVICE_TYPES_BY_CATEGORY: Record<AssetCategory | 'other', AssetServiceTyp
     'tire_rotation', 'tire_replacement', 'brake_service',
     'annual_inspection', 'cleaning', 'repair', 'other',
   ],
+  technology: [
+    'cleaning', 'repair', 'other',
+  ],
   other: [
     'oil_change', 'tire_rotation', 'tire_replacement', 'brake_service', 'battery',
     'belt_replacement', 'fluid_top_off', 'filter_replacement',

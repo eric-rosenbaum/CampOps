@@ -471,7 +471,6 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   },
 
   maintenanceScheduled: () => {
-    const today = new Date().toISOString().split('T')[0];
     const future = new Date();
     future.setDate(future.getDate() + 14);
     const futureStr = future.toISOString().split('T')[0];

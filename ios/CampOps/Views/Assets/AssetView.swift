@@ -45,7 +45,6 @@ struct AssetView: View {
                 onSave: { await vm.checkOutAsset($0) })
                 .environmentObject(authManager)
         }
-        .task { await vm.load() }
     }
 
     // MARK: - Category pills

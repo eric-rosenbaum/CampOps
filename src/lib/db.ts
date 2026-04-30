@@ -121,9 +121,9 @@ export async function initializeSupabase(campId: string): Promise<{
   try {
     const [issueRows, activityRows, taskRows, taskActivityRows, seasonRows] = await Promise.all([
       supabase.from('issues').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
-      supabase.from('issue_activity').select('*').order('created_at', { ascending: false }),
+      supabase.from('issue_activity').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
       supabase.from('checklist_tasks').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
-      supabase.from('checklist_activity').select('*').order('created_at', { ascending: false }),
+      supabase.from('checklist_activity').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
       supabase.from('seasons').select('*').eq('camp_id', campId).order('created_at', { ascending: false }).limit(1),
     ]);
 
@@ -290,7 +290,7 @@ export function subscribeToIssues(campId: string, onUpdate: IssueCallback): () =
     .channel(channelName)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'issues', filter: `camp_id=eq.${campId}` }, async () => {
       const { data: issueRows } = await supabase.from('issues').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
-      const { data: activityRows } = await supabase.from('issue_activity').select('*').order('created_at', { ascending: false });
+      const { data: activityRows } = await supabase.from('issue_activity').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
       const issues: Issue[] = (issueRows ?? []).map((row) => {
         const log = (activityRows ?? []).filter((a) => a.issue_id === row.id).map(activityRowToEntry);
         return rowToIssue(row as Record<string, unknown>, log);
@@ -308,7 +308,7 @@ export function subscribeToTasks(campId: string, onUpdate: TaskCallback): () => 
     .channel(channelName)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_tasks', filter: `camp_id=eq.${campId}` }, async () => {
       const { data: taskRows } = await supabase.from('checklist_tasks').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
-      const { data: taskActivityRows } = await supabase.from('checklist_activity').select('*').order('created_at', { ascending: false });
+      const { data: taskActivityRows } = await supabase.from('checklist_activity').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
       const tasks: ChecklistTask[] = (taskRows ?? []).map((row) => {
         const log = (taskActivityRows ?? []).filter((a) => a.task_id === row.id).map(activityRowToEntry);
         return rowToTask(row as Record<string, unknown>, log);

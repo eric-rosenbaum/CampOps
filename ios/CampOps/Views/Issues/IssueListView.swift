@@ -31,7 +31,6 @@ struct IssueListView: View {
                 LogIssueView { newIssue in vm.issues.insert(newIssue, at: 0) }
             }
         }
-        .task { await vm.load() }
     }
 
     private var issueList: some View {

@@ -72,7 +72,6 @@ struct PoolView: View {
                 onSave: { task in await vm.updateSeasonalTask(task) }
             )
         }
-        .task { await vm.load() }
     }
 
     // MARK: - Pool selector header

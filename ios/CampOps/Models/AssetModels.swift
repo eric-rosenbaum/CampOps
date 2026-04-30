@@ -10,6 +10,7 @@ enum AssetCategory: String, Codable, CaseIterable, Identifiable {
     case watercraft     = "watercraft"
     case largeEquipment = "large_equipment"
     case trailer        = "trailer"
+    case technology     = "technology"
     case other          = "other"
 
     var displayName: String {
@@ -19,6 +20,7 @@ enum AssetCategory: String, Codable, CaseIterable, Identifiable {
         case .watercraft:     return "Watercraft"
         case .largeEquipment: return "Large Equipment"
         case .trailer:        return "Trailer"
+        case .technology:     return "Technology"
         case .other:          return "Other"
         }
     }
@@ -30,6 +32,7 @@ enum AssetCategory: String, Codable, CaseIterable, Identifiable {
         case .watercraft:     return "water.waves"
         case .largeEquipment: return "tractor.fill"
         case .trailer:        return "rectangle.split.3x1.fill"
+        case .technology:     return "desktopcomputer"
         case .other:          return "wrench.fill"
         }
     }
@@ -137,6 +140,8 @@ enum AssetServiceType: String, Codable, CaseIterable {
         case .trailer:
             return [.tireRotation, .tireReplacement, .brakeService,
                     .annualInspection, .cleaning, .repair, .other]
+        case .technology:
+            return [.cleaning, .repair, .other]
         case .other:
             return AssetServiceType.allCases
         }
@@ -353,7 +358,10 @@ let subtypeDisplayNames: [String: String] = [
     "forklift": "Forklift", "compactor": "Compactor",
     "utility_trailer": "Utility Trailer", "horse_trailer": "Horse Trailer",
     "boat_trailer": "Boat Trailer", "enclosed_trailer": "Enclosed Trailer",
-    "generator": "Generator", "pump": "Pump", "compressor": "Compressor", "other": "Other",
+    "generator": "Generator", "pump": "Pump", "compressor": "Compressor",
+    "desktop": "Desktop", "laptop": "Laptop", "tablet": "Tablet",
+    "projector": "Projector", "printer": "Printer", "server": "Server",
+    "other": "Other",
 ]
 
 let subtypesByCategory: [AssetCategory: [String]] = [
@@ -362,5 +370,6 @@ let subtypesByCategory: [AssetCategory: [String]] = [
     .watercraft:     ["kayak", "canoe", "rowboat", "motorboat", "sailboat", "paddleboard", "raft", "pontoon"],
     .largeEquipment: ["tractor", "mower", "excavator", "forklift", "compactor"],
     .trailer:        ["utility_trailer", "horse_trailer", "boat_trailer", "enclosed_trailer"],
+    .technology:     ["desktop", "laptop", "tablet", "projector", "printer", "server", "other"],
     .other:          ["generator", "pump", "compressor", "other"],
 ]

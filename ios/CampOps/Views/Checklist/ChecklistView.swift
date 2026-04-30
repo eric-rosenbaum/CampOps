@@ -29,7 +29,6 @@ struct ChecklistView: View {
                 AddTaskView().environmentObject(authManager).environmentObject(vm)
             }
         }
-        .task { await vm.load() }
     }
 
     private var taskList: some View {

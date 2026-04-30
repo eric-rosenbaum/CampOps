@@ -46,10 +46,11 @@ struct ContentView: View {
     }
 
     private func loadCampData() async {
-        await issueVM.load()
-        await checklistVM.load()
-        await poolVM.load()
-        await assetVM.load()
+        async let i = issueVM.load()
+        async let c = checklistVM.load()
+        async let p = poolVM.load()
+        async let a = assetVM.load()
+        _ = await (i, c, p, a)
         await syncService.subscribeToChanges(
             onIssueChange: { await issueVM.refresh() },
             onTaskChange:  { await checklistVM.refresh() },

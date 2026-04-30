@@ -209,6 +209,8 @@ export async function dbUpdateTask(id: string, patch: Partial<ChecklistTask>) {
   if (patch.priority !== undefined) row.priority = patch.priority;
   if (patch.status !== undefined) row.status = patch.status;
   if (patch.assigneeId !== undefined) row.assignee_id = patch.assigneeId;
+  if (patch.phase !== undefined) row.phase = patch.phase;
+  if (patch.daysRelativeToOpening !== undefined) row.days_relative_to_opening = patch.daysRelativeToOpening;
   if (patch.dueDate !== undefined) row.due_date = patch.dueDate;
   if (patch.moduleTag !== undefined) row.module_tag = patch.moduleTag;
   const { error } = await supabase.from('checklist_tasks').update(row).eq('id', id);

@@ -707,6 +707,9 @@ export function AdminHome() {
           )}
         </div>
 
+        {/* ── Upcoming deadlines ───────────────────────────────────────── */}
+        {deadlineItems.length > 0 && <DeadlineStrip items={deadlineItems} />}
+
         {/* ── Pools & waterfront ───────────────────────────────────────── */}
         {activePools.length > 0 && (
           <div>
@@ -1044,9 +1047,6 @@ export function AdminHome() {
             ))}
           </div>
         </div>
-
-        {/* ── Upcoming deadlines ───────────────────────────────────────── */}
-        {deadlineItems.length > 0 && <DeadlineStrip items={deadlineItems} />}
 
         {/* ── Activity feed ────────────────────────────────────────────── */}
         <ActivityFeed items={recentActivity} />

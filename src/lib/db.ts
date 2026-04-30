@@ -303,11 +303,10 @@ export function subscribeToIssues(campId: string, onUpdate: IssueCallback, onEve
     .channel(channelName)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'issues', filter: `camp_id=eq.${campId}` }, reload)
     .subscribe((status) => {
+      console.log('[CampOps] issues channel status:', status);
       if (status === 'SUBSCRIBED') {
-        // Skip the initial subscription; only reload on reconnect so we catch
-        // WAL events that fired while the WebSocket was disconnected.
-        if (everSubscribed) reload();
-        else everSubscribed = true;
+        if (everSubscribed) { console.log('[CampOps] issues reconnected — reloading'); reload(); }
+        else { console.log('[CampOps] issues initial subscription'); everSubscribed = true; }
       }
     });
 
@@ -331,9 +330,10 @@ export function subscribeToTasks(campId: string, onUpdate: TaskCallback, onEvent
     .channel(channelName)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_tasks', filter: `camp_id=eq.${campId}` }, reload)
     .subscribe((status) => {
+      console.log('[CampOps] tasks channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) reload();
-        else everSubscribed = true;
+        if (everSubscribed) { console.log('[CampOps] tasks reconnected — reloading'); reload(); }
+        else { console.log('[CampOps] tasks initial subscription'); everSubscribed = true; }
       }
     });
 
@@ -656,9 +656,10 @@ export function subscribeToPool(campId: string, onUpdate: PoolDataCallback, onEv
   }
   let everSubscribed = false;
   channel.subscribe((status) => {
+    console.log('[CampOps] pool channel status:', status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) reload();
-      else everSubscribed = true;
+      if (everSubscribed) { console.log('[CampOps] pool reconnected — reloading'); reload(); }
+      else { console.log('[CampOps] pool initial subscription'); everSubscribed = true; }
     }
   });
   return () => { supabase.removeChannel(channel); };
@@ -1031,9 +1032,10 @@ export function subscribeToSafety(campId: string, onUpdate: SafetyDataCallback, 
     .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_temp_logs', filter: `camp_id=eq.${campId}` }, reload)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_licenses', filter: `camp_id=eq.${campId}` }, reload)
     .subscribe((status) => {
+      console.log('[CampOps] safety channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) reload();
-        else everSubscribed = true;
+        if (everSubscribed) { console.log('[CampOps] safety reconnected — reloading'); reload(); }
+        else { console.log('[CampOps] safety initial subscription'); everSubscribed = true; }
       }
     });
   return () => { supabase.removeChannel(channel); };
@@ -1311,9 +1313,10 @@ export function subscribeToAssets(campId: string, onUpdate: AssetDataCallback, o
   }
   let everSubscribed = false;
   channel.subscribe((status) => {
+    console.log('[CampOps] assets channel status:', status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) reload();
-      else everSubscribed = true;
+      if (everSubscribed) { console.log('[CampOps] assets reconnected — reloading'); reload(); }
+      else { console.log('[CampOps] assets initial subscription'); everSubscribed = true; }
     }
   });
   return () => { supabase.removeChannel(channel); };

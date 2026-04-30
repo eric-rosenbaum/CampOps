@@ -160,10 +160,12 @@ function CampDataLoader() {
     // We skip the refetch for short tab switches to avoid a race: a quick refetch can
     // overwrite an in-flight save (optimistic update) before the subscription catches it.
     const REFETCH_AFTER_HIDDEN_MS = 2 * 60 * 1000; // 2 minutes
+    const PERIODIC_REFETCH_MS = 3 * 60 * 1000; // 3 minutes
     let hiddenAt: number | null = null;
 
-    async function refetchAll() {
+    async function refetchAll(reason: string) {
       if (!campId) return;
+      console.log(`[CampOps] refetchAll START reason=${reason} t=${Date.now()}`);
       const refetchStartedAt = Date.now();
       const [issuesData, poolData, safetyData, assetData] = await Promise.all([
         initializeSupabase(campId),
@@ -171,10 +173,12 @@ function CampDataLoader() {
         loadSafetyFromSupabase(campId),
         loadAssetsFromSupabase(campId),
       ]);
-      if (issuesData && issuesSyncedAt <= refetchStartedAt) { setIssues(issuesData.issues); setTasks(issuesData.tasks); if (issuesData.season) setSeason(issuesData.season); }
-      if (poolData && poolSyncedAt <= refetchStartedAt) { setPools(poolData.pools); setChemicalReadings(poolData.readings); setEquipment(poolData.equipment); setServiceLog(poolData.serviceLog); setInspections(poolData.inspections); setInspectionLog(poolData.inspectionLog); setSeasonalTasks(poolData.seasonalTasks); }
-      if (safetyData && safetySyncedAt <= refetchStartedAt) { setItems(safetyData.items); setSafetyLog(safetyData.inspectionLog); setDrills(safetyData.drills); setStaff(safetyData.staff); setCertifications(safetyData.certifications); setTempLogs(safetyData.tempLogs); setLicenses(safetyData.licenses); }
-      if (assetData && assetsSyncedAt <= refetchStartedAt) { setAssets(assetData.assets); setCheckouts(assetData.checkouts); setServiceRecords(assetData.serviceRecords); setMaintenanceTasks(assetData.maintenanceTasks); }
+      const applied: string[] = [];
+      if (issuesData && issuesSyncedAt <= refetchStartedAt) { setIssues(issuesData.issues); setTasks(issuesData.tasks); if (issuesData.season) setSeason(issuesData.season); applied.push('issues'); }
+      if (poolData && poolSyncedAt <= refetchStartedAt) { setPools(poolData.pools); setChemicalReadings(poolData.readings); setEquipment(poolData.equipment); setServiceLog(poolData.serviceLog); setInspections(poolData.inspections); setInspectionLog(poolData.inspectionLog); setSeasonalTasks(poolData.seasonalTasks); applied.push('pool'); }
+      if (safetyData && safetySyncedAt <= refetchStartedAt) { setItems(safetyData.items); setSafetyLog(safetyData.inspectionLog); setDrills(safetyData.drills); setStaff(safetyData.staff); setCertifications(safetyData.certifications); setTempLogs(safetyData.tempLogs); setLicenses(safetyData.licenses); applied.push('safety'); }
+      if (assetData && assetsSyncedAt <= refetchStartedAt) { setAssets(assetData.assets); setCheckouts(assetData.checkouts); setServiceRecords(assetData.serviceRecords); setMaintenanceTasks(assetData.maintenanceTasks); applied.push('assets'); }
+      console.log(`[CampOps] refetchAll DONE applied=${applied.join(',') || 'none (blocked by WAL guard)'} syncedAts=issues:${issuesSyncedAt} pool:${poolSyncedAt} safety:${safetySyncedAt} assets:${assetsSyncedAt} refetchStartedAt:${refetchStartedAt}`);
     }
 
     function handleVisibility() {
@@ -183,15 +187,24 @@ function CampDataLoader() {
       } else if (document.visibilityState === 'visible' && hiddenAt !== null) {
         const hiddenMs = Date.now() - hiddenAt;
         hiddenAt = null;
-        // Delay so any write that fired right as the tab became visible (and its
-        // fetchWithRetry 3-second retry) finishes before we snapshot the DB.
-        // Without this, refetchAll queries the DB before the retry write lands,
-        // takes a snapshot that doesn't include the new record, and overwrites
-        // the optimistic update — making the write appear to vanish.
-        if (hiddenMs >= REFETCH_AFTER_HIDDEN_MS) setTimeout(() => refetchAll(), 5000);
+        console.log(`[CampOps] tab visible after ${Math.round(hiddenMs / 1000)}s hidden`);
+        if (hiddenMs >= REFETCH_AFTER_HIDDEN_MS) {
+          console.log('[CampOps] scheduling refetchAll in 5s (was hidden long enough)');
+          setTimeout(() => refetchAll('visibility'), 5000);
+        }
       }
     }
     document.addEventListener('visibilitychange', handleVisibility);
+
+    // Periodic safety net: even if the tab was never hidden, the WebSocket can
+    // drop silently (network hiccup, router reconnect). Poll every 3 minutes so
+    // any write whose WAL event was missed shows up within that window.
+    const periodicTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        console.log('[CampOps] periodic refetchAll');
+        refetchAll('periodic');
+      }
+    }, PERIODIC_REFETCH_MS);
 
     return () => {
       unsubIssues?.();
@@ -200,6 +213,7 @@ function CampDataLoader() {
       unsubSafety?.();
       unsubAssets?.();
       document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(periodicTimer);
     };
   }, [campId]); // eslint-disable-line react-hooks/exhaustive-deps
 

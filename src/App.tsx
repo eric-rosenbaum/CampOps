@@ -183,7 +183,12 @@ function CampDataLoader() {
       } else if (document.visibilityState === 'visible' && hiddenAt !== null) {
         const hiddenMs = Date.now() - hiddenAt;
         hiddenAt = null;
-        if (hiddenMs >= REFETCH_AFTER_HIDDEN_MS) refetchAll();
+        // Delay so any write that fired right as the tab became visible (and its
+        // fetchWithRetry 3-second retry) finishes before we snapshot the DB.
+        // Without this, refetchAll queries the DB before the retry write lands,
+        // takes a snapshot that doesn't include the new record, and overwrites
+        // the optimistic update — making the write appear to vanish.
+        if (hiddenMs >= REFETCH_AFTER_HIDDEN_MS) setTimeout(() => refetchAll(), 5000);
       }
     }
     document.addEventListener('visibilitychange', handleVisibility);

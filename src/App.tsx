@@ -40,6 +40,7 @@ import {
   loadAssetsFromSupabase, subscribeToAssets,
   type AssetData,
 } from '@/lib/db';
+import { campLog } from '@/lib/campLog';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { usePoolStore } from '@/store/poolStore';
@@ -165,7 +166,7 @@ function CampDataLoader() {
 
     async function refetchAll(reason: string) {
       if (!campId) return;
-      console.log(`[CampOps] refetchAll START reason=${reason} t=${Date.now()}`);
+      campLog(`[CampOps] refetchAll START reason=${reason} t=${Date.now()}`);
       const refetchStartedAt = Date.now();
       const [issuesData, poolData, safetyData, assetData] = await Promise.all([
         initializeSupabase(campId),
@@ -178,30 +179,47 @@ function CampDataLoader() {
       if (poolData && poolSyncedAt <= refetchStartedAt) { setPools(poolData.pools); setChemicalReadings(poolData.readings); setEquipment(poolData.equipment); setServiceLog(poolData.serviceLog); setInspections(poolData.inspections); setInspectionLog(poolData.inspectionLog); setSeasonalTasks(poolData.seasonalTasks); applied.push('pool'); }
       if (safetyData && safetySyncedAt <= refetchStartedAt) { setItems(safetyData.items); setSafetyLog(safetyData.inspectionLog); setDrills(safetyData.drills); setStaff(safetyData.staff); setCertifications(safetyData.certifications); setTempLogs(safetyData.tempLogs); setLicenses(safetyData.licenses); applied.push('safety'); }
       if (assetData && assetsSyncedAt <= refetchStartedAt) { setAssets(assetData.assets); setCheckouts(assetData.checkouts); setServiceRecords(assetData.serviceRecords); setMaintenanceTasks(assetData.maintenanceTasks); applied.push('assets'); }
-      console.log(`[CampOps] refetchAll DONE applied=${applied.join(',') || 'none (blocked by WAL guard)'} syncedAts=issues:${issuesSyncedAt} pool:${poolSyncedAt} safety:${safetySyncedAt} assets:${assetsSyncedAt} refetchStartedAt:${refetchStartedAt}`);
+      campLog(`[CampOps] refetchAll DONE applied=${applied.join(',') || 'none(WAL-guard)'} syncedAts=issues:${issuesSyncedAt} pool:${poolSyncedAt} safety:${safetySyncedAt} assets:${assetsSyncedAt} refetchStartedAt:${refetchStartedAt}`);
     }
 
     function handleVisibility() {
       if (document.visibilityState === 'hidden') {
         hiddenAt = Date.now();
+        campLog('[CampOps] tab hidden');
       } else if (document.visibilityState === 'visible' && hiddenAt !== null) {
         const hiddenMs = Date.now() - hiddenAt;
         hiddenAt = null;
-        console.log(`[CampOps] tab visible after ${Math.round(hiddenMs / 1000)}s hidden`);
+        campLog(`[CampOps] tab visible after ${Math.round(hiddenMs / 1000)}s hidden`);
         if (hiddenMs >= REFETCH_AFTER_HIDDEN_MS) {
-          console.log('[CampOps] scheduling refetchAll in 5s (was hidden long enough)');
+          campLog('[CampOps] scheduling refetchAll in 5s (was hidden long enough)');
           setTimeout(() => refetchAll('visibility'), 5000);
         }
       }
     }
     document.addEventListener('visibilitychange', handleVisibility);
 
+    // Chrome Page Lifecycle: fires when a frozen tab is resumed.
+    // visibilitychange does NOT fire reliably in this case.
+    function handleResume() {
+      campLog('[CampOps] page RESUMED from freeze — scheduling refetchAll in 15s');
+      setTimeout(() => refetchAll('resume'), 15000);
+    }
+    // pageshow fires when page is restored from bfcache (back/forward navigation).
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted) {
+        campLog('[CampOps] page restored from bfcache — scheduling refetchAll in 15s');
+        setTimeout(() => refetchAll('pageshow'), 15000);
+      }
+    }
+    document.addEventListener('resume', handleResume);
+    window.addEventListener('pageshow', handlePageShow);
+
     // Periodic safety net: even if the tab was never hidden, the WebSocket can
     // drop silently (network hiccup, router reconnect). Poll every 3 minutes so
     // any write whose WAL event was missed shows up within that window.
     const periodicTimer = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        console.log('[CampOps] periodic refetchAll');
+        campLog('[CampOps] periodic refetchAll');
         refetchAll('periodic');
       }
     }, PERIODIC_REFETCH_MS);
@@ -213,6 +231,8 @@ function CampDataLoader() {
       unsubSafety?.();
       unsubAssets?.();
       document.removeEventListener('visibilitychange', handleVisibility);
+      document.removeEventListener('resume', handleResume);
+      window.removeEventListener('pageshow', handlePageShow);
       clearInterval(periodicTimer);
     };
   }, [campId]); // eslint-disable-line react-hooks/exhaustive-deps

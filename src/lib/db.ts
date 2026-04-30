@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { campLog, campError } from './campLog';
 import type {
   Issue, ChecklistTask, ActivityEntry, Season,
   CampPool, ChemicalReading, PoolEquipment, ServiceLogEntry,
@@ -161,12 +162,12 @@ export async function initializeSupabase(campId: string): Promise<{
 // ─── Write functions ──────────────────────────────────────────────────────────
 
 export async function dbUpsertIssue(issue: Issue): Promise<{ error: unknown }> {
-  console.log('[CampOps] dbUpsertIssue START', issue.id, issue.title);
+  campLog('[CampOps] dbUpsertIssue START', issue.id, issue.title);
   const { error } = await supabase.from('issues').upsert(issueToRow(issue), { onConflict: 'id' });
   if (error) {
-    console.error('[CampOps] dbUpsertIssue FAILED', error.message, error);
+    campError('[CampOps] dbUpsertIssue FAILED', error.message, error);
   } else {
-    console.log('[CampOps] dbUpsertIssue SUCCESS', issue.id);
+    campLog('[CampOps] dbUpsertIssue SUCCESS', issue.id);
   }
   return { error };
 }
@@ -295,16 +296,16 @@ let taskChannelCount = 0;
 export function subscribeToIssues(campId: string, onUpdate: IssueCallback, onEventStart?: () => void): () => void {
   const channelName = `issues-channel-${++issueChannelCount}`;
   const reload = async (source = 'WAL') => {
-    console.log('[CampOps] issues reload START source=' + source);
+    campLog('[CampOps] issues reload START source=' + source);
     onEventStart?.();
     const { data: issueRows, error: issueErr } = await supabase.from('issues').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
     const { data: activityRows } = await supabase.from('issue_activity').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
-    if (issueErr) console.error('[CampOps] issues reload query error', issueErr);
+    if (issueErr) campError('[CampOps] issues reload query error', issueErr);
     const issues: Issue[] = (issueRows ?? []).map((row) => {
       const log = (activityRows ?? []).filter((a) => a.issue_id === row.id).map(activityRowToEntry);
       return rowToIssue(row as Record<string, unknown>, log);
     });
-    console.log('[CampOps] issues reload DONE count=' + issues.length + ' source=' + source);
+    campLog('[CampOps] issues reload DONE count=' + issues.length + ' source=' + source);
     onUpdate(issues);
   };
   let everSubscribed = false;
@@ -312,10 +313,10 @@ export function subscribeToIssues(campId: string, onUpdate: IssueCallback, onEve
     .channel(channelName)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'issues', filter: `camp_id=eq.${campId}` }, () => reload('WAL'))
     .subscribe((status) => {
-      console.log('[CampOps] issues channel status:', status);
+      campLog('[CampOps] issues channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) { console.log('[CampOps] issues reconnected — reloading'); reload('reconnect'); }
-        else { console.log('[CampOps] issues initial subscription'); everSubscribed = true; }
+        if (everSubscribed) { campLog('[CampOps] issues reconnected — reloading'); reload('reconnect'); }
+        else { campLog('[CampOps] issues initial subscription'); everSubscribed = true; }
       }
     });
 
@@ -339,10 +340,10 @@ export function subscribeToTasks(campId: string, onUpdate: TaskCallback, onEvent
     .channel(channelName)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_tasks', filter: `camp_id=eq.${campId}` }, reload)
     .subscribe((status) => {
-      console.log('[CampOps] tasks channel status:', status);
+      campLog('[CampOps] tasks channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) { console.log('[CampOps] tasks reconnected — reloading'); reload(); }
-        else { console.log('[CampOps] tasks initial subscription'); everSubscribed = true; }
+        if (everSubscribed) { campLog('[CampOps] tasks reconnected — reloading'); reload(); }
+        else { campLog('[CampOps] tasks initial subscription'); everSubscribed = true; }
       }
     });
 
@@ -665,10 +666,10 @@ export function subscribeToPool(campId: string, onUpdate: PoolDataCallback, onEv
   }
   let everSubscribed = false;
   channel.subscribe((status) => {
-    console.log('[CampOps] pool channel status:', status);
+    campLog('[CampOps] pool channel status:', status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) { console.log('[CampOps] pool reconnected — reloading'); reload(); }
-      else { console.log('[CampOps] pool initial subscription'); everSubscribed = true; }
+      if (everSubscribed) { campLog('[CampOps] pool reconnected — reloading'); reload(); }
+      else { campLog('[CampOps] pool initial subscription'); everSubscribed = true; }
     }
   });
   return () => { supabase.removeChannel(channel); };
@@ -1041,10 +1042,10 @@ export function subscribeToSafety(campId: string, onUpdate: SafetyDataCallback, 
     .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_temp_logs', filter: `camp_id=eq.${campId}` }, reload)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_licenses', filter: `camp_id=eq.${campId}` }, reload)
     .subscribe((status) => {
-      console.log('[CampOps] safety channel status:', status);
+      campLog('[CampOps] safety channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) { console.log('[CampOps] safety reconnected — reloading'); reload(); }
-        else { console.log('[CampOps] safety initial subscription'); everSubscribed = true; }
+        if (everSubscribed) { campLog('[CampOps] safety reconnected — reloading'); reload(); }
+        else { campLog('[CampOps] safety initial subscription'); everSubscribed = true; }
       }
     });
   return () => { supabase.removeChannel(channel); };
@@ -1322,10 +1323,10 @@ export function subscribeToAssets(campId: string, onUpdate: AssetDataCallback, o
   }
   let everSubscribed = false;
   channel.subscribe((status) => {
-    console.log('[CampOps] assets channel status:', status);
+    campLog('[CampOps] assets channel status:', status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) { console.log('[CampOps] assets reconnected — reloading'); reload(); }
-      else { console.log('[CampOps] assets initial subscription'); everSubscribed = true; }
+      if (everSubscribed) { campLog('[CampOps] assets reconnected — reloading'); reload(); }
+      else { campLog('[CampOps] assets initial subscription'); everSubscribed = true; }
     }
   });
   return () => { supabase.removeChannel(channel); };

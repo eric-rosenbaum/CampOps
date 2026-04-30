@@ -164,7 +164,7 @@ private struct InspectionCard: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(insp.name).font(.headline).foregroundColor(.forest)
-                    Text("\(insp.frequency) · \(insp.authority)")
+                    Text([insp.frequency, insp.authority].compactMap { $0 }.joined(separator: " · "))
                         .font(.caption).foregroundColor(.secondary)
                 }
                 Spacer()

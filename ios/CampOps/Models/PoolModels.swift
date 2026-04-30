@@ -361,8 +361,8 @@ struct PoolInspection: Codable, Identifiable {
     let id: String
     var poolId: String
     var name: String
-    var frequency: String
-    var authority: String
+    var frequency: String?
+    var authority: String?
     var standard: String?
     var status: InspectionStatus
     var lastCompleted: String?

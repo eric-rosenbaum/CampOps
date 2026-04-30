@@ -73,13 +73,43 @@ function CampDataLoader() {
     let unsubSafety: (() => void) | null = null;
     let unsubAssets: (() => void) | null = null;
 
+    // Start subscriptions FIRST so any writes during the initial data load are captured.
+    // If subscriptions were started after loading, a write that completes before the
+    // subscription starts would fire a WAL event nobody is listening to, and the
+    // subsequent setIssues(initialData) would overwrite the optimistic update permanently.
+    unsubIssues = subscribeToIssues(campId, setIssues);
+    unsubTasks = subscribeToTasks(campId, setTasks);
+    unsubPool = subscribeToPool(campId, (d) => {
+      setPools(d.pools);
+      setChemicalReadings(d.readings);
+      setEquipment(d.equipment);
+      setServiceLog(d.serviceLog);
+      setInspections(d.inspections);
+      setInspectionLog(d.inspectionLog);
+      setSeasonalTasks(d.seasonalTasks);
+    });
+    unsubSafety = subscribeToSafety(campId, (d) => {
+      setItems(d.items);
+      setSafetyLog(d.inspectionLog);
+      setDrills(d.drills);
+      setStaff(d.staff);
+      setCertifications(d.certifications);
+      setTempLogs(d.tempLogs);
+      setLicenses(d.licenses);
+    });
+    unsubAssets = subscribeToAssets(campId, (d) => {
+      setAssets(d.assets);
+      setCheckouts(d.checkouts);
+      setServiceRecords(d.serviceRecords);
+      setMaintenanceTasks(d.maintenanceTasks);
+    });
+
+    // Load initial data after subscriptions are live.
     initializeSupabase(campId).then((data) => {
       if (!data) return;
       setIssues(data.issues);
       setTasks(data.tasks);
       if (data.season) setSeason(data.season);
-      unsubIssues = subscribeToIssues(campId, setIssues);
-      unsubTasks = subscribeToTasks(campId, setTasks);
     });
 
     loadPoolFromSupabase(campId).then((data) => {
@@ -91,15 +121,6 @@ function CampDataLoader() {
       setInspections(data.inspections);
       setInspectionLog(data.inspectionLog);
       setSeasonalTasks(data.seasonalTasks);
-      unsubPool = subscribeToPool(campId, (d) => {
-        setPools(d.pools);
-        setChemicalReadings(d.readings);
-        setEquipment(d.equipment);
-        setServiceLog(d.serviceLog);
-        setInspections(d.inspections);
-        setInspectionLog(d.inspectionLog);
-        setSeasonalTasks(d.seasonalTasks);
-      });
     });
 
     loadSafetyFromSupabase(campId).then((data) => {
@@ -111,15 +132,6 @@ function CampDataLoader() {
       setCertifications(data.certifications);
       setTempLogs(data.tempLogs);
       setLicenses(data.licenses);
-      unsubSafety = subscribeToSafety(campId, (d) => {
-        setItems(d.items);
-        setSafetyLog(d.inspectionLog);
-        setDrills(d.drills);
-        setStaff(d.staff);
-        setCertifications(d.certifications);
-        setTempLogs(d.tempLogs);
-        setLicenses(d.licenses);
-      });
     });
 
     loadAssetsFromSupabase(campId).then((data: AssetData | null) => {
@@ -128,15 +140,15 @@ function CampDataLoader() {
       setCheckouts(data.checkouts);
       setServiceRecords(data.serviceRecords);
       setMaintenanceTasks(data.maintenanceTasks);
-      unsubAssets = subscribeToAssets(campId, (d) => {
-        setAssets(d.assets);
-        setCheckouts(d.checkouts);
-        setServiceRecords(d.serviceRecords);
-        setMaintenanceTasks(d.maintenanceTasks);
-      });
     });
 
-    // Refetch everything when the tab regains focus (catches any missed realtime events)
+    // Refetch after the tab has been hidden long enough that the realtime subscription
+    // may have missed events (e.g. WebSocket disconnected during sleep/long absence).
+    // We skip the refetch for short tab switches to avoid a race: a quick refetch can
+    // overwrite an in-flight save (optimistic update) before the subscription catches it.
+    const REFETCH_AFTER_HIDDEN_MS = 2 * 60 * 1000; // 2 minutes
+    let hiddenAt: number | null = null;
+
     async function refetchAll() {
       if (!campId) return;
       const [issuesData, poolData, safetyData, assetData] = await Promise.all([
@@ -152,7 +164,13 @@ function CampDataLoader() {
     }
 
     function handleVisibility() {
-      if (document.visibilityState === 'visible') refetchAll();
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+      } else if (document.visibilityState === 'visible' && hiddenAt !== null) {
+        const hiddenMs = Date.now() - hiddenAt;
+        hiddenAt = null;
+        if (hiddenMs >= REFETCH_AFTER_HIDDEN_MS) refetchAll();
+      }
     }
     document.addEventListener('visibilitychange', handleVisibility);
 

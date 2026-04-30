@@ -73,12 +73,18 @@ function CampDataLoader() {
     let unsubSafety: (() => void) | null = null;
     let unsubAssets: (() => void) | null = null;
 
+    // Track whether each subscription has fired. If it has, the subscription's refetch
+    // is more recent than the initializeSupabase snapshot (which started before any user
+    // write), so we should not overwrite it with the stale snapshot.
+    let issuesSynced = false;
+    let tasksSynced = false;
+
     // Start subscriptions FIRST so any writes during the initial data load are captured.
     // If subscriptions were started after loading, a write that completes before the
     // subscription starts would fire a WAL event nobody is listening to, and the
     // subsequent setIssues(initialData) would overwrite the optimistic update permanently.
-    unsubIssues = subscribeToIssues(campId, setIssues);
-    unsubTasks = subscribeToTasks(campId, setTasks);
+    unsubIssues = subscribeToIssues(campId, (issues) => { issuesSynced = true; setIssues(issues); });
+    unsubTasks = subscribeToTasks(campId, (tasks) => { tasksSynced = true; setTasks(tasks); });
     unsubPool = subscribeToPool(campId, (d) => {
       setPools(d.pools);
       setChemicalReadings(d.readings);
@@ -105,10 +111,13 @@ function CampDataLoader() {
     });
 
     // Load initial data after subscriptions are live.
+    // Skip setIssues/setTasks if the subscription already fired — that means a write
+    // happened during the load window and the subscription's refetch is more current
+    // than our snapshot.
     initializeSupabase(campId).then((data) => {
       if (!data) return;
-      setIssues(data.issues);
-      setTasks(data.tasks);
+      if (!issuesSynced) setIssues(data.issues);
+      if (!tasksSynced) setTasks(data.tasks);
       if (data.season) setSeason(data.season);
     });
 

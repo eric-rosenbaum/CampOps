@@ -10,13 +10,14 @@ import { PriorityBadge } from './PriorityBadge';
 import { ActivityFeed } from './ActivityFeed';
 import { Button } from './Button';
 import { formatDate, formatDateTime, generateId } from '@/lib/utils';
+import { addDays } from 'date-fns';
 
 interface Props {
   task: ChecklistTask;
 }
 
 export function TaskDetail({ task }: Props) {
-  const { updateTask, completeTask, addActivityEntry, deleteTask, selectTask } = useChecklistStore();
+  const { updateTask, completeTask, addActivityEntry, deleteTask, selectTask, season } = useChecklistStore();
   const { currentUser, can } = useAuth();
   const members = useCampStore((s) => s.members);
   const campLocations = useCampStore((s) => s.currentCamp?.locations ?? DEFAULT_LOCATIONS);
@@ -29,7 +30,12 @@ export function TaskDetail({ task }: Props) {
   const [editLocations, setEditLocations] = useState<Location[]>(task.locations);
   const [editPriority, setEditPriority] = useState<Priority>(task.priority);
   const [editPhase, setEditPhase] = useState<'pre' | 'post'>(task.phase);
-  const [editTimingBucket, setEditTimingBucket] = useState(bucketValueToString(task.daysRelativeToOpening));
+  const [editTimingBucket, setEditTimingBucket] = useState(
+    task.daysRelativeToOpening === null && task.dueDate ? 'custom' : bucketValueToString(task.daysRelativeToOpening)
+  );
+  const [editCustomDate, setEditCustomDate] = useState(
+    task.daysRelativeToOpening === null ? (task.dueDate ?? '') : ''
+  );
 
   function handleEditPhaseChange(newPhase: 'pre' | 'post') {
     setEditPhase(newPhase);
@@ -69,7 +75,15 @@ export function TaskDetail({ task }: Props) {
   }
 
   function handleSaveEdit() {
-    const daysRel = stringToBucketValue(editTimingBucket);
+    const isCustom = editTimingBucket === 'custom';
+    const daysRel = isCustom ? null : stringToBucketValue(editTimingBucket);
+    let dueDate: string | null = null;
+    if (isCustom) {
+      dueDate = editCustomDate || null;
+    } else if (daysRel !== null && season) {
+      const base = editPhase === 'post' ? season.closingDate : season.openingDate;
+      dueDate = addDays(new Date(base), daysRel).toISOString().split('T')[0];
+    }
     updateTask(task.id, {
       title: editTitle.trim(),
       description: editDescription,
@@ -77,6 +91,7 @@ export function TaskDetail({ task }: Props) {
       priority: editPriority,
       phase: editPhase,
       daysRelativeToOpening: daysRel,
+      dueDate,
     });
     addActivityEntry(task.id, {
       id: generateId(), userId: currentUser.id, userName: currentUser.name,
@@ -152,7 +167,16 @@ export function TaskDetail({ task }: Props) {
               {getBuckets(editPhase).map((b) => (
                 <option key={bucketValueToString(b.value)} value={bucketValueToString(b.value)}>{b.label}</option>
               ))}
+              <option value="custom">Custom date…</option>
             </select>
+            {editTimingBucket === 'custom' && (
+              <input
+                type="date"
+                value={editCustomDate}
+                onChange={(e) => setEditCustomDate(e.target.value)}
+                className={`${inputClass} mt-2`}
+              />
+            )}
           </div>
         </div>
         <div className="px-5 py-4 border-t border-border">
@@ -249,8 +273,21 @@ export function TaskDetail({ task }: Props) {
         </div>
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 mb-1.5">Due date</p>
-          <p className="text-[13px] text-forest/80">{task.dueDate ? formatDate(task.dueDate) : 'No due date set'}</p>
-          <p className="text-[11px] text-forest/45 mt-0.5">{getBucketLabel(task.phase, task.daysRelativeToOpening)}</p>
+          {(() => {
+            const effective = task.dueDate
+              ? task.dueDate
+              : task.daysRelativeToOpening !== null && season
+                ? addDays(new Date(task.phase === 'post' ? season.closingDate : season.openingDate), task.daysRelativeToOpening).toISOString().split('T')[0]
+                : null;
+            return (
+              <>
+                <p className="text-[13px] text-forest/80">{effective ? formatDate(effective) : 'No due date set'}</p>
+                {task.daysRelativeToOpening !== null && (
+                  <p className="text-[11px] text-forest/45 mt-0.5">{getBucketLabel(task.phase, task.daysRelativeToOpening)}</p>
+                )}
+              </>
+            );
+          })()}
         </div>
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 mb-1.5">Logged</p>

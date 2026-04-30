@@ -11,6 +11,16 @@ struct ChecklistDetailView: View {
 
     private var task: ChecklistTask? { vm.tasks.first { $0.id == taskId } }
 
+    private func effectiveDueDateLabel(for task: ChecklistTask) -> (label: String, overdue: Bool)? {
+        if let rel = task.dueDateRelative { return rel }
+        guard let days = task.daysRelativeToOpening, let season = vm.season else { return nil }
+        let formatter = DateFormatter(); formatter.dateFormat = "yyyy-MM-dd"
+        let baseStr = task.phase == .post ? season.closingDate : season.openingDate
+        guard let base = formatter.date(from: baseStr),
+              let due = Calendar.current.date(byAdding: .day, value: days, to: base) else { return nil }
+        return formatter.string(from: due).relativeDueDate
+    }
+
     var body: some View {
         Group {
             if let task { content(task: task) }
@@ -35,7 +45,7 @@ struct ChecklistDetailView: View {
                     Text(task.title).font(.title2.weight(.bold)).foregroundColor(.forest)
                     Label(task.locations.joined(separator: ", "), systemImage: "mappin.circle")
                         .font(.caption).foregroundColor(.secondary)
-                    if let (label, overdue) = task.dueDateRelative {
+                    if let (label, overdue) = effectiveDueDateLabel(for: task) {
                         Text(label).font(.caption.weight(.medium))
                             .foregroundColor(overdue ? .priorityUrgent : .secondary)
                     }

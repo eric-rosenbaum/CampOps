@@ -229,6 +229,7 @@ interface AssetStore {
   overdueCheckouts: () => { asset: CampAsset; checkout: AssetCheckout }[];
   maintenanceOverdue: () => { asset: CampAsset; record: AssetServiceRecord }[];
   maintenanceDueSoon: (days?: number) => { asset: CampAsset; record: AssetServiceRecord }[];
+  maintenanceScheduled: () => { asset: CampAsset; record: AssetServiceRecord }[];
   fleetStats: () => { total: number; available: number; checkedOut: number; inService: number; retired: number; maintenanceOverdue: number };
   recentCheckoutNames: () => string[];
 }
@@ -460,6 +461,25 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     for (const record of serviceRecords) {
       if (!record.nextServiceDate) continue;
       if (record.nextServiceDate <= today || record.nextServiceDate > futureStr) continue;
+      const asset = assets.find((a) => a.id === record.assetId && a.isActive && a.status !== 'retired');
+      if (!asset) continue;
+      if (!result.find((r) => r.asset.id === asset.id)) {
+        result.push({ asset, record });
+      }
+    }
+    return result.sort((a, b) => a.record.nextServiceDate!.localeCompare(b.record.nextServiceDate!));
+  },
+
+  maintenanceScheduled: () => {
+    const today = new Date().toISOString().split('T')[0];
+    const future = new Date();
+    future.setDate(future.getDate() + 14);
+    const futureStr = future.toISOString().split('T')[0];
+    const { assets, serviceRecords } = get();
+    const result: { asset: CampAsset; record: AssetServiceRecord }[] = [];
+    for (const record of serviceRecords) {
+      if (!record.nextServiceDate) continue;
+      if (record.nextServiceDate <= futureStr) continue;
       const asset = assets.find((a) => a.id === record.assetId && a.isActive && a.status !== 'retired');
       if (!asset) continue;
       if (!result.find((r) => r.asset.id === asset.id)) {

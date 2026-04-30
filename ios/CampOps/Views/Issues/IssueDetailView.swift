@@ -88,7 +88,10 @@ struct IssueDetailView: View {
                     VStack(spacing: Spacing.sm) {
                         if vm.issue.status == .assigned {
                             Button {
-                                Task { await vm.updateStatus(.inProgress, by: authManager.currentUser) }
+                                Task {
+                                    await vm.updateStatus(.inProgress, by: authManager.currentUser)
+                                    listVM.issues = listVM.issues.map { $0.id == vm.issue.id ? vm.issue : $0 }
+                                }
                             } label: {
                                 Label("Mark In Progress", systemImage: "wrench.and.screwdriver").frame(maxWidth: .infinity)
                             }.buttonStyle(.borderedProminent).tint(.forestMid)
@@ -125,12 +128,18 @@ struct IssueDetailView: View {
         }
         .sheet(isPresented: $showingAssignPicker) {
             AssignPickerSheet(currentAssigneeId: vm.issue.assigneeId) { user in
-                Task { await vm.assign(to: user, by: authManager.currentUser) }
+                Task {
+                    await vm.assign(to: user, by: authManager.currentUser)
+                    listVM.issues = listVM.issues.map { $0.id == vm.issue.id ? vm.issue : $0 }
+                }
             }
         }
         .sheet(isPresented: $showingResolveSheet) {
             ResolveSheet(canEnterCost: authManager.can.enterActualCost) { cost in
-                Task { await vm.resolve(actualCost: cost, by: authManager.currentUser) }
+                Task {
+                    await vm.resolve(actualCost: cost, by: authManager.currentUser)
+                    listVM.issues = listVM.issues.map { $0.id == vm.issue.id ? vm.issue : $0 }
+                }
             }
         }
         .confirmationDialog("Delete this issue?", isPresented: $showingDeleteConfirm, titleVisibility: .visible) {

@@ -10,6 +10,12 @@ struct TimingOption: Identifiable, Hashable {
         self.label = label
         self.value = value
     }
+
+    static let custom = TimingOption(_id: "custom", label: "Custom date…", value: nil)
+
+    private init(_id: String, label: String, value: Int?) {
+        self.id = _id; self.label = label; self.value = value
+    }
 }
 
 private let preBuckets: [TimingOption] = [
@@ -19,6 +25,7 @@ private let preBuckets: [TimingOption] = [
     .init(label: "1 week before opening", value: -7),
     .init(label: "3 days before opening", value: -3),
     .init(label: "Opening day", value: 0),
+    .custom,
 ]
 
 private let postBuckets: [TimingOption] = [
@@ -28,6 +35,7 @@ private let postBuckets: [TimingOption] = [
     .init(label: "1 week after closing", value: 7),
     .init(label: "2 weeks after closing", value: 14),
     .init(label: "1 month after closing", value: 30),
+    .custom,
 ]
 
 private func bucketsFor(_ phase: ChecklistPhase) -> [TimingOption] {
@@ -52,6 +60,7 @@ struct AddTaskView: View {
     @State private var priority: Priority = .normal
     @State private var assigneeId: String? = nil
     @State private var selectedTiming: TimingOption = preBuckets[0]
+    @State private var customDate = Date()
     @State private var isSaving = false
 
     private var isValid: Bool { !title.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -99,6 +108,9 @@ struct AddTaskView: View {
                             Text(option.label).tag(option)
                         }
                     }
+                    if selectedTiming.id == "custom" {
+                        DatePicker("Date", selection: $customDate, displayedComponents: .date)
+                    }
                 }
             }
             .navigationTitle(navTitle).navigationBarTitleDisplayMode(.inline)
@@ -118,19 +130,29 @@ struct AddTaskView: View {
         title = t.title; description = t.description
         phase = t.phase; locations = t.locations; priority = t.priority
         assigneeId = t.assigneeId
-        selectedTiming = matchBucket(t.daysRelativeToOpening, phase: t.phase)
+        if t.daysRelativeToOpening == nil, let due = t.dueDate {
+            selectedTiming = .custom
+            let formatter = DateFormatter(); formatter.dateFormat = "yyyy-MM-dd"
+            customDate = formatter.date(from: due) ?? Date()
+        } else {
+            selectedTiming = matchBucket(t.daysRelativeToOpening, phase: t.phase)
+        }
     }
 
     private func save() async {
         isSaving = true
+        let isCustom = selectedTiming.id == "custom"
+        let daysRel: Int? = isCustom ? nil : selectedTiming.value
+        let dueDate = computeDueDate(isCustom: isCustom, daysRel: daysRel)
+
         if let existing = editingTask {
             var updated = existing
             updated.title = title.trimmingCharacters(in: .whitespaces)
             updated.description = description
             updated.phase = phase; updated.locations = locations; updated.priority = priority
             updated.assigneeId = assigneeId
-            updated.daysRelativeToOpening = selectedTiming.value
-            updated.dueDate = nil
+            updated.daysRelativeToOpening = daysRel
+            updated.dueDate = dueDate
             await vm.updateTask(updated, by: authManager.currentUser)
         } else {
             let task = ChecklistTask(
@@ -138,9 +160,19 @@ struct AddTaskView: View {
                 description: description,
                 locations: locations, priority: priority,
                 assigneeId: assigneeId, phase: phase,
-                daysRelativeToOpening: selectedTiming.value)
+                daysRelativeToOpening: daysRel,
+                dueDate: dueDate)
             await vm.addTask(task, by: authManager.currentUser)
         }
         isSaving = false; dismiss()
+    }
+
+    private func computeDueDate(isCustom: Bool, daysRel: Int?) -> String? {
+        let formatter = DateFormatter(); formatter.dateFormat = "yyyy-MM-dd"
+        if isCustom { return formatter.string(from: customDate) }
+        guard let days = daysRel, let season = vm.season else { return nil }
+        let baseStr = phase == .post ? season.closingDate : season.openingDate
+        guard let base = formatter.date(from: baseStr) else { return nil }
+        return Calendar.current.date(byAdding: .day, value: days, to: base).map { formatter.string(from: $0) }
     }
 }

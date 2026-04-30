@@ -20,6 +20,7 @@ interface FormValues {
   assigneeId: string;
   phase: 'pre' | 'post';
   timingBucket: string;
+  customDate: string;
   moduleTag: string;
 }
 
@@ -42,6 +43,8 @@ export function LogTaskModal() {
   });
 
   const phase = useWatch({ control, name: 'phase' }) as 'pre' | 'post';
+  const timingBucket = useWatch({ control, name: 'timingBucket' });
+  const isCustomDate = timingBucket === 'custom';
   const buckets = getBuckets(phase);
 
   useEffect(() => {
@@ -50,10 +53,13 @@ export function LogTaskModal() {
 
   function onSubmit(data: FormValues) {
     const now = new Date().toISOString();
-    const daysRel = stringToBucketValue(data.timingBucket);
+    const isCustom = data.timingBucket === 'custom';
+    const daysRel = isCustom ? null : stringToBucketValue(data.timingBucket);
 
     let dueDate: string | null = null;
-    if (daysRel !== null && season) {
+    if (isCustom) {
+      dueDate = data.customDate || null;
+    } else if (daysRel !== null && season) {
       const baseDate = data.phase === 'post' ? season.closingDate : season.openingDate;
       dueDate = addDays(new Date(baseDate), daysRel).toISOString().split('T')[0];
     }
@@ -161,7 +167,15 @@ export function LogTaskModal() {
                   {b.label}
                 </option>
               ))}
+              <option value="custom">Custom date…</option>
             </select>
+            {isCustomDate && (
+              <input
+                type="date"
+                {...register('customDate')}
+                className={`${inputClass} mt-2`}
+              />
+            )}
           </div>
         </div>
 

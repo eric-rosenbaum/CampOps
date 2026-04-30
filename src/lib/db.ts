@@ -286,11 +286,12 @@ type TaskCallback = (tasks: ChecklistTask[]) => void;
 let issueChannelCount = 0;
 let taskChannelCount = 0;
 
-export function subscribeToIssues(campId: string, onUpdate: IssueCallback): () => void {
+export function subscribeToIssues(campId: string, onUpdate: IssueCallback, onEventStart?: () => void): () => void {
   const channelName = `issues-channel-${++issueChannelCount}`;
   const channel = supabase
     .channel(channelName)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'issues', filter: `camp_id=eq.${campId}` }, async () => {
+      onEventStart?.();
       const { data: issueRows } = await supabase.from('issues').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
       const { data: activityRows } = await supabase.from('issue_activity').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
       const issues: Issue[] = (issueRows ?? []).map((row) => {
@@ -304,11 +305,12 @@ export function subscribeToIssues(campId: string, onUpdate: IssueCallback): () =
   return () => { supabase.removeChannel(channel); };
 }
 
-export function subscribeToTasks(campId: string, onUpdate: TaskCallback): () => void {
+export function subscribeToTasks(campId: string, onUpdate: TaskCallback, onEventStart?: () => void): () => void {
   const channelName = `tasks-channel-${++taskChannelCount}`;
   const channel = supabase
     .channel(channelName)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_tasks', filter: `camp_id=eq.${campId}` }, async () => {
+      onEventStart?.();
       const { data: taskRows } = await supabase.from('checklist_tasks').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
       const { data: taskActivityRows } = await supabase.from('checklist_activity').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
       const tasks: ChecklistTask[] = (taskRows ?? []).map((row) => {
@@ -628,12 +630,13 @@ export async function dbDeleteAllPoolData() {
 
 let poolChannelCount = 0;
 
-export function subscribeToPool(campId: string, onUpdate: PoolDataCallback): () => void {
+export function subscribeToPool(campId: string, onUpdate: PoolDataCallback, onEventStart?: () => void): () => void {
   const channelName = `pool-channel-${++poolChannelCount}`;
   const tables = ['pools', 'pool_chemical_readings', 'pool_equipment', 'pool_service_log', 'pool_seasonal_tasks', 'pool_inspections', 'pool_inspection_log'];
   let channel = supabase.channel(channelName);
   for (const table of tables) {
     channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, async () => {
+      onEventStart?.();
       const data = await loadPoolData(campId);
       onUpdate(data);
     });
@@ -995,9 +998,9 @@ export async function dbDeleteSafetyLicense(id: string) {
 let safetyChannelCount = 0;
 type SafetyDataCallback = (data: SafetyData) => void;
 
-export function subscribeToSafety(campId: string, onUpdate: SafetyDataCallback): () => void {
+export function subscribeToSafety(campId: string, onUpdate: SafetyDataCallback, onEventStart?: () => void): () => void {
   const channelName = `safety-channel-${++safetyChannelCount}`;
-  const reload = async () => { onUpdate(await loadSafetyData(campId)); };
+  const reload = async () => { onEventStart?.(); onUpdate(await loadSafetyData(campId)); };
   const channel = supabase
     .channel(channelName)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_items', filter: `camp_id=eq.${campId}` }, reload)
@@ -1273,9 +1276,9 @@ export async function dbDeleteMaintenanceTask(id: string) {
 let assetChannelCount = 0;
 type AssetDataCallback = (data: AssetData) => void;
 
-export function subscribeToAssets(campId: string, onUpdate: AssetDataCallback): () => void {
+export function subscribeToAssets(campId: string, onUpdate: AssetDataCallback, onEventStart?: () => void): () => void {
   const channelName = `assets-channel-${++assetChannelCount}`;
-  const reload = async () => { onUpdate(await loadAssetData(campId)); };
+  const reload = async () => { onEventStart?.(); onUpdate(await loadAssetData(campId)); };
   const tables = ['camp_assets', 'asset_checkouts', 'asset_service_records', 'asset_maintenance_tasks'];
   let channel = supabase.channel(channelName);
   for (const table of tables) {

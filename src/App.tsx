@@ -86,10 +86,9 @@ function CampDataLoader() {
     // If subscriptions were started after loading, a write that completes before the
     // subscription starts would fire a WAL event nobody is listening to, and the
     // subsequent setIssues(initialData) would overwrite the optimistic update permanently.
-    unsubIssues = subscribeToIssues(campId, (issues) => { issuesSynced = true; setIssues(issues); });
-    unsubTasks = subscribeToTasks(campId, (tasks) => { tasksSynced = true; setTasks(tasks); });
+    unsubIssues = subscribeToIssues(campId, (issues) => { setIssues(issues); }, () => { issuesSynced = true; });
+    unsubTasks = subscribeToTasks(campId, (tasks) => { setTasks(tasks); }, () => { tasksSynced = true; });
     unsubPool = subscribeToPool(campId, (d) => {
-      poolSynced = true;
       setPools(d.pools);
       setChemicalReadings(d.readings);
       setEquipment(d.equipment);
@@ -97,9 +96,8 @@ function CampDataLoader() {
       setInspections(d.inspections);
       setInspectionLog(d.inspectionLog);
       setSeasonalTasks(d.seasonalTasks);
-    });
+    }, () => { poolSynced = true; });
     unsubSafety = subscribeToSafety(campId, (d) => {
-      safetySynced = true;
       setItems(d.items);
       setSafetyLog(d.inspectionLog);
       setDrills(d.drills);
@@ -107,14 +105,13 @@ function CampDataLoader() {
       setCertifications(d.certifications);
       setTempLogs(d.tempLogs);
       setLicenses(d.licenses);
-    });
+    }, () => { safetySynced = true; });
     unsubAssets = subscribeToAssets(campId, (d) => {
-      assetsSynced = true;
       setAssets(d.assets);
       setCheckouts(d.checkouts);
       setServiceRecords(d.serviceRecords);
       setMaintenanceTasks(d.maintenanceTasks);
-    });
+    }, () => { assetsSynced = true; });
 
     // Load initial data after subscriptions are live.
     // Skip each setter if the subscription already fired — the subscription's refetch

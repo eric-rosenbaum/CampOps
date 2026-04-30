@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
+import { useCampStore } from '@/store/campStore';
 
 export interface Profile {
   id: string;
@@ -64,8 +65,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     await supabase.auth.signOut();
     set({ session: null, user: null, profile: null });
-    // Reset camp state so stale data doesn't show on next login
-    const { useCampStore } = await import('@/store/campStore');
     useCampStore.setState({ currentCamp: null, currentMember: null, members: [], camps: [], isLoading: true });
   },
 

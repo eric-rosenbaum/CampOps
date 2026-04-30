@@ -24,9 +24,9 @@ export function Sidebar() {
   const signOut = useAuthStore((s) => s.signOut);
   const navigate = useNavigate();
 
-  async function handleSignOut() {
-    await signOut();
+  function handleSignOut() {
     navigate('/login', { replace: true });
+    signOut();
   }
 
   return (

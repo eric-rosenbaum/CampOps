@@ -279,10 +279,15 @@ export function TaskDetail({ task }: Props) {
               : task.daysRelativeToOpening !== null && season
                 ? addDays(new Date(task.phase === 'post' ? season.closingDate : season.openingDate), task.daysRelativeToOpening).toISOString().split('T')[0]
                 : null;
+            const hasTiming = task.daysRelativeToOpening !== null;
             return (
               <>
-                <p className="text-[13px] text-forest/80">{effective ? formatDate(effective) : 'No due date set'}</p>
-                {task.daysRelativeToOpening !== null && (
+                {effective ? (
+                  <p className="text-[13px] text-forest/80">{formatDate(effective)}</p>
+                ) : !hasTiming ? (
+                  <p className="text-[13px] text-forest/80">No due date set</p>
+                ) : null}
+                {hasTiming && (
                   <p className="text-[11px] text-forest/45 mt-0.5">{getBucketLabel(task.phase, task.daysRelativeToOpening)}</p>
                 )}
               </>

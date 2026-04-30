@@ -73,21 +73,21 @@ function CampDataLoader() {
     let unsubSafety: (() => void) | null = null;
     let unsubAssets: (() => void) | null = null;
 
-    // Track whether each subscription has fired. If it has, the subscription's refetch
-    // is more recent than the initial load snapshot (which started before any user write),
-    // so we must not overwrite it with the stale snapshot.
-    let issuesSynced = false;
-    let tasksSynced = false;
-    let poolSynced = false;
-    let safetySynced = false;
-    let assetsSynced = false;
+    // Track when each subscription last fired a WAL event (ms since epoch, 0 = never).
+    // Used to prevent both the initial load and refetchAll from overwriting a fresher
+    // snapshot that the subscription already delivered after a user write.
+    let issuesSyncedAt = 0;
+    let tasksSyncedAt = 0;
+    let poolSyncedAt = 0;
+    let safetySyncedAt = 0;
+    let assetsSyncedAt = 0;
 
     // Start subscriptions FIRST so any writes during the initial data load are captured.
     // If subscriptions were started after loading, a write that completes before the
     // subscription starts would fire a WAL event nobody is listening to, and the
     // subsequent setIssues(initialData) would overwrite the optimistic update permanently.
-    unsubIssues = subscribeToIssues(campId, (issues) => { setIssues(issues); }, () => { issuesSynced = true; });
-    unsubTasks = subscribeToTasks(campId, (tasks) => { setTasks(tasks); }, () => { tasksSynced = true; });
+    unsubIssues = subscribeToIssues(campId, (issues) => { setIssues(issues); }, () => { issuesSyncedAt = Date.now(); });
+    unsubTasks = subscribeToTasks(campId, (tasks) => { setTasks(tasks); }, () => { tasksSyncedAt = Date.now(); });
     unsubPool = subscribeToPool(campId, (d) => {
       setPools(d.pools);
       setChemicalReadings(d.readings);
@@ -96,7 +96,7 @@ function CampDataLoader() {
       setInspections(d.inspections);
       setInspectionLog(d.inspectionLog);
       setSeasonalTasks(d.seasonalTasks);
-    }, () => { poolSynced = true; });
+    }, () => { poolSyncedAt = Date.now(); });
     unsubSafety = subscribeToSafety(campId, (d) => {
       setItems(d.items);
       setSafetyLog(d.inspectionLog);
@@ -105,26 +105,28 @@ function CampDataLoader() {
       setCertifications(d.certifications);
       setTempLogs(d.tempLogs);
       setLicenses(d.licenses);
-    }, () => { safetySynced = true; });
+    }, () => { safetySyncedAt = Date.now(); });
     unsubAssets = subscribeToAssets(campId, (d) => {
       setAssets(d.assets);
       setCheckouts(d.checkouts);
       setServiceRecords(d.serviceRecords);
       setMaintenanceTasks(d.maintenanceTasks);
-    }, () => { assetsSynced = true; });
+    }, () => { assetsSyncedAt = Date.now(); });
 
     // Load initial data after subscriptions are live.
     // Skip each setter if the subscription already fired — the subscription's refetch
     // happened after a user write and is strictly more current than our snapshot.
+    const loadStartedAt = Date.now();
+
     initializeSupabase(campId).then((data) => {
       if (!data) return;
-      if (!issuesSynced) setIssues(data.issues);
-      if (!tasksSynced) setTasks(data.tasks);
+      if (issuesSyncedAt <= loadStartedAt) setIssues(data.issues);
+      if (tasksSyncedAt <= loadStartedAt) setTasks(data.tasks);
       if (data.season) setSeason(data.season);
     });
 
     loadPoolFromSupabase(campId).then((data) => {
-      if (!data || poolSynced) return;
+      if (!data || poolSyncedAt > loadStartedAt) return;
       setPools(data.pools);
       setChemicalReadings(data.readings);
       setEquipment(data.equipment);
@@ -135,7 +137,7 @@ function CampDataLoader() {
     });
 
     loadSafetyFromSupabase(campId).then((data) => {
-      if (!data || safetySynced) return;
+      if (!data || safetySyncedAt > loadStartedAt) return;
       setItems(data.items);
       setSafetyLog(data.inspectionLog);
       setDrills(data.drills);
@@ -146,7 +148,7 @@ function CampDataLoader() {
     });
 
     loadAssetsFromSupabase(campId).then((data: AssetData | null) => {
-      if (!data || assetsSynced) return;
+      if (!data || assetsSyncedAt > loadStartedAt) return;
       setAssets(data.assets);
       setCheckouts(data.checkouts);
       setServiceRecords(data.serviceRecords);
@@ -162,16 +164,17 @@ function CampDataLoader() {
 
     async function refetchAll() {
       if (!campId) return;
+      const refetchStartedAt = Date.now();
       const [issuesData, poolData, safetyData, assetData] = await Promise.all([
         initializeSupabase(campId),
         loadPoolFromSupabase(campId),
         loadSafetyFromSupabase(campId),
         loadAssetsFromSupabase(campId),
       ]);
-      if (issuesData) { setIssues(issuesData.issues); setTasks(issuesData.tasks); if (issuesData.season) setSeason(issuesData.season); }
-      if (poolData) { setPools(poolData.pools); setChemicalReadings(poolData.readings); setEquipment(poolData.equipment); setServiceLog(poolData.serviceLog); setInspections(poolData.inspections); setInspectionLog(poolData.inspectionLog); setSeasonalTasks(poolData.seasonalTasks); }
-      if (safetyData) { setItems(safetyData.items); setSafetyLog(safetyData.inspectionLog); setDrills(safetyData.drills); setStaff(safetyData.staff); setCertifications(safetyData.certifications); setTempLogs(safetyData.tempLogs); setLicenses(safetyData.licenses); }
-      if (assetData) { setAssets(assetData.assets); setCheckouts(assetData.checkouts); setServiceRecords(assetData.serviceRecords); setMaintenanceTasks(assetData.maintenanceTasks); }
+      if (issuesData && issuesSyncedAt <= refetchStartedAt) { setIssues(issuesData.issues); setTasks(issuesData.tasks); if (issuesData.season) setSeason(issuesData.season); }
+      if (poolData && poolSyncedAt <= refetchStartedAt) { setPools(poolData.pools); setChemicalReadings(poolData.readings); setEquipment(poolData.equipment); setServiceLog(poolData.serviceLog); setInspections(poolData.inspections); setInspectionLog(poolData.inspectionLog); setSeasonalTasks(poolData.seasonalTasks); }
+      if (safetyData && safetySyncedAt <= refetchStartedAt) { setItems(safetyData.items); setSafetyLog(safetyData.inspectionLog); setDrills(safetyData.drills); setStaff(safetyData.staff); setCertifications(safetyData.certifications); setTempLogs(safetyData.tempLogs); setLicenses(safetyData.licenses); }
+      if (assetData && assetsSyncedAt <= refetchStartedAt) { setAssets(assetData.assets); setCheckouts(assetData.checkouts); setServiceRecords(assetData.serviceRecords); setMaintenanceTasks(assetData.maintenanceTasks); }
     }
 
     function handleVisibility() {

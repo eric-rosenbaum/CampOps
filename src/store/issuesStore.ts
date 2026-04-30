@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { campLog, campError } from '@/lib/campLog';
 import type { Issue, ActivityEntry, IssueStatus, Priority } from '@/lib/types';
 import { addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import {

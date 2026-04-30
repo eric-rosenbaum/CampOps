@@ -160,9 +160,15 @@ export async function initializeSupabase(campId: string): Promise<{
 
 // ─── Write functions ──────────────────────────────────────────────────────────
 
-export async function dbUpsertIssue(issue: Issue) {
+export async function dbUpsertIssue(issue: Issue): Promise<{ error: unknown }> {
+  console.log('[CampOps] dbUpsertIssue START', issue.id, issue.title);
   const { error } = await supabase.from('issues').upsert(issueToRow(issue), { onConflict: 'id' });
-  if (error) console.error('dbUpsertIssue error:', error.message);
+  if (error) {
+    console.error('[CampOps] dbUpsertIssue FAILED', error.message, error);
+  } else {
+    console.log('[CampOps] dbUpsertIssue SUCCESS', issue.id);
+  }
+  return { error };
 }
 
 export async function dbUpdateIssue(id: string, patch: Partial<Issue>) {
@@ -288,24 +294,27 @@ let taskChannelCount = 0;
 
 export function subscribeToIssues(campId: string, onUpdate: IssueCallback, onEventStart?: () => void): () => void {
   const channelName = `issues-channel-${++issueChannelCount}`;
-  const reload = async () => {
+  const reload = async (source = 'WAL') => {
+    console.log('[CampOps] issues reload START source=' + source);
     onEventStart?.();
-    const { data: issueRows } = await supabase.from('issues').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
+    const { data: issueRows, error: issueErr } = await supabase.from('issues').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
     const { data: activityRows } = await supabase.from('issue_activity').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
+    if (issueErr) console.error('[CampOps] issues reload query error', issueErr);
     const issues: Issue[] = (issueRows ?? []).map((row) => {
       const log = (activityRows ?? []).filter((a) => a.issue_id === row.id).map(activityRowToEntry);
       return rowToIssue(row as Record<string, unknown>, log);
     });
+    console.log('[CampOps] issues reload DONE count=' + issues.length + ' source=' + source);
     onUpdate(issues);
   };
   let everSubscribed = false;
   const channel = supabase
     .channel(channelName)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'issues', filter: `camp_id=eq.${campId}` }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'issues', filter: `camp_id=eq.${campId}` }, () => reload('WAL'))
     .subscribe((status) => {
       console.log('[CampOps] issues channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) { console.log('[CampOps] issues reconnected — reloading'); reload(); }
+        if (everSubscribed) { console.log('[CampOps] issues reconnected — reloading'); reload('reconnect'); }
         else { console.log('[CampOps] issues initial subscription'); everSubscribed = true; }
       }
     });

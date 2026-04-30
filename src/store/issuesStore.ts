@@ -89,8 +89,11 @@ export const useIssuesStore = create<IssuesStore>((set, get) => ({
   selectIssue: (id) => set({ selectedIssueId: id }),
 
   addIssue: (issue) => {
+    console.log('[CampOps] addIssue called', issue.id, issue.title);
     set((state) => ({ issues: [issue, ...state.issues] }));
-    dbUpsertIssue(issue);
+    dbUpsertIssue(issue).then(({ error }) => {
+      if (error) console.error('[CampOps] addIssue write failed — issue may not be saved', error);
+    });
   },
 
   deleteIssue: (id) => {

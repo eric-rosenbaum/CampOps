@@ -74,10 +74,13 @@ function CampDataLoader() {
     let unsubAssets: (() => void) | null = null;
 
     // Track whether each subscription has fired. If it has, the subscription's refetch
-    // is more recent than the initializeSupabase snapshot (which started before any user
-    // write), so we should not overwrite it with the stale snapshot.
+    // is more recent than the initial load snapshot (which started before any user write),
+    // so we must not overwrite it with the stale snapshot.
     let issuesSynced = false;
     let tasksSynced = false;
+    let poolSynced = false;
+    let safetySynced = false;
+    let assetsSynced = false;
 
     // Start subscriptions FIRST so any writes during the initial data load are captured.
     // If subscriptions were started after loading, a write that completes before the
@@ -86,6 +89,7 @@ function CampDataLoader() {
     unsubIssues = subscribeToIssues(campId, (issues) => { issuesSynced = true; setIssues(issues); });
     unsubTasks = subscribeToTasks(campId, (tasks) => { tasksSynced = true; setTasks(tasks); });
     unsubPool = subscribeToPool(campId, (d) => {
+      poolSynced = true;
       setPools(d.pools);
       setChemicalReadings(d.readings);
       setEquipment(d.equipment);
@@ -95,6 +99,7 @@ function CampDataLoader() {
       setSeasonalTasks(d.seasonalTasks);
     });
     unsubSafety = subscribeToSafety(campId, (d) => {
+      safetySynced = true;
       setItems(d.items);
       setSafetyLog(d.inspectionLog);
       setDrills(d.drills);
@@ -104,6 +109,7 @@ function CampDataLoader() {
       setLicenses(d.licenses);
     });
     unsubAssets = subscribeToAssets(campId, (d) => {
+      assetsSynced = true;
       setAssets(d.assets);
       setCheckouts(d.checkouts);
       setServiceRecords(d.serviceRecords);
@@ -111,9 +117,8 @@ function CampDataLoader() {
     });
 
     // Load initial data after subscriptions are live.
-    // Skip setIssues/setTasks if the subscription already fired — that means a write
-    // happened during the load window and the subscription's refetch is more current
-    // than our snapshot.
+    // Skip each setter if the subscription already fired — the subscription's refetch
+    // happened after a user write and is strictly more current than our snapshot.
     initializeSupabase(campId).then((data) => {
       if (!data) return;
       if (!issuesSynced) setIssues(data.issues);
@@ -122,7 +127,7 @@ function CampDataLoader() {
     });
 
     loadPoolFromSupabase(campId).then((data) => {
-      if (!data) return;
+      if (!data || poolSynced) return;
       setPools(data.pools);
       setChemicalReadings(data.readings);
       setEquipment(data.equipment);
@@ -133,7 +138,7 @@ function CampDataLoader() {
     });
 
     loadSafetyFromSupabase(campId).then((data) => {
-      if (!data) return;
+      if (!data || safetySynced) return;
       setItems(data.items);
       setSafetyLog(data.inspectionLog);
       setDrills(data.drills);
@@ -144,7 +149,7 @@ function CampDataLoader() {
     });
 
     loadAssetsFromSupabase(campId).then((data: AssetData | null) => {
-      if (!data) return;
+      if (!data || assetsSynced) return;
       setAssets(data.assets);
       setCheckouts(data.checkouts);
       setServiceRecords(data.serviceRecords);

@@ -320,16 +320,18 @@ export function OverviewTab() {
 
       {/* Category progress */}
       <h3 className="text-[14px] font-semibold text-forest mb-3.5">Compliance summary by category</h3>
-      <ProgressBar label="Fire safety" {...fireSt} />
-      <ProgressBar label="Water safety" {...waterSt} />
-      <ProgressBar label="Kitchen safety" {...kitchenSt} />
-      <ProgressBar
-        label="Drills & training"
-        ok={drillStats.ok}
-        warn={drillStats.warn}
-        alert={drillStats.alert}
-        total={drillStats.total}
-      />
+      {fireSt.total > 0 && <ProgressBar label="Fire safety" {...fireSt} />}
+      {waterSt.total > 0 && <ProgressBar label="Water safety" {...waterSt} />}
+      {kitchenSt.total > 0 && <ProgressBar label="Kitchen safety" {...kitchenSt} />}
+      {drillStats.total > 0 && (
+        <ProgressBar
+          label="Drills & training"
+          ok={drillStats.ok}
+          warn={drillStats.warn}
+          alert={drillStats.alert}
+          total={drillStats.total}
+        />
+      )}
 
       {(fireSt.total + waterSt.total + kitchenSt.total) === 0 && (
         <p className="text-[13px] text-forest/40 text-center py-8">

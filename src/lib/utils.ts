@@ -15,7 +15,10 @@ export function relativeTime(isoString: string): string {
 }
 
 export function formatDate(isoString: string): string {
-  return format(new Date(isoString), 'MMM d, yyyy');
+  // Date-only strings (YYYY-MM-DD) parse as UTC midnight, which shifts to the
+  // previous day in negative-offset timezones. Append T00:00:00 to force local midnight.
+  const d = isoString.length === 10 ? new Date(isoString + 'T00:00:00') : new Date(isoString);
+  return format(d, 'MMM d, yyyy');
 }
 
 export function formatDateTime(isoString: string): string {

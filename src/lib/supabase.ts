@@ -16,7 +16,7 @@ function xhrFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respons
     // campOpsDebug.simulateStaleFetch() sets this to test stale-TCP behaviour fast.
     // We hook up the AbortSignal so the 4s AbortController timeout works in debug mode,
     // letting the retry fire at ~5s just like a real stale connection.
-    const dbgHang = (window as Record<string, unknown>)._campOpsXhrHangMs as number | undefined;
+    const dbgHang = (window as unknown as Record<string, unknown>)._campOpsXhrHangMs as number | undefined;
     if (dbgHang) {
       campLog(`[CampOps] xhrFetch: DEBUG hang ${dbgHang}ms`);
       const tid = setTimeout(() => reject(new TypeError('campOpsDebug: simulated stale fetch')), dbgHang);
@@ -162,7 +162,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // call (_getUser).  On stale TCP that call hangs and holds the lock indefinitely,
 // blocking every subsequent Supabase operation in the app.  Our heartbeat already
 // handles visibility transitions safely without holding the lock during network.
-(supabase.auth as { _onVisibilityChanged?: (calledFromInitialize: boolean) => Promise<void> })
+(supabase.auth as unknown as { _onVisibilityChanged: (calledFromInitialize: boolean) => Promise<void> })
   ._onVisibilityChanged = async (calledFromInitialize: boolean) => {
   campLog(`[CampOps] auth _onVisibilityChanged stubbed (init=${calledFromInitialize})`);
 };

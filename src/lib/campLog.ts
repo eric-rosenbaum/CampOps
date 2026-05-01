@@ -54,11 +54,11 @@ export function campError(...args: unknown[]) {
 //   4. ~5 s later: retry succeeds (campLog.dump() to verify)
 (window as unknown as Record<string, unknown>).campOpsDebug = {
   simulateStaleFetch: (hangMs = 5_000) => {
-    (window as Record<string, unknown>)._campOpsXhrHangMs = hangMs;
+    (window as unknown as Record<string, unknown>)._campOpsXhrHangMs = hangMs;
     console.warn(`[campOpsDebug] simulateStaleFetch ACTIVE — XHR requests hang ${hangMs}ms. campOpsDebug.resetFetch() to stop.`);
   },
   resetFetch: () => {
-    delete (window as Record<string, unknown>)._campOpsXhrHangMs;
+    delete (window as unknown as Record<string, unknown>)._campOpsXhrHangMs;
     console.log('[campOpsDebug] simulateStaleFetch disabled — XHR restored');
   },
 };

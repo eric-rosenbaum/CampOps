@@ -295,7 +295,7 @@ export const useIssuesStore = create<IssuesStore>((set, get) => ({
 // Usage: campOpsDebug.runTest()         — default 10s hang, resets at 4.5s
 //        campOpsDebug.runTest(5000)     — 5s hang (faster iteration)
 {
-  const W = window as Record<string, unknown>;
+  const W = window as unknown as Record<string, unknown>;
   if (!W.campOpsDebug) W.campOpsDebug = {};
   (W.campOpsDebug as Record<string, unknown>).runTest = async (hangMs = 10_000) => {
     const debug = W.campOpsDebug as Record<string, unknown>;

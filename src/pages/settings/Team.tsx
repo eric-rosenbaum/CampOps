@@ -30,6 +30,7 @@ export function Team() {
   const [inviteRole, setInviteRole] = useState<CampRole>('staff');
   const [inviteDept, setInviteDept] = useState<Department | ''>('');
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [inviteLinkEmail, setInviteLinkEmail] = useState('');
 
@@ -67,8 +68,15 @@ export function Team() {
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
     setInviteLoading(true);
+    setInviteError(null);
     try {
-      const token = await inviteMember(campId, inviteEmail, inviteRole, (inviteDept as Department) || null);
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out — check your connection and try again.')), 30_000)
+      );
+      const token = await Promise.race([
+        inviteMember(campId, inviteEmail, inviteRole, (inviteDept as Department) || null),
+        timeout,
+      ]);
       setInviteLinkEmail(inviteEmail);
       setInviteLink(`${window.location.origin}/invite/${token}`);
       setInviteEmail('');
@@ -76,7 +84,7 @@ export function Team() {
       setShowInviteForm(false);
       reload();
     } catch (err) {
-      console.error(err);
+      setInviteError(err instanceof Error ? err.message : 'Failed to generate link. Please try again.');
     } finally {
       setInviteLoading(false);
     }
@@ -244,8 +252,11 @@ export function Team() {
                   </div>
                 )}
               </div>
+              {inviteError && (
+                <p className="text-[11px] text-red-600 bg-red-50 rounded-lg px-3 py-2">{inviteError}</p>
+              )}
               <div className="flex gap-2">
-                <button type="button" onClick={() => setShowInviteForm(false)} className="text-[12px] text-forest/40 hover:text-forest px-3 py-1.5 rounded-lg hover:bg-stone-50 transition-colors">
+                <button type="button" onClick={() => { setShowInviteForm(false); setInviteError(null); }} className="text-[12px] text-forest/40 hover:text-forest px-3 py-1.5 rounded-lg hover:bg-stone-50 transition-colors">
                   Cancel
                 </button>
                 <button type="submit" disabled={inviteLoading} className="flex-1 bg-forest text-cream text-[12px] font-medium py-1.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50">

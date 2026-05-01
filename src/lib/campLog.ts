@@ -37,3 +37,28 @@ export function campError(...args: unknown[]) {
   clear: () => { localStorage.removeItem(KEY); console.log('cleared'); },
   raw: () => localStorage.getItem(KEY),
 };
+
+// Debug helper: simulate stale TCP without waiting 4+ minutes for a real idle period.
+// Sets a flag that xhrFetch (supabase.ts) checks — each XHR will hang for hangMs then
+// reject, exactly like a real stale connection.
+//
+// Usage:
+//   campOpsDebug.simulateStaleFetch(100)   // fetches hang 100 ms then fail (fast test)
+//   campOpsDebug.simulateStaleFetch()      // default: realistic 5 s hang
+//   campOpsDebug.resetFetch()              // restore normal behaviour
+//
+// Typical test:
+//   1. campOpsDebug.simulateStaleFetch(100)
+//   2. Submit an issue — attempt 1 fails in ~100 ms
+//   3. campOpsDebug.resetFetch()           — mimics "TCP recovered"
+//   4. ~5 s later: retry succeeds (campLog.dump() to verify)
+(window as unknown as Record<string, unknown>).campOpsDebug = {
+  simulateStaleFetch: (hangMs = 5_000) => {
+    (window as Record<string, unknown>)._campOpsXhrHangMs = hangMs;
+    console.warn(`[campOpsDebug] simulateStaleFetch ACTIVE — XHR requests hang ${hangMs}ms. campOpsDebug.resetFetch() to stop.`);
+  },
+  resetFetch: () => {
+    delete (window as Record<string, unknown>)._campOpsXhrHangMs;
+    console.log('[campOpsDebug] simulateStaleFetch disabled — XHR restored');
+  },
+};

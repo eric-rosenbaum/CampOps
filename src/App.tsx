@@ -40,6 +40,7 @@ import {
   loadAssetsFromSupabase, subscribeToAssets,
   type AssetData,
 } from '@/lib/db';
+import { startSupabaseHeartbeat } from '@/lib/supabase';
 import { campLog } from '@/lib/campLog';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useChecklistStore } from '@/store/checklistStore';
@@ -73,6 +74,10 @@ function CampDataLoader() {
     let unsubPool: (() => void) | null = null;
     let unsubSafety: (() => void) | null = null;
     let unsubAssets: (() => void) | null = null;
+
+    // Start the Supabase keep-alive heartbeat.  Pings every 30 s while visible to
+    // keep the TCP socket from going stale and to refresh the JWT before expiry.
+    const stopHeartbeat = startSupabaseHeartbeat();
 
     // Track when each subscription last fired a WAL event (ms since epoch, 0 = never).
     // Used to prevent both the initial load and refetchAll from overwriting a fresher
@@ -161,7 +166,7 @@ function CampDataLoader() {
     // We skip the refetch for short tab switches to avoid a race: a quick refetch can
     // overwrite an in-flight save (optimistic update) before the subscription catches it.
     const REFETCH_AFTER_HIDDEN_MS = 2 * 60 * 1000; // 2 minutes
-    const PERIODIC_REFETCH_MS = 3 * 60 * 1000; // 3 minutes
+    const PERIODIC_REFETCH_MS = 30 * 1000; // 30 seconds
     let hiddenAt: number | null = null;
 
     async function refetchAll(reason: string) {
@@ -230,6 +235,7 @@ function CampDataLoader() {
       unsubPool?.();
       unsubSafety?.();
       unsubAssets?.();
+      stopHeartbeat();
       document.removeEventListener('visibilitychange', handleVisibility);
       document.removeEventListener('resume', handleResume);
       window.removeEventListener('pageshow', handlePageShow);

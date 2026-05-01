@@ -9,11 +9,13 @@ import {
   dbDeleteIssue,
   dbDeletePhoto,
 } from '@/lib/db';
+import { useCampStore } from '@/store/campStore';
 
 type FilterType = 'all' | 'urgent' | 'unassigned' | 'in_progress' | 'resolved';
 
 interface IssuesStore {
   issues: Issue[];
+  pendingIssues: Record<string, Issue>;
   selectedIssueId: string | null;
   filter: FilterType;
   searchQuery: string;
@@ -57,18 +59,35 @@ function computeNextDueDate(dueDate: string | null, interval: Issue['recurringIn
 
 export const useIssuesStore = create<IssuesStore>((set, get) => ({
   issues: [],
+  pendingIssues: {},
   selectedIssueId: null,
   filter: 'all',
   searchQuery: '',
 
   setIssues: (issues) => {
-    set({ issues });
-    if (issues.length > 0) {
-      const current = get().selectedIssueId;
-      if (!current || !issues.find((i) => i.id === current)) {
-        set({ selectedIssueId: issues[0].id });
+    set((state) => {
+      // Merge any in-flight optimistic adds back into the incoming list so a
+      // refetch that raced a pending write doesn't erase the optimistic update.
+      const pending = state.pendingIssues;
+      const pendingEntries = Object.entries(pending);
+      let merged = issues;
+      if (pendingEntries.length > 0) {
+        const incomingIds = new Set(issues.map((i) => i.id));
+        const surviving = pendingEntries
+          .filter(([id]) => !incomingIds.has(id))
+          .map(([, issue]) => issue);
+        if (surviving.length > 0) {
+          campLog(`[CampOps] setIssues: preserving ${surviving.length} pending issue(s) from refetch overwrite`);
+          merged = [...surviving, ...issues];
+        }
       }
-    }
+      const current = state.selectedIssueId;
+      const nextSelected =
+        merged.length > 0 && (!current || !merged.find((i) => i.id === current))
+          ? merged[0].id
+          : current;
+      return { issues: merged, selectedIssueId: nextSelected };
+    });
   },
 
   setFilter: (f) => {
@@ -91,10 +110,54 @@ export const useIssuesStore = create<IssuesStore>((set, get) => ({
 
   addIssue: (issue) => {
     campLog('[CampOps] addIssue called', issue.id, issue.title);
-    set((state) => ({ issues: [issue, ...state.issues] }));
+    set((state) => ({
+      issues: [issue, ...state.issues],
+      pendingIssues: { ...state.pendingIssues, [issue.id]: issue },
+    }));
+
+    let saved = false;
+
+    const commit = () => {
+      if (saved) return;
+      saved = true;
+      set((state) => {
+        const { [issue.id]: _, ...rest } = state.pendingIssues;
+        return { pendingIssues: rest };
+      });
+    };
+
+    // Attempt 1 — immediate. fetchWithRetry uses XHR internally so AbortController
+    // actually cancels stale TCP sockets; on a stale connection this resolves in ~5 s.
     dbUpsertIssue(issue).then(({ error }) => {
-      if (error) campError('[CampOps] addIssue write failed — issue may not be saved', error);
+      if (!error) commit();
+      else campError('[CampOps] addIssue attempt 1 error', error);
     });
+
+    // Attempt 2 — 15 s safety net in case all fetchWithRetry internal retries failed.
+    setTimeout(() => {
+      if (saved) return;
+      campLog('[CampOps] addIssue attempt 2 (safety net)');
+      dbUpsertIssue(issue).then(({ error }) => {
+        if (!error) commit();
+        else campError('[CampOps] addIssue attempt 2 error', error);
+      });
+    }, 15_000);
+
+    // Attempt 3 — 30 s; roll back only if this also fails
+    setTimeout(() => {
+      if (saved) return;
+      campLog('[CampOps] addIssue attempt 3 (final)');
+      dbUpsertIssue(issue).then(({ error }) => {
+        if (!error) { commit(); return; }
+        campError('[CampOps] addIssue attempt 3 failed — rolling back', error);
+        if (saved) return;
+        saved = true;
+        set((state) => {
+          const { [issue.id]: _, ...rest } = state.pendingIssues;
+          return { issues: state.issues.filter((i) => i.id !== issue.id), pendingIssues: rest };
+        });
+      });
+    }, 30_000);
   },
 
   deleteIssue: (id) => {
@@ -224,3 +287,69 @@ export const useIssuesStore = create<IssuesStore>((set, get) => ({
       return sum + (i.estimatedCostValue ?? 0);
     }, 0),
 }));
+
+// ─── Automated stale-TCP test ──────────────────────────────────────────────────
+// campLog.ts registers campOpsDebug first (it's imported above), so we can safely
+// merge runTest into the existing object.
+//
+// Usage: campOpsDebug.runTest()         — default 10s hang, resets at 4.5s
+//        campOpsDebug.runTest(5000)     — 5s hang (faster iteration)
+{
+  const W = window as Record<string, unknown>;
+  if (!W.campOpsDebug) W.campOpsDebug = {};
+  (W.campOpsDebug as Record<string, unknown>).runTest = async (hangMs = 10_000) => {
+    const debug = W.campOpsDebug as Record<string, unknown>;
+    const campLogObj = W.campLog as { clear?: () => void; dump?: () => void } | undefined;
+
+    const campId = useCampStore.getState().currentCamp?.id;
+    const userId = useCampStore.getState().currentMember?.userId;
+    if (!campId || !userId) { console.error('[runTest] No camp/member — are you logged in?'); return; }
+
+    campLogObj?.clear?.();
+    campLog(`[TEST] runTest START hangMs=${hangMs}`);
+
+    const now = new Date().toISOString();
+    const testIssue: Issue = {
+      id: crypto.randomUUID(),
+      title: `[AUTO-TEST] ${new Date().toLocaleTimeString()}`,
+      description: 'Automated stale-TCP write test',
+      locations: [],
+      priority: 'normal',
+      status: 'unassigned',
+      assigneeId: null,
+      reportedById: userId,
+      estimatedCostDisplay: null,
+      estimatedCostValue: null,
+      actualCost: null,
+      photoUrl: null,
+      dueDate: null,
+      isRecurring: false,
+      recurringInterval: null,
+      createdAt: now,
+      updatedAt: now,
+      activityLog: [],
+    };
+
+    (debug.simulateStaleFetch as (ms: number) => void)(hangMs);
+    campLog('[TEST] stale simulation active — calling addIssue');
+    useIssuesStore.getState().addIssue(testIssue);
+
+    // Reset simulation after AbortController fires at 4s so the 5s retry hits real network.
+    setTimeout(() => {
+      campLog('[TEST] resetting stale simulation');
+      (debug.resetFetch as () => void)?.();
+    }, 4_500);
+
+    // Report at 15s.
+    setTimeout(() => {
+      const s = useIssuesStore.getState();
+      const pending = !!s.pendingIssues[testIssue.id];
+      const inList = s.issues.some((i) => i.id === testIssue.id);
+      if (!pending && inList) campLog('[TEST] PASS ✓ — issue saved and committed');
+      else if (pending) campLog('[TEST] PENDING — write still in-flight (check dump for retries)');
+      else campLog('[TEST] FAIL ✗ — issue was rolled back');
+      campLog('[TEST] Dump:');
+      campLogObj?.dump?.();
+    }, 15_000);
+  };
+}

@@ -315,7 +315,7 @@ export function subscribeToIssues(campId: string, onUpdate: IssueCallback, onEve
     .subscribe((status) => {
       campLog('[CampOps] issues channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) { campLog('[CampOps] issues reconnected — reloading'); reload('reconnect'); }
+        if (everSubscribed) { campLog('[CampOps] issues reconnected — reloading in 10s'); onEventStart?.(); setTimeout(() => reload('reconnect'), 10000); }
         else { campLog('[CampOps] issues initial subscription'); everSubscribed = true; }
       }
     });
@@ -342,7 +342,7 @@ export function subscribeToTasks(campId: string, onUpdate: TaskCallback, onEvent
     .subscribe((status) => {
       campLog('[CampOps] tasks channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) { campLog('[CampOps] tasks reconnected — reloading'); reload(); }
+        if (everSubscribed) { campLog('[CampOps] tasks reconnected — reloading in 10s'); onEventStart?.(); setTimeout(() => reload('reconnect'), 10000); }
         else { campLog('[CampOps] tasks initial subscription'); everSubscribed = true; }
       }
     });
@@ -668,7 +668,7 @@ export function subscribeToPool(campId: string, onUpdate: PoolDataCallback, onEv
   channel.subscribe((status) => {
     campLog('[CampOps] pool channel status:', status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) { campLog('[CampOps] pool reconnected — reloading'); reload(); }
+      if (everSubscribed) { campLog('[CampOps] pool reconnected — reloading in 10s'); onEventStart?.(); setTimeout(() => reload('reconnect'), 10000); }
       else { campLog('[CampOps] pool initial subscription'); everSubscribed = true; }
     }
   });
@@ -1044,7 +1044,7 @@ export function subscribeToSafety(campId: string, onUpdate: SafetyDataCallback, 
     .subscribe((status) => {
       campLog('[CampOps] safety channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) { campLog('[CampOps] safety reconnected — reloading'); reload(); }
+        if (everSubscribed) { campLog('[CampOps] safety reconnected — reloading in 10s'); onEventStart?.(); setTimeout(() => reload('reconnect'), 10000); }
         else { campLog('[CampOps] safety initial subscription'); everSubscribed = true; }
       }
     });
@@ -1325,7 +1325,7 @@ export function subscribeToAssets(campId: string, onUpdate: AssetDataCallback, o
   channel.subscribe((status) => {
     campLog('[CampOps] assets channel status:', status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) { campLog('[CampOps] assets reconnected — reloading'); reload(); }
+      if (everSubscribed) { campLog('[CampOps] assets reconnected — reloading in 10s'); onEventStart?.(); setTimeout(() => reload('reconnect'), 10000); }
       else { campLog('[CampOps] assets initial subscription'); everSubscribed = true; }
     }
   });

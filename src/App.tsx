@@ -42,7 +42,7 @@ import {
 } from '@/lib/db';
 import { startSupabaseHeartbeat } from '@/lib/supabase';
 import { campLog } from '@/lib/campLog';
-import { useIssuesStore } from '@/store/issuesStore';
+import { useIssuesStore, startIssueWriteQueue } from '@/store/issuesStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { usePoolStore } from '@/store/poolStore';
 import { useSafetyStore } from '@/store/safetyStore';
@@ -78,6 +78,7 @@ function CampDataLoader() {
     // Start the Supabase keep-alive heartbeat.  Pings every 30 s while visible to
     // keep the TCP socket from going stale and to refresh the JWT before expiry.
     const stopHeartbeat = startSupabaseHeartbeat();
+    const stopWriteQueue = startIssueWriteQueue();
 
     // Track when each subscription last fired a WAL event (ms since epoch, 0 = never).
     // Used to prevent both the initial load and refetchAll from overwriting a fresher
@@ -236,6 +237,7 @@ function CampDataLoader() {
       unsubSafety?.();
       unsubAssets?.();
       stopHeartbeat();
+      stopWriteQueue();
       document.removeEventListener('visibilitychange', handleVisibility);
       document.removeEventListener('resume', handleResume);
       window.removeEventListener('pageshow', handlePageShow);

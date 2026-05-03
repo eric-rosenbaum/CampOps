@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { campLog, campError } from '@/lib/campLog';
+import { campLog } from '@/lib/campLog';
 import type { Issue, ActivityEntry, IssueStatus, Priority } from '@/lib/types';
 import { addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import {
@@ -9,6 +9,7 @@ import {
   dbDeleteIssue,
   dbDeletePhoto,
 } from '@/lib/db';
+import { enqueueIssue, dequeueIssue, getQueuedIssues, loadInitialPending } from '@/lib/writeQueue';
 import { useCampStore } from '@/store/campStore';
 
 type FilterType = 'all' | 'urgent' | 'unassigned' | 'in_progress' | 'resolved';
@@ -57,10 +58,15 @@ function computeNextDueDate(dueDate: string | null, interval: Issue['recurringIn
   }
 }
 
+// Restore any writes that were queued before the last page refresh.
+const _initialPending = loadInitialPending();
+const _initialIssues = Object.values(_initialPending);
+
 export const useIssuesStore = create<IssuesStore>((set, get) => ({
-  issues: [],
-  pendingIssues: {},
-  selectedIssueId: null,
+  // Pre-populate with any queued writes so they appear immediately after a refresh.
+  issues: _initialIssues,
+  pendingIssues: _initialPending,
+  selectedIssueId: _initialIssues.length > 0 ? _initialIssues[0].id : null,
   filter: 'all',
   searchQuery: '',
 
@@ -110,54 +116,15 @@ export const useIssuesStore = create<IssuesStore>((set, get) => ({
 
   addIssue: (issue) => {
     campLog('[CampOps] addIssue called', issue.id, issue.title);
+    // 1. Optimistic UI — issue appears instantly.
     set((state) => ({
       issues: [issue, ...state.issues],
       pendingIssues: { ...state.pendingIssues, [issue.id]: issue },
     }));
-
-    let saved = false;
-
-    const commit = () => {
-      if (saved) return;
-      saved = true;
-      set((state) => {
-        const { [issue.id]: _, ...rest } = state.pendingIssues;
-        return { pendingIssues: rest };
-      });
-    };
-
-    // Attempt 1 — immediate. fetchWithRetry uses XHR internally so AbortController
-    // actually cancels stale TCP sockets; on a stale connection this resolves in ~5 s.
-    dbUpsertIssue(issue).then(({ error }) => {
-      if (!error) commit();
-      else campError('[CampOps] addIssue attempt 1 error', error);
-    });
-
-    // Attempt 2 — 15 s safety net in case all fetchWithRetry internal retries failed.
-    setTimeout(() => {
-      if (saved) return;
-      campLog('[CampOps] addIssue attempt 2 (safety net)');
-      dbUpsertIssue(issue).then(({ error }) => {
-        if (!error) commit();
-        else campError('[CampOps] addIssue attempt 2 error', error);
-      });
-    }, 15_000);
-
-    // Attempt 3 — 30 s; roll back only if this also fails
-    setTimeout(() => {
-      if (saved) return;
-      campLog('[CampOps] addIssue attempt 3 (final)');
-      dbUpsertIssue(issue).then(({ error }) => {
-        if (!error) { commit(); return; }
-        campError('[CampOps] addIssue attempt 3 failed — rolling back', error);
-        if (saved) return;
-        saved = true;
-        set((state) => {
-          const { [issue.id]: _, ...rest } = state.pendingIssues;
-          return { issues: state.issues.filter((i) => i.id !== issue.id), pendingIssues: rest };
-        });
-      });
-    }, 30_000);
+    // 2. Persist to localStorage — survives page refresh, retried by the queue processor.
+    enqueueIssue(issue);
+    // 3. Kick off an immediate write attempt alongside the scheduled processor.
+    void writeIssueNow(issue);
   },
 
   deleteIssue: (id) => {
@@ -288,12 +255,69 @@ export const useIssuesStore = create<IssuesStore>((set, get) => ({
     }, 0),
 }));
 
+// ─── Write helpers ─────────────────────────────────────────────────────────────
+
+// Commits a successfully-saved issue: removes it from the persistent queue and
+// from the in-memory pendingIssues map so the UI sync indicator clears.
+function commitIssue(id: string) {
+  dequeueIssue(id);
+  useIssuesStore.setState((state) => {
+    const { [id]: _, ...rest } = state.pendingIssues;
+    return { pendingIssues: rest };
+  });
+}
+
+// One-shot write attempt for a single issue. Used by addIssue for the immediate
+// attempt and by the queue processor for retries.
+async function writeIssueNow(issue: Issue): Promise<boolean> {
+  const { error } = await dbUpsertIssue(issue);
+  if (!error) {
+    commitIssue(issue.id);
+    return true;
+  }
+  return false;
+}
+
+// ─── Queue processor ───────────────────────────────────────────────────────────
+// Processes all queued issue writes. Runs every INTERVAL_MS when the tab is
+// visible, plus immediately on each visibility-change to visible. Any issue that
+// fails stays in the queue and is retried on the next tick — no 30-second give-up.
+
+const INTERVAL_MS = 5_000;
+let _processorRunning = false;
+
+async function processQueue() {
+  if (document.visibilityState !== 'visible') return;
+  if (_processorRunning) return;
+  _processorRunning = true;
+  try {
+    const queued = getQueuedIssues();
+    if (queued.length === 0) return;
+    campLog(`[CampOps] queueProcessor: ${queued.length} pending write(s)`);
+    for (const issue of queued) {
+      const ok = await writeIssueNow(issue);
+      if (!ok) campLog(`[CampOps] queueProcessor: write failed for ${issue.id}, will retry`);
+    }
+  } finally {
+    _processorRunning = false;
+  }
+}
+
+export function startIssueWriteQueue(): () => void {
+  // Drain any writes that were queued before the last page refresh.
+  void processQueue();
+
+  const intervalId = window.setInterval(() => { void processQueue(); }, INTERVAL_MS);
+  const onVisibility = () => { if (document.visibilityState === 'visible') void processQueue(); };
+  document.addEventListener('visibilitychange', onVisibility);
+
+  return () => {
+    window.clearInterval(intervalId);
+    document.removeEventListener('visibilitychange', onVisibility);
+  };
+}
+
 // ─── Automated stale-TCP test ──────────────────────────────────────────────────
-// campLog.ts registers campOpsDebug first (it's imported above), so we can safely
-// merge runTest into the existing object.
-//
-// Usage: campOpsDebug.runTest()         — default 10s hang, resets at 4.5s
-//        campOpsDebug.runTest(5000)     — 5s hang (faster iteration)
 {
   const W = window as unknown as Record<string, unknown>;
   if (!W.campOpsDebug) W.campOpsDebug = {};
@@ -334,7 +358,7 @@ export const useIssuesStore = create<IssuesStore>((set, get) => ({
     campLog('[TEST] stale simulation active — calling addIssue');
     useIssuesStore.getState().addIssue(testIssue);
 
-    // Reset simulation after AbortController fires at 4s so the 5s retry hits real network.
+    // Reset simulation after 4.5s so the queue processor's retry hits real network.
     setTimeout(() => {
       campLog('[TEST] resetting stale simulation');
       (debug.resetFetch as () => void)?.();

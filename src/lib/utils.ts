@@ -30,7 +30,7 @@ export function formatCost(value: number): string {
 }
 
 export function relativeDueDate(dueDateStr: string): { label: string; overdue: boolean } {
-  const due = new Date(dueDateStr);
+  const due = new Date(dueDateStr + 'T00:00:00');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   due.setHours(0, 0, 0, 0);

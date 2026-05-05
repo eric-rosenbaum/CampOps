@@ -277,7 +277,7 @@ export function TaskDetail({ task }: Props) {
             const effective = task.dueDate
               ? task.dueDate
               : task.daysRelativeToOpening !== null && season
-                ? addDays(new Date(task.phase === 'post' ? season.closingDate : season.openingDate), task.daysRelativeToOpening).toISOString().split('T')[0]
+                ? addDays(new Date((task.phase === 'post' ? season.closingDate : season.openingDate) + 'T00:00:00'), task.daysRelativeToOpening).toISOString().split('T')[0]
                 : null;
             const hasTiming = task.daysRelativeToOpening !== null;
             return (

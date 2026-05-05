@@ -186,6 +186,7 @@ export async function dbUpdateIssue(id: string, patch: Partial<Issue>) {
   if (patch.dueDate !== undefined) row.due_date = patch.dueDate;
   if (patch.isRecurring !== undefined) row.is_recurring = patch.isRecurring;
   if (patch.recurringInterval !== undefined) row.recurring_interval = patch.recurringInterval;
+  if (patch.photoUrl !== undefined) row.photo_url = patch.photoUrl;
   const { error } = await supabase.from('issues').update(row).eq('id', id);
   if (error) console.error('dbUpdateIssue error:', error.message);
 }
@@ -254,10 +255,10 @@ export async function dbUpsertSeason(season: Season) {
 const PHOTO_BUCKET = 'issue-photos';
 
 export async function dbUploadPhoto(file: File, issueId: string): Promise<string | null> {
-  const path = `${_campId}/${issueId}`;
+  const path = `${_campId}/${issueId}-${Date.now()}`;
   const { error } = await supabase.storage
     .from(PHOTO_BUCKET)
-    .upload(path, file, { upsert: true, contentType: file.type });
+    .upload(path, file, { contentType: file.type });
   if (error) {
     console.error('[Supabase] Photo upload error:', error.message);
     return null;

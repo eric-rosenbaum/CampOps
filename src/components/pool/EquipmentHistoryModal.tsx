@@ -53,7 +53,7 @@ export function EquipmentHistoryModal() {
             <div>
               <span className="text-forest/50 text-secondary">Last serviced</span>
               <span className="ml-2 font-medium font-mono text-forest">
-                {new Date(equip.lastServiced).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                {new Date(equip.lastServiced + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
             </div>
           )}
@@ -61,7 +61,7 @@ export function EquipmentHistoryModal() {
             <div>
               <span className="text-forest/50 text-secondary">Next due</span>
               <span className="ml-2 font-medium font-mono text-forest">
-                {new Date(equip.nextServiceDue).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                {new Date(equip.nextServiceDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
             </div>
           )}
@@ -86,7 +86,7 @@ export function EquipmentHistoryModal() {
                         {SERVICE_TYPE_LABELS[entry.serviceType]}
                       </span>
                       <span className="text-meta text-forest/40 font-mono">
-                        {new Date(entry.datePerformed).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {new Date(entry.datePerformed + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     </div>
                     <p className="text-body text-forest/70">By {entry.performedBy}</p>
@@ -103,7 +103,7 @@ export function EquipmentHistoryModal() {
                       )}
                       {entry.nextServiceDue && (
                         <p className="text-meta text-forest/40 mt-0.5">
-                          Next: {new Date(entry.nextServiceDue).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          Next: {new Date(entry.nextServiceDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </p>
                       )}
                     </div>

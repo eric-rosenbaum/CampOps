@@ -52,7 +52,7 @@ export function IssuesRepairs() {
   }, [filter, searchQuery]);
 
   const subtitle = season
-    ? `${season.name} · ${format(new Date(season.openingDate), 'MMM d')} – ${format(new Date(season.closingDate), 'MMM d')} · ${openCount()} open issue${openCount() !== 1 ? 's' : ''}`
+    ? `${season.name} · ${format(new Date(season.openingDate + 'T00:00:00'), 'MMM d')} – ${format(new Date(season.closingDate + 'T00:00:00'), 'MMM d')} · ${openCount()} open issue${openCount() !== 1 ? 's' : ''}`
     : `${openCount()} open issues`;
 
   return (

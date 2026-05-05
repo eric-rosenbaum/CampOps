@@ -15,7 +15,7 @@ function statusBorderColor(status: PoolInspection['status']) {
 function StatusBadge({ status, nextDue }: { status: PoolInspection['status']; nextDue: string | null }) {
   if (status === 'overdue') {
     const daysOverdue = nextDue
-      ? Math.round((Date.now() - new Date(nextDue).getTime()) / (1000 * 60 * 60 * 24))
+      ? Math.round((Date.now() - new Date(nextDue + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24))
       : null;
     return (
       <span className="text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide bg-red-bg text-red">
@@ -25,7 +25,7 @@ function StatusBadge({ status, nextDue }: { status: PoolInspection['status']; ne
   }
   if (status === 'due' && nextDue) {
     const daysUntil = Math.round(
-      (new Date(nextDue).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      (new Date(nextDue + 'T00:00:00').getTime() - Date.now()) / (1000 * 60 * 60 * 24)
     );
     return (
       <span className="text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide bg-amber-bg text-amber-text">
@@ -83,7 +83,7 @@ function InspectionLogRow({
       <div className="flex-1 min-w-0 pr-4">
         <p className="text-body font-medium text-forest">{typeName}</p>
         <p className="text-meta text-forest/40 mt-0.5">
-          {new Date(entry.inspectionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          {new Date(entry.inspectionDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           {' · '}Conducted by {entry.conductedBy}
           {entry.notes ? ` · ${entry.notes}` : ''}
         </p>
@@ -94,7 +94,7 @@ function InspectionLogRow({
         </span>
         {entry.nextDue && (
           <span className="text-meta text-forest/40 font-mono">
-            Next: {new Date(entry.nextDue).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            Next: {new Date(entry.nextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </span>
         )}
         <button
@@ -133,7 +133,7 @@ export function InspectionsTab() {
           { label: 'Overdue', value: overdue, hint: 'Needs immediate action', cls: overdue > 0 ? 'text-red' : 'text-forest' },
           {
             label: 'Next inspection',
-            value: nextInspection?.nextDue ? new Date(nextInspection.nextDue).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—',
+            value: nextInspection?.nextDue ? new Date(nextInspection.nextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—',
             hint: nextInspection?.name ?? 'None scheduled',
             cls: 'text-forest text-[18px]',
           },
@@ -187,14 +187,14 @@ export function InspectionsTab() {
                 {insp.nextDue && (
                   <p className="font-mono text-secondary text-forest/50 mt-1.5">
                     {insp.status === 'ok' ? 'Valid through:' : 'Due:'}{' '}
-                    {new Date(insp.nextDue).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    {new Date(insp.nextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </p>
                 )}
                 {insp.lastCompleted && (
                   <p className="text-meta text-forest/40 mt-0.5">
                     {insp.status === 'ok' ? 'Completed:' : 'Frequency:'}{' '}
                     {insp.status === 'ok'
-                      ? new Date(insp.lastCompleted).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                      ? new Date(insp.lastCompleted + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                       : insp.frequency}
                   </p>
                 )}

@@ -70,7 +70,7 @@ export function LogInspectionModal() {
 
     const insp = inspections.find((i) => i.id === data.inspectionId);
     if (insp) {
-      const formattedDate = new Date(data.inspectionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const formattedDate = new Date(data.inspectionDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const updated: PoolInspection = {
         ...insp,
         status: 'ok',

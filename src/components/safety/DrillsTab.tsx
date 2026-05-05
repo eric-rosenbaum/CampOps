@@ -36,7 +36,7 @@ function DrillCard({ drill }: { drill: EmergencyDrill }) {
         <div className="flex items-center gap-2 flex-shrink-0">
           {isScheduled && (
             <span className="text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide bg-amber-bg text-amber-text">
-              Scheduled {new Date(drill.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              Scheduled {new Date(drill.scheduledDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </span>
           )}
           {isCompleted && (
@@ -64,7 +64,7 @@ function DrillCard({ drill }: { drill: EmergencyDrill }) {
           <div>
             <p className="text-[10px] text-forest/40 font-medium mb-0.5">Date</p>
             <p className="text-[12px] font-semibold font-mono text-forest">
-              {new Date(drillDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {new Date(drillDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </p>
           </div>
           <div>
@@ -140,7 +140,7 @@ export function DrillsTab() {
           {nextDrill ? (
             <>
               <p className="font-semibold text-[18px] mt-2 text-forest">
-                {new Date(nextDrill.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {new Date(nextDrill.scheduledDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </p>
               <p className="text-meta text-forest/40 mt-0.5 truncate">{DRILL_TYPE_LABELS[nextDrill.drillType]}</p>
             </>

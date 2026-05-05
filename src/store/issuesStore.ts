@@ -49,7 +49,7 @@ const statusOrder: Record<IssueStatus, number> = {
 
 function computeNextDueDate(dueDate: string | null, interval: Issue['recurringInterval']): string | null {
   if (!dueDate || !interval) return null;
-  const d = new Date(dueDate);
+  const d = new Date(dueDate + 'T00:00:00');
   switch (interval) {
     case 'daily': return addDays(d, 1).toISOString().split('T')[0];
     case 'weekly': return addWeeks(d, 1).toISOString().split('T')[0];

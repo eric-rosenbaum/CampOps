@@ -60,7 +60,7 @@ function TaskRow({ task, canManage, onToggle, onEdit, onDelete }: TaskRowProps) 
             {task.isComplete && task.completedDate && (
               <span className="text-label font-semibold px-1.5 py-0.5 rounded-tag bg-green-muted-bg text-green-muted-text uppercase tracking-wide">
                 Done{' '}
-                {new Date(task.completedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {new Date(task.completedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </span>
             )}
           </div>

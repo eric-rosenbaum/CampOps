@@ -88,7 +88,7 @@ function PoolSeasonalSection({ activePhase }: { activePhase: 'pre' | 'post' }) {
                       )}
                       {task.isComplete && task.completedDate && (
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-tag bg-green-muted-bg text-green-muted-text uppercase tracking-wide mt-1 inline-block">
-                          Done {new Date(task.completedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          Done {new Date(task.completedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
                       )}
                     </div>
@@ -185,7 +185,7 @@ function AssetMaintenanceSection({ activePhase }: { activePhase: 'pre' | 'post' 
                         )}
                         {task.isComplete && task.completedDate && (
                           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-tag bg-green-muted-bg text-green-muted-text uppercase tracking-wide mt-1 inline-block">
-                            Done {new Date(task.completedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            Done {new Date(task.completedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                           </span>
                         )}
                       </div>
@@ -234,7 +234,7 @@ export function PrePostCamp() {
   const locationBreakdown = completionByLocation(activePhase);
 
   const subtitle = season
-    ? `${season.name} · Opening ${format(new Date(season.openingDate), 'MMM d, yyyy')}`
+    ? `${season.name} · Opening ${format(new Date(season.openingDate + 'T00:00:00'), 'MMM d, yyyy')}`
     : 'No season set';
 
   return (

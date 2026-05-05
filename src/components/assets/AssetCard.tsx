@@ -13,10 +13,12 @@ function statusStyle(status: CampAsset['status']) {
 
 function nextServiceStatus(date: string | null): 'ok' | 'warn' | 'alert' | null {
   if (!date) return null;
-  const d = new Date(date);
+  const d = new Date(date + 'T00:00:00');
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
   if (d < today) return 'alert';
   const soon = new Date();
+  soon.setHours(0, 0, 0, 0);
   soon.setDate(soon.getDate() + 14);
   if (d < soon) return 'warn';
   return 'ok';
@@ -65,7 +67,7 @@ export function AssetCard({ asset, onClick }: { asset: CampAsset; onClick: () =>
 
             {!checkout && svcStatus && svcStatus !== 'ok' && (
               <span className={`text-meta ${serviceStatusColor(svcStatus)}`}>
-                Service {svcStatus === 'alert' ? 'overdue' : 'due'} {nextServiceDate ? new Date(nextServiceDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
+                Service {svcStatus === 'alert' ? 'overdue' : 'due'} {nextServiceDate ? new Date(nextServiceDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
               </span>
             )}
           </div>

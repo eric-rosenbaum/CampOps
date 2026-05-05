@@ -566,7 +566,7 @@ function ChecklistsStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => 
   const [closing, setClosing] = useState('');
 
   function handleSave() {
-    setSeason({ id: generateId(), name: name.trim() || `${new Date(opening).getFullYear()} Season`, openingDate: opening, closingDate: closing, acaInspectionDate: null });
+    setSeason({ id: generateId(), name: name.trim() || `${new Date(opening + 'T00:00:00').getFullYear()} Season`, openingDate: opening, closingDate: closing, acaInspectionDate: null });
     onDone();
   }
 

@@ -127,7 +127,10 @@ export function LogIssueModal() {
       let photoUrl: string | null = editingIssue.photoUrl;
       if (photoFile) {
         const url = await dbUploadPhoto(photoFile, editingIssue.id);
-        if (url) photoUrl = url;
+        if (url) {
+          if (editingIssue.photoUrl) void dbDeletePhoto(editingIssue.photoUrl);
+          photoUrl = url;
+        }
       } else if (removeExistingPhoto && editingIssue.photoUrl) {
         await dbDeletePhoto(editingIssue.photoUrl);
         photoUrl = null;
@@ -303,19 +306,31 @@ export function LogIssueModal() {
         <div>
           <label className={labelClass}>Photo</label>
           {displayPhoto ? (
-            <div className="relative">
-              <img
-                src={displayPhoto}
-                alt="Issue"
-                className="w-full rounded-card border border-border object-cover max-h-48"
-              />
-              <button
-                type="button"
-                onClick={handleRemovePhoto}
-                className="absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+            <div className="space-y-1.5">
+              <div className="relative">
+                <img
+                  src={displayPhoto}
+                  alt="Issue"
+                  className="w-full rounded-card border border-border object-cover max-h-48"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  className="absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <label className="flex items-center gap-1.5 text-[11px] text-forest/50 cursor-pointer hover:text-forest/70 transition-colors w-fit">
+                <Camera className="w-3 h-3" />
+                <span>Change photo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
+              </label>
             </div>
           ) : (
             <label className="flex items-center gap-2 py-3 px-3 bg-cream rounded-card border border-dashed border-border text-forest/40 cursor-pointer hover:border-sage hover:text-forest/60 transition-colors">

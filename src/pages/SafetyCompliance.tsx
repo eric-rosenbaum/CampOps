@@ -128,7 +128,7 @@ function exportComplianceReport(
         ${completedDrills.sort((a,b) => (b.completedDate ?? b.scheduledDate).localeCompare(a.completedDate ?? a.scheduledDate)).map(d => `
           <tr>
             <td>${DRILL_TYPE_LABELS[d.drillType]}</td>
-            <td>${new Date(d.completedDate ?? d.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+            <td>${new Date((d.completedDate ?? d.scheduledDate) + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
             <td>${d.lead || '—'}</td>
             <td>${d.participantCount ?? '—'}</td>
             <td>${d.responseTime ?? '—'}</td>
@@ -145,7 +145,7 @@ function exportComplianceReport(
         ${scheduledDrills.sort((a,b) => a.scheduledDate.localeCompare(b.scheduledDate)).map(d => `
           <tr>
             <td>${DRILL_TYPE_LABELS[d.drillType]}</td>
-            <td>${new Date(d.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+            <td>${new Date(d.scheduledDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
             <td>${d.lead || '—'}</td>
           </tr>
         `).join('')}

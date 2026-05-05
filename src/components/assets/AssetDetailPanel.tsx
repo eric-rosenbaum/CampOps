@@ -208,7 +208,7 @@ function OverviewTab({ asset, checkout, isOverdue, onCheckout, onReturn, onServi
         {asset.make && <Field label="Make / Model" value={`${asset.make}${asset.model ? ` ${asset.model}` : ''}${asset.year ? ` (${asset.year})` : ''}`} />}
         {asset.serialNumber && <Field label="Serial #" value={asset.serialNumber} />}
         {asset.licensePlate && <Field label="Plate" value={asset.licensePlate} />}
-        {asset.registrationExpiry && <Field label="Registration expires" value={new Date(asset.registrationExpiry).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} />}
+        {asset.registrationExpiry && <Field label="Registration expires" value={new Date(asset.registrationExpiry + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} />}
         {asset.tracksOdometer && asset.currentOdometer !== null && <Field label="Odometer" value={`${asset.currentOdometer.toLocaleString()} mi`} />}
         {asset.tracksHours && asset.currentHours !== null && <Field label="Engine hours" value={`${asset.currentHours.toFixed(0)} hrs`} />}
         {asset.hullId && <Field label="Hull ID" value={asset.hullId} />}
@@ -363,7 +363,7 @@ function ServiceTab({ records, onLogService, onEdit, onDelete }: {
                 {r.isInspection && <span className="text-label px-2 py-0.5 rounded-tag bg-sage/10 text-sage uppercase tracking-wide">Inspection</span>}
               </div>
               <p className="text-meta text-forest/50 mt-0.5">
-                {new Date(r.datePerformed).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                {new Date(r.datePerformed + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 {' · '}{r.performedBy}
                 {r.vendor && ` (${r.vendor})`}
                 {r.cost !== null && ` · $${r.cost.toFixed(2)}`}
@@ -373,7 +373,7 @@ function ServiceTab({ records, onLogService, onEdit, onDelete }: {
               {r.description && <p className="text-meta text-forest/60 mt-1 italic">{r.description}</p>}
               {r.nextServiceDate && (
                 <p className="text-meta text-forest/50 mt-1">
-                  Next service: {new Date(r.nextServiceDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  Next service: {new Date(r.nextServiceDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   {r.nextServiceOdometer !== null && ` or ${r.nextServiceOdometer.toLocaleString()} mi`}
                   {r.nextServiceHours !== null && ` or ${r.nextServiceHours.toFixed(0)} hrs`}
                 </p>
@@ -451,7 +451,7 @@ function MaintenanceTab({ assetId, activeMaintPhase, setActiveMaintPhase, tasks,
               <p className={`text-body ${task.isComplete ? 'line-through text-forest/40' : 'text-forest'}`}>{task.title}</p>
               {task.detail && <p className="text-meta text-forest/50 mt-0.5">{task.detail}</p>}
               {task.isComplete && task.completedBy && (
-                <p className="text-meta text-forest/40 mt-0.5">Done by {task.completedBy}{task.completedDate ? ` · ${new Date(task.completedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}</p>
+                <p className="text-meta text-forest/40 mt-0.5">Done by {task.completedBy}{task.completedDate ? ` · ${new Date(task.completedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}</p>
               )}
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">

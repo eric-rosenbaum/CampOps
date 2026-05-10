@@ -58,8 +58,6 @@ export function JoinCamp() {
     // Auth state change triggers the useEffect above to call attemptJoin.
   }
 
-  const campName = null; // Could fetch from code preview in future
-
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">

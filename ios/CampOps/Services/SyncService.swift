@@ -22,7 +22,11 @@ final class SyncService: ObservableObject {
     func subscribeToChanges(onIssueChange: @escaping () async -> Void,
                             onTaskChange: @escaping () async -> Void,
                             onPoolChange: (() async -> Void)? = nil,
-                            onAssetChange: (() async -> Void)? = nil) async {
+                            onAssetChange: (() async -> Void)? = nil,
+                            onPermissionChange: (() async -> Void)? = nil) async {
+        // Unsubscribe from any existing channel before resubscribing.
+        await channel?.unsubscribe()
+
         let ch = await SupabaseService.shared.client.realtimeV2.channel("db-changes")
         channel = ch
 
@@ -36,19 +40,23 @@ final class SyncService: ObservableObject {
         let checkoutStream   = await ch.postgresChange(AnyAction.self, schema: "public", table: "asset_checkouts")
         let serviceStream    = await ch.postgresChange(AnyAction.self, schema: "public", table: "asset_service_records")
         let maintStream      = await ch.postgresChange(AnyAction.self, schema: "public", table: "asset_maintenance_tasks")
+        let memberStream     = await ch.postgresChange(AnyAction.self, schema: "public", table: "camp_members")
+        let groupStream      = await ch.postgresChange(AnyAction.self, schema: "public", table: "staff_groups")
 
         await ch.subscribe()
 
         Task { for await _ in issueStream    { await onIssueChange() } }
         Task { for await _ in taskStream     { await onTaskChange()  } }
-        Task { for await _ in chemStream     { if let f = onPoolChange  { await f() } } }
-        Task { for await _ in equipStream    { if let f = onPoolChange  { await f() } } }
-        Task { for await _ in inspStream     { if let f = onPoolChange  { await f() } } }
-        Task { for await _ in seasonalStream { if let f = onPoolChange  { await f() } } }
-        Task { for await _ in assetStream    { if let f = onAssetChange { await f() } } }
-        Task { for await _ in checkoutStream { if let f = onAssetChange { await f() } } }
-        Task { for await _ in serviceStream  { if let f = onAssetChange { await f() } } }
-        Task { for await _ in maintStream    { if let f = onAssetChange { await f() } } }
+        Task { for await _ in chemStream     { if let f = onPoolChange        { await f() } } }
+        Task { for await _ in equipStream    { if let f = onPoolChange        { await f() } } }
+        Task { for await _ in inspStream     { if let f = onPoolChange        { await f() } } }
+        Task { for await _ in seasonalStream { if let f = onPoolChange        { await f() } } }
+        Task { for await _ in assetStream    { if let f = onAssetChange       { await f() } } }
+        Task { for await _ in checkoutStream { if let f = onAssetChange       { await f() } } }
+        Task { for await _ in serviceStream  { if let f = onAssetChange       { await f() } } }
+        Task { for await _ in maintStream    { if let f = onAssetChange       { await f() } } }
+        Task { for await _ in memberStream   { if let f = onPermissionChange  { await f() } } }
+        Task { for await _ in groupStream    { if let f = onPermissionChange  { await f() } } }
     }
 
     func unsubscribe() async {

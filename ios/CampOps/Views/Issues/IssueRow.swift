@@ -2,6 +2,9 @@ import SwiftUI
 
 struct IssueRow: View {
     let issue: Issue
+    var onTakeIt: (() -> Void)? = nil
+    var onUntake: (() -> Void)? = nil
+
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             HStack {
@@ -19,6 +22,33 @@ struct IssueRow: View {
                     HStack(spacing: 4) {
                         AvatarCircle(initials: assignee.initials, size: 20)
                         Text(assignee.firstName).font(.caption).foregroundColor(.secondary)
+                    }
+                }
+            }
+            if onTakeIt != nil || onUntake != nil {
+                HStack {
+                    Spacer()
+                    if let onTakeIt {
+                        Button(action: onTakeIt) {
+                            Text("Take it")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Color.sage)
+                                .cornerRadius(6)
+                        }
+                        .buttonStyle(.plain)
+                    } else if let onUntake {
+                        Button(action: onUntake) {
+                            Text("Untake")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(.sage)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.sage, lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }

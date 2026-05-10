@@ -1,25 +1,43 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Wrench, ClipboardList, TreePine, Waves, ShieldCheck, Truck, Settings, LogOut } from 'lucide-react';
+import {
+  LayoutDashboard, CheckSquare, Wrench, ClipboardList,
+  TreePine, Waves, ShieldCheck, Truck, Settings, LogOut,
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
+import type { StaffGroupModules } from '@/store/campStore';
 
-const mainNav = [
-  { section: 'Today', items: [
-    { path: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { path: '/my-tasks', label: 'My Tasks', icon: CheckSquare, end: false },
-  ]},
-  { section: 'Facilities', items: [
-    { path: '/issues', label: 'Issues & Repairs', icon: Wrench, end: false },
-    { path: '/pre-post', label: 'Pre/Post Camp', icon: ClipboardList, end: false },
-    { path: '/pool', label: 'Pool Management', icon: Waves, end: false },
-    { path: '/safety', label: 'Safety & Compliance', icon: ShieldCheck, end: false },
-    { path: '/assets', label: 'Assets & Vehicles', icon: Truck, end: false },
-  ]},
+type LucideIcon = React.ComponentType<{ className?: string }>;
+
+interface NavItem {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+  end: boolean;
+  module?: keyof StaffGroupModules;
+}
+
+const todayItems: NavItem[] = [
+  { path: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { path: '/my-tasks', label: 'My Tasks', icon: CheckSquare, end: false },
+];
+
+const facilityItems: NavItem[] = [
+  { path: '/issues', label: 'Issues & Repairs', icon: Wrench, end: false, module: 'issues_repairs' },
+  { path: '/pre-post', label: 'Pre/Post Camp', icon: ClipboardList, end: false, module: 'pre_post' },
+  { path: '/pool', label: 'Pool Management', icon: Waves, end: false, module: 'pool' },
+  { path: '/safety', label: 'Safety & Compliance', icon: ShieldCheck, end: false, module: 'safety' },
+  { path: '/assets', label: 'Assets & Vehicles', icon: Truck, end: false, module: 'assets' },
+];
+
+const settingsItems: NavItem[] = [
+  { path: '/settings', label: 'Camp Info', icon: Settings, end: true },
+  { path: '/settings/team', label: 'Team', icon: Settings, end: false },
 ];
 
 export function Sidebar() {
-  const { currentUser, role, roleLabel } = useAuth();
+  const { currentUser, role, roleLabel, canAccessModule } = useAuth();
   const { currentCamp } = useCampStore();
   const signOut = useAuthStore((s) => s.signOut);
   const navigate = useNavigate();
@@ -29,9 +47,19 @@ export function Sidebar() {
     signOut();
   }
 
+  const visibleFacilities = facilityItems.filter(
+    (item) => !item.module || canAccessModule(item.module)
+  );
+
+  const navSections = [
+    { section: 'Today', items: todayItems },
+    ...(visibleFacilities.length > 0
+      ? [{ section: 'Facilities', items: visibleFacilities }]
+      : []),
+  ];
+
   return (
     <aside className="w-sidebar min-w-sidebar h-screen bg-forest flex flex-col flex-shrink-0 sticky top-0">
-      {/* Logo */}
       <div className="px-5 pt-6 pb-5">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 bg-sage rounded-btn flex items-center justify-center flex-shrink-0">
@@ -42,7 +70,7 @@ export function Sidebar() {
       </div>
 
       <div className="px-3 flex-1 overflow-y-auto">
-        {mainNav.map((section) => (
+        {navSections.map((section) => (
           <div key={section.section} className="mb-5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 px-2 mb-1.5">
               {section.section}
@@ -72,10 +100,7 @@ export function Sidebar() {
             <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 px-2 mb-1.5">
               Settings
             </p>
-            {[
-              { path: '/settings', label: 'Camp Info', end: true },
-              { path: '/settings/team', label: 'Team', end: false },
-            ].map((item) => (
+            {settingsItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
@@ -96,7 +121,6 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Footer */}
       <div className="px-5 py-4 border-t border-white/10">
         <p className="text-[12px] font-medium text-white/80 truncate">{currentCamp?.name ?? ''}</p>
         <p className="text-[11px] text-white/40 mt-0.5 truncate">{currentUser.name} — {roleLabel}</p>

@@ -39,6 +39,18 @@ struct HomeView: View {
         }
     }
 
+    // MARK: - Helpers
+
+    // Issues visible to the current user, respecting staff group filtering.
+    private var visibleIssues: [Issue] {
+        guard authManager.currentMember?.role == .staff else { return issueVM.issues }
+        let uid = authManager.currentUser.id
+        return issueVM.issues.filter { issue in
+            issue.assigneeId == uid ||
+            (authManager.issuesSeeUnassigned && issue.assigneeId == nil)
+        }
+    }
+
     // MARK: - Subviews
 
     private var greetingHeader: some View {
@@ -52,7 +64,7 @@ struct HomeView: View {
 
     private var statsGrid: some View {
         let uid = authManager.currentUser.id
-        let openIssues = issueVM.issues.filter { $0.status != .resolved }
+        let openIssues = visibleIssues.filter { $0.status != .resolved }
         let urgent = openIssues.filter { $0.priority == .urgent }
         let myIssues = openIssues.filter { $0.assigneeId == uid }
         let myTasks = checklistVM.tasks.filter { $0.assigneeId == uid && $0.status != .complete }
@@ -97,8 +109,12 @@ struct HomeView: View {
                             .padding(.top, 2)
                     }
                     ForEach(myIssues) { issue in
+                        let isStaff = authManager.currentMember?.role == .staff
                         NavigationLink(value: issue) {
-                            IssueRow(issue: issue)
+                            IssueRow(issue: issue,
+                                     onUntake: isStaff
+                                        ? { Task { await issueVM.untakeIssue(issue, by: authManager.currentUser) } }
+                                        : nil)
                         }.buttonStyle(.plain)
                     }
                 }
@@ -121,7 +137,7 @@ struct HomeView: View {
     }
 
     private var recentIssues: some View {
-        let recent = Array(issueVM.issues.filter { $0.status != .resolved }.prefix(3))
+        let recent = Array(visibleIssues.filter { $0.status != .resolved }.prefix(3))
         return VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("Recent Issues").font(.headline.weight(.semibold)).foregroundColor(.forest)
             if recent.isEmpty {

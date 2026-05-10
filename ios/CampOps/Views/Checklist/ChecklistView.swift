@@ -31,6 +31,16 @@ struct ChecklistView: View {
         }
     }
 
+    // Staff see only their own tasks + (if permitted) unassigned ones.
+    private func staffFiltered(_ tasks: [ChecklistTask]) -> [ChecklistTask] {
+        guard authManager.currentMember?.role == .staff else { return tasks }
+        let userId = authManager.currentUser.id
+        return tasks.filter { task in
+            task.assigneeId == userId ||
+            (authManager.prepostSeeUnassigned && task.assigneeId == nil)
+        }
+    }
+
     private var taskList: some View {
         VStack(spacing: 0) {
             if let season = vm.season {
@@ -53,13 +63,21 @@ struct ChecklistView: View {
 
             ScrollView {
                 LazyVStack(spacing: Spacing.sm) {
-                    let tasks = selectedPhase == .pre ? vm.preTasks : vm.postTasks
+                    let tasks = staffFiltered(selectedPhase == .pre ? vm.preTasks : vm.postTasks)
                     if tasks.isEmpty {
                         Text("No \(selectedPhase == .pre ? "pre" : "post")-camp tasks")
                             .font(.subheadline).foregroundColor(.secondary).padding(.top, Spacing.xl)
                     } else {
                         ForEach(tasks) { task in
-                            NavigationLink(value: task.id) { ChecklistTaskRow(task: task) }.buttonStyle(.plain)
+                            let canTake = authManager.prepostSeeUnassigned &&
+                                          authManager.currentMember?.role == .staff &&
+                                          task.assigneeId == nil
+                            NavigationLink(value: task.id) {
+                                ChecklistTaskRow(task: task, onTakeIt: canTake
+                                    ? { Task { await vm.takeTask(task, by: authManager.currentUser) } }
+                                    : nil)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     // Pool & Waterfront seasonal tasks

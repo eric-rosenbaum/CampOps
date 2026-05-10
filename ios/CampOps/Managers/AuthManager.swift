@@ -12,6 +12,7 @@ final class AuthManager: ObservableObject {
     @Published private(set) var session: Session? = nil
     @Published private(set) var currentCamp: Camp? = nil
     @Published private(set) var currentMember: CampMember? = nil
+    @Published private(set) var currentStaffGroup: StaffGroup? = nil
     @Published private(set) var userFullName: String? = nil
     @Published private(set) var members: [CampUser] = []
     @Published var authError: String? = nil
@@ -33,6 +34,32 @@ final class AuthManager: ObservableObject {
 
     var can: Permissions { Permissions(role: currentMember?.role ?? .staff) }
 
+    func canAccessModule(_ module: String) -> Bool {
+        guard let member = currentMember else { return false }
+        if member.role == .admin { return true }
+        guard let group = currentStaffGroup else { return true }
+        switch module {
+        case "issues_repairs": return group.modules.issuesRepairs
+        case "pre_post":       return group.modules.prePost
+        case "pool":           return group.modules.pool
+        case "safety":         return group.modules.safety
+        case "assets":         return group.modules.assets
+        default:               return true
+        }
+    }
+
+    var issuesSeeUnassigned: Bool {
+        guard currentMember?.role == .staff else { return true }
+        guard let group = currentStaffGroup else { return true }
+        return group.issuesSeeUnassigned
+    }
+
+    var prepostSeeUnassigned: Bool {
+        guard currentMember?.role == .staff else { return true }
+        guard let group = currentStaffGroup else { return true }
+        return group.prepostSeeUnassigned
+    }
+
     private let selectedCampKey = "campcommand.selectedCampId"
 
     private init() {}
@@ -52,6 +79,7 @@ final class AuthManager: ObservableObject {
                     self.session = nil
                     self.currentCamp = nil
                     self.currentMember = nil
+                    self.currentStaffGroup = nil
                     self.userFullName = nil
                 default:
                     break
@@ -91,6 +119,42 @@ final class AuthManager: ObservableObject {
 
     func signOut() async {
         try? await supabase.auth.signOut()
+    }
+
+    // Refreshes the current member record and staff group without a full re-auth.
+    // Called on foreground resume and on realtime camp_members/staff_groups changes.
+    func reloadMemberAndGroup() async {
+        guard let userId = session?.user.id.uuidString,
+              let campId = currentCamp?.id else { return }
+
+        guard let rows = try? await supabase
+            .from("camp_members")
+            .select("*, camps(*)")
+            .eq("user_id", value: userId)
+            .eq("camp_id", value: campId)
+            .eq("is_active", value: true)
+            .limit(1)
+            .execute()
+            .value as [CampMemberRow],
+              let row = rows.first else { return }
+
+        currentMember = CampMember(
+            id: row.id, campId: row.campId, userId: row.userId,
+            role: row.role, department: row.department,
+            displayName: row.displayName, isActive: row.isActive,
+            staffGroupId: row.staffGroupId
+        )
+        if let groupId = row.staffGroupId {
+            currentStaffGroup = try? await supabase
+                .from("staff_groups")
+                .select()
+                .eq("id", value: groupId)
+                .single()
+                .execute()
+                .value
+        } else {
+            currentStaffGroup = nil
+        }
     }
 
     func joinWithCode(_ code: String) async {
@@ -148,8 +212,20 @@ final class AuthManager: ObservableObject {
             role: preferred.role,
             department: preferred.department,
             displayName: preferred.displayName,
-            isActive: preferred.isActive
+            isActive: preferred.isActive,
+            staffGroupId: preferred.staffGroupId
         )
+        if let groupId = preferred.staffGroupId {
+            currentStaffGroup = try? await supabase
+                .from("staff_groups")
+                .select()
+                .eq("id", value: groupId)
+                .single()
+                .execute()
+                .value
+        } else {
+            currentStaffGroup = nil
+        }
         UserDefaults.standard.set(preferred.camps.id, forKey: selectedCampKey)
         await loadMembers(campId: preferred.camps.id)
     }

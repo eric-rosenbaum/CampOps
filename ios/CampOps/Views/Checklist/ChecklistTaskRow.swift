@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ChecklistTaskRow: View {
     let task: ChecklistTask
+    var onTakeIt: (() -> Void)? = nil
+
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             HStack {
@@ -22,6 +24,21 @@ struct ChecklistTaskRow: View {
                         AvatarCircle(initials: assignee.initials, size: 20)
                         Text(assignee.firstName).font(.caption).foregroundColor(.secondary)
                     }
+                }
+            }
+            if let onTakeIt {
+                HStack {
+                    Spacer()
+                    Button(action: onTakeIt) {
+                        Text("Take it")
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color.sage)
+                            .cornerRadius(6)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }

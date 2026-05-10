@@ -1,5 +1,48 @@
 import Foundation
 
+// MARK: - Staff Groups
+
+struct StaffGroupModules: Codable {
+    let issuesRepairs: Bool
+    let prePost: Bool
+    let pool: Bool
+    let safety: Bool
+    let assets: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case issuesRepairs = "issues_repairs"
+        case prePost       = "pre_post"
+        case pool, safety, assets
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        issuesRepairs = (try? c.decode(Bool.self, forKey: .issuesRepairs)) ?? true
+        prePost       = (try? c.decode(Bool.self, forKey: .prePost)) ?? true
+        pool          = (try? c.decode(Bool.self, forKey: .pool)) ?? true
+        safety        = (try? c.decode(Bool.self, forKey: .safety)) ?? true
+        assets        = (try? c.decode(Bool.self, forKey: .assets)) ?? true
+    }
+}
+
+struct StaffGroup: Codable, Identifiable {
+    let id: String
+    let campId: String
+    let name: String
+    let modules: StaffGroupModules
+    let issuesSeeUnassigned: Bool
+    let prepostSeeUnassigned: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, modules
+        case campId               = "camp_id"
+        case issuesSeeUnassigned  = "issues_see_unassigned"
+        case prepostSeeUnassigned = "prepost_see_unassigned"
+    }
+}
+
+// MARK: - Camp Role
+
 enum CampRole: String, Codable {
     case admin = "admin"
     case staff = "staff"
@@ -50,6 +93,7 @@ struct CampMember: Codable, Identifiable {
     let department: String?
     let displayName: String?
     let isActive: Bool
+    let staffGroupId: String?
 
     enum CodingKeys: String, CodingKey {
         case id, role, department
@@ -57,6 +101,7 @@ struct CampMember: Codable, Identifiable {
         case userId      = "user_id"
         case displayName = "display_name"
         case isActive    = "is_active"
+        case staffGroupId = "staff_group_id"
     }
 }
 
@@ -70,6 +115,7 @@ struct CampMemberRow: Decodable {
     let displayName: String?
     let isActive: Bool
     let camps: Camp
+    let staffGroupId: String?
 
     enum CodingKeys: String, CodingKey {
         case id, role, department, camps
@@ -77,6 +123,7 @@ struct CampMemberRow: Decodable {
         case userId      = "user_id"
         case displayName = "display_name"
         case isActive    = "is_active"
+        case staffGroupId = "staff_group_id"
     }
 }
 

@@ -7,12 +7,31 @@ export type Department =
   | 'waterfront' | 'maintenance' | 'kitchen'
   | 'administration' | 'health' | 'program' | 'other';
 
+export interface StaffGroupModules {
+  issues_repairs: boolean;
+  pre_post: boolean;
+  pool: boolean;
+  safety: boolean;
+  assets: boolean;
+}
+
+export interface StaffGroup {
+  id: string;
+  campId: string;
+  name: string;
+  modules: StaffGroupModules;
+  issuesSeeUnassigned: boolean;
+  prepostSeeUnassigned: boolean;
+  createdAt: string;
+}
+
 export interface CampMember {
   id: string;
   campId: string;
   userId: string;
   role: CampRole;
   department: Department | null;
+  staffGroupId: string | null;
   displayName: string | null;
   isActive: boolean;
 }
@@ -34,40 +53,12 @@ export interface MemberWithProfile extends CampMember {
   isCreator: boolean;
 }
 
-interface CampState {
-  currentCamp: Camp | null;
-  currentMember: CampMember | null;
-  members: MemberWithProfile[];
-  camps: Camp[];
-  isLoading: boolean;
-  loadMyCamps: () => Promise<void>;
-  selectCamp: (campId: string) => Promise<void>;
-  createCamp: (data: {
-    name: string;
-    slug: string;
-    campType: string;
-    state: string;
-    modules: Record<string, boolean>;
-  }) => Promise<string>;
-  joinWithCode: (code: string) => Promise<{ campId: string; campName: string } | { error: string }>;
-  acceptInvitation: (token: string) => Promise<{ campId: string } | { error: string }>;
-  updateCamp: (campId: string, data: Partial<Pick<Camp, 'name' | 'campType' | 'state' | 'modules' | 'locations'>>) => Promise<void>;
-  loadMembers: (campId: string) => Promise<MemberWithProfile[]>;
-  inviteMember: (campId: string, email: string, role: CampRole, department: Department | null) => Promise<string>;
-  removeMember: (memberId: string) => Promise<void>;
-  updateMemberRole: (memberId: string, role: CampRole, department: Department | null) => Promise<void>;
-  generateJoinCode: (campId: string, role: CampRole, dept: Department | null, maxUses: number | null, days: number) => Promise<string>;
-  loadJoinCodes: (campId: string) => Promise<JoinCode[]>;
-  revokeJoinCode: (codeId: string) => Promise<void>;
-  loadInvitations: (campId: string) => Promise<Invitation[]>;
-  revokeInvitation: (invId: string) => Promise<void>;
-}
-
 export interface JoinCode {
   id: string;
   code: string;
   role: CampRole;
   department: string | null;
+  staffGroupId: string | null;
   maxUses: number | null;
   useCount: number;
   expiresAt: string | null;
@@ -80,18 +71,57 @@ export interface Invitation {
   email: string;
   role: CampRole;
   department: string | null;
+  staffGroupId: string | null;
   token: string;
   acceptedAt: string | null;
   expiresAt: string;
   createdAt: string;
 }
 
+interface CampState {
+  currentCamp: Camp | null;
+  currentMember: CampMember | null;
+  currentStaffGroup: StaffGroup | null;
+  members: MemberWithProfile[];
+  staffGroups: StaffGroup[];
+  camps: Camp[];
+  isLoading: boolean;
+
+  loadMyCamps: () => Promise<void>;
+  selectCamp: (campId: string) => Promise<void>;
+  createCamp: (data: {
+    name: string; slug: string; campType: string; state: string; modules: Record<string, boolean>;
+  }) => Promise<string>;
+  joinWithCode: (code: string) => Promise<{ campId: string; campName: string } | { error: string }>;
+  acceptInvitation: (token: string) => Promise<{ campId: string } | { error: string }>;
+  updateCamp: (campId: string, data: Partial<Pick<Camp, 'name' | 'campType' | 'state' | 'modules' | 'locations'>>) => Promise<void>;
+
+  loadMembers: (campId: string) => Promise<MemberWithProfile[]>;
+  inviteMember: (campId: string, email: string, role: CampRole, staffGroupId: string | null) => Promise<string>;
+  removeMember: (memberId: string) => Promise<void>;
+  updateMemberRole: (memberId: string, role: CampRole, staffGroupId: string | null) => Promise<void>;
+
+  generateJoinCode: (campId: string, role: CampRole, staffGroupId: string | null, maxUses: number | null, days: number) => Promise<string>;
+  loadJoinCodes: (campId: string) => Promise<JoinCode[]>;
+  revokeJoinCode: (codeId: string) => Promise<void>;
+
+  loadInvitations: (campId: string) => Promise<Invitation[]>;
+  revokeInvitation: (invId: string) => Promise<void>;
+
+  loadStaffGroups: (campId: string) => Promise<StaffGroup[]>;
+  createStaffGroup: (campId: string, name: string, modules: StaffGroupModules, issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean) => Promise<StaffGroup>;
+  updateStaffGroup: (groupId: string, patch: Partial<Pick<StaffGroup, 'name' | 'modules' | 'issuesSeeUnassigned' | 'prepostSeeUnassigned'>>) => Promise<void>;
+  deleteStaffGroup: (groupId: string) => Promise<void>;
+}
+
 export const useCampStore = create<CampState>((set, get) => ({
   currentCamp: null,
   currentMember: null,
+  currentStaffGroup: null,
   members: [],
+  staffGroups: [],
   camps: [],
-  isLoading: true,  // true until first loadMyCamps completes, prevents premature /setup redirect
+  isLoading: true,
 
   loadMyCamps: async () => {
     console.log('[campStore] loadMyCamps: start');
@@ -105,7 +135,6 @@ export const useCampStore = create<CampState>((set, get) => ({
       .eq('is_active', true);
 
     console.log('[campStore] loadMyCamps: query done', { rowCount: data?.length, error });
-
     if (error || !data) { set({ isLoading: false }); return; }
 
     const camps: Camp[] = [];
@@ -125,15 +154,12 @@ export const useCampStore = create<CampState>((set, get) => ({
       }
     }
 
-    console.log('[campStore] loadMyCamps: built camps', camps.length);
     set({ camps, isLoading: false });
 
     if (camps.length > 0) {
       const saved = localStorage.getItem('campcommand_selected_camp_id');
       const toSelect = (saved && camps.some(c => c.id === saved)) ? saved : camps[0].id;
-      console.log('[campStore] loadMyCamps: auto-selecting camp', toSelect);
       await get().selectCamp(toSelect);
-      console.log('[campStore] loadMyCamps: selectCamp done');
     }
     console.log('[campStore] loadMyCamps: done');
   },
@@ -142,7 +168,8 @@ export const useCampStore = create<CampState>((set, get) => ({
     console.log('[campStore] selectCamp: start', campId);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { console.warn('[campStore] selectCamp: no user'); return; }
-    const { data: memberRow, error: memberErr } = await supabase
+
+    const { data: memberRow } = await supabase
       .from('camp_members')
       .select('*')
       .eq('camp_id', campId)
@@ -150,15 +177,11 @@ export const useCampStore = create<CampState>((set, get) => ({
       .eq('is_active', true)
       .single();
 
-    console.log('[campStore] selectCamp: memberRow', { memberRow, memberErr });
-
-    const { data: campRow, error: campErr } = await supabase
+    const { data: campRow } = await supabase
       .from('camps')
       .select('*')
       .eq('id', campId)
       .single();
-
-    console.log('[campStore] selectCamp: campRow', { id: campRow?.id, campErr });
 
     if (!memberRow || !campRow) {
       console.warn('[campStore] selectCamp: early return — memberRow or campRow missing');
@@ -171,6 +194,7 @@ export const useCampStore = create<CampState>((set, get) => ({
       userId: memberRow.user_id,
       role: memberRow.role as CampRole,
       department: memberRow.department as Department | null,
+      staffGroupId: memberRow.staff_group_id ?? null,
       displayName: memberRow.display_name,
       isActive: memberRow.is_active,
     };
@@ -188,30 +212,28 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     localStorage.setItem('campcommand_selected_camp_id', campId);
     setCampId(campId);
-    console.log('[campStore] selectCamp: loading members');
-    const members = await get().loadMembers(campId);
-    console.log('[campStore] selectCamp: loadMembers done', members.length);
-    set({ currentCamp: camp, currentMember: member, members });
+
+    const [members, staffGroups] = await Promise.all([
+      get().loadMembers(campId),
+      get().loadStaffGroups(campId),
+    ]);
+
+    const currentStaffGroup = member.staffGroupId
+      ? staffGroups.find((g) => g.id === member.staffGroupId) ?? null
+      : null;
+
+    set({ currentCamp: camp, currentMember: member, members, staffGroups, currentStaffGroup });
     console.log('[campStore] selectCamp: done');
   },
 
   createCamp: async ({ name, slug, campType, state, modules }) => {
-    console.log('[campStore] createCamp: start', { name, slug, campType, state, modules });
     const { data, error } = await supabase.rpc('create_camp', {
-      p_name: name,
-      p_slug: slug,
-      p_camp_type: campType,
-      p_state: state,
-      p_modules: modules,
+      p_name: name, p_slug: slug, p_camp_type: campType, p_state: state, p_modules: modules,
     });
-    console.log('[campStore] createCamp: RPC done', { data, error });
     if (error) throw new Error(error.message);
     const newCampId = data as string;
-    console.log('[campStore] createCamp: calling loadMyCamps');
     await get().loadMyCamps();
-    console.log('[campStore] createCamp: selecting new camp', newCampId);
     await get().selectCamp(newCampId);
-    console.log('[campStore] createCamp: done, returning', newCampId);
     return newCampId;
   },
 
@@ -234,7 +256,6 @@ export const useCampStore = create<CampState>((set, get) => ({
   },
 
   updateCamp: async (campId, data) => {
-    // Optimistic update first so UI responds immediately
     const current = get().currentCamp;
     if (current && current.id === campId) {
       set({
@@ -248,7 +269,6 @@ export const useCampStore = create<CampState>((set, get) => ({
         },
       });
     }
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase.rpc as any)('update_camp', {
       p_camp_id: campId,
@@ -262,27 +282,21 @@ export const useCampStore = create<CampState>((set, get) => ({
   },
 
   loadMembers: async (campId) => {
-    console.log('[campStore] loadMembers: start', campId);
-    const { data: memberRows, error: membErr } = await supabase
+    const { data: memberRows } = await supabase
       .from('camp_members')
       .select('*')
       .eq('camp_id', campId)
       .eq('is_active', true)
       .order('created_at');
 
-    console.log('[campStore] loadMembers: memberRows', { count: memberRows?.length, membErr });
     if (!memberRows || memberRows.length === 0) return [];
 
-    const { data: profileRows, error: profErr } = await supabase
+    const { data: profileRows } = await supabase
       .from('profiles')
       .select('id, full_name')
       .in('id', memberRows.map(r => r.user_id));
 
-    console.log('[campStore] loadMembers: profileRows', { count: profileRows?.length, profErr });
-
     const nameMap = new Map((profileRows ?? []).map(p => [p.id as string, p.full_name as string]));
-
-    // First row (ordered by created_at ASC) is the camp creator
     const creatorUserId = memberRows[0]?.user_id ?? null;
 
     return memberRows.map(row => ({
@@ -291,6 +305,7 @@ export const useCampStore = create<CampState>((set, get) => ({
       userId: row.user_id,
       role: row.role as CampRole,
       department: row.department as Department | null,
+      staffGroupId: row.staff_group_id ?? null,
       displayName: row.display_name,
       isActive: row.is_active,
       fullName: nameMap.get(row.user_id) ?? row.display_name ?? 'Unknown',
@@ -299,11 +314,10 @@ export const useCampStore = create<CampState>((set, get) => ({
     }));
   },
 
-  inviteMember: async (campId, email, role, department) => {
+  inviteMember: async (campId, email, role, staffGroupId) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Revoke any existing pending invitation for this email
     await supabase
       .from('camp_invitations')
       .delete()
@@ -317,7 +331,8 @@ export const useCampStore = create<CampState>((set, get) => ({
         camp_id: campId,
         email,
         role,
-        department,
+        department: null,
+        staff_group_id: staffGroupId,
         invited_by: user.id,
       })
       .select('token')
@@ -328,18 +343,16 @@ export const useCampStore = create<CampState>((set, get) => ({
   },
 
   removeMember: async (memberId) => {
-    await supabase
-      .from('camp_members')
-      .update({ is_active: false })
-      .eq('id', memberId);
+    await supabase.from('camp_members').update({ is_active: false }).eq('id', memberId);
     set((s) => ({ members: s.members.filter((m) => m.id !== memberId) }));
   },
 
-  updateMemberRole: async (memberId, role, department) => {
+  updateMemberRole: async (memberId, role, staffGroupId) => {
     const { error } = await supabase.rpc('update_member_role', {
       p_member_id: memberId,
       p_role: role,
-      p_department: department ?? null,
+      p_department: null,
+      p_staff_group_id: staffGroupId ?? null,
     });
     if (error) {
       console.error('updateMemberRole error:', error.message);
@@ -347,18 +360,19 @@ export const useCampStore = create<CampState>((set, get) => ({
     }
     set((s) => ({
       members: s.members.map((m) =>
-        m.id === memberId ? { ...m, role, department } : m
+        m.id === memberId ? { ...m, role, staffGroupId: staffGroupId ?? null } : m
       ),
     }));
   },
 
-  generateJoinCode: async (campId, role, dept, maxUses, days) => {
+  generateJoinCode: async (campId, role, staffGroupId, maxUses, days) => {
     const { data, error } = await supabase.rpc('generate_join_code', {
       p_camp_id: campId,
       p_role: role,
-      p_dept: dept,
+      p_dept: null,
       p_max_uses: maxUses,
       p_days: days,
+      p_staff_group_id: staffGroupId,
     });
     if (error) throw new Error(error.message);
     return data as string;
@@ -377,6 +391,7 @@ export const useCampStore = create<CampState>((set, get) => ({
       code: r.code,
       role: r.role as CampRole,
       department: r.department,
+      staffGroupId: r.staff_group_id ?? null,
       maxUses: r.max_uses,
       useCount: r.use_count,
       expiresAt: r.expires_at,
@@ -403,6 +418,7 @@ export const useCampStore = create<CampState>((set, get) => ({
       email: r.email,
       role: r.role as CampRole,
       department: r.department,
+      staffGroupId: r.staff_group_id ?? null,
       token: r.token,
       acceptedAt: r.accepted_at,
       expiresAt: r.expires_at,
@@ -412,5 +428,82 @@ export const useCampStore = create<CampState>((set, get) => ({
 
   revokeInvitation: async (invId) => {
     await supabase.from('camp_invitations').delete().eq('id', invId);
+  },
+
+  loadStaffGroups: async (campId) => {
+    const { data } = await supabase
+      .from('staff_groups')
+      .select('*')
+      .eq('camp_id', campId)
+      .order('created_at', { ascending: true });
+
+    const groups: StaffGroup[] = (data ?? []).map((r) => ({
+      id: r.id,
+      campId: r.camp_id,
+      name: r.name,
+      modules: r.modules as StaffGroupModules,
+      issuesSeeUnassigned: r.issues_see_unassigned,
+      prepostSeeUnassigned: r.prepost_see_unassigned,
+      createdAt: r.created_at,
+    }));
+
+    set({ staffGroups: groups });
+    return groups;
+  },
+
+  createStaffGroup: async (campId, name, modules, issuesSeeUnassigned, prepostSeeUnassigned) => {
+    const { data, error } = await supabase
+      .from('staff_groups')
+      .insert({
+        camp_id: campId,
+        name,
+        modules,
+        issues_see_unassigned: issuesSeeUnassigned,
+        prepost_see_unassigned: prepostSeeUnassigned,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    const group: StaffGroup = {
+      id: data.id,
+      campId: data.camp_id,
+      name: data.name,
+      modules: data.modules as StaffGroupModules,
+      issuesSeeUnassigned: data.issues_see_unassigned,
+      prepostSeeUnassigned: data.prepost_see_unassigned,
+      createdAt: data.created_at,
+    };
+
+    set((s) => ({ staffGroups: [...s.staffGroups, group] }));
+    return group;
+  },
+
+  updateStaffGroup: async (groupId, patch) => {
+    const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.name !== undefined) row.name = patch.name;
+    if (patch.modules !== undefined) row.modules = patch.modules;
+    if (patch.issuesSeeUnassigned !== undefined) row.issues_see_unassigned = patch.issuesSeeUnassigned;
+    if (patch.prepostSeeUnassigned !== undefined) row.prepost_see_unassigned = patch.prepostSeeUnassigned;
+
+    const { error } = await supabase.from('staff_groups').update(row).eq('id', groupId);
+    if (error) throw new Error(error.message);
+
+    set((s) => ({
+      staffGroups: s.staffGroups.map((g) => g.id === groupId ? { ...g, ...patch } : g),
+      currentStaffGroup: s.currentStaffGroup?.id === groupId
+        ? { ...s.currentStaffGroup, ...patch }
+        : s.currentStaffGroup,
+    }));
+  },
+
+  deleteStaffGroup: async (groupId) => {
+    const { error } = await supabase.from('staff_groups').delete().eq('id', groupId);
+    if (error) throw new Error(error.message);
+    set((s) => ({
+      staffGroups: s.staffGroups.filter((g) => g.id !== groupId),
+      currentStaffGroup: s.currentStaffGroup?.id === groupId ? null : s.currentStaffGroup,
+    }));
   },
 }));

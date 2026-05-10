@@ -5,12 +5,22 @@ struct IssueListView: View {
     @EnvironmentObject private var vm: IssueListViewModel
     @State private var showingLogIssue = false
 
+    // Staff see only their own issues + (if permitted) unassigned ones.
+    private var staffFilteredIssues: [Issue] {
+        guard authManager.currentMember?.role == .staff else { return vm.filteredIssues }
+        let userId = authManager.currentUser.id
+        return vm.filteredIssues.filter { issue in
+            issue.assigneeId == userId ||
+            (authManager.issuesSeeUnassigned && issue.assigneeId == nil)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Group {
                 if vm.isLoading && vm.issues.isEmpty {
                     ProgressView("Loading...").frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if vm.filteredIssues.isEmpty {
+                } else if staffFilteredIssues.isEmpty {
                     emptyState
                 } else {
                     issueList
@@ -36,8 +46,18 @@ struct IssueListView: View {
     private var issueList: some View {
         ScrollView {
             LazyVStack(spacing: Spacing.sm) {
-                ForEach(vm.filteredIssues) { issue in
-                    NavigationLink(value: issue) { IssueRow(issue: issue) }
+                ForEach(staffFilteredIssues) { issue in
+                    let isStaff = authManager.currentMember?.role == .staff
+                    let uid = authManager.currentUser.id
+                    let takeAction: (() -> Void)? = (isStaff && authManager.issuesSeeUnassigned && issue.assigneeId == nil)
+                        ? { Task { await vm.takeIssue(issue, by: authManager.currentUser) } }
+                        : nil
+                    let untakeAction: (() -> Void)? = (isStaff && issue.assigneeId == uid)
+                        ? { Task { await vm.untakeIssue(issue, by: authManager.currentUser) } }
+                        : nil
+                    NavigationLink(value: issue) {
+                        IssueRow(issue: issue, onTakeIt: takeAction, onUntake: untakeAction)
+                    }
                     .buttonStyle(.plain)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {

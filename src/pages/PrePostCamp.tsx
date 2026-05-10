@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FilterPill } from '@/components/shared/FilterPill';
 import { SearchInput } from '@/components/shared/SearchInput';
@@ -214,13 +214,34 @@ export function PrePostCamp() {
   const {
     activePhase, setPhase, filter, setFilter, searchQuery, setSearch,
     selectedTaskId, selectTask, filteredTasks, tasks,
-    season, completionPercent, completionByLocation,
+    season, completionPercent, completionByLocation, updateTask, addActivityEntry,
   } = useChecklistStore();
   const { openLogTaskModal, isLogTaskModalOpen } = useUIStore();
-  const { can } = useAuth();
+  const { can, role, currentUser, prepostSeeUnassigned } = useAuth();
 
-  const filtered = filteredTasks();
+  const storeFiltered = filteredTasks();
+
+  // Staff see only their own tasks + (if permitted) unassigned ones.
+  const filtered = useMemo(() => {
+    if (role !== 'staff') return storeFiltered;
+    return storeFiltered.filter(
+      (t) => t.assigneeId === currentUser.id || (prepostSeeUnassigned && !t.assigneeId)
+    );
+  }, [storeFiltered, role, currentUser.id, prepostSeeUnassigned]);
+
   const selectedTask = tasks.find((t) => t.id === selectedTaskId);
+
+  function handleTakeTask(taskId: string) {
+    const now = new Date().toISOString();
+    updateTask(taskId, { assigneeId: currentUser.id, status: 'in_progress' });
+    addActivityEntry(taskId, {
+      id: `a${Date.now()}`,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      action: `${currentUser.name} took this task`,
+      timestamp: now,
+    });
+  }
 
   useEffect(() => {
     if (!selectedTaskId || !filtered.find((t) => t.id === selectedTaskId)) {
@@ -365,6 +386,9 @@ export function PrePostCamp() {
                     task={task}
                     selected={task.id === selectedTaskId}
                     onClick={() => selectTask(task.id)}
+                    onTakeIt={prepostSeeUnassigned && role === 'staff' && !task.assigneeId
+                      ? () => handleTakeTask(task.id)
+                      : undefined}
                   />
                 ))}
               </div>

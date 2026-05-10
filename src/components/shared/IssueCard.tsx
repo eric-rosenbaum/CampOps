@@ -8,6 +8,7 @@ interface Props {
   selected: boolean;
   onClick: () => void;
   compact?: boolean;
+  onTakeIt?: () => void;
 }
 
 const priorityBorderColor = {
@@ -29,7 +30,7 @@ const statusLabel: Record<string, string> = {
   resolved: 'Resolved',
 };
 
-export function IssueCard({ issue, selected, onClick, compact = false }: Props) {
+export function IssueCard({ issue, selected, onClick, compact = false, onTakeIt }: Props) {
   const members = useCampStore((s) => s.members);
   const memberName = (userId: string | null) => userId ? (members.find((m) => m.userId === userId)?.fullName ?? null) : null;
   const reporterName = memberName(issue.reportedById);
@@ -73,6 +74,14 @@ export function IssueCard({ issue, selected, onClick, compact = false }: Props) 
           )}
           {issue.dueDate && (
             <p className="text-[11px] text-forest/45 mt-0.5">{formatDate(issue.dueDate)}</p>
+          )}
+          {onTakeIt && !issue.assigneeId && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onTakeIt(); }}
+              className="mt-1.5 text-[11px] font-medium text-forest px-2 py-0.5 rounded border border-stone-200 bg-cream hover:bg-stone-100 transition-colors"
+            >
+              Take it
+            </button>
           )}
         </div>
       </div>

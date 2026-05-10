@@ -43,6 +43,42 @@ final class IssueListViewModel: ObservableObject {
         }
     }
 
+    func untakeIssue(_ issue: Issue, by user: CampUser) async {
+        guard let idx = issues.firstIndex(where: { $0.id == issue.id }) else { return }
+        let old = issues[idx]
+        issues[idx].assigneeId = nil
+        issues[idx].status = .unassigned
+        issues[idx].updatedAt = Date()
+        let entry = ActivityEntry(id: UUID().uuidString, userId: user.id, userName: user.name,
+                                  action: "\(user.name) unassigned themselves")
+        issues[idx].activity.append(entry)
+        do {
+            try await DataService.shared.updateIssue(issues[idx])
+            try await DataService.shared.insertIssueActivity(entry, issueId: issue.id)
+        } catch {
+            issues[idx] = old
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func takeIssue(_ issue: Issue, by user: CampUser) async {
+        guard let idx = issues.firstIndex(where: { $0.id == issue.id }) else { return }
+        let old = issues[idx]
+        issues[idx].assigneeId = user.id
+        issues[idx].status = .assigned
+        issues[idx].updatedAt = Date()
+        let entry = ActivityEntry(id: UUID().uuidString, userId: user.id, userName: user.name,
+                                  action: "\(user.name) took this issue")
+        issues[idx].activity.append(entry)
+        do {
+            try await DataService.shared.updateIssue(issues[idx])
+            try await DataService.shared.insertIssueActivity(entry, issueId: issue.id)
+        } catch {
+            issues[idx] = old
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func refresh() async {
         guard let fresh = try? await DataService.shared.fetchIssues() else { return }
         issues = fresh

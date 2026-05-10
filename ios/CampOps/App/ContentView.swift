@@ -7,6 +7,7 @@ struct ContentView: View {
     @StateObject private var poolVM      = PoolViewModel()
     @StateObject private var assetVM     = AssetViewModel()
     @StateObject private var syncService = SyncService.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -21,6 +22,11 @@ struct ContentView: View {
                     .task(id: authManager.currentCamp?.id) {
                         await loadCampData()
                     }
+                    .onChange(of: scenePhase) { _, phase in
+                        if phase == .active {
+                            Task { await refreshAll() }
+                        }
+                    }
             }
         }
         .environmentObject(authManager)
@@ -34,14 +40,22 @@ struct ContentView: View {
         TabView {
             HomeView()
                 .tabItem { Label("Home", systemImage: "house") }
-            IssueListView()
-                .tabItem { Label("Issues", systemImage: "wrench.adjustable") }
-            ChecklistView()
-                .tabItem { Label("Checklist", systemImage: "checklist") }
-            PoolView()
-                .tabItem { Label("Pool", systemImage: "drop.fill") }
-            AssetView()
-                .tabItem { Label("Assets", systemImage: "car.fill") }
+            if authManager.canAccessModule("issues_repairs") {
+                IssueListView()
+                    .tabItem { Label("Issues", systemImage: "wrench.adjustable") }
+            }
+            if authManager.canAccessModule("pre_post") {
+                ChecklistView()
+                    .tabItem { Label("Checklist", systemImage: "checklist") }
+            }
+            if authManager.canAccessModule("pool") {
+                PoolView()
+                    .tabItem { Label("Pool", systemImage: "drop.fill") }
+            }
+            if authManager.canAccessModule("assets") {
+                AssetView()
+                    .tabItem { Label("Assets", systemImage: "car.fill") }
+            }
         }
     }
 
@@ -52,11 +66,22 @@ struct ContentView: View {
         async let a = assetVM.load()
         _ = await (i, c, p, a)
         await syncService.subscribeToChanges(
-            onIssueChange: { await issueVM.refresh() },
-            onTaskChange:  { await checklistVM.refresh() },
-            onPoolChange:  { await poolVM.refresh() },
-            onAssetChange: { await assetVM.refresh() }
+            onIssueChange:      { await issueVM.refresh() },
+            onTaskChange:       { await checklistVM.refresh() },
+            onPoolChange:       { await poolVM.refresh() },
+            onAssetChange:      { await assetVM.refresh() },
+            onPermissionChange: { await authManager.reloadMemberAndGroup() }
         )
+    }
+
+    // Refreshes all data without touching subscriptions (used on foreground resume).
+    private func refreshAll() async {
+        async let i = issueVM.refresh()
+        async let c = checklistVM.refresh()
+        async let p = poolVM.refresh()
+        async let a = assetVM.refresh()
+        async let m = authManager.reloadMemberAndGroup()
+        _ = await (i, c, p, a, m)
     }
 }
 

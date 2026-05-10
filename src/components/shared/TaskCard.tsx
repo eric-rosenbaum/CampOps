@@ -8,6 +8,7 @@ interface Props {
   selected: boolean;
   onClick: () => void;
   compact?: boolean;
+  onTakeIt?: () => void;
 }
 
 const priorityBorderColor = {
@@ -22,7 +23,7 @@ const priorityDotColor = {
   normal: 'bg-sage',
 };
 
-export function TaskCard({ task, selected, onClick, compact = false }: Props) {
+export function TaskCard({ task, selected, onClick, compact = false, onTakeIt }: Props) {
   const members = useCampStore((s) => s.members);
   const assigneeName = task.assigneeId ? (members.find((m) => m.userId === task.assigneeId)?.fullName ?? null) : null;
 
@@ -66,6 +67,14 @@ export function TaskCard({ task, selected, onClick, compact = false }: Props) {
           }`}>
             {task.status === 'complete' ? 'Complete' : task.status === 'in_progress' ? 'In progress' : 'Pending'}
           </div>
+          {onTakeIt && !task.assigneeId && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onTakeIt(); }}
+              className="mt-1.5 block text-[11px] font-medium text-forest px-2 py-0.5 rounded border border-stone-200 bg-cream hover:bg-stone-100 transition-colors"
+            >
+              Take it
+            </button>
+          )}
         </div>
       </div>
     </div>

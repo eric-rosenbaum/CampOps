@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { StatCard } from '@/components/shared/StatCard';
 import { FilterPill } from '@/components/shared/FilterPill';
@@ -32,17 +32,38 @@ export function IssuesRepairs() {
     filter, setFilter, searchQuery, setSearch,
     selectedIssueId, selectIssue, filteredIssues,
     urgentCount, openCount, resolvedCount, totalCosts,
-    issues,
+    issues, updateIssue, addActivityEntry,
   } = useIssuesStore();
   const { openLogIssueModal, isLogIssueModalOpen } = useUIStore();
   const { season } = useChecklistStore();
   const { failedLastInspectionItems } = useSafetyStore();
-  const { can } = useAuth();
+  const { can, role, currentUser, issuesSeeUnassigned } = useAuth();
 
   const failedDevices = failedLastInspectionItems();
 
-  const filtered = filteredIssues();
+  const storeFiltered = filteredIssues();
+
+  // Staff see only their own issues + (if permitted) unassigned ones.
+  const filtered = useMemo(() => {
+    if (role !== 'staff') return storeFiltered;
+    return storeFiltered.filter(
+      (i) => i.assigneeId === currentUser.id || (issuesSeeUnassigned && !i.assigneeId)
+    );
+  }, [storeFiltered, role, currentUser.id, issuesSeeUnassigned]);
+
   const selectedIssue = issues.find((i) => i.id === selectedIssueId);
+
+  function handleTakeIssue(issueId: string) {
+    const now = new Date().toISOString();
+    updateIssue(issueId, { assigneeId: currentUser.id, status: 'assigned' });
+    addActivityEntry(issueId, {
+      id: `a${Date.now()}`,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      action: `${currentUser.name} took this issue`,
+      timestamp: now,
+    });
+  }
 
   // Auto-select first on filter change
   useEffect(() => {
@@ -149,6 +170,9 @@ export function IssuesRepairs() {
                     issue={issue}
                     selected={issue.id === selectedIssueId}
                     onClick={() => selectIssue(issue.id)}
+                    onTakeIt={issuesSeeUnassigned && role === 'staff' && !issue.assigneeId
+                      ? () => handleTakeIssue(issue.id)
+                      : undefined}
                   />
                 ))}
               </div>

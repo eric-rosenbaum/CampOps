@@ -98,6 +98,24 @@ final class ChecklistViewModel: ObservableObject {
         }
     }
 
+    func takeTask(_ task: ChecklistTask, by user: CampUser) async {
+        guard let idx = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        let old = tasks[idx]
+        tasks[idx].assigneeId = user.id
+        tasks[idx].status = .inProgress
+        tasks[idx].updatedAt = Date()
+        let entry = ActivityEntry(id: UUID().uuidString, userId: user.id, userName: user.name,
+                                  action: "\(user.name) took this task")
+        tasks[idx].activity.append(entry)
+        do {
+            try await DataService.shared.updateTask(tasks[idx])
+            try await DataService.shared.insertTaskActivity(entry, taskId: task.id)
+        } catch {
+            tasks[idx] = old
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func upsertSeason(_ season: Season) async {
         do {
             try await DataService.shared.upsertSeason(season)

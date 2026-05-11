@@ -33,8 +33,11 @@ const statusLabel: Record<string, string> = {
 export function IssueCard({ issue, selected, onClick, compact = false, onTakeIt }: Props) {
   const members = useCampStore((s) => s.members);
   const memberName = (userId: string | null) => userId ? (members.find((m) => m.userId === userId)?.fullName ?? null) : null;
-  const reporterName = memberName(issue.reportedById);
   const assigneeName = memberName(issue.assigneeId);
+
+  const reportedByLabel = issue.isPublicReport
+    ? (issue.reporterName ? `Public · ${issue.reporterName}` : 'Public report')
+    : (memberName(issue.reportedById) ? `Reported by ${memberName(issue.reportedById)}` : null);
 
   return (
     <div
@@ -49,13 +52,14 @@ export function IssueCard({ issue, selected, onClick, compact = false, onTakeIt 
           <div className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${priorityDotColor[issue.priority]}`} />
           <div className="flex-1 min-w-0">
             <p className="text-[14px] font-semibold text-forest leading-snug truncate">{issue.title}</p>
-            {reporterName && (
+            {reportedByLabel && (
               <p className="text-[11px] text-forest/50 mt-0.5">
-                Reported by {reporterName} · {relativeTime(issue.createdAt)}
+                {reportedByLabel} · {relativeTime(issue.createdAt)}
               </p>
             )}
             <div className="flex flex-wrap gap-1.5 mt-2">
               {issue.locations.map((l) => <TagPill key={l} label={l} variant="location" />)}
+              {issue.isPublicReport && <TagPill label="Public" variant="public" />}
               <TagPill label={statusLabel[issue.status] ?? issue.status} />
               {issue.estimatedCostDisplay && issue.status !== 'resolved' && (
                 <TagPill label={`Est. ${issue.estimatedCostDisplay}`} variant="cost" />

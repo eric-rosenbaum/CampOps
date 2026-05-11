@@ -12,7 +12,7 @@ import {
 import { enqueueIssue, dequeueIssue, getQueuedIssues, loadInitialPending } from '@/lib/writeQueue';
 import { useCampStore } from '@/store/campStore';
 
-type FilterType = 'all' | 'urgent' | 'unassigned' | 'in_progress' | 'resolved';
+type FilterType = 'all' | 'urgent' | 'unassigned' | 'in_progress' | 'resolved' | 'public';
 
 interface IssuesStore {
   issues: Issue[];
@@ -215,6 +215,7 @@ export const useIssuesStore = create<IssuesStore>((set, get) => ({
     else if (filter === 'unassigned') result = result.filter((i) => i.status === 'unassigned');
     else if (filter === 'in_progress') result = result.filter((i) => i.status === 'in_progress');
     else if (filter === 'resolved') result = result.filter((i) => i.status === 'resolved');
+    else if (filter === 'public') result = result.filter((i) => i.isPublicReport);
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -349,6 +350,9 @@ export function startIssueWriteQueue(): () => void {
       dueDate: null,
       isRecurring: false,
       recurringInterval: null,
+      isPublicReport: false,
+      reporterName: null,
+      reporterContact: null,
       createdAt: now,
       updatedAt: now,
       activityLog: [],

@@ -5,6 +5,9 @@ import { ProtectedRoute, CampRoute } from '@/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
 
+// Public
+import { PublicReportForm } from '@/pages/report/PublicReportForm';
+
 // Auth pages
 import { Login } from '@/pages/auth/Login';
 import { Signup } from '@/pages/auth/Signup';
@@ -276,6 +279,7 @@ export default function App() {
 
           {/* Public — handles auth inline */}
           <Route path="/join" element={<JoinCamp />} />
+          <Route path="/report/:camp" element={<PublicReportForm />} />
 
           {/* Authenticated — no camp required */}
           <Route element={<ProtectedRoute />}>

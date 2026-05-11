@@ -1,6 +1,6 @@
 interface Props {
   label: string;
-  variant?: 'default' | 'location' | 'cost' | 'recurring';
+  variant?: 'default' | 'location' | 'cost' | 'recurring' | 'public';
 }
 
 const variants = {
@@ -8,6 +8,7 @@ const variants = {
   location: 'bg-forest/8 text-forest border-forest/10',
   cost: 'bg-amber-bg text-amber-text border-amber/20',
   recurring: 'bg-green-muted-bg text-green-muted-text border-sage/20',
+  public: 'bg-violet-50 text-violet-700 border-violet-200',
 };
 
 export function TagPill({ label, variant = 'default' }: Props) {

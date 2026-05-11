@@ -32,7 +32,9 @@ export function IssueDetail({ issue }: Props) {
   }, [issue.id]);
 
   const assigneeName = memberName(issue.assigneeId);
-  const reporterName = memberName(issue.reportedById);
+  const reporterName = issue.isPublicReport
+    ? (issue.reporterName ?? 'Anonymous')
+    : memberName(issue.reportedById);
 
   function handleStatusChange(newStatus: IssueStatus) {
     updateIssue(issue.id, { status: newStatus });
@@ -100,9 +102,17 @@ export function IssueDetail({ issue }: Props) {
     <div className="flex flex-col h-full overflow-y-auto">
       {/* Header */}
       <div className="px-5 pt-5 pb-4 border-b border-border">
-        <h2 className="text-[15px] font-semibold text-forest leading-snug">{issue.title}</h2>
-        <p className="text-[11px] text-forest/50 mt-1">
-          {issue.locations.join(' · ')} · Logged {reporterName ? `by ${reporterName}` : ''} {formatDate(issue.createdAt)}
+        <div className="flex items-start gap-2 mb-1">
+          <h2 className="text-[15px] font-semibold text-forest leading-snug flex-1">{issue.title}</h2>
+          {issue.isPublicReport && (
+            <span className="flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 bg-violet-50 text-violet-700 border border-violet-200 rounded-tag">
+              Public
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-forest/50">
+          {issue.locations.length > 0 ? `${issue.locations.join(' · ')} · ` : ''}
+          Logged {reporterName ? `by ${reporterName}` : ''} {formatDate(issue.createdAt)}
         </p>
       </div>
 
@@ -153,8 +163,27 @@ export function IssueDetail({ issue }: Props) {
         {/* Description */}
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 mb-1.5">Description</p>
-          <p className="text-[13px] text-forest/80 leading-relaxed">{issue.description}</p>
+          {issue.description ? (
+            <p className="text-[13px] text-forest/80 leading-relaxed">{issue.description}</p>
+          ) : (
+            <p className="text-[13px] text-forest/30 italic">No description provided</p>
+          )}
         </div>
+
+        {/* Reporter info — public reports only */}
+        {issue.isPublicReport && (issue.reporterName || issue.reporterContact) && (
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 mb-1.5">Reported by</p>
+            <div className="space-y-0.5">
+              {issue.reporterName && (
+                <p className="text-[13px] text-forest/80">{issue.reporterName}</p>
+              )}
+              {issue.reporterContact && (
+                <p className="text-[13px] text-forest/60">{issue.reporterContact}</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Photo */}
         <div>

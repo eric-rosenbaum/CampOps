@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
-import { Plus, X, Pencil, Calendar, Sun } from 'lucide-react';
+import { Plus, X, Pencil, Calendar, Sun, Copy, Check } from 'lucide-react';
 import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { usePoolStore, POOL_TYPE_LABELS } from '@/store/poolStore';
@@ -9,6 +9,7 @@ import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { AddEditPoolModal } from '@/components/pool/AddEditPoolModal';
 import type { Season } from '@/lib/types';
+import { Link } from 'react-router-dom';
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
@@ -48,12 +49,14 @@ const MODULE_OPTIONS = [
 
 function ProfileTab() {
   const { currentCamp, updateCamp } = useCampStore();
+  const { role } = useAuth();
   const [name, setName]       = useState('');
   const [campType, setCampType] = useState('');
   const [state, setState]     = useState('');
   const [modules, setModules] = useState<Record<string, boolean>>({});
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
+  const [copied, setCopied]   = useState(false);
 
   useEffect(() => {
     if (!currentCamp) return;
@@ -143,6 +146,41 @@ function ProfileTab() {
           {saved && <span className="text-[12px] text-sage font-medium">✓ Saved</span>}
         </div>
       </form>
+
+      {role === 'admin' && currentCamp?.slug && (() => {
+        const reportUrl = `${window.location.origin}/report/${currentCamp.slug}`;
+        function copyUrl() {
+          void navigator.clipboard.writeText(reportUrl);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }
+        return (
+          <div className={cardCls}>
+            <h2 className="text-[13px] font-semibold text-forest mb-1">Public issue report link</h2>
+            <p className="text-[12px] text-forest/40 mb-3">
+              Share this link so anyone — campers, parents, staff — can report an issue without an account. Reports appear in Issues &amp; Repairs with a Public badge.
+            </p>
+            <div className="flex items-center gap-2 bg-cream border border-border rounded-btn px-3 py-2">
+              <Link
+                to={`/report/${currentCamp.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 text-[12px] text-forest/70 font-mono truncate hover:text-forest transition-colors"
+              >
+                {reportUrl}
+              </Link>
+              <button
+                type="button"
+                onClick={copyUrl}
+                className="flex items-center gap-1 text-[11px] font-medium text-forest/50 hover:text-forest transition-colors flex-shrink-0 px-1.5 py-0.5 rounded hover:bg-stone-100"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-sage" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -33,7 +33,7 @@ export interface Issue {
   priority: Priority;
   status: IssueStatus;
   assigneeId: string | null;
-  reportedById: string;
+  reportedById: string | null;
   estimatedCostDisplay: string | null;
   estimatedCostValue: number | null;
   actualCost: number | null;
@@ -41,6 +41,9 @@ export interface Issue {
   dueDate: string | null;
   isRecurring: boolean;
   recurringInterval: RecurringInterval | null;
+  isPublicReport: boolean;
+  reporterName: string | null;
+  reporterContact: string | null;
   createdAt: string;
   updatedAt: string;
   activityLog: ActivityEntry[];

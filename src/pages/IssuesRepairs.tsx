@@ -17,7 +17,7 @@ import { format } from 'date-fns';
 import { Download, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-type FilterType = 'all' | 'urgent' | 'unassigned' | 'in_progress' | 'resolved';
+type FilterType = 'all' | 'urgent' | 'unassigned' | 'in_progress' | 'resolved' | 'public';
 
 const filterLabels: { key: FilterType; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -25,6 +25,7 @@ const filterLabels: { key: FilterType; label: string }[] = [
   { key: 'unassigned', label: 'Unassigned' },
   { key: 'in_progress', label: 'In progress' },
   { key: 'resolved', label: 'Resolved' },
+  { key: 'public', label: 'Public reports' },
 ];
 
 export function IssuesRepairs() {
@@ -156,6 +157,7 @@ export function IssuesRepairs() {
                    filter === 'unassigned' ? 'No unassigned issues' :
                    filter === 'in_progress' ? 'Nothing in progress' :
                    filter === 'resolved' ? 'No resolved issues yet' :
+                   filter === 'public' ? 'No public reports yet' :
                    'No issues found'}
                 </p>
                 <p className="text-[13px] text-forest/40 mt-1">

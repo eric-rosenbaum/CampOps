@@ -1,5 +1,14 @@
 import { supabase } from './supabase';
+import { createClient } from '@supabase/supabase-js';
 import { campLog, campError } from './campLog';
+
+// Plain client for public (unauthenticated) form submissions — no custom fetch
+// wrapper, no timeout logic, no XHR workarounds. Mobile browsers handle vanilla
+// fetch fine; the custom wrapper was built for the app's stale-TCP problem only.
+const supabasePublic = createClient(
+  import.meta.env.VITE_SUPABASE_URL as string,
+  import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+);
 import type {
   Issue, ChecklistTask, ActivityEntry, Season,
   CampPool, ChemicalReading, PoolEquipment, ServiceLogEntry,
@@ -34,6 +43,9 @@ function issueToRow(issue: Issue) {
     due_date: issue.dueDate,
     is_recurring: issue.isRecurring,
     recurring_interval: issue.recurringInterval,
+    is_public_report: issue.isPublicReport,
+    reporter_name: issue.reporterName,
+    reporter_contact: issue.reporterContact,
     created_at: issue.createdAt,
     updated_at: issue.updatedAt,
   };
@@ -48,7 +60,7 @@ function rowToIssue(row: Record<string, unknown>, activityLog: ActivityEntry[]):
     priority: row.priority as Issue['priority'],
     status: row.status as Issue['status'],
     assigneeId: (row.assignee_id as string) ?? null,
-    reportedById: row.reported_by_id as string,
+    reportedById: (row.reported_by_id as string) ?? null,
     estimatedCostDisplay: (row.estimated_cost_display as string) ?? null,
     estimatedCostValue: (row.estimated_cost_value as number) ?? null,
     actualCost: (row.actual_cost as number) ?? null,
@@ -56,6 +68,9 @@ function rowToIssue(row: Record<string, unknown>, activityLog: ActivityEntry[]):
     dueDate: (row.due_date as string) ?? null,
     isRecurring: (row.is_recurring as boolean) ?? false,
     recurringInterval: (row.recurring_interval as Issue['recurringInterval']) ?? null,
+    isPublicReport: (row.is_public_report as boolean) ?? false,
+    reporterName: (row.reporter_name as string) ?? null,
+    reporterContact: (row.reporter_contact as string) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
     activityLog,
@@ -274,6 +289,21 @@ export async function dbDeletePhoto(photoUrl: string): Promise<void> {
   const path = decodeURIComponent(photoUrl.slice(idx + marker.length).split('?')[0]);
   const { error } = await supabase.storage.from(PHOTO_BUCKET).remove([path]);
   if (error) console.error('[Supabase] Photo delete error:', error.message);
+}
+
+const PUBLIC_REPORT_BUCKET = 'public-report-photos';
+
+export async function dbUploadPublicReportPhoto(file: File, campId: string, issueId: string): Promise<string | null> {
+  const path = `${campId}/${issueId}-${Date.now()}`;
+  const { error } = await supabasePublic.storage
+    .from(PUBLIC_REPORT_BUCKET)
+    .upload(path, file, { contentType: file.type });
+  if (error) {
+    console.error('[Supabase] Public report photo upload error:', error.message);
+    return null;
+  }
+  const { data } = supabasePublic.storage.from(PUBLIC_REPORT_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
 }
 
 export async function dbDeleteIssue(id: string): Promise<void> {

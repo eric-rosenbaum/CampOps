@@ -52,6 +52,9 @@ export const SEED_ISSUES: Issue[] = [
     dueDate: T.today,
     isRecurring: false,
     recurringInterval: null,
+    isPublicReport: false,
+    reporterName: null,
+    reporterContact: null,
     createdAt: T.minus2h,
     updatedAt: T.minus1h,
     activityLog: [
@@ -88,6 +91,9 @@ export const SEED_ISSUES: Issue[] = [
     dueDate: T.today,
     isRecurring: false,
     recurringInterval: null,
+    isPublicReport: false,
+    reporterName: null,
+    reporterContact: null,
     createdAt: T.minus3h,
     updatedAt: T.minus3h,
     activityLog: [
@@ -117,6 +123,9 @@ export const SEED_ISSUES: Issue[] = [
     dueDate: T.tomorrow,
     isRecurring: false,
     recurringInterval: null,
+    isPublicReport: false,
+    reporterName: null,
+    reporterContact: null,
     createdAt: T.minus1d,
     updatedAt: T.minus1d,
     activityLog: [
@@ -153,6 +162,9 @@ export const SEED_ISSUES: Issue[] = [
     dueDate: T.plus2d,
     isRecurring: false,
     recurringInterval: null,
+    isPublicReport: false,
+    reporterName: null,
+    reporterContact: null,
     createdAt: T.minus2d,
     updatedAt: T.minus2d,
     activityLog: [
@@ -182,6 +194,9 @@ export const SEED_ISSUES: Issue[] = [
     dueDate: T.plus2d,
     isRecurring: false,
     recurringInterval: null,
+    isPublicReport: false,
+    reporterName: null,
+    reporterContact: null,
     createdAt: T.minus1d,
     updatedAt: T.minus4h,
     activityLog: [
@@ -218,6 +233,9 @@ export const SEED_ISSUES: Issue[] = [
     dueDate: null,
     isRecurring: false,
     recurringInterval: null,
+    isPublicReport: false,
+    reporterName: null,
+    reporterContact: null,
     createdAt: T.minus5d,
     updatedAt: T.minus3d,
     activityLog: [
@@ -261,6 +279,9 @@ export const SEED_ISSUES: Issue[] = [
     dueDate: T.plus5d,
     isRecurring: false,
     recurringInterval: null,
+    isPublicReport: false,
+    reporterName: null,
+    reporterContact: null,
     createdAt: T.minus2d,
     updatedAt: T.minus2d,
     activityLog: [
@@ -290,6 +311,9 @@ export const SEED_ISSUES: Issue[] = [
     dueDate: T.tomorrow,
     isRecurring: false,
     recurringInterval: null,
+    isPublicReport: false,
+    reporterName: null,
+    reporterContact: null,
     createdAt: T.minus3d,
     updatedAt: T.minus1d,
     activityLog: [
@@ -326,6 +350,9 @@ export const SEED_ISSUES: Issue[] = [
     dueDate: null,
     isRecurring: false,
     recurringInterval: null,
+    isPublicReport: false,
+    reporterName: null,
+    reporterContact: null,
     createdAt: T.minus7d,
     updatedAt: T.minus5d,
     activityLog: [
@@ -354,6 +381,9 @@ export const SEED_ISSUES: Issue[] = [
     dueDate: null,
     isRecurring: true,
     recurringInterval: 'monthly',
+    isPublicReport: false,
+    reporterName: null,
+    reporterContact: null,
     createdAt: T.minus10d,
     updatedAt: T.minus7d,
     activityLog: [

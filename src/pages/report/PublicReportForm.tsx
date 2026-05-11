@@ -8,7 +8,7 @@ const supabasePublic = createClient(
 );
 import { dbUploadPublicReportPhoto } from '@/lib/db';
 import { generateId } from '@/lib/utils';
-import { Camera, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Camera, X, CheckCircle, AlertCircle, TreePine } from 'lucide-react';
 
 interface CampInfo {
   id: string;
@@ -131,13 +131,13 @@ export function PublicReportForm() {
     }
   }
 
-  const inputClass = 'w-full text-[15px] bg-white border border-stone-200 rounded-lg px-4 py-3 focus:outline-none focus:border-stone-400 transition-colors placeholder:text-stone-400';
-  const labelClass = 'block text-[13px] font-semibold text-stone-700 mb-1.5';
+  const inputClass = 'w-full text-[15px] bg-white border border-stone-200 rounded-xl px-4 py-3.5 focus:outline-none focus:border-stone-400 focus:ring-2 focus:ring-stone-100 transition-all placeholder:text-stone-400';
+  const labelClass = 'block text-[12px] font-semibold text-stone-500 uppercase tracking-wide mb-2';
 
   if (pageState === 'loading') {
     return (
       <div className="min-h-screen bg-stone-50 w-full flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
+        <div className="w-7 h-7 border-2 border-stone-200 border-t-stone-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -145,13 +145,13 @@ export function PublicReportForm() {
   if (pageState === 'not_found') {
     return (
       <div className="min-h-screen bg-stone-50 w-full flex items-center justify-center p-6">
-        <div className="text-center max-w-sm">
-          <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-stone-400" />
+          <div className="text-center max-w-sm">
+            <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-7 h-7 text-stone-400" />
+            </div>
+            <h1 className="text-[20px] font-bold text-stone-800 mb-2">Page not found</h1>
+            <p className="text-[14px] text-stone-400 leading-relaxed">This report link doesn't exist or is no longer active.</p>
           </div>
-          <h1 className="text-[20px] font-bold text-stone-800 mb-2">Page not found</h1>
-          <p className="text-[14px] text-stone-500">This report link doesn't exist or is no longer active.</p>
-        </div>
       </div>
     );
   }
@@ -170,21 +170,21 @@ export function PublicReportForm() {
     }
     return (
       <div className="min-h-screen bg-stone-50 w-full flex items-center justify-center p-6">
-        <div className="text-center max-w-sm">
-          <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-green-600" />
+          <div className="text-center max-w-sm">
+            <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <CheckCircle className="w-8 h-8 text-emerald-500" />
+            </div>
+            <h1 className="text-[22px] font-bold text-stone-800 mb-2">Report submitted</h1>
+            <p className="text-[15px] text-stone-400 leading-relaxed mb-8">
+              Thank you — {camp?.name} staff will review your report.
+            </p>
+            <button
+              onClick={handleSubmitAnother}
+              className="w-full bg-stone-800 text-white text-[14px] font-semibold rounded-xl py-3.5 hover:bg-stone-700 active:bg-stone-900 transition-colors"
+            >
+              Submit another report
+            </button>
           </div>
-          <h1 className="text-[22px] font-bold text-stone-800 mb-2">Report submitted</h1>
-          <p className="text-[15px] text-stone-500 leading-relaxed mb-6">
-            Thank you — {camp?.name} staff will review your report.
-          </p>
-          <button
-            onClick={handleSubmitAnother}
-            className="w-full bg-stone-800 text-white text-[15px] font-semibold rounded-lg py-3.5 hover:bg-stone-700 transition-colors"
-          >
-            Submit another report
-          </button>
-        </div>
       </div>
     );
   }
@@ -192,24 +192,29 @@ export function PublicReportForm() {
   return (
     <div className="min-h-screen bg-stone-50 w-full">
       {/* Header */}
-      <div className="bg-white border-b border-stone-100 px-5 py-5">
+      <div className="bg-white border-b border-stone-100 px-5 py-4">
         <div className="max-w-lg mx-auto flex items-center gap-3">
-          {camp?.logoUrl && (
-            <img src={camp.logoUrl} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+          {camp?.logoUrl ? (
+            <img src={camp.logoUrl} alt="" className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
+          ) : (
+            <div className="w-9 h-9 bg-stone-800 rounded-xl flex items-center justify-center flex-shrink-0">
+              <TreePine className="w-4.5 h-4.5 text-white" />
+            </div>
           )}
-          <div>
-            <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wide">Report an issue</p>
-            <h1 className="text-[18px] font-bold text-stone-800 leading-tight">{camp?.name}</h1>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest">Report an issue</p>
+            <h1 className="text-[16px] font-bold text-stone-800 leading-tight truncate">{camp?.name}</h1>
           </div>
         </div>
       </div>
 
       {/* Form */}
-      <div className="max-w-lg mx-auto px-5 py-6">
+      <div className="max-w-lg mx-auto px-5 py-7">
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Title */}
+
+          {/* Issue title */}
           <div>
-            <label className={labelClass}>What's the issue? *</label>
+            <label className={labelClass}>What's the issue? <span className="text-red-400">*</span></label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -222,31 +227,35 @@ export function PublicReportForm() {
 
           {/* Description */}
           <div>
-            <label className={labelClass}>More details <span className="font-normal text-stone-400">(optional)</span></label>
+            <label className={labelClass}>
+              Details <span className="text-stone-300 normal-case font-normal tracking-normal">— optional</span>
+            </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className={`${inputClass} resize-none`}
               rows={4}
-              placeholder="Where exactly is it? When did you notice it? Any other details…"
+              placeholder="Where exactly is it? When did you notice it? Any other context…"
               disabled={pageState === 'submitting'}
             />
           </div>
 
           {/* Photo */}
           <div>
-            <label className={labelClass}>Photo <span className="font-normal text-stone-400">(optional)</span></label>
+            <label className={labelClass}>
+              Photo <span className="text-stone-300 normal-case font-normal tracking-normal">— optional</span>
+            </label>
             {photoPreview ? (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div className="relative rounded-xl overflow-hidden border border-stone-200">
-                  <img src={photoPreview} alt="Preview" className="w-full max-h-56 object-cover" />
+                  <img src={photoPreview} alt="Preview" className="w-full max-h-52 object-cover" />
                   <button
                     type="button"
                     onClick={handleRemovePhoto}
                     disabled={pageState === 'submitting'}
-                    className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                    className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 <label className="flex items-center gap-1.5 text-[12px] text-stone-400 cursor-pointer hover:text-stone-600 transition-colors w-fit">
@@ -256,9 +265,11 @@ export function PublicReportForm() {
                 </label>
               </div>
             ) : (
-              <label className="flex items-center gap-3 py-4 px-4 bg-white rounded-lg border border-dashed border-stone-200 cursor-pointer hover:border-stone-400 transition-colors">
-                <Camera className="w-5 h-5 text-stone-400 flex-shrink-0" />
-                <span className="text-[14px] text-stone-400">Tap to attach a photo</span>
+              <label className="flex flex-col items-center gap-2.5 py-7 px-4 bg-white rounded-xl border border-dashed border-stone-200 cursor-pointer hover:border-stone-400 hover:bg-stone-50 transition-all">
+                <div className="w-9 h-9 bg-stone-100 rounded-xl flex items-center justify-center">
+                  <Camera className="w-4.5 h-4.5 text-stone-400" />
+                </div>
+                <span className="text-[13px] text-stone-400">Tap to attach a photo</span>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
               </label>
             )}
@@ -266,11 +277,15 @@ export function PublicReportForm() {
 
           {/* Divider */}
           <div className="pt-1">
-            <p className="text-[12px] font-semibold text-stone-400 uppercase tracking-wide mb-4">Your info (optional)</p>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-px flex-1 bg-stone-100" />
+              <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-widest">Your info — optional</p>
+              <div className="h-px flex-1 bg-stone-100" />
+            </div>
 
             <div className="space-y-4">
               <div>
-                <label className={labelClass}>Your name</label>
+                <label className={labelClass}>Name</label>
                 <input
                   value={reporterName}
                   onChange={(e) => setReporterName(e.target.value)}
@@ -293,7 +308,7 @@ export function PublicReportForm() {
           </div>
 
           {submitError && (
-            <div className="flex items-center gap-2 bg-red-50 text-red-700 text-[13px] rounded-lg px-4 py-3">
+            <div className="flex items-center gap-2.5 bg-red-50 text-red-600 text-[13px] rounded-xl px-4 py-3">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {submitError}
             </div>
@@ -302,10 +317,11 @@ export function PublicReportForm() {
           <button
             type="submit"
             disabled={!title.trim() || pageState === 'submitting'}
-            className="w-full bg-stone-800 text-white text-[15px] font-semibold rounded-lg py-3.5 hover:bg-stone-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-stone-800 text-white text-[15px] font-semibold rounded-xl py-4 hover:bg-stone-700 active:bg-stone-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {pageState === 'submitting' ? 'Submitting…' : 'Submit report'}
           </button>
+
         </form>
       </div>
     </div>

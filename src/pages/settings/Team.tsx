@@ -555,6 +555,7 @@ export function Team() {
   const legacyJoinCodes = joinCodes.filter((c) => !c.staffGroupId);
 
   return (
+    <div className="h-full overflow-y-auto">
     <div className="p-7 max-w-3xl">
       <div className="mb-7">
         <h1 className="text-[20px] font-bold text-forest">Team</h1>
@@ -891,6 +892,7 @@ export function Team() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

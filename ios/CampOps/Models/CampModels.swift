@@ -8,20 +8,24 @@ struct StaffGroupModules: Codable {
     let pool: Bool
     let safety: Bool
     let assets: Bool
+    let buildingSystems: Bool
 
     enum CodingKeys: String, CodingKey {
-        case issuesRepairs = "issues_repairs"
-        case prePost       = "pre_post"
+        case issuesRepairs   = "issues_repairs"
+        case prePost         = "pre_post"
+        case buildingSystems = "building_systems"
         case pool, safety, assets
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        issuesRepairs = (try? c.decode(Bool.self, forKey: .issuesRepairs)) ?? true
-        prePost       = (try? c.decode(Bool.self, forKey: .prePost)) ?? true
-        pool          = (try? c.decode(Bool.self, forKey: .pool)) ?? true
-        safety        = (try? c.decode(Bool.self, forKey: .safety)) ?? true
-        assets        = (try? c.decode(Bool.self, forKey: .assets)) ?? true
+        issuesRepairs   = (try? c.decode(Bool.self, forKey: .issuesRepairs)) ?? true
+        prePost         = (try? c.decode(Bool.self, forKey: .prePost)) ?? true
+        pool            = (try? c.decode(Bool.self, forKey: .pool)) ?? true
+        safety          = (try? c.decode(Bool.self, forKey: .safety)) ?? true
+        assets          = (try? c.decode(Bool.self, forKey: .assets)) ?? true
+        // Defaults false: groups created before this module existed don't grant it.
+        buildingSystems = (try? c.decode(Bool.self, forKey: .buildingSystems)) ?? false
     }
 }
 

@@ -27,6 +27,7 @@ import { PrePostCamp } from '@/pages/PrePostCamp';
 import { PoolManagement } from '@/pages/PoolManagement';
 import { SafetyCompliance } from '@/pages/SafetyCompliance';
 import AssetVehicles from '@/pages/AssetVehicles';
+import { BuildingSystems } from '@/pages/BuildingSystems';
 
 // My Tasks
 import { MyTasks } from '@/pages/MyTasks';
@@ -41,7 +42,8 @@ import {
   loadPoolFromSupabase, subscribeToPool,
   loadSafetyFromSupabase, subscribeToSafety,
   loadAssetsFromSupabase, subscribeToAssets,
-  type AssetData,
+  loadBuildingFromSupabase, subscribeToBuilding,
+  type AssetData, type BuildingData,
 } from '@/lib/db';
 import { startSupabaseHeartbeat } from '@/lib/supabase';
 import { campLog } from '@/lib/campLog';
@@ -50,6 +52,7 @@ import { useChecklistStore } from '@/store/checklistStore';
 import { usePoolStore } from '@/store/poolStore';
 import { useSafetyStore } from '@/store/safetyStore';
 import { useAssetStore } from '@/store/assetStore';
+import { useBuildingStore } from '@/store/buildingStore';
 import { useCampStore as useCamp } from '@/store/campStore';
 
 function HomeRouter() {
@@ -69,6 +72,7 @@ function CampDataLoader() {
   const { setPools, setChemicalReadings, setEquipment, setServiceLog, setInspections, setInspectionLog, setSeasonalTasks } = usePoolStore();
   const { setItems, setInspectionLog: setSafetyLog, setDrills, setStaff, setCertifications, setTempLogs, setLicenses } = useSafetyStore();
   const { setAssets, setCheckouts, setServiceRecords, setMaintenanceTasks } = useAssetStore();
+  const { setBuildings, setRooms, setComponents, setCircuits, setSeasonalTasks: setBuildingSeasonalTasks } = useBuildingStore();
 
   useEffect(() => {
     if (!campId) return;
@@ -77,6 +81,7 @@ function CampDataLoader() {
     let unsubPool: (() => void) | null = null;
     let unsubSafety: (() => void) | null = null;
     let unsubAssets: (() => void) | null = null;
+    let unsubBuilding: (() => void) | null = null;
 
     // Start the Supabase keep-alive heartbeat.  Pings every 30 s while visible to
     // keep the TCP socket from going stale and to refresh the JWT before expiry.
@@ -91,6 +96,7 @@ function CampDataLoader() {
     let poolSyncedAt = 0;
     let safetySyncedAt = 0;
     let assetsSyncedAt = 0;
+    let buildingSyncedAt = 0;
 
     // Start subscriptions FIRST so any writes during the initial data load are captured.
     // If subscriptions were started after loading, a write that completes before the
@@ -122,6 +128,13 @@ function CampDataLoader() {
       setServiceRecords(d.serviceRecords);
       setMaintenanceTasks(d.maintenanceTasks);
     }, () => { assetsSyncedAt = Date.now(); });
+    unsubBuilding = subscribeToBuilding(campId, (d) => {
+      setBuildings(d.buildings);
+      setRooms(d.rooms);
+      setComponents(d.components);
+      setCircuits(d.circuits);
+      setBuildingSeasonalTasks(d.seasonalTasks);
+    }, () => { buildingSyncedAt = Date.now(); });
 
     // Load initial data after subscriptions are live.
     // Skip each setter if the subscription already fired — the subscription's refetch
@@ -165,6 +178,15 @@ function CampDataLoader() {
       setMaintenanceTasks(data.maintenanceTasks);
     });
 
+    loadBuildingFromSupabase(campId).then((data: BuildingData | null) => {
+      if (!data || buildingSyncedAt > loadStartedAt) return;
+      setBuildings(data.buildings);
+      setRooms(data.rooms);
+      setComponents(data.components);
+      setCircuits(data.circuits);
+      setBuildingSeasonalTasks(data.seasonalTasks);
+    });
+
     // Refetch after the tab has been hidden long enough that the realtime subscription
     // may have missed events (e.g. WebSocket disconnected during sleep/long absence).
     // We skip the refetch for short tab switches to avoid a race: a quick refetch can
@@ -177,18 +199,20 @@ function CampDataLoader() {
       if (!campId) return;
       campLog(`[CampOps] refetchAll START reason=${reason} t=${Date.now()}`);
       const refetchStartedAt = Date.now();
-      const [issuesData, poolData, safetyData, assetData] = await Promise.all([
+      const [issuesData, poolData, safetyData, assetData, buildingData] = await Promise.all([
         initializeSupabase(campId),
         loadPoolFromSupabase(campId),
         loadSafetyFromSupabase(campId),
         loadAssetsFromSupabase(campId),
+        loadBuildingFromSupabase(campId),
       ]);
       const applied: string[] = [];
       if (issuesData && issuesSyncedAt <= refetchStartedAt) { setIssues(issuesData.issues); setTasks(issuesData.tasks); if (issuesData.season) setSeason(issuesData.season); applied.push('issues'); }
       if (poolData && poolSyncedAt <= refetchStartedAt) { setPools(poolData.pools); setChemicalReadings(poolData.readings); setEquipment(poolData.equipment); setServiceLog(poolData.serviceLog); setInspections(poolData.inspections); setInspectionLog(poolData.inspectionLog); setSeasonalTasks(poolData.seasonalTasks); applied.push('pool'); }
       if (safetyData && safetySyncedAt <= refetchStartedAt) { setItems(safetyData.items); setSafetyLog(safetyData.inspectionLog); setDrills(safetyData.drills); setStaff(safetyData.staff); setCertifications(safetyData.certifications); setTempLogs(safetyData.tempLogs); setLicenses(safetyData.licenses); applied.push('safety'); }
       if (assetData && assetsSyncedAt <= refetchStartedAt) { setAssets(assetData.assets); setCheckouts(assetData.checkouts); setServiceRecords(assetData.serviceRecords); setMaintenanceTasks(assetData.maintenanceTasks); applied.push('assets'); }
-      campLog(`[CampOps] refetchAll DONE applied=${applied.join(',') || 'none(WAL-guard)'} syncedAts=issues:${issuesSyncedAt} pool:${poolSyncedAt} safety:${safetySyncedAt} assets:${assetsSyncedAt} refetchStartedAt:${refetchStartedAt}`);
+      if (buildingData && buildingSyncedAt <= refetchStartedAt) { setBuildings(buildingData.buildings); setRooms(buildingData.rooms); setComponents(buildingData.components); setCircuits(buildingData.circuits); setBuildingSeasonalTasks(buildingData.seasonalTasks); applied.push('building'); }
+      campLog(`[CampOps] refetchAll DONE applied=${applied.join(',') || 'none(WAL-guard)'} syncedAts=issues:${issuesSyncedAt} pool:${poolSyncedAt} safety:${safetySyncedAt} assets:${assetsSyncedAt} building:${buildingSyncedAt} refetchStartedAt:${refetchStartedAt}`);
     }
 
     function handleVisibility() {
@@ -239,6 +263,7 @@ function CampDataLoader() {
       unsubPool?.();
       unsubSafety?.();
       unsubAssets?.();
+      unsubBuilding?.();
       stopHeartbeat();
       stopWriteQueue();
       document.removeEventListener('visibilitychange', handleVisibility);
@@ -300,6 +325,7 @@ export default function App() {
                 <Route path="/pool" element={<PoolManagement />} />
                 <Route path="/safety" element={<SafetyCompliance />} />
                 <Route path="/assets" element={<AssetVehicles />} />
+                <Route path="/building" element={<BuildingSystems />} />
                 <Route path="/settings" element={<CampSettings />} />
                 <Route path="/settings/team" element={<Team />} />
               </Route>

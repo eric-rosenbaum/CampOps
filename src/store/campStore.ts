@@ -13,6 +13,7 @@ export interface StaffGroupModules {
   pool: boolean;
   safety: boolean;
   assets: boolean;
+  building_systems: boolean;
 }
 
 export interface StaffGroup {

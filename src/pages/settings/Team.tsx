@@ -18,6 +18,7 @@ const MODULE_LABELS: Record<keyof StaffGroupModules, string> = {
   pool: 'Pool Management',
   safety: 'Safety & Compliance',
   assets: 'Assets & Vehicles',
+  building_systems: 'Building Systems',
 };
 
 const ALL_MODULES = Object.keys(MODULE_LABELS) as (keyof StaffGroupModules)[];
@@ -28,6 +29,7 @@ const EMPTY_MODULES: StaffGroupModules = {
   pool: false,
   safety: false,
   assets: false,
+  building_systems: false,
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -49,7 +51,9 @@ interface GroupFormProps {
 
 function GroupForm({ initial, onSave, onCancel, saving }: GroupFormProps) {
   const [name, setName] = useState(initial?.name ?? '');
-  const [modules, setModules] = useState<StaffGroupModules>(initial?.modules ?? EMPTY_MODULES);
+  const [modules, setModules] = useState<StaffGroupModules>(
+    initial?.modules ? { ...EMPTY_MODULES, ...initial.modules } : EMPTY_MODULES,
+  );
   const [issuesSeeUnassigned, setIssuesSeeUnassigned] = useState(initial?.issuesSeeUnassigned ?? false);
   const [prepostSeeUnassigned, setPrepostSeeUnassigned] = useState(initial?.prepostSeeUnassigned ?? false);
 
@@ -85,7 +89,7 @@ function GroupForm({ initial, onSave, onCancel, saving }: GroupFormProps) {
             <label key={key} className="flex items-center gap-2 cursor-pointer group">
               <input
                 type="checkbox"
-                checked={modules[key]}
+                checked={modules[key] ?? false}
                 onChange={() => toggleModule(key)}
                 className="w-3.5 h-3.5 accent-forest rounded"
               />

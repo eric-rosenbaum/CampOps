@@ -314,6 +314,81 @@ final class DataService {
     func upsertSeason(_ season: Season) async throws {
         try await supabase.from("seasons").upsert(season).execute()
     }
+
+    // MARK: - Building Systems
+
+    func fetchBuildings() async throws -> [Building] {
+        try await supabase.from("buildings")
+            .select().eq("camp_id", value: campId).order("sort_order", ascending: true).execute().value
+    }
+    func insertBuilding(_ b: Building) async throws {
+        try await supabase.from("buildings").insert(BuildingInsert(b)).execute()
+    }
+    func updateBuilding(_ b: Building) async throws {
+        try await supabase.from("buildings").update(BuildingUpdate(b)).eq("id", value: b.id).execute()
+    }
+    func deleteBuilding(id: String) async throws {
+        try await supabase.from("buildings").delete().eq("id", value: id).execute()
+    }
+
+    func fetchBuildingRooms() async throws -> [BuildingRoom] {
+        try await supabase.from("building_rooms")
+            .select().eq("camp_id", value: campId).order("sort_order", ascending: true).execute().value
+    }
+    func insertRoom(_ r: BuildingRoom) async throws {
+        try await supabase.from("building_rooms").insert(RoomInsert(r)).execute()
+    }
+    func updateRoom(_ r: BuildingRoom) async throws {
+        try await supabase.from("building_rooms").update(RoomUpdate(r)).eq("id", value: r.id).execute()
+    }
+    func deleteRoom(id: String) async throws {
+        try await supabase.from("building_rooms").delete().eq("id", value: id).execute()
+    }
+
+    func fetchBuildingComponents() async throws -> [BuildingComponent] {
+        try await supabase.from("building_components")
+            .select().eq("camp_id", value: campId).order("sort_order", ascending: true).execute().value
+    }
+    func insertComponent(_ c: BuildingComponent) async throws {
+        try await supabase.from("building_components").insert(ComponentInsert(c)).execute()
+    }
+    func updateComponent(_ c: BuildingComponent) async throws {
+        try await supabase.from("building_components").update(ComponentUpdate(c)).eq("id", value: c.id).execute()
+    }
+    func deleteComponent(id: String) async throws {
+        try await supabase.from("building_components").delete().eq("id", value: id).execute()
+    }
+
+    func fetchBuildingCircuits() async throws -> [BuildingCircuit] {
+        try await supabase.from("building_circuits")
+            .select().eq("camp_id", value: campId).order("sort_order", ascending: true).execute().value
+    }
+    func insertCircuit(_ c: BuildingCircuit) async throws {
+        try await supabase.from("building_circuits").insert(CircuitInsert(c)).execute()
+    }
+    func updateCircuit(_ c: BuildingCircuit) async throws {
+        try await supabase.from("building_circuits").update(CircuitUpdate(c)).eq("id", value: c.id).execute()
+    }
+    func deleteCircuit(id: String) async throws {
+        try await supabase.from("building_circuits").delete().eq("id", value: id).execute()
+    }
+
+    func fetchBuildingSeasonalTasks() async throws -> [BuildingSeasonalTask] {
+        try await supabase.from("building_seasonal_tasks")
+            .select().eq("camp_id", value: campId).order("sort_order", ascending: true).execute().value
+    }
+    func insertBuildingSeasonalTask(_ t: BuildingSeasonalTask) async throws {
+        try await supabase.from("building_seasonal_tasks").insert(BuildingSeasonalInsert(t)).execute()
+    }
+    func updateBuildingSeasonalTask(_ t: BuildingSeasonalTask) async throws {
+        try await supabase.from("building_seasonal_tasks").update(BuildingSeasonalUpdate(t)).eq("id", value: t.id).execute()
+    }
+    func toggleBuildingSeasonalTask(_ t: BuildingSeasonalTask) async throws {
+        try await supabase.from("building_seasonal_tasks").update(BuildingSeasonalToggle(t)).eq("id", value: t.id).execute()
+    }
+    func deleteBuildingSeasonalTask(id: String) async throws {
+        try await supabase.from("building_seasonal_tasks").delete().eq("id", value: id).execute()
+    }
 }
 
 // MARK: - Private row types
@@ -973,5 +1048,253 @@ private struct AssetMaintenanceTaskUpdate: Encodable {
         phase = t.phase.rawValue; title = t.title; detail = t.detail
         completedBy = t.completedBy; completedDate = t.completedDate
         isComplete = t.isComplete; sortOrder = t.sortOrder; updatedAt = Date()
+    }
+}
+
+// MARK: - Building Systems encode types
+
+private struct BuildingInsert: Encodable {
+    let id, campId, name, type: String
+    let locationLabel, mainWaterShutoff, mainElectricalPanel, mainGasShutoff, notes: String?
+    let yearBuilt: Int?
+    let sortOrder: Int
+    let createdAt, updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case id, name, type, notes
+        case campId               = "camp_id"
+        case locationLabel        = "location_label"
+        case mainWaterShutoff     = "main_water_shutoff"
+        case mainElectricalPanel  = "main_electrical_panel"
+        case mainGasShutoff       = "main_gas_shutoff"
+        case yearBuilt            = "year_built"
+        case sortOrder            = "sort_order"
+        case createdAt            = "created_at"
+        case updatedAt            = "updated_at"
+    }
+    init(_ b: Building) {
+        id = b.id; campId = DataService.shared.campId; name = b.name; type = b.type.rawValue
+        locationLabel = b.locationLabel; mainWaterShutoff = b.mainWaterShutoff
+        mainElectricalPanel = b.mainElectricalPanel; mainGasShutoff = b.mainGasShutoff
+        notes = b.notes; yearBuilt = b.yearBuilt; sortOrder = b.sortOrder
+        createdAt = b.createdAt; updatedAt = b.updatedAt
+    }
+}
+
+private struct BuildingUpdate: Encodable {
+    let name, type: String
+    let locationLabel, mainWaterShutoff, mainElectricalPanel, mainGasShutoff, notes: String?
+    let yearBuilt: Int?
+    let sortOrder: Int
+    let updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case name, type, notes
+        case locationLabel        = "location_label"
+        case mainWaterShutoff     = "main_water_shutoff"
+        case mainElectricalPanel  = "main_electrical_panel"
+        case mainGasShutoff       = "main_gas_shutoff"
+        case yearBuilt            = "year_built"
+        case sortOrder            = "sort_order"
+        case updatedAt            = "updated_at"
+    }
+    init(_ b: Building) {
+        name = b.name; type = b.type.rawValue
+        locationLabel = b.locationLabel; mainWaterShutoff = b.mainWaterShutoff
+        mainElectricalPanel = b.mainElectricalPanel; mainGasShutoff = b.mainGasShutoff
+        notes = b.notes; yearBuilt = b.yearBuilt; sortOrder = b.sortOrder; updatedAt = Date()
+    }
+}
+
+private struct RoomInsert: Encodable {
+    let id, campId, buildingId, name: String
+    let floor, notes: String?
+    let sortOrder: Int
+    let createdAt, updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case id, name, floor, notes
+        case campId     = "camp_id"
+        case buildingId = "building_id"
+        case sortOrder  = "sort_order"
+        case createdAt  = "created_at"
+        case updatedAt  = "updated_at"
+    }
+    init(_ r: BuildingRoom) {
+        id = r.id; campId = DataService.shared.campId; buildingId = r.buildingId
+        name = r.name; floor = r.floor; notes = r.notes; sortOrder = r.sortOrder
+        createdAt = r.createdAt; updatedAt = r.updatedAt
+    }
+}
+
+private struct RoomUpdate: Encodable {
+    let name: String
+    let floor, notes: String?
+    let sortOrder: Int
+    let updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case name, floor, notes
+        case sortOrder = "sort_order"
+        case updatedAt = "updated_at"
+    }
+    init(_ r: BuildingRoom) {
+        name = r.name; floor = r.floor; notes = r.notes; sortOrder = r.sortOrder; updatedAt = Date()
+    }
+}
+
+private struct ComponentInsert: Encodable {
+    let id, campId, buildingId, system, type, label: String
+    let roomId, locationDetail, statusDetail, lastServiced, nextServiceDue, photoUrl, notes: String?
+    let status: String
+    let metadata: [String: JSONValue]
+    let sortOrder: Int
+    let createdAt, updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case id, system, type, label, status, notes, metadata
+        case campId         = "camp_id"
+        case buildingId     = "building_id"
+        case roomId         = "room_id"
+        case locationDetail = "location_detail"
+        case statusDetail   = "status_detail"
+        case lastServiced   = "last_serviced"
+        case nextServiceDue = "next_service_due"
+        case photoUrl       = "photo_url"
+        case sortOrder      = "sort_order"
+        case createdAt      = "created_at"
+        case updatedAt      = "updated_at"
+    }
+    init(_ c: BuildingComponent) {
+        id = c.id; campId = DataService.shared.campId; buildingId = c.buildingId
+        roomId = c.roomId; system = c.system.rawValue; type = c.type; label = c.label
+        locationDetail = c.locationDetail; status = c.status.rawValue; statusDetail = c.statusDetail
+        lastServiced = c.lastServiced; nextServiceDue = c.nextServiceDue; photoUrl = c.photoUrl
+        metadata = c.metadata; notes = c.notes; sortOrder = c.sortOrder
+        createdAt = c.createdAt; updatedAt = c.updatedAt
+    }
+}
+
+private struct ComponentUpdate: Encodable {
+    let system, type, label, status: String
+    let roomId, locationDetail, statusDetail, lastServiced, nextServiceDue, photoUrl, notes: String?
+    let metadata: [String: JSONValue]
+    let sortOrder: Int
+    let updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case system, type, label, status, notes, metadata
+        case roomId         = "room_id"
+        case locationDetail = "location_detail"
+        case statusDetail   = "status_detail"
+        case lastServiced   = "last_serviced"
+        case nextServiceDue = "next_service_due"
+        case photoUrl       = "photo_url"
+        case sortOrder      = "sort_order"
+        case updatedAt      = "updated_at"
+    }
+    init(_ c: BuildingComponent) {
+        system = c.system.rawValue; type = c.type; label = c.label; status = c.status.rawValue
+        roomId = c.roomId; locationDetail = c.locationDetail; statusDetail = c.statusDetail
+        lastServiced = c.lastServiced; nextServiceDue = c.nextServiceDue; photoUrl = c.photoUrl
+        metadata = c.metadata; notes = c.notes; sortOrder = c.sortOrder; updatedAt = Date()
+    }
+}
+
+private struct CircuitInsert: Encodable {
+    let id, campId, panelId: String
+    let breakerNumber, label, controls: String?
+    let amperage: Int?
+    let isOn: Bool
+    let sortOrder: Int
+    let createdAt, updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case id, label, amperage, controls
+        case campId        = "camp_id"
+        case panelId       = "panel_id"
+        case breakerNumber = "breaker_number"
+        case isOn          = "is_on"
+        case sortOrder     = "sort_order"
+        case createdAt     = "created_at"
+        case updatedAt     = "updated_at"
+    }
+    init(_ c: BuildingCircuit) {
+        id = c.id; campId = DataService.shared.campId; panelId = c.panelId
+        breakerNumber = c.breakerNumber; label = c.label; controls = c.controls
+        amperage = c.amperage; isOn = c.isOn; sortOrder = c.sortOrder
+        createdAt = c.createdAt; updatedAt = c.updatedAt
+    }
+}
+
+private struct CircuitUpdate: Encodable {
+    let breakerNumber, label, controls: String?
+    let amperage: Int?
+    let isOn: Bool
+    let sortOrder: Int
+    let updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case label, amperage, controls
+        case breakerNumber = "breaker_number"
+        case isOn          = "is_on"
+        case sortOrder     = "sort_order"
+        case updatedAt     = "updated_at"
+    }
+    init(_ c: BuildingCircuit) {
+        breakerNumber = c.breakerNumber; label = c.label; controls = c.controls
+        amperage = c.amperage; isOn = c.isOn; sortOrder = c.sortOrder; updatedAt = Date()
+    }
+}
+
+private struct BuildingSeasonalInsert: Encodable {
+    let id, campId, title, phase: String
+    let buildingId, detail, completedBy, completedDate: String?
+    let isComplete: Bool
+    let assignees: [String]
+    let sortOrder: Int
+    let createdAt, updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case id, title, detail, phase, assignees
+        case campId        = "camp_id"
+        case buildingId    = "building_id"
+        case isComplete    = "is_complete"
+        case completedBy   = "completed_by"
+        case completedDate = "completed_date"
+        case sortOrder     = "sort_order"
+        case createdAt     = "created_at"
+        case updatedAt     = "updated_at"
+    }
+    init(_ t: BuildingSeasonalTask) {
+        id = t.id; campId = DataService.shared.campId; buildingId = t.buildingId
+        title = t.title; detail = t.detail; phase = t.phase.rawValue
+        isComplete = t.isComplete; completedBy = t.completedBy; completedDate = t.completedDate
+        assignees = t.assignees; sortOrder = t.sortOrder; createdAt = t.createdAt; updatedAt = t.updatedAt
+    }
+}
+
+private struct BuildingSeasonalUpdate: Encodable {
+    let title, phase: String
+    let buildingId, detail: String?
+    let assignees: [String]
+    let sortOrder: Int
+    let updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case title, detail, phase, assignees
+        case buildingId = "building_id"
+        case sortOrder  = "sort_order"
+        case updatedAt  = "updated_at"
+    }
+    init(_ t: BuildingSeasonalTask) {
+        title = t.title; detail = t.detail; phase = t.phase.rawValue; buildingId = t.buildingId
+        assignees = t.assignees; sortOrder = t.sortOrder; updatedAt = Date()
+    }
+}
+
+private struct BuildingSeasonalToggle: Encodable {
+    let isComplete: Bool
+    let completedBy, completedDate: String?
+    let updatedAt: Date
+    enum CodingKeys: String, CodingKey {
+        case isComplete    = "is_complete"
+        case completedBy   = "completed_by"
+        case completedDate = "completed_date"
+        case updatedAt     = "updated_at"
+    }
+    init(_ t: BuildingSeasonalTask) {
+        isComplete = t.isComplete; completedBy = t.completedBy
+        completedDate = t.completedDate; updatedAt = Date()
     }
 }

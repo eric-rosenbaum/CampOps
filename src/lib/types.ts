@@ -427,3 +427,105 @@ export interface AssetMaintenanceTask {
   createdAt: string;
   updatedAt: string;
 }
+
+// ─── Building Systems ──────────────────────────────────────────────────────────
+
+export type BuildingType =
+  | 'cabin' | 'bathhouse' | 'dining_hall' | 'kitchen' | 'infirmary'
+  | 'office' | 'activity' | 'storage' | 'utility' | 'other';
+
+export type BuildingSystem = 'electrical' | 'plumbing';
+
+export type ComponentStatus = 'operational' | 'needs_attention' | 'out_of_service';
+
+export type ElectricalComponentType =
+  | 'breaker_panel' | 'sub_panel' | 'outlet' | 'light_fixture'
+  | 'switch' | 'exterior_light' | 'generator' | 'transfer_switch' | 'other_electrical';
+
+export type PlumbingComponentType =
+  | 'shutoff_valve' | 'water_heater' | 'well_pump' | 'backflow_preventer'
+  | 'toilet' | 'sink' | 'shower' | 'urinal' | 'water_fountain'
+  | 'hose_bib' | 'sump_pump' | 'septic' | 'other_plumbing';
+
+export type BuildingComponentType = ElectricalComponentType | PlumbingComponentType;
+
+export interface Building {
+  id: string;
+  name: string;
+  type: BuildingType;
+  // Soft link to a camp `locations` string (used to pre-fill flagged issues).
+  locationLabel: string | null;
+  mainWaterShutoff: string | null;
+  mainElectricalPanel: string | null;
+  mainGasShutoff: string | null;
+  yearBuilt: number | null;
+  notes: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BuildingRoom {
+  id: string;
+  buildingId: string;
+  name: string;
+  floor: string | null;
+  notes: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BuildingComponent {
+  id: string;
+  buildingId: string;
+  roomId: string | null;
+  system: BuildingSystem;
+  type: BuildingComponentType;
+  label: string;
+  // Where in the room ("under sink, NW corner").
+  locationDetail: string | null;
+  status: ComponentStatus;
+  statusDetail: string | null;
+  lastServiced: string | null;
+  nextServiceDue: string | null;
+  photoUrl: string | null;
+  // Type-specific specs: isGfci, bulbType, voltage, valveType, gallons, fuelType, …
+  metadata: Record<string, unknown>;
+  // The breaker that powers this component (panel schedule link).
+  controllingCircuitId: string | null;
+  notes: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BuildingCircuit {
+  id: string;
+  // The breaker_panel / sub_panel component this breaker lives on.
+  panelId: string;
+  breakerNumber: string | null;
+  label: string | null;
+  amperage: number | null;
+  controls: string | null;
+  isOn: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BuildingSeasonalTask {
+  id: string;
+  // null = camp-wide task (not tied to one building).
+  buildingId: string | null;
+  title: string;
+  detail: string | null;
+  phase: SeasonalPhase;
+  isComplete: boolean;
+  completedBy: string | null;
+  completedDate: string | null;
+  assignees: string[];
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -6,6 +6,7 @@ struct ContentView: View {
     @StateObject private var checklistVM = ChecklistViewModel()
     @StateObject private var poolVM      = PoolViewModel()
     @StateObject private var assetVM     = AssetViewModel()
+    @StateObject private var buildingVM  = BuildingViewModel()
     @StateObject private var syncService = SyncService.shared
     @Environment(\.scenePhase) private var scenePhase
 
@@ -34,6 +35,7 @@ struct ContentView: View {
         .environmentObject(checklistVM)
         .environmentObject(poolVM)
         .environmentObject(assetVM)
+        .environmentObject(buildingVM)
     }
 
     private var mainTabView: some View {
@@ -56,6 +58,10 @@ struct ContentView: View {
                 AssetView()
                     .tabItem { Label("Assets", systemImage: "car.fill") }
             }
+            if authManager.canAccessModule("building_systems") {
+                BuildingView()
+                    .tabItem { Label("Building", systemImage: "building.2.fill") }
+            }
         }
     }
 
@@ -64,12 +70,14 @@ struct ContentView: View {
         async let c = checklistVM.load()
         async let p = poolVM.load()
         async let a = assetVM.load()
-        _ = await (i, c, p, a)
+        async let b = buildingVM.load()
+        _ = await (i, c, p, a, b)
         await syncService.subscribeToChanges(
             onIssueChange:      { await issueVM.refresh() },
             onTaskChange:       { await checklistVM.refresh() },
             onPoolChange:       { await poolVM.refresh() },
             onAssetChange:      { await assetVM.refresh() },
+            onBuildingChange:   { await buildingVM.refresh() },
             onPermissionChange: { await authManager.reloadMemberAndGroup() }
         )
     }
@@ -80,8 +88,9 @@ struct ContentView: View {
         async let c = checklistVM.refresh()
         async let p = poolVM.refresh()
         async let a = assetVM.refresh()
+        async let b = buildingVM.refresh()
         async let m = authManager.reloadMemberAndGroup()
-        _ = await (i, c, p, a, m)
+        _ = await (i, c, p, a, b, m)
     }
 }
 

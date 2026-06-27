@@ -23,6 +23,7 @@ final class SyncService: ObservableObject {
                             onTaskChange: @escaping () async -> Void,
                             onPoolChange: (() async -> Void)? = nil,
                             onAssetChange: (() async -> Void)? = nil,
+                            onBuildingChange: (() async -> Void)? = nil,
                             onPermissionChange: (() async -> Void)? = nil) async {
         // Unsubscribe from any existing channel before resubscribing.
         await channel?.unsubscribe()
@@ -40,6 +41,11 @@ final class SyncService: ObservableObject {
         let checkoutStream   = await ch.postgresChange(AnyAction.self, schema: "public", table: "asset_checkouts")
         let serviceStream    = await ch.postgresChange(AnyAction.self, schema: "public", table: "asset_service_records")
         let maintStream      = await ch.postgresChange(AnyAction.self, schema: "public", table: "asset_maintenance_tasks")
+        let bldgStream       = await ch.postgresChange(AnyAction.self, schema: "public", table: "buildings")
+        let roomStream       = await ch.postgresChange(AnyAction.self, schema: "public", table: "building_rooms")
+        let compStream       = await ch.postgresChange(AnyAction.self, schema: "public", table: "building_components")
+        let circuitStream    = await ch.postgresChange(AnyAction.self, schema: "public", table: "building_circuits")
+        let bSeasonalStream  = await ch.postgresChange(AnyAction.self, schema: "public", table: "building_seasonal_tasks")
         let memberStream     = await ch.postgresChange(AnyAction.self, schema: "public", table: "camp_members")
         let groupStream      = await ch.postgresChange(AnyAction.self, schema: "public", table: "staff_groups")
 
@@ -55,6 +61,11 @@ final class SyncService: ObservableObject {
         Task { for await _ in checkoutStream { if let f = onAssetChange       { await f() } } }
         Task { for await _ in serviceStream  { if let f = onAssetChange       { await f() } } }
         Task { for await _ in maintStream    { if let f = onAssetChange       { await f() } } }
+        Task { for await _ in bldgStream     { if let f = onBuildingChange    { await f() } } }
+        Task { for await _ in roomStream     { if let f = onBuildingChange    { await f() } } }
+        Task { for await _ in compStream     { if let f = onBuildingChange    { await f() } } }
+        Task { for await _ in circuitStream  { if let f = onBuildingChange    { await f() } } }
+        Task { for await _ in bSeasonalStream { if let f = onBuildingChange   { await f() } } }
         Task { for await _ in memberStream   { if let f = onPermissionChange  { await f() } } }
         Task { for await _ in groupStream    { if let f = onPermissionChange  { await f() } } }
     }

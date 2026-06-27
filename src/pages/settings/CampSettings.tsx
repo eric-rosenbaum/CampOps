@@ -43,6 +43,7 @@ const MODULE_OPTIONS = [
   { key: 'pool',       label: 'Pool & Waterfront',    desc: 'Chemical readings, inspections, equipment' },
   { key: 'safety',     label: 'Safety & Compliance',  desc: 'Fire safety, drills, staff certifications' },
   { key: 'assets',     label: 'Assets & Vehicles',    desc: 'Fleet, equipment, checkouts, service records' },
+  { key: 'building',   label: 'Building Systems',     desc: 'Electrical & plumbing infrastructure by room' },
 ];
 
 // ── Profile tab ───────────────────────────────────────────────────────────────

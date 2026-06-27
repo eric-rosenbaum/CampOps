@@ -16,6 +16,7 @@ import type {
   SafetyItem, SafetyInspectionLog, EmergencyDrill,
   SafetyStaff, StaffCertification, SafetyTempLog, SafetyLicense,
   CampAsset, AssetCheckout, AssetServiceRecord, AssetMaintenanceTask,
+  Building, BuildingRoom, BuildingComponent, BuildingCircuit, BuildingSeasonalTask,
 } from './types';
 
 // ─── Camp ID ──────────────────────────────────────────────────────────────────
@@ -1358,6 +1359,289 @@ export function subscribeToAssets(campId: string, onUpdate: AssetDataCallback, o
     if (status === 'SUBSCRIBED') {
       if (everSubscribed) { campLog('[CampOps] assets reconnected — reloading in 10s'); onEventStart?.(); setTimeout(() => reload(), 10000); }
       else { campLog('[CampOps] assets initial subscription'); everSubscribed = true; }
+    }
+  });
+  return () => { supabase.removeChannel(channel); };
+}
+
+// ─── Building Systems ───────────────────────────────────────────────────────────
+
+function rowToBuilding(r: Record<string, unknown>): Building {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    type: (r.type as Building['type']) ?? 'other',
+    locationLabel: (r.location_label as string) ?? null,
+    mainWaterShutoff: (r.main_water_shutoff as string) ?? null,
+    mainElectricalPanel: (r.main_electrical_panel as string) ?? null,
+    mainGasShutoff: (r.main_gas_shutoff as string) ?? null,
+    yearBuilt: (r.year_built as number) ?? null,
+    notes: (r.notes as string) ?? null,
+    sortOrder: (r.sort_order as number) ?? 0,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToRoom(r: Record<string, unknown>): BuildingRoom {
+  return {
+    id: r.id as string,
+    buildingId: r.building_id as string,
+    name: r.name as string,
+    floor: (r.floor as string) ?? null,
+    notes: (r.notes as string) ?? null,
+    sortOrder: (r.sort_order as number) ?? 0,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToComponent(r: Record<string, unknown>): BuildingComponent {
+  return {
+    id: r.id as string,
+    buildingId: r.building_id as string,
+    roomId: (r.room_id as string) ?? null,
+    system: r.system as BuildingComponent['system'],
+    type: r.type as BuildingComponent['type'],
+    label: r.label as string,
+    locationDetail: (r.location_detail as string) ?? null,
+    status: (r.status as BuildingComponent['status']) ?? 'operational',
+    statusDetail: (r.status_detail as string) ?? null,
+    lastServiced: (r.last_serviced as string) ?? null,
+    nextServiceDue: (r.next_service_due as string) ?? null,
+    photoUrl: (r.photo_url as string) ?? null,
+    metadata: (r.metadata as Record<string, unknown>) ?? {},
+    controllingCircuitId: (r.controlling_circuit_id as string) ?? null,
+    notes: (r.notes as string) ?? null,
+    sortOrder: (r.sort_order as number) ?? 0,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToCircuit(r: Record<string, unknown>): BuildingCircuit {
+  return {
+    id: r.id as string,
+    panelId: r.panel_id as string,
+    breakerNumber: (r.breaker_number as string) ?? null,
+    label: (r.label as string) ?? null,
+    amperage: (r.amperage as number) ?? null,
+    controls: (r.controls as string) ?? null,
+    isOn: (r.is_on as boolean) ?? true,
+    sortOrder: (r.sort_order as number) ?? 0,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToBuildingSeasonalTask(r: Record<string, unknown>): BuildingSeasonalTask {
+  return {
+    id: r.id as string,
+    buildingId: (r.building_id as string) ?? null,
+    title: r.title as string,
+    detail: (r.detail as string) ?? null,
+    phase: r.phase as BuildingSeasonalTask['phase'],
+    isComplete: (r.is_complete as boolean) ?? false,
+    completedBy: (r.completed_by as string) ?? null,
+    completedDate: (r.completed_date as string) ?? null,
+    assignees: ((r.assignees as string[]) ?? []),
+    sortOrder: (r.sort_order as number) ?? 0,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+export type BuildingData = {
+  buildings: Building[];
+  rooms: BuildingRoom[];
+  components: BuildingComponent[];
+  circuits: BuildingCircuit[];
+  seasonalTasks: BuildingSeasonalTask[];
+};
+
+async function loadBuildingData(campId: string): Promise<BuildingData> {
+  const [bRes, rRes, cRes, ciRes, sRes] = await Promise.all([
+    supabase.from('buildings').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+    supabase.from('building_rooms').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+    supabase.from('building_components').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+    supabase.from('building_circuits').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+    supabase.from('building_seasonal_tasks').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+  ]);
+  return {
+    buildings: (bRes.data ?? []).map((r) => rowToBuilding(r as Record<string, unknown>)),
+    rooms: (rRes.data ?? []).map((r) => rowToRoom(r as Record<string, unknown>)),
+    components: (cRes.data ?? []).map((r) => rowToComponent(r as Record<string, unknown>)),
+    circuits: (ciRes.data ?? []).map((r) => rowToCircuit(r as Record<string, unknown>)),
+    seasonalTasks: (sRes.data ?? []).map((r) => rowToBuildingSeasonalTask(r as Record<string, unknown>)),
+  };
+}
+
+export async function loadBuildingFromSupabase(campId: string): Promise<BuildingData | null> {
+  try {
+    return await loadBuildingData(campId);
+  } catch (e) {
+    console.error('[Supabase] loadBuildingFromSupabase threw:', e);
+    return null;
+  }
+}
+
+// Buildings
+export async function dbAddBuilding(b: Building) {
+  const { error } = await supabase.from('buildings').insert({
+    id: b.id, camp_id: _campId, name: b.name, type: b.type,
+    location_label: b.locationLabel, main_water_shutoff: b.mainWaterShutoff,
+    main_electrical_panel: b.mainElectricalPanel, main_gas_shutoff: b.mainGasShutoff,
+    year_built: b.yearBuilt, notes: b.notes, sort_order: b.sortOrder,
+    created_at: b.createdAt, updated_at: b.updatedAt,
+  });
+  if (error) console.error('dbAddBuilding error:', error.message);
+}
+
+export async function dbUpdateBuilding(b: Building) {
+  const { error } = await supabase.from('buildings').update({
+    name: b.name, type: b.type, location_label: b.locationLabel,
+    main_water_shutoff: b.mainWaterShutoff, main_electrical_panel: b.mainElectricalPanel,
+    main_gas_shutoff: b.mainGasShutoff, year_built: b.yearBuilt, notes: b.notes,
+    sort_order: b.sortOrder, updated_at: new Date().toISOString(),
+  }).eq('id', b.id);
+  if (error) console.error('dbUpdateBuilding error:', error.message);
+}
+
+export async function dbDeleteBuilding(id: string) {
+  const { error } = await supabase.from('buildings').delete().eq('id', id);
+  if (error) console.error('dbDeleteBuilding error:', error.message);
+}
+
+// Rooms
+export async function dbAddRoom(r: BuildingRoom) {
+  const { error } = await supabase.from('building_rooms').insert({
+    id: r.id, camp_id: _campId, building_id: r.buildingId, name: r.name,
+    floor: r.floor, notes: r.notes, sort_order: r.sortOrder,
+    created_at: r.createdAt, updated_at: r.updatedAt,
+  });
+  if (error) console.error('dbAddRoom error:', error.message);
+}
+
+export async function dbUpdateRoom(r: BuildingRoom) {
+  const { error } = await supabase.from('building_rooms').update({
+    name: r.name, floor: r.floor, notes: r.notes, sort_order: r.sortOrder,
+    updated_at: new Date().toISOString(),
+  }).eq('id', r.id);
+  if (error) console.error('dbUpdateRoom error:', error.message);
+}
+
+export async function dbDeleteRoom(id: string) {
+  const { error } = await supabase.from('building_rooms').delete().eq('id', id);
+  if (error) console.error('dbDeleteRoom error:', error.message);
+}
+
+// Components
+function componentToRow(c: BuildingComponent) {
+  return {
+    id: c.id, camp_id: _campId, building_id: c.buildingId, room_id: c.roomId,
+    system: c.system, type: c.type, label: c.label, location_detail: c.locationDetail,
+    status: c.status, status_detail: c.statusDetail, last_serviced: c.lastServiced,
+    next_service_due: c.nextServiceDue, photo_url: c.photoUrl, metadata: c.metadata,
+    controlling_circuit_id: c.controllingCircuitId, notes: c.notes, sort_order: c.sortOrder,
+    created_at: c.createdAt, updated_at: c.updatedAt,
+  };
+}
+
+export async function dbAddComponent(c: BuildingComponent) {
+  const { error } = await supabase.from('building_components').insert(componentToRow(c));
+  if (error) console.error('dbAddComponent error:', error.message);
+}
+
+export async function dbUpdateComponent(c: BuildingComponent) {
+  const { camp_id, id, created_at, ...patch } = componentToRow(c); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const { error } = await supabase.from('building_components')
+    .update({ ...patch, updated_at: new Date().toISOString() }).eq('id', c.id);
+  if (error) console.error('dbUpdateComponent error:', error.message);
+}
+
+export async function dbDeleteComponent(id: string) {
+  const { error } = await supabase.from('building_components').delete().eq('id', id);
+  if (error) console.error('dbDeleteComponent error:', error.message);
+}
+
+// Circuits
+export async function dbAddCircuit(c: BuildingCircuit) {
+  const { error } = await supabase.from('building_circuits').insert({
+    id: c.id, camp_id: _campId, panel_id: c.panelId, breaker_number: c.breakerNumber,
+    label: c.label, amperage: c.amperage, controls: c.controls, is_on: c.isOn,
+    sort_order: c.sortOrder, created_at: c.createdAt, updated_at: c.updatedAt,
+  });
+  if (error) console.error('dbAddCircuit error:', error.message);
+}
+
+export async function dbUpdateCircuit(c: BuildingCircuit) {
+  const { error } = await supabase.from('building_circuits').update({
+    breaker_number: c.breakerNumber, label: c.label, amperage: c.amperage,
+    controls: c.controls, is_on: c.isOn, sort_order: c.sortOrder,
+    updated_at: new Date().toISOString(),
+  }).eq('id', c.id);
+  if (error) console.error('dbUpdateCircuit error:', error.message);
+}
+
+export async function dbDeleteCircuit(id: string) {
+  const { error } = await supabase.from('building_circuits').delete().eq('id', id);
+  if (error) console.error('dbDeleteCircuit error:', error.message);
+}
+
+// Seasonal tasks
+export async function dbAddBuildingSeasonalTask(t: BuildingSeasonalTask) {
+  const { error } = await supabase.from('building_seasonal_tasks').insert({
+    id: t.id, camp_id: _campId, building_id: t.buildingId, title: t.title,
+    detail: t.detail, phase: t.phase, is_complete: t.isComplete,
+    completed_by: t.completedBy, completed_date: t.completedDate,
+    assignees: t.assignees, sort_order: t.sortOrder,
+    created_at: t.createdAt, updated_at: t.updatedAt,
+  });
+  if (error) console.error('dbAddBuildingSeasonalTask error:', error.message);
+}
+
+export async function dbUpdateBuildingSeasonalTask(id: string, patch: Partial<BuildingSeasonalTask>) {
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.title !== undefined) row.title = patch.title;
+  if (patch.detail !== undefined) row.detail = patch.detail;
+  if (patch.phase !== undefined) row.phase = patch.phase;
+  if (patch.buildingId !== undefined) row.building_id = patch.buildingId;
+  if (patch.assignees !== undefined) row.assignees = patch.assignees;
+  if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder;
+  const { error } = await supabase.from('building_seasonal_tasks').update(row).eq('id', id);
+  if (error) console.error('dbUpdateBuildingSeasonalTask error:', error.message);
+}
+
+export async function dbToggleBuildingSeasonalTask(id: string, isComplete: boolean, completedBy: string | null, completedDate: string | null) {
+  const { error } = await supabase.from('building_seasonal_tasks').update({
+    is_complete: isComplete, completed_by: completedBy,
+    completed_date: completedDate, updated_at: new Date().toISOString(),
+  }).eq('id', id);
+  if (error) console.error('dbToggleBuildingSeasonalTask error:', error.message);
+}
+
+export async function dbDeleteBuildingSeasonalTask(id: string) {
+  const { error } = await supabase.from('building_seasonal_tasks').delete().eq('id', id);
+  if (error) console.error('dbDeleteBuildingSeasonalTask error:', error.message);
+}
+
+let buildingChannelCount = 0;
+type BuildingDataCallback = (data: BuildingData) => void;
+
+export function subscribeToBuilding(campId: string, onUpdate: BuildingDataCallback, onEventStart?: () => void): () => void {
+  const channelName = `building-channel-${++buildingChannelCount}`;
+  const reload = async () => { onEventStart?.(); onUpdate(await loadBuildingData(campId)); };
+  const tables = ['buildings', 'building_rooms', 'building_components', 'building_circuits', 'building_seasonal_tasks'];
+  let channel = supabase.channel(channelName);
+  for (const table of tables) {
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, reload);
+  }
+  let everSubscribed = false;
+  channel.subscribe((status) => {
+    campLog('[CampOps] building channel status:', status);
+    if (status === 'SUBSCRIBED') {
+      if (everSubscribed) { campLog('[CampOps] building reconnected — reloading in 10s'); onEventStart?.(); setTimeout(() => reload(), 10000); }
+      else { campLog('[CampOps] building initial subscription'); everSubscribed = true; }
     }
   });
   return () => { supabase.removeChannel(channel); };

@@ -55,6 +55,11 @@
 		EAE0E17CC036495ABEA01CB9 /* PoolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42C2CB70B347BC90227634 /* PoolModels.swift */; };
 		786AFB57FE1B46CAACE4B233 /* PoolViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFFDB5F5149246DBA7B89BE2 /* PoolViewModel.swift */; };
 		098654F0635D443FBD888CB3 /* PoolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE9C53F010A345E8AFD9998A /* PoolView.swift */; };
+		AAAA1111BBBB2222CCCC3401 /* BuildingModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA1111BBBB2222CCCC3301 /* BuildingModels.swift */; };
+		AAAA1111BBBB2222CCCC3402 /* BuildingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA1111BBBB2222CCCC3302 /* BuildingViewModel.swift */; };
+		AAAA1111BBBB2222CCCC3403 /* BuildingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA1111BBBB2222CCCC3303 /* BuildingView.swift */; };
+		AAAA1111BBBB2222CCCC3404 /* BuildingSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA1111BBBB2222CCCC3304 /* BuildingSheets.swift */; };
+		AAAA1111BBBB2222CCCC3405 /* BuildingSeasonalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA1111BBBB2222CCCC3305 /* BuildingSeasonalView.swift */; };
 		D40F01F478024760AC12F977 /* ChemicalLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C731083B94C0429FA6E58489 /* ChemicalLogView.swift */; };
 		5B589BFDD399482BB23863AC /* EquipmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A545123C36D45BDA79AC88F /* EquipmentView.swift */; };
 		AB40B402F97F4A1D88BE62F9 /* InspectionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 056A6929B97F46219B40AE59 /* InspectionsView.swift */; };
@@ -136,6 +141,11 @@
 		8B42C2CB70B347BC90227634 /* PoolModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoolModels.swift; sourceTree = "<group>"; };
 		BFFDB5F5149246DBA7B89BE2 /* PoolViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoolViewModel.swift; sourceTree = "<group>"; };
 		AE9C53F010A345E8AFD9998A /* PoolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoolView.swift; sourceTree = "<group>"; };
+		AAAA1111BBBB2222CCCC3301 /* BuildingModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildingModels.swift; sourceTree = "<group>"; };
+		AAAA1111BBBB2222CCCC3302 /* BuildingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildingViewModel.swift; sourceTree = "<group>"; };
+		AAAA1111BBBB2222CCCC3303 /* BuildingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildingView.swift; sourceTree = "<group>"; };
+		AAAA1111BBBB2222CCCC3304 /* BuildingSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildingSheets.swift; sourceTree = "<group>"; };
+		AAAA1111BBBB2222CCCC3305 /* BuildingSeasonalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildingSeasonalView.swift; sourceTree = "<group>"; };
 		C731083B94C0429FA6E58489 /* ChemicalLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChemicalLogView.swift; sourceTree = "<group>"; };
 		4A545123C36D45BDA79AC88F /* EquipmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentView.swift; sourceTree = "<group>"; };
 		056A6929B97F46219B40AE59 /* InspectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectionsView.swift; sourceTree = "<group>"; };
@@ -259,6 +269,7 @@
 				49E5A75F2F81A74E007122C8 /* Issue.swift */,
 				8B42C2CB70B347BC90227634 /* PoolModels.swift */,
 				A1B2C3D4E5F6A7B8C9D0E1F2 /* AssetModels.swift */,
+				AAAA1111BBBB2222CCCC3301 /* BuildingModels.swift */,
 				49E5A7602F81A74E007122C8 /* Season.swift */,
 				49E5A7612F81A74E007122C8 /* User.swift */,
 			);
@@ -286,6 +297,7 @@
 				49E5A76B2F81A74E007122C8 /* LogIssueViewModel.swift */,
 				BFFDB5F5149246DBA7B89BE2 /* PoolViewModel.swift */,
 				A2B3C4D5E6F7A8B9C0D1E2F3 /* AssetViewModel.swift */,
+				AAAA1111BBBB2222CCCC3302 /* BuildingViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -401,10 +413,21 @@
 				49E5A7742F81A74E007122C8 /* Home */,
 				49E5A7792F81A74E007122C8 /* Issues */,
 				B32326992A274F88B466F2A6 /* Pool */,
+				AAAA1111BBBB2222CCCC3300 /* Building */,
 				49E5A77B2F81A74E007122C8 /* Profile */,
 				49E5A7832F81A74E007122C8 /* Shared */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		AAAA1111BBBB2222CCCC3300 /* Building */ = {
+			isa = PBXGroup;
+			children = (
+				AAAA1111BBBB2222CCCC3303 /* BuildingView.swift */,
+				AAAA1111BBBB2222CCCC3304 /* BuildingSheets.swift */,
+				AAAA1111BBBB2222CCCC3305 /* BuildingSeasonalView.swift */,
+			);
+			path = Building;
 			sourceTree = "<group>";
 		};
 		49E5A7B72F81ACE5007122C8 /* Frameworks */ = {
@@ -544,6 +567,11 @@
 				EAE0E17CC036495ABEA01CB9 /* PoolModels.swift in Sources */,
 				786AFB57FE1B46CAACE4B233 /* PoolViewModel.swift in Sources */,
 				098654F0635D443FBD888CB3 /* PoolView.swift in Sources */,
+				AAAA1111BBBB2222CCCC3401 /* BuildingModels.swift in Sources */,
+				AAAA1111BBBB2222CCCC3402 /* BuildingViewModel.swift in Sources */,
+				AAAA1111BBBB2222CCCC3403 /* BuildingView.swift in Sources */,
+				AAAA1111BBBB2222CCCC3404 /* BuildingSheets.swift in Sources */,
+				AAAA1111BBBB2222CCCC3405 /* BuildingSeasonalView.swift in Sources */,
 				D40F01F478024760AC12F977 /* ChemicalLogView.swift in Sources */,
 				5B589BFDD399482BB23863AC /* EquipmentView.swift in Sources */,
 				AB40B402F97F4A1D88BE62F9 /* InspectionsView.swift in Sources */,

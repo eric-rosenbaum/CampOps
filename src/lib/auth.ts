@@ -20,6 +20,7 @@ const ROLE_PERMISSIONS = {
   logSafetyInspection:  ['admin', 'staff'] as CampRole[],
   manageSafetyItems:    ['admin', 'staff'] as CampRole[],
   manageAssets:         ['admin', 'staff'] as CampRole[],
+  manageBuildingSystems:['admin', 'staff'] as CampRole[],
   enterActualCost:      ['admin'] as CampRole[],
   activateNewSeason:    ['admin'] as CampRole[],
   manageSafetyStaff:    ['admin'] as CampRole[],

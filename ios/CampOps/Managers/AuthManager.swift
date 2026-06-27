@@ -43,8 +43,9 @@ final class AuthManager: ObservableObject {
         case "pre_post":       return group.modules.prePost
         case "pool":           return group.modules.pool
         case "safety":         return group.modules.safety
-        case "assets":         return group.modules.assets
-        default:               return true
+        case "assets":           return group.modules.assets
+        case "building_systems": return group.modules.buildingSystems
+        default:                 return true
         }
     }
 

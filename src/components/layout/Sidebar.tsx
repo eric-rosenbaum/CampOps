@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Wrench, ClipboardList,
-  TreePine, Waves, ShieldCheck, Truck, Building2, Settings, LogOut,
+  TreePine, Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useCampStore } from '@/store/campStore';
@@ -30,6 +30,7 @@ const facilityItems: NavItem[] = [
   { path: '/safety', label: 'Safety & Compliance', icon: ShieldCheck, end: false, module: 'safety' },
   { path: '/assets', label: 'Assets & Vehicles', icon: Truck, end: false, module: 'assets' },
   { path: '/building', label: 'Building Systems', icon: Building2, end: false, module: 'building_systems' },
+  { path: '/commissary', label: 'Commissary', icon: UtensilsCrossed, end: false, module: 'commissary' },
 ];
 
 const settingsItems: NavItem[] = [

@@ -44,6 +44,9 @@ const MODULE_OPTIONS = [
   { key: 'safety',     label: 'Safety & Compliance',  desc: 'Fire safety, drills, staff certifications' },
   { key: 'assets',     label: 'Assets & Vehicles',    desc: 'Fleet, equipment, checkouts, service records' },
   { key: 'building',   label: 'Building Systems',     desc: 'Electrical & plumbing infrastructure by room' },
+  // NOTE: camp.modules uses short keys; StaffGroupModules uses long ones
+  // ('building_systems'). Inconsistent, but load-bearing — match, don't refactor.
+  { key: 'commissary', label: 'Commissary',           desc: 'Inventory, recipes, menu planning' },
 ];
 
 // ── Profile tab ───────────────────────────────────────────────────────────────

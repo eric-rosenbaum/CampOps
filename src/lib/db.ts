@@ -17,6 +17,12 @@ import type {
   SafetyStaff, StaffCertification, SafetyTempLog, SafetyLicense,
   CampAsset, AssetCheckout, AssetServiceRecord, AssetMaintenanceTask,
   Building, BuildingRoom, BuildingComponent, BuildingCircuit, BuildingSeasonalTask,
+  CommissarySession, CommissaryVendor, InventoryItem, InventoryAdjustment,
+  Recipe, RecipeIngredient, RecipeStep, MenuEntry, AdjustmentReason,
+  PurchaseOrder, PurchaseOrderLine, ProductionPlan, ProductionTask,
+  ProductionIngredient, Camper, CamperRestriction, RestrictionSummaryRow,
+  CommissaryExpense, MenuTemplate, MenuTemplateEntry, DietCount, MealEvent,
+  CountSession, StorageMap,
 } from './types';
 
 // ─── Camp ID ──────────────────────────────────────────────────────────────────
@@ -1645,4 +1651,1113 @@ export function subscribeToBuilding(campId: string, onUpdate: BuildingDataCallba
     }
   });
   return () => { supabase.removeChannel(channel); };
+}
+
+// ─── Commissary ─────────────────────────────────────────────────────────────────
+// Split into THREE subscription domains — inventory, catalog (recipes), menu —
+// rather than the one-domain-per-module pattern the other five modules use.
+// Commissary is the first module big enough that reloading everything on any WAL
+// event visibly hurts: a cook adjusting one item's stock should not refetch every
+// recipe, every ingredient and every menu chip for the session.
+
+function rowToSession(r: Record<string, unknown>): CommissarySession {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    startDate: r.start_date as string,
+    endDate: r.end_date as string,
+    camperCount: Number(r.camper_count ?? 0),
+    staffCount: Number(r.staff_count ?? 0),
+    isActive: (r.is_active as boolean) ?? true,
+    notes: (r.notes as string) ?? null,
+    budgetPerPersonPerDay: r.budget_per_person_per_day == null ? null : Number(r.budget_per_person_per_day),
+    mealsPerDay: Number(r.meals_per_day ?? 3),
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToVendor(r: Record<string, unknown>): CommissaryVendor {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    specialty: (r.specialty as string) ?? null,
+    accountNumber: (r.account_number as string) ?? null,
+    repName: (r.rep_name as string) ?? null,
+    repEmail: (r.rep_email as string) ?? null,
+    repPhone: (r.rep_phone as string) ?? null,
+    orderCutoff: (r.order_cutoff as string) ?? null,
+    deliveryDay: (r.delivery_day as string) ?? null,
+    minOrder: r.min_order == null ? null : Number(r.min_order),
+    deliveryFee: r.delivery_fee == null ? null : Number(r.delivery_fee),
+    notes: (r.notes as string) ?? null,
+    sortOrder: Number(r.sort_order ?? 0),
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToInventoryItem(r: Record<string, unknown>): InventoryItem {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    category: (r.category as InventoryItem['category']) ?? 'other',
+    storageLocation: (r.storage_location as InventoryItem['storageLocation']) ?? 'other',
+    dimension: (r.dimension as InventoryItem['dimension']) ?? 'count',
+    baseUnit: (r.base_unit as string) ?? 'each',
+    stockUnit: (r.stock_unit as string) ?? 'each',
+    stockUnitInBase: Number(r.stock_unit_in_base ?? 1),
+    purchaseUnit: (r.purchase_unit as string) ?? 'each',
+    purchaseUnitInBase: Number(r.purchase_unit_in_base ?? 1),
+    unitPrice: r.unit_price == null ? null : Number(r.unit_price),
+    onHandBase: Number(r.on_hand_base ?? 0),
+    parLevelBase: Number(r.par_level_base ?? 0),
+    vendorId: (r.vendor_id as string) ?? null,
+    allergens: (r.allergens as string[]) ?? [],
+    notes: (r.notes as string) ?? null,
+    sortOrder: Number(r.sort_order ?? 0),
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToAdjustment(r: Record<string, unknown>): InventoryAdjustment {
+  return {
+    id: r.id as string,
+    itemId: r.item_id as string,
+    deltaBase: Number(r.delta_base ?? 0),
+    resultingOnHandBase: Number(r.resulting_on_hand_base ?? 0),
+    reason: (r.reason as AdjustmentReason) ?? 'other',
+    notes: (r.notes as string) ?? null,
+    adjustedBy: (r.adjusted_by as string) ?? null,
+    createdAt: r.created_at as string,
+  };
+}
+
+function rowToRecipe(r: Record<string, unknown>): Recipe {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    mealPeriod: (r.meal_period as Recipe['mealPeriod']) ?? 'dinner',
+    baseYield: Number(r.base_yield ?? 50),
+    prepTime: (r.prep_time as string) ?? null,
+    cookTime: (r.cook_time as string) ?? null,
+    method: (r.method as string) ?? null,
+    notes: (r.notes as string) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToIngredient(r: Record<string, unknown>): RecipeIngredient {
+  return {
+    id: r.id as string,
+    recipeId: r.recipe_id as string,
+    itemId: (r.item_id as string) ?? null,
+    label: r.label as string,
+    qtyInBase: r.qty_in_base == null ? null : Number(r.qty_in_base),
+    freeTextQty: (r.free_text_qty as string) ?? null,
+    // NOTE: null and [] mean different things here (inherit vs. explicitly none),
+    // so this must not collapse to `?? []`.
+    allergenOverride: (r.allergen_override as string[] | null) ?? null,
+    sortOrder: Number(r.sort_order ?? 0),
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToRecipeStep(r: Record<string, unknown>): RecipeStep {
+  return {
+    id: r.id as string,
+    recipeId: r.recipe_id as string,
+    stepNumber: Number(r.step_number ?? 1),
+    instruction: r.instruction as string,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToMenuEntry(r: Record<string, unknown>): MenuEntry {
+  return {
+    id: r.id as string,
+    sessionId: r.session_id as string,
+    weekNumber: Number(r.week_number ?? 1),
+    dayIndex: Number(r.day_index ?? 0),
+    mealPeriod: (r.meal_period as MenuEntry['mealPeriod']) ?? 'breakfast',
+    recipeId: (r.recipe_id as string) ?? null,
+    label: (r.label as string) ?? null,
+    sortOrder: Number(r.sort_order ?? 0),
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+export interface CommissaryInventoryData {
+  items: InventoryItem[];
+  adjustments: InventoryAdjustment[];
+  vendors: CommissaryVendor[];
+  countSessions: CountSession[];
+  storageMap: StorageMap[];
+}
+export interface CommissaryCatalogData {
+  recipes: Recipe[];
+  ingredients: RecipeIngredient[];
+  steps: RecipeStep[];
+}
+export interface CommissaryMenuData {
+  sessions: CommissarySession[];
+  menuEntries: MenuEntry[];
+  templates: MenuTemplate[];
+  templateEntries: MenuTemplateEntry[];
+  dietCounts: DietCount[];
+  mealEvents: MealEvent[];
+}
+
+async function loadInventoryData(campId: string): Promise<CommissaryInventoryData> {
+  const [iRes, aRes, vRes, cRes, smRes] = await Promise.all([
+    supabase.from('inventory_items').select('*').eq('camp_id', campId).order('name', { ascending: true }),
+    // The adjustment log is unbounded; the UI only ever shows recent history.
+    supabase.from('inventory_adjustments').select('*').eq('camp_id', campId).order('created_at', { ascending: false }).limit(200),
+    supabase.from('commissary_vendors').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+    supabase.from('commissary_count_sessions').select('*').eq('camp_id', campId).order('date', { ascending: false }).limit(50),
+    supabase.from('commissary_storage_map').select('*').eq('camp_id', campId),
+  ]);
+  return {
+    items: (iRes.data ?? []).map((r) => rowToInventoryItem(r as Record<string, unknown>)),
+    adjustments: (aRes.data ?? []).map((r) => rowToAdjustment(r as Record<string, unknown>)),
+    vendors: (vRes.data ?? []).map((r) => rowToVendor(r as Record<string, unknown>)),
+    countSessions: (cRes.data ?? []).map((r) => rowToCountSession(r as Record<string, unknown>)),
+    storageMap: (smRes.data ?? []).map((r) => rowToStorageMap(r as Record<string, unknown>)),
+  };
+}
+
+async function loadCatalogData(campId: string): Promise<CommissaryCatalogData> {
+  const [rRes, iRes, sRes] = await Promise.all([
+    supabase.from('recipes').select('*').eq('camp_id', campId).order('name', { ascending: true }),
+    supabase.from('recipe_ingredients').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+    supabase.from('recipe_steps').select('*').eq('camp_id', campId).order('step_number', { ascending: true }),
+  ]);
+  return {
+    recipes: (rRes.data ?? []).map((r) => rowToRecipe(r as Record<string, unknown>)),
+    ingredients: (iRes.data ?? []).map((r) => rowToIngredient(r as Record<string, unknown>)),
+    steps: (sRes.data ?? []).map((r) => rowToRecipeStep(r as Record<string, unknown>)),
+  };
+}
+
+async function loadMenuData(campId: string): Promise<CommissaryMenuData> {
+  const [sRes, mRes, tRes, teRes, dcRes, meRes] = await Promise.all([
+    supabase.from('commissary_sessions').select('*').eq('camp_id', campId).order('start_date', { ascending: true }),
+    supabase.from('menu_entries').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+    supabase.from('menu_templates').select('*').eq('camp_id', campId).order('name', { ascending: true }),
+    supabase.from('menu_template_entries').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+    supabase.from('commissary_diet_counts').select('*').eq('camp_id', campId),
+    supabase.from('commissary_meal_events').select('*').eq('camp_id', campId).order('date', { ascending: true }),
+  ]);
+  return {
+    sessions: (sRes.data ?? []).map((r) => rowToSession(r as Record<string, unknown>)),
+    menuEntries: (mRes.data ?? []).map((r) => rowToMenuEntry(r as Record<string, unknown>)),
+    templates: (tRes.data ?? []).map((r) => rowToTemplate(r as Record<string, unknown>)),
+    templateEntries: (teRes.data ?? []).map((r) => rowToTemplateEntry(r as Record<string, unknown>)),
+    dietCounts: (dcRes.data ?? []).map((r) => rowToDietCount(r as Record<string, unknown>)),
+    mealEvents: (meRes.data ?? []).map((r) => rowToMealEvent(r as Record<string, unknown>)),
+  };
+}
+
+export async function loadCommissaryInventory(campId: string): Promise<CommissaryInventoryData | null> {
+  try { return await loadInventoryData(campId); }
+  catch (e) { console.error('[Supabase] loadCommissaryInventory threw:', e); return null; }
+}
+export async function loadCommissaryCatalog(campId: string): Promise<CommissaryCatalogData | null> {
+  try { return await loadCatalogData(campId); }
+  catch (e) { console.error('[Supabase] loadCommissaryCatalog threw:', e); return null; }
+}
+export async function loadCommissaryMenu(campId: string): Promise<CommissaryMenuData | null> {
+  try { return await loadMenuData(campId); }
+  catch (e) { console.error('[Supabase] loadCommissaryMenu threw:', e); return null; }
+}
+
+// Sessions
+export async function dbAddSession(s: CommissarySession) {
+  const { error } = await supabase.from('commissary_sessions').insert({
+    id: s.id, camp_id: _campId, name: s.name, start_date: s.startDate, end_date: s.endDate,
+    camper_count: s.camperCount, staff_count: s.staffCount, is_active: s.isActive,
+    notes: s.notes, budget_per_person_per_day: s.budgetPerPersonPerDay,
+    meals_per_day: s.mealsPerDay, created_at: s.createdAt, updated_at: s.updatedAt,
+  });
+  if (error) console.error('dbAddSession error:', error.message);
+}
+
+export async function dbUpdateSession(s: CommissarySession) {
+  const { error } = await supabase.from('commissary_sessions').update({
+    name: s.name, start_date: s.startDate, end_date: s.endDate,
+    camper_count: s.camperCount, staff_count: s.staffCount, is_active: s.isActive,
+    notes: s.notes, budget_per_person_per_day: s.budgetPerPersonPerDay,
+    meals_per_day: s.mealsPerDay, updated_at: new Date().toISOString(),
+  }).eq('id', s.id);
+  if (error) console.error('dbUpdateSession error:', error.message);
+}
+
+export async function dbDeleteSession(id: string) {
+  const { error } = await supabase.from('commissary_sessions').delete().eq('id', id);
+  if (error) console.error('dbDeleteSession error:', error.message);
+}
+
+// Vendors
+export async function dbAddVendor(v: CommissaryVendor) {
+  const { error } = await supabase.from('commissary_vendors').insert({
+    id: v.id, camp_id: _campId, name: v.name, specialty: v.specialty,
+    account_number: v.accountNumber, rep_name: v.repName, rep_email: v.repEmail,
+    rep_phone: v.repPhone, order_cutoff: v.orderCutoff, delivery_day: v.deliveryDay,
+    min_order: v.minOrder, delivery_fee: v.deliveryFee, notes: v.notes,
+    sort_order: v.sortOrder, created_at: v.createdAt, updated_at: v.updatedAt,
+  });
+  if (error) console.error('dbAddVendor error:', error.message);
+}
+
+export async function dbUpdateVendor(v: CommissaryVendor) {
+  const { error } = await supabase.from('commissary_vendors').update({
+    name: v.name, specialty: v.specialty, account_number: v.accountNumber,
+    rep_name: v.repName, rep_email: v.repEmail, rep_phone: v.repPhone,
+    order_cutoff: v.orderCutoff, delivery_day: v.deliveryDay, min_order: v.minOrder,
+    delivery_fee: v.deliveryFee, notes: v.notes, sort_order: v.sortOrder,
+    updated_at: new Date().toISOString(),
+  }).eq('id', v.id);
+  if (error) console.error('dbUpdateVendor error:', error.message);
+}
+
+export async function dbDeleteVendor(id: string) {
+  const { error } = await supabase.from('commissary_vendors').delete().eq('id', id);
+  if (error) console.error('dbDeleteVendor error:', error.message);
+}
+
+// Inventory items
+function inventoryItemToRow(i: InventoryItem) {
+  return {
+    id: i.id, camp_id: _campId, name: i.name, category: i.category,
+    storage_location: i.storageLocation, dimension: i.dimension, base_unit: i.baseUnit,
+    stock_unit: i.stockUnit, stock_unit_in_base: i.stockUnitInBase,
+    purchase_unit: i.purchaseUnit, purchase_unit_in_base: i.purchaseUnitInBase,
+    unit_price: i.unitPrice, on_hand_base: i.onHandBase, par_level_base: i.parLevelBase,
+    vendor_id: i.vendorId, allergens: i.allergens, notes: i.notes,
+    sort_order: i.sortOrder, created_at: i.createdAt, updated_at: i.updatedAt,
+  };
+}
+
+export async function dbAddInventoryItem(i: InventoryItem) {
+  const { error } = await supabase.from('inventory_items').insert(inventoryItemToRow(i));
+  if (error) console.error('dbAddInventoryItem error:', error.message);
+}
+
+export async function dbUpdateInventoryItem(i: InventoryItem) {
+  const { camp_id, id, created_at, ...patch } = inventoryItemToRow(i); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const { error } = await supabase.from('inventory_items')
+    .update({ ...patch, updated_at: new Date().toISOString() }).eq('id', i.id);
+  if (error) console.error('dbUpdateInventoryItem error:', error.message);
+}
+
+export async function dbDeleteInventoryItem(id: string) {
+  const { error } = await supabase.from('inventory_items').delete().eq('id', id);
+  if (error) console.error('dbDeleteInventoryItem error:', error.message);
+}
+
+/**
+ * Adjust stock. Goes through an RPC rather than a read-modify-write from the
+ * client: two people counting the same walk-in would otherwise each compute
+ * `onHand + delta` from a stale snapshot and the second save would erase the first.
+ * The RPC also writes the audit row in the same transaction.
+ *
+ * Returns the authoritative new on-hand (base units), or null on failure — unlike
+ * the fire-and-forget writers above, the caller needs this value to reconcile its
+ * optimistic update.
+ */
+export async function dbAdjustInventory(
+  itemId: string,
+  deltaBase: number,
+  reason: AdjustmentReason,
+  notes: string | null,
+  adjustedBy: string | null,
+): Promise<number | null> {
+  const { data, error } = await supabase.rpc('adjust_inventory_item', {
+    p_item_id: itemId,
+    p_delta_base: deltaBase,
+    p_reason: reason,
+    p_notes: notes,
+    p_adjusted_by: adjustedBy,
+  });
+  if (error) { console.error('dbAdjustInventory error:', error.message); return null; }
+  return data == null ? null : Number(data);
+}
+
+// Recipes
+export async function dbAddRecipe(r: Recipe) {
+  const { error } = await supabase.from('recipes').insert({
+    id: r.id, camp_id: _campId, name: r.name, meal_period: r.mealPeriod,
+    base_yield: r.baseYield, prep_time: r.prepTime, cook_time: r.cookTime,
+    method: r.method, notes: r.notes, created_at: r.createdAt, updated_at: r.updatedAt,
+  });
+  if (error) console.error('dbAddRecipe error:', error.message);
+}
+
+export async function dbUpdateRecipe(r: Recipe) {
+  const { error } = await supabase.from('recipes').update({
+    name: r.name, meal_period: r.mealPeriod, base_yield: r.baseYield,
+    prep_time: r.prepTime, cook_time: r.cookTime, method: r.method, notes: r.notes,
+    updated_at: new Date().toISOString(),
+  }).eq('id', r.id);
+  if (error) console.error('dbUpdateRecipe error:', error.message);
+}
+
+export async function dbDeleteRecipe(id: string) {
+  const { error } = await supabase.from('recipes').delete().eq('id', id);
+  if (error) console.error('dbDeleteRecipe error:', error.message);
+}
+
+/**
+ * Ingredients and steps are replaced wholesale when a recipe is saved. The editor
+ * is a repeater with no stable row identity across an edit session, so diffing
+ * would be guesswork; delete-then-insert is what the UI actually means.
+ */
+export async function dbReplaceRecipeChildren(
+  recipeId: string,
+  ingredients: RecipeIngredient[],
+  steps: RecipeStep[],
+) {
+  const [delIng, delSteps] = await Promise.all([
+    supabase.from('recipe_ingredients').delete().eq('recipe_id', recipeId),
+    supabase.from('recipe_steps').delete().eq('recipe_id', recipeId),
+  ]);
+  if (delIng.error) console.error('dbReplaceRecipeChildren delete ingredients:', delIng.error.message);
+  if (delSteps.error) console.error('dbReplaceRecipeChildren delete steps:', delSteps.error.message);
+
+  if (ingredients.length) {
+    const { error } = await supabase.from('recipe_ingredients').insert(
+      ingredients.map((g) => ({
+        id: g.id, camp_id: _campId, recipe_id: recipeId, item_id: g.itemId,
+        label: g.label, qty_in_base: g.qtyInBase, free_text_qty: g.freeTextQty,
+        allergen_override: g.allergenOverride, sort_order: g.sortOrder,
+        created_at: g.createdAt, updated_at: g.updatedAt,
+      })),
+    );
+    if (error) console.error('dbReplaceRecipeChildren insert ingredients:', error.message);
+  }
+  if (steps.length) {
+    const { error } = await supabase.from('recipe_steps').insert(
+      steps.map((s) => ({
+        id: s.id, camp_id: _campId, recipe_id: recipeId,
+        step_number: s.stepNumber, instruction: s.instruction,
+        created_at: s.createdAt, updated_at: s.updatedAt,
+      })),
+    );
+    if (error) console.error('dbReplaceRecipeChildren insert steps:', error.message);
+  }
+}
+
+// Menu entries
+export async function dbAddMenuEntry(m: MenuEntry) {
+  const { error } = await supabase.from('menu_entries').insert({
+    id: m.id, camp_id: _campId, session_id: m.sessionId, week_number: m.weekNumber,
+    day_index: m.dayIndex, meal_period: m.mealPeriod, recipe_id: m.recipeId,
+    label: m.label, sort_order: m.sortOrder, created_at: m.createdAt, updated_at: m.updatedAt,
+  });
+  if (error) console.error('dbAddMenuEntry error:', error.message);
+}
+
+export async function dbDeleteMenuEntry(id: string) {
+  const { error } = await supabase.from('menu_entries').delete().eq('id', id);
+  if (error) console.error('dbDeleteMenuEntry error:', error.message);
+}
+
+/** Bulk insert — used by "Copy last week". */
+export async function dbAddMenuEntries(entries: MenuEntry[]) {
+  if (!entries.length) return;
+  const { error } = await supabase.from('menu_entries').insert(
+    entries.map((m) => ({
+      id: m.id, camp_id: _campId, session_id: m.sessionId, week_number: m.weekNumber,
+      day_index: m.dayIndex, meal_period: m.mealPeriod, recipe_id: m.recipeId,
+      label: m.label, sort_order: m.sortOrder, created_at: m.createdAt, updated_at: m.updatedAt,
+    })),
+  );
+  if (error) console.error('dbAddMenuEntries error:', error.message);
+}
+
+/** Bulk delete — used by "Clear week". */
+export async function dbDeleteMenuWeek(sessionId: string, weekNumber: number) {
+  const { error } = await supabase.from('menu_entries').delete()
+    .eq('session_id', sessionId).eq('week_number', weekNumber);
+  if (error) console.error('dbDeleteMenuWeek error:', error.message);
+}
+
+// ─── Commissary subscriptions (three independent domains) ──────────────────────
+
+function makeCommissaryChannel<T>(
+  name: string,
+  campId: string,
+  tables: string[],
+  load: (campId: string) => Promise<T>,
+  onUpdate: (data: T) => void,
+  onEventStart?: () => void,
+): () => void {
+  const reload = async () => { onEventStart?.(); onUpdate(await load(campId)); };
+  let channel = supabase.channel(name);
+  for (const table of tables) {
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, reload);
+  }
+  let everSubscribed = false;
+  channel.subscribe((status) => {
+    campLog(`[CampOps] ${name} status:`, status);
+    if (status === 'SUBSCRIBED') {
+      if (everSubscribed) { campLog(`[CampOps] ${name} reconnected — reloading in 10s`); onEventStart?.(); setTimeout(() => reload(), 10000); }
+      else { campLog(`[CampOps] ${name} initial subscription`); everSubscribed = true; }
+    }
+  });
+  return () => { supabase.removeChannel(channel); };
+}
+
+let commissaryChannelCount = 0;
+
+export function subscribeToCommissaryInventory(campId: string, onUpdate: (d: CommissaryInventoryData) => void, onEventStart?: () => void): () => void {
+  return makeCommissaryChannel(
+    `commissary-inventory-${++commissaryChannelCount}`, campId,
+    ['inventory_items', 'inventory_adjustments', 'commissary_vendors', 'commissary_count_sessions', 'commissary_storage_map'],
+    loadInventoryData, onUpdate, onEventStart,
+  );
+}
+
+export function subscribeToCommissaryCatalog(campId: string, onUpdate: (d: CommissaryCatalogData) => void, onEventStart?: () => void): () => void {
+  return makeCommissaryChannel(
+    `commissary-catalog-${++commissaryChannelCount}`, campId,
+    ['recipes', 'recipe_ingredients', 'recipe_steps'],
+    loadCatalogData, onUpdate, onEventStart,
+  );
+}
+
+export function subscribeToCommissaryMenu(campId: string, onUpdate: (d: CommissaryMenuData) => void, onEventStart?: () => void): () => void {
+  return makeCommissaryChannel(
+    `commissary-menu-${++commissaryChannelCount}`, campId,
+    ['commissary_sessions', 'menu_entries', 'menu_templates', 'menu_template_entries',
+     'commissary_diet_counts', 'commissary_meal_events'],
+    loadMenuData, onUpdate, onEventStart,
+  );
+}
+
+// ─── Commissary phase 2: ordering, production, allergy ─────────────────────────
+// Three further independent subscription domains, for the same reason as the first
+// three: ticking one production checkbox must not refetch every purchase order.
+
+function rowToOrder(r: Record<string, unknown>): PurchaseOrder {
+  return {
+    id: r.id as string,
+    vendorId: (r.vendor_id as string) ?? null,
+    vendorName: r.vendor_name as string,
+    status: (r.status as PurchaseOrder['status']) ?? 'draft',
+    source: (r.source as PurchaseOrder['source']) ?? 'par',
+    sessionId: (r.session_id as string) ?? null,
+    weekNumber: r.week_number == null ? null : Number(r.week_number),
+    subtotal: Number(r.subtotal ?? 0),
+    deliveryFee: Number(r.delivery_fee ?? 0),
+    total: Number(r.total ?? 0),
+    deliveryInstructions: (r.delivery_instructions as string) ?? null,
+    createdBy: (r.created_by as string) ?? null,
+    sentAt: (r.sent_at as string) ?? null,
+    receivedAt: (r.received_at as string) ?? null,
+    invoiceTotal: r.invoice_total == null ? null : Number(r.invoice_total),
+    invoiceNumber: (r.invoice_number as string) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToOrderLine(r: Record<string, unknown>): PurchaseOrderLine {
+  return {
+    id: r.id as string,
+    orderId: r.order_id as string,
+    itemId: (r.item_id as string) ?? null,
+    itemName: r.item_name as string,
+    stockUnit: r.stock_unit as string,
+    purchaseUnit: r.purchase_unit as string,
+    purchaseUnitInBase: Number(r.purchase_unit_in_base ?? 1),
+    onHandBase: Number(r.on_hand_base ?? 0),
+    neededBase: Number(r.needed_base ?? 0),
+    orderQty: Number(r.order_qty ?? 0),
+    unitPrice: r.unit_price == null ? null : Number(r.unit_price),
+    lineTotal: Number(r.line_total ?? 0),
+    receivedQty: r.received_qty == null ? null : Number(r.received_qty),
+    receivedUnitPrice: r.received_unit_price == null ? null : Number(r.received_unit_price),
+    receivedNote: (r.received_note as string) ?? null,
+    sortOrder: Number(r.sort_order ?? 0),
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToPlan(r: Record<string, unknown>): ProductionPlan {
+  return {
+    id: r.id as string,
+    sessionId: r.session_id as string,
+    weekNumber: Number(r.week_number ?? 1),
+    dayIndex: Number(r.day_index ?? 0),
+    portions: Number(r.portions ?? 0),
+    menuSignature: (r.menu_signature as string) ?? '',
+    generatedBy: (r.generated_by as string) ?? null,
+    generatedAt: r.generated_at as string,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToProductionTask(r: Record<string, unknown>): ProductionTask {
+  return {
+    id: r.id as string,
+    planId: r.plan_id as string,
+    recipeId: (r.recipe_id as string) ?? null,
+    mealPeriod: (r.meal_period as ProductionTask['mealPeriod']) ?? 'breakfast',
+    title: r.title as string,
+    portions: Number(r.portions ?? 0),
+    ingredients: (r.ingredients as ProductionIngredient[]) ?? [],
+    allergens: (r.allergens as string[]) ?? [],
+    prepTime: (r.prep_time as string) ?? null,
+    cookTime: (r.cook_time as string) ?? null,
+    notes: (r.notes as string) ?? null,
+    isComplete: (r.is_complete as boolean) ?? false,
+    completedBy: (r.completed_by as string) ?? null,
+    completedAt: (r.completed_at as string) ?? null,
+    sortOrder: Number(r.sort_order ?? 0),
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToCamper(r: Record<string, unknown>): Camper {
+  return {
+    id: r.id as string,
+    sessionId: (r.session_id as string) ?? null,
+    name: r.name as string,
+    cabin: (r.cabin as string) ?? null,
+    notes: (r.notes as string) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToRestriction(r: Record<string, unknown>): CamperRestriction {
+  return {
+    id: r.id as string,
+    camperId: r.camper_id as string,
+    restriction: r.restriction as string,
+    kind: (r.kind as CamperRestriction['kind']) ?? 'allergen',
+    severity: (r.severity as CamperRestriction['severity']) ?? null,
+    notes: (r.notes as string) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+export interface CommissaryOrderData {
+  orders: PurchaseOrder[];
+  orderLines: PurchaseOrderLine[];
+  expenses: CommissaryExpense[];
+}
+export interface CommissaryProductionData {
+  plans: ProductionPlan[];
+  productionTasks: ProductionTask[];
+}
+export interface CommissaryAllergyData {
+  campers: Camper[];
+  restrictions: CamperRestriction[];
+  /** Aggregate: readable by every member, even those denied camper names. */
+  summary: RestrictionSummaryRow[];
+}
+
+async function loadOrderData(campId: string): Promise<CommissaryOrderData> {
+  const [oRes, lRes, eRes] = await Promise.all([
+    supabase.from('purchase_orders').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
+    supabase.from('purchase_order_lines').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+    supabase.from('commissary_expenses').select('*').eq('camp_id', campId).order('date', { ascending: false }).limit(500),
+  ]);
+  return {
+    orders: (oRes.data ?? []).map((r) => rowToOrder(r as Record<string, unknown>)),
+    orderLines: (lRes.data ?? []).map((r) => rowToOrderLine(r as Record<string, unknown>)),
+    expenses: (eRes.data ?? []).map((r) => rowToExpense(r as Record<string, unknown>)),
+  };
+}
+
+async function loadProductionData(campId: string): Promise<CommissaryProductionData> {
+  const [pRes, tRes] = await Promise.all([
+    supabase.from('production_plans').select('*').eq('camp_id', campId),
+    supabase.from('production_tasks').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+  ]);
+  return {
+    plans: (pRes.data ?? []).map((r) => rowToPlan(r as Record<string, unknown>)),
+    productionTasks: (tRes.data ?? []).map((r) => rowToProductionTask(r as Record<string, unknown>)),
+  };
+}
+
+/**
+ * `campers` and `camper_restrictions` are gated by RLS to admins and health-flagged
+ * staff groups. For everyone else those two selects legitimately return zero rows —
+ * that is not an error, and the summary view still returns counts. Never surface an
+ * empty roster as "no campers"; check canViewCamperNames.
+ */
+async function loadAllergyData(campId: string): Promise<CommissaryAllergyData> {
+  const [cRes, rRes, sRes] = await Promise.all([
+    supabase.from('campers').select('*').eq('camp_id', campId).order('name', { ascending: true }),
+    supabase.from('camper_restrictions').select('*').eq('camp_id', campId),
+    supabase.from('camper_restriction_summary').select('*').eq('camp_id', campId),
+  ]);
+  return {
+    campers: (cRes.data ?? []).map((r) => rowToCamper(r as Record<string, unknown>)),
+    restrictions: (rRes.data ?? []).map((r) => rowToRestriction(r as Record<string, unknown>)),
+    summary: (sRes.data ?? []).map((r) => {
+      const row = r as Record<string, unknown>;
+      return {
+        restriction: row.restriction as string,
+        kind: (row.kind as RestrictionSummaryRow['kind']) ?? 'allergen',
+        camperCount: Number(row.camper_count ?? 0),
+        anaphylacticCount: Number(row.anaphylactic_count ?? 0),
+      };
+    }),
+  };
+}
+
+export async function loadCommissaryOrders(campId: string): Promise<CommissaryOrderData | null> {
+  try { return await loadOrderData(campId); }
+  catch (e) { console.error('[Supabase] loadCommissaryOrders threw:', e); return null; }
+}
+export async function loadCommissaryProduction(campId: string): Promise<CommissaryProductionData | null> {
+  try { return await loadProductionData(campId); }
+  catch (e) { console.error('[Supabase] loadCommissaryProduction threw:', e); return null; }
+}
+export async function loadCommissaryAllergy(campId: string): Promise<CommissaryAllergyData | null> {
+  try { return await loadAllergyData(campId); }
+  catch (e) { console.error('[Supabase] loadCommissaryAllergy threw:', e); return null; }
+}
+
+// Purchase orders
+export async function dbCreateOrder(order: PurchaseOrder, lines: PurchaseOrderLine[]) {
+  const { error: oErr } = await supabase.from('purchase_orders').insert({
+    id: order.id, camp_id: _campId, vendor_id: order.vendorId, vendor_name: order.vendorName,
+    status: order.status, source: order.source, session_id: order.sessionId,
+    week_number: order.weekNumber, subtotal: order.subtotal, delivery_fee: order.deliveryFee,
+    total: order.total, delivery_instructions: order.deliveryInstructions,
+    created_by: order.createdBy, created_at: order.createdAt, updated_at: order.updatedAt,
+  });
+  if (oErr) { console.error('dbCreateOrder error:', oErr.message); return; }
+
+  if (!lines.length) return;
+  const { error: lErr } = await supabase.from('purchase_order_lines').insert(
+    lines.map((l) => ({
+      id: l.id, camp_id: _campId, order_id: order.id, item_id: l.itemId,
+      item_name: l.itemName, stock_unit: l.stockUnit, purchase_unit: l.purchaseUnit,
+      purchase_unit_in_base: l.purchaseUnitInBase, on_hand_base: l.onHandBase,
+      needed_base: l.neededBase, order_qty: l.orderQty, unit_price: l.unitPrice,
+      line_total: l.lineTotal, sort_order: l.sortOrder,
+      created_at: l.createdAt, updated_at: l.updatedAt,
+    })),
+  );
+  if (lErr) console.error('dbCreateOrder lines error:', lErr.message);
+}
+
+export async function dbUpdateOrderStatus(id: string, status: PurchaseOrder['status'], deliveryInstructions?: string | null) {
+  const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+  if (status === 'sent') patch.sent_at = new Date().toISOString();
+  if (deliveryInstructions !== undefined) patch.delivery_instructions = deliveryInstructions;
+  const { error } = await supabase.from('purchase_orders').update(patch).eq('id', id);
+  if (error) console.error('dbUpdateOrderStatus error:', error.message);
+}
+
+export async function dbUpdateOrderLineQty(id: string, orderQty: number, lineTotal: number) {
+  const { error } = await supabase.from('purchase_order_lines')
+    .update({ order_qty: orderQty, line_total: lineTotal, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) console.error('dbUpdateOrderLineQty error:', error.message);
+}
+
+export async function dbUpdateOrderTotals(id: string, subtotal: number, total: number) {
+  const { error } = await supabase.from('purchase_orders')
+    .update({ subtotal, total, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) console.error('dbUpdateOrderTotals error:', error.message);
+}
+
+export async function dbDeleteOrder(id: string) {
+  const { error } = await supabase.from('purchase_orders').delete().eq('id', id);
+  if (error) console.error('dbDeleteOrder error:', error.message);
+}
+
+export async function dbAddOrderLine(orderId: string, l: PurchaseOrderLine) {
+  const { error } = await supabase.from('purchase_order_lines').insert({
+    id: l.id, camp_id: _campId, order_id: orderId, item_id: l.itemId,
+    item_name: l.itemName, stock_unit: l.stockUnit, purchase_unit: l.purchaseUnit,
+    purchase_unit_in_base: l.purchaseUnitInBase, on_hand_base: l.onHandBase,
+    needed_base: l.neededBase, order_qty: l.orderQty, unit_price: l.unitPrice,
+    line_total: l.lineTotal, sort_order: l.sortOrder,
+    created_at: l.createdAt, updated_at: l.updatedAt,
+  });
+  if (error) console.error('dbAddOrderLine error:', error.message);
+}
+
+export async function dbDeleteOrderLine(id: string) {
+  const { error } = await supabase.from('purchase_order_lines').delete().eq('id', id);
+  if (error) console.error('dbDeleteOrderLine error:', error.message);
+}
+
+/**
+ * Books every line into stock and marks the order received, in one transaction.
+ * Returns true on success — the caller must NOT optimistically apply stock changes,
+ * because the RPC is the only thing that knows the authoritative post-increment values.
+ */
+export async function dbReceiveOrder(orderId: string, receivedBy: string | null): Promise<boolean> {
+  const { error } = await supabase.rpc('receive_purchase_order', {
+    p_order_id: orderId,
+    p_received_by: receivedBy,
+  });
+  if (error) { console.error('dbReceiveOrder error:', error.message); return false; }
+  return true;
+}
+
+// Production
+export async function dbSavePlan(plan: ProductionPlan, tasks: ProductionTask[]) {
+  // Regeneration replaces the plan wholesale; tasks cascade on delete.
+  const { error: dErr } = await supabase.from('production_plans')
+    .delete().eq('session_id', plan.sessionId).eq('week_number', plan.weekNumber).eq('day_index', plan.dayIndex);
+  if (dErr) console.error('dbSavePlan delete error:', dErr.message);
+
+  const { error: pErr } = await supabase.from('production_plans').insert({
+    id: plan.id, camp_id: _campId, session_id: plan.sessionId, week_number: plan.weekNumber,
+    day_index: plan.dayIndex, portions: plan.portions, menu_signature: plan.menuSignature,
+    generated_by: plan.generatedBy, generated_at: plan.generatedAt,
+    created_at: plan.createdAt, updated_at: plan.updatedAt,
+  });
+  if (pErr) { console.error('dbSavePlan error:', pErr.message); return; }
+
+  if (!tasks.length) return;
+  const { error: tErr } = await supabase.from('production_tasks').insert(
+    tasks.map((t) => ({
+      id: t.id, camp_id: _campId, plan_id: plan.id, recipe_id: t.recipeId,
+      meal_period: t.mealPeriod, title: t.title, portions: t.portions,
+      ingredients: t.ingredients, allergens: t.allergens, prep_time: t.prepTime,
+      cook_time: t.cookTime, notes: t.notes, is_complete: t.isComplete,
+      sort_order: t.sortOrder, created_at: t.createdAt, updated_at: t.updatedAt,
+    })),
+  );
+  if (tErr) console.error('dbSavePlan tasks error:', tErr.message);
+}
+
+export async function dbToggleProductionTask(id: string, isComplete: boolean, completedBy: string | null) {
+  const { error } = await supabase.from('production_tasks').update({
+    is_complete: isComplete,
+    completed_by: isComplete ? completedBy : null,
+    completed_at: isComplete ? new Date().toISOString() : null,
+    updated_at: new Date().toISOString(),
+  }).eq('id', id);
+  if (error) console.error('dbToggleProductionTask error:', error.message);
+}
+
+export async function dbDeletePlan(id: string) {
+  const { error } = await supabase.from('production_plans').delete().eq('id', id);
+  if (error) console.error('dbDeletePlan error:', error.message);
+}
+
+// Campers + restrictions
+export async function dbAddCamper(c: Camper, restrictions: CamperRestriction[]) {
+  const { error } = await supabase.from('campers').insert({
+    id: c.id, camp_id: _campId, session_id: c.sessionId, name: c.name,
+    cabin: c.cabin, notes: c.notes, created_at: c.createdAt, updated_at: c.updatedAt,
+  });
+  if (error) { console.error('dbAddCamper error:', error.message); return; }
+  if (restrictions.length) await dbReplaceCamperRestrictions(c.id, restrictions);
+}
+
+export async function dbUpdateCamper(c: Camper) {
+  const { error } = await supabase.from('campers').update({
+    name: c.name, cabin: c.cabin, session_id: c.sessionId, notes: c.notes,
+    updated_at: new Date().toISOString(),
+  }).eq('id', c.id);
+  if (error) console.error('dbUpdateCamper error:', error.message);
+}
+
+export async function dbDeleteCamper(id: string) {
+  const { error } = await supabase.from('campers').delete().eq('id', id);
+  if (error) console.error('dbDeleteCamper error:', error.message);
+}
+
+export async function dbReplaceCamperRestrictions(camperId: string, rows: CamperRestriction[]) {
+  const { error: dErr } = await supabase.from('camper_restrictions').delete().eq('camper_id', camperId);
+  if (dErr) console.error('dbReplaceCamperRestrictions delete error:', dErr.message);
+  if (!rows.length) return;
+  const { error } = await supabase.from('camper_restrictions').insert(
+    rows.map((r) => ({
+      id: r.id, camp_id: _campId, camper_id: camperId, restriction: r.restriction,
+      kind: r.kind, severity: r.severity, notes: r.notes,
+      created_at: r.createdAt, updated_at: r.updatedAt,
+    })),
+  );
+  if (error) console.error('dbReplaceCamperRestrictions insert error:', error.message);
+}
+
+/** Bulk roster import. Chunked so a 220-camper CSV does not hit request limits. */
+export async function dbImportCampers(rows: { camper: Camper; restrictions: CamperRestriction[] }[]) {
+  const CHUNK = 50;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    const { error } = await supabase.from('campers').insert(
+      chunk.map(({ camper: c }) => ({
+        id: c.id, camp_id: _campId, session_id: c.sessionId, name: c.name,
+        cabin: c.cabin, notes: c.notes, created_at: c.createdAt, updated_at: c.updatedAt,
+      })),
+    );
+    if (error) { console.error('dbImportCampers error:', error.message); return; }
+
+    const allRestrictions = chunk.flatMap(({ camper, restrictions }) =>
+      restrictions.map((r) => ({
+        id: r.id, camp_id: _campId, camper_id: camper.id, restriction: r.restriction,
+        kind: r.kind, severity: r.severity, notes: r.notes,
+        created_at: r.createdAt, updated_at: r.updatedAt,
+      })),
+    );
+    if (allRestrictions.length) {
+      const { error: rErr } = await supabase.from('camper_restrictions').insert(allRestrictions);
+      if (rErr) console.error('dbImportCampers restrictions error:', rErr.message);
+    }
+  }
+}
+
+export function subscribeToCommissaryOrders(campId: string, onUpdate: (d: CommissaryOrderData) => void, onEventStart?: () => void): () => void {
+  return makeCommissaryChannel(
+    `commissary-orders-${++commissaryChannelCount}`, campId,
+    ['purchase_orders', 'purchase_order_lines', 'commissary_expenses'],
+    loadOrderData, onUpdate, onEventStart,
+  );
+}
+
+export function subscribeToCommissaryProduction(campId: string, onUpdate: (d: CommissaryProductionData) => void, onEventStart?: () => void): () => void {
+  return makeCommissaryChannel(
+    `commissary-production-${++commissaryChannelCount}`, campId,
+    ['production_plans', 'production_tasks'],
+    loadProductionData, onUpdate, onEventStart,
+  );
+}
+
+// Realtime respects RLS, so a client without camper health access receives no events
+// on these tables. Their aggregate refreshes via the app's periodic refetchAll.
+export function subscribeToCommissaryAllergy(campId: string, onUpdate: (d: CommissaryAllergyData) => void, onEventStart?: () => void): () => void {
+  return makeCommissaryChannel(
+    `commissary-allergy-${++commissaryChannelCount}`, campId,
+    ['campers', 'camper_restrictions'],
+    loadAllergyData, onUpdate, onEventStart,
+  );
+}
+
+// ─── Commissary phase 3: mappers ───────────────────────────────────────────────
+
+function rowToExpense(r: Record<string, unknown>): CommissaryExpense {
+  return {
+    id: r.id as string,
+    sessionId: (r.session_id as string) ?? null,
+    date: r.date as string,
+    category: (r.category as CommissaryExpense['category']) ?? 'other',
+    description: (r.description as string) ?? null,
+    amount: Number(r.amount ?? 0),
+    createdBy: (r.created_by as string) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToTemplate(r: Record<string, unknown>): MenuTemplate {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    lengthWeeks: Number(r.length_weeks ?? 1),
+    notes: (r.notes as string) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToTemplateEntry(r: Record<string, unknown>): MenuTemplateEntry {
+  return {
+    id: r.id as string,
+    templateId: r.template_id as string,
+    weekNumber: Number(r.week_number ?? 1),
+    dayIndex: Number(r.day_index ?? 0),
+    mealPeriod: (r.meal_period as MenuTemplateEntry['mealPeriod']) ?? 'breakfast',
+    recipeId: (r.recipe_id as string) ?? null,
+    label: (r.label as string) ?? null,
+    sortOrder: Number(r.sort_order ?? 0),
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToDietCount(r: Record<string, unknown>): DietCount {
+  return {
+    id: r.id as string,
+    sessionId: r.session_id as string,
+    restriction: r.restriction as string,
+    count: Number(r.count ?? 0),
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToMealEvent(r: Record<string, unknown>): MealEvent {
+  return {
+    id: r.id as string,
+    sessionId: r.session_id as string,
+    date: r.date as string,
+    mealPeriod: (r.meal_period as MealEvent['mealPeriod']) ?? null,
+    kind: (r.kind as MealEvent['kind']) ?? 'override',
+    countMode: (r.count_mode as MealEvent['countMode']) ?? 'absolute',
+    count: Number(r.count ?? 0),
+    label: r.label as string,
+    notes: (r.notes as string) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToCountSession(r: Record<string, unknown>): CountSession {
+  return {
+    id: r.id as string,
+    date: r.date as string,
+    countedBy: (r.counted_by as string) ?? null,
+    note: (r.note as string) ?? null,
+    itemCount: Number(r.item_count ?? 0),
+    createdAt: r.created_at as string,
+  };
+}
+
+function rowToStorageMap(r: Record<string, unknown>): StorageMap {
+  return {
+    id: r.id as string,
+    storageLocation: r.storage_location as StorageMap['storageLocation'],
+    safetyItemId: (r.safety_item_id as string) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+// ─── Commissary phase 3: writers ────────────────────────────────────────────────
+
+// Expenses
+export async function dbAddExpense(e: CommissaryExpense) {
+  const { error } = await supabase.from('commissary_expenses').insert({
+    id: e.id, camp_id: _campId, session_id: e.sessionId, date: e.date,
+    category: e.category, description: e.description, amount: e.amount,
+    created_by: e.createdBy, created_at: e.createdAt, updated_at: e.updatedAt,
+  });
+  if (error) console.error('dbAddExpense error:', error.message);
+}
+export async function dbDeleteExpense(id: string) {
+  const { error } = await supabase.from('commissary_expenses').delete().eq('id', id);
+  if (error) console.error('dbDeleteExpense error:', error.message);
+}
+
+// Receiving actuals — write the per-line and per-order actuals, then call the RPC.
+export async function dbSaveReceivingLine(lineId: string, receivedQty: number | null, receivedUnitPrice: number | null, receivedNote: string | null) {
+  const { error } = await supabase.from('purchase_order_lines').update({
+    received_qty: receivedQty, received_unit_price: receivedUnitPrice,
+    received_note: receivedNote, updated_at: new Date().toISOString(),
+  }).eq('id', lineId);
+  if (error) console.error('dbSaveReceivingLine error:', error.message);
+}
+export async function dbSaveOrderInvoice(orderId: string, invoiceTotal: number | null, invoiceNumber: string | null) {
+  const { error } = await supabase.from('purchase_orders').update({
+    invoice_total: invoiceTotal, invoice_number: invoiceNumber, updated_at: new Date().toISOString(),
+  }).eq('id', orderId);
+  if (error) console.error('dbSaveOrderInvoice error:', error.message);
+}
+
+// Menu templates
+export async function dbAddTemplate(t: MenuTemplate) {
+  const { error } = await supabase.from('menu_templates').insert({
+    id: t.id, camp_id: _campId, name: t.name, length_weeks: t.lengthWeeks,
+    notes: t.notes, created_at: t.createdAt, updated_at: t.updatedAt,
+  });
+  if (error) console.error('dbAddTemplate error:', error.message);
+}
+export async function dbUpdateTemplate(t: MenuTemplate) {
+  const { error } = await supabase.from('menu_templates').update({
+    name: t.name, length_weeks: t.lengthWeeks, notes: t.notes, updated_at: new Date().toISOString(),
+  }).eq('id', t.id);
+  if (error) console.error('dbUpdateTemplate error:', error.message);
+}
+export async function dbDeleteTemplate(id: string) {
+  const { error } = await supabase.from('menu_templates').delete().eq('id', id);
+  if (error) console.error('dbDeleteTemplate error:', error.message);
+}
+export async function dbAddTemplateEntry(e: MenuTemplateEntry) {
+  const { error } = await supabase.from('menu_template_entries').insert({
+    id: e.id, camp_id: _campId, template_id: e.templateId, week_number: e.weekNumber,
+    day_index: e.dayIndex, meal_period: e.mealPeriod, recipe_id: e.recipeId,
+    label: e.label, sort_order: e.sortOrder, created_at: e.createdAt, updated_at: e.updatedAt,
+  });
+  if (error) console.error('dbAddTemplateEntry error:', error.message);
+}
+export async function dbDeleteTemplateEntry(id: string) {
+  const { error } = await supabase.from('menu_template_entries').delete().eq('id', id);
+  if (error) console.error('dbDeleteTemplateEntry error:', error.message);
+}
+/** Bulk insert template entries — used by "save week/menu as template". */
+export async function dbAddTemplateEntries(entries: MenuTemplateEntry[]) {
+  if (!entries.length) return;
+  const { error } = await supabase.from('menu_template_entries').insert(
+    entries.map((e) => ({
+      id: e.id, camp_id: _campId, template_id: e.templateId, week_number: e.weekNumber,
+      day_index: e.dayIndex, meal_period: e.mealPeriod, recipe_id: e.recipeId,
+      label: e.label, sort_order: e.sortOrder, created_at: e.createdAt, updated_at: e.updatedAt,
+    })),
+  );
+  if (error) console.error('dbAddTemplateEntries error:', error.message);
+}
+
+// Diet counts (upsert on session+restriction)
+export async function dbUpsertDietCount(d: DietCount) {
+  const { error } = await supabase.from('commissary_diet_counts').upsert({
+    id: d.id, camp_id: _campId, session_id: d.sessionId, restriction: d.restriction,
+    count: d.count, created_at: d.createdAt, updated_at: new Date().toISOString(),
+  }, { onConflict: 'session_id,restriction' });
+  if (error) console.error('dbUpsertDietCount error:', error.message);
+}
+export async function dbDeleteDietCount(id: string) {
+  const { error } = await supabase.from('commissary_diet_counts').delete().eq('id', id);
+  if (error) console.error('dbDeleteDietCount error:', error.message);
+}
+
+// Meal events
+export async function dbAddMealEvent(e: MealEvent) {
+  const { error } = await supabase.from('commissary_meal_events').insert({
+    id: e.id, camp_id: _campId, session_id: e.sessionId, date: e.date,
+    meal_period: e.mealPeriod, kind: e.kind, count_mode: e.countMode, count: e.count,
+    label: e.label, notes: e.notes, created_at: e.createdAt, updated_at: e.updatedAt,
+  });
+  if (error) console.error('dbAddMealEvent error:', error.message);
+}
+export async function dbUpdateMealEvent(e: MealEvent) {
+  const { error } = await supabase.from('commissary_meal_events').update({
+    date: e.date, meal_period: e.mealPeriod, kind: e.kind, count_mode: e.countMode,
+    count: e.count, label: e.label, notes: e.notes, updated_at: new Date().toISOString(),
+  }).eq('id', e.id);
+  if (error) console.error('dbUpdateMealEvent error:', error.message);
+}
+export async function dbDeleteMealEvent(id: string) {
+  const { error } = await supabase.from('commissary_meal_events').delete().eq('id', id);
+  if (error) console.error('dbDeleteMealEvent error:', error.message);
+}
+
+// Count sessions (a physical-count event; the reconciling adjustments go through the RPC)
+export async function dbAddCountSession(c: CountSession) {
+  const { error } = await supabase.from('commissary_count_sessions').insert({
+    id: c.id, camp_id: _campId, date: c.date, counted_by: c.countedBy,
+    note: c.note, item_count: c.itemCount, created_at: c.createdAt,
+  });
+  if (error) console.error('dbAddCountSession error:', error.message);
+}
+
+// Storage → safety temp-item map (upsert on camp+location)
+export async function dbUpsertStorageMap(m: StorageMap) {
+  const { error } = await supabase.from('commissary_storage_map').upsert({
+    id: m.id, camp_id: _campId, storage_location: m.storageLocation,
+    safety_item_id: m.safetyItemId, created_at: m.createdAt, updated_at: new Date().toISOString(),
+  }, { onConflict: 'camp_id,storage_location' });
+  if (error) console.error('dbUpsertStorageMap error:', error.message);
 }

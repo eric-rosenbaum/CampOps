@@ -529,3 +529,370 @@ export interface BuildingSeasonalTask {
   createdAt: string;
   updatedAt: string;
 }
+
+// ─── Commissary ────────────────────────────────────────────────────────────────
+// Unit model note: every quantity below whose name ends in `Base` is stored in the
+// owning item's canonical base unit (each / oz / fl oz). Convert with the helpers
+// in `src/lib/commissaryUnits.ts` — never compare a Base value to a display value.
+
+export type MealPeriod = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+
+export type InventoryCategory =
+  | 'protein' | 'dairy' | 'produce' | 'dry_goods' | 'pantry'
+  | 'frozen' | 'snacks' | 'beverage' | 'other';
+
+export type StorageLocation =
+  | 'walk_in_refrigerator' | 'walk_in_freezer' | 'dry_storage'
+  | 'reach_in_refrigerator' | 'other';
+
+export type AdjustmentReason =
+  | 'received' | 'used' | 'waste' | 'count_correction' | 'other';
+
+export interface CommissarySession {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  // targetPortions = camperCount + staffCount. Staff are separate because seasonal
+  // counselors eat but do not have app accounts.
+  camperCount: number;
+  staffCount: number;
+  isActive: boolean;
+  notes: string | null;
+  /** Budgeted per-diem (cost per person per day) the Cost tab measures against. */
+  budgetPerPersonPerDay: number | null;
+  mealsPerDay: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommissaryVendor {
+  id: string;
+  name: string;
+  specialty: string | null;
+  accountNumber: string | null;
+  repName: string | null;
+  repEmail: string | null;
+  repPhone: string | null;
+  orderCutoff: string | null;
+  deliveryDay: string | null;
+  minOrder: number | null;
+  deliveryFee: number | null;
+  notes: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  category: InventoryCategory;
+  storageLocation: StorageLocation;
+
+  // Unit model. The two `*InBase` factors are facts about THIS item — a case of
+  // eggs is 360 each — so no generic unit table can supply them.
+  dimension: 'count' | 'weight' | 'volume';
+  baseUnit: string;
+  stockUnit: string;
+  stockUnitInBase: number;
+  purchaseUnit: string;
+  purchaseUnitInBase: number;
+  /** Price of ONE purchase unit (per case, per gallon, …). */
+  unitPrice: number | null;
+
+  onHandBase: number;
+  parLevelBase: number;
+
+  vendorId: string | null;
+  /** Canonical allergen slugs. Recipes derive theirs from these by union. */
+  allergens: string[];
+  notes: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InventoryAdjustment {
+  id: string;
+  itemId: string;
+  /** Signed: deliveries positive, waste and usage negative. */
+  deltaBase: number;
+  resultingOnHandBase: number;
+  reason: AdjustmentReason;
+  notes: string | null;
+  adjustedBy: string | null;
+  createdAt: string;
+}
+
+export interface Recipe {
+  id: string;
+  name: string;
+  mealPeriod: MealPeriod;
+  /** Ingredient quantities are expressed per this many portions. */
+  baseYield: number;
+  prepTime: string | null;
+  cookTime: string | null;
+  method: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecipeIngredient {
+  id: string;
+  recipeId: string;
+  /** null = unlinked ingredient (salt, "1 bunch chives"): no demand, no allergens. */
+  itemId: string | null;
+  label: string;
+  qtyInBase: number | null;
+  freeTextQty: string | null;
+  /** null = inherit the item's allergens. [] = explicitly none ("GF bun"). */
+  allergenOverride: string[] | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecipeStep {
+  id: string;
+  recipeId: string;
+  stepNumber: number;
+  instruction: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MenuEntry {
+  id: string;
+  sessionId: string;
+  weekNumber: number;
+  /** 0..6 from the start of the week. */
+  dayIndex: number;
+  mealPeriod: MealPeriod;
+  /** null = free-text chip ("Salad bar"): excluded from demand and allergen math. */
+  recipeId: string | null;
+  label: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Commissary: ordering ──────────────────────────────────────────────────────
+
+export type OrderStatus = 'draft' | 'sent' | 'received' | 'cancelled';
+export type OrderSource = 'menu' | 'par';
+
+export interface PurchaseOrder {
+  id: string;
+  vendorId: string | null;
+  /** Frozen at generation — the order stays readable if the vendor is deleted. */
+  vendorName: string;
+  status: OrderStatus;
+  source: OrderSource;
+  sessionId: string | null;
+  weekNumber: number | null;
+  subtotal: number;
+  deliveryFee: number;
+  total: number;
+  deliveryInstructions: string | null;
+  createdBy: string | null;
+  sentAt: string | null;
+  receivedAt: string | null;
+  /** Actual invoiced total, set at receiving; drives per-diem actual spend when present. */
+  invoiceTotal: number | null;
+  invoiceNumber: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Every field below the FK is a SNAPSHOT: prices and stock move, a sent order must not. */
+export interface PurchaseOrderLine {
+  id: string;
+  orderId: string;
+  itemId: string | null;
+  itemName: string;
+  stockUnit: string;
+  purchaseUnit: string;
+  purchaseUnitInBase: number;
+  onHandBase: number;
+  neededBase: number;
+  /** Whole purchase units. */
+  orderQty: number;
+  unitPrice: number | null;
+  lineTotal: number;
+  // Receiving actuals — null until received. What was booked into stock is
+  // receivedQty ?? orderQty (see the receive_purchase_order RPC).
+  receivedQty: number | null;
+  receivedUnitPrice: number | null;
+  receivedNote: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Commissary: production ────────────────────────────────────────────────────
+
+export interface ProductionPlan {
+  id: string;
+  sessionId: string;
+  weekNumber: number;
+  dayIndex: number;
+  /** Head count frozen at generation. */
+  portions: number;
+  /** Menu entry ids + latest updatedAt for the day. Mismatch => plan is stale. */
+  menuSignature: string;
+  generatedBy: string | null;
+  generatedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductionIngredient {
+  label: string;
+  qty: string;
+  /** false = unlinked ingredient: not scaled, excluded from demand. */
+  linked: boolean;
+}
+
+export interface ProductionTask {
+  id: string;
+  planId: string;
+  recipeId: string | null;
+  mealPeriod: MealPeriod;
+  title: string;
+  portions: number;
+  /** Snapshot of scaled quantities, so a printout and the screen agree. */
+  ingredients: ProductionIngredient[];
+  allergens: string[];
+  prepTime: string | null;
+  cookTime: string | null;
+  notes: string | null;
+  isComplete: boolean;
+  completedBy: string | null;
+  completedAt: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Commissary: allergy program ───────────────────────────────────────────────
+
+export type RestrictionKind = 'allergen' | 'dietary';
+export type RestrictionSeverity = 'intolerance' | 'confirmed' | 'anaphylactic';
+
+export interface Camper {
+  id: string;
+  sessionId: string | null;
+  name: string;
+  cabin: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CamperRestriction {
+  id: string;
+  camperId: string;
+  restriction: string;
+  kind: RestrictionKind;
+  /** null only for dietary preferences. */
+  severity: RestrictionSeverity | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Aggregate readable by EVERY camp member (no names). Drives the kitchen's view and
+ * the menu conflict warnings. Named rosters require health access.
+ */
+export interface RestrictionSummaryRow {
+  restriction: string;
+  kind: RestrictionKind;
+  camperCount: number;
+  anaphylacticCount: number;
+}
+
+// ─── Commissary phase 3: cost, templates, dietary, events, count, compliance ───
+
+export interface CommissaryExpense {
+  id: string;
+  sessionId: string | null;
+  date: string;
+  category: InventoryCategory;
+  description: string | null;
+  amount: number;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MenuTemplate {
+  id: string;
+  name: string;
+  lengthWeeks: number;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MenuTemplateEntry {
+  id: string;
+  templateId: string;
+  weekNumber: number;
+  dayIndex: number;
+  mealPeriod: MealPeriod;
+  recipeId: string | null;
+  label: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Session-level standing count for a restriction ("42 vegetarian"). */
+export interface DietCount {
+  id: string;
+  sessionId: string;
+  restriction: string;
+  count: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type MealEventKind = 'override' | 'bag_lunch' | 'event';
+export type MealEventCountMode = 'absolute' | 'delta';
+
+export interface MealEvent {
+  id: string;
+  sessionId: string;
+  date: string;
+  /** null = whole day. */
+  mealPeriod: MealPeriod | null;
+  kind: MealEventKind;
+  /** absolute = "300 at visiting-day lunch"; delta = "-40 dinner (off-site)". */
+  countMode: MealEventCountMode;
+  count: number;
+  label: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CountSession {
+  id: string;
+  date: string;
+  countedBy: string | null;
+  note: string | null;
+  itemCount: number;
+  createdAt: string;
+}
+
+/** Ties a storage location to the Safety module's temp-logged unit. */
+export interface StorageMap {
+  id: string;
+  storageLocation: StorageLocation;
+  safetyItemId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

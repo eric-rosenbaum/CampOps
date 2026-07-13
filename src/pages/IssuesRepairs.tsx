@@ -11,11 +11,13 @@ import { useIssuesStore } from '@/store/issuesStore';
 import { useUIStore } from '@/store/uiStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useSafetyStore } from '@/store/safetyStore';
+import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import { formatCost } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Download, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import type { Issue } from '@/lib/types';
 
 type FilterType = 'all' | 'urgent' | 'unassigned' | 'in_progress' | 'resolved' | 'public';
 
@@ -28,6 +30,52 @@ const filterLabels: { key: FilterType; label: string }[] = [
   { key: 'public', label: 'Public reports' },
 ];
 
+const statusLabels: Record<string, string> = {
+  unassigned: 'Unassigned',
+  assigned: 'Assigned',
+  in_progress: 'In progress',
+  resolved: 'Resolved',
+};
+
+function csvCell(v: string | number | null): string {
+  const s = v == null ? '' : String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function issuesToCsv(issues: Issue[], memberName: (id: string | null) => string | null): string {
+  const header = [
+    'Title', 'Status', 'Priority', 'Locations', 'Assignee', 'Reported by', 'Source',
+    'Estimated cost', 'Actual cost', 'Due date', 'Created', 'Last updated', 'Description',
+  ];
+  const rows = issues.map((i) => [
+    i.title,
+    statusLabels[i.status] ?? i.status,
+    i.priority,
+    i.locations.join('; '),
+    memberName(i.assigneeId) ?? '',
+    i.isPublicReport ? (i.reporterName ?? '') : (memberName(i.reportedById) ?? ''),
+    i.isPublicReport ? 'Public report' : 'Staff',
+    i.estimatedCostDisplay ?? '',
+    i.actualCost ?? '',
+    i.dueDate ? format(new Date(i.dueDate), 'yyyy-MM-dd') : '',
+    format(new Date(i.createdAt), 'yyyy-MM-dd HH:mm'),
+    format(new Date(i.updatedAt), 'yyyy-MM-dd HH:mm'),
+    i.description,
+  ]);
+  return [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n');
+}
+
+function downloadCsv(filename: string, text: string) {
+  // Prepend a BOM so Excel reads the file as UTF-8.
+  const blob = new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function IssuesRepairs() {
   const {
     filter, setFilter, searchQuery, setSearch,
@@ -38,6 +86,7 @@ export function IssuesRepairs() {
   const { openLogIssueModal, isLogIssueModalOpen } = useUIStore();
   const { season } = useChecklistStore();
   const { failedLastInspectionItems } = useSafetyStore();
+  const members = useCampStore((s) => s.members);
   const { can, role, currentUser, issuesSeeUnassigned } = useAuth();
 
   const failedDevices = failedLastInspectionItems();
@@ -53,6 +102,14 @@ export function IssuesRepairs() {
   }, [storeFiltered, role, currentUser.id, issuesSeeUnassigned]);
 
   const selectedIssue = issues.find((i) => i.id === selectedIssueId);
+
+  // Exports exactly what the user is looking at — current filter + search, in list order.
+  function handleExport() {
+    const memberName = (userId: string | null) =>
+      userId ? (members.find((m) => m.userId === userId)?.fullName ?? null) : null;
+    const stamp = format(new Date(), 'yyyy-MM-dd');
+    downloadCsv(`issues-${filter}-${stamp}.csv`, issuesToCsv(filtered, memberName));
+  }
 
   function handleTakeIssue(issueId: string) {
     const now = new Date().toISOString();
@@ -84,9 +141,17 @@ export function IssuesRepairs() {
         subtitle={subtitle}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleExport}
+              disabled={filtered.length === 0}
+              title={filtered.length === 0
+                ? 'Nothing to export'
+                : `Export ${filtered.length} issue${filtered.length !== 1 ? 's' : ''} as CSV`}
+            >
               <Download className="w-3.5 h-3.5" />
-              Export report
+              Export CSV
             </Button>
             {can('createIssue') && (
               <Button size="sm" onClick={openLogIssueModal}>

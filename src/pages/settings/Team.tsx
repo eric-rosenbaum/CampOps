@@ -19,6 +19,7 @@ const MODULE_LABELS: Record<keyof StaffGroupModules, string> = {
   safety: 'Safety & Compliance',
   assets: 'Assets & Vehicles',
   building_systems: 'Building Systems',
+  commissary: 'Commissary',
 };
 
 const ALL_MODULES = Object.keys(MODULE_LABELS) as (keyof StaffGroupModules)[];
@@ -30,6 +31,7 @@ const EMPTY_MODULES: StaffGroupModules = {
   safety: false,
   assets: false,
   building_systems: false,
+  commissary: false,
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -43,8 +45,8 @@ function ModuleBadge({ label }: { label: string }) {
 }
 
 interface GroupFormProps {
-  initial?: { name: string; modules: StaffGroupModules; issuesSeeUnassigned: boolean; prepostSeeUnassigned: boolean };
-  onSave: (name: string, modules: StaffGroupModules, issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean) => Promise<void>;
+  initial?: { name: string; modules: StaffGroupModules; issuesSeeUnassigned: boolean; prepostSeeUnassigned: boolean; canViewCamperHealth: boolean };
+  onSave: (name: string, modules: StaffGroupModules, issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean, canViewCamperHealth: boolean) => Promise<void>;
   onCancel: () => void;
   saving: boolean;
 }
@@ -56,6 +58,7 @@ function GroupForm({ initial, onSave, onCancel, saving }: GroupFormProps) {
   );
   const [issuesSeeUnassigned, setIssuesSeeUnassigned] = useState(initial?.issuesSeeUnassigned ?? false);
   const [prepostSeeUnassigned, setPrepostSeeUnassigned] = useState(initial?.prepostSeeUnassigned ?? false);
+  const [canViewCamperHealth, setCanViewCamperHealth] = useState(initial?.canViewCamperHealth ?? false);
 
   function toggleModule(key: keyof StaffGroupModules) {
     setModules((m) => ({ ...m, [key]: !m[key] }));
@@ -64,7 +67,7 @@ function GroupForm({ initial, onSave, onCancel, saving }: GroupFormProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    await onSave(name.trim(), modules, issuesSeeUnassigned, prepostSeeUnassigned);
+    await onSave(name.trim(), modules, issuesSeeUnassigned, prepostSeeUnassigned, canViewCamperHealth);
   }
 
   return (
@@ -127,6 +130,28 @@ function GroupForm({ initial, onSave, onCancel, saving }: GroupFormProps) {
           <p className="text-[10px] text-forest/40 pt-0.5">
             Staff never see tasks assigned to other people — only their own and optionally unassigned ones.
           </p>
+        </div>
+      )}
+
+      {modules.commissary && (
+        <div className="bg-red-bg border border-red/20 rounded-lg px-3 py-2.5 space-y-1.5">
+          <p className="text-[11px] font-medium text-red/80 mb-1">Camper health data</p>
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={canViewCamperHealth}
+              onChange={(e) => setCanViewCamperHealth(e.target.checked)}
+              className="w-3.5 h-3.5 accent-forest mt-0.5"
+            />
+            <span className="text-[12px] text-forest">
+              Can view camper names, cabins and allergy severities
+              <span className="block text-[11px] text-forest/50 mt-0.5 leading-relaxed">
+                Leave off for kitchen staff: they still see allergen counts and which recipes
+                conflict, which is what they need to cook safely. Enforced in the database,
+                not just hidden in the interface.
+              </span>
+            </span>
+          </label>
         </div>
       )}
 
@@ -246,11 +271,11 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
 
   async function handleSaveEdit(
     name: string, modules: StaffGroupModules,
-    issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean
+    issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean, canViewCamperHealth: boolean
   ) {
     setSavingEdit(true);
     try {
-      await updateStaffGroup(group.id, { name, modules, issuesSeeUnassigned, prepostSeeUnassigned });
+      await updateStaffGroup(group.id, { name, modules, issuesSeeUnassigned, prepostSeeUnassigned, canViewCamperHealth });
       setEditing(false);
     } finally {
       setSavingEdit(false);
@@ -333,6 +358,7 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
                 modules: group.modules,
                 issuesSeeUnassigned: group.issuesSeeUnassigned,
                 prepostSeeUnassigned: group.prepostSeeUnassigned,
+                canViewCamperHealth: group.canViewCamperHealth,
               }}
               onSave={handleSaveEdit}
               onCancel={() => setEditing(false)}
@@ -341,13 +367,16 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
           ) : (
             <>
               {/* Visibility notes */}
-              {(group.modules.issues_repairs || group.modules.pre_post) && (
+              {(group.modules.issues_repairs || group.modules.pre_post || group.modules.commissary) && (
                 <div className="mb-3 text-[11px] text-forest/50 space-y-0.5">
                   {group.modules.issues_repairs && (
                     <p>Issues & Repairs: {group.issuesSeeUnassigned ? 'assigned to them + unassigned' : 'assigned to them only'}</p>
                   )}
                   {group.modules.pre_post && (
                     <p>Pre/Post Camp: {group.prepostSeeUnassigned ? 'assigned to them + unassigned' : 'assigned to them only'}</p>
+                  )}
+                  {group.modules.commissary && (
+                    <p>Camper health data: {group.canViewCamperHealth ? 'names + severities visible' : 'aggregate counts only'}</p>
                   )}
                 </div>
               )}
@@ -499,11 +528,11 @@ export function Team() {
 
   async function handleCreateGroup(
     name: string, modules: StaffGroupModules,
-    issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean
+    issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean, canViewCamperHealth: boolean
   ) {
     setSavingGroup(true);
     try {
-      await createStaffGroup(campId, name, modules, issuesSeeUnassigned, prepostSeeUnassigned);
+      await createStaffGroup(campId, name, modules, issuesSeeUnassigned, prepostSeeUnassigned, canViewCamperHealth);
       setShowCreateGroup(false);
     } finally {
       setSavingGroup(false);

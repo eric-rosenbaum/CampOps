@@ -21,6 +21,7 @@ const ROLE_PERMISSIONS = {
   manageSafetyItems:    ['admin', 'staff'] as CampRole[],
   manageAssets:         ['admin', 'staff'] as CampRole[],
   manageBuildingSystems:['admin', 'staff'] as CampRole[],
+  manageCommissary:     ['admin', 'staff'] as CampRole[],
   enterActualCost:      ['admin'] as CampRole[],
   activateNewSeason:    ['admin'] as CampRole[],
   manageSafetyStaff:    ['admin'] as CampRole[],
@@ -82,6 +83,13 @@ export function useAuth() {
   const prepostSeeUnassigned =
     role !== 'staff' || !currentStaffGroup || currentStaffGroup.prepostSeeUnassigned;
 
+  // Camper names + allergy severities. Unlike every other gate here, this one is
+  // mirrored by real RLS (has_camper_health_access) — this flag only decides what the
+  // UI bothers to render. It also FAILS CLOSED: a staff member with no group is denied,
+  // where elsewhere no group means legacy full access.
+  const canViewCamperHealth =
+    role === 'admin' || (role === 'staff' && Boolean(currentStaffGroup?.canViewCamperHealth));
+
   return {
     currentUser,
     role,
@@ -92,5 +100,6 @@ export function useAuth() {
     canAccessModule,
     issuesSeeUnassigned,
     prepostSeeUnassigned,
+    canViewCamperHealth,
   };
 }

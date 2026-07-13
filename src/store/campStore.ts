@@ -14,6 +14,7 @@ export interface StaffGroupModules {
   safety: boolean;
   assets: boolean;
   building_systems: boolean;
+  commissary: boolean;
 }
 
 export interface StaffGroup {
@@ -23,6 +24,13 @@ export interface StaffGroup {
   modules: StaffGroupModules;
   issuesSeeUnassigned: boolean;
   prepostSeeUnassigned: boolean;
+  /**
+   * Grants this group's members camper NAMES and allergy severities. Enforced in
+   * Postgres by has_camper_health_access(), not just in the UI — health data is the
+   * one place where a client-side module check is not sufficient. Staff with no group
+   * are denied (elsewhere, no group means legacy full access; here it fails closed).
+   */
+  canViewCamperHealth: boolean;
   createdAt: string;
 }
 
@@ -46,6 +54,8 @@ export interface Camp {
   state: string | null;
   modules: Record<string, boolean>;
   locations: string[];
+  /** Camp-wide dietary facts, e.g. { kosher: true }. Used by Commissary. */
+  dietaryDefaults: Record<string, boolean>;
 }
 
 export interface MemberWithProfile extends CampMember {
@@ -95,7 +105,7 @@ interface CampState {
   }) => Promise<string>;
   joinWithCode: (code: string) => Promise<{ campId: string; campName: string } | { error: string }>;
   acceptInvitation: (token: string) => Promise<{ campId: string } | { error: string }>;
-  updateCamp: (campId: string, data: Partial<Pick<Camp, 'name' | 'campType' | 'state' | 'modules' | 'locations'>>) => Promise<void>;
+  updateCamp: (campId: string, data: Partial<Pick<Camp, 'name' | 'campType' | 'state' | 'modules' | 'locations' | 'dietaryDefaults'>>) => Promise<void>;
 
   loadMembers: (campId: string) => Promise<MemberWithProfile[]>;
   inviteMember: (campId: string, email: string, role: CampRole, staffGroupId: string | null) => Promise<string>;
@@ -110,8 +120,8 @@ interface CampState {
   revokeInvitation: (invId: string) => Promise<void>;
 
   loadStaffGroups: (campId: string) => Promise<StaffGroup[]>;
-  createStaffGroup: (campId: string, name: string, modules: StaffGroupModules, issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean) => Promise<StaffGroup>;
-  updateStaffGroup: (groupId: string, patch: Partial<Pick<StaffGroup, 'name' | 'modules' | 'issuesSeeUnassigned' | 'prepostSeeUnassigned'>>) => Promise<void>;
+  createStaffGroup: (campId: string, name: string, modules: StaffGroupModules, issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean, canViewCamperHealth?: boolean) => Promise<StaffGroup>;
+  updateStaffGroup: (groupId: string, patch: Partial<Pick<StaffGroup, 'name' | 'modules' | 'issuesSeeUnassigned' | 'prepostSeeUnassigned' | 'canViewCamperHealth'>>) => Promise<void>;
   deleteStaffGroup: (groupId: string) => Promise<void>;
 }
 
@@ -151,6 +161,7 @@ export const useCampStore = create<CampState>((set, get) => ({
           state: (c.state as string) ?? null,
           modules: (c.modules as Record<string, boolean>) ?? {},
           locations: (c.locations as string[]) ?? [],
+          dietaryDefaults: (c.dietary_defaults as Record<string, boolean>) ?? {},
         });
       }
     }
@@ -209,6 +220,7 @@ export const useCampStore = create<CampState>((set, get) => ({
       state: campRow.state ?? null,
       modules: campRow.modules ?? {},
       locations: (campRow.locations as string[]) ?? [],
+      dietaryDefaults: (campRow.dietary_defaults as Record<string, boolean>) ?? {},
     };
 
     localStorage.setItem('campcommand_selected_camp_id', campId);
@@ -267,6 +279,7 @@ export const useCampStore = create<CampState>((set, get) => ({
           ...(data.state !== undefined && { state: data.state }),
           ...(data.modules !== undefined && { modules: data.modules }),
           ...(data.locations !== undefined && { locations: data.locations }),
+          ...(data.dietaryDefaults !== undefined && { dietaryDefaults: data.dietaryDefaults }),
         },
       });
     }
@@ -278,6 +291,7 @@ export const useCampStore = create<CampState>((set, get) => ({
       p_state: data.state ?? null,
       p_modules: data.modules ?? null,
       p_locations: data.locations ?? null,
+      p_dietary_defaults: data.dietaryDefaults ?? null,
     });
     if (error) console.error('[campStore] updateCamp error:', error);
   },
@@ -445,6 +459,7 @@ export const useCampStore = create<CampState>((set, get) => ({
       modules: r.modules as StaffGroupModules,
       issuesSeeUnassigned: r.issues_see_unassigned,
       prepostSeeUnassigned: r.prepost_see_unassigned,
+      canViewCamperHealth: r.can_view_camper_health ?? false,
       createdAt: r.created_at,
     }));
 
@@ -452,7 +467,7 @@ export const useCampStore = create<CampState>((set, get) => ({
     return groups;
   },
 
-  createStaffGroup: async (campId, name, modules, issuesSeeUnassigned, prepostSeeUnassigned) => {
+  createStaffGroup: async (campId, name, modules, issuesSeeUnassigned, prepostSeeUnassigned, canViewCamperHealth = false) => {
     const { data, error } = await supabase
       .from('staff_groups')
       .insert({
@@ -461,6 +476,7 @@ export const useCampStore = create<CampState>((set, get) => ({
         modules,
         issues_see_unassigned: issuesSeeUnassigned,
         prepost_see_unassigned: prepostSeeUnassigned,
+        can_view_camper_health: canViewCamperHealth,
       })
       .select()
       .single();
@@ -474,6 +490,7 @@ export const useCampStore = create<CampState>((set, get) => ({
       modules: data.modules as StaffGroupModules,
       issuesSeeUnassigned: data.issues_see_unassigned,
       prepostSeeUnassigned: data.prepost_see_unassigned,
+      canViewCamperHealth: data.can_view_camper_health ?? false,
       createdAt: data.created_at,
     };
 
@@ -487,6 +504,7 @@ export const useCampStore = create<CampState>((set, get) => ({
     if (patch.modules !== undefined) row.modules = patch.modules;
     if (patch.issuesSeeUnassigned !== undefined) row.issues_see_unassigned = patch.issuesSeeUnassigned;
     if (patch.prepostSeeUnassigned !== undefined) row.prepost_see_unassigned = patch.prepostSeeUnassigned;
+    if (patch.canViewCamperHealth !== undefined) row.can_view_camper_health = patch.canViewCamperHealth;
 
     const { error } = await supabase.from('staff_groups').update(row).eq('id', groupId);
     if (error) throw new Error(error.message);

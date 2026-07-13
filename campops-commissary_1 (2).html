@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CampOps — Commissary</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --forest: #1a2e1a; --forest-mid: #2d4a2d; --sage: #7aab6e; --sage-light: #a8c99f;
+  --cream: #f5f2eb; --cream-dark: #ede9df;
+  --amber: #c47d08; --amber-bg: #fef5e4; --amber-text: #7d4e00;
+  --red: #c0392b; --red-bg: #fdecea; --red-text: #7a1a1a;
+  --green: #1e6b1e; --green-bg: #eaf3e8;
+  --blue: #185fa5; --blue-bg: #e6f1fb; --blue-text: #0c447c;
+  --purple: #6b3fa0; --purple-bg: #f0ebfc; --purple-text: #3d1f6b;
+  --text-primary: #1a2e1a; --text-secondary: #4a6741; --text-muted: #7a9472;
+  --border: #d4cfc4; --white: #ffffff;
+}
+html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--text-primary); }
+.app { display: flex; height: 100vh; overflow: hidden; }
+
+/* Sidebar */
+.sidebar { width: 224px; background: var(--forest); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+.sidebar-logo { padding: 22px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.logo-mark { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; color: var(--sage-light); letter-spacing: 0.08em; text-transform: uppercase; }
+.logo-sub { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 3px; }
+.sidebar-nav { padding: 10px 0; flex: 1; }
+.nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(255,255,255,0.22); padding: 10px 20px 4px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.5); cursor: pointer; border-left: 2px solid transparent; transition: all 0.15s; }
+.nav-item:hover { color: rgba(255,255,255,0.82); background: rgba(255,255,255,0.05); }
+.nav-item.active { color: var(--sage-light); background: rgba(122,171,110,0.14); border-left-color: var(--sage); }
+.nav-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.sidebar-footer { padding: 14px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
+.camp-name { color: rgba(255,255,255,0.65); font-weight: 500; font-size: 12px; }
+.camp-user { color: rgba(255,255,255,0.3); font-size: 11px; margin-top: 2px; }
+
+/* Main */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.page-title { font-size: 18px; font-weight: 600; }
+.page-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.topbar-right { display: flex; gap: 10px; align-items: center; }
+.btn { padding: 8px 16px; border-radius: 7px; font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: var(--forest); color: white; }
+.btn-primary:hover { background: var(--forest-mid); }
+.btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--cream-dark); }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-danger { color: var(--red); border-color: var(--red); background: transparent; }
+.btn-danger:hover { background: var(--red-bg); }
+
+/* Module tabs */
+.mod-bar { background: var(--white); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; flex-shrink: 0; overflow-x: auto; }
+.mod-tab { padding: 12px 18px; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.15s; user-select: none; }
+.mod-tab:hover { color: var(--text-secondary); }
+.mod-tab.active { color: var(--forest); border-bottom-color: var(--sage); font-weight: 600; }
+
+.content { flex: 1; overflow-y: auto; padding: 24px 28px; display: none; }
+.content.active { display: block; }
+
+/* Stat cards */
+.stat-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+.stat-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+.stat-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.stat-val { font-size: 28px; font-weight: 600; font-family: 'DM Mono', monospace; margin-top: 5px; color: var(--text-primary); }
+.stat-hint { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.stat-card.alert .stat-val { color: var(--red); } .stat-card.alert .stat-hint { color: var(--red); }
+.stat-card.warn .stat-val { color: var(--amber); } .stat-card.warn .stat-hint { color: var(--amber); }
+.stat-card.ok .stat-val { color: var(--green); } .stat-card.ok .stat-hint { color: var(--text-muted); }
+
+/* Banners */
+.alert-banner { background: var(--red-bg); border: 1px solid #f5c0bc; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+.alert-icon { width: 20px; height: 20px; background: var(--red); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: 700; flex-shrink: 0; }
+.alert-text { font-size: 13px; color: var(--red-text); flex: 1; line-height: 1.5; }
+.alert-btn { font-size: 12px; font-weight: 600; color: var(--red); border: 1px solid var(--red); padding: 5px 12px; border-radius: 5px; background: transparent; font-family: 'DM Sans', sans-serif; cursor: pointer; white-space: nowrap; }
+.warn-banner { background: var(--amber-bg); border: 1px solid #f5d98a; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+.warn-icon { width: 20px; height: 20px; background: var(--amber); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: 700; flex-shrink: 0; }
+.warn-text { font-size: 13px; color: var(--amber-text); flex: 1; line-height: 1.5; }
+
+/* Section headers */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; margin-top: 4px; }
+.section-title { font-size: 14px; font-weight: 600; }
+
+/* Badges */
+.badge { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; display: inline-block; }
+.badge-ok { background: var(--green-bg); color: var(--green); }
+.badge-warn { background: var(--amber-bg); color: var(--amber-text); }
+.badge-alert { background: var(--red-bg); color: var(--red); }
+.badge-neutral { background: var(--cream-dark); color: var(--text-secondary); }
+.badge-blue { background: var(--blue-bg); color: var(--blue-text); }
+.badge-purple { background: var(--purple-bg); color: var(--purple-text); }
+
+/* ═══════════════════════════════════════
+   MODULE 1: INVENTORY
+═══════════════════════════════════════ */
+.inv-toolbar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+.pill { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--white); color: var(--text-secondary); transition: all 0.15s; user-select: none; }
+.pill.on { background: var(--forest); color: white; border-color: var(--forest); }
+.pill:hover:not(.on) { background: var(--cream-dark); }
+.spacer { flex: 1; }
+.search-box { padding: 7px 14px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; font-family: 'DM Sans', sans-serif; width: 200px; outline: none; background: var(--white); color: var(--text-primary); }
+.search-box:focus { border-color: var(--sage); }
+
+.inv-table { background: var(--white); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
+.inv-head { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 120px; padding: 10px 18px; background: var(--cream-dark); border-bottom: 1px solid var(--border); }
+.inv-head span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.inv-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 120px; padding: 11px 18px; border-bottom: 1px solid var(--cream-dark); align-items: center; transition: background 0.12s; cursor: pointer; }
+.inv-row:last-child { border-bottom: none; }
+.inv-row:hover { background: var(--cream-dark); }
+.inv-name { font-size: 13px; font-weight: 500; }
+.inv-cat { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.inv-val { font-size: 13px; font-family: 'DM Mono', monospace; }
+.inv-val.ok { color: var(--green); }
+.inv-val.warn { color: var(--amber); }
+.inv-val.alert { color: var(--red); }
+
+.stock-bar-bg { width: 80px; height: 6px; background: var(--cream-dark); border-radius: 99px; }
+.stock-bar-fill { height: 6px; border-radius: 99px; }
+.fill-ok { background: var(--sage); }
+.fill-warn { background: var(--amber); }
+.fill-alert { background: var(--red); }
+
+/* ═══════════════════════════════════════
+   MODULE 2: MENU BUILDER
+═══════════════════════════════════════ */
+.menu-week-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.week-nav { display: flex; align-items: center; gap: 12px; }
+.week-label { font-size: 15px; font-weight: 600; }
+.week-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); background: var(--white); color: var(--text-secondary); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.week-btn:hover { background: var(--cream-dark); }
+
+.menu-grid { display: grid; grid-template-columns: 80px repeat(7,1fr); gap: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 24px; background: var(--white); }
+.menu-col-head { padding: 10px 8px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); text-align: center; background: var(--cream-dark); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.menu-col-head:last-child { border-right: none; }
+.menu-row-label { padding: 10px 8px; font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--cream-dark); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; text-orientation: mixed; }
+.menu-cell { padding: 6px 8px; border-right: 1px solid var(--cream-dark); border-bottom: 1px solid var(--cream-dark); min-height: 90px; cursor: pointer; transition: background 0.12s; vertical-align: top; }
+.menu-cell:hover { background: var(--cream); }
+.menu-cell:last-child { border-right: none; }
+.menu-meal-chip { background: var(--sage-light); color: var(--forest); font-size: 10px; font-weight: 500; padding: 3px 6px; border-radius: 4px; margin-bottom: 3px; line-height: 1.3; cursor: pointer; }
+.menu-meal-chip:hover { background: var(--sage); color: white; }
+.menu-meal-chip.has-allergen { background: var(--amber-bg); color: var(--amber-text); }
+.menu-add { font-size: 10px; color: var(--text-muted); cursor: pointer; padding: 2px 0; }
+.menu-add:hover { color: var(--sage); }
+
+.camper-count-bar { background: var(--blue-bg); border: 1px solid #b5d4f4; border-radius: 10px; padding: 12px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; }
+.camper-count-label { font-size: 12px; color: var(--blue-text); font-weight: 600; }
+.camper-count-input { width: 80px; padding: 6px 10px; border: 1px solid #b5d4f4; border-radius: 6px; font-size: 14px; font-family: 'DM Mono', monospace; font-weight: 600; color: var(--blue-text); background: var(--white); outline: none; text-align: center; }
+.camper-count-note { font-size: 11px; color: var(--blue-text); }
+
+/* ═══════════════════════════════════════
+   MODULE 3: RECIPE GUIDE
+═══════════════════════════════════════ */
+.recipe-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+.recipe-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.recipe-header { padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.recipe-header:hover { background: var(--cream); }
+.recipe-title { font-size: 14px; font-weight: 600; }
+.recipe-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.recipe-header-right { display: flex; gap: 8px; align-items: center; }
+.recipe-body { display: none; padding: 0 18px 16px; border-top: 1px solid var(--cream-dark); }
+.recipe-body.open { display: block; }
+.recipe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 14px; }
+.recipe-ingredients { }
+.recipe-ing-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 8px; }
+.ing-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--cream-dark); font-size: 13px; }
+.ing-row:last-child { border-bottom: none; }
+.ing-name { color: var(--text-primary); }
+.ing-qty { font-family: 'DM Mono', monospace; color: var(--text-secondary); font-size: 12px; }
+.ing-allergen { font-size: 9px; font-weight: 600; background: var(--amber-bg); color: var(--amber-text); padding: 1px 5px; border-radius: 3px; text-transform: uppercase; margin-left: 4px; }
+.recipe-instructions { }
+.recipe-inst-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 8px; }
+.recipe-step { display: flex; gap: 10px; padding: 6px 0; font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.recipe-step-num { width: 20px; height: 20px; background: var(--sage); border-radius: 50%; font-size: 10px; font-weight: 700; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.scale-bar { display: flex; align-items: center; gap: 10px; background: var(--cream); border-radius: 8px; padding: 10px 14px; margin-top: 12px; }
+.scale-label { font-size: 12px; color: var(--text-muted); }
+.scale-input { width: 70px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: 'DM Mono', monospace; text-align: center; outline: none; }
+.scale-input:focus { border-color: var(--sage); }
+.scale-note { font-size: 11px; color: var(--text-muted); }
+
+/* ═══════════════════════════════════════
+   MODULE 4: PRODUCTION GUIDE
+═══════════════════════════════════════ */
+.prod-day-selector { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+.day-pill { padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--white); color: var(--text-secondary); transition: all 0.15s; }
+.day-pill.on { background: var(--forest); color: white; border-color: var(--forest); }
+.day-pill:hover:not(.on) { background: var(--cream-dark); }
+
+.prod-meal-block { background: var(--white); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+.prod-meal-header { padding: 12px 18px; background: var(--cream-dark); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+.prod-meal-title { font-size: 14px; font-weight: 600; }
+.prod-meal-meta { font-size: 11px; color: var(--text-muted); }
+.prod-items { padding: 14px 18px; }
+.prod-item { display: flex; align-items: flex-start; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--cream-dark); }
+.prod-item:last-child { border-bottom: none; }
+.prod-check { width: 18px; height: 18px; border: 1.5px solid var(--border); border-radius: 4px; flex-shrink: 0; cursor: pointer; transition: all 0.15s; background: var(--white); display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+.prod-check.done { background: var(--sage); border-color: var(--sage); }
+.prod-check.done::after { content: '✓'; font-size: 11px; color: white; font-weight: 700; }
+.prod-item-body { flex: 1; }
+.prod-item-name { font-size: 13px; font-weight: 600; }
+.prod-item-name.done { text-decoration: line-through; color: var(--text-muted); }
+.prod-item-yield { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.prod-ingredients { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.prod-ing-chip { font-size: 10px; background: var(--cream-dark); color: var(--text-secondary); padding: 2px 7px; border-radius: 4px; font-family: 'DM Mono', monospace; }
+.prod-item-time { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.prod-notes { margin-top: 4px; font-size: 11px; color: var(--amber-text); background: var(--amber-bg); padding: 4px 8px; border-radius: 4px; }
+
+/* ═══════════════════════════════════════
+   MODULE 5: ALLERGY PROGRAM
+═══════════════════════════════════════ */
+.allergy-summary { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; margin-bottom: 20px; }
+.allergy-chip { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; text-align: center; }
+.allergy-chip-val { font-size: 22px; font-weight: 600; font-family: 'DM Mono', monospace; }
+.allergy-chip-label { font-size: 10px; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.camper-allergy-table { background: var(--white); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
+.ca-head { display: grid; grid-template-columns: 160px 120px repeat(8,1fr); padding: 10px 14px; background: var(--cream-dark); border-bottom: 1px solid var(--border); }
+.ca-head span { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); text-align: center; }
+.ca-head span:first-child { text-align: left; }
+.ca-head span:nth-child(2) { text-align: left; }
+.ca-row { display: grid; grid-template-columns: 160px 120px repeat(8,1fr); padding: 9px 14px; border-bottom: 1px solid var(--cream-dark); align-items: center; }
+.ca-row:last-child { border-bottom: none; }
+.ca-row:hover { background: var(--cream); }
+.ca-name { font-size: 13px; font-weight: 500; }
+.ca-cabin { font-size: 11px; color: var(--text-muted); }
+.allergy-dot { width: 20px; height: 20px; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white; }
+.adot-yes { background: var(--red); }
+.adot-no { background: var(--cream-dark); }
+.adot-note { background: var(--amber); }
+
+.menu-allergy-table { background: var(--white); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
+.ma-head { display: grid; grid-template-columns: 2fr repeat(8,1fr); padding: 10px 14px; background: var(--cream-dark); border-bottom: 1px solid var(--border); }
+.ma-head span { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); text-align: center; }
+.ma-head span:first-child { text-align: left; }
+.ma-row { display: grid; grid-template-columns: 2fr repeat(8,1fr); padding: 9px 14px; border-bottom: 1px solid var(--cream-dark); align-items: center; }
+.ma-row:last-child { border-bottom: none; }
+.ma-row:hover { background: var(--cream); }
+.ma-meal { font-size: 13px; font-weight: 500; }
+.ma-period { font-size: 11px; color: var(--text-muted); }
+.allergy-flag { width: 20px; height: 20px; border-radius: 4px; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; }
+.aflag-yes { background: var(--red-bg); color: var(--red); }
+.aflag-no { background: var(--cream-dark); color: var(--text-muted); }
+.aflag-trace { background: var(--amber-bg); color: var(--amber-text); }
+
+/* ═══════════════════════════════════════
+   MODULE 6: ORDERING
+═══════════════════════════════════════ */
+.order-summary-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 20px; }
+
+.order-vendor-block { background: var(--white); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+.order-vendor-header { padding: 14px 18px; background: var(--cream-dark); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.order-vendor-name { font-size: 14px; font-weight: 600; }
+.order-vendor-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.order-vendor-total { font-size: 14px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--forest); }
+
+.order-item-table { width: 100%; }
+.oi-head { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; padding: 8px 18px; }
+.oi-head span { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.oi-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; padding: 10px 18px; border-top: 1px solid var(--cream-dark); align-items: center; }
+.oi-row:hover { background: var(--cream); }
+.oi-name { font-size: 13px; font-weight: 500; }
+.oi-cat { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.oi-val { font-size: 13px; font-family: 'DM Mono', monospace; color: var(--text-secondary); }
+.oi-val.needed { color: var(--forest); font-weight: 600; }
+.oi-val.short { color: var(--red); font-weight: 600; }
+.oi-checkbox { width: 16px; height: 16px; cursor: pointer; }
+
+.order-actions { display: flex; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--border); background: var(--cream); }
+
+/* Modal */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(20,36,20,0.5); z-index: 200; align-items: center; justify-content: center; }
+.overlay.open { display: flex; }
+.modal { background: var(--white); border-radius: 14px; width: 500px; max-height: 90vh; overflow-y: auto; padding: 28px; box-shadow: 0 16px 48px rgba(20,36,20,0.22); }
+.modal-lg { width: 620px; }
+.modal-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.modal-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
+.fg { margin-bottom: 14px; }
+.fl { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 5px; }
+.fi, .fs, .ft { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-primary); background: var(--white); outline: none; transition: border-color 0.15s; }
+.fi:focus, .fs:focus, .ft:focus { border-color: var(--sage); }
+.ft { resize: vertical; min-height: 70px; }
+.frow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.frow3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.modal-btns { display: flex; gap: 10px; margin-top: 22px; }
+.modal-btns .btn-primary { flex: 1; }
+
+.allergen-check-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 4px; }
+.allergen-check { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.15s; }
+.allergen-check.selected { background: var(--red-bg); border-color: var(--red); color: var(--red); font-weight: 600; }
+.allergen-check input { display: none; }
+
+.ing-add-row { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; align-items: end; margin-bottom: 8px; }
+.ing-list-preview { margin-top: 10px; }
+.ing-preview-row { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 10px; background: var(--cream); border-radius: 5px; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">CampOps</div>
+      <div class="logo-sub">Operations Platform</div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-label">Facilities</div>
+      <div class="nav-item"><div class="nav-dot"></div> Issues &amp; repairs</div>
+      <div class="nav-item"><div class="nav-dot"></div> Pool management</div>
+      <div class="nav-item"><div class="nav-dot"></div> Safety &amp; compliance</div>
+      <div class="nav-item"><div class="nav-dot"></div> Asset &amp; vehicles</div>
+      <div class="nav-item"><div class="nav-dot"></div> Building systems</div>
+      <div class="nav-label">Commissary</div>
+      <div class="nav-item active"><div class="nav-dot"></div> Inventory</div>
+      <div class="nav-item"><div class="nav-dot"></div> Menu builder</div>
+      <div class="nav-item"><div class="nav-dot"></div> Recipes</div>
+      <div class="nav-item"><div class="nav-dot"></div> Production</div>
+      <div class="nav-item"><div class="nav-dot"></div> Allergy program</div>
+      <div class="nav-item"><div class="nav-dot"></div> Ordering</div>
+      <div class="nav-label">Finance</div>
+      <div class="nav-item"><div class="nav-dot"></div> Cost tracker</div>
+      <div class="nav-item"><div class="nav-dot"></div> Benchmarks</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="camp-name">Pinecrest Summer Camp</div>
+      <div class="camp-user">Jordan M. — Ops Director</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Commissary management</div>
+        <div class="page-sub">Session 2 · Jun 23 – Jul 18 · 220 campers · 42 staff · 262 total</div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn btn-ghost">Export</button>
+        <button class="btn btn-primary" id="topAddBtn" onclick="handleTopAdd()">+ Add item</button>
+      </div>
+    </div>
+
+    <div class="mod-bar">
+      <div class="mod-tab active" onclick="switchMod(this,'mod-inventory')">Inventory</div>
+      <div class="mod-tab" onclick="switchMod(this,'mod-menu')">Menu builder</div>
+      <div class="mod-tab" onclick="switchMod(this,'mod-recipes')">Recipe guide</div>
+      <div class="mod-tab" onclick="switchMod(this,'mod-production')">Production guide</div>
+      <div class="mod-tab" onclick="switchMod(this,'mod-allergy')">Allergy program</div>
+      <div class="mod-tab" onclick="switchMod(this,'mod-ordering')">Ordering</div>
+    </div>
+
+    <!-- ════════════════════════════════
+         MODULE 1: INVENTORY
+    ════════════════════════════════ -->
+    <div class="content active" id="mod-inventory">
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-label">Total items</div>
+          <div class="stat-val">148</div>
+          <div class="stat-hint">Across all categories</div>
+        </div>
+        <div class="stat-card alert">
+          <div class="stat-label">Low stock</div>
+          <div class="stat-val">7</div>
+          <div class="stat-hint">Below par level</div>
+        </div>
+        <div class="stat-card warn">
+          <div class="stat-label">Order soon</div>
+          <div class="stat-val">12</div>
+          <div class="stat-hint">Within 3 days of par</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">Fully stocked</div>
+          <div class="stat-val">129</div>
+          <div class="stat-hint">At or above par</div>
+        </div>
+      </div>
+
+      <div class="alert-banner">
+        <div class="alert-icon">!</div>
+        <div class="alert-text">7 items are below par level and may affect this week's menu: chicken breast, whole milk, cheddar cheese, roma tomatoes, ground beef, canola oil, and eggs. Review the ordering module to generate a purchase order.</div>
+        <button class="alert-btn" onclick="switchModByName('mod-ordering')">Go to ordering</button>
+      </div>
+
+      <div class="inv-toolbar">
+        <div class="pill on" onclick="setPill(this)">All</div>
+        <div class="pill" onclick="setPill(this)">Protein</div>
+        <div class="pill" onclick="setPill(this)">Dairy</div>
+        <div class="pill" onclick="setPill(this)">Produce</div>
+        <div class="pill" onclick="setPill(this)">Dry goods</div>
+        <div class="pill" onclick="setPill(this)">Low stock</div>
+        <div class="spacer"></div>
+        <input class="search-box" type="text" placeholder="Search inventory...">
+      </div>
+
+      <div class="inv-table">
+        <div class="inv-head">
+          <span>Item</span>
+          <span>Category</span>
+          <span>On hand</span>
+          <span>Par level</span>
+          <span>Unit</span>
+          <span>Stock level</span>
+          <span>Actions</span>
+        </div>
+
+        <!-- LOW STOCK items first -->
+        <div class="inv-row">
+          <div><div class="inv-name">Chicken breast, boneless skinless</div><div class="inv-cat">Protein · Walk-in refrigerator</div></div>
+          <div><span class="badge badge-neutral">Protein</span></div>
+          <div class="inv-val alert">18 lbs</div>
+          <div class="inv-val">60 lbs</div>
+          <div class="inv-val">lb</div>
+          <div><div class="stock-bar-bg"><div class="stock-bar-fill fill-alert" style="width:30%"></div></div></div>
+          <div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openModal('adjustModal')">Adjust</button></div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-name">Eggs, large</div><div class="inv-cat">Dairy / Protein · Walk-in refrigerator</div></div>
+          <div><span class="badge badge-neutral">Dairy</span></div>
+          <div class="inv-val alert">4 cases</div>
+          <div class="inv-val">12 cases</div>
+          <div class="inv-val">case (30 doz)</div>
+          <div><div class="stock-bar-bg"><div class="stock-bar-fill fill-alert" style="width:33%"></div></div></div>
+          <div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openModal('adjustModal')">Adjust</button></div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-name">Whole milk</div><div class="inv-cat">Dairy · Walk-in refrigerator</div></div>
+          <div><span class="badge badge-neutral">Dairy</span></div>
+          <div class="inv-val alert">6 gal</div>
+          <div class="inv-val">30 gal</div>
+          <div class="inv-val">gallon</div>
+          <div><div class="stock-bar-bg"><div class="stock-bar-fill fill-alert" style="width:20%"></div></div></div>
+          <div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openModal('adjustModal')">Adjust</button></div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-name">Cheddar cheese, shredded</div><div class="inv-cat">Dairy · Walk-in refrigerator</div></div>
+          <div><span class="badge badge-neutral">Dairy</span></div>
+          <div class="inv-val warn">8 lbs</div>
+          <div class="inv-val">25 lbs</div>
+          <div class="inv-val">lb</div>
+          <div><div class="stock-bar-bg"><div class="stock-bar-fill fill-warn" style="width:32%"></div></div></div>
+          <div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openModal('adjustModal')">Adjust</button></div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-name">Roma tomatoes</div><div class="inv-cat">Produce · Walk-in refrigerator</div></div>
+          <div><span class="badge badge-neutral">Produce</span></div>
+          <div class="inv-val warn">12 lbs</div>
+          <div class="inv-val">40 lbs</div>
+          <div class="inv-val">lb</div>
+          <div><div class="stock-bar-bg"><div class="stock-bar-fill fill-warn" style="width:30%"></div></div></div>
+          <div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openModal('adjustModal')">Adjust</button></div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-name">Ground beef, 80/20</div><div class="inv-cat">Protein · Walk-in refrigerator</div></div>
+          <div><span class="badge badge-neutral">Protein</span></div>
+          <div class="inv-val warn">15 lbs</div>
+          <div class="inv-val">50 lbs</div>
+          <div class="inv-val">lb</div>
+          <div><div class="stock-bar-bg"><div class="stock-bar-fill fill-warn" style="width:30%"></div></div></div>
+          <div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openModal('adjustModal')">Adjust</button></div>
+        </div>
+        <!-- In stock items -->
+        <div class="inv-row">
+          <div><div class="inv-name">All-purpose flour</div><div class="inv-cat">Dry goods · Dry storage</div></div>
+          <div><span class="badge badge-neutral">Dry goods</span></div>
+          <div class="inv-val ok">120 lbs</div>
+          <div class="inv-val">80 lbs</div>
+          <div class="inv-val">lb</div>
+          <div><div class="stock-bar-bg"><div class="stock-bar-fill fill-ok" style="width:100%"></div></div></div>
+          <div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openModal('adjustModal')">Adjust</button></div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-name">Butter, unsalted</div><div class="inv-cat">Dairy · Walk-in refrigerator</div></div>
+          <div><span class="badge badge-neutral">Dairy</span></div>
+          <div class="inv-val ok">30 lbs</div>
+          <div class="inv-val">20 lbs</div>
+          <div class="inv-val">lb</div>
+          <div><div class="stock-bar-bg"><div class="stock-bar-fill fill-ok" style="width:100%"></div></div></div>
+          <div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openModal('adjustModal')">Adjust</button></div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-name">Pasta, penne</div><div class="inv-cat">Dry goods · Dry storage</div></div>
+          <div><span class="badge badge-neutral">Dry goods</span></div>
+          <div class="inv-val ok">60 lbs</div>
+          <div class="inv-val">40 lbs</div>
+          <div class="inv-val">lb</div>
+          <div><div class="stock-bar-bg"><div class="stock-bar-fill fill-ok" style="width:100%"></div></div></div>
+          <div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openModal('adjustModal')">Adjust</button></div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-name">Canola oil</div><div class="inv-cat">Pantry · Dry storage</div></div>
+          <div><span class="badge badge-neutral">Pantry</span></div>
+          <div class="inv-val ok">8 gal</div>
+          <div class="inv-val">6 gal</div>
+          <div class="inv-val">gallon</div>
+          <div><div class="stock-bar-bg"><div class="stock-bar-fill fill-ok" style="width:100%"></div></div></div>
+          <div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openModal('adjustModal')">Adjust</button></div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-name">Romaine lettuce</div><div class="inv-cat">Produce · Walk-in refrigerator</div></div>
+          <div><span class="badge badge-neutral">Produce</span></div>
+          <div class="inv-val ok">24 heads</div>
+          <div class="inv-val">20 heads</div>
+          <div class="inv-val">head</div>
+          <div><div class="stock-bar-bg"><div class="stock-bar-fill fill-ok" style="width:100%"></div></div></div>
+          <div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openModal('adjustModal')">Adjust</button></div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-name">Granola bars, assorted</div><div class="inv-cat">Snacks · Dry storage</div></div>
+          <div><span class="badge badge-neutral">Snacks</span></div>
+          <div class="inv-val ok">18 cases</div>
+          <div class="inv-val">10 cases</div>
+          <div class="inv-val">case (48 ct)</div>
+          <div><div class="stock-bar-bg"><div class="stock-bar-fill fill-ok" style="width:100%"></div></div></div>
+          <div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openModal('adjustModal')">Adjust</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         MODULE 2: MENU BUILDER
+    ════════════════════════════════ -->
+    <div class="content" id="mod-menu">
+      <div class="camper-count-bar">
+        <div class="camper-count-label">Session camper count</div>
+        <input class="camper-count-input" type="number" value="220" id="camperCount" onchange="updateCamperCount(this.value)">
+        <div class="camper-count-note">+ 42 staff = 262 total. All recipe yields and production quantities update automatically.</div>
+        <div class="spacer"></div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('menuMealModal')">+ Add meal to menu</button>
+      </div>
+
+      <div class="menu-week-header">
+        <div class="week-nav">
+          <button class="week-btn" onclick="changeWeek(-1)">&#8592;</button>
+          <div class="week-label" id="weekLabel">Week 1 — Jun 23 – Jun 29</div>
+          <button class="week-btn" onclick="changeWeek(1)">&#8594;</button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm">Copy last week</button>
+          <button class="btn btn-ghost btn-sm">Clear week</button>
+        </div>
+      </div>
+
+      <div class="menu-grid">
+        <!-- Header row -->
+        <div class="menu-col-head"></div>
+        <div class="menu-col-head">Mon<br><span style="font-weight:400;font-size:10px">Jun 23</span></div>
+        <div class="menu-col-head">Tue<br><span style="font-weight:400;font-size:10px">Jun 24</span></div>
+        <div class="menu-col-head">Wed<br><span style="font-weight:400;font-size:10px">Jun 25</span></div>
+        <div class="menu-col-head">Thu<br><span style="font-weight:400;font-size:10px">Jun 26</span></div>
+        <div class="menu-col-head">Fri<br><span style="font-weight:400;font-size:10px">Jun 27</span></div>
+        <div class="menu-col-head">Sat<br><span style="font-weight:400;font-size:10px">Jun 28</span></div>
+        <div class="menu-col-head">Sun<br><span style="font-weight:400;font-size:10px">Jun 29</span></div>
+
+        <!-- Breakfast -->
+        <div class="menu-row-label">Breakfast</div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip" onclick="openModal('mealDetailModal')">Scrambled eggs</div>
+          <div class="menu-meal-chip">Toast &amp; butter</div>
+          <div class="menu-meal-chip">Fresh fruit</div>
+          <div class="menu-meal-chip">OJ / Milk</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip has-allergen">Pancakes ⚠</div>
+          <div class="menu-meal-chip">Maple syrup</div>
+          <div class="menu-meal-chip">Bacon</div>
+          <div class="menu-meal-chip">OJ / Milk</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">French toast</div>
+          <div class="menu-meal-chip">Fruit salad</div>
+          <div class="menu-meal-chip">OJ / Milk</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Bagels &amp; cream cheese</div>
+          <div class="menu-meal-chip has-allergen">Lox ⚠</div>
+          <div class="menu-meal-chip">OJ / Milk</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip has-allergen">Waffles ⚠</div>
+          <div class="menu-meal-chip">Sausage links</div>
+          <div class="menu-meal-chip">OJ / Milk</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Cereal bar</div>
+          <div class="menu-meal-chip">Yogurt &amp; granola</div>
+          <div class="menu-meal-chip">OJ / Milk</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Oatmeal bar</div>
+          <div class="menu-meal-chip">Hard boiled eggs</div>
+          <div class="menu-meal-chip">OJ / Milk</div>
+        </div>
+
+        <!-- Lunch -->
+        <div class="menu-row-label">Lunch</div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Grilled cheese</div>
+          <div class="menu-meal-chip">Tomato soup</div>
+          <div class="menu-meal-chip">Salad bar</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Burger bar</div>
+          <div class="menu-meal-chip">Fries</div>
+          <div class="menu-meal-chip">Salad bar</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Deli sandwich bar</div>
+          <div class="menu-meal-chip">Chips</div>
+          <div class="menu-meal-chip">Salad bar</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Chicken caesar wrap</div>
+          <div class="menu-meal-chip has-allergen">Caesar salad ⚠</div>
+          <div class="menu-meal-chip">Fruit</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip has-allergen">Pasta salad ⚠</div>
+          <div class="menu-meal-chip">Garlic bread</div>
+          <div class="menu-meal-chip">Salad bar</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Hot dog bar</div>
+          <div class="menu-meal-chip">Baked beans</div>
+          <div class="menu-meal-chip">Coleslaw</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Tacos</div>
+          <div class="menu-meal-chip">Spanish rice</div>
+          <div class="menu-meal-chip">Salad bar</div>
+        </div>
+
+        <!-- Dinner -->
+        <div class="menu-row-label">Dinner</div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Roast chicken</div>
+          <div class="menu-meal-chip">Mashed potatoes</div>
+          <div class="menu-meal-chip">Green beans</div>
+          <div class="menu-meal-chip">Rolls</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip has-allergen">Pasta Bolognese ⚠</div>
+          <div class="menu-meal-chip">Garlic bread</div>
+          <div class="menu-meal-chip">Caesar salad</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">BBQ chicken</div>
+          <div class="menu-meal-chip">Corn on the cob</div>
+          <div class="menu-meal-chip">Potato salad</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Fish tacos</div>
+          <div class="menu-meal-chip">Black beans</div>
+          <div class="menu-meal-chip">Salsa &amp; chips</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Shabbat dinner</div>
+          <div class="menu-meal-chip">Roast brisket</div>
+          <div class="menu-meal-chip">Roasted veg</div>
+          <div class="menu-meal-chip">Challah</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Campfire cookout</div>
+          <div class="menu-meal-chip">S'mores</div>
+          <div class="menu-meal-chip">Corn</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Spaghetti &amp; meatballs</div>
+          <div class="menu-meal-chip">Garlic bread</div>
+          <div class="menu-meal-chip">House salad</div>
+        </div>
+
+        <!-- Snack -->
+        <div class="menu-row-label">Snack</div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Apples &amp; PB</div>
+          <div class="menu-add" onclick="openModal('menuMealModal')">+ add</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Granola bars</div>
+          <div class="menu-add" onclick="openModal('menuMealModal')">+ add</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip has-allergen">Trail mix ⚠</div>
+          <div class="menu-add" onclick="openModal('menuMealModal')">+ add</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Pretzels &amp; hummus</div>
+          <div class="menu-add" onclick="openModal('menuMealModal')">+ add</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Popcorn</div>
+          <div class="menu-add" onclick="openModal('menuMealModal')">+ add</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Ice cream</div>
+          <div class="menu-add" onclick="openModal('menuMealModal')">+ add</div>
+        </div>
+        <div class="menu-cell">
+          <div class="menu-meal-chip">Watermelon</div>
+          <div class="menu-add" onclick="openModal('menuMealModal')">+ add</div>
+        </div>
+      </div>
+
+      <div style="font-size:11px;color:var(--text-muted);margin-top:-12px;margin-bottom:8px">⚠ = contains flagged allergen for one or more campers · Click any meal chip for recipe and production details</div>
+    </div>
+
+    <!-- ════════════════════════════════
+         MODULE 3: RECIPE GUIDE
+    ════════════════════════════════ -->
+    <div class="content" id="mod-recipes">
+      <div class="inv-toolbar">
+        <div class="pill on" onclick="setPill(this)">All</div>
+        <div class="pill" onclick="setPill(this)">Breakfast</div>
+        <div class="pill" onclick="setPill(this)">Lunch</div>
+        <div class="pill" onclick="setPill(this)">Dinner</div>
+        <div class="pill" onclick="setPill(this)">Snack</div>
+        <div class="spacer"></div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('recipeModal')">+ Add recipe</button>
+      </div>
+
+      <div class="recipe-list">
+
+        <!-- Recipe 1 -->
+        <div class="recipe-card">
+          <div class="recipe-header" onclick="toggleRecipe(this)">
+            <div>
+              <div class="recipe-title">Scrambled eggs</div>
+              <div class="recipe-meta">Breakfast · Yields 262 portions · Base: 50 portions</div>
+            </div>
+            <div class="recipe-header-right">
+              <span class="badge badge-alert">Contains: Egg, Dairy</span>
+              <span class="badge badge-neutral">Breakfast</span>
+              <span style="font-size:18px;color:var(--text-muted)">&#8964;</span>
+            </div>
+          </div>
+          <div class="recipe-body">
+            <div class="scale-bar">
+              <div class="scale-label">Scale recipe for</div>
+              <input class="scale-input" type="number" value="262" id="eggs-scale"> <span style="font-size:12px;color:var(--text-muted)">portions</span>
+              <div class="spacer"></div>
+              <div class="scale-note">Base recipe is for 50 portions. Adjust number above to auto-scale all quantities.</div>
+            </div>
+            <div class="recipe-grid">
+              <div class="recipe-ingredients">
+                <div class="recipe-ing-label">Ingredients (scaled to 262 portions)</div>
+                <div class="ing-row"><span class="ing-name">Eggs, large <span class="ing-allergen">EGG</span></span><span class="ing-qty">655 eggs (~22 doz)</span></div>
+                <div class="ing-row"><span class="ing-name">Whole milk <span class="ing-allergen">DAIRY</span></span><span class="ing-qty">5.5 qts</span></div>
+                <div class="ing-row"><span class="ing-name">Butter, unsalted <span class="ing-allergen">DAIRY</span></span><span class="ing-qty">2.2 lbs</span></div>
+                <div class="ing-row"><span class="ing-name">Salt</span><span class="ing-qty">3 tbsp</span></div>
+                <div class="ing-row"><span class="ing-name">Black pepper</span><span class="ing-qty">1.5 tbsp</span></div>
+                <div class="ing-row"><span class="ing-name">Chives (optional)</span><span class="ing-qty">1 bunch</span></div>
+              </div>
+              <div class="recipe-instructions">
+                <div class="recipe-inst-label">Method</div>
+                <div class="recipe-step"><div class="recipe-step-num">1</div><div>Crack eggs into large mixing bowls. Add milk, salt, and pepper. Whisk until fully combined and slightly frothy.</div></div>
+                <div class="recipe-step"><div class="recipe-step-num">2</div><div>Heat large hotel pans or griddle to medium-low. Melt butter across cooking surface.</div></div>
+                <div class="recipe-step"><div class="recipe-step-num">3</div><div>Pour egg mixture in and cook low and slow, gently folding with a spatula every 30 seconds. Do not scramble aggressively.</div></div>
+                <div class="recipe-step"><div class="recipe-step-num">4</div><div>Remove from heat while eggs appear slightly underdone — they will continue cooking. Garnish with chives if using. Hold in 140°F steam table.</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recipe 2 -->
+        <div class="recipe-card">
+          <div class="recipe-header" onclick="toggleRecipe(this)">
+            <div>
+              <div class="recipe-title">Roast chicken with pan jus</div>
+              <div class="recipe-meta">Dinner · Yields 262 portions · Base: 50 portions</div>
+            </div>
+            <div class="recipe-header-right">
+              <span class="badge badge-ok">No major allergens</span>
+              <span class="badge badge-neutral">Dinner</span>
+              <span style="font-size:18px;color:var(--text-muted)">&#8964;</span>
+            </div>
+          </div>
+          <div class="recipe-body">
+            <div class="scale-bar">
+              <div class="scale-label">Scale recipe for</div>
+              <input class="scale-input" type="number" value="262"> <span style="font-size:12px;color:var(--text-muted)">portions</span>
+              <div class="spacer"></div>
+              <div class="scale-note">Base recipe is for 50 portions.</div>
+            </div>
+            <div class="recipe-grid">
+              <div class="recipe-ingredients">
+                <div class="recipe-ing-label">Ingredients (scaled to 262 portions)</div>
+                <div class="ing-row"><span class="ing-name">Chicken, bone-in pieces</span><span class="ing-qty">~130 lbs (5.25 lbs/10 portions)</span></div>
+                <div class="ing-row"><span class="ing-name">Canola oil</span><span class="ing-qty">1.5 qts</span></div>
+                <div class="ing-row"><span class="ing-name">Garlic powder</span><span class="ing-qty">½ cup</span></div>
+                <div class="ing-row"><span class="ing-name">Onion powder</span><span class="ing-qty">½ cup</span></div>
+                <div class="ing-row"><span class="ing-name">Paprika</span><span class="ing-qty">¼ cup</span></div>
+                <div class="ing-row"><span class="ing-name">Salt</span><span class="ing-qty">½ cup</span></div>
+                <div class="ing-row"><span class="ing-name">Black pepper</span><span class="ing-qty">3 tbsp</span></div>
+                <div class="ing-row"><span class="ing-name">Chicken stock</span><span class="ing-qty">3 gal (pan jus)</span></div>
+              </div>
+              <div class="recipe-instructions">
+                <div class="recipe-inst-label">Method</div>
+                <div class="recipe-step"><div class="recipe-step-num">1</div><div>Pat chicken dry. Combine all dry seasonings. Coat each piece generously with oil then season all over.</div></div>
+                <div class="recipe-step"><div class="recipe-step-num">2</div><div>Arrange in hotel pans skin-side up. Do not overlap. Roast at 375°F until internal temp reaches 165°F, approx 45–55 min.</div></div>
+                <div class="recipe-step"><div class="recipe-step-num">3</div><div>Deglaze pans with chicken stock. Reduce slightly for pan jus. Season to taste.</div></div>
+                <div class="recipe-step"><div class="recipe-step-num">4</div><div>Hold chicken at 140°F minimum. Serve pan jus alongside in labeled containers.</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recipe 3 -->
+        <div class="recipe-card">
+          <div class="recipe-header" onclick="toggleRecipe(this)">
+            <div>
+              <div class="recipe-title">Pasta Bolognese</div>
+              <div class="recipe-meta">Dinner · Yields 262 portions · Base: 50 portions</div>
+            </div>
+            <div class="recipe-header-right">
+              <span class="badge badge-alert">Contains: Gluten, Dairy, Egg</span>
+              <span class="badge badge-neutral">Dinner</span>
+              <span style="font-size:18px;color:var(--text-muted)">&#8964;</span>
+            </div>
+          </div>
+          <div class="recipe-body">
+            <div class="scale-bar">
+              <div class="scale-label">Scale recipe for</div>
+              <input class="scale-input" type="number" value="262"> <span style="font-size:12px;color:var(--text-muted)">portions</span>
+              <div class="spacer"></div>
+            </div>
+            <div class="recipe-grid">
+              <div class="recipe-ingredients">
+                <div class="recipe-ing-label">Ingredients (scaled to 262 portions)</div>
+                <div class="ing-row"><span class="ing-name">Pasta, penne <span class="ing-allergen">GLUTEN</span></span><span class="ing-qty">52 lbs dry</span></div>
+                <div class="ing-row"><span class="ing-name">Ground beef, 80/20</span><span class="ing-qty">65 lbs</span></div>
+                <div class="ing-row"><span class="ing-name">Crushed tomatoes, canned</span><span class="ing-qty">13 #10 cans</span></div>
+                <div class="ing-row"><span class="ing-name">Onions, diced</span><span class="ing-qty">20 lbs</span></div>
+                <div class="ing-row"><span class="ing-name">Garlic, minced</span><span class="ing-qty">2 lbs</span></div>
+                <div class="ing-row"><span class="ing-name">Olive oil</span><span class="ing-qty">1.5 qts</span></div>
+                <div class="ing-row"><span class="ing-name">Parmesan, grated <span class="ing-allergen">DAIRY</span></span><span class="ing-qty">8 lbs (garnish)</span></div>
+                <div class="ing-row"><span class="ing-name">Italian seasoning</span><span class="ing-qty">½ cup</span></div>
+              </div>
+              <div class="recipe-instructions">
+                <div class="recipe-inst-label">Method</div>
+                <div class="recipe-step"><div class="recipe-step-num">1</div><div>Sauté onions and garlic in olive oil until soft. Add ground beef and brown, breaking up well. Drain excess fat.</div></div>
+                <div class="recipe-step"><div class="recipe-step-num">2</div><div>Add crushed tomatoes and seasoning. Simmer minimum 45 minutes, stirring regularly. Adjust salt.</div></div>
+                <div class="recipe-step"><div class="recipe-step-num">3</div><div>Cook pasta in large batches to al dente. Drain, toss lightly with oil to prevent sticking. Hold separately from sauce.</div></div>
+                <div class="recipe-step"><div class="recipe-step-num">4</div><div>Serve pasta then sauce over the top. Parmesan on side — note: contains dairy allergen.</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recipe 4 -->
+        <div class="recipe-card">
+          <div class="recipe-header" onclick="toggleRecipe(this)">
+            <div>
+              <div class="recipe-title">Burger bar setup</div>
+              <div class="recipe-meta">Lunch · Yields 262 portions · Includes GF bun option</div>
+            </div>
+            <div class="recipe-header-right">
+              <span class="badge badge-warn">Contains: Gluten, Dairy, Soy</span>
+              <span class="badge badge-neutral">Lunch</span>
+              <span style="font-size:18px;color:var(--text-muted)">&#8964;</span>
+            </div>
+          </div>
+          <div class="recipe-body">
+            <div class="scale-bar">
+              <div class="scale-label">Scale recipe for</div>
+              <input class="scale-input" type="number" value="262"> <span style="font-size:12px;color:var(--text-muted)">portions</span>
+              <div class="spacer"></div>
+            </div>
+            <div class="recipe-grid">
+              <div class="recipe-ingredients">
+                <div class="recipe-ing-label">Ingredients (scaled to 262 portions)</div>
+                <div class="ing-row"><span class="ing-name">Ground beef, 80/20</span><span class="ing-qty">65 lbs (4 oz patties)</span></div>
+                <div class="ing-row"><span class="ing-name">Hamburger buns <span class="ing-allergen">GLUTEN</span></span><span class="ing-qty">280 buns (10% overage)</span></div>
+                <div class="ing-row"><span class="ing-name">GF buns (separate)</span><span class="ing-qty">20 buns (flagged campers)</span></div>
+                <div class="ing-row"><span class="ing-name">American cheese <span class="ing-allergen">DAIRY</span></span><span class="ing-qty">20 lbs sliced</span></div>
+                <div class="ing-row"><span class="ing-name">Romaine lettuce</span><span class="ing-qty">10 heads, chopped</span></div>
+                <div class="ing-row"><span class="ing-name">Roma tomatoes</span><span class="ing-qty">20 lbs, sliced</span></div>
+                <div class="ing-row"><span class="ing-name">Red onion</span><span class="ing-qty">8 lbs, sliced</span></div>
+                <div class="ing-row"><span class="ing-name">Ketchup, mustard, mayo <span class="ing-allergen">SOY/EGG</span></span><span class="ing-qty">Condiment station</span></div>
+              </div>
+              <div class="recipe-instructions">
+                <div class="recipe-inst-label">Method</div>
+                <div class="recipe-step"><div class="recipe-step-num">1</div><div>Form 4 oz patties. Season both sides with salt and pepper. Keep refrigerated until service.</div></div>
+                <div class="recipe-step"><div class="recipe-step-num">2</div><div>Grill patties to 160°F internal. Set aside GF buns in separate, clearly labeled tray. Use dedicated utensils for allergen-safe items.</div></div>
+                <div class="recipe-step"><div class="recipe-step-num">3</div><div>Set up bar: buns, patties, cheese, lettuce, tomato, onion, pickles. Condiment station separate.</div></div>
+                <div class="recipe-step"><div class="recipe-step-num">4</div><div>Label all allergen items clearly. GF campers get dedicated staff assistance at the GF station.</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         MODULE 4: PRODUCTION GUIDE
+    ════════════════════════════════ -->
+    <div class="content" id="mod-production">
+      <div class="stat-row">
+        <div class="stat-card ok">
+          <div class="stat-label">Portions today</div>
+          <div class="stat-val">786</div>
+          <div class="stat-hint">3 meals × 262 people</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">Tasks complete</div>
+          <div class="stat-val">4</div>
+          <div class="stat-hint">of 12 today</div>
+        </div>
+        <div class="stat-card warn">
+          <div class="stat-label">Prep needed</div>
+          <div class="stat-val">8</div>
+          <div class="stat-hint">Items not yet started</div>
+        </div>
+        <div class="stat-card neutral">
+          <div class="stat-label">Today's date</div>
+          <div class="stat-val" style="font-size:18px;margin-top:8px">Mon Jun 23</div>
+          <div class="stat-hint">Day 1 of Session 2</div>
+        </div>
+      </div>
+
+      <div class="prod-day-selector">
+        <div class="day-pill on" onclick="setDay(this)">Mon Jun 23</div>
+        <div class="day-pill" onclick="setDay(this)">Tue Jun 24</div>
+        <div class="day-pill" onclick="setDay(this)">Wed Jun 25</div>
+        <div class="day-pill" onclick="setDay(this)">Thu Jun 26</div>
+        <div class="day-pill" onclick="setDay(this)">Fri Jun 27</div>
+        <div class="day-pill" onclick="setDay(this)">Sat Jun 28</div>
+        <div class="day-pill" onclick="setDay(this)">Sun Jun 29</div>
+      </div>
+
+      <!-- Breakfast production -->
+      <div class="prod-meal-block">
+        <div class="prod-meal-header">
+          <div>
+            <div class="prod-meal-title">Breakfast — Monday Jun 23</div>
+            <div class="prod-meal-meta">Service: 7:30am · Prep start: 6:00am · 262 portions</div>
+          </div>
+          <span class="badge badge-ok">4 of 4 complete</span>
+        </div>
+        <div class="prod-items">
+          <div class="prod-item">
+            <div class="prod-check done" onclick="toggleProd(this)"></div>
+            <div class="prod-item-body">
+              <div class="prod-item-name done">Scrambled eggs</div>
+              <div class="prod-item-yield">262 portions · 655 eggs · 5.5 qts milk · 2.2 lbs butter</div>
+              <div class="prod-ingredients">
+                <span class="prod-ing-chip">655 eggs</span>
+                <span class="prod-ing-chip">5.5 qt milk</span>
+                <span class="prod-ing-chip">2.2 lb butter</span>
+                <span class="prod-ing-chip">Salt + pepper</span>
+              </div>
+            </div>
+            <div class="prod-item-time">Prep: 6:00am<br>Cook: 7:00am</div>
+          </div>
+          <div class="prod-item">
+            <div class="prod-check done" onclick="toggleProd(this)"></div>
+            <div class="prod-item-body">
+              <div class="prod-item-name done">Toast &amp; butter</div>
+              <div class="prod-item-yield">262 portions · 35 loaves sliced bread · 6 lbs butter portioned</div>
+              <div class="prod-ingredients">
+                <span class="prod-ing-chip">35 loaves bread</span>
+                <span class="prod-ing-chip">6 lbs butter</span>
+              </div>
+            </div>
+            <div class="prod-item-time">Prep: 6:30am<br>Toast to order</div>
+          </div>
+          <div class="prod-item">
+            <div class="prod-check done" onclick="toggleProd(this)"></div>
+            <div class="prod-item-body">
+              <div class="prod-item-name done">Fresh fruit display</div>
+              <div class="prod-item-yield">262 portions · Mixed seasonal fruit · Wash, cut, arrange</div>
+              <div class="prod-ingredients">
+                <span class="prod-ing-chip">20 lbs mixed fruit</span>
+                <span class="prod-ing-chip">Lemon juice</span>
+              </div>
+            </div>
+            <div class="prod-item-time">Prep: 6:00am</div>
+          </div>
+          <div class="prod-item">
+            <div class="prod-check done" onclick="toggleProd(this)"></div>
+            <div class="prod-item-body">
+              <div class="prod-item-name done">Beverage station setup</div>
+              <div class="prod-item-yield">OJ pitchers · Milk pitchers · Coffee urn · Hot water for tea</div>
+            </div>
+            <div class="prod-item-time">Setup: 7:15am</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lunch production -->
+      <div class="prod-meal-block">
+        <div class="prod-meal-header">
+          <div>
+            <div class="prod-meal-title">Lunch — Monday Jun 23</div>
+            <div class="prod-meal-meta">Service: 12:30pm · Prep start: 10:00am · 262 portions</div>
+          </div>
+          <span class="badge badge-warn">0 of 4 started</span>
+        </div>
+        <div class="prod-items">
+          <div class="prod-item">
+            <div class="prod-check" onclick="toggleProd(this)"></div>
+            <div class="prod-item-body">
+              <div class="prod-item-name">Grilled cheese — bread prep</div>
+              <div class="prod-item-yield">262 portions · 30 loaves bread · 18 lbs butter · 20 lbs cheddar</div>
+              <div class="prod-ingredients">
+                <span class="prod-ing-chip">30 loaves bread</span>
+                <span class="prod-ing-chip">18 lbs butter</span>
+                <span class="prod-ing-chip">20 lbs cheddar</span>
+              </div>
+              <div class="prod-notes">⚠ Contains: Gluten, Dairy — flag for allergen campers</div>
+            </div>
+            <div class="prod-item-time">Prep: 10:00am<br>Cook: 12:00pm</div>
+          </div>
+          <div class="prod-item">
+            <div class="prod-check" onclick="toggleProd(this)"></div>
+            <div class="prod-item-body">
+              <div class="prod-item-name">Tomato soup</div>
+              <div class="prod-item-yield">262 portions · 8 #10 cans tomatoes · 4 qts cream · 4 lbs butter</div>
+              <div class="prod-ingredients">
+                <span class="prod-ing-chip">8 #10 cans tomatoes</span>
+                <span class="prod-ing-chip">4 qt heavy cream</span>
+                <span class="prod-ing-chip">4 lb butter</span>
+                <span class="prod-ing-chip">Garlic + onion</span>
+              </div>
+            </div>
+            <div class="prod-item-time">Prep: 10:30am<br>Ready: 12:15pm</div>
+          </div>
+          <div class="prod-item">
+            <div class="prod-check" onclick="toggleProd(this)"></div>
+            <div class="prod-item-body">
+              <div class="prod-item-name">Salad bar setup</div>
+              <div class="prod-item-yield">Romaine, tomatoes, cucumbers, carrots, croutons, 4 dressing options</div>
+              <div class="prod-ingredients">
+                <span class="prod-ing-chip">12 heads romaine</span>
+                <span class="prod-ing-chip">10 lbs tomatoes</span>
+                <span class="prod-ing-chip">6 lbs cucumber</span>
+                <span class="prod-ing-chip">4 dressings</span>
+              </div>
+            </div>
+            <div class="prod-item-time">Setup: 12:00pm</div>
+          </div>
+          <div class="prod-item">
+            <div class="prod-check" onclick="toggleProd(this)"></div>
+            <div class="prod-item-body">
+              <div class="prod-item-name">GF grilled cheese — separate prep</div>
+              <div class="prod-item-yield">8 GF portions · GF bread · Dedicated pan · Dedicated utensils</div>
+              <div class="prod-ingredients">
+                <span class="prod-ing-chip">8 GF bread slices</span>
+                <span class="prod-ing-chip">Dedicated pan</span>
+                <span class="prod-ing-chip">Label: GF</span>
+              </div>
+              <div class="prod-notes">Use dedicated GF equipment. Prepare before regular batch. Label clearly.</div>
+            </div>
+            <div class="prod-item-time">Prep: 11:45am</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dinner production -->
+      <div class="prod-meal-block">
+        <div class="prod-meal-header">
+          <div>
+            <div class="prod-meal-title">Dinner — Monday Jun 23</div>
+            <div class="prod-meal-meta">Service: 6:00pm · Prep start: 2:00pm · 262 portions</div>
+          </div>
+          <span class="badge badge-neutral">Not started</span>
+        </div>
+        <div class="prod-items">
+          <div class="prod-item">
+            <div class="prod-check" onclick="toggleProd(this)"></div>
+            <div class="prod-item-body">
+              <div class="prod-item-name">Roast chicken — season and prep</div>
+              <div class="prod-item-yield">262 portions · ~130 lbs bone-in chicken pieces</div>
+              <div class="prod-ingredients">
+                <span class="prod-ing-chip">130 lbs chicken</span>
+                <span class="prod-ing-chip">1.5 qt canola oil</span>
+                <span class="prod-ing-chip">Dry rub seasoning</span>
+              </div>
+            </div>
+            <div class="prod-item-time">Season: 2:00pm<br>Oven: 4:00pm</div>
+          </div>
+          <div class="prod-item">
+            <div class="prod-check" onclick="toggleProd(this)"></div>
+            <div class="prod-item-body">
+              <div class="prod-item-name">Mashed potatoes</div>
+              <div class="prod-item-yield">262 portions · 80 lbs russet potatoes · 4 lbs butter · 3 qts milk</div>
+              <div class="prod-ingredients">
+                <span class="prod-ing-chip">80 lbs potatoes</span>
+                <span class="prod-ing-chip">4 lbs butter</span>
+                <span class="prod-ing-chip">3 qt whole milk</span>
+              </div>
+            </div>
+            <div class="prod-item-time">Prep: 3:00pm<br>Ready: 5:45pm</div>
+          </div>
+          <div class="prod-item">
+            <div class="prod-check" onclick="toggleProd(this)"></div>
+            <div class="prod-item-body">
+              <div class="prod-item-name">Green beans — steamed</div>
+              <div class="prod-item-yield">262 portions · 50 lbs green beans · Butter + salt</div>
+              <div class="prod-ingredients">
+                <span class="prod-ing-chip">50 lbs green beans</span>
+                <span class="prod-ing-chip">2 lbs butter</span>
+              </div>
+            </div>
+            <div class="prod-item-time">Prep: 4:30pm<br>Ready: 5:45pm</div>
+          </div>
+          <div class="prod-item">
+            <div class="prod-check" onclick="toggleProd(this)"></div>
+            <div class="prod-item-body">
+              <div class="prod-item-name">Dinner rolls — bake from frozen</div>
+              <div class="prod-item-yield">300 rolls (1.15 per person + extra)</div>
+              <div class="prod-ingredients">
+                <span class="prod-ing-chip">300 frozen rolls</span>
+                <span class="prod-ing-chip">Proof 1 hr</span>
+                <span class="prod-ing-chip">Bake 375°F 15 min</span>
+              </div>
+            </div>
+            <div class="prod-item-time">Proof: 4:00pm<br>Bake: 5:15pm</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         MODULE 5: ALLERGY PROGRAM
+    ════════════════════════════════ -->
+    <div class="content" id="mod-allergy">
+      <div class="allergy-summary">
+        <div class="allergy-chip">
+          <div class="allergy-chip-val" style="color:var(--red)">14</div>
+          <div class="allergy-chip-label">Gluten / Wheat</div>
+        </div>
+        <div class="allergy-chip">
+          <div class="allergy-chip-val" style="color:var(--red)">22</div>
+          <div class="allergy-chip-label">Dairy</div>
+        </div>
+        <div class="allergy-chip">
+          <div class="allergy-chip-val" style="color:var(--red)">18</div>
+          <div class="allergy-chip-label">Tree nut / Peanut</div>
+        </div>
+        <div class="allergy-chip">
+          <div class="allergy-chip-val" style="color:var(--amber)">8</div>
+          <div class="allergy-chip-label">Egg</div>
+        </div>
+        <div class="allergy-chip">
+          <div class="allergy-chip-val" style="color:var(--amber)">6</div>
+          <div class="allergy-chip-label">Shellfish / Fish</div>
+        </div>
+        <div class="allergy-chip">
+          <div class="allergy-chip-val" style="color:var(--amber)">9</div>
+          <div class="allergy-chip-label">Soy</div>
+        </div>
+        <div class="allergy-chip">
+          <div class="allergy-chip-val" style="color:var(--amber)">4</div>
+          <div class="allergy-chip-label">Sesame</div>
+        </div>
+        <div class="allergy-chip">
+          <div class="allergy-chip-val" style="color:var(--text-muted)">11</div>
+          <div class="allergy-chip-label">Vegetarian</div>
+        </div>
+        <div class="allergy-chip">
+          <div class="allergy-chip-val" style="color:var(--text-muted)">3</div>
+          <div class="allergy-chip-label">Vegan</div>
+        </div>
+        <div class="allergy-chip">
+          <div class="allergy-chip-val" style="color:var(--purple)">5</div>
+          <div class="allergy-chip-label">Other / Custom</div>
+        </div>
+      </div>
+
+      <div class="warn-banner">
+        <div class="warn-icon">!</div>
+        <div class="warn-text">3 campers have anaphylactic-level allergies requiring EpiPen: Sarah M. (peanut), Jake R. (shellfish), Emma T. (tree nuts). Confirm EpiPens are in health center and kitchen staff are briefed before each meal service.</div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Camper allergy matrix</div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('addAllergyModal')">+ Add camper</button>
+      </div>
+
+      <div class="camper-allergy-table">
+        <div class="ca-head">
+          <span>Camper</span>
+          <span>Cabin</span>
+          <span>Gluten</span>
+          <span>Dairy</span>
+          <span>Peanut</span>
+          <span>Tree nut</span>
+          <span>Egg</span>
+          <span>Soy</span>
+          <span>Fish</span>
+          <span>Sesame</span>
+        </div>
+        <div class="ca-row">
+          <div><div class="ca-name">Sarah M.</div></div>
+          <div class="ca-cabin">Cabin 3</div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-yes" title="ANAPHYLACTIC">!</div></div>
+          <div><div class="allergy-dot adot-yes">✓</div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+        </div>
+        <div class="ca-row">
+          <div><div class="ca-name">Jake R.</div></div>
+          <div class="ca-cabin">Cabin 7</div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-yes" title="ANAPHYLACTIC">!</div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+        </div>
+        <div class="ca-row">
+          <div><div class="ca-name">Emma T.</div></div>
+          <div class="ca-cabin">Cabin 2</div>
+          <div><div class="allergy-dot adot-yes">✓</div></div>
+          <div><div class="allergy-dot adot-yes">✓</div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-yes" title="ANAPHYLACTIC">!</div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+        </div>
+        <div class="ca-row">
+          <div><div class="ca-name">Lena K.</div></div>
+          <div class="ca-cabin">Cabin 5</div>
+          <div><div class="allergy-dot adot-yes">✓</div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-yes">✓</div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+        </div>
+        <div class="ca-row">
+          <div><div class="ca-name">Noah B.</div></div>
+          <div class="ca-cabin">Cabin 9</div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-yes">✓</div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-yes">✓</div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+        </div>
+        <div class="ca-row">
+          <div><div class="ca-name">Maya L.</div></div>
+          <div class="ca-cabin">Cabin 1</div>
+          <div><div class="allergy-dot adot-note" title="Sensitivity">~</div></div>
+          <div><div class="allergy-dot adot-note" title="Sensitivity">~</div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+          <div><div class="allergy-dot adot-no"></div></div>
+        </div>
+        <div class="ca-row" style="font-size:11px;color:var(--text-muted);padding:8px 14px;background:var(--cream)">
+          <div colspan="10" style="grid-column:1/-1">+ 214 more campers · <span style="color:var(--blue);cursor:pointer">View all</span> · <span style="color:var(--blue);cursor:pointer">Export full allergy report</span></div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div style="display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted)"><div class="allergy-dot adot-yes" style="width:16px;height:16px;font-size:9px">✓</div> Confirmed allergy</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted)"><div class="allergy-dot adot-yes" style="width:16px;height:16px;font-size:9px;background:var(--red)">!</div> Anaphylactic — EpiPen on file</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted)"><div class="allergy-dot adot-note" style="width:16px;height:16px;font-size:9px">~</div> Sensitivity / intolerance</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted)"><div class="allergy-dot adot-no" style="width:16px;height:16px"></div> No allergy</div>
+      </div>
+
+      <!-- Menu allergen matrix -->
+      <div class="section-header"><div class="section-title">This week's menu — allergen flags</div></div>
+      <div class="menu-allergy-table">
+        <div class="ma-head">
+          <span>Meal</span>
+          <span>Gluten</span><span>Dairy</span><span>Peanut</span><span>Tree nut</span>
+          <span>Egg</span><span>Soy</span><span>Fish</span><span>Sesame</span>
+        </div>
+        <div class="ma-row"><div><div class="ma-meal">Scrambled eggs</div><div class="ma-period">Breakfast</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div></div>
+        <div class="ma-row"><div><div class="ma-meal">Grilled cheese</div><div class="ma-period">Lunch · Mon</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div></div>
+        <div class="ma-row"><div><div class="ma-meal">Roast chicken</div><div class="ma-period">Dinner · Mon</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div></div>
+        <div class="ma-row"><div><div class="ma-meal">Pancakes</div><div class="ma-period">Breakfast · Tue</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div></div>
+        <div class="ma-row"><div><div class="ma-meal">Burger bar</div><div class="ma-period">Lunch · Tue</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-trace">~</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-yes">✓</div></div></div>
+        <div class="ma-row"><div><div class="ma-meal">Pasta Bolognese</div><div class="ma-period">Dinner · Tue</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div></div>
+        <div class="ma-row"><div><div class="ma-meal">Trail mix snack</div><div class="ma-period">Snack · Wed</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-yes">✓</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-no">—</div></div><div><div class="allergy-flag aflag-trace">~</div></div></div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         MODULE 6: ORDERING
+    ════════════════════════════════ -->
+    <div class="content" id="mod-ordering">
+      <div class="order-summary-row">
+        <div class="stat-card alert">
+          <div class="stat-label">Items to order</div>
+          <div class="stat-val">7</div>
+          <div class="stat-hint">Below par for this week</div>
+        </div>
+        <div class="stat-card neutral">
+          <div class="stat-label">Estimated total</div>
+          <div class="stat-val" style="font-size:20px;margin-top:7px;color:var(--amber)">$4,280</div>
+          <div class="stat-hint">Across 3 vendors</div>
+        </div>
+        <div class="stat-card neutral">
+          <div class="stat-label">Order by</div>
+          <div class="stat-val" style="font-size:18px;margin-top:8px">Today 2pm</div>
+          <div class="stat-hint">For Wed delivery</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">Last order</div>
+          <div class="stat-val" style="font-size:18px;margin-top:8px">Jul 5</div>
+          <div class="stat-hint">Delivered Jul 7 · $6,840</div>
+        </div>
+      </div>
+
+      <div class="alert-banner">
+        <div class="alert-icon">!</div>
+        <div class="alert-text">Based on this week's menu and current inventory, 7 items need to be ordered today to ensure coverage through Sunday. All quantities are auto-calculated from recipe yields and current stock levels.</div>
+        <button class="alert-btn" onclick="openModal('sendOrderModal')">Send all orders</button>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Generated purchase orders — week of Jun 23</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm">Adjust quantities</button>
+          <button class="btn btn-primary btn-sm" onclick="openModal('sendOrderModal')">Send all orders</button>
+        </div>
+      </div>
+
+      <!-- Vendor 1: US Foods -->
+      <div class="order-vendor-block">
+        <div class="order-vendor-header">
+          <div>
+            <div class="order-vendor-name">US Foods — primary produce &amp; protein</div>
+            <div class="order-vendor-meta">Account #: USF-44821 · Rep: Dana C. · Order by 2pm for Wed delivery · Min order: $500</div>
+          </div>
+          <div class="order-vendor-total">$2,840</div>
+        </div>
+        <div class="order-item-table">
+          <div class="oi-head">
+            <span>Item</span>
+            <span>On hand</span>
+            <span>Need (7 days)</span>
+            <span>Order qty</span>
+            <span>Unit price</span>
+            <span>Line total</span>
+          </div>
+          <div class="oi-row">
+            <div><div class="oi-name">Chicken breast, boneless skinless</div><div class="oi-cat">Protein · lb</div></div>
+            <div class="oi-val short">18 lbs</div>
+            <div class="oi-val needed">320 lbs</div>
+            <div class="oi-val needed">302 lbs</div>
+            <div class="oi-val">$3.80/lb</div>
+            <div class="oi-val needed">$1,147.60</div>
+          </div>
+          <div class="oi-row">
+            <div><div class="oi-name">Ground beef, 80/20</div><div class="oi-cat">Protein · lb</div></div>
+            <div class="oi-val short">15 lbs</div>
+            <div class="oi-val needed">130 lbs</div>
+            <div class="oi-val needed">115 lbs</div>
+            <div class="oi-val">$4.20/lb</div>
+            <div class="oi-val needed">$483.00</div>
+          </div>
+          <div class="oi-row">
+            <div><div class="oi-name">Roma tomatoes</div><div class="oi-cat">Produce · lb</div></div>
+            <div class="oi-val short">12 lbs</div>
+            <div class="oi-val needed">80 lbs</div>
+            <div class="oi-val needed">68 lbs</div>
+            <div class="oi-val">$1.40/lb</div>
+            <div class="oi-val needed">$95.20</div>
+          </div>
+          <div class="oi-row">
+            <div><div class="oi-name">Romaine lettuce</div><div class="oi-cat">Produce · head</div></div>
+            <div class="oi-val ok">24 heads</div>
+            <div class="oi-val">60 heads</div>
+            <div class="oi-val">36 heads</div>
+            <div class="oi-val">$1.80/hd</div>
+            <div class="oi-val">$64.80</div>
+          </div>
+          <div class="oi-row" style="background:var(--cream-dark)">
+            <div style="grid-column:1/-1;display:flex;justify-content:flex-end;gap:24px;font-size:13px;font-weight:600">
+              <span style="color:var(--text-muted)">Subtotal</span>
+              <span style="font-family:'DM Mono',monospace">$1,790.60</span>
+              <span style="color:var(--text-muted)">+ Est. delivery</span>
+              <span style="font-family:'DM Mono',monospace">$85.00</span>
+              <span style="color:var(--forest)">Order total: $1,875.60</span>
+            </div>
+          </div>
+        </div>
+        <div class="order-actions">
+          <button class="btn btn-primary btn-sm" onclick="openModal('sendOrderModal')">Send order to US Foods</button>
+          <button class="btn btn-ghost btn-sm">Edit quantities</button>
+          <button class="btn btn-ghost btn-sm">Add item</button>
+          <button class="btn btn-ghost btn-sm">View order history</button>
+        </div>
+      </div>
+
+      <!-- Vendor 2: Sysco -->
+      <div class="order-vendor-block">
+        <div class="order-vendor-header">
+          <div>
+            <div class="order-vendor-name">Sysco — dairy &amp; dry goods</div>
+            <div class="order-vendor-meta">Account #: SYS-88210 · Rep: Mark T. · Order by noon Thu for Sat delivery</div>
+          </div>
+          <div class="order-vendor-total">$1,640</div>
+        </div>
+        <div class="order-item-table">
+          <div class="oi-head">
+            <span>Item</span>
+            <span>On hand</span>
+            <span>Need (7 days)</span>
+            <span>Order qty</span>
+            <span>Unit price</span>
+            <span>Line total</span>
+          </div>
+          <div class="oi-row">
+            <div><div class="oi-name">Eggs, large</div><div class="oi-cat">Dairy · case (30 doz)</div></div>
+            <div class="oi-val short">4 cases</div>
+            <div class="oi-val needed">22 cases</div>
+            <div class="oi-val needed">18 cases</div>
+            <div class="oi-val">$42.00/cs</div>
+            <div class="oi-val needed">$756.00</div>
+          </div>
+          <div class="oi-row">
+            <div><div class="oi-name">Whole milk</div><div class="oi-cat">Dairy · gallon</div></div>
+            <div class="oi-val short">6 gal</div>
+            <div class="oi-val needed">80 gal</div>
+            <div class="oi-val needed">74 gal</div>
+            <div class="oi-val">$4.80/gal</div>
+            <div class="oi-val needed">$355.20</div>
+          </div>
+          <div class="oi-row">
+            <div><div class="oi-name">Cheddar cheese, shredded</div><div class="oi-cat">Dairy · lb</div></div>
+            <div class="oi-val short">8 lbs</div>
+            <div class="oi-val needed">45 lbs</div>
+            <div class="oi-val needed">37 lbs</div>
+            <div class="oi-val">$5.20/lb</div>
+            <div class="oi-val needed">$192.40</div>
+          </div>
+          <div class="oi-row">
+            <div><div class="oi-name">Butter, unsalted</div><div class="oi-cat">Dairy · lb</div></div>
+            <div class="oi-val ok">30 lbs</div>
+            <div class="oi-val">40 lbs</div>
+            <div class="oi-val">10 lbs</div>
+            <div class="oi-val">$4.40/lb</div>
+            <div class="oi-val">$44.00</div>
+          </div>
+          <div class="oi-row">
+            <div><div class="oi-name">All-purpose flour</div><div class="oi-cat">Dry goods · lb</div></div>
+            <div class="oi-val ok">120 lbs</div>
+            <div class="oi-val">80 lbs</div>
+            <div class="oi-val">0 lbs</div>
+            <div class="oi-val">$0.65/lb</div>
+            <div class="oi-val" style="color:var(--text-muted)">$0 (stocked)</div>
+          </div>
+          <div class="oi-row" style="background:var(--cream-dark)">
+            <div style="grid-column:1/-1;display:flex;justify-content:flex-end;gap:24px;font-size:13px;font-weight:600">
+              <span style="color:var(--text-muted)">Subtotal</span>
+              <span style="font-family:'DM Mono',monospace">$1,347.60</span>
+              <span style="color:var(--text-muted)">+ Est. delivery</span>
+              <span style="font-family:'DM Mono',monospace">$75.00</span>
+              <span style="color:var(--forest)">Order total: $1,422.60</span>
+            </div>
+          </div>
+        </div>
+        <div class="order-actions">
+          <button class="btn btn-primary btn-sm" onclick="openModal('sendOrderModal')">Send order to Sysco</button>
+          <button class="btn btn-ghost btn-sm">Edit quantities</button>
+          <button class="btn btn-ghost btn-sm">Add item</button>
+          <button class="btn btn-ghost btn-sm">View order history</button>
+        </div>
+      </div>
+
+      <!-- Order history summary -->
+      <div class="section-header" style="margin-top:8px"><div class="section-title">Order history — this session</div></div>
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="display:grid;grid-template-columns:100px 1fr 1fr 120px 80px;padding:10px 18px;background:var(--cream-dark);border-bottom:1px solid var(--border)">
+          <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">Date</span>
+          <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">Vendor</span>
+          <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">Items</span>
+          <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">Total</span>
+          <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">Status</span>
+        </div>
+        <div style="display:grid;grid-template-columns:100px 1fr 1fr 120px 80px;padding:11px 18px;border-bottom:1px solid var(--cream-dark);font-size:13px;align-items:center">
+          <span style="font-family:'DM Mono',monospace;color:var(--text-muted)">Jul 5</span>
+          <span>US Foods</span>
+          <span style="color:var(--text-muted)">Chicken, produce (14 items)</span>
+          <span style="font-family:'DM Mono',monospace">$4,280.00</span>
+          <span><span class="badge badge-ok">Delivered</span></span>
+        </div>
+        <div style="display:grid;grid-template-columns:100px 1fr 1fr 120px 80px;padding:11px 18px;border-bottom:1px solid var(--cream-dark);font-size:13px;align-items:center">
+          <span style="font-family:'DM Mono',monospace;color:var(--text-muted)">Jul 5</span>
+          <span>Sysco</span>
+          <span style="color:var(--text-muted)">Dairy, dry goods (11 items)</span>
+          <span style="font-family:'DM Mono',monospace">$2,560.00</span>
+          <span><span class="badge badge-ok">Delivered</span></span>
+        </div>
+        <div style="display:grid;grid-template-columns:100px 1fr 1fr 120px 80px;padding:11px 18px;font-size:13px;align-items:center">
+          <span style="font-family:'DM Mono',monospace;color:var(--text-muted)">Jun 23</span>
+          <span>US Foods + Sysco</span>
+          <span style="color:var(--text-muted)">Session opening order (38 items)</span>
+          <span style="font-family:'DM Mono',monospace">$12,840.00</span>
+          <span><span class="badge badge-ok">Delivered</span></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODALS -->
+
+<!-- Adjust inventory modal -->
+<div class="overlay" id="adjustModal" onclick="closeOutside(event,'adjustModal')">
+  <div class="modal">
+    <div class="modal-title">Adjust inventory</div>
+    <div class="modal-sub">Update current stock level for an item</div>
+    <div class="fg"><label class="fl">Item</label><input class="fi" type="text" value="Chicken breast, boneless skinless"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Current quantity</label><input class="fi" type="text" value="18"></div>
+      <div class="fg"><label class="fl">Unit</label><select class="fs"><option>lb</option><option>oz</option><option>each</option><option>case</option><option>gallon</option><option>quart</option></select></div>
+    </div>
+    <div class="fg"><label class="fl">Adjustment reason</label><select class="fs"><option>Received delivery</option><option>Used in production</option><option>Waste / spoilage</option><option>Inventory count correction</option><option>Other</option></select></div>
+    <div class="fg"><label class="fl">Notes</label><input class="fi" type="text" placeholder="Optional notes..."></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('adjustModal')">Save adjustment</button><button class="btn btn-ghost" onclick="closeModal('adjustModal')">Cancel</button></div>
+  </div>
+</div>
+
+<!-- Add inventory item modal -->
+<div class="overlay" id="addItemModal" onclick="closeOutside(event,'addItemModal')">
+  <div class="modal">
+    <div class="modal-title">Add inventory item</div>
+    <div class="modal-sub">Register a new ingredient or supply</div>
+    <div class="fg"><label class="fl">Item name</label><input class="fi" type="text" placeholder="e.g. Chicken breast, boneless skinless"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Category</label><select class="fs"><option>Protein</option><option>Dairy</option><option>Produce</option><option>Dry goods</option><option>Pantry / Condiments</option><option>Frozen</option><option>Snacks</option><option>Beverage</option><option>Other</option></select></div>
+      <div class="fg"><label class="fl">Storage location</label><select class="fs"><option>Walk-in refrigerator</option><option>Walk-in freezer</option><option>Dry storage</option><option>Reach-in refrigerator</option><option>Other</option></select></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Unit of measure</label><select class="fs"><option>lb</option><option>oz</option><option>each</option><option>case</option><option>gallon</option><option>quart</option><option>head</option><option>bunch</option><option>bag</option></select></div>
+      <div class="fg"><label class="fl">Par level</label><input class="fi" type="number" placeholder="0"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Current on hand</label><input class="fi" type="number" placeholder="0"></div>
+      <div class="fg"><label class="fl">Primary vendor</label><select class="fs"><option>US Foods</option><option>Sysco</option><option>Local supplier</option><option>Other</option></select></div>
+    </div>
+    <div class="fg">
+      <label class="fl">Allergens in this ingredient</label>
+      <div class="allergen-check-grid">
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Gluten / Wheat</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Dairy</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Peanut</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Tree nut</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Egg</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Soy</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Fish</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Shellfish</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Sesame</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">None</div>
+      </div>
+    </div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('addItemModal')">Add item</button><button class="btn btn-ghost" onclick="closeModal('addItemModal')">Cancel</button></div>
+  </div>
+</div>
+
+<!-- Recipe modal -->
+<div class="overlay" id="recipeModal" onclick="closeOutside(event,'recipeModal')">
+  <div class="modal modal-lg">
+    <div class="modal-title">Add recipe</div>
+    <div class="modal-sub">Create a new recipe linked to the menu and inventory</div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Recipe name</label><input class="fi" type="text" placeholder="e.g. Scrambled eggs"></div>
+      <div class="fg"><label class="fl">Meal period</label><select class="fs"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select></div>
+    </div>
+    <div class="frow3">
+      <div class="fg"><label class="fl">Base yield (portions)</label><input class="fi" type="number" placeholder="50"></div>
+      <div class="fg"><label class="fl">Prep time</label><input class="fi" type="text" placeholder="e.g. 30 min"></div>
+      <div class="fg"><label class="fl">Cook time</label><input class="fi" type="text" placeholder="e.g. 20 min"></div>
+    </div>
+    <div class="fg"><label class="fl">Ingredients (name · quantity · unit)</label>
+      <div class="ing-add-row">
+        <input class="fi" type="text" placeholder="Ingredient name">
+        <input class="fi" type="text" placeholder="Qty">
+        <select class="fs"><option>lb</option><option>oz</option><option>each</option><option>cup</option><option>tbsp</option><option>tsp</option><option>gallon</option><option>quart</option><option>pint</option></select>
+        <button class="btn btn-ghost btn-sm">+</button>
+      </div>
+      <div class="ing-list-preview">
+        <div class="ing-preview-row"><span>Eggs, large</span><span>5 each / 10 portions</span></div>
+        <div class="ing-preview-row"><span>Whole milk</span><span>¼ cup / 10 portions</span></div>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Method / instructions</label><textarea class="ft" placeholder="Step by step instructions..."></textarea></div>
+    <div class="fg"><label class="fl">Allergen flags (auto-detected from ingredients — confirm below)</label>
+      <div class="allergen-check-grid">
+        <div class="allergen-check selected">Egg</div>
+        <div class="allergen-check selected">Dairy</div>
+        <div class="allergen-check">Gluten</div>
+        <div class="allergen-check">Peanut</div>
+        <div class="allergen-check">Tree nut</div>
+        <div class="allergen-check">Soy</div>
+        <div class="allergen-check">Fish</div>
+        <div class="allergen-check">Sesame</div>
+      </div>
+    </div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('recipeModal')">Save recipe</button><button class="btn btn-ghost" onclick="closeModal('recipeModal')">Cancel</button></div>
+  </div>
+</div>
+
+<!-- Add allergy modal -->
+<div class="overlay" id="addAllergyModal" onclick="closeOutside(event,'addAllergyModal')">
+  <div class="modal">
+    <div class="modal-title">Add camper allergy profile</div>
+    <div class="modal-sub">Link a camper's dietary restrictions to the allergy program</div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Camper name</label><input class="fi" type="text" placeholder="First Last"></div>
+      <div class="fg"><label class="fl">Cabin</label><select class="fs"><option>Cabin 1</option><option>Cabin 2</option><option>Cabin 3</option><option>Cabin 4</option><option>Cabin 5</option><option>Cabin 6</option><option>Cabin 7</option><option>Cabin 8</option><option>Cabin 9</option><option>Cabin 10</option><option>Cabin 11</option><option>Cabin 12</option></select></div>
+    </div>
+    <div class="fg"><label class="fl">Allergies / dietary restrictions</label>
+      <div class="allergen-check-grid">
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Gluten / Wheat</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Dairy</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Peanut</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Tree nut</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Egg</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Soy</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Fish</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Shellfish</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Sesame</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Vegetarian</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Vegan</div>
+        <div class="allergen-check" onclick="this.classList.toggle('selected')">Kosher</div>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Severity</label><select class="fs"><option>Intolerance / Sensitivity</option><option>Confirmed allergy</option><option>Anaphylactic — EpiPen required</option></select></div>
+    <div class="fg"><label class="fl">Notes / substitutions needed</label><textarea class="ft" placeholder="Any special instructions for kitchen staff..."></textarea></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('addAllergyModal')">Save profile</button><button class="btn btn-ghost" onclick="closeModal('addAllergyModal')">Cancel</button></div>
+  </div>
+</div>
+
+<!-- Menu meal modal -->
+<div class="overlay" id="menuMealModal" onclick="closeOutside(event,'menuMealModal')">
+  <div class="modal">
+    <div class="modal-title">Add meal to menu</div>
+    <div class="modal-sub">Schedule a meal or item on the weekly menu</div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Day</label><select class="fs"><option>Monday Jun 23</option><option>Tuesday Jun 24</option><option>Wednesday Jun 25</option><option>Thursday Jun 26</option><option>Friday Jun 27</option><option>Saturday Jun 28</option><option>Sunday Jun 29</option></select></div>
+      <div class="fg"><label class="fl">Meal period</label><select class="fs"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select></div>
+    </div>
+    <div class="fg"><label class="fl">Recipe / meal name</label><select class="fs"><option>— Select from recipes —</option><option>Scrambled eggs</option><option>Roast chicken</option><option>Pasta Bolognese</option><option>Burger bar setup</option><option>Pancakes</option><option>French toast</option><option>Grilled cheese</option></select></div>
+    <div class="fg"><label class="fl">Or type a custom item</label><input class="fi" type="text" placeholder="e.g. Fresh fruit display"></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('menuMealModal')">Add to menu</button><button class="btn btn-ghost" onclick="closeModal('menuMealModal')">Cancel</button></div>
+  </div>
+</div>
+
+<!-- Meal detail modal -->
+<div class="overlay" id="mealDetailModal" onclick="closeOutside(event,'mealDetailModal')">
+  <div class="modal">
+    <div class="modal-title">Scrambled eggs</div>
+    <div class="modal-sub">Breakfast · Monday Jun 23 · 262 portions</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <span class="badge badge-alert">Contains: Egg, Dairy</span>
+      <span class="badge badge-neutral">Prep: 30 min</span>
+      <span class="badge badge-neutral">Cook: 20 min</span>
+    </div>
+    <div class="fg"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">Key quantities for 262 portions</div>
+      <div class="ing-preview-row" style="background:var(--cream);border-radius:5px;padding:6px 10px;margin-bottom:4px;display:flex;justify-content:space-between;font-size:12px"><span>Eggs, large</span><span style="font-family:'DM Mono',monospace">655 eggs (~22 doz)</span></div>
+      <div class="ing-preview-row" style="background:var(--cream);border-radius:5px;padding:6px 10px;margin-bottom:4px;display:flex;justify-content:space-between;font-size:12px"><span>Whole milk</span><span style="font-family:'DM Mono',monospace">5.5 qts</span></div>
+      <div class="ing-preview-row" style="background:var(--cream);border-radius:5px;padding:6px 10px;margin-bottom:4px;display:flex;justify-content:space-between;font-size:12px"><span>Butter, unsalted</span><span style="font-family:'DM Mono',monospace">2.2 lbs</span></div>
+    </div>
+    <div style="background:var(--amber-bg);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--amber-text)">8 campers have egg or dairy allergies. See allergy program for individual substitutions needed.</div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('mealDetailModal')">View full recipe</button><button class="btn btn-ghost" onclick="closeModal('mealDetailModal')">Close</button></div>
+  </div>
+</div>
+
+<!-- Send order modal -->
+<div class="overlay" id="sendOrderModal" onclick="closeOutside(event,'sendOrderModal')">
+  <div class="modal">
+    <div class="modal-title">Send purchase orders</div>
+    <div class="modal-sub">Confirm and send orders to vendors</div>
+    <div style="background:var(--green-bg);border:1px solid #a8d8a8;border-radius:8px;padding:14px;margin-bottom:16px;font-size:13px;color:var(--green)">Orders will be emailed to vendor reps and logged in your order history. You will receive delivery confirmations when items arrive.</div>
+    <div class="fg">
+      <div class="ing-preview-row" style="background:var(--cream);border-radius:5px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;font-size:13px"><span><strong>US Foods</strong> — 4 items</span><span style="font-family:'DM Mono',monospace;font-weight:600">$1,875.60</span></div>
+      <div class="ing-preview-row" style="background:var(--cream);border-radius:5px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;font-size:13px"><span><strong>Sysco</strong> — 4 items</span><span style="font-family:'DM Mono',monospace;font-weight:600">$1,422.60</span></div>
+      <div style="display:flex;justify-content:space-between;padding:10px 14px;font-size:14px;font-weight:600;border-top:1px solid var(--border);margin-top:4px"><span>Total</span><span style="font-family:'DM Mono',monospace;color:var(--forest)">$3,298.20</span></div>
+    </div>
+    <div class="fg"><label class="fl">Delivery instructions / notes</label><textarea class="ft" placeholder="Any special delivery notes for vendors..."></textarea></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('sendOrderModal')">Confirm &amp; send orders</button><button class="btn btn-ghost" onclick="closeModal('sendOrderModal')">Cancel</button></div>
+  </div>
+</div>
+
+<script>
+// Tab switching
+function switchMod(el, modId) {
+  document.querySelectorAll('.mod-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(modId).classList.add('active');
+  // Update top button
+  const labels = { 'mod-inventory': '+ Add item', 'mod-menu': '+ Add meal', 'mod-recipes': '+ Add recipe', 'mod-production': 'Print guide', 'mod-allergy': '+ Add camper', 'mod-ordering': 'Send all orders' };
+  document.getElementById('topAddBtn').textContent = labels[modId] || '+ Add';
+}
+function switchModByName(id) {
+  const tabs = document.querySelectorAll('.mod-tab');
+  const mods = ['mod-inventory','mod-menu','mod-recipes','mod-production','mod-allergy','mod-ordering'];
+  const idx = mods.indexOf(id);
+  if (idx >= 0) switchMod(tabs[idx], id);
+}
+function handleTopAdd() {
+  const active = document.querySelector('.content.active');
+  const modals = { 'mod-inventory': 'addItemModal', 'mod-menu': 'menuMealModal', 'mod-recipes': 'recipeModal', 'mod-allergy': 'addAllergyModal', 'mod-ordering': 'sendOrderModal' };
+  const m = modals[active?.id];
+  if (m) openModal(m);
+}
+
+// Pills
+function setPill(el) {
+  el.closest('.inv-toolbar,.prod-day-selector')?.querySelectorAll('.pill,.day-pill').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+}
+function setDay(el) { setPill(el); }
+
+// Modals
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeOutside(e, id) { if (e.target.id === id) closeModal(id); }
+
+// Recipe toggle
+function toggleRecipe(header) {
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+  const chevron = header.querySelector('span:last-child');
+  if (body.classList.contains('open')) chevron.textContent = '▲';
+  else chevron.textContent = '⌄';
+}
+
+// Production check
+function toggleProd(el) {
+  el.classList.toggle('done');
+  const nameEl = el.parentElement.querySelector('.prod-item-name');
+  if (nameEl) nameEl.classList.toggle('done');
+}
+
+// Camper count
+function updateCamperCount(val) { /* would update all recipe yields */ }
+
+// Week navigation
+let week = 1;
+const weeks = ['Week 1 — Jun 23 – Jun 29','Week 2 — Jun 30 – Jul 6','Week 3 — Jul 7 – Jul 13','Week 4 — Jul 14 – Jul 18'];
+function changeWeek(dir) {
+  week = Math.max(0, Math.min(3, week + dir));
+  document.getElementById('weekLabel').textContent = weeks[week];
+}
+</script>
+</body>
+</html>

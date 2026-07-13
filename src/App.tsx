@@ -28,6 +28,7 @@ import { PoolManagement } from '@/pages/PoolManagement';
 import { SafetyCompliance } from '@/pages/SafetyCompliance';
 import AssetVehicles from '@/pages/AssetVehicles';
 import { BuildingSystems } from '@/pages/BuildingSystems';
+import { Commissary } from '@/pages/Commissary';
 
 // My Tasks
 import { MyTasks } from '@/pages/MyTasks';
@@ -43,6 +44,12 @@ import {
   loadSafetyFromSupabase, subscribeToSafety,
   loadAssetsFromSupabase, subscribeToAssets,
   loadBuildingFromSupabase, subscribeToBuilding,
+  loadCommissaryInventory, subscribeToCommissaryInventory,
+  loadCommissaryCatalog, subscribeToCommissaryCatalog,
+  loadCommissaryMenu, subscribeToCommissaryMenu,
+  loadCommissaryOrders, subscribeToCommissaryOrders,
+  loadCommissaryProduction, subscribeToCommissaryProduction,
+  loadCommissaryAllergy, subscribeToCommissaryAllergy,
   type AssetData, type BuildingData,
 } from '@/lib/db';
 import { startSupabaseHeartbeat } from '@/lib/supabase';
@@ -53,6 +60,7 @@ import { usePoolStore } from '@/store/poolStore';
 import { useSafetyStore } from '@/store/safetyStore';
 import { useAssetStore } from '@/store/assetStore';
 import { useBuildingStore } from '@/store/buildingStore';
+import { useCommissaryStore } from '@/store/commissaryStore';
 import { useCampStore as useCamp } from '@/store/campStore';
 
 function HomeRouter() {
@@ -73,6 +81,14 @@ function CampDataLoader() {
   const { setItems, setInspectionLog: setSafetyLog, setDrills, setStaff, setCertifications, setTempLogs, setLicenses } = useSafetyStore();
   const { setAssets, setCheckouts, setServiceRecords, setMaintenanceTasks } = useAssetStore();
   const { setBuildings, setRooms, setComponents, setCircuits, setSeasonalTasks: setBuildingSeasonalTasks } = useBuildingStore();
+  const {
+    setItems: setInventoryItems, setAdjustments, setVendors,
+    setRecipes, setIngredients, setSteps, setSessions, setMenuEntries,
+    setOrders, setOrderLines, setPlans, setProductionTasks,
+    setCampers, setRestrictions, setRestrictionSummary,
+    setCountSessions, setStorageMap, setTemplates, setTemplateEntries,
+    setDietCounts, setMealEvents, setExpenses,
+  } = useCommissaryStore();
 
   useEffect(() => {
     if (!campId) return;
@@ -82,6 +98,15 @@ function CampDataLoader() {
     let unsubSafety: (() => void) | null = null;
     let unsubAssets: (() => void) | null = null;
     let unsubBuilding: (() => void) | null = null;
+    // Commissary subscribes as three independent domains rather than one. It is the
+    // first module large enough that reloading everything on any WAL event hurts —
+    // adjusting one item's stock should not refetch every recipe and menu chip.
+    let unsubCommInventory: (() => void) | null = null;
+    let unsubCommCatalog: (() => void) | null = null;
+    let unsubCommMenu: (() => void) | null = null;
+    let unsubCommOrders: (() => void) | null = null;
+    let unsubCommProduction: (() => void) | null = null;
+    let unsubCommAllergy: (() => void) | null = null;
 
     // Start the Supabase keep-alive heartbeat.  Pings every 30 s while visible to
     // keep the TCP socket from going stale and to refresh the JWT before expiry.
@@ -97,6 +122,12 @@ function CampDataLoader() {
     let safetySyncedAt = 0;
     let assetsSyncedAt = 0;
     let buildingSyncedAt = 0;
+    let commInventorySyncedAt = 0;
+    let commCatalogSyncedAt = 0;
+    let commMenuSyncedAt = 0;
+    let commOrdersSyncedAt = 0;
+    let commProductionSyncedAt = 0;
+    let commAllergySyncedAt = 0;
 
     // Start subscriptions FIRST so any writes during the initial data load are captured.
     // If subscriptions were started after loading, a write that completes before the
@@ -135,6 +166,40 @@ function CampDataLoader() {
       setCircuits(d.circuits);
       setBuildingSeasonalTasks(d.seasonalTasks);
     }, () => { buildingSyncedAt = Date.now(); });
+    unsubCommInventory = subscribeToCommissaryInventory(campId, (d) => {
+      setInventoryItems(d.items);
+      setAdjustments(d.adjustments);
+      setVendors(d.vendors);
+      setCountSessions(d.countSessions);
+      setStorageMap(d.storageMap);
+    }, () => { commInventorySyncedAt = Date.now(); });
+    unsubCommCatalog = subscribeToCommissaryCatalog(campId, (d) => {
+      setRecipes(d.recipes);
+      setIngredients(d.ingredients);
+      setSteps(d.steps);
+    }, () => { commCatalogSyncedAt = Date.now(); });
+    unsubCommMenu = subscribeToCommissaryMenu(campId, (d) => {
+      setSessions(d.sessions);
+      setMenuEntries(d.menuEntries);
+      setTemplates(d.templates);
+      setTemplateEntries(d.templateEntries);
+      setDietCounts(d.dietCounts);
+      setMealEvents(d.mealEvents);
+    }, () => { commMenuSyncedAt = Date.now(); });
+    unsubCommOrders = subscribeToCommissaryOrders(campId, (d) => {
+      setOrders(d.orders);
+      setOrderLines(d.orderLines);
+      setExpenses(d.expenses);
+    }, () => { commOrdersSyncedAt = Date.now(); });
+    unsubCommProduction = subscribeToCommissaryProduction(campId, (d) => {
+      setPlans(d.plans);
+      setProductionTasks(d.productionTasks);
+    }, () => { commProductionSyncedAt = Date.now(); });
+    unsubCommAllergy = subscribeToCommissaryAllergy(campId, (d) => {
+      setCampers(d.campers);
+      setRestrictions(d.restrictions);
+      setRestrictionSummary(d.summary);
+    }, () => { commAllergySyncedAt = Date.now(); });
 
     // Load initial data after subscriptions are live.
     // Skip each setter if the subscription already fired — the subscription's refetch
@@ -187,6 +252,54 @@ function CampDataLoader() {
       setBuildingSeasonalTasks(data.seasonalTasks);
     });
 
+    loadCommissaryInventory(campId).then((data) => {
+      if (!data || commInventorySyncedAt > loadStartedAt) return;
+      setInventoryItems(data.items);
+      setAdjustments(data.adjustments);
+      setVendors(data.vendors);
+      setCountSessions(data.countSessions);
+      setStorageMap(data.storageMap);
+    });
+
+    loadCommissaryCatalog(campId).then((data) => {
+      if (!data || commCatalogSyncedAt > loadStartedAt) return;
+      setRecipes(data.recipes);
+      setIngredients(data.ingredients);
+      setSteps(data.steps);
+    });
+
+    loadCommissaryMenu(campId).then((data) => {
+      if (!data || commMenuSyncedAt > loadStartedAt) return;
+      setSessions(data.sessions);
+      setMenuEntries(data.menuEntries);
+      setTemplates(data.templates);
+      setTemplateEntries(data.templateEntries);
+      setDietCounts(data.dietCounts);
+      setMealEvents(data.mealEvents);
+    });
+
+    loadCommissaryOrders(campId).then((data) => {
+      if (!data || commOrdersSyncedAt > loadStartedAt) return;
+      setOrders(data.orders);
+      setOrderLines(data.orderLines);
+      setExpenses(data.expenses);
+    });
+
+    loadCommissaryProduction(campId).then((data) => {
+      if (!data || commProductionSyncedAt > loadStartedAt) return;
+      setPlans(data.plans);
+      setProductionTasks(data.productionTasks);
+    });
+
+    // For members without camper health access, campers/restrictions come back empty by
+    // RLS design and only `summary` is populated. That is not an error state.
+    loadCommissaryAllergy(campId).then((data) => {
+      if (!data || commAllergySyncedAt > loadStartedAt) return;
+      setCampers(data.campers);
+      setRestrictions(data.restrictions);
+      setRestrictionSummary(data.summary);
+    });
+
     // Refetch after the tab has been hidden long enough that the realtime subscription
     // may have missed events (e.g. WebSocket disconnected during sleep/long absence).
     // We skip the refetch for short tab switches to avoid a race: a quick refetch can
@@ -199,12 +312,18 @@ function CampDataLoader() {
       if (!campId) return;
       campLog(`[CampOps] refetchAll START reason=${reason} t=${Date.now()}`);
       const refetchStartedAt = Date.now();
-      const [issuesData, poolData, safetyData, assetData, buildingData] = await Promise.all([
+      const [issuesData, poolData, safetyData, assetData, buildingData, commInvData, commCatData, commMenuData, commOrderData, commProdData, commAllergyData] = await Promise.all([
         initializeSupabase(campId),
         loadPoolFromSupabase(campId),
         loadSafetyFromSupabase(campId),
         loadAssetsFromSupabase(campId),
         loadBuildingFromSupabase(campId),
+        loadCommissaryInventory(campId),
+        loadCommissaryCatalog(campId),
+        loadCommissaryMenu(campId),
+        loadCommissaryOrders(campId),
+        loadCommissaryProduction(campId),
+        loadCommissaryAllergy(campId),
       ]);
       const applied: string[] = [];
       if (issuesData && issuesSyncedAt <= refetchStartedAt) { setIssues(issuesData.issues); setTasks(issuesData.tasks); if (issuesData.season) setSeason(issuesData.season); applied.push('issues'); }
@@ -212,7 +331,13 @@ function CampDataLoader() {
       if (safetyData && safetySyncedAt <= refetchStartedAt) { setItems(safetyData.items); setSafetyLog(safetyData.inspectionLog); setDrills(safetyData.drills); setStaff(safetyData.staff); setCertifications(safetyData.certifications); setTempLogs(safetyData.tempLogs); setLicenses(safetyData.licenses); applied.push('safety'); }
       if (assetData && assetsSyncedAt <= refetchStartedAt) { setAssets(assetData.assets); setCheckouts(assetData.checkouts); setServiceRecords(assetData.serviceRecords); setMaintenanceTasks(assetData.maintenanceTasks); applied.push('assets'); }
       if (buildingData && buildingSyncedAt <= refetchStartedAt) { setBuildings(buildingData.buildings); setRooms(buildingData.rooms); setComponents(buildingData.components); setCircuits(buildingData.circuits); setBuildingSeasonalTasks(buildingData.seasonalTasks); applied.push('building'); }
-      campLog(`[CampOps] refetchAll DONE applied=${applied.join(',') || 'none(WAL-guard)'} syncedAts=issues:${issuesSyncedAt} pool:${poolSyncedAt} safety:${safetySyncedAt} assets:${assetsSyncedAt} building:${buildingSyncedAt} refetchStartedAt:${refetchStartedAt}`);
+      if (commInvData && commInventorySyncedAt <= refetchStartedAt) { setInventoryItems(commInvData.items); setAdjustments(commInvData.adjustments); setVendors(commInvData.vendors); setCountSessions(commInvData.countSessions); setStorageMap(commInvData.storageMap); applied.push('comm-inventory'); }
+      if (commCatData && commCatalogSyncedAt <= refetchStartedAt) { setRecipes(commCatData.recipes); setIngredients(commCatData.ingredients); setSteps(commCatData.steps); applied.push('comm-catalog'); }
+      if (commMenuData && commMenuSyncedAt <= refetchStartedAt) { setSessions(commMenuData.sessions); setMenuEntries(commMenuData.menuEntries); setTemplates(commMenuData.templates); setTemplateEntries(commMenuData.templateEntries); setDietCounts(commMenuData.dietCounts); setMealEvents(commMenuData.mealEvents); applied.push('comm-menu'); }
+      if (commOrderData && commOrdersSyncedAt <= refetchStartedAt) { setOrders(commOrderData.orders); setOrderLines(commOrderData.orderLines); setExpenses(commOrderData.expenses); applied.push('comm-orders'); }
+      if (commProdData && commProductionSyncedAt <= refetchStartedAt) { setPlans(commProdData.plans); setProductionTasks(commProdData.productionTasks); applied.push('comm-production'); }
+      if (commAllergyData && commAllergySyncedAt <= refetchStartedAt) { setCampers(commAllergyData.campers); setRestrictions(commAllergyData.restrictions); setRestrictionSummary(commAllergyData.summary); applied.push('comm-allergy'); }
+      campLog(`[CampOps] refetchAll DONE applied=${applied.join(',') || 'none(WAL-guard)'} syncedAts=issues:${issuesSyncedAt} pool:${poolSyncedAt} safety:${safetySyncedAt} assets:${assetsSyncedAt} building:${buildingSyncedAt} commInv:${commInventorySyncedAt} commCat:${commCatalogSyncedAt} commMenu:${commMenuSyncedAt} refetchStartedAt:${refetchStartedAt}`);
     }
 
     function handleVisibility() {
@@ -264,6 +389,12 @@ function CampDataLoader() {
       unsubSafety?.();
       unsubAssets?.();
       unsubBuilding?.();
+      unsubCommInventory?.();
+      unsubCommCatalog?.();
+      unsubCommMenu?.();
+      unsubCommOrders?.();
+      unsubCommProduction?.();
+      unsubCommAllergy?.();
       stopHeartbeat();
       stopWriteQueue();
       document.removeEventListener('visibilitychange', handleVisibility);
@@ -326,6 +457,7 @@ export default function App() {
                 <Route path="/safety" element={<SafetyCompliance />} />
                 <Route path="/assets" element={<AssetVehicles />} />
                 <Route path="/building" element={<BuildingSystems />} />
+                <Route path="/commissary" element={<Commissary />} />
                 <Route path="/settings" element={<CampSettings />} />
                 <Route path="/settings/team" element={<Team />} />
               </Route>

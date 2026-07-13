@@ -12,7 +12,7 @@ import {
   dbToggleBuildingSeasonalTask, dbDeleteBuildingSeasonalTask,
 } from '@/lib/db';
 
-export type BuildingTab = 'buildings' | 'electrical' | 'plumbing' | 'seasonal';
+export type BuildingTab = 'buildings' | 'electrical' | 'plumbing';
 
 // Discriminated modal state for the module. Components dispatch `openModal`; the
 // page renders the matching modal. Keeps modal wiring out of prop-drilling.
@@ -21,7 +21,6 @@ export type BuildingModal =
   | { kind: 'room'; buildingId: string; editId?: string }
   | { kind: 'component'; buildingId: string; editId?: string; defaultRoomId?: string | null; defaultSystem?: BuildingSystem }
   | { kind: 'circuit'; panelId: string; editId?: string }
-  | { kind: 'seasonal'; editId?: string; defaultPhase?: SeasonalPhase }
   | { kind: 'flag'; componentId: string };
 
 // ─── Taxonomy / labels ──────────────────────────────────────────────────────

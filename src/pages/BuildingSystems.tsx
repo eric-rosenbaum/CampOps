@@ -7,19 +7,16 @@ import { BuildingsOverview } from '@/components/building/BuildingsOverview';
 import { BuildingDetail } from '@/components/building/BuildingDetail';
 import { ElectricalTab } from '@/components/building/ElectricalTab';
 import { PlumbingTab } from '@/components/building/PlumbingTab';
-import { BuildingSeasonalTab } from '@/components/building/BuildingSeasonalTab';
 import { AddEditBuildingModal } from '@/components/building/AddEditBuildingModal';
 import { AddEditRoomModal } from '@/components/building/AddEditRoomModal';
 import { AddEditComponentModal } from '@/components/building/AddEditComponentModal';
 import { AddEditCircuitModal } from '@/components/building/AddEditCircuitModal';
-import { BuildingSeasonalTaskModal } from '@/components/building/BuildingSeasonalTaskModal';
 import { FlagComponentIssueModal } from '@/components/building/FlagComponentIssueModal';
 
 const TABS: { id: BuildingTab; label: string }[] = [
   { id: 'buildings', label: 'Buildings' },
   { id: 'electrical', label: 'Electrical' },
   { id: 'plumbing', label: 'Plumbing' },
-  { id: 'seasonal', label: 'Seasonal' },
 ];
 
 export function BuildingSystems() {
@@ -87,7 +84,6 @@ export function BuildingSystems() {
             {activeTab === 'buildings' && activeBuildingId && <BuildingDetail />}
             {activeTab === 'electrical' && <ElectricalTab />}
             {activeTab === 'plumbing' && <PlumbingTab />}
-            {activeTab === 'seasonal' && <BuildingSeasonalTab />}
           </>
         )}
       </div>
@@ -104,7 +100,6 @@ export function BuildingSystems() {
         />
       )}
       {modal?.kind === 'circuit' && <AddEditCircuitModal panelId={modal.panelId} editId={modal.editId} />}
-      {modal?.kind === 'seasonal' && <BuildingSeasonalTaskModal editId={modal.editId} defaultPhase={modal.defaultPhase} />}
       {modal?.kind === 'flag' && <FlagComponentIssueModal componentId={modal.componentId} />}
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChefHat, ChevronDown, ChevronRight, Link2Off } from 'lucide-react';
+import { ChefHat, ChevronDown, ChevronRight, Link2Off, Printer } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { FilterPill } from '@/components/shared/FilterPill';
 import { SearchInput } from '@/components/shared/SearchInput';
@@ -7,8 +7,37 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
 import {
   MEAL_PERIODS, MEAL_PERIOD_LABELS, scaledIngredientLabel, scaleFactor, tidy,
+  recipesToPrintHtml, stepTimingLabel, type PrintRecipe,
 } from '@/lib/commissaryUnits';
+import type { Recipe, RecipeIngredient, RecipeStep, InventoryItem } from '@/lib/types';
 import { AllergenChips } from './commissaryUi';
+
+/** Assemble a printable, pre-scaled recipe from its parts. */
+function buildPrintRecipe(
+  recipe: Recipe, ings: RecipeIngredient[], steps: RecipeStep[],
+  allergens: string[], byId: Map<string, InventoryItem>, scaleTo: number,
+): PrintRecipe {
+  return {
+    name: recipe.name,
+    mealLabel: MEAL_PERIOD_LABELS[recipe.mealPeriod],
+    baseYield: recipe.baseYield,
+    scaledTo: scaleTo,
+    prepTime: recipe.prepTime,
+    cookTime: recipe.cookTime,
+    allergens,
+    ingredients: ings.map((ing) => {
+      const item = ing.itemId ? byId.get(ing.itemId) : undefined;
+      return { label: ing.label, qty: scaledIngredientLabel(ing, recipe, scaleTo, item), unlinked: !item };
+    }),
+    steps: steps.map((s) => ({ instruction: s.instruction, timing: stepTimingLabel(s) })),
+  };
+}
+
+function openPrint(html: string, emptyMsg: string) {
+  const w = window.open('', '_blank');
+  if (!w) { alert(emptyMsg); return; }
+  w.document.write(html); w.document.close(); w.focus(); w.print();
+}
 
 const FILTERS = [{ id: 'all', label: 'All' }, ...MEAL_PERIODS.map((m) => ({ id: m, label: MEAL_PERIOD_LABELS[m] }))];
 
@@ -64,6 +93,15 @@ function RecipeCard({ recipeId }: { recipeId: string }) {
               portions · ×{tidy(factor, 2)} of base
             </span>
             <div className="flex-1" />
+            <Button
+              size="sm" variant="ghost"
+              onClick={() => openPrint(
+                recipesToPrintHtml([buildPrintRecipe(recipe, ings, steps, allergens, byId, effective)]),
+                'Enable pop-ups to print this recipe.',
+              )}
+            >
+              <Printer className="w-3.5 h-3.5" /> Print
+            </Button>
             {can('manageCommissary') && (
               <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'recipe', editId: recipeId })}>Edit recipe</Button>
             )}
@@ -102,12 +140,22 @@ function RecipeCard({ recipeId }: { recipeId: string }) {
               <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40 mb-2">Method</p>
               {steps.length > 0 ? (
                 <ol className="space-y-2">
-                  {steps.map((s) => (
-                    <li key={s.id} className="flex gap-2.5 text-[12px] text-forest/70">
-                      <span className="font-mono text-forest/35 flex-shrink-0">{s.stepNumber}.</span>
-                      <span className="leading-relaxed">{s.instruction}</span>
-                    </li>
-                  ))}
+                  {steps.map((s) => {
+                    const timing = stepTimingLabel(s);
+                    return (
+                      <li key={s.id} className="flex gap-2.5 text-[12px] text-forest/70">
+                        <span className="font-mono text-forest/35 flex-shrink-0">{s.stepNumber}.</span>
+                        <span className="leading-relaxed">
+                          {timing && (
+                            <span className="inline-block mr-1.5 px-1.5 py-0.5 rounded-tag text-[10px] font-medium bg-forest/8 text-forest/70 align-middle">
+                              {timing}
+                            </span>
+                          )}
+                          {s.instruction}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ol>
               ) : recipe.method ? (
                 <p className="text-[12px] text-forest/70 leading-relaxed whitespace-pre-wrap">{recipe.method}</p>
@@ -126,10 +174,19 @@ export function RecipesTab() {
   const {
     recipes, filteredRecipes, recipeFilter, setRecipeFilter,
     recipeSearch, setRecipeSearch, openModal,
+    ingredientsFor, stepsFor, allergensFor, itemsById, portions,
   } = useCommissaryStore();
   const { can } = useAuth();
   const canManage = can('manageCommissary');
   const rows = filteredRecipes();
+
+  function handlePrintAll() {
+    const byId = itemsById();
+    const sessionPortions = portions();
+    const printable = rows.map((r) =>
+      buildPrintRecipe(r, ingredientsFor(r.id), stepsFor(r.id), allergensFor(r.id), byId, sessionPortions || r.baseYield));
+    openPrint(recipesToPrintHtml(printable), 'Enable pop-ups to print recipes.');
+  }
 
   if (recipes.length === 0) {
     return (
@@ -156,6 +213,9 @@ export function RecipesTab() {
           <FilterPill key={f.id} label={f.label} active={recipeFilter === f.id} onClick={() => setRecipeFilter(f.id)} />
         ))}
         <div className="flex-1" />
+        <Button size="sm" variant="ghost" disabled={rows.length === 0} onClick={handlePrintAll}>
+          <Printer className="w-3.5 h-3.5" /> Print all
+        </Button>
         <SearchInput value={recipeSearch} onChange={setRecipeSearch} placeholder="Search recipes…" />
       </div>
 

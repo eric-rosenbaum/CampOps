@@ -84,10 +84,11 @@ function CampDataLoader() {
   const {
     setItems: setInventoryItems, setAdjustments, setVendors,
     setRecipes, setIngredients, setSteps, setSessions, setMenuEntries,
-    setOrders, setOrderLines, setPlans, setProductionTasks,
+    setOrders, setOrderLines, setPlans, setProductionTasks, setPrepTasks,
     setCampers, setRestrictions, setRestrictionSummary,
     setCountSessions, setStorageMap, setTemplates, setTemplateEntries,
     setDietCounts, setMealEvents, setExpenses,
+    setCourses, setSubstitutions, setFiles,
   } = useCommissaryStore();
 
   useEffect(() => {
@@ -185,6 +186,8 @@ function CampDataLoader() {
       setTemplateEntries(d.templateEntries);
       setDietCounts(d.dietCounts);
       setMealEvents(d.mealEvents);
+      setCourses(d.courses);
+      setSubstitutions(d.substitutions);
     }, () => { commMenuSyncedAt = Date.now(); });
     unsubCommOrders = subscribeToCommissaryOrders(campId, (d) => {
       setOrders(d.orders);
@@ -194,11 +197,13 @@ function CampDataLoader() {
     unsubCommProduction = subscribeToCommissaryProduction(campId, (d) => {
       setPlans(d.plans);
       setProductionTasks(d.productionTasks);
+      setPrepTasks(d.prepTasks);
     }, () => { commProductionSyncedAt = Date.now(); });
     unsubCommAllergy = subscribeToCommissaryAllergy(campId, (d) => {
       setCampers(d.campers);
       setRestrictions(d.restrictions);
       setRestrictionSummary(d.summary);
+      setFiles(d.files);
     }, () => { commAllergySyncedAt = Date.now(); });
 
     // Load initial data after subscriptions are live.
@@ -276,6 +281,8 @@ function CampDataLoader() {
       setTemplateEntries(data.templateEntries);
       setDietCounts(data.dietCounts);
       setMealEvents(data.mealEvents);
+      setCourses(data.courses);
+      setSubstitutions(data.substitutions);
     });
 
     loadCommissaryOrders(campId).then((data) => {
@@ -289,6 +296,7 @@ function CampDataLoader() {
       if (!data || commProductionSyncedAt > loadStartedAt) return;
       setPlans(data.plans);
       setProductionTasks(data.productionTasks);
+      setPrepTasks(data.prepTasks);
     });
 
     // For members without camper health access, campers/restrictions come back empty by
@@ -298,6 +306,7 @@ function CampDataLoader() {
       setCampers(data.campers);
       setRestrictions(data.restrictions);
       setRestrictionSummary(data.summary);
+      setFiles(data.files);
     });
 
     // Refetch after the tab has been hidden long enough that the realtime subscription
@@ -333,10 +342,10 @@ function CampDataLoader() {
       if (buildingData && buildingSyncedAt <= refetchStartedAt) { setBuildings(buildingData.buildings); setRooms(buildingData.rooms); setComponents(buildingData.components); setCircuits(buildingData.circuits); setBuildingSeasonalTasks(buildingData.seasonalTasks); applied.push('building'); }
       if (commInvData && commInventorySyncedAt <= refetchStartedAt) { setInventoryItems(commInvData.items); setAdjustments(commInvData.adjustments); setVendors(commInvData.vendors); setCountSessions(commInvData.countSessions); setStorageMap(commInvData.storageMap); applied.push('comm-inventory'); }
       if (commCatData && commCatalogSyncedAt <= refetchStartedAt) { setRecipes(commCatData.recipes); setIngredients(commCatData.ingredients); setSteps(commCatData.steps); applied.push('comm-catalog'); }
-      if (commMenuData && commMenuSyncedAt <= refetchStartedAt) { setSessions(commMenuData.sessions); setMenuEntries(commMenuData.menuEntries); setTemplates(commMenuData.templates); setTemplateEntries(commMenuData.templateEntries); setDietCounts(commMenuData.dietCounts); setMealEvents(commMenuData.mealEvents); applied.push('comm-menu'); }
+      if (commMenuData && commMenuSyncedAt <= refetchStartedAt) { setSessions(commMenuData.sessions); setMenuEntries(commMenuData.menuEntries); setTemplates(commMenuData.templates); setTemplateEntries(commMenuData.templateEntries); setDietCounts(commMenuData.dietCounts); setMealEvents(commMenuData.mealEvents); setCourses(commMenuData.courses); setSubstitutions(commMenuData.substitutions); applied.push('comm-menu'); }
       if (commOrderData && commOrdersSyncedAt <= refetchStartedAt) { setOrders(commOrderData.orders); setOrderLines(commOrderData.orderLines); setExpenses(commOrderData.expenses); applied.push('comm-orders'); }
-      if (commProdData && commProductionSyncedAt <= refetchStartedAt) { setPlans(commProdData.plans); setProductionTasks(commProdData.productionTasks); applied.push('comm-production'); }
-      if (commAllergyData && commAllergySyncedAt <= refetchStartedAt) { setCampers(commAllergyData.campers); setRestrictions(commAllergyData.restrictions); setRestrictionSummary(commAllergyData.summary); applied.push('comm-allergy'); }
+      if (commProdData && commProductionSyncedAt <= refetchStartedAt) { setPlans(commProdData.plans); setProductionTasks(commProdData.productionTasks); setPrepTasks(commProdData.prepTasks); applied.push('comm-production'); }
+      if (commAllergyData && commAllergySyncedAt <= refetchStartedAt) { setCampers(commAllergyData.campers); setRestrictions(commAllergyData.restrictions); setRestrictionSummary(commAllergyData.summary); setFiles(commAllergyData.files); applied.push('comm-allergy'); }
       campLog(`[CampOps] refetchAll DONE applied=${applied.join(',') || 'none(WAL-guard)'} syncedAts=issues:${issuesSyncedAt} pool:${poolSyncedAt} safety:${safetySyncedAt} assets:${assetsSyncedAt} building:${buildingSyncedAt} commInv:${commInventorySyncedAt} commCat:${commCatalogSyncedAt} commMenu:${commMenuSyncedAt} refetchStartedAt:${refetchStartedAt}`);
     }
 

@@ -26,11 +26,13 @@ import { ApplyTemplateModal } from '@/components/commissary/ApplyTemplateModal';
 import { TemplateEntryModal } from '@/components/commissary/TemplateEntryModal';
 import { DietCountsModal } from '@/components/commissary/DietCountsModal';
 import { CountModal } from '@/components/commissary/CountModal';
+import { CoursesModal } from '@/components/commissary/CoursesModal';
+import { SubstitutionModal } from '@/components/commissary/SubstitutionModal';
 
 const TABS: { id: CommissaryTab; label: string }[] = [
   { id: 'inventory', label: 'Inventory' },
-  { id: 'menu', label: 'Menu builder' },
   { id: 'recipes', label: 'Recipe guide' },
+  { id: 'menu', label: 'Menu builder' },
   { id: 'production', label: 'Production guide' },
   { id: 'allergy', label: 'Allergy program' },
   { id: 'ordering', label: 'Ordering' },
@@ -128,6 +130,10 @@ export function Commissary() {
       )}
       {modal?.kind === 'dietCounts' && <DietCountsModal />}
       {modal?.kind === 'count' && <CountModal />}
+      {modal?.kind === 'courses' && <CoursesModal />}
+      {modal?.kind === 'substitution' && (
+        <SubstitutionModal weekNumber={modal.weekNumber} dayIndex={modal.dayIndex} mealPeriod={modal.mealPeriod} editId={modal.editId} />
+      )}
     </div>
   );
 }

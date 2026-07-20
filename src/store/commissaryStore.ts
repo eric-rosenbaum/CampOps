@@ -2,10 +2,10 @@ import { create } from 'zustand';
 import type {
   CommissarySession, CommissaryVendor, InventoryItem, InventoryAdjustment,
   Recipe, RecipeIngredient, RecipeStep, MenuEntry, MealPeriod, AdjustmentReason,
-  PurchaseOrder, PurchaseOrderLine, ProductionPlan, ProductionTask,
+  PurchaseOrder, PurchaseOrderLine, ProductionPlan, ProductionTask, ProductionPrepTask,
   ProductionIngredient, Camper, CamperRestriction, RestrictionSummaryRow,
   OrderSource, CommissaryExpense, MenuTemplate, MenuTemplateEntry, DietCount,
-  MealEvent, CountSession, StorageMap,
+  MealEvent, CountSession, StorageMap, MenuCourse, MenuSubstitution, CommissaryFile,
   InventoryCategory, StorageLocation,
 } from '@/lib/types';
 import {
@@ -16,7 +16,7 @@ import {
   dbAddMenuEntry, dbDeleteMenuEntry, dbAddMenuEntries, dbDeleteMenuWeek,
   dbCreateOrder, dbUpdateOrderStatus, dbDeleteOrder, dbReceiveOrder,
   dbUpdateOrderLineQty, dbUpdateOrderTotals, dbAddOrderLine, dbDeleteOrderLine,
-  dbSavePlan, dbToggleProductionTask,
+  dbSavePlan, dbToggleProductionTask, dbToggleProductionPrepTask,
   dbAddCamper, dbUpdateCamper, dbDeleteCamper, dbReplaceCamperRestrictions, dbImportCampers,
   dbAddExpense, dbDeleteExpense, dbSaveReceivingLine, dbSaveOrderInvoice,
   dbAddTemplate, dbUpdateTemplate, dbDeleteTemplate, dbAddTemplateEntry,
@@ -24,14 +24,17 @@ import {
   dbUpsertDietCount, dbDeleteDietCount,
   dbAddMealEvent, dbUpdateMealEvent, dbDeleteMealEvent,
   dbAddCountSession, dbUpsertStorageMap,
+  dbAddMenuCourse, dbUpdateMenuCourse, dbDeleteMenuCourse,
+  dbAddSubstitution, dbUpdateSubstitution, dbDeleteSubstitution,
+  dbUploadCommissaryFile, dbDeleteCommissaryFile,
 } from '@/lib/db';
 import {
   demandForEntries, stockStatus, targetPortions, weekCount, recipeAllergens,
   buildDraftOrders, parRequirements, menuSignature, menuConflicts,
-  scaledIngredientLabel, tidy, mealHeadCount, peopleDays, perDiem, menuForecastCost,
-  dateForCell,
+  scaledIngredientLabel, formatInStockUnit, tidy, mealHeadCount, peopleDays, perDiem,
+  menuForecastCost, dateForCell, ALLERGENS, MEAL_PERIOD_LABELS, PREP_SLOT_ORDER,
   type Allergen, type DemandRow, type StockStatus, type DraftOrder, type MenuConflict,
-  type PerDiem,
+  type PerDiem, type PrepScheduleSlot, type PrepSlotKey,
 } from '@/lib/commissaryUnits';
 import { generateId } from '@/lib/utils';
 
@@ -67,7 +70,9 @@ export type CommissaryModal =
   | { kind: 'applyTemplate' }
   | { kind: 'dietCounts' }
   | { kind: 'templateEntry'; templateId: string; weekNumber: number; dayIndex: number; mealPeriod: MealPeriod }
-  | { kind: 'count' };
+  | { kind: 'count' }
+  | { kind: 'courses' }
+  | { kind: 'substitution'; weekNumber: number; dayIndex: number; mealPeriod: MealPeriod; editId?: string };
 
 interface CommissaryState {
   activeTab: CommissaryTab;
@@ -96,6 +101,7 @@ interface CommissaryState {
   orderLines: PurchaseOrderLine[];
   plans: ProductionPlan[];
   productionTasks: ProductionTask[];
+  prepTasks: ProductionPrepTask[];
   campers: Camper[];
   restrictions: CamperRestriction[];
   /** Aggregate counts. Populated for every member, including those denied names. */
@@ -126,6 +132,7 @@ interface CommissaryState {
   setOrderLines: (rows: PurchaseOrderLine[]) => void;
   setPlans: (rows: ProductionPlan[]) => void;
   setProductionTasks: (rows: ProductionTask[]) => void;
+  setPrepTasks: (rows: ProductionPrepTask[]) => void;
   setCampers: (rows: Camper[]) => void;
   setRestrictions: (rows: CamperRestriction[]) => void;
   setRestrictionSummary: (rows: RestrictionSummaryRow[]) => void;
@@ -164,7 +171,12 @@ interface CommissaryState {
 
   // Production
   generatePlan: (weekNumber: number, dayIndex: number, generatedBy: string | null) => void;
+  /** Generate/regenerate every day of the week that has at least one recipe on the menu. */
+  generateWeek: (weekNumber: number, generatedBy: string | null) => number;
   toggleProductionTask: (taskId: string, userName: string) => void;
+  toggleProductionPrepTask: (taskId: string, userName: string) => void;
+  /** Persisted, checkable prep tasks due on a given day (ahead-prep for upcoming meals). */
+  prepTasksForDay: (week: number, dayIndex: number) => ProductionPrepTask[];
 
   // Allergy
   addCamper: (c: Camper, restrictions: CamperRestriction[]) => void;
@@ -197,6 +209,10 @@ interface CommissaryState {
   // Ordering selectors
   summaryMap: () => Map<string, { camperCount: number; anaphylacticCount: number }>;
   draftOrdersFor: (source: OrderSource, week: number) => DraftOrder[];
+  /** Items below the critical threshold, regardless of what's on the menu. */
+  criticalItems: () => InventoryItem[];
+  /** Draft orders (to reorder level) covering only the critically-low items. */
+  criticalDraftOrders: () => DraftOrder[];
   linesForOrder: (orderId: string) => PurchaseOrderLine[];
   ordersByStatus: (status: PurchaseOrder['status']) => PurchaseOrder[];
 
@@ -278,6 +294,44 @@ interface CommissaryState {
   templateEntriesForWeek: (templateId: string, week: number) => MenuTemplateEntry[];
   thawListForDay: (week: number, dayIndex: number) => { item: InventoryItem; neededBase: number }[];
   storageMapFor: (location: StorageLocation) => string | null;
+
+  // ── #2/#3 menu items + courses, #11 substitutions, #9 files ──
+  courses: MenuCourse[];
+  substitutions: MenuSubstitution[];
+  files: CommissaryFile[];
+  setCourses: (rows: MenuCourse[]) => void;
+  setSubstitutions: (rows: MenuSubstitution[]) => void;
+  setFiles: (rows: CommissaryFile[]) => void;
+
+  addCourse: (name: string) => void;
+  renameCourse: (id: string, name: string) => void;
+  deleteCourse: (id: string) => void;
+  /** Seed a first-time camp with the common buckets, once. */
+  seedDefaultCourses: () => void;
+  coursesSorted: () => MenuCourse[];
+
+  addSubstitution: (s: MenuSubstitution) => void;
+  updateSubstitution: (s: MenuSubstitution) => void;
+  deleteSubstitution: (id: string) => void;
+  substitutionsForCell: (week: number, dayIndex: number, meal: MealPeriod) => MenuSubstitution[];
+  substitutionsForDay: (week: number, dayIndex: number) => MenuSubstitution[];
+  substitutionsForSession: () => MenuSubstitution[];
+
+  uploadFile: (file: File, sessionId: string | null, by: string | null) => Promise<CommissaryFile | null>;
+  deleteFile: (f: CommissaryFile) => Promise<void>;
+
+  /** Allergens for any chip — recipe union, single item's allergens, or none. */
+  entryAllergens: (entry: MenuEntry) => Allergen[];
+  /** Camper conflicts for any chip (recipe or item), driven by the aggregate summary. */
+  conflictsForEntry: (entry: MenuEntry) => MenuConflict[];
+
+  /**
+   * #7 — the forward-looking prep calendar. Every timing-tagged recipe step for the
+   * week's meals, resolved to the date+slot it must be done (serviceDate − leadDays).
+   * Hybrid source: portions come from a generated plan when present (frozen), else the
+   * live per-meal head count.
+   */
+  prepScheduleForWeek: (week: number) => PrepScheduleSlot[];
 }
 
 export const useCommissaryStore = create<CommissaryState>((set, get) => ({
@@ -305,6 +359,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   orderLines: [],
   plans: [],
   productionTasks: [],
+  prepTasks: [],
   campers: [],
   restrictions: [],
   restrictionSummary: [],
@@ -340,6 +395,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   setOrderLines: (rows) => set({ orderLines: rows }),
   setPlans: (rows) => set({ plans: rows }),
   setProductionTasks: (rows) => set({ productionTasks: rows }),
+  setPrepTasks: (rows) => set({ prepTasks: rows }),
   setCampers: (rows) => set({ campers: rows }),
   setRestrictions: (rows) => set({ restrictions: rows }),
   setRestrictionSummary: (rows) => set({ restrictionSummary: rows }),
@@ -638,40 +694,42 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     const tasks: ProductionTask[] = [];
     let sort = 0;
     for (const entry of entries) {
-      if (!entry.recipeId) continue;
-      const recipe = recipesById.get(entry.recipeId);
-      if (!recipe) continue;
-
       const mealPortions = state.mealCount(dateStr, entry.mealPeriod);
-      const ings = state.ingredientsFor(recipe.id);
-      const snapshot: ProductionIngredient[] = ings.map((ing) => {
-        const item = ing.itemId ? byId.get(ing.itemId) : undefined;
-        return {
-          label: ing.label,
-          qty: scaledIngredientLabel(ing, recipe, mealPortions, item),
-          linked: Boolean(item),
-        };
-      });
 
-      tasks.push({
-        id: generateId(),
-        planId,
-        recipeId: recipe.id,
-        mealPeriod: entry.mealPeriod,
-        title: recipe.name,
-        portions: mealPortions,
-        ingredients: snapshot,
-        allergens: state.allergensFor(recipe.id),
-        prepTime: recipe.prepTime,
-        cookTime: recipe.cookTime,
-        notes: null,
-        isComplete: false,
-        completedBy: null,
-        completedAt: null,
-        sortOrder: sort++,
-        createdAt: now,
-        updatedAt: now,
-      });
+      if (entry.recipeId) {
+        const recipe = recipesById.get(entry.recipeId);
+        if (!recipe) continue;
+        const ings = state.ingredientsFor(recipe.id);
+        const snapshot: ProductionIngredient[] = ings.map((ing) => {
+          const item = ing.itemId ? byId.get(ing.itemId) : undefined;
+          return {
+            label: ing.label,
+            qty: scaledIngredientLabel(ing, recipe, mealPortions, item),
+            linked: Boolean(item),
+          };
+        });
+        tasks.push({
+          id: generateId(), planId, recipeId: recipe.id, mealPeriod: entry.mealPeriod,
+          title: recipe.name, portions: mealPortions, ingredients: snapshot,
+          allergens: state.allergensFor(recipe.id),
+          prepTime: recipe.prepTime, cookTime: recipe.cookTime, notes: null,
+          isComplete: false, completedBy: null, completedAt: null,
+          sortOrder: sort++, createdAt: now, updatedAt: now,
+        });
+      } else if (entry.itemId && entry.itemQtyBase != null) {
+        // A single-item chip: no recipe to prep, just a quantity to portion/serve.
+        const item = byId.get(entry.itemId);
+        const base = entry.itemQtyBase * mealPortions;
+        tasks.push({
+          id: generateId(), planId, recipeId: null, mealPeriod: entry.mealPeriod,
+          title: entry.label ?? item?.name ?? 'Item', portions: mealPortions,
+          ingredients: item ? [{ label: item.name, qty: formatInStockUnit(item, base), linked: true }] : [],
+          allergens: item ? ALLERGENS.filter((a) => item.allergens.includes(a)) : [],
+          prepTime: null, cookTime: null, notes: 'Serve — no prep needed.',
+          isComplete: false, completedBy: null, completedAt: null,
+          sortOrder: sort++, createdAt: now, updatedAt: now,
+        });
+      }
     }
 
     // Bag lunches for trips are their own tasks at their own count.
@@ -688,17 +746,89 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       });
     }
 
-    set((s) => ({
-      plans: [...s.plans.filter((p) => !(p.sessionId === session.id && p.weekNumber === weekNumber && p.dayIndex === dayIndex)), plan],
-      productionTasks: [
-        ...s.productionTasks.filter((t) => {
-          const old = s.plans.find((p) => p.id === t.planId);
-          return !(old && old.sessionId === session.id && old.weekNumber === weekNumber && old.dayIndex === dayIndex);
-        }),
-        ...tasks,
-      ],
-    }));
-    dbSavePlan(plan, tasks);
+    // ── Prep tasks: time-phased steps + auto freezer pulls ──────────────────────
+    const serviceDateObj = dateForCell(session.startDate, weekNumber, dayIndex);
+    const prepTasks: ProductionPrepTask[] = [];
+    let psort = 0;
+
+    // A recipe with its own ahead-of-time steps handles its own thawing, so we don't
+    // also auto-generate a freezer pull for its frozen ingredients (that was the salmon
+    // double-entry). Collect those "covered" freezer items first.
+    const coveredFreezer = new Set<string>();
+    for (const entry of entries) {
+      if (!entry.recipeId) continue;
+      const recipe = recipesById.get(entry.recipeId);
+      if (!recipe) continue;
+      const steps = state.stepsFor(recipe.id);
+      if (steps.some((s) => (s.leadDays ?? 0) > 0)) {
+        for (const ing of state.ingredientsFor(recipe.id)) {
+          const it = ing.itemId ? byId.get(ing.itemId) : undefined;
+          if (it && it.storageLocation === 'walk_in_freezer') coveredFreezer.add(it.id);
+        }
+      }
+      // A step becomes a scheduled prep task only when it carries a WHEN (lead time or
+      // slot); a plain day-of step is just cooking, already covered by the dish task.
+      const mealPortions = state.mealCount(dateStr, entry.mealPeriod);
+      for (const s of steps) {
+        if ((s.leadDays ?? 0) === 0 && !s.timeSlot) continue;
+        const prep = new Date(serviceDateObj);
+        prep.setDate(prep.getDate() - (s.leadDays ?? 0));
+        prepTasks.push({
+          id: generateId(), planId, recipeId: recipe.id,
+          prepDate: prep.toISOString().slice(0, 10), timeSlot: s.timeSlot,
+          mealPeriod: entry.mealPeriod, serviceDate: dateStr,
+          title: recipe.name, instruction: s.instruction, portions: mealPortions,
+          isComplete: false, completedBy: null, completedAt: null,
+          sortOrder: psort++, createdAt: now, updatedAt: now,
+        });
+      }
+    }
+
+    // Auto freezer pulls the night before, for frozen ingredients whose recipe has no
+    // ahead-prep step of its own. Replaces the old service-day "thaw list".
+    const dayDemand = demandForEntries(entries, recipesById, state.ingredientsByRecipe(),
+      (e) => state.mealCount(dateStr, e.mealPeriod));
+    const nightBefore = new Date(serviceDateObj);
+    nightBefore.setDate(nightBefore.getDate() - 1);
+    const nightBeforeStr = nightBefore.toISOString().slice(0, 10);
+    for (const row of dayDemand.values()) {
+      const item = byId.get(row.itemId);
+      if (!item || item.storageLocation !== 'walk_in_freezer' || coveredFreezer.has(item.id)) continue;
+      prepTasks.push({
+        id: generateId(), planId, recipeId: null,
+        prepDate: nightBeforeStr, timeSlot: 'evening', mealPeriod: 'dinner',
+        serviceDate: dateStr, title: 'Freezer pull',
+        instruction: `Pull ${item.name} from freezer — ${formatInStockUnit(item, row.neededBase)}`,
+        portions: 0, isComplete: false, completedBy: null, completedAt: null,
+        sortOrder: 800 + psort++, createdAt: now, updatedAt: now,
+      });
+    }
+
+    set((s) => {
+      const isThisCell = (planId2: string) => {
+        const old = s.plans.find((p) => p.id === planId2);
+        return Boolean(old && old.sessionId === session.id && old.weekNumber === weekNumber && old.dayIndex === dayIndex);
+      };
+      return {
+        plans: [...s.plans.filter((p) => !(p.sessionId === session.id && p.weekNumber === weekNumber && p.dayIndex === dayIndex)), plan],
+        productionTasks: [...s.productionTasks.filter((t) => !isThisCell(t.planId)), ...tasks],
+        prepTasks: [...s.prepTasks.filter((t) => !isThisCell(t.planId)), ...prepTasks],
+      };
+    });
+    dbSavePlan(plan, tasks, prepTasks);
+  },
+
+  // Regenerate the whole week in one action. Skips days with no linked recipe so we
+  // don't create empty plans. Returns how many days were generated.
+  generateWeek: (weekNumber, generatedBy) => {
+    let count = 0;
+    for (let d = 0; d < 7; d++) {
+      if (get().entriesForDay(weekNumber, d).some((e) => e.recipeId)) {
+        get().generatePlan(weekNumber, d, generatedBy);
+        count++;
+      }
+    }
+    return count;
   },
 
   toggleProductionTask: (taskId, userName) => {
@@ -711,6 +841,29 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
         : t),
     }));
     dbToggleProductionTask(taskId, next, next ? userName : null);
+  },
+
+  toggleProductionPrepTask: (taskId, userName) => {
+    const task = get().prepTasks.find((t) => t.id === taskId);
+    if (!task) return;
+    const next = !task.isComplete;
+    set((s) => ({
+      prepTasks: s.prepTasks.map((t) => t.id === taskId
+        ? { ...t, isComplete: next, completedBy: next ? userName : null, completedAt: next ? new Date().toISOString() : null }
+        : t),
+    }));
+    dbToggleProductionPrepTask(taskId, next, next ? userName : null);
+  },
+
+  prepTasksForDay: (week, dayIndex) => {
+    const { prepTasks, plans, activeSessionId } = get();
+    const session = get().activeSession();
+    if (!session) return [];
+    const dateStr = dateForCell(session.startDate, week, dayIndex).toISOString().slice(0, 10);
+    const sessionPlanIds = new Set(plans.filter((p) => p.sessionId === activeSessionId).map((p) => p.id));
+    return prepTasks
+      .filter((t) => sessionPlanIds.has(t.planId) && t.prepDate === dateStr)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
   },
 
   // ─── Allergy ───────────────────────────────────────────────────────────────
@@ -829,12 +982,16 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     return menuEntries.filter((m) => m.sessionId === activeSessionId && m.weekNumber === week);
   },
 
-  weekDemand: (week) => demandForEntries(
-    get().entriesForWeek(week),
-    get().recipesById(),
-    get().ingredientsByRecipe(),
-    get().portions(),
-  ),
+  weekDemand: (week) => {
+    const state = get();
+    const session = state.activeSession();
+    // Scale each entry by its OWN meal's head count (per-meal session counts + events),
+    // not the flat session total — otherwise ordering over-orders for smaller meals.
+    const portionsFor = session
+      ? (e: MenuEntry) => state.mealCount(dateForCell(session.startDate, e.weekNumber, e.dayIndex).toISOString().slice(0, 10), e.mealPeriod)
+      : state.portions();
+    return demandForEntries(state.entriesForWeek(week), state.recipesById(), state.ingredientsByRecipe(), portionsFor);
+  },
 
   weekShortfalls: (week) => {
     const demand = get().weekDemand(week);
@@ -872,6 +1029,18 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     const needed = new Map<string, number>();
     for (const row of demand.values()) needed.set(row.itemId, row.neededBase);
     return buildDraftOrders(state.items, needed, vendorsById);
+  },
+
+  criticalItems: () => get().items.filter((i) => stockStatus(i) === 'critical'),
+
+  criticalDraftOrders: () => {
+    const state = get();
+    const vendorsById = new Map(state.vendors.map((v) => [v.id, { id: v.id, name: v.name, deliveryFee: v.deliveryFee }]));
+    const critical = state.criticalItems();
+    const needed = new Map<string, number>();
+    // Reorder-level requirement, but only for the critically-low items.
+    for (const i of critical) if (i.parLevelBase > 0) needed.set(i.id, i.parLevelBase);
+    return buildDraftOrders(critical, needed, vendorsById);
   },
 
   linesForOrder: (orderId) =>
@@ -926,6 +1095,13 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   mealEvents: [],
   countSessions: [],
   storageMap: [],
+  courses: [],
+  substitutions: [],
+  files: [],
+
+  setCourses: (rows) => set({ courses: rows }),
+  setSubstitutions: (rows) => set({ substitutions: rows }),
+  setFiles: (rows) => set({ files: rows }),
 
   setMenuView: (v) => set({ menuView: v }),
   setActiveTemplate: (id) => set({ activeTemplateId: id, activeTemplateWeek: 1 }),
@@ -992,7 +1168,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     const now = new Date().toISOString();
     const e: MenuTemplateEntry = {
       id: generateId(), templateId, weekNumber, dayIndex, mealPeriod: meal,
-      recipeId, label: label || null,
+      recipeId, itemId: null, itemQtyBase: null, course: null, label: label || null,
       sortOrder: get().templateEntries.filter((x) => x.templateId === templateId && x.weekNumber === weekNumber && x.dayIndex === dayIndex && x.mealPeriod === meal).length,
       createdAt: now, updatedAt: now,
     };
@@ -1014,7 +1190,8 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       menuEntries.filter((m) => m.sessionId === activeSessionId && m.weekNumber === srcWeek).forEach((m) => {
         entries.push({
           id: generateId(), templateId, weekNumber: tWeek, dayIndex: m.dayIndex,
-          mealPeriod: m.mealPeriod, recipeId: m.recipeId, label: m.label,
+          mealPeriod: m.mealPeriod, recipeId: m.recipeId, itemId: m.itemId,
+          itemQtyBase: m.itemQtyBase, course: m.course, label: m.label,
           sortOrder: m.sortOrder, createdAt: now, updatedAt: now,
         });
       });
@@ -1039,7 +1216,8 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       templateEntries.filter((e) => e.templateId === templateId && e.weekNumber === cycleWeek).forEach((e) => {
         newEntries.push({
           id: generateId(), sessionId: activeSessionId, weekNumber: w, dayIndex: e.dayIndex,
-          mealPeriod: e.mealPeriod, recipeId: e.recipeId, label: e.label,
+          mealPeriod: e.mealPeriod, recipeId: e.recipeId, itemId: e.itemId,
+          itemQtyBase: e.itemQtyBase, course: e.course, label: e.label,
           sortOrder: e.sortOrder, createdAt: now, updatedAt: now,
         });
       });
@@ -1178,8 +1356,13 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
 
   // Freezer-stored items needed for a day's menu — the overnight pull list.
   thawListForDay: (week, dayIndex) => {
-    const entries = get().entriesForDay(week, dayIndex);
-    const demand = demandForEntries(entries, get().recipesById(), get().ingredientsByRecipe(), get().portions());
+    const state = get();
+    const session = state.activeSession();
+    const entries = state.entriesForDay(week, dayIndex);
+    const portionsFor = session
+      ? (e: MenuEntry) => state.mealCount(dateForCell(session.startDate, e.weekNumber, e.dayIndex).toISOString().slice(0, 10), e.mealPeriod)
+      : state.portions();
+    const demand = demandForEntries(entries, state.recipesById(), state.ingredientsByRecipe(), portionsFor);
     const byId = get().itemsById();
     const out: { item: InventoryItem; neededBase: number }[] = [];
     for (const row of demand.values()) {
@@ -1190,4 +1373,108 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   },
 
   storageMapFor: (location) => get().storageMap.find((m) => m.storageLocation === location)?.safetyItemId ?? null,
+
+  // ── #3 Menu courses (per-camp bucket list) ──
+  coursesSorted: () => [...get().courses].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
+
+  addCourse: (name) => {
+    const trimmed = name.trim();
+    if (!trimmed || get().courses.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) return;
+    const now = new Date().toISOString();
+    const c: MenuCourse = { id: generateId(), name: trimmed, sortOrder: get().courses.length, createdAt: now, updatedAt: now };
+    set((s) => ({ courses: [...s.courses, c] }));
+    dbAddMenuCourse(c);
+  },
+  renameCourse: (id, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const now = new Date().toISOString();
+    let updated: MenuCourse | undefined;
+    set((s) => ({ courses: s.courses.map((c) => c.id === id ? (updated = { ...c, name: trimmed, updatedAt: now }) : c) }));
+    if (updated) dbUpdateMenuCourse(updated);
+  },
+  deleteCourse: (id) => { set((s) => ({ courses: s.courses.filter((c) => c.id !== id) })); dbDeleteMenuCourse(id); },
+
+  seedDefaultCourses: () => {
+    if (get().courses.length > 0) return;
+    ['Protein', 'Carb', 'Vegetable', 'Side', 'Dessert'].forEach((name) => get().addCourse(name));
+  },
+
+  // ── #11 Substitutions (replacement meals) ──
+  addSubstitution: (sub) => { set((s) => ({ substitutions: [...s.substitutions, sub] })); dbAddSubstitution(sub); },
+  updateSubstitution: (sub) => { set((s) => ({ substitutions: s.substitutions.map((x) => x.id === sub.id ? sub : x) })); dbUpdateSubstitution(sub); },
+  deleteSubstitution: (id) => { set((s) => ({ substitutions: s.substitutions.filter((x) => x.id !== id) })); dbDeleteSubstitution(id); },
+
+  substitutionsForSession: () => {
+    const { substitutions, activeSessionId } = get();
+    return substitutions.filter((x) => x.sessionId === activeSessionId);
+  },
+  substitutionsForCell: (week, dayIndex, meal) =>
+    get().substitutionsForSession().filter((x) => x.weekNumber === week && x.dayIndex === dayIndex && x.mealPeriod === meal),
+  substitutionsForDay: (week, dayIndex) =>
+    get().substitutionsForSession().filter((x) => x.weekNumber === week && x.dayIndex === dayIndex),
+
+  // ── #9 Files (allergy source-document locker) ──
+  uploadFile: async (file, sessionId, by) => {
+    const row = await dbUploadCommissaryFile(file, sessionId, by);
+    if (row) set((s) => ({ files: [row, ...s.files] }));
+    return row;
+  },
+  deleteFile: async (f) => {
+    set((s) => ({ files: s.files.filter((x) => x.id !== f.id) }));
+    await dbDeleteCommissaryFile(f);
+  },
+
+  // ── #2 Entry-level allergens/conflicts (recipe OR item chip) ──
+  entryAllergens: (entry) => {
+    if (entry.recipeId) return get().allergensFor(entry.recipeId);
+    if (entry.itemId) {
+      const item = get().itemsById().get(entry.itemId);
+      return item ? ALLERGENS.filter((a) => item.allergens.includes(a)) : [];
+    }
+    return [];
+  },
+  conflictsForEntry: (entry) => menuConflicts(get().entryAllergens(entry), get().summaryMap()),
+
+  // ── #7 Prep calendar ──
+  prepScheduleForWeek: (week) => {
+    const state = get();
+    const session = state.activeSession();
+    if (!session) return [];
+    const recipesById = state.recipesById();
+    const buckets = new Map<string, PrepScheduleSlot>();
+
+    for (const e of state.entriesForWeek(week)) {
+      if (!e.recipeId) continue;
+      const recipe = recipesById.get(e.recipeId);
+      if (!recipe) continue;
+      const serviceDate = dateForCell(session.startDate, e.weekNumber, e.dayIndex);
+      const serviceDateStr = serviceDate.toISOString().slice(0, 10);
+
+      // Prefer frozen plan quantities when the service day has been generated (hybrid).
+      let portions = state.mealCount(serviceDateStr, e.mealPeriod);
+      const plan = state.planFor(e.weekNumber, e.dayIndex);
+      if (plan) {
+        const t = state.tasksForPlan(plan.id).find((x) => x.recipeId === recipe.id && x.mealPeriod === e.mealPeriod);
+        if (t) portions = t.portions;
+      }
+
+      for (const s of state.stepsFor(recipe.id)) {
+        const prepDate = new Date(serviceDate);
+        prepDate.setDate(prepDate.getDate() - (s.leadDays ?? 0));
+        const prepDateStr = prepDate.toISOString().slice(0, 10);
+        const slot: PrepSlotKey = s.timeSlot ?? 'any';
+        const key = `${prepDateStr}|${slot}`;
+        let bucket = buckets.get(key);
+        if (!bucket) { bucket = { dateStr: prepDateStr, slot, items: [] }; buckets.set(key, bucket); }
+        bucket.items.push({
+          recipeName: recipe.name, mealLabel: MEAL_PERIOD_LABELS[e.mealPeriod],
+          portions, instruction: s.instruction, serviceDateStr, leadDays: s.leadDays ?? 0,
+        });
+      }
+    }
+
+    return [...buckets.values()].sort((a, b) =>
+      a.dateStr.localeCompare(b.dateStr) || PREP_SLOT_ORDER[a.slot] - PREP_SLOT_ORDER[b.slot]);
+  },
 }));

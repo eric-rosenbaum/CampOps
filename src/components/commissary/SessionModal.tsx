@@ -3,8 +3,8 @@ import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { generateId } from '@/lib/utils';
-import type { CommissarySession } from '@/lib/types';
-import { targetPortions, weekCount } from '@/lib/commissaryUnits';
+import type { CommissarySession, MealPeriod } from '@/lib/types';
+import { targetPortions, weekCount, MEAL_PERIODS, MEAL_PERIOD_LABELS } from '@/lib/commissaryUnits';
 import { inputClass, labelClass } from './commissaryUi';
 
 export function SessionModal({ editId }: { editId?: string }) {
@@ -24,6 +24,13 @@ export function SessionModal({ editId }: { editId?: string }) {
   const campers = Number(camperCount) || 0;
   const staff = Number(staffCount) || 0;
   const total = targetPortions(campers, staff);
+
+  // #8 — attendance can differ by meal. Off by default (same count for every meal).
+  const [perMeal, setPerMeal] = useState(existing?.mealCounts != null);
+  const [mealCounts, setMealCounts] = useState<Record<string, string>>(() => {
+    const src = existing?.mealCounts ?? {};
+    return Object.fromEntries(MEAL_PERIODS.map((m) => [m, src[m] != null ? String(src[m]) : '']));
+  });
   const datesValid = Boolean(startDate && endDate && endDate >= startDate);
   const weeks = datesValid ? weekCount(startDate, endDate) : 0;
 
@@ -31,11 +38,23 @@ export function SessionModal({ editId }: { editId?: string }) {
     e.preventDefault();
     if (!name.trim() || !datesValid) return;
     const now = new Date().toISOString();
+    // Only keep meal counts that were actually filled in; a blank meal falls back to
+    // the session total. null = "same for every meal".
+    let mealCountsValue: Partial<Record<MealPeriod, number>> | null = null;
+    if (perMeal) {
+      const filled: Partial<Record<MealPeriod, number>> = {};
+      for (const m of MEAL_PERIODS) {
+        const v = mealCounts[m];
+        if (v !== '' && Number.isFinite(Number(v))) filled[m] = Math.max(0, Number(v));
+      }
+      mealCountsValue = Object.keys(filled).length ? filled : null;
+    }
     const shared = {
       name: name.trim(), startDate, endDate,
       camperCount: campers, staffCount: staff, isActive,
       budgetPerPersonPerDay: budget === '' ? null : Number(budget),
       mealsPerDay: Math.max(1, Number(mealsPerDay) || 3),
+      mealCounts: mealCountsValue,
       notes: notes.trim() || null,
     };
     if (existing) {
@@ -108,6 +127,33 @@ export function SessionModal({ editId }: { editId?: string }) {
             <label className={labelClass}>Meals per day</label>
             <input type="number" min="1" max="6" value={mealsPerDay} onChange={(e) => setMealsPerDay(e.target.value)} className={inputClass} />
           </div>
+        </div>
+
+        {/* #8 — per-meal attendance */}
+        <div className="rounded-card border border-border px-4 py-3 space-y-3">
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <input type="checkbox" checked={perMeal} onChange={(e) => setPerMeal(e.target.checked)} className="accent-sage" />
+            <span className="text-[13px] text-forest/80">Attendance differs by meal</span>
+          </label>
+          <p className="text-[11px] text-forest/45 leading-relaxed">
+            {perMeal
+              ? `Set the head count for each meal — some campers go home for dinner, or arrive early for breakfast. Leave a meal blank to use the ${total.toLocaleString()} total. Recipe and ordering quantities scale per meal. One-off changes for a single date are handled on the menu with meal events.`
+              : `Every meal is cooked for the ${total.toLocaleString()} total. Turn this on if some meals have fewer or more people.`}
+          </p>
+          {perMeal && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {MEAL_PERIODS.map((m) => (
+                <div key={m}>
+                  <label className="block text-[11px] font-medium text-forest/60 mb-1">{MEAL_PERIOD_LABELS[m]}</label>
+                  <input
+                    type="number" min="0" value={mealCounts[m] ?? ''}
+                    onChange={(e) => setMealCounts((prev) => ({ ...prev, [m]: e.target.value }))}
+                    className={inputClass} placeholder={String(total)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <label className="flex items-center gap-2.5 cursor-pointer">

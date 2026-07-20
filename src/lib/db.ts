@@ -20,9 +20,9 @@ import type {
   CommissarySession, CommissaryVendor, InventoryItem, InventoryAdjustment,
   Recipe, RecipeIngredient, RecipeStep, MenuEntry, AdjustmentReason,
   PurchaseOrder, PurchaseOrderLine, ProductionPlan, ProductionTask,
-  ProductionIngredient, Camper, CamperRestriction, RestrictionSummaryRow,
+  ProductionIngredient, ProductionPrepTask, Camper, CamperRestriction, RestrictionSummaryRow,
   CommissaryExpense, MenuTemplate, MenuTemplateEntry, DietCount, MealEvent,
-  CountSession, StorageMap,
+  CountSession, StorageMap, MenuCourse, MenuSubstitution, CommissaryFile,
 } from './types';
 
 // ─── Camp ID ──────────────────────────────────────────────────────────────────
@@ -1672,6 +1672,7 @@ function rowToSession(r: Record<string, unknown>): CommissarySession {
     notes: (r.notes as string) ?? null,
     budgetPerPersonPerDay: r.budget_per_person_per_day == null ? null : Number(r.budget_per_person_per_day),
     mealsPerDay: Number(r.meals_per_day ?? 3),
+    mealCounts: (r.meal_counts as CommissarySession['mealCounts']) ?? null,
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
@@ -1772,6 +1773,8 @@ function rowToRecipeStep(r: Record<string, unknown>): RecipeStep {
     recipeId: r.recipe_id as string,
     stepNumber: Number(r.step_number ?? 1),
     instruction: r.instruction as string,
+    leadDays: Number(r.lead_days ?? 0),
+    timeSlot: (r.time_slot as RecipeStep['timeSlot']) ?? null,
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
@@ -1785,6 +1788,9 @@ function rowToMenuEntry(r: Record<string, unknown>): MenuEntry {
     dayIndex: Number(r.day_index ?? 0),
     mealPeriod: (r.meal_period as MenuEntry['mealPeriod']) ?? 'breakfast',
     recipeId: (r.recipe_id as string) ?? null,
+    itemId: (r.item_id as string) ?? null,
+    itemQtyBase: r.item_qty_base == null ? null : Number(r.item_qty_base),
+    course: (r.course as string) ?? null,
     label: (r.label as string) ?? null,
     sortOrder: Number(r.sort_order ?? 0),
     createdAt: r.created_at as string,
@@ -1811,6 +1817,8 @@ export interface CommissaryMenuData {
   templateEntries: MenuTemplateEntry[];
   dietCounts: DietCount[];
   mealEvents: MealEvent[];
+  courses: MenuCourse[];
+  substitutions: MenuSubstitution[];
 }
 
 async function loadInventoryData(campId: string): Promise<CommissaryInventoryData> {
@@ -1845,13 +1853,15 @@ async function loadCatalogData(campId: string): Promise<CommissaryCatalogData> {
 }
 
 async function loadMenuData(campId: string): Promise<CommissaryMenuData> {
-  const [sRes, mRes, tRes, teRes, dcRes, meRes] = await Promise.all([
+  const [sRes, mRes, tRes, teRes, dcRes, meRes, coRes, subRes] = await Promise.all([
     supabase.from('commissary_sessions').select('*').eq('camp_id', campId).order('start_date', { ascending: true }),
     supabase.from('menu_entries').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('menu_templates').select('*').eq('camp_id', campId).order('name', { ascending: true }),
     supabase.from('menu_template_entries').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('commissary_diet_counts').select('*').eq('camp_id', campId),
     supabase.from('commissary_meal_events').select('*').eq('camp_id', campId).order('date', { ascending: true }),
+    supabase.from('commissary_menu_courses').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+    supabase.from('menu_substitutions').select('*').eq('camp_id', campId),
   ]);
   return {
     sessions: (sRes.data ?? []).map((r) => rowToSession(r as Record<string, unknown>)),
@@ -1860,6 +1870,8 @@ async function loadMenuData(campId: string): Promise<CommissaryMenuData> {
     templateEntries: (teRes.data ?? []).map((r) => rowToTemplateEntry(r as Record<string, unknown>)),
     dietCounts: (dcRes.data ?? []).map((r) => rowToDietCount(r as Record<string, unknown>)),
     mealEvents: (meRes.data ?? []).map((r) => rowToMealEvent(r as Record<string, unknown>)),
+    courses: (coRes.data ?? []).map((r) => rowToMenuCourse(r as Record<string, unknown>)),
+    substitutions: (subRes.data ?? []).map((r) => rowToSubstitution(r as Record<string, unknown>)),
   };
 }
 
@@ -1882,7 +1894,8 @@ export async function dbAddSession(s: CommissarySession) {
     id: s.id, camp_id: _campId, name: s.name, start_date: s.startDate, end_date: s.endDate,
     camper_count: s.camperCount, staff_count: s.staffCount, is_active: s.isActive,
     notes: s.notes, budget_per_person_per_day: s.budgetPerPersonPerDay,
-    meals_per_day: s.mealsPerDay, created_at: s.createdAt, updated_at: s.updatedAt,
+    meals_per_day: s.mealsPerDay, meal_counts: s.mealCounts,
+    created_at: s.createdAt, updated_at: s.updatedAt,
   });
   if (error) console.error('dbAddSession error:', error.message);
 }
@@ -1892,7 +1905,8 @@ export async function dbUpdateSession(s: CommissarySession) {
     name: s.name, start_date: s.startDate, end_date: s.endDate,
     camper_count: s.camperCount, staff_count: s.staffCount, is_active: s.isActive,
     notes: s.notes, budget_per_person_per_day: s.budgetPerPersonPerDay,
-    meals_per_day: s.mealsPerDay, updated_at: new Date().toISOString(),
+    meals_per_day: s.mealsPerDay, meal_counts: s.mealCounts,
+    updated_at: new Date().toISOString(),
   }).eq('id', s.id);
   if (error) console.error('dbUpdateSession error:', error.message);
 }
@@ -2045,6 +2059,7 @@ export async function dbReplaceRecipeChildren(
       steps.map((s) => ({
         id: s.id, camp_id: _campId, recipe_id: recipeId,
         step_number: s.stepNumber, instruction: s.instruction,
+        lead_days: s.leadDays, time_slot: s.timeSlot,
         created_at: s.createdAt, updated_at: s.updatedAt,
       })),
     );
@@ -2057,6 +2072,7 @@ export async function dbAddMenuEntry(m: MenuEntry) {
   const { error } = await supabase.from('menu_entries').insert({
     id: m.id, camp_id: _campId, session_id: m.sessionId, week_number: m.weekNumber,
     day_index: m.dayIndex, meal_period: m.mealPeriod, recipe_id: m.recipeId,
+    item_id: m.itemId, item_qty_base: m.itemQtyBase, course: m.course,
     label: m.label, sort_order: m.sortOrder, created_at: m.createdAt, updated_at: m.updatedAt,
   });
   if (error) console.error('dbAddMenuEntry error:', error.message);
@@ -2074,6 +2090,7 @@ export async function dbAddMenuEntries(entries: MenuEntry[]) {
     entries.map((m) => ({
       id: m.id, camp_id: _campId, session_id: m.sessionId, week_number: m.weekNumber,
       day_index: m.dayIndex, meal_period: m.mealPeriod, recipe_id: m.recipeId,
+      item_id: m.itemId, item_qty_base: m.itemQtyBase, course: m.course,
       label: m.label, sort_order: m.sortOrder, created_at: m.createdAt, updated_at: m.updatedAt,
     })),
   );
@@ -2135,7 +2152,7 @@ export function subscribeToCommissaryMenu(campId: string, onUpdate: (d: Commissa
   return makeCommissaryChannel(
     `commissary-menu-${++commissaryChannelCount}`, campId,
     ['commissary_sessions', 'menu_entries', 'menu_templates', 'menu_template_entries',
-     'commissary_diet_counts', 'commissary_meal_events'],
+     'commissary_diet_counts', 'commissary_meal_events', 'commissary_menu_courses', 'menu_substitutions'],
     loadMenuData, onUpdate, onEventStart,
   );
 }
@@ -2260,12 +2277,15 @@ export interface CommissaryOrderData {
 export interface CommissaryProductionData {
   plans: ProductionPlan[];
   productionTasks: ProductionTask[];
+  prepTasks: ProductionPrepTask[];
 }
 export interface CommissaryAllergyData {
   campers: Camper[];
   restrictions: CamperRestriction[];
   /** Aggregate: readable by every member, even those denied camper names. */
   summary: RestrictionSummaryRow[];
+  /** Source-document locker. Health-gated, so empty for members without access. */
+  files: CommissaryFile[];
 }
 
 async function loadOrderData(campId: string): Promise<CommissaryOrderData> {
@@ -2282,13 +2302,15 @@ async function loadOrderData(campId: string): Promise<CommissaryOrderData> {
 }
 
 async function loadProductionData(campId: string): Promise<CommissaryProductionData> {
-  const [pRes, tRes] = await Promise.all([
+  const [pRes, tRes, ptRes] = await Promise.all([
     supabase.from('production_plans').select('*').eq('camp_id', campId),
     supabase.from('production_tasks').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+    supabase.from('production_prep_tasks').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
   ]);
   return {
     plans: (pRes.data ?? []).map((r) => rowToPlan(r as Record<string, unknown>)),
     productionTasks: (tRes.data ?? []).map((r) => rowToProductionTask(r as Record<string, unknown>)),
+    prepTasks: (ptRes.data ?? []).map((r) => rowToPrepTask(r as Record<string, unknown>)),
   };
 }
 
@@ -2299,12 +2321,14 @@ async function loadProductionData(campId: string): Promise<CommissaryProductionD
  * empty roster as "no campers"; check canViewCamperNames.
  */
 async function loadAllergyData(campId: string): Promise<CommissaryAllergyData> {
-  const [cRes, rRes, sRes] = await Promise.all([
+  const [cRes, rRes, sRes, fRes] = await Promise.all([
     supabase.from('campers').select('*').eq('camp_id', campId).order('name', { ascending: true }),
     supabase.from('camper_restrictions').select('*').eq('camp_id', campId),
     supabase.from('camper_restriction_summary').select('*').eq('camp_id', campId),
+    supabase.from('commissary_files').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
   ]);
   return {
+    files: (fRes.data ?? []).map((r) => rowToCommissaryFile(r as Record<string, unknown>)),
     campers: (cRes.data ?? []).map((r) => rowToCamper(r as Record<string, unknown>)),
     restrictions: (rRes.data ?? []).map((r) => rowToRestriction(r as Record<string, unknown>)),
     summary: (sRes.data ?? []).map((r) => {
@@ -2413,9 +2437,30 @@ export async function dbReceiveOrder(orderId: string, receivedBy: string | null)
   return true;
 }
 
+function rowToPrepTask(r: Record<string, unknown>): ProductionPrepTask {
+  return {
+    id: r.id as string,
+    planId: r.plan_id as string,
+    recipeId: (r.recipe_id as string) ?? null,
+    prepDate: r.prep_date as string,
+    timeSlot: (r.time_slot as ProductionPrepTask['timeSlot']) ?? null,
+    mealPeriod: (r.meal_period as ProductionPrepTask['mealPeriod']) ?? 'dinner',
+    serviceDate: r.service_date as string,
+    title: r.title as string,
+    instruction: r.instruction as string,
+    portions: Number(r.portions ?? 0),
+    isComplete: (r.is_complete as boolean) ?? false,
+    completedBy: (r.completed_by as string) ?? null,
+    completedAt: (r.completed_at as string) ?? null,
+    sortOrder: Number(r.sort_order ?? 0),
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
 // Production
-export async function dbSavePlan(plan: ProductionPlan, tasks: ProductionTask[]) {
-  // Regeneration replaces the plan wholesale; tasks cascade on delete.
+export async function dbSavePlan(plan: ProductionPlan, tasks: ProductionTask[], prepTasks: ProductionPrepTask[]) {
+  // Regeneration replaces the plan wholesale; dish AND prep tasks cascade on delete.
   const { error: dErr } = await supabase.from('production_plans')
     .delete().eq('session_id', plan.sessionId).eq('week_number', plan.weekNumber).eq('day_index', plan.dayIndex);
   if (dErr) console.error('dbSavePlan delete error:', dErr.message);
@@ -2428,17 +2473,31 @@ export async function dbSavePlan(plan: ProductionPlan, tasks: ProductionTask[]) 
   });
   if (pErr) { console.error('dbSavePlan error:', pErr.message); return; }
 
-  if (!tasks.length) return;
-  const { error: tErr } = await supabase.from('production_tasks').insert(
-    tasks.map((t) => ({
-      id: t.id, camp_id: _campId, plan_id: plan.id, recipe_id: t.recipeId,
-      meal_period: t.mealPeriod, title: t.title, portions: t.portions,
-      ingredients: t.ingredients, allergens: t.allergens, prep_time: t.prepTime,
-      cook_time: t.cookTime, notes: t.notes, is_complete: t.isComplete,
-      sort_order: t.sortOrder, created_at: t.createdAt, updated_at: t.updatedAt,
-    })),
-  );
-  if (tErr) console.error('dbSavePlan tasks error:', tErr.message);
+  if (tasks.length) {
+    const { error: tErr } = await supabase.from('production_tasks').insert(
+      tasks.map((t) => ({
+        id: t.id, camp_id: _campId, plan_id: plan.id, recipe_id: t.recipeId,
+        meal_period: t.mealPeriod, title: t.title, portions: t.portions,
+        ingredients: t.ingredients, allergens: t.allergens, prep_time: t.prepTime,
+        cook_time: t.cookTime, notes: t.notes, is_complete: t.isComplete,
+        sort_order: t.sortOrder, created_at: t.createdAt, updated_at: t.updatedAt,
+      })),
+    );
+    if (tErr) console.error('dbSavePlan tasks error:', tErr.message);
+  }
+
+  if (prepTasks.length) {
+    const { error: ptErr } = await supabase.from('production_prep_tasks').insert(
+      prepTasks.map((t) => ({
+        id: t.id, camp_id: _campId, plan_id: plan.id, recipe_id: t.recipeId,
+        prep_date: t.prepDate, time_slot: t.timeSlot, meal_period: t.mealPeriod,
+        service_date: t.serviceDate, title: t.title, instruction: t.instruction,
+        portions: t.portions, is_complete: t.isComplete,
+        sort_order: t.sortOrder, created_at: t.createdAt, updated_at: t.updatedAt,
+      })),
+    );
+    if (ptErr) console.error('dbSavePlan prep tasks error:', ptErr.message);
+  }
 }
 
 export async function dbToggleProductionTask(id: string, isComplete: boolean, completedBy: string | null) {
@@ -2449,6 +2508,16 @@ export async function dbToggleProductionTask(id: string, isComplete: boolean, co
     updated_at: new Date().toISOString(),
   }).eq('id', id);
   if (error) console.error('dbToggleProductionTask error:', error.message);
+}
+
+export async function dbToggleProductionPrepTask(id: string, isComplete: boolean, completedBy: string | null) {
+  const { error } = await supabase.from('production_prep_tasks').update({
+    is_complete: isComplete,
+    completed_by: isComplete ? completedBy : null,
+    completed_at: isComplete ? new Date().toISOString() : null,
+    updated_at: new Date().toISOString(),
+  }).eq('id', id);
+  if (error) console.error('dbToggleProductionPrepTask error:', error.message);
 }
 
 export async function dbDeletePlan(id: string) {
@@ -2531,7 +2600,7 @@ export function subscribeToCommissaryOrders(campId: string, onUpdate: (d: Commis
 export function subscribeToCommissaryProduction(campId: string, onUpdate: (d: CommissaryProductionData) => void, onEventStart?: () => void): () => void {
   return makeCommissaryChannel(
     `commissary-production-${++commissaryChannelCount}`, campId,
-    ['production_plans', 'production_tasks'],
+    ['production_plans', 'production_tasks', 'production_prep_tasks'],
     loadProductionData, onUpdate, onEventStart,
   );
 }
@@ -2541,7 +2610,7 @@ export function subscribeToCommissaryProduction(campId: string, onUpdate: (d: Co
 export function subscribeToCommissaryAllergy(campId: string, onUpdate: (d: CommissaryAllergyData) => void, onEventStart?: () => void): () => void {
   return makeCommissaryChannel(
     `commissary-allergy-${++commissaryChannelCount}`, campId,
-    ['campers', 'camper_restrictions'],
+    ['campers', 'camper_restrictions', 'commissary_files'],
     loadAllergyData, onUpdate, onEventStart,
   );
 }
@@ -2581,6 +2650,9 @@ function rowToTemplateEntry(r: Record<string, unknown>): MenuTemplateEntry {
     dayIndex: Number(r.day_index ?? 0),
     mealPeriod: (r.meal_period as MenuTemplateEntry['mealPeriod']) ?? 'breakfast',
     recipeId: (r.recipe_id as string) ?? null,
+    itemId: (r.item_id as string) ?? null,
+    itemQtyBase: r.item_qty_base == null ? null : Number(r.item_qty_base),
+    course: (r.course as string) ?? null,
     label: (r.label as string) ?? null,
     sortOrder: Number(r.sort_order ?? 0),
     createdAt: r.created_at as string,
@@ -2612,6 +2684,49 @@ function rowToMealEvent(r: Record<string, unknown>): MealEvent {
     notes: (r.notes as string) ?? null,
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToMenuCourse(r: Record<string, unknown>): MenuCourse {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    sortOrder: Number(r.sort_order ?? 0),
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToSubstitution(r: Record<string, unknown>): MenuSubstitution {
+  return {
+    id: r.id as string,
+    sessionId: r.session_id as string,
+    weekNumber: Number(r.week_number ?? 1),
+    dayIndex: Number(r.day_index ?? 0),
+    mealPeriod: (r.meal_period as MenuSubstitution['mealPeriod']) ?? 'dinner',
+    forRestriction: (r.for_restriction as string) ?? null,
+    mainRecipeId: (r.main_recipe_id as string) ?? null,
+    mainItemId: (r.main_item_id as string) ?? null,
+    mainLabel: r.main_label as string,
+    sideRecipeId: (r.side_recipe_id as string) ?? null,
+    sideItemId: (r.side_item_id as string) ?? null,
+    sideLabel: (r.side_label as string) ?? null,
+    notes: (r.notes as string) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToCommissaryFile(r: Record<string, unknown>): CommissaryFile {
+  return {
+    id: r.id as string,
+    sessionId: (r.session_id as string) ?? null,
+    name: r.name as string,
+    path: r.path as string,
+    sizeBytes: r.size_bytes == null ? null : Number(r.size_bytes),
+    contentType: (r.content_type as string) ?? null,
+    uploadedBy: (r.uploaded_by as string) ?? null,
+    createdAt: r.created_at as string,
   };
 }
 
@@ -2689,6 +2804,7 @@ export async function dbAddTemplateEntry(e: MenuTemplateEntry) {
   const { error } = await supabase.from('menu_template_entries').insert({
     id: e.id, camp_id: _campId, template_id: e.templateId, week_number: e.weekNumber,
     day_index: e.dayIndex, meal_period: e.mealPeriod, recipe_id: e.recipeId,
+    item_id: e.itemId, item_qty_base: e.itemQtyBase, course: e.course,
     label: e.label, sort_order: e.sortOrder, created_at: e.createdAt, updated_at: e.updatedAt,
   });
   if (error) console.error('dbAddTemplateEntry error:', error.message);
@@ -2704,6 +2820,7 @@ export async function dbAddTemplateEntries(entries: MenuTemplateEntry[]) {
     entries.map((e) => ({
       id: e.id, camp_id: _campId, template_id: e.templateId, week_number: e.weekNumber,
       day_index: e.dayIndex, meal_period: e.mealPeriod, recipe_id: e.recipeId,
+      item_id: e.itemId, item_qty_base: e.itemQtyBase, course: e.course,
       label: e.label, sort_order: e.sortOrder, created_at: e.createdAt, updated_at: e.updatedAt,
     })),
   );
@@ -2760,4 +2877,86 @@ export async function dbUpsertStorageMap(m: StorageMap) {
     safety_item_id: m.safetyItemId, created_at: m.createdAt, updated_at: new Date().toISOString(),
   }, { onConflict: 'camp_id,storage_location' });
   if (error) console.error('dbUpsertStorageMap error:', error.message);
+}
+
+// ─── Menu courses (per-camp bucket list) ───────────────────────────────────────
+export async function dbAddMenuCourse(c: MenuCourse) {
+  const { error } = await supabase.from('commissary_menu_courses').insert({
+    id: c.id, camp_id: _campId, name: c.name, sort_order: c.sortOrder,
+    created_at: c.createdAt, updated_at: c.updatedAt,
+  });
+  if (error) console.error('dbAddMenuCourse error:', error.message);
+}
+export async function dbUpdateMenuCourse(c: MenuCourse) {
+  const { error } = await supabase.from('commissary_menu_courses')
+    .update({ name: c.name, sort_order: c.sortOrder, updated_at: new Date().toISOString() }).eq('id', c.id);
+  if (error) console.error('dbUpdateMenuCourse error:', error.message);
+}
+export async function dbDeleteMenuCourse(id: string) {
+  const { error } = await supabase.from('commissary_menu_courses').delete().eq('id', id);
+  if (error) console.error('dbDeleteMenuCourse error:', error.message);
+}
+
+// ─── Menu substitutions (replacement meals) ────────────────────────────────────
+function substitutionToRow(s: MenuSubstitution) {
+  return {
+    id: s.id, camp_id: _campId, session_id: s.sessionId, week_number: s.weekNumber,
+    day_index: s.dayIndex, meal_period: s.mealPeriod, for_restriction: s.forRestriction,
+    main_recipe_id: s.mainRecipeId, main_item_id: s.mainItemId, main_label: s.mainLabel,
+    side_recipe_id: s.sideRecipeId, side_item_id: s.sideItemId, side_label: s.sideLabel,
+    notes: s.notes, created_at: s.createdAt, updated_at: s.updatedAt,
+  };
+}
+export async function dbAddSubstitution(s: MenuSubstitution) {
+  const { error } = await supabase.from('menu_substitutions').insert(substitutionToRow(s));
+  if (error) console.error('dbAddSubstitution error:', error.message);
+}
+export async function dbUpdateSubstitution(s: MenuSubstitution) {
+  const { camp_id, id, created_at, ...patch } = substitutionToRow(s); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const { error } = await supabase.from('menu_substitutions')
+    .update({ ...patch, updated_at: new Date().toISOString() }).eq('id', s.id);
+  if (error) console.error('dbUpdateSubstitution error:', error.message);
+}
+export async function dbDeleteSubstitution(id: string) {
+  const { error } = await supabase.from('menu_substitutions').delete().eq('id', id);
+  if (error) console.error('dbDeleteSubstitution error:', error.message);
+}
+
+// ─── Commissary files (allergy source-document locker) ─────────────────────────
+const COMMISSARY_FILE_BUCKET = 'commissary-files';
+
+/** Upload a source document and record its metadata. Returns the stored row, or null. */
+export async function dbUploadCommissaryFile(file: File, sessionId: string | null, uploadedBy: string | null): Promise<CommissaryFile | null> {
+  const id = crypto.randomUUID();
+  const safeName = file.name.replace(/[^\w.-]+/g, '_');
+  const path = `${_campId}/${id}-${safeName}`;
+  const { error: upErr } = await supabase.storage.from(COMMISSARY_FILE_BUCKET)
+    .upload(path, file, { contentType: file.type || 'application/octet-stream' });
+  if (upErr) { console.error('dbUploadCommissaryFile upload error:', upErr.message); return null; }
+
+  const row = {
+    id, camp_id: _campId, session_id: sessionId, name: file.name, path,
+    size_bytes: file.size, content_type: file.type || null, uploaded_by: uploadedBy,
+  };
+  const { data, error } = await supabase.from('commissary_files').insert(row).select('*').single();
+  if (error) {
+    console.error('dbUploadCommissaryFile insert error:', error.message);
+    await supabase.storage.from(COMMISSARY_FILE_BUCKET).remove([path]);
+    return null;
+  }
+  return rowToCommissaryFile(data as Record<string, unknown>);
+}
+
+export async function dbDeleteCommissaryFile(f: CommissaryFile) {
+  const { error: sErr } = await supabase.storage.from(COMMISSARY_FILE_BUCKET).remove([f.path]);
+  if (sErr) console.error('dbDeleteCommissaryFile storage error:', sErr.message);
+  const { error } = await supabase.from('commissary_files').delete().eq('id', f.id);
+  if (error) console.error('dbDeleteCommissaryFile error:', error.message);
+}
+
+/** Short-lived signed URL to view/download a stored file (bucket is private). */
+export async function dbSignCommissaryFile(path: string): Promise<string | null> {
+  const { data, error } = await supabase.storage.from(COMMISSARY_FILE_BUCKET).createSignedUrl(path, 300);
+  if (error) { console.error('dbSignCommissaryFile error:', error.message); return null; }
+  return data?.signedUrl ?? null;
 }

@@ -15,7 +15,7 @@
 
 import type {
   InventoryItem, MealPeriod, Recipe, RecipeIngredient, MenuEntry,
-  CommissarySession, MealEvent, ProductionIngredient,
+  CommissarySession, MealEvent, ProductionIngredient, RecipeStep, PrepTimeSlot,
 } from './types';
 
 // ─── Allergens ───────────────────────────────────────────────────────────────
@@ -165,11 +165,24 @@ export function tidy(n: number, places = 2): number {
   return Math.round(n * 10 ** places) / 10 ** places;
 }
 
-/** "18 lb", "4 cases", "5.5 gallons" — pluralizes only multi-char word units. */
+// Short symbol units (lb, oz, ea, tsp…) never pluralize; word units follow basic
+// English rules so a cook never sees "4 boxs" or "2 loafs".
+const NO_PLURAL = new Set(['oz', 'lb', 'fl oz', 'tsp', 'tbsp', 'each', 'ea']);
+const IRREGULAR_PLURALS: Record<string, string> = { loaf: 'loaves', leaf: 'leaves', half: 'halves' };
+
+/** Pluralize a stock/purchase unit for display: box→boxes, loaf→loaves, berry→berries. */
+export function pluralizeUnit(unit: string, n: number): string {
+  if (n === 1 || NO_PLURAL.has(unit)) return unit;
+  if (IRREGULAR_PLURALS[unit]) return IRREGULAR_PLURALS[unit];
+  if (/(s|x|z|ch|sh)$/i.test(unit)) return `${unit}es`;          // box→boxes, dish→dishes
+  if (/[^aeiou]y$/i.test(unit)) return `${unit.slice(0, -1)}ies`; // berry→berries
+  return `${unit}s`;
+}
+
+/** "18 lb", "4 cases", "5.5 gallons" — pluralizes word units correctly. */
 export function formatQty(qty: number, unit: string): string {
   const n = tidy(qty);
-  const plural = n !== 1 && unit.length > 2 && !unit.endsWith('s') ? `${unit}s` : unit;
-  return `${n.toLocaleString()} ${plural}`;
+  return `${n.toLocaleString()} ${pluralizeUnit(unit, n)}`;
 }
 
 export function formatInStockUnit(item: InventoryItem, base: number): string {
@@ -292,36 +305,43 @@ export interface DemandRow {
 /**
  * Total base-unit demand per inventory item across a set of menu entries.
  *
- * Free-text chips and unlinked ingredients contribute nothing — by design, and the
- * UI marks them so the shortfall is visible rather than a surprise at delivery.
+ * `portionsFor` yields the head count each entry scales to — a constant for the whole
+ * week, or a per-meal count when the session/date varies attendance (see #8). A chip
+ * may drive demand two ways: a recipe (via its linked ingredients) OR a directly linked
+ * inventory item with a per-portion quantity. Free-text chips and unlinked ingredients
+ * contribute nothing — by design, and the UI marks them so the shortfall is visible.
  */
 export function demandForEntries(
   entries: MenuEntry[],
   recipesById: Map<string, Recipe>,
   ingredientsByRecipe: Map<string, RecipeIngredient[]>,
-  portions: number,
+  portionsFor: number | ((entry: MenuEntry) => number),
 ): Map<string, DemandRow> {
   const demand = new Map<string, DemandRow>();
+  const portionsOf = typeof portionsFor === 'function' ? portionsFor : () => portionsFor;
+
+  const addDemand = (itemId: string, add: number, from: string) => {
+    const row = demand.get(itemId);
+    if (row) {
+      row.neededBase += add;
+      if (!row.fromRecipes.includes(from)) row.fromRecipes.push(from);
+    } else {
+      demand.set(itemId, { itemId, neededBase: add, fromRecipes: [from] });
+    }
+  };
 
   for (const entry of entries) {
-    if (!entry.recipeId) continue;
-    const recipe = recipesById.get(entry.recipeId);
-    if (!recipe) continue;
-
-    for (const ing of ingredientsByRecipe.get(recipe.id) ?? []) {
-      if (!ing.itemId || ing.qtyInBase == null) continue;
-      const add = scaledIngredientBase(ing, recipe, portions);
-      const row = demand.get(ing.itemId);
-      if (row) {
-        row.neededBase += add;
-        if (!row.fromRecipes.includes(recipe.name)) row.fromRecipes.push(recipe.name);
-      } else {
-        demand.set(ing.itemId, {
-          itemId: ing.itemId,
-          neededBase: add,
-          fromRecipes: [recipe.name],
-        });
+    const portions = portionsOf(entry);
+    if (entry.recipeId) {
+      const recipe = recipesById.get(entry.recipeId);
+      if (!recipe) continue;
+      for (const ing of ingredientsByRecipe.get(recipe.id) ?? []) {
+        if (!ing.itemId || ing.qtyInBase == null) continue;
+        addDemand(ing.itemId, scaledIngredientBase(ing, recipe, portions), recipe.name);
       }
+    } else if (entry.itemId && entry.itemQtyBase != null) {
+      // A single-item chip: quantity is per portion, so scale straight by head count.
+      addDemand(entry.itemId, entry.itemQtyBase * portions, entry.label ?? 'Item');
     }
   }
   return demand;
@@ -480,6 +500,77 @@ export function menuConflicts(
     }
   }
   return out.sort((x, y) => y.anaphylacticCount - x.anaphylacticCount || y.camperCount - x.camperCount);
+}
+
+// ─── Recipe-step prep timing ─────────────────────────────────────────────────
+// A step can carry a lead time so the production prep calendar can schedule it to
+// the right slot ("night before", "morning of", "2 days before").
+
+export const PREP_TIME_SLOTS: PrepTimeSlot[] = ['morning', 'afternoon', 'evening'];
+
+export const PREP_TIME_SLOT_LABELS: Record<PrepTimeSlot, string> = {
+  morning: 'Morning',
+  afternoon: 'Afternoon',
+  evening: 'Evening',
+};
+
+/** Human label for a step's timing, or null when it's ordinary day-of prep. */
+export function stepTimingLabel(step: Pick<RecipeStep, 'leadDays' | 'timeSlot'>): string | null {
+  const d = step.leadDays ?? 0;
+  const slot = step.timeSlot ?? null;
+  if (d === 0 && !slot) return null;
+  if (d === 0) return `${PREP_TIME_SLOT_LABELS[slot!]} of`;
+  if (d === 1 && !slot) return 'Night before';
+  if (d === 1) return `${PREP_TIME_SLOT_LABELS[slot!]}, night before`;
+  return slot ? `${PREP_TIME_SLOT_LABELS[slot]}, ${d} days before` : `${d} days before`;
+}
+
+/** Sort key so earlier prep (more lead days, earlier slot) comes first on a calendar. */
+export function stepTimingRank(step: Pick<RecipeStep, 'leadDays' | 'timeSlot'>): number {
+  const slotRank = step.timeSlot ? PREP_TIME_SLOTS.indexOf(step.timeSlot) : 1.5;
+  // More lead days first (descending); within a day, morning before evening.
+  return -(step.leadDays ?? 0) * 10 + slotRank;
+}
+
+/** The timing options offered in the recipe editor, as friendly presets. */
+export interface PrepTimingPreset { value: string; label: string; leadDays: number; timeSlot: PrepTimeSlot | null; }
+export const PREP_TIMING_PRESETS: PrepTimingPreset[] = [
+  { value: 'day_of', label: 'Day of', leadDays: 0, timeSlot: null },
+  { value: 'morning_of', label: 'Morning of', leadDays: 0, timeSlot: 'morning' },
+  { value: 'afternoon_of', label: 'Afternoon of', leadDays: 0, timeSlot: 'afternoon' },
+  { value: 'night_before', label: 'Night before', leadDays: 1, timeSlot: null },
+  { value: '2_days_before', label: '2 days before', leadDays: 2, timeSlot: null },
+  { value: '3_days_before', label: '3 days before', leadDays: 3, timeSlot: null },
+];
+
+export function presetForStep(step: Pick<RecipeStep, 'leadDays' | 'timeSlot'>): string {
+  const d = step.leadDays ?? 0;
+  const slot = step.timeSlot ?? null;
+  return PREP_TIMING_PRESETS.find((p) => p.leadDays === d && p.timeSlot === slot)?.value ?? 'day_of';
+}
+export function presetByValue(value: string): PrepTimingPreset {
+  return PREP_TIMING_PRESETS.find((p) => p.value === value) ?? PREP_TIMING_PRESETS[0];
+}
+
+// The production prep calendar resolves each recipe step to the slot it must be done in.
+export type PrepSlotKey = PrepTimeSlot | 'any';
+export const PREP_SLOT_LABELS: Record<PrepSlotKey, string> = {
+  morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening', any: 'Any time',
+};
+export const PREP_SLOT_ORDER: Record<PrepSlotKey, number> = { morning: 0, afternoon: 1, evening: 2, any: 3 };
+
+export interface PrepScheduleItem {
+  recipeName: string;
+  mealLabel: string;
+  portions: number;
+  instruction: string;
+  serviceDateStr: string;
+  leadDays: number;
+}
+export interface PrepScheduleSlot {
+  dateStr: string;
+  slot: PrepSlotKey;
+  items: PrepScheduleItem[];
 }
 
 // ─── Production: stale-plan detection ────────────────────────────────────────
@@ -717,10 +808,15 @@ export function menuForecastCost(
 ): number {
   let total = 0;
   for (const e of entries) {
-    if (!e.recipeId) continue;
-    const recipe = recipesById.get(e.recipeId);
-    if (!recipe) continue;
-    total += recipeCost(recipe, ingredientsByRecipe.get(recipe.id) ?? [], itemsById, portions);
+    if (e.recipeId) {
+      const recipe = recipesById.get(e.recipeId);
+      if (!recipe) continue;
+      total += recipeCost(recipe, ingredientsByRecipe.get(recipe.id) ?? [], itemsById, portions);
+    } else if (e.itemId && e.itemQtyBase != null) {
+      const item = itemsById.get(e.itemId);
+      const cpb = item ? costPerBase(item) : null;
+      if (cpb != null) total += e.itemQtyBase * portions * cpb;
+    }
   }
   return tidy(total);
 }
@@ -730,14 +826,23 @@ export function menuForecastCost(
 // own count) — they do NOT change the dining-hall count. An off-site trip is modeled
 // as a -N delta on the affected meal PLUS a +N bag_lunch.
 
-/** Effective head count for one meal on one day, after overrides. */
+/**
+ * The session's baseline head count for one meal, before any per-date events. Uses the
+ * session's per-meal override if set, else the plain total (camperCount + staffCount).
+ */
+export function sessionMealBase(session: CommissarySession, meal: MealPeriod): number {
+  const override = session.mealCounts?.[meal];
+  return override != null ? override : session.camperCount + session.staffCount;
+}
+
+/** Effective head count for one meal on one day, after per-date overrides. */
 export function mealHeadCount(
   session: CommissarySession,
   events: MealEvent[],
   dateStr: string,
   meal: MealPeriod,
 ): number {
-  let count = session.camperCount + session.staffCount;
+  let count = sessionMealBase(session, meal);
   const relevant = events.filter((e) => e.date === dateStr && e.kind !== 'bag_lunch');
   // Whole-day overrides first, then meal-specific.
   for (const e of relevant.filter((e) => e.mealPeriod === null)) {
@@ -827,7 +932,10 @@ const PRINT_STYLE = `
   .num { text-align: right; font-variant-numeric: tabular-nums; }
   .box { display: inline-block; width: 60px; border-bottom: 1px solid #999; }
   .warn { color: #c0392b; font-weight: 600; }
-  ul { margin: 4px 0; padding-left: 18px; font-size: 12px; }
+  ul, ol { margin: 4px 0; padding-left: 18px; font-size: 12px; }
+  ol li { margin-bottom: 4px; line-height: 1.4; }
+  .pagebreak { page-break-after: always; }
+  .recipe h1 { font-size: 20px; }
 `;
 
 function printDoc(title: string, body: string): string {
@@ -876,6 +984,46 @@ export function menuWeekToPrintHtml(weekLabel: string, days: string[], meals: st
   }
   body += `</tbody></table>`;
   return printDoc(`Menu — ${weekLabel}`, body);
+}
+
+// ─── Recipe export (print) ───────────────────────────────────────────────────
+
+export interface PrintRecipeStep { instruction: string; timing: string | null; }
+export interface PrintRecipe {
+  name: string;
+  mealLabel: string;
+  baseYield: number;
+  scaledTo: number;
+  prepTime: string | null;
+  cookTime: string | null;
+  allergens: string[];
+  ingredients: { label: string; qty: string; unlinked: boolean }[];
+  steps: PrintRecipeStep[];
+}
+
+/** One or many recipes as a printable recipe book. Quantities are pre-scaled by the caller. */
+export function recipesToPrintHtml(recipes: PrintRecipe[]): string {
+  const one = (r: PrintRecipe) => {
+    const meta = [
+      r.mealLabel,
+      r.scaledTo === r.baseYield ? `${r.baseYield} portions` : `${r.scaledTo} portions (base ${r.baseYield})`,
+      r.prepTime && `prep ${r.prepTime}`,
+      r.cookTime && `cook ${r.cookTime}`,
+    ].filter(Boolean).join(' · ');
+    const allergens = r.allergens.length
+      ? `<div class="meta"><strong>Allergens:</strong> ${r.allergens.map((a) => ALLERGEN_LABELS[a as Allergen] ?? a).join(', ')}</div>`
+      : '';
+    const ings = r.ingredients.map((i) =>
+      `<tr><td>${i.unlinked ? '• ' : ''}${i.label}</td><td class="num">${i.qty}</td></tr>`).join('');
+    const steps = r.steps.length
+      ? `<ol>${r.steps.map((s) => `<li>${s.timing ? `<strong>[${s.timing}]</strong> ` : ''}${s.instruction}</li>`).join('')}</ol>`
+      : '<p class="meta">No method recorded.</p>';
+    return `<section class="recipe"><h1>${r.name}</h1><div class="meta">${meta}</div>${allergens}
+      <h2>Ingredients</h2><table><tbody>${ings || '<tr><td class="meta">No ingredients.</td></tr>'}</tbody></table>
+      <h2>Method</h2>${steps}</section>`;
+  };
+  const title = recipes.length === 1 ? recipes[0].name : `Recipe book (${recipes.length})`;
+  return printDoc(`Recipe — ${title}`, recipes.map(one).join('<div class="pagebreak"></div>'));
 }
 
 export interface PrintCountGroup { location: string; items: { name: string; unit: string; reorderAt: string; onHand: string }[]; }

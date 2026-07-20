@@ -7,9 +7,10 @@ import { FilterPill } from '@/components/shared/FilterPill';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
 import {
-  formatCurrency, formatQty, ORDER_STATUS_LABELS, tidy,
+  formatCurrency, formatQty, formatInStockUnit, ORDER_STATUS_LABELS, tidy,
   orderToCsv, orderToPrintHtml, type ExportOrderLine,
 } from '@/lib/commissaryUnits';
+import { AlertTriangle } from 'lucide-react';
 import type { PurchaseOrder } from '@/lib/types';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -218,6 +219,7 @@ export function OrderingTab() {
   const {
     orders, orderSource, setOrderSource, activeWeek, draftOrdersFor,
     createOrdersFromDrafts, createBlankOrder, activeSession, setActiveTab, items, vendors,
+    criticalItems, criticalDraftOrders,
   } = useCommissaryStore();
   const { can, currentUser } = useAuth();
   const canManage = can('manageCommissary');
@@ -225,6 +227,8 @@ export function OrderingTab() {
   const [blankVendorId, setBlankVendorId] = useState('');
 
   const drafts = useMemo(() => draftOrdersFor(orderSource, activeWeek), [draftOrdersFor, orderSource, activeWeek]);
+  // Cheap filter over the subscribed items list; recomputes on each render by design.
+  const critical = criticalItems();
 
   const open = orders.filter((o) => o.status === 'draft' || o.status === 'sent');
   const history = orders.filter((o) => o.status === 'received' || o.status === 'cancelled');
@@ -260,6 +264,44 @@ export function OrderingTab() {
         <StatCard label="Open orders" value={open.length} hint="Draft or sent" variant={open.length > 0 ? 'amber' : 'default'} />
         <StatCard label="Completed" value={history.length} hint="Received or cancelled" />
       </div>
+
+      {/* Critically-low stock — always shown, even when ordering from the menu, because
+          a critical item nobody put on this week's menu is exactly what gets forgotten. */}
+      {critical.length > 0 && (
+        <div className="rounded-card border border-red/25 bg-red-bg px-4 py-3.5 mb-5">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-4 h-4 text-red flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-body font-medium text-red/90">
+                {critical.length} item{critical.length === 1 ? ' is' : 's are'} critically low — under half the reorder level.
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {critical.map((i) => (
+                  <span key={i.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-tag text-[11px] bg-white/70 border border-red/20 text-red">
+                    {i.name}
+                    <span className="font-mono opacity-70">{formatInStockUnit(i, i.onHandBase)}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+            {canManage && (
+              <Button
+                size="sm"
+                className="whitespace-nowrap"
+                onClick={() => {
+                  const cd = criticalDraftOrders();
+                  if (!cd.length) { alert('These items have no reorder level or vendor set — set those on the inventory item first.'); return; }
+                  if (confirm(`Create draft order${cd.length === 1 ? '' : 's'} to restock ${critical.length} critical item${critical.length === 1 ? '' : 's'}?`)) {
+                    createOrdersFromDrafts(cd, 'par', currentUser.name || null);
+                  }
+                }}
+              >
+                + Restock critical
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {missingPrices > 0 && (
         <AlertBanner variant="warn"

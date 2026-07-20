@@ -562,6 +562,12 @@ export interface CommissarySession {
   /** Budgeted per-diem (cost per person per day) the Cost tab measures against. */
   budgetPerPersonPerDay: number | null;
   mealsPerDay: number;
+  /**
+   * Per-meal head count override. null = same count (camperCount+staffCount) for every
+   * meal. A partial map keyed by meal period; any meal absent falls back to the total.
+   * One-off per-date changes are handled separately by MealEvent, layered on top.
+   */
+  mealCounts: Partial<Record<MealPeriod, number>> | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -654,11 +660,17 @@ export interface RecipeIngredient {
   updatedAt: string;
 }
 
+export type PrepTimeSlot = 'morning' | 'afternoon' | 'evening';
+
 export interface RecipeStep {
   id: string;
   recipeId: string;
   stepNumber: number;
   instruction: string;
+  /** Whole days before service this step must be done. 0 = day of. Drives the prep calendar. */
+  leadDays: number;
+  /** Sub-slot within the day, or null for "any time". */
+  timeSlot: PrepTimeSlot | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -672,7 +684,22 @@ export interface MenuEntry {
   mealPeriod: MealPeriod;
   /** null = free-text chip ("Salad bar"): excluded from demand and allergen math. */
   recipeId: string | null;
+  /** A chip may instead link a single inventory item directly (milk, fruit, bread). */
+  itemId: string | null;
+  /** Base-unit quantity of the linked item consumed per portion. Null unless itemId set. */
+  itemQtyBase: number | null;
+  /** Optional course bucket name ("Protein", "Side"), from the camp's course list. */
+  course: string | null;
   label: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Per-camp customizable menu course (Protein / Carb / Vegetable / Side / Dessert…). */
+export interface MenuCourse {
+  id: string;
+  name: string;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -776,6 +803,32 @@ export interface ProductionTask {
   updatedAt: string;
 }
 
+/**
+ * A single time-phased prep task — one recipe step (or an auto freezer-pull), scheduled
+ * to the day it must be done (serviceDate − leadDays) and independently checkable. Drives
+ * the "Prep due today" board.
+ */
+export interface ProductionPrepTask {
+  id: string;
+  planId: string;
+  recipeId: string | null;
+  /** The day this prep is due (YYYY-MM-DD). */
+  prepDate: string;
+  timeSlot: PrepTimeSlot | null;
+  mealPeriod: MealPeriod;
+  /** The day the food is served (YYYY-MM-DD), for the "serves Wed" hint. */
+  serviceDate: string;
+  title: string;
+  instruction: string;
+  portions: number;
+  isComplete: boolean;
+  completedBy: string | null;
+  completedAt: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── Commissary: allergy program ───────────────────────────────────────────────
 
 export type RestrictionKind = 'allergen' | 'dietary';
@@ -844,6 +897,9 @@ export interface MenuTemplateEntry {
   dayIndex: number;
   mealPeriod: MealPeriod;
   recipeId: string | null;
+  itemId: string | null;
+  itemQtyBase: number | null;
+  course: string | null;
   label: string | null;
   sortOrder: number;
   createdAt: string;
@@ -895,4 +951,40 @@ export interface StorageMap {
   safetyItemId: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * A replacement meal for allergy/dietary-affected campers at a specific meal. Each of
+ * main/side may reference a recipe or an inventory item, or be free text; a label is
+ * always stored so the plate instruction reads even if a link is deleted.
+ */
+export interface MenuSubstitution {
+  id: string;
+  sessionId: string;
+  weekNumber: number;
+  dayIndex: number;
+  mealPeriod: MealPeriod;
+  /** Restriction this alternative covers (allergen/dietary slug), or null = general. */
+  forRestriction: string | null;
+  mainRecipeId: string | null;
+  mainItemId: string | null;
+  mainLabel: string;
+  sideRecipeId: string | null;
+  sideItemId: string | null;
+  sideLabel: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A source document (allergy roster, nurse's PDF) dropped into the allergy program. */
+export interface CommissaryFile {
+  id: string;
+  sessionId: string | null;
+  name: string;
+  path: string;
+  sizeBytes: number | null;
+  contentType: string | null;
+  uploadedBy: string | null;
+  createdAt: string;
 }

@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Utensils } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useCommissaryStore } from '@/store/commissaryStore';
+import { useCampStore } from '@/store/campStore';
+import { useAuth } from '@/lib/auth';
 import {
   ALLERGENS, DIETARY_RESTRICTIONS, restrictionLabel,
 } from '@/lib/commissaryUnits';
@@ -12,11 +14,21 @@ const OPTIONS = [...DIETARY_RESTRICTIONS, ...ALLERGENS];
 
 /**
  * Standing dietary counts for a session — for camps that know "42 vegetarian" without
- * entering each camper. Complements the per-camper roster.
+ * entering each camper — plus the camp-level kosher default. Relocated here from the
+ * allergy tab, which is now a document locker.
  */
 export function DietCountsModal() {
   const { dietCountsForSession, upsertDietCount, removeDietCount, closeModal } = useCommissaryStore();
+  const { currentCamp, updateCamp } = useCampStore();
+  const { role } = useAuth();
+  const isAdmin = role === 'admin';
+  const kosher = Boolean(currentCamp?.dietaryDefaults?.kosher);
   const rows = dietCountsForSession();
+
+  function toggleKosher() {
+    if (!currentCamp) return;
+    updateCamp(currentCamp.id, { dietaryDefaults: { ...currentCamp.dietaryDefaults, kosher: !kosher } });
+  }
 
   const [restriction, setRestriction] = useState('vegetarian');
   const [count, setCount] = useState('');
@@ -30,8 +42,15 @@ export function DietCountsModal() {
   }
 
   return (
-    <Modal title="Standing dietary counts" onClose={closeModal} width="480px">
+    <Modal title="Dietary defaults" onClose={closeModal} width="480px">
       <div className="space-y-4">
+        <label className={`flex items-center gap-2.5 rounded-card border border-border px-4 py-3 ${isAdmin ? 'cursor-pointer' : 'opacity-60'}`}>
+          <Utensils className="w-4 h-4 text-forest/50" />
+          <input type="checkbox" checked={kosher} disabled={!isAdmin} onChange={toggleKosher} className="accent-sage" />
+          <span className="text-[13px] text-forest/80">Kitchen serves fully kosher</span>
+          {!isAdmin && <span className="text-[11px] text-forest/40 ml-auto">Admins only</span>}
+        </label>
+
         <p className="text-[12px] text-forest/55 leading-relaxed">
           Set how many campers this session have each restriction, when you know the number
           but not the names. Production uses these to plan parallel portions.

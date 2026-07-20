@@ -1,11 +1,11 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Link2Off, X, Printer, CalendarClock, Sandwich } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Link2Off, X, Printer, CalendarClock, Sandwich, Package, Replace, LayoutGrid, Utensils } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { FilterPill } from '@/components/shared/FilterPill';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
 import type { MealPeriod } from '@/lib/types';
 import {
-  MEAL_PERIODS, MEAL_PERIOD_LABELS, DAY_LABELS, dateForCell, ALLERGEN_LABELS,
+  MEAL_PERIODS, MEAL_PERIOD_LABELS, DAY_LABELS, dateForCell, ALLERGEN_LABELS, restrictionLabel,
   menuWeekToPrintHtml, type Allergen, type PrintMenuCell,
 } from '@/lib/commissaryUnits';
 import { TemplatesView } from './TemplatesView';
@@ -15,49 +15,68 @@ function fmtDate(d: Date): string {
 }
 
 function MenuCell({ week, dayIndex, meal }: { week: number; dayIndex: number; meal: MealPeriod }) {
-  const { entriesForCell, allergensFor, conflictsForRecipe, deleteMenuEntry, openModal } = useCommissaryStore();
+  const {
+    entriesForCell, entryAllergens, conflictsForEntry, deleteMenuEntry, openModal,
+    coursesSorted, substitutionsForCell,
+  } = useCommissaryStore();
   const { can } = useAuth();
   const canManage = can('manageCommissary');
-  const entries = entriesForCell(week, dayIndex, meal);
+
+  const courseRank = new Map(coursesSorted().map((c, i) => [c.name, i]));
+  const entries = [...entriesForCell(week, dayIndex, meal)].sort((a, b) => {
+    const ra = a.course ? (courseRank.get(a.course) ?? 998) : 999;
+    const rb = b.course ? (courseRank.get(b.course) ?? 998) : 999;
+    return ra - rb || a.sortOrder - b.sortOrder;
+  });
+
+  const subs = substitutionsForCell(week, dayIndex, meal);
+  // A conflict is "covered" if a substitution targets its restriction (or a general one exists).
+  const coveredSlugs = new Set(subs.map((s) => s.forRestriction).filter(Boolean) as string[]);
+  const hasGeneralSub = subs.some((s) => !s.forRestriction);
 
   return (
     <div className="border-r border-b border-border p-1.5 min-h-[76px] flex flex-col gap-1">
       {entries.map((e) => {
-        const allergens = e.recipeId ? allergensFor(e.recipeId) : [];
-        const unlinked = !e.recipeId;
+        const allergens = entryAllergens(e);
+        const isItem = !e.recipeId && !!e.itemId;
+        const unlinked = !e.recipeId && !e.itemId;
         // A chip is only a WARNING when its allergens actually collide with a camper.
-        // Amber = conflict, red = an anaphylactic camper. A recipe that merely contains
-        // dairy in a camp where nobody is dairy-allergic stays neutral — a warning that
-        // fires on composition alone trains people to ignore it.
-        const conflicts = e.recipeId ? conflictsForRecipe(e.recipeId) : [];
+        const conflicts = conflictsForEntry(e);
         const anaphylactic = conflicts.some((c) => c.anaphylacticCount > 0);
         const conflicted = conflicts.length > 0;
+        // Green tint when every conflicting restriction has a replacement plated.
+        const allCovered = conflicted && conflicts.every((c) => hasGeneralSub || coveredSlugs.has(c.allergen));
         return (
           <div
             key={e.id}
             className={`group relative rounded-tag px-2 py-1 text-[11px] leading-tight border ${
               unlinked
                 ? 'bg-white border-dashed border-border text-forest/55'
-                : anaphylactic
-                  ? 'bg-red-bg border-red/25 text-red'
-                  : conflicted
-                    ? 'bg-amber-bg border-amber/25 text-amber-text'
-                    : 'bg-cream-dark border-border text-forest/80'
+                : allCovered
+                  ? 'bg-green-muted-bg border-sage/30 text-green-muted-text'
+                  : anaphylactic
+                    ? 'bg-red-bg border-red/25 text-red'
+                    : conflicted
+                      ? 'bg-amber-bg border-amber/25 text-amber-text'
+                      : 'bg-cream-dark border-border text-forest/80'
             }`}
             title={
               unlinked
-                ? 'Not linked to a recipe — excluded from ordering demand and allergen totals'
+                ? 'Free text — excluded from ordering demand and allergen totals'
                 : conflicted
-                  ? `Conflicts with campers: ${conflicts.map((c) => `${ALLERGEN_LABELS[c.allergen as Allergen] ?? c.allergen} (${c.camperCount}${c.anaphylacticCount > 0 ? `, ${c.anaphylacticCount} anaphylactic` : ''})`).join('; ')}`
+                  ? `Conflicts with campers: ${conflicts.map((c) => `${ALLERGEN_LABELS[c.allergen as Allergen] ?? c.allergen} (${c.camperCount}${c.anaphylacticCount > 0 ? `, ${c.anaphylacticCount} anaphylactic` : ''})`).join('; ')}${allCovered ? ' — replacement plated' : ''}`
                   : allergens.length
                     ? `Contains ${allergens.map((a) => ALLERGEN_LABELS[a as Allergen]).join(', ')} — no camper affected`
                     : 'No major allergens'
             }
           >
+            {e.course && <span className="block text-[8px] font-bold uppercase tracking-wider opacity-50 leading-none mb-0.5">{e.course}</span>}
             <span className="flex items-center gap-1">
               {unlinked && <Link2Off className="w-2.5 h-2.5 flex-shrink-0 opacity-50" />}
+              {isItem && <Package className="w-2.5 h-2.5 flex-shrink-0 opacity-50" />}
               <span className="truncate">{e.label ?? '—'}</span>
-              {anaphylactic && <span className="font-bold flex-shrink-0">⚠</span>}
+              {anaphylactic && !allCovered && <span className="font-bold flex-shrink-0">⚠</span>}
+              {allCovered && <span className="flex-shrink-0" title="Replacement plated">✓</span>}
             </span>
             {canManage && (
               <button
@@ -71,13 +90,42 @@ function MenuCell({ week, dayIndex, meal }: { week: number; dayIndex: number; me
           </div>
         );
       })}
-      {canManage && (
+
+      {/* Replacement meals for this cell */}
+      {subs.map((s) => (
         <button
-          onClick={() => openModal({ kind: 'menuEntry', weekNumber: week, dayIndex, mealPeriod: meal })}
-          className="text-[11px] text-forest/30 hover:text-forest/70 text-left px-1 py-0.5 transition-colors"
+          key={s.id}
+          onClick={() => canManage && openModal({ kind: 'substitution', weekNumber: week, dayIndex, mealPeriod: meal, editId: s.id })}
+          className="text-left rounded-tag px-2 py-1 text-[10px] leading-tight border border-sage/30 bg-green-muted-bg/60 text-green-muted-text"
+          title="Replacement meal"
         >
-          + add
+          <span className="flex items-center gap-1">
+            <Replace className="w-2.5 h-2.5 flex-shrink-0" />
+            <span className="truncate">
+              {s.forRestriction ? `${restrictionLabel(s.forRestriction)}: ` : ''}{s.mainLabel}{s.sideLabel ? ` + ${s.sideLabel}` : ''}
+            </span>
+          </span>
         </button>
+      ))}
+
+      {canManage && (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => openModal({ kind: 'menuEntry', weekNumber: week, dayIndex, mealPeriod: meal })}
+            className="text-[11px] text-forest/30 hover:text-forest/70 text-left px-1 py-0.5 transition-colors"
+          >
+            + add
+          </button>
+          {entries.length > 0 && (
+            <button
+              onClick={() => openModal({ kind: 'substitution', weekNumber: week, dayIndex, mealPeriod: meal })}
+              className="text-[10px] text-forest/25 hover:text-forest/60 text-left px-1 py-0.5 transition-colors"
+              title="Add a replacement meal for allergy-affected campers"
+            >
+              + replacement
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -225,6 +273,12 @@ export function MenuTab() {
           </Button>
           {canManage && (
             <>
+              <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'courses' })}>
+                <LayoutGrid className="w-3.5 h-3.5" /> Courses
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'dietCounts' })}>
+                <Utensils className="w-3.5 h-3.5" /> Dietary
+              </Button>
               {templates.length > 0 && (
                 <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'applyTemplate' })}>
                   Apply template

@@ -6,8 +6,9 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import { generateId } from '@/lib/utils';
 import type { Recipe, RecipeIngredient, RecipeStep, MealPeriod } from '@/lib/types';
 import {
-  MEAL_PERIODS, MEAL_PERIOD_LABELS, MEASURE_UNITS, BASE_UNIT,
-  toBase, fromBase, tidy, recipeAllergens,
+  MEAL_PERIODS, MEAL_PERIOD_LABELS, MEASURE_UNITS,
+  toBase, fromBase, formatQty, tidy, recipeAllergens,
+  PREP_TIMING_PRESETS, presetForStep, presetByValue,
 } from '@/lib/commissaryUnits';
 import { AllergenChips, inputClass, labelClass } from './commissaryUi';
 
@@ -24,6 +25,13 @@ interface DraftIngredient {
 
 function newDraft(): DraftIngredient {
   return { key: generateId(), itemId: '', label: '', qty: '', unit: '', freeTextQty: '' };
+}
+
+// A step row in the editor, with a prep-timing preset value (see PREP_TIMING_PRESETS).
+interface DraftStep {
+  key: string;
+  instruction: string;
+  preset: string;
 }
 
 export function AddEditRecipeModal({ editId }: { editId?: string }) {
@@ -59,15 +67,24 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
     return rows.length ? rows : [newDraft()];
   });
 
-  // Steps are the modern shape, but early recipes may carry prose in `method` with
-  // no step rows. Seed the editor from that prose so saving migrates it into steps
-  // rather than silently dropping it.
-  const [stepText, setStepText] = useState<string>(() => {
-    if (!existing) return '';
-    const rows = stepsFor(existing.id);
-    if (rows.length) return rows.map((s) => s.instruction).join('\n');
-    return existing.method ?? '';
+  // Each step carries an optional prep-timing preset ("night before") so the production
+  // prep calendar can schedule it. Early recipes may carry prose in `method` with no step
+  // rows — seed from that so saving migrates it into steps rather than dropping it.
+  const [stepDrafts, setStepDrafts] = useState<DraftStep[]>(() => {
+    if (existing) {
+      const rows = stepsFor(existing.id);
+      if (rows.length) return rows.map((s) => ({ key: s.id, instruction: s.instruction, preset: presetForStep(s) }));
+      if (existing.method) {
+        return existing.method.split('\n').map((l) => l.trim()).filter(Boolean)
+          .map((instruction) => ({ key: generateId(), instruction, preset: 'day_of' }));
+      }
+    }
+    return [{ key: generateId(), instruction: '', preset: 'day_of' }];
   });
+
+  function patchStep(key: string, p: Partial<DraftStep>) {
+    setStepDrafts((d) => d.map((x) => x.key === key ? { ...x, ...p } : x));
+  }
 
   function patch(key: string, p: Partial<DraftIngredient>) {
     setDrafts((d) => d.map((x) => x.key === key ? { ...x, ...p } : x));
@@ -147,14 +164,16 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
         };
       });
 
-    const steps: RecipeStep[] = stepText
-      .split('\n')
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .map((instruction, i) => ({
-        id: generateId(), recipeId, stepNumber: i + 1, instruction,
-        createdAt: now, updatedAt: now,
-      }));
+    const steps: RecipeStep[] = stepDrafts
+      .filter((s) => s.instruction.trim())
+      .map((s, i) => {
+        const preset = presetByValue(s.preset);
+        return {
+          id: generateId(), recipeId, stepNumber: i + 1, instruction: s.instruction.trim(),
+          leadDays: preset.leadDays, timeSlot: preset.timeSlot,
+          createdAt: now, updatedAt: now,
+        };
+      });
 
     saveRecipe(recipe, ingredients, steps, !existing);
     closeModal();
@@ -231,7 +250,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
                   ) : (
                     <input
                       value={d.label} onChange={(e) => patch(d.key, { label: e.target.value })}
-                      className={inputClass} placeholder="Salt"
+                      className={inputClass} placeholder="Ingredient name"
                     />
                   )}
 
@@ -242,7 +261,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
                   ) : (
                     <input
                       value={d.freeTextQty} onChange={(e) => patch(d.key, { freeTextQty: e.target.value })}
-                      className={inputClass} placeholder="3 tbsp"
+                      className={inputClass} placeholder="Amount"
                     />
                   )}
 
@@ -257,9 +276,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
 
                   {item && base != null && d.qty !== '' && (
                     <p className="col-span-4 -mt-1 text-[11px] text-forest/40 font-mono">
-                      = {tidy(base, 2).toLocaleString()} {BASE_UNIT[item.dimension]}
-                      {' · '}
-                      {tidy(fromBase(base, item.stockUnitInBase), 3).toLocaleString()} {item.stockUnit} per {baseYield || '—'} portions
+                      = {formatQty(fromBase(base, item.stockUnitInBase), item.stockUnit)} for {baseYield || '—'} portions
                     </p>
                   )}
                 </div>
@@ -296,12 +313,46 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
 
         <div>
           <label className={labelClass}>Method</label>
-          <textarea
-            value={stepText} onChange={(e) => setStepText(e.target.value)}
-            className={`${inputClass} resize-none font-normal`} rows={5}
-            placeholder={'One step per line.\nCrack eggs into a large bowl and whisk with milk.\nMelt butter in a tilt skillet over medium heat.'}
-          />
-          <p className="text-[11px] text-forest/40 mt-1">Each line becomes a numbered step.</p>
+          <p className="text-[11px] text-forest/45 mb-2">
+            Tag any step that must be done ahead ("night before", "2 days before") so it
+            appears on the production prep calendar at the right time.
+          </p>
+          <div className="space-y-2">
+            {stepDrafts.map((s, idx) => (
+              <div key={s.key} className="grid grid-cols-[auto_1fr_auto_auto] gap-2 items-start">
+                <span className="font-mono text-[12px] text-forest/35 pt-2.5">{idx + 1}.</span>
+                <textarea
+                  value={s.instruction}
+                  onChange={(e) => patchStep(s.key, { instruction: e.target.value })}
+                  className={`${inputClass} resize-none font-normal`} rows={2}
+                  placeholder="e.g. Whisk eggs with milk"
+                />
+                <select
+                  value={s.preset}
+                  onChange={(e) => patchStep(s.key, { preset: e.target.value })}
+                  className="text-[12px] bg-white border border-border rounded-btn px-2 py-2 focus:outline-none focus:border-sage"
+                  title="When must this step be done?"
+                >
+                  {PREP_TIMING_PRESETS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setStepDrafts((rows) => rows.length > 1 ? rows.filter((x) => x.key !== s.key) : rows)}
+                  className="p-2 text-forest/30 hover:text-red transition-colors"
+                  aria-label="Remove step"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setStepDrafts((d) => [...d, { key: generateId(), instruction: '', preset: 'day_of' }])}
+            className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-forest/60 hover:text-forest"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add step
+          </button>
         </div>
 
         <div className="flex gap-2 pt-1">

@@ -1,48 +1,14 @@
 import { useMemo } from 'react';
-import { HeartPulse, AlertTriangle, Lock, Upload, Users, Utensils } from 'lucide-react';
+import { HeartPulse, AlertTriangle, Lock, Upload, Users } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { StatCard } from '@/components/shared/StatCard';
 import { useCommissaryStore } from '@/store/commissaryStore';
-import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import {
   ALLERGENS, ALLERGEN_LABELS, DIETARY_RESTRICTIONS, restrictionLabel,
   MEAL_PERIOD_LABELS, type Allergen,
 } from '@/lib/commissaryUnits';
-
-/** Camp-wide dietary defaults + standing session diet counts (not PII). */
-function DietaryBar() {
-  const { dietCountsForSession, openModal } = useCommissaryStore();
-  const { currentCamp, updateCamp } = useCampStore();
-  const { role, can } = useAuth();
-  const canManage = can('manageCommissary');
-  const isAdmin = role === 'admin';
-  const kosher = Boolean(currentCamp?.dietaryDefaults?.kosher);
-  const counts = dietCountsForSession();
-
-  function toggleKosher() {
-    if (!currentCamp) return;
-    updateCamp(currentCamp.id, { dietaryDefaults: { ...currentCamp.dietaryDefaults, kosher: !kosher } });
-  }
-
-  return (
-    <div className="flex items-center gap-3 bg-white rounded-card border border-border px-4 py-3 mb-5 flex-wrap">
-      <Utensils className="w-4 h-4 text-forest/50" />
-      <label className={`flex items-center gap-2 ${isAdmin ? 'cursor-pointer' : 'opacity-60'}`}>
-        <input type="checkbox" checked={kosher} disabled={!isAdmin} onChange={toggleKosher} className="accent-sage" />
-        <span className="text-[13px] text-forest/80">Kitchen serves fully kosher</span>
-      </label>
-      <div className="w-px h-5 bg-border" />
-      <span className="text-[12px] text-forest/55">
-        {counts.length > 0
-          ? counts.map((c) => `${c.count} ${restrictionLabel(c.restriction).toLowerCase()}`).join(' · ')
-          : 'No standing dietary counts'}
-      </span>
-      <div className="flex-1" />
-      {canManage && <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'dietCounts' })}>Diet counts</Button>}
-    </div>
-  );
-}
+import { CommissaryFilesPanel } from './CommissaryFilesPanel';
 
 /** Matrix cell: what this camper has for this restriction. */
 function RestrictionCell({ severity }: { severity: string | null | undefined }) {
@@ -67,7 +33,9 @@ export function AllergyTab() {
   const {
     campers, restrictions, restrictionSummary, restrictionsFor, anaphylacticCampers,
     totalCampersWithRestrictions, recipes, conflictsForRecipe, openModal,
+    substitutionsForSession,
   } = useCommissaryStore();
+  const replacementCount = substitutionsForSession().length;
   const { canViewCamperHealth, can } = useAuth();
   // Adding a camper needs BOTH the module permission and health access — the DB
   // rejects the write otherwise, so don't render a control that cannot succeed.
@@ -118,7 +86,7 @@ export function AllergyTab() {
   if (!hasAnyData && canViewCamperHealth) {
     return (
       <div className="flex-1 overflow-y-auto px-7 py-6">
-        <DietaryBar />
+        <CommissaryFilesPanel />
         <div className="flex flex-col items-center justify-center text-center max-w-sm mx-auto py-12">
           <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
             <HeartPulse className="w-7 h-7 text-stone-400" />
@@ -143,7 +111,7 @@ export function AllergyTab() {
 
   return (
     <div className="flex-1 overflow-y-auto px-7 py-6">
-      <DietaryBar />
+      {canViewCamperHealth && <CommissaryFilesPanel />}
       <div className="grid grid-cols-4 gap-4 mb-5">
         <StatCard
           label="Campers with restrictions"
@@ -206,7 +174,15 @@ export function AllergyTab() {
       {/* Menu conflicts — visible to everyone, the whole point of the module */}
       {conflictingRecipes.length > 0 && (
         <div className="mb-6">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40 mb-2">Recipes that conflict</p>
+          <div className="flex items-center gap-2 mb-2">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">Recipes that conflict</p>
+            <div className="flex-1" />
+            <span className={`text-[11px] ${replacementCount > 0 ? 'text-green-muted-text' : 'text-forest/45'}`}>
+              {replacementCount > 0
+                ? `${replacementCount} replacement meal${replacementCount === 1 ? '' : 's'} defined this session`
+                : 'No replacement meals defined — set them on the Menu builder'}
+            </span>
+          </div>
           <div className="bg-white rounded-card border border-border overflow-hidden">
             {conflictingRecipes.map(({ recipe, conflicts }) => {
               const ana = conflicts.some((c) => c.anaphylacticCount > 0);

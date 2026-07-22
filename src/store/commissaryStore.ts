@@ -6,12 +6,13 @@ import type {
   ProductionIngredient, Camper, CamperRestriction, RestrictionSummaryRow,
   OrderSource, CommissaryExpense, MenuTemplate, MenuTemplateEntry, DietCount,
   MealEvent, CountSession, StorageMap, MenuCourse, MenuSubstitution, CommissaryFile,
-  InventoryCategory, StorageLocation,
+  InventoryCategory, StorageLocation, ItemVendorPack, CatalogProduct,
 } from '@/lib/types';
 import {
   dbAddSession, dbUpdateSession, dbDeleteSession,
   dbAddVendor, dbUpdateVendor, dbDeleteVendor,
   dbAddInventoryItem, dbUpdateInventoryItem, dbDeleteInventoryItem, dbAdjustInventory,
+  dbReplaceItemVendors, dbUpsertItemVendor, dbUpdateOrderLinePack, dbUpdateOrderVendor, dbSetItemCounted,
   dbAddRecipe, dbUpdateRecipe, dbDeleteRecipe, dbReplaceRecipeChildren,
   dbAddMenuEntry, dbDeleteMenuEntry, dbAddMenuEntries, dbDeleteMenuWeek,
   dbCreateOrder, dbUpdateOrderStatus, dbDeleteOrder, dbReceiveOrder,
@@ -55,6 +56,7 @@ export type MenuView = 'session' | 'templates';
 // dispatch openModal, the page renders the match, nothing is prop-drilled.
 export type CommissaryModal =
   | { kind: 'item'; editId?: string }
+  | { kind: 'csvImport' }
   | { kind: 'adjust'; itemId: string }
   | { kind: 'recipe'; editId?: string }
   | { kind: 'menuEntry'; weekNumber: number; dayIndex: number; mealPeriod: MealPeriod }
@@ -92,6 +94,10 @@ interface CommissaryState {
   sessions: CommissarySession[];
   vendors: CommissaryVendor[];
   items: InventoryItem[];
+  /** Per-vendor pack sizes for items (multi-vendor). The default row mirrors the item's own pack. */
+  itemVendors: ItemVendorPack[];
+  /** Shared, global product catalog (standard packs/units). Loaded once, not camp-scoped. */
+  catalog: CatalogProduct[];
   adjustments: InventoryAdjustment[];
   recipes: Recipe[];
   ingredients: RecipeIngredient[];
@@ -123,6 +129,10 @@ interface CommissaryState {
   setSessions: (rows: CommissarySession[]) => void;
   setVendors: (rows: CommissaryVendor[]) => void;
   setItems: (rows: InventoryItem[]) => void;
+  setItemVendors: (rows: ItemVendorPack[]) => void;
+  setCatalog: (rows: CatalogProduct[]) => void;
+  /** Fuzzy name search over the shared catalog for the "add from catalog" autofill. */
+  searchCatalog: (q: string) => CatalogProduct[];
   setAdjustments: (rows: InventoryAdjustment[]) => void;
   setRecipes: (rows: Recipe[]) => void;
   setIngredients: (rows: RecipeIngredient[]) => void;
@@ -149,6 +159,12 @@ interface CommissaryState {
   updateItem: (i: InventoryItem) => void;
   deleteItem: (id: string) => void;
   adjustItem: (itemId: string, deltaBase: number, reason: AdjustmentReason, notes: string | null, by: string | null) => Promise<void>;
+  /** Replace an item's whole set of vendor packs (called from the item editor). */
+  saveItemVendors: (itemId: string, packs: ItemVendorPack[]) => void;
+  /** Bulk-create items + their default vendor packs from a CSV import. */
+  importItems: (rows: { item: InventoryItem; pack: ItemVendorPack | null }[]) => void;
+  /** Layer vendor packs onto EXISTING items (CSV merge) — upsert per (item,vendor), no wipe. */
+  addVendorPacks: (packs: ItemVendorPack[]) => void;
 
   saveRecipe: (r: Recipe, ings: RecipeIngredient[], steps: RecipeStep[], isNew: boolean) => void;
   deleteRecipe: (id: string) => void;
@@ -168,6 +184,8 @@ interface CommissaryState {
   addOrderLine: (orderId: string, itemId: string, orderQty: number) => void;
   removeOrderLine: (lineId: string) => void;
   createBlankOrder: (vendorId: string | null, createdBy: string | null) => void;
+  /** Switch a draft line to another vendor's pack — reprices, reconverts, and moves the line to that vendor's order. */
+  setOrderLineVendor: (lineId: string, vendorId: string) => void;
 
   // Production
   generatePlan: (weekNumber: number, dayIndex: number, generatedBy: string | null) => void;
@@ -189,6 +207,10 @@ interface CommissaryState {
   portions: () => number;
   weeksInSession: () => number;
   itemsById: () => Map<string, InventoryItem>;
+  /** All vendor packs for an item, default first. */
+  packsForItem: (itemId: string) => ItemVendorPack[];
+  /** A specific vendor's pack for an item, or null if that vendor doesn't carry it. */
+  packForItemVendor: (itemId: string | null, vendorId: string) => ItemVendorPack | null;
   recipesById: () => Map<string, Recipe>;
   ingredientsByRecipe: () => Map<string, RecipeIngredient[]>;
   ingredientsFor: (recipeId: string) => RecipeIngredient[];
@@ -197,6 +219,8 @@ interface CommissaryState {
   filteredItems: () => InventoryItem[];
   filteredRecipes: () => Recipe[];
   stockCounts: () => Record<StockStatus, number>;
+  /** How many items still need setup after an import: no reorder level, and/or never counted. */
+  setupCounts: () => { needsReorder: number; notCounted: number; either: number };
   adjustmentsFor: (itemId: string) => InventoryAdjustment[];
   entriesForCell: (week: number, dayIndex: number, meal: MealPeriod) => MenuEntry[];
   entriesForWeek: (week: number) => MenuEntry[];
@@ -350,6 +374,8 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   sessions: [],
   vendors: [],
   items: [],
+  itemVendors: [],
+  catalog: [],
   adjustments: [],
   recipes: [],
   ingredients: [],
@@ -386,6 +412,13 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   })),
   setVendors: (rows) => set({ vendors: rows }),
   setItems: (rows) => set({ items: rows }),
+  setItemVendors: (rows) => set({ itemVendors: rows }),
+  setCatalog: (rows) => set({ catalog: rows }),
+  searchCatalog: (q) => {
+    const s = q.trim().toLowerCase();
+    if (!s) return [];
+    return get().catalog.filter((c) => c.name.toLowerCase().includes(s)).slice(0, 25);
+  },
   setAdjustments: (rows) => set({ adjustments: rows }),
   setRecipes: (rows) => set({ recipes: rows }),
   setIngredients: (rows) => set({ ingredients: rows }),
@@ -420,6 +453,8 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   deleteItem: (id) => {
     set((s) => ({
       items: s.items.filter((i) => i.id !== id),
+      // Vendor packs FK-CASCADE from the item in the DB; drop them locally too.
+      itemVendors: s.itemVendors.filter((p) => p.itemId !== id),
       // Ingredients survive with itemId nulled (FK is ON DELETE SET NULL); they keep
       // their label so the recipe stays readable, but stop contributing demand.
       ingredients: s.ingredients.map((g) => g.itemId === id ? { ...g, itemId: null, qtyInBase: null } : g),
@@ -433,9 +468,67 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   adjustItem: async (itemId, deltaBase, reason, notes, by) => {
     const newOnHand = await dbAdjustInventory(itemId, deltaBase, reason, notes, by);
     if (newOnHand == null) return;
+    // A recount sets an absolute known on-hand, so it counts as "counted"; deltas
+    // (received/used/waste) build on whatever base was there and don't establish a count.
+    const counted = reason === 'count_correction';
+    const now = new Date().toISOString();
     set((s) => ({
-      items: s.items.map((i) => i.id === itemId ? { ...i, onHandBase: newOnHand } : i),
+      items: s.items.map((i) => i.id === itemId
+        ? { ...i, onHandBase: newOnHand, lastCountedAt: counted ? now : i.lastCountedAt }
+        : i),
     }));
+    if (counted) dbSetItemCounted(itemId, now);
+  },
+
+  // Replace an item's vendor packs wholesale (the editor has no stable per-row identity
+  // across an edit session). The item's own pack columns are kept in sync with the
+  // default pack by the caller (the item editor), so existing ordering math is unaffected.
+  saveItemVendors: (itemId, packs) => {
+    set((s) => ({ itemVendors: [...s.itemVendors.filter((p) => p.itemId !== itemId), ...packs] }));
+    dbReplaceItemVendors(itemId, packs);
+  },
+
+  // Bulk import from a parsed CSV. Each row is an item (deduped by the caller) plus an
+  // optional default vendor pack. Items whose pack is null just carry their stock-unit
+  // pack mirror (set on the item itself).
+  importItems: (rows) => {
+    set((s) => ({
+      items: [...s.items, ...rows.map((r) => r.item)],
+      itemVendors: [...s.itemVendors, ...rows.map((r) => r.pack).filter((p): p is ItemVendorPack => p != null)],
+    }));
+    for (const { item, pack } of rows) {
+      dbAddInventoryItem(item);
+      if (pack) dbReplaceItemVendors(item.id, [pack]);
+    }
+  },
+
+  // Attach vendor packs to items that already exist (CSV merge). Upsert per (item,vendor)
+  // so other vendors' packs are untouched. If a pack is flagged default (the item had no
+  // packs yet), mirror it onto the item's own columns so ordering math sees it.
+  addVendorPacks: (packs) => {
+    const state = get();
+    // Reuse an existing pack row's id when one already covers this (item,vendor).
+    const resolved = packs.map((p) => {
+      const hit = state.itemVendors.find((x) => x.itemId === p.itemId && x.vendorId === p.vendorId);
+      return hit ? { ...p, id: hit.id, createdAt: hit.createdAt } : p;
+    });
+    set((s) => {
+      let itemVendors = s.itemVendors;
+      let items = s.items;
+      for (const p of resolved) {
+        itemVendors = [...itemVendors.filter((x) => !(x.itemId === p.itemId && x.vendorId === p.vendorId)), p];
+        if (p.isDefault) {
+          items = items.map((i) => i.id === p.itemId
+            ? { ...i, vendorId: p.vendorId, purchaseUnit: p.purchaseUnit, purchaseUnitInBase: p.purchaseUnitInBase, unitPrice: p.unitPrice }
+            : i);
+        }
+      }
+      return { itemVendors, items };
+    });
+    for (const p of resolved) {
+      dbUpsertItemVendor(p);
+      if (p.isDefault) { const it = get().items.find((i) => i.id === p.itemId); if (it) dbUpdateInventoryItem(it); }
+    }
   },
 
   saveRecipe: (r, ings, stps, isNew) => {
@@ -655,6 +748,83 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     };
     set((s) => ({ orders: [order, ...s.orders] }));
     dbCreateOrder(order, []);
+  },
+
+  // Switch a draft line to a different vendor's pack. Orders are per-vendor (you send one
+  // to one vendor), so the line's pack/price re-snapshot AND, when the order has other
+  // lines, the line moves into that vendor's draft order. A single-line order is just
+  // re-vendored in place. Only draft orders are editable.
+  setOrderLineVendor: (lineId, vendorId) => {
+    const state = get();
+    const line = state.orderLines.find((l) => l.id === lineId);
+    if (!line) return;
+    const source = state.orders.find((o) => o.id === line.orderId);
+    if (!source || source.status !== 'draft' || source.vendorId === vendorId) return;
+    const pack = state.packForItemVendor(line.itemId, vendorId);
+    const vendor = state.vendors.find((v) => v.id === vendorId);
+    if (!pack || !vendor) return;
+
+    // Demand-driven lines recompute whole packs from the frozen need/on-hand; manually
+    // added lines (neededBase 0) keep their quantity and are only re-priced/re-united.
+    const shortfall = Math.max(0, line.neededBase - line.onHandBase);
+    const orderQty = line.neededBase > 0 ? Math.max(1, Math.ceil(shortfall / pack.purchaseUnitInBase)) : line.orderQty;
+    const lineTotal = tidy((pack.unitPrice ?? 0) * orderQty);
+    const patchedLine: PurchaseOrderLine = {
+      ...line, purchaseUnit: pack.purchaseUnit, purchaseUnitInBase: pack.purchaseUnitInBase,
+      unitPrice: pack.unitPrice, orderQty, lineTotal,
+    };
+    const sourceLineCount = state.orderLines.filter((l) => l.orderId === source.id).length;
+
+    // Case 1 — sole line on its order: re-vendor the order in place, no move.
+    if (sourceLineCount === 1) {
+      const fee = vendor.deliveryFee ?? 0;
+      const total = tidy(lineTotal + fee);
+      set((s) => ({
+        orderLines: s.orderLines.map((l) => l.id === lineId ? patchedLine : l),
+        orders: s.orders.map((o) => o.id === source.id
+          ? { ...o, vendorId, vendorName: vendor.name, deliveryFee: fee, subtotal: lineTotal, total }
+          : o),
+      }));
+      dbUpdateOrderLinePack(lineId, { purchaseUnit: pack.purchaseUnit, purchaseUnitInBase: pack.purchaseUnitInBase, unitPrice: pack.unitPrice, orderQty, lineTotal });
+      dbUpdateOrderVendor(source.id, vendorId, vendor.name, fee, lineTotal, total);
+      return;
+    }
+
+    // Case 2 — move the line into the vendor's draft order (existing one in the same
+    // source/session/week context, or a new blank one), then re-total both orders.
+    const now = new Date().toISOString();
+    const existingDest = state.orders.find((o) => o.status === 'draft' && o.vendorId === vendorId
+      && o.source === source.source && o.sessionId === source.sessionId && o.weekNumber === source.weekNumber);
+    const destId = existingDest?.id ?? generateId();
+    const createdDest: PurchaseOrder | null = existingDest ? null : {
+      id: destId, vendorId, vendorName: vendor.name, status: 'draft', source: source.source,
+      sessionId: source.sessionId, weekNumber: source.weekNumber,
+      subtotal: 0, deliveryFee: vendor.deliveryFee ?? 0, total: vendor.deliveryFee ?? 0,
+      deliveryInstructions: null, createdBy: source.createdBy, sentAt: null, receivedAt: null,
+      invoiceTotal: null, invoiceNumber: null, createdAt: now, updatedAt: now,
+    };
+    patchedLine.orderId = destId;
+
+    set((s) => {
+      const lines = s.orderLines.map((l) => l.id === lineId ? patchedLine : l);
+      const orders = createdDest ? [createdDest, ...s.orders] : s.orders;
+      const retotal = (o: PurchaseOrder): PurchaseOrder => {
+        const subtotal = tidy(lines.filter((l) => l.orderId === o.id).reduce((sum, l) => sum + l.lineTotal, 0));
+        return { ...o, subtotal, total: tidy(subtotal + o.deliveryFee) };
+      };
+      return {
+        orderLines: lines,
+        orders: orders.map((o) => (o.id === source.id || o.id === destId) ? retotal(o) : o),
+      };
+    });
+
+    if (createdDest) dbCreateOrder(createdDest, []);
+    dbUpdateOrderLinePack(lineId, { orderId: destId, purchaseUnit: pack.purchaseUnit, purchaseUnitInBase: pack.purchaseUnitInBase, unitPrice: pack.unitPrice, orderQty, lineTotal });
+    const after = get();
+    const src = after.orders.find((o) => o.id === source.id);
+    const dst = after.orders.find((o) => o.id === destId);
+    if (src) dbUpdateOrderTotals(src.id, src.subtotal, src.total);
+    if (dst) dbUpdateOrderTotals(dst.id, dst.subtotal, dst.total);
   },
 
   // ─── Production ────────────────────────────────────────────────────────────
@@ -919,6 +1089,14 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   },
 
   itemsById: () => new Map(get().items.map((i) => [i.id, i])),
+
+  packsForItem: (itemId) =>
+    get().itemVendors.filter((p) => p.itemId === itemId)
+      .sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)),
+
+  packForItemVendor: (itemId, vendorId) =>
+    itemId ? (get().itemVendors.find((p) => p.itemId === itemId && p.vendorId === vendorId) ?? null) : null,
+
   recipesById: () => new Map(get().recipes.map((r) => [r.id, r])),
 
   ingredientsByRecipe: () => {
@@ -947,8 +1125,22 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       if (q && !i.name.toLowerCase().includes(q)) return false;
       if (inventoryFilter === 'all') return true;
       if (inventoryFilter === 'low') return stockStatus(i) !== 'ok';
+      // Not set up yet: no reorder level (never flags low) or never counted (e.g. a fresh import).
+      if (inventoryFilter === 'needs_setup') return i.parLevelBase <= 0 || i.lastCountedAt == null;
       return i.category === inventoryFilter;
     });
+  },
+
+  setupCounts: () => {
+    let needsReorder = 0, notCounted = 0, either = 0;
+    for (const i of get().items) {
+      const noReorder = i.parLevelBase <= 0;
+      const uncounted = i.lastCountedAt == null;
+      if (noReorder) needsReorder++;
+      if (uncounted) notCounted++;
+      if (noReorder || uncounted) either++;
+    }
+    return { needsReorder, notCounted, either };
   },
 
   filteredRecipes: () => {
@@ -1263,10 +1455,16 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       if (!item) continue;
       const countedBase = c.countedStock * item.stockUnitInBase;
       const delta = tidy(countedBase - item.onHandBase, 4);
-      if (delta === 0) continue;
-      changed++;
-      const newOnHand = await dbAdjustInventory(item.id, delta, 'count_correction', 'Physical count', by);
-      if (newOnHand != null) set((s) => ({ items: s.items.map((i) => i.id === item.id ? { ...i, onHandBase: newOnHand } : i) }));
+      // Counting an item establishes its on-hand even when it matches — so every counted
+      // item is stamped "counted", but only a nonzero delta posts a correction.
+      if (delta !== 0) {
+        changed++;
+        const newOnHand = await dbAdjustInventory(item.id, delta, 'count_correction', 'Physical count', by);
+        set((s) => ({ items: s.items.map((i) => i.id === item.id ? { ...i, onHandBase: newOnHand ?? i.onHandBase, lastCountedAt: now } : i) }));
+      } else {
+        set((s) => ({ items: s.items.map((i) => i.id === item.id ? { ...i, lastCountedAt: now } : i) }));
+      }
+      dbSetItemCounted(item.id, now);
     }
     if (changed > 0) {
       const cs: CountSession = { id: generateId(), date: now.slice(0, 10), countedBy: by, note: null, itemCount: changed, createdAt: now };

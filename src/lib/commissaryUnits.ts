@@ -127,6 +127,28 @@ export const STOCK_UNIT_OPTIONS: StockUnitOption[] = [
 
 export const STOCK_UNIT_GROUPS: StockUnitOption['group'][] = ['Count', 'Weight', 'Volume'];
 
+// Smart default for "Stocked by": guess how a thing is counted from its name, so the
+// form pre-fills "lb" for chicken and "gallon" for milk instead of always "each". Just a
+// convenience — the user can always change it, and a miss costs nothing.
+const STOCK_UNIT_KEYWORDS: [RegExp, string][] = [
+  [/\b(egg|eggs)\b/i, 'dozen'],
+  [/\b(bread|loaf|loaves|baguette)\b/i, 'loaf'],
+  [/\b(roll|rolls|bun|buns|bagel|bagels|muffin|muffins|tortilla|tortillas)\b/i, 'dozen'],
+  [/\b(milk|cream|half.?and.?half|juice|oil|vinegar|syrup|broth|stock)\b/i, 'gallon'],
+  [/\b(lettuce|cabbage|cauliflower|broccoli|melon|watermelon|cantaloupe|pineapple)\b/i, 'head'],
+  [/\b(banana|bananas|celery|cilantro|parsley|kale|grapes|asparagus)\b/i, 'bunch'],
+  [/\b(canned|can of)\b/i, 'can'],
+  [/\b(chicken|beef|pork|turkey|ground|meat|steak|bacon|sausage|ham|salmon|fish|shrimp|cheese|mozzarella|cheddar|butter|flour|sugar|rice|pasta|potato|potatoes|onion|onions|carrot|carrots|apple|apples|orange|oranges|tomato|tomatoes)\b/i, 'lb'],
+];
+
+/** Suggested "Stocked by" unit value for a new item, from its name. Null = no guess (use default). */
+export function suggestStockUnit(name: string): string | null {
+  const n = name.trim();
+  if (!n) return null;
+  for (const [re, unit] of STOCK_UNIT_KEYWORDS) if (re.test(n)) return unit;
+  return null;
+}
+
 /**
  * Resolve a stored stockUnit back to a friendly option. Falls back to a synthetic
  * option carrying the item's own factor, so an item created with the old (advanced)
@@ -1027,6 +1049,83 @@ export function recipesToPrintHtml(recipes: PrintRecipe[]): string {
 }
 
 export interface PrintCountGroup { location: string; items: { name: string; unit: string; reorderAt: string; onHand: string }[]; }
+
+// ─── CSV import ──────────────────────────────────────────────────────────────
+// A vendor order guide is a spreadsheet. Parse it into rows the import mapper can align
+// to our fields. Handles quoted cells, escaped quotes, and \r\n — enough for real
+// exports from Sysco/US Foods/Excel. Not a full RFC parser; it doesn't need to be.
+
+export function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let inQuotes = false;
+  const s = text.replace(/^\uFEFF/, ""); // strip BOM
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (s[i + 1] === '"') { cell += '"'; i++; } else inQuotes = false;
+      } else cell += c;
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === ',') {
+      row.push(cell); cell = '';
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && s[i + 1] === '\n') i++;
+      row.push(cell); cell = '';
+      // Skip fully-blank lines rather than emitting an empty row.
+      if (row.some((x) => x.trim() !== '')) rows.push(row);
+      row = [];
+    } else cell += c;
+  }
+  if (cell !== '' || row.length) { row.push(cell); if (row.some((x) => x.trim() !== '')) rows.push(row); }
+  return rows;
+}
+
+/** The fields a CSV column can be mapped to. `skip` = ignore the column. */
+export const CSV_FIELDS = [
+  { value: 'skip', label: '— ignore —' },
+  { value: 'name', label: 'Item name' },
+  { value: 'category', label: 'Category' },
+  { value: 'stockUnit', label: 'Stocked by (unit)' },
+  { value: 'packUnit', label: 'Vendor pack unit (case…)' },
+  { value: 'packSize', label: 'Pack size (stock units per pack)' },
+  { value: 'price', label: 'Price per pack' },
+  { value: 'onHand', label: 'On hand' },
+  { value: 'reorderAt', label: 'Reorder at' },
+] as const;
+export type CsvField = (typeof CSV_FIELDS)[number]['value'];
+
+/** Best-guess field for a header name, so the mapper starts pre-aligned. */
+export function guessCsvField(header: string): CsvField {
+  const h = header.trim().toLowerCase();
+  if (/(^|[^a-z])(item|product|description|name)([^a-z]|$)/.test(h)) return 'name';
+  if (/categ|class|group/.test(h)) return 'category';
+  if (/pack.*size|per\s*case|count|qty.*pack|split/.test(h)) return 'packSize';
+  if (/pack|case|unit\s*of|uom|sold/.test(h)) return 'packUnit';
+  if (/price|cost|each\s*\$|\$/.test(h)) return 'price';
+  if (/on.?hand|in.?stock|current/.test(h)) return 'onHand';
+  if (/reorder|par|min/.test(h)) return 'reorderAt';
+  if (/stock.*by|base.*unit|unit/.test(h)) return 'stockUnit';
+  return 'skip';
+}
+
+/** Match a free-text category string to a known category slug, else 'other'. */
+export function matchCategory(raw: string): string {
+  const s = raw.trim().toLowerCase();
+  if (!s) return 'other';
+  for (const [slug, label] of Object.entries(CATEGORY_LABELS)) {
+    if (s === slug || s === label.toLowerCase() || label.toLowerCase().includes(s) || s.includes(slug)) return slug;
+  }
+  if (/meat|beef|chicken|pork|poultry|protein/.test(s)) return 'protein';
+  if (/veg|fruit|produce/.test(s)) return 'produce';
+  if (/dairy|milk|cheese/.test(s)) return 'dairy';
+  if (/frozen/.test(s)) return 'frozen';
+  if (/dry|grocery|canned|pantry/.test(s)) return 'dry_goods';
+  if (/drink|beverage|juice|soda/.test(s)) return 'beverage';
+  return 'other';
+}
 
 export function countSheetToPrintHtml(dateLabel: string, groups: PrintCountGroup[]): string {
   let body = `<h1>Inventory count sheet</h1><div class="meta">${dateLabel} · counted by ______________</div>`;

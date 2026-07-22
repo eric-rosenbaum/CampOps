@@ -13,7 +13,7 @@ import { inputClass, labelClass } from './commissaryUi';
  * launched from the item form would blow away the half-filled item.
  */
 export function VendorsModal({ editId }: { editId?: string }) {
-  const { vendors, items, closeModal } = useCommissaryStore();
+  const { vendors, itemVendors, closeModal } = useCommissaryStore();
   const [editing, setEditing] = useState<string | null>(editId ?? null);
   const [creating, setCreating] = useState(vendors.length === 0);
 
@@ -25,7 +25,8 @@ export function VendorsModal({ editId }: { editId?: string }) {
       <Modal title="Vendors" onClose={closeModal} width="520px">
         <div className="space-y-2">
           {vendors.map((v) => {
-            const itemCount = items.filter((i) => i.vendorId === v.id).length;
+            // Count distinct items this vendor carries a pack for (multi-vendor aware).
+            const itemCount = new Set(itemVendors.filter((p) => p.vendorId === v.id).map((p) => p.itemId)).size;
             return (
               <button
                 key={v.id}

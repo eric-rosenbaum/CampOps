@@ -15,6 +15,11 @@ const STOCK_STYLES: Record<StockStatus, { bar: string; text: string; badge: stri
 };
 
 export function StockBar({ item }: { item: InventoryItem }) {
+  // No reorder level → an empty dashed track, never a green "fully stocked" bar, which
+  // would falsely imply the item is fine when it simply can't be evaluated.
+  if (item.parLevelBase <= 0) {
+    return <div className="w-full h-1.5 rounded-full border border-dashed border-amber/50 bg-amber-bg/40" title="No reorder level set" />;
+  }
   const status = stockStatus(item);
   return (
     <div className="w-full h-1.5 bg-cream-dark rounded-full overflow-hidden">
@@ -34,6 +39,15 @@ export function StockStatusBadge({ status }: { status: StockStatus }) {
 /** On-hand, coloured by status, in the item's own stock unit. */
 export function OnHandValue({ item }: { item: InventoryItem }) {
   const status = stockStatus(item);
+  // Never counted: don't colour 0 as if it were a real reading — mark it plainly.
+  if (item.lastCountedAt == null) {
+    return (
+      <span className="font-mono text-[13px] text-forest/40" title="On-hand not counted yet">
+        {onHandInStockUnit(item).toLocaleString()} {item.stockUnit}
+        <span className="ml-1.5 text-[10px] font-sans text-amber-text">not counted</span>
+      </span>
+    );
+  }
   return (
     <span className={`font-mono text-[13px] font-medium ${STOCK_STYLES[status].text}`}>
       {onHandInStockUnit(item).toLocaleString()} {item.stockUnit}
@@ -42,6 +56,14 @@ export function OnHandValue({ item }: { item: InventoryItem }) {
 }
 
 export function ParValue({ item }: { item: InventoryItem }) {
+  if (item.parLevelBase <= 0) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-pill text-[11px] font-medium bg-amber-bg text-amber-text border border-amber/25"
+            title="No reorder level — this item can never flag as low">
+        Set reorder level
+      </span>
+    );
+  }
   return (
     <span className="font-mono text-[13px] text-forest/60">
       {parInStockUnit(item).toLocaleString()} {item.stockUnit}

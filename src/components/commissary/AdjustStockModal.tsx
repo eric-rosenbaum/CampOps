@@ -5,7 +5,7 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
 import type { AdjustmentReason } from '@/lib/types';
 import {
-  ADJUSTMENT_REASON_LABELS, formatInStockUnit, onHandInStockUnit, toBase, tidy,
+  ADJUSTMENT_REASON_LABELS, formatInStockUnit, onHandInStockUnit, tidy, pluralizeUnit,
 } from '@/lib/commissaryUnits';
 import { inputClass, labelClass } from './commissaryUi';
 
@@ -19,8 +19,10 @@ const ADDITIVE: Record<AdjustmentReason, boolean> = {
   other: true,
 };
 
+const STOCK = '__stock';
+
 export function AdjustStockModal({ itemId }: { itemId: string }) {
-  const { items, adjustmentsFor, adjustItem, closeModal } = useCommissaryStore();
+  const { items, adjustmentsFor, adjustItem, packsForItem, vendors, closeModal } = useCommissaryStore();
   const { currentUser } = useAuth();
   const item = items.find((i) => i.id === itemId);
 
@@ -28,6 +30,9 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
   const [qty, setQty] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  // For a delivery you can log in the vendor's pack (2 cases) and let the system convert.
+  const packs = item ? packsForItem(item.id) : [];
+  const [entryUnit, setEntryUnit] = useState<string>(() => packs.find((p) => p.isDefault)?.id ?? STOCK);
 
   if (!item) return null;
 
@@ -35,28 +40,30 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
   const current = onHandInStockUnit(item);
   const magnitude = Number(qty) || 0;
 
-  // A count correction is an absolute recount ("there are actually 14 cases"),
-  // not a delta — so the delta is whatever closes the gap, and may be negative.
   const isRecount = reason === 'count_correction';
-  const deltaStock = isRecount
-    ? magnitude - current
-    : (ADDITIVE[reason] ? magnitude : -magnitude);
+  // Pack entry is only meaningful for a received delivery; a recount is always a stock count.
+  const usePack = reason === 'received' && entryUnit !== STOCK ? packs.find((p) => p.id === entryUnit) ?? null : null;
+  const entryUnitLabel = usePack ? usePack.purchaseUnit : item.stockUnit;
+  const entryUnitInBase = usePack ? usePack.purchaseUnitInBase : item.stockUnitInBase;
+
+  // A count correction is an absolute recount ("there are actually 14 cases"), not a
+  // delta. Everything else is a signed delta in the chosen entry unit.
+  const deltaBase = isRecount
+    ? (magnitude - current) * item.stockUnitInBase
+    : (ADDITIVE[reason] ? magnitude : -magnitude) * entryUnitInBase;
+  const deltaStock = deltaBase / item.stockUnitInBase;
   const projected = Math.max(0, tidy(current + deltaStock));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!item || qty === '' || (deltaStock === 0 && !isRecount)) return;
+    if (!item || qty === '' || (deltaBase === 0 && !isRecount)) return;
     setSaving(true);
-    await adjustItem(
-      item.id,
-      toBase(deltaStock, item.stockUnitInBase),
-      reason,
-      notes.trim() || null,
-      currentUser.name || null,
-    );
+    await adjustItem(item.id, deltaBase, reason, notes.trim() || null, currentUser.name || null);
     setSaving(false);
     closeModal();
   }
+
+  const vendorName = (vId: string) => vendors.find((v) => v.id === vId)?.name ?? 'vendor';
 
   return (
     <Modal title={`Adjust — ${item.name}`} onClose={closeModal} width="480px">
@@ -75,9 +82,24 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
           </select>
         </div>
 
+        {/* Delivery-in-packs: pick the vendor pack and log e.g. "2 cases". */}
+        {reason === 'received' && packs.length > 0 && (
+          <div>
+            <label className={labelClass}>Log in</label>
+            <select value={entryUnit} onChange={(e) => setEntryUnit(e.target.value)} className={inputClass}>
+              <option value={STOCK}>{pluralizeUnit(item.stockUnit, 2)} (how you stock it)</option>
+              {packs.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.purchaseUnit} — {vendorName(p.vendorId)} ({tidy(p.purchaseUnitInBase / item.stockUnitInBase, 2)} {item.stockUnit})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div>
           <label className={labelClass}>
-            {isRecount ? `Counted quantity (${item.stockUnit})` : `Quantity (${item.stockUnit})`}
+            {isRecount ? `Counted quantity (${item.stockUnit})` : `Quantity (${entryUnitLabel})`}
           </label>
           <input
             autoFocus type="number" step="any" min="0" value={qty}
@@ -86,9 +108,11 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
           <p className="text-[11px] text-forest/45 mt-1">
             {isRecount
               ? 'Enter what you actually counted. The difference is recorded as the adjustment.'
-              : ADDITIVE[reason]
-                ? 'Added to stock on hand.'
-                : 'Removed from stock on hand.'}
+              : usePack
+                ? `Converted to ${item.stockUnit} and added to stock on hand.`
+                : ADDITIVE[reason]
+                  ? 'Added to stock on hand.'
+                  : 'Removed from stock on hand.'}
           </p>
         </div>
 
@@ -96,7 +120,11 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
           <div className="flex items-center justify-between rounded-card border border-border px-4 py-2.5">
             <span className="text-[12px] text-forest/60">
               {deltaStock >= 0 ? 'Adding' : 'Removing'}{' '}
-              <span className="font-mono">{Math.abs(tidy(deltaStock)).toLocaleString()} {item.stockUnit}</span>
+              <span className="font-mono">
+                {isRecount || !usePack
+                  ? `${Math.abs(tidy(deltaStock)).toLocaleString()} ${item.stockUnit}`
+                  : `${magnitude.toLocaleString()} ${pluralizeUnit(entryUnitLabel, magnitude)} = ${Math.abs(tidy(deltaStock)).toLocaleString()} ${item.stockUnit}`}
+              </span>
             </span>
             <span className="text-[12px] text-forest/60">
               New on hand <span className="font-mono font-medium text-forest">{projected.toLocaleString()} {item.stockUnit}</span>

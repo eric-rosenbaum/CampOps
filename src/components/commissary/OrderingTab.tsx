@@ -42,6 +42,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
   const {
     linesForOrder, updateOrderLineQty, addOrderLine, removeOrderLine,
     cancelOrder, deleteOrder, openModal, items, vendors,
+    setOrderLineVendor, packsForItem,
   } = useCommissaryStore();
   const { can } = useAuth();
   const canManage = can('manageCommissary');
@@ -101,7 +102,25 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
 
       {lines.map((l) => (
         <div key={l.id} className={`grid ${editable ? 'grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]' : 'grid-cols-[2fr_1fr_1fr_1fr_1fr]'} gap-3 px-4 py-2.5 border-b border-border items-center`}>
-          <span className="text-[13px] text-forest truncate">{l.itemName}</span>
+          {(() => {
+            const itemPacks = editable && l.itemId ? packsForItem(l.itemId) : [];
+            // Offer a vendor switch only when the item is carried by more than one vendor.
+            if (itemPacks.length <= 1) return <span className="text-[13px] text-forest truncate">{l.itemName}</span>;
+            const hasCurrent = itemPacks.some((p) => p.vendorId === order.vendorId);
+            return (
+              <div className="min-w-0">
+                <span className="block text-[13px] text-forest truncate">{l.itemName}</span>
+                <select value={order.vendorId ?? ''} onChange={(e) => setOrderLineVendor(l.id, e.target.value)}
+                  title="Order this line from another vendor"
+                  className="mt-0.5 max-w-full text-[10px] text-forest/50 bg-transparent border border-border rounded px-1 py-0.5 focus:outline-none focus:border-sage">
+                  {!hasCurrent && order.vendorId && <option value={order.vendorId}>{order.vendorName} (current)</option>}
+                  {itemPacks.map((p) => (
+                    <option key={p.id} value={p.vendorId}>{vendors.find((v) => v.id === p.vendorId)?.name ?? 'Vendor'}</option>
+                  ))}
+                </select>
+              </div>
+            );
+          })()}
           <span className="font-mono text-[12px] text-forest/50">
             {formatQty(l.onHandBase / l.purchaseUnitInBase, l.purchaseUnit)}
           </span>

@@ -50,6 +50,7 @@ import {
   loadCommissaryOrders, subscribeToCommissaryOrders,
   loadCommissaryProduction, subscribeToCommissaryProduction,
   loadCommissaryAllergy, subscribeToCommissaryAllergy,
+  loadProductCatalog,
   type AssetData, type BuildingData,
 } from '@/lib/db';
 import { startSupabaseHeartbeat } from '@/lib/supabase';
@@ -82,7 +83,7 @@ function CampDataLoader() {
   const { setAssets, setCheckouts, setServiceRecords, setMaintenanceTasks } = useAssetStore();
   const { setBuildings, setRooms, setComponents, setCircuits, setSeasonalTasks: setBuildingSeasonalTasks } = useBuildingStore();
   const {
-    setItems: setInventoryItems, setAdjustments, setVendors,
+    setItems: setInventoryItems, setAdjustments, setVendors, setItemVendors, setCatalog,
     setRecipes, setIngredients, setSteps, setSessions, setMenuEntries,
     setOrders, setOrderLines, setPlans, setProductionTasks, setPrepTasks,
     setCampers, setRestrictions, setRestrictionSummary,
@@ -171,6 +172,7 @@ function CampDataLoader() {
       setInventoryItems(d.items);
       setAdjustments(d.adjustments);
       setVendors(d.vendors);
+      setItemVendors(d.itemVendors);
       setCountSessions(d.countSessions);
       setStorageMap(d.storageMap);
     }, () => { commInventorySyncedAt = Date.now(); });
@@ -257,11 +259,15 @@ function CampDataLoader() {
       setBuildingSeasonalTasks(data.seasonalTasks);
     });
 
+    // Global shared catalog — not camp-scoped, loaded once (no realtime channel).
+    loadProductCatalog().then((rows) => { if (rows) setCatalog(rows); });
+
     loadCommissaryInventory(campId).then((data) => {
       if (!data || commInventorySyncedAt > loadStartedAt) return;
       setInventoryItems(data.items);
       setAdjustments(data.adjustments);
       setVendors(data.vendors);
+      setItemVendors(data.itemVendors);
       setCountSessions(data.countSessions);
       setStorageMap(data.storageMap);
     });
@@ -340,7 +346,7 @@ function CampDataLoader() {
       if (safetyData && safetySyncedAt <= refetchStartedAt) { setItems(safetyData.items); setSafetyLog(safetyData.inspectionLog); setDrills(safetyData.drills); setStaff(safetyData.staff); setCertifications(safetyData.certifications); setTempLogs(safetyData.tempLogs); setLicenses(safetyData.licenses); applied.push('safety'); }
       if (assetData && assetsSyncedAt <= refetchStartedAt) { setAssets(assetData.assets); setCheckouts(assetData.checkouts); setServiceRecords(assetData.serviceRecords); setMaintenanceTasks(assetData.maintenanceTasks); applied.push('assets'); }
       if (buildingData && buildingSyncedAt <= refetchStartedAt) { setBuildings(buildingData.buildings); setRooms(buildingData.rooms); setComponents(buildingData.components); setCircuits(buildingData.circuits); setBuildingSeasonalTasks(buildingData.seasonalTasks); applied.push('building'); }
-      if (commInvData && commInventorySyncedAt <= refetchStartedAt) { setInventoryItems(commInvData.items); setAdjustments(commInvData.adjustments); setVendors(commInvData.vendors); setCountSessions(commInvData.countSessions); setStorageMap(commInvData.storageMap); applied.push('comm-inventory'); }
+      if (commInvData && commInventorySyncedAt <= refetchStartedAt) { setInventoryItems(commInvData.items); setAdjustments(commInvData.adjustments); setVendors(commInvData.vendors); setItemVendors(commInvData.itemVendors); setCountSessions(commInvData.countSessions); setStorageMap(commInvData.storageMap); applied.push('comm-inventory'); }
       if (commCatData && commCatalogSyncedAt <= refetchStartedAt) { setRecipes(commCatData.recipes); setIngredients(commCatData.ingredients); setSteps(commCatData.steps); applied.push('comm-catalog'); }
       if (commMenuData && commMenuSyncedAt <= refetchStartedAt) { setSessions(commMenuData.sessions); setMenuEntries(commMenuData.menuEntries); setTemplates(commMenuData.templates); setTemplateEntries(commMenuData.templateEntries); setDietCounts(commMenuData.dietCounts); setMealEvents(commMenuData.mealEvents); setCourses(commMenuData.courses); setSubstitutions(commMenuData.substitutions); applied.push('comm-menu'); }
       if (commOrderData && commOrdersSyncedAt <= refetchStartedAt) { setOrders(commOrderData.orders); setOrderLines(commOrderData.orderLines); setExpenses(commOrderData.expenses); applied.push('comm-orders'); }

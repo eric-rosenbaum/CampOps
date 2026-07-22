@@ -17,7 +17,7 @@ import type {
   SafetyStaff, StaffCertification, SafetyTempLog, SafetyLicense,
   CampAsset, AssetCheckout, AssetServiceRecord, AssetMaintenanceTask,
   Building, BuildingRoom, BuildingComponent, BuildingCircuit, BuildingSeasonalTask,
-  CommissarySession, CommissaryVendor, InventoryItem, InventoryAdjustment,
+  CommissarySession, CommissaryVendor, InventoryItem, InventoryAdjustment, ItemVendorPack, CatalogProduct,
   Recipe, RecipeIngredient, RecipeStep, MenuEntry, AdjustmentReason,
   PurchaseOrder, PurchaseOrderLine, ProductionPlan, ProductionTask,
   ProductionIngredient, ProductionPrepTask, Camper, CamperRestriction, RestrictionSummaryRow,
@@ -1713,10 +1713,50 @@ function rowToInventoryItem(r: Record<string, unknown>): InventoryItem {
     unitPrice: r.unit_price == null ? null : Number(r.unit_price),
     onHandBase: Number(r.on_hand_base ?? 0),
     parLevelBase: Number(r.par_level_base ?? 0),
+    lastCountedAt: (r.last_counted_at as string) ?? null,
     vendorId: (r.vendor_id as string) ?? null,
     allergens: (r.allergens as string[]) ?? [],
     notes: (r.notes as string) ?? null,
     sortOrder: Number(r.sort_order ?? 0),
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToCatalogProduct(r: Record<string, unknown>): CatalogProduct {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    category: (r.category as CatalogProduct['category']) ?? 'other',
+    dimension: (r.dimension as CatalogProduct['dimension']) ?? 'count',
+    stockUnit: (r.stock_unit as string) ?? 'each',
+    stockUnitInBase: Number(r.stock_unit_in_base ?? 1),
+    packUnit: (r.pack_unit as string) ?? null,
+    packSize: r.pack_size == null ? null : Number(r.pack_size),
+    allergens: (r.allergens as string[]) ?? [],
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+// Global (not camp-scoped) shared catalog. Loaded once; no realtime channel.
+export async function loadProductCatalog(): Promise<CatalogProduct[] | null> {
+  try {
+    const { data, error } = await supabase.from('product_catalog').select('*').order('name', { ascending: true });
+    if (error) { console.error('loadProductCatalog error:', error.message); return null; }
+    return (data ?? []).map((r) => rowToCatalogProduct(r as Record<string, unknown>));
+  } catch (e) { console.error('[Supabase] loadProductCatalog threw:', e); return null; }
+}
+
+function rowToItemVendorPack(r: Record<string, unknown>): ItemVendorPack {
+  return {
+    id: r.id as string,
+    itemId: r.item_id as string,
+    vendorId: r.vendor_id as string,
+    purchaseUnit: (r.purchase_unit as string) ?? 'each',
+    purchaseUnitInBase: Number(r.purchase_unit_in_base ?? 1),
+    unitPrice: r.unit_price == null ? null : Number(r.unit_price),
+    isDefault: Boolean(r.is_default),
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
@@ -1802,6 +1842,7 @@ export interface CommissaryInventoryData {
   items: InventoryItem[];
   adjustments: InventoryAdjustment[];
   vendors: CommissaryVendor[];
+  itemVendors: ItemVendorPack[];
   countSessions: CountSession[];
   storageMap: StorageMap[];
 }
@@ -1822,11 +1863,12 @@ export interface CommissaryMenuData {
 }
 
 async function loadInventoryData(campId: string): Promise<CommissaryInventoryData> {
-  const [iRes, aRes, vRes, cRes, smRes] = await Promise.all([
+  const [iRes, aRes, vRes, ivRes, cRes, smRes] = await Promise.all([
     supabase.from('inventory_items').select('*').eq('camp_id', campId).order('name', { ascending: true }),
     // The adjustment log is unbounded; the UI only ever shows recent history.
     supabase.from('inventory_adjustments').select('*').eq('camp_id', campId).order('created_at', { ascending: false }).limit(200),
     supabase.from('commissary_vendors').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+    supabase.from('commissary_item_vendors').select('*').eq('camp_id', campId),
     supabase.from('commissary_count_sessions').select('*').eq('camp_id', campId).order('date', { ascending: false }).limit(50),
     supabase.from('commissary_storage_map').select('*').eq('camp_id', campId),
   ]);
@@ -1834,6 +1876,7 @@ async function loadInventoryData(campId: string): Promise<CommissaryInventoryDat
     items: (iRes.data ?? []).map((r) => rowToInventoryItem(r as Record<string, unknown>)),
     adjustments: (aRes.data ?? []).map((r) => rowToAdjustment(r as Record<string, unknown>)),
     vendors: (vRes.data ?? []).map((r) => rowToVendor(r as Record<string, unknown>)),
+    itemVendors: (ivRes.data ?? []).map((r) => rowToItemVendorPack(r as Record<string, unknown>)),
     countSessions: (cRes.data ?? []).map((r) => rowToCountSession(r as Record<string, unknown>)),
     storageMap: (smRes.data ?? []).map((r) => rowToStorageMap(r as Record<string, unknown>)),
   };
@@ -1952,6 +1995,7 @@ function inventoryItemToRow(i: InventoryItem) {
     stock_unit: i.stockUnit, stock_unit_in_base: i.stockUnitInBase,
     purchase_unit: i.purchaseUnit, purchase_unit_in_base: i.purchaseUnitInBase,
     unit_price: i.unitPrice, on_hand_base: i.onHandBase, par_level_base: i.parLevelBase,
+    last_counted_at: i.lastCountedAt,
     vendor_id: i.vendorId, allergens: i.allergens, notes: i.notes,
     sort_order: i.sortOrder, created_at: i.createdAt, updated_at: i.updatedAt,
   };
@@ -1972,6 +2016,49 @@ export async function dbUpdateInventoryItem(i: InventoryItem) {
 export async function dbDeleteInventoryItem(id: string) {
   const { error } = await supabase.from('inventory_items').delete().eq('id', id);
   if (error) console.error('dbDeleteInventoryItem error:', error.message);
+}
+
+/** Stamp an item as counted (on-hand affirmatively established). Used by count/recount paths. */
+export async function dbSetItemCounted(itemId: string, ts: string) {
+  const { error } = await supabase.from('inventory_items')
+    .update({ last_counted_at: ts, updated_at: new Date().toISOString() }).eq('id', itemId);
+  if (error) console.error('dbSetItemCounted error:', error.message);
+}
+
+/**
+ * Add or update a SINGLE vendor pack on an item without touching its other packs.
+ * Upserts on the (item_id, vendor_id) unique key — used by the CSV merge path, where a
+ * second distributor's sheet layers its pack onto an item the camp already stocks.
+ */
+export async function dbUpsertItemVendor(pack: ItemVendorPack) {
+  const { error } = await supabase.from('commissary_item_vendors').upsert({
+    id: pack.id, camp_id: _campId, item_id: pack.itemId, vendor_id: pack.vendorId,
+    purchase_unit: pack.purchaseUnit, purchase_unit_in_base: pack.purchaseUnitInBase,
+    unit_price: pack.unitPrice, is_default: pack.isDefault,
+    created_at: pack.createdAt, updated_at: pack.updatedAt,
+  }, { onConflict: 'item_id,vendor_id' });
+  if (error) console.error('dbUpsertItemVendor error:', error.message);
+}
+
+/**
+ * Replace an item's whole set of vendor packs. Wholesale replace mirrors how recipe
+ * children are saved: the editor has no stable per-row identity across an edit session,
+ * and this keeps the DB exactly matching what the form shows. Row FK CASCADEs from the
+ * item, so packs vanish when the item is deleted.
+ */
+export async function dbReplaceItemVendors(itemId: string, packs: ItemVendorPack[]) {
+  const { error: delErr } = await supabase.from('commissary_item_vendors').delete().eq('item_id', itemId);
+  if (delErr) { console.error('dbReplaceItemVendors delete error:', delErr.message); return; }
+  if (!packs.length) return;
+  const { error } = await supabase.from('commissary_item_vendors').insert(
+    packs.map((p) => ({
+      id: p.id, camp_id: _campId, item_id: itemId, vendor_id: p.vendorId,
+      purchase_unit: p.purchaseUnit, purchase_unit_in_base: p.purchaseUnitInBase,
+      unit_price: p.unitPrice, is_default: p.isDefault,
+      created_at: p.createdAt, updated_at: p.updatedAt,
+    })),
+  );
+  if (error) console.error('dbReplaceItemVendors insert error:', error.message);
 }
 
 /**
@@ -2135,7 +2222,7 @@ let commissaryChannelCount = 0;
 export function subscribeToCommissaryInventory(campId: string, onUpdate: (d: CommissaryInventoryData) => void, onEventStart?: () => void): () => void {
   return makeCommissaryChannel(
     `commissary-inventory-${++commissaryChannelCount}`, campId,
-    ['inventory_items', 'inventory_adjustments', 'commissary_vendors', 'commissary_count_sessions', 'commissary_storage_map'],
+    ['inventory_items', 'inventory_adjustments', 'commissary_vendors', 'commissary_item_vendors', 'commissary_count_sessions', 'commissary_storage_map'],
     loadInventoryData, onUpdate, onEventStart,
   );
 }
@@ -2421,6 +2508,32 @@ export async function dbAddOrderLine(orderId: string, l: PurchaseOrderLine) {
 export async function dbDeleteOrderLine(id: string) {
   const { error } = await supabase.from('purchase_order_lines').delete().eq('id', id);
   if (error) console.error('dbDeleteOrderLine error:', error.message);
+}
+
+/**
+ * Re-point a line at a different vendor's pack: swaps the frozen pack fields + price and
+ * may move the line into another order (order_id). Used by the multi-vendor line switch.
+ */
+export async function dbUpdateOrderLinePack(id: string, patch: {
+  orderId?: string; purchaseUnit: string; purchaseUnitInBase: number;
+  unitPrice: number | null; orderQty: number; lineTotal: number;
+}) {
+  const row: Record<string, unknown> = {
+    purchase_unit: patch.purchaseUnit, purchase_unit_in_base: patch.purchaseUnitInBase,
+    unit_price: patch.unitPrice, order_qty: patch.orderQty, line_total: patch.lineTotal,
+    updated_at: new Date().toISOString(),
+  };
+  if (patch.orderId !== undefined) row.order_id = patch.orderId;
+  const { error } = await supabase.from('purchase_order_lines').update(row).eq('id', id);
+  if (error) console.error('dbUpdateOrderLinePack error:', error.message);
+}
+
+/** Re-vendor a draft order in place (single-line switch) — new vendor, fee and totals. */
+export async function dbUpdateOrderVendor(id: string, vendorId: string, vendorName: string, deliveryFee: number, subtotal: number, total: number) {
+  const { error } = await supabase.from('purchase_orders')
+    .update({ vendor_id: vendorId, vendor_name: vendorName, delivery_fee: deliveryFee, subtotal, total, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) console.error('dbUpdateOrderVendor error:', error.message);
 }
 
 /**

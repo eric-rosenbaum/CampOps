@@ -6,18 +6,17 @@ import { InventoryTab } from '@/components/commissary/InventoryTab';
 import { MenuTab } from '@/components/commissary/MenuTab';
 import { RecipesTab } from '@/components/commissary/RecipesTab';
 import { AddEditItemModal } from '@/components/commissary/AddEditItemModal';
+import { CSVImportModal } from '@/components/commissary/CSVImportModal';
 import { AdjustStockModal } from '@/components/commissary/AdjustStockModal';
 import { AddEditRecipeModal } from '@/components/commissary/AddEditRecipeModal';
 import { MenuEntryModal } from '@/components/commissary/MenuEntryModal';
 import { SessionModal } from '@/components/commissary/SessionModal';
 import { VendorsModal } from '@/components/commissary/VendorsModal';
-import { ProductionTab } from '@/components/commissary/ProductionTab';
 import { AllergyTab } from '@/components/commissary/AllergyTab';
 import { OrderingTab } from '@/components/commissary/OrderingTab';
 import { AddCamperModal } from '@/components/commissary/AddCamperModal';
 import { ImportCampersModal } from '@/components/commissary/ImportCampersModal';
 import { SendOrderModal } from '@/components/commissary/SendOrderModal';
-import { CostTab } from '@/components/commissary/CostTab';
 import { ReceiveOrderModal } from '@/components/commissary/ReceiveOrderModal';
 import { AddExpenseModal } from '@/components/commissary/AddExpenseModal';
 import { MealEventModal } from '@/components/commissary/MealEventModal';
@@ -29,14 +28,15 @@ import { CountModal } from '@/components/commissary/CountModal';
 import { CoursesModal } from '@/components/commissary/CoursesModal';
 import { SubstitutionModal } from '@/components/commissary/SubstitutionModal';
 
+// Production guide and Cost tabs are archived (out of scope for v1). Their components,
+// store selectors, and DB loaders remain in place and unreachable — re-add the entries
+// here (and the renders below) to restore them.
 const TABS: { id: CommissaryTab; label: string }[] = [
   { id: 'inventory', label: 'Inventory' },
   { id: 'recipes', label: 'Recipe guide' },
   { id: 'menu', label: 'Menu builder' },
-  { id: 'production', label: 'Production guide' },
   { id: 'allergy', label: 'Allergy program' },
   { id: 'ordering', label: 'Ordering' },
-  { id: 'cost', label: 'Cost' },
 ];
 
 export function Commissary() {
@@ -60,6 +60,7 @@ export function Commissary() {
       return (
         <div className="flex gap-2">
           <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'vendor' })}>Vendors</Button>
+          <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'csvImport' })}>Import CSV</Button>
           <Button size="sm" onClick={() => openModal({ kind: 'item' })}>+ Add item</Button>
         </div>
       );
@@ -73,7 +74,7 @@ export function Commissary() {
       if (!canViewCamperHealth) return undefined;
       return <Button size="sm" onClick={() => openModal({ kind: 'camper' })}>+ Add camper</Button>;
     }
-    if (activeTab === 'production' || activeTab === 'ordering' || activeTab === 'cost') return undefined;
+    if (activeTab === 'ordering') return undefined;
     return <Button size="sm" onClick={() => openModal({ kind: 'session' })}>+ New session</Button>;
   }
 
@@ -103,13 +104,12 @@ export function Commissary() {
         {activeTab === 'inventory' && <InventoryTab />}
         {activeTab === 'menu' && <MenuTab />}
         {activeTab === 'recipes' && <RecipesTab />}
-        {activeTab === 'production' && <ProductionTab />}
         {activeTab === 'allergy' && <AllergyTab />}
         {activeTab === 'ordering' && <OrderingTab />}
-        {activeTab === 'cost' && <CostTab />}
       </div>
 
       {modal?.kind === 'item' && <AddEditItemModal editId={modal.editId} />}
+      {modal?.kind === 'csvImport' && <CSVImportModal />}
       {modal?.kind === 'adjust' && <AdjustStockModal itemId={modal.itemId} />}
       {modal?.kind === 'recipe' && <AddEditRecipeModal editId={modal.editId} />}
       {modal?.kind === 'menuEntry' && (

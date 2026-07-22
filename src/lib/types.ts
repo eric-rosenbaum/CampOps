@@ -609,12 +609,51 @@ export interface InventoryItem {
 
   onHandBase: number;
   parLevelBase: number;
+  /** When on-hand was last affirmatively counted/set. null = never (e.g. a fresh import). */
+  lastCountedAt: string | null;
 
   vendorId: string | null;
   /** Canonical allergen slugs. Recipes derive theirs from these by union. */
   allergens: string[];
   notes: string | null;
   sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * One vendor's pack for an item — how that vendor sells it, in the item's base unit.
+ * An item can have several; the one flagged `isDefault` mirrors the item's own
+ * purchaseUnit/purchaseUnitInBase/unitPrice columns and drives order generation until a
+ * line is switched to another vendor. See the multi-vendor migration.
+ */
+export interface ItemVendorPack {
+  id: string;
+  itemId: string;
+  vendorId: string;
+  purchaseUnit: string;
+  purchaseUnitInBase: number;
+  unitPrice: number | null;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * A shared, global reference product (not camp-scoped). Standard food-service pack/units,
+ * no price. Adding an inventory item can autofill name/category/unit/pack from one of these.
+ * Grows via CSV import.
+ */
+export interface CatalogProduct {
+  id: string;
+  name: string;
+  category: InventoryCategory;
+  dimension: 'count' | 'weight' | 'volume';
+  stockUnit: string;
+  stockUnitInBase: number;
+  packUnit: string | null;
+  packSize: number | null;
+  allergens: string[];
   createdAt: string;
   updatedAt: string;
 }

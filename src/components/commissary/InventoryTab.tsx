@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Package, ClipboardCheck, Printer, ThermometerSnowflake } from 'lucide-react';
+import { Package, ClipboardCheck, Printer, ThermometerSnowflake, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { StatCard } from '@/components/shared/StatCard';
 import { AlertBanner } from '@/components/shared/AlertBanner';
@@ -27,7 +27,7 @@ const FILTERS = [
 
 export function InventoryTab() {
   const {
-    items, filteredItems, stockCounts, openModal, setActiveTab,
+    items, filteredItems, stockCounts, setupCounts, openModal, setActiveTab,
     inventoryFilter, setInventoryFilter, inventorySearch, setInventorySearch,
     activeWeek, weekShortfalls, unlinkedEntryCount, activeSession, weekDemand,
     storageMap,
@@ -64,6 +64,7 @@ export function InventoryTab() {
   }
 
   const counts = stockCounts();
+  const setup = setupCounts();
   const rows = filteredItems();
   const session = activeSession();
 
@@ -112,6 +113,28 @@ export function InventoryTab() {
 
   return (
     <div className="flex-1 overflow-y-auto px-7 py-6">
+      {/* Unmissable, non-dismissible until resolved: freshly imported items land with no
+          reorder level (can't flag low) and uncounted on-hand. Never let that be silent. */}
+      {setup.either > 0 && (
+        <div className="flex items-start gap-3 rounded-card border-2 border-amber/50 bg-amber-bg px-4 py-3.5 mb-5">
+          <AlertTriangle className="w-5 h-5 text-amber-text flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-body text-amber-text font-semibold">
+              {setup.either} item{setup.either === 1 ? '' : 's'} still need setup — ordering and low-stock alerts won't work for {setup.either === 1 ? 'it' : 'them'} yet.
+            </p>
+            <p className="text-[12px] text-amber-text/80 mt-0.5">
+              {[
+                setup.needsReorder ? `${setup.needsReorder} with no reorder level (can never flag as low)` : '',
+                setup.notCounted ? `${setup.notCounted} not counted` : '',
+              ].filter(Boolean).join(' · ')}. Set a reorder level and count on-hand for each.
+            </p>
+          </div>
+          {canManage && (
+            <Button size="sm" onClick={() => setInventoryFilter('needs_setup')}>Review these</Button>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-4 gap-4 mb-5">
         <StatCard label="Total items" value={items.length} hint="Across all categories" />
         <StatCard label="Critically low" value={counts.critical} hint="Under half the reorder level" variant={counts.critical > 0 ? 'red' : 'default'} />
@@ -163,6 +186,14 @@ export function InventoryTab() {
             count={f.id === 'low' ? counts.low + counts.critical : undefined}
           />
         ))}
+        {setup.either > 0 && (
+          <FilterPill
+            label="Needs setup"
+            active={inventoryFilter === 'needs_setup'}
+            onClick={() => setInventoryFilter('needs_setup')}
+            count={setup.either}
+          />
+        )}
         <div className="flex-1" />
         <Button size="sm" variant="ghost" onClick={handlePrintCountSheet}>
           <Printer className="w-3.5 h-3.5" /> Count sheet

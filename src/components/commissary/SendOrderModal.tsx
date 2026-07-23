@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useCommissaryStore } from '@/store/commissaryStore';
-import { formatCurrency, tidy } from '@/lib/commissaryUnits';
+import { formatCurrency, tidy, addDaysStr, nextWeekdayOnOrAfter } from '@/lib/commissaryUnits';
 import { inputClass, labelClass } from './commissaryUi';
 
 /**
@@ -14,12 +14,17 @@ import { inputClass, labelClass } from './commissaryUi';
 export function SendOrderModal({ orderId }: { orderId: string }) {
   const { orders, linesForOrder, vendors, sendOrder, closeModal } = useCommissaryStore();
   const order = orders.find((o) => o.id === orderId);
+  const orderVendor = order?.vendorId ? vendors.find((v) => v.id === order.vendorId) : undefined;
+  const today = new Date().toISOString().slice(0, 10);
   const [instructions, setInstructions] = useState(order?.deliveryInstructions ?? '');
+  const [expectedDelivery, setExpectedDelivery] = useState(
+    order?.expectedDelivery ?? nextWeekdayOnOrAfter(orderVendor?.deliveryDay ?? null, addDaysStr(today, 1)) ?? '',
+  );
   const [copied, setCopied] = useState(false);
 
   if (!order) return null;
   const lines = linesForOrder(orderId);
-  const vendor = order.vendorId ? vendors.find((v) => v.id === order.vendorId) : undefined;
+  const vendor = orderVendor;
 
   const summary = [
     `Purchase order — ${order.vendorName}`,
@@ -41,7 +46,7 @@ export function SendOrderModal({ orderId }: { orderId: string }) {
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    sendOrder(orderId, instructions.trim() || null);
+    sendOrder(orderId, instructions.trim() || null, expectedDelivery || null);
     closeModal();
   }
 
@@ -69,6 +74,15 @@ export function SendOrderModal({ orderId }: { orderId: string }) {
             These items have no vendor assigned. Set a vendor on each inventory item first.
           </p>
         )}
+
+        <div>
+          <label className={labelClass}>Expected delivery</label>
+          <input type="date" value={expectedDelivery} onChange={(e) => setExpectedDelivery(e.target.value)} className={inputClass} />
+          <p className="text-[11px] text-forest/45 mt-1">
+            When this is due — it counts as in-transit stock so the ordering view won't double-order before it lands.
+            {vendor?.deliveryDay && ` Defaulted to ${vendor.name}'s ${vendor.deliveryDay}.`}
+          </p>
+        </div>
 
         <div>
           <label className={labelClass}>Delivery instructions</label>

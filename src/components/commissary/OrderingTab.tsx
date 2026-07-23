@@ -1,16 +1,16 @@
-import { useMemo, useState } from 'react';
-import { ShoppingCart, Truck, Check, X, Trash2, Download, Printer, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { ShoppingCart, Truck, Check, X, Trash2, Download, Printer, Plus, ChevronRight, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { StatCard } from '@/components/shared/StatCard';
 import { AlertBanner } from '@/components/shared/AlertBanner';
-import { FilterPill } from '@/components/shared/FilterPill';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
 import {
-  formatCurrency, formatQty, formatInStockUnit, ORDER_STATUS_LABELS, tidy,
-  orderToCsv, orderToPrintHtml, type ExportOrderLine,
+  formatCurrency, formatQty, formatInStockUnit, ORDER_STATUS_LABELS, tidy, fromBase, pluralizeUnit,
+  orderToCsv, orderToPrintHtml, type ExportOrderLine, type DraftOrder,
 } from '@/lib/commissaryUnits';
 import { AlertTriangle } from 'lucide-react';
+import { InlineNumberEdit } from './commissaryUi';
 import type { PurchaseOrder } from '@/lib/types';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -234,18 +234,100 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
   );
 }
 
+// A LIVE reconciled order for one vendor. Always current (recomputed from projection);
+// editable inline; only persisted when Sent. Nothing here can go stale.
+function LiveOrderCard({ draft }: { draft: DraftOrder }) {
+  const { beginSend, vendors } = useCommissaryStore();
+  const { can } = useAuth();
+  const canManage = can('manageCommissary');
+  const [overrides, setOverrides] = useState<Record<string, number>>({});
+
+  const qtyOf = (l: DraftOrder['lines'][number]) => overrides[l.itemId] ?? l.orderQty;
+  const finalLines = draft.lines.map((l) => ({ ...l, orderQty: qtyOf(l), lineTotal: tidy((l.unitPrice ?? 0) * qtyOf(l)) })).filter((l) => l.orderQty > 0);
+  const subtotal = tidy(finalLines.reduce((s, l) => s + l.lineTotal, 0));
+  const total = tidy(subtotal + draft.deliveryFee);
+
+  // Download the current snapshot (with any edits applied) as a PDF via the print dialog.
+  function downloadPdf() {
+    const vendor = draft.vendorId ? vendors.find((v) => v.id === draft.vendorId) : undefined;
+    const exportOrder = { vendorName: draft.vendorName, accountNumber: vendor?.accountNumber, subtotal, deliveryFee: draft.deliveryFee, total, deliveryInstructions: null };
+    const exportLines: ExportOrderLine[] = finalLines.map((l) => ({ itemName: l.itemName, orderQty: l.orderQty, purchaseUnit: l.purchaseUnit, unitPrice: l.unitPrice, lineTotal: l.lineTotal }));
+    const html = orderToPrintHtml(exportOrder, exportLines, new Date().toLocaleDateString());
+    const w = window.open('', '_blank');
+    if (!w) { alert('Enable pop-ups to download the PDF.'); return; }
+    w.document.write(html); w.document.close(); w.focus(); w.print();
+  }
+
+  return (
+    <div className="bg-white rounded-card border border-border overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+        <Truck className="w-4 h-4 text-forest/40 flex-shrink-0" />
+        <div className="min-w-0">
+          <p className="text-[14px] font-semibold text-forest truncate">{draft.vendorName}</p>
+          <p className="text-[11px] text-forest/45">
+            {finalLines.length} item{finalLines.length === 1 ? '' : 's'} to order{draft.deliveryFee > 0 && ` · ${formatCurrency(draft.deliveryFee)} delivery`}
+          </p>
+        </div>
+        <div className="flex-1" />
+        <Button size="sm" variant="ghost" disabled={!finalLines.length} onClick={downloadPdf} title="Save the current order as a PDF">
+          <Download className="w-3.5 h-3.5" /> PDF
+        </Button>
+        <span className="font-mono text-[13px] text-forest" title="Estimated from your prices — the invoice at delivery is the actual cost">
+          {formatCurrency(total)} <span className="text-[10px] font-sans text-forest/40">est.</span>
+        </span>
+      </div>
+
+      <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-3 px-4 py-2 bg-cream-dark/40 border-b border-border">
+        {['Item', 'On hand', 'Order', 'Total'].map((h) => <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>)}
+      </div>
+      {draft.lines.map((l) => {
+        const q = qtyOf(l);
+        return (
+          <div key={l.itemId} className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-3 px-4 py-2 border-b border-border last:border-0 items-center">
+            <span className="text-[13px] text-forest truncate">{l.itemName}</span>
+            <span className="font-mono text-[12px] text-forest/50">{formatQty(l.onHandBase / l.purchaseUnitInBase, l.purchaseUnit)}</span>
+            {canManage ? (
+              <InlineNumberEdit value={q} min={0} suffix={l.purchaseUnit} widthClass="w-16"
+                onSave={(n) => setOverrides((o) => ({ ...o, [l.itemId]: n }))} />
+            ) : <span className="font-mono text-[12px] text-forest">{q} {l.purchaseUnit}</span>}
+            <span className="font-mono text-[12px] text-forest">
+              {l.unitPrice == null ? <span className="text-forest/25" title="No price set">—</span> : formatCurrency(tidy((l.unitPrice ?? 0) * q))}
+            </span>
+          </div>
+        );
+      })}
+
+      {canManage && (
+        <div className="px-4 py-3 flex items-center gap-3">
+          {!draft.vendorId && <span className="text-[11px] text-amber-text">Assign a vendor to these items before you can send.</span>}
+          <div className="flex-1" />
+          <Button size="sm" disabled={!draft.vendorId || !finalLines.length}
+            onClick={() => beginSend({ ...draft, lines: finalLines, subtotal, total })}>
+            Review &amp; send
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function OrderingTab() {
   const {
-    orders, orderSource, setOrderSource, activeWeek, draftOrdersFor,
-    createOrdersFromDrafts, createBlankOrder, activeSession, setActiveTab, items, vendors,
-    criticalItems, criticalDraftOrders,
+    orders, reconciledDraftOrders, orderingWindow, orderMath,
+    createBlankOrder, activeSession, setActiveTab, items, vendors, criticalItems,
   } = useCommissaryStore();
   const { can, currentUser } = useAuth();
   const canManage = can('manageCommissary');
   const session = activeSession();
   const [blankVendorId, setBlankVendorId] = useState('');
+  const [showMath, setShowMath] = useState(false);
 
-  const drafts = useMemo(() => draftOrdersFor(orderSource, activeWeek), [draftOrdersFor, orderSource, activeWeek]);
+  // Coverage window comes from the session's order cadence — no manual "generate" needed.
+  const win = orderingWindow();
+  const windowEnd = win.windowEnd;
+  const fmtDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  const windowLabel = fmtDay(windowEnd);
+  const drafts = reconciledDraftOrders(windowEnd);
   // Cheap filter over the subscribed items list; recomputes on each render by design.
   const critical = criticalItems();
 
@@ -278,7 +360,7 @@ export function OrderingTab() {
   return (
     <div className="flex-1 overflow-y-auto px-7 py-6">
       <div className="grid grid-cols-4 gap-4 mb-5">
-        <StatCard label="Suggested orders" value={drafts.length} hint={orderSource === 'menu' ? `From week ${activeWeek} menu` : 'To reach reorder level'} />
+        <StatCard label="Orders to place" value={drafts.length} hint={`Covers through ${windowLabel}`} />
         <StatCard label="Estimated total" value={formatCurrency(suggestedTotal)} hint="Before tax" />
         <StatCard label="Open orders" value={open.length} hint="Draft or sent" variant={open.length > 0 ? 'amber' : 'default'} />
         <StatCard label="Completed" value={history.length} hint="Received or cancelled" />
@@ -302,22 +384,8 @@ export function OrderingTab() {
                   </span>
                 ))}
               </div>
+              <p className="text-[11px] text-red/70 mt-2">These are already in the live order below.</p>
             </div>
-            {canManage && (
-              <Button
-                size="sm"
-                className="whitespace-nowrap"
-                onClick={() => {
-                  const cd = criticalDraftOrders();
-                  if (!cd.length) { alert('These items have no reorder level or vendor set — set those on the inventory item first.'); return; }
-                  if (confirm(`Create draft order${cd.length === 1 ? '' : 's'} to restock ${critical.length} critical item${critical.length === 1 ? '' : 's'}?`)) {
-                    createOrdersFromDrafts(cd, 'par', currentUser.name || null);
-                  }
-                }}
-              >
-                + Restock critical
-              </Button>
-            )}
           </div>
         </div>
       )}
@@ -334,11 +402,13 @@ export function OrderingTab() {
           action={{ label: 'Go to inventory', onClick: () => setActiveTab('inventory') }} />
       )}
 
-      {/* Source + build-by-hand */}
+      {/* One reconciled suggestion, always live: cover the menu draw and stay above each
+          item's minimum through the next delivery cycle, netting out on-hand + in-transit. */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <span className="text-[12px] text-forest/50 mr-1">Suggest quantities from</span>
-        <FilterPill label={session ? `Week ${activeWeek} menu` : 'Menu (no session)'} active={orderSource === 'menu'} onClick={() => setOrderSource('menu')} />
-        <FilterPill label="Reorder levels" active={orderSource === 'par'} onClick={() => setOrderSource('par')} />
+        <span className="text-[12px] text-forest/60">
+          Covering through <span className="font-medium text-forest">{windowLabel}</span>
+          <span className="text-forest/40"> · next delivery {fmtDay(win.nextDelivery)} · {win.frequency}-day cycle</span>
+        </span>
         <div className="flex-1" />
         {canManage && (
           <>
@@ -350,56 +420,75 @@ export function OrderingTab() {
             <Button size="sm" variant="ghost" onClick={() => createBlankOrder(blankVendorId || null, currentUser.name || null)}>
               + Blank order
             </Button>
-            {drafts.length > 0 && (
-              <Button size="sm" onClick={() => {
-                if (confirm(`Create ${drafts.length} draft order${drafts.length === 1 ? '' : 's'} totalling ${formatCurrency(suggestedTotal)}?`)) {
-                  createOrdersFromDrafts(drafts, orderSource, currentUser.name || null);
-                }
-              }}>
-                + Generate {drafts.length} suggested
-              </Button>
-            )}
           </>
         )}
       </div>
 
-      {orderSource === 'menu' && !session && (
+      {!session && (
         <p className="text-[12px] text-forest/45 mb-4">
-          No session selected, so the menu has no head count to scale from. Switch to reorder levels,
-          or create a session on the Menu tab.
+          No active session, so there's no menu to forecast against — suggestions here are driven purely by
+          each item's minimum on hand. Pick a session on the Menu tab to order against the menu too.
         </p>
       )}
 
       {drafts.length > 0 && (
         <div className="mb-6">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40 mb-2">Suggested</p>
-          <div className="space-y-2">
-            {drafts.map((d) => (
-              <div key={d.vendorId ?? '__unassigned'} className="bg-white rounded-card border border-border px-4 py-3 flex items-center gap-3">
-                <Truck className="w-4 h-4 text-forest/30 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[13px] font-medium text-forest truncate">{d.vendorName}</p>
-                  <p className="text-[11px] text-forest/45">
-                    {d.lines.length} item{d.lines.length === 1 ? '' : 's'} short
-                    {d.deliveryFee > 0 && ` · ${formatCurrency(d.deliveryFee)} delivery`}
-                  </p>
-                </div>
-                <div className="flex-1" />
-                <span className="font-mono text-[13px] text-forest">{formatCurrency(d.total)}</span>
-              </div>
-            ))}
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40 mb-2">To order — live, always current</p>
+          <div className="space-y-3">
+            {drafts.map((d) => <LiveOrderCard key={d.vendorId ?? '__unassigned'} draft={d} />)}
           </div>
           <p className="text-[11px] text-forest/40 mt-2">
-            "Generate suggested" turns these into editable draft orders — then add, remove or adjust anything.
+            These recompute continuously from your counts and menu — tweak a quantity if you want, then Review &amp; send.
+            Nothing is saved as an order until you send it.
           </p>
+
+          {/* The math behind every quantity — collapsed by default, for auditing/trust. */}
+          <button type="button" onClick={() => setShowMath((v) => !v)}
+            className="flex items-center gap-1.5 mt-3 text-[12px] font-medium text-forest/60 hover:text-forest">
+            {showMath ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            Show the math — how each quantity is calculated
+          </button>
+          {showMath && (() => {
+            const rows = orderMath(windowEnd);
+            return (
+              <div className="mt-2 bg-white rounded-card border border-border overflow-hidden">
+                <div className="grid grid-cols-[1.6fr_1fr_1.1fr_0.8fr_1fr_1fr] gap-2 px-4 py-2 bg-cream-dark/40 border-b border-border">
+                  {['Item', 'On hand now', `Used by ${windowLabel}`, 'Floor', 'In transit', '→ Order'].map((h) => (
+                    <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>
+                  ))}
+                </div>
+                {rows.map((r) => {
+                  const su = r.item.stockUnit, sib = r.item.stockUnitInBase;
+                  const f = (base: number) => formatQty(fromBase(base, sib), su);
+                  const packs = `${tidy(r.orderQty).toLocaleString()} ${pluralizeUnit(r.item.purchaseUnit, r.orderQty)}`;
+                  return (
+                    <div key={r.item.id} className="px-4 py-2 border-b border-border last:border-0">
+                      <div className="grid grid-cols-[1.6fr_1fr_1.1fr_0.8fr_1fr_1fr] gap-2 items-center">
+                        <span className="text-[13px] text-forest truncate">{r.item.name}</span>
+                        <span className="font-mono text-[12px] text-forest/70">{f(r.onHandNow)}</span>
+                        <span className="font-mono text-[12px] text-forest/70">{f(r.draw)}</span>
+                        <span className="font-mono text-[12px] text-forest/70">{f(r.floor)}</span>
+                        <span className="font-mono text-[12px] text-forest/70">{r.inTransit > 0 ? f(r.inTransit) : '—'}</span>
+                        <span className="font-mono text-[12px] font-medium text-forest">{packs}</span>
+                      </div>
+                      <p className="text-[11px] text-forest/45 mt-0.5 leading-relaxed">
+                        {f(r.onHandNow)} on hand − {f(r.draw)} used by {windowLabel}
+                        {r.inTransit > 0 && ` + ${f(r.inTransit)} in transit`} = {f(r.projectedAtEnd)} projected,
+                        {' '}below your {f(r.floor)} floor → order {f(r.need)} → rounds up to {packs}.
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 
       {drafts.length === 0 && (
         <p className="text-[13px] text-forest/45 mb-6 bg-white rounded-card border border-border px-4 py-6 text-center">
-          {orderSource === 'menu'
-            ? `Everything week ${activeWeek}'s menu needs is on hand. Build an order by hand above if you want to stock up anyway.`
-            : 'Every item is above its reorder level. Build an order by hand above if you want to stock up anyway.'}
+          You're covered through {windowLabel} — projected stock stays above every item's minimum. Build an order
+          by hand above if you want to stock up anyway.
         </p>
       )}
 

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { ChefHat, ChevronDown, ChevronRight, Link2Off, Printer } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { FilterPill } from '@/components/shared/FilterPill';
@@ -10,7 +9,7 @@ import {
   recipesToPrintHtml, stepTimingLabel, type PrintRecipe,
 } from '@/lib/commissaryUnits';
 import type { Recipe, RecipeIngredient, RecipeStep, InventoryItem } from '@/lib/types';
-import { AllergenChips } from './commissaryUi';
+import { AllergenChips, InlineNumberEdit } from './commissaryUi';
 
 /** Assemble a printable, pre-scaled recipe from its parts. */
 function buildPrintRecipe(
@@ -44,17 +43,18 @@ const FILTERS = [{ id: 'all', label: 'All' }, ...MEAL_PERIODS.map((m) => ({ id: 
 function RecipeCard({ recipeId }: { recipeId: string }) {
   const {
     recipes, expandedRecipeId, toggleExpandedRecipe, ingredientsFor, stepsFor,
-    allergensFor, itemsById, portions, openModal,
+    allergensFor, itemsById, portions, openModal, recipeScales, setRecipeScale,
   } = useCommissaryStore();
   const { can } = useAuth();
   const recipe = recipes.find((r) => r.id === recipeId)!;
   const expanded = expandedRecipeId === recipeId;
 
-  // The scale input is per-card and defaults to the session head count, so a cook
-  // can ask "what if I make this for 80?" without touching the session.
+  // The scale defaults to the session head count, so a cook can ask "what if I make this
+  // for 80?" without touching the session. Committed value lives in the store (keyed by
+  // recipe) so it survives tab switches; edited via click-to-edit-then-save.
   const sessionPortions = portions();
-  const [scaleTo, setScaleTo] = useState<number>(sessionPortions || recipe.baseYield);
-  const effective = scaleTo > 0 ? scaleTo : recipe.baseYield;
+  const storeScale = recipeScales[recipeId] ?? (sessionPortions || recipe.baseYield);
+  const effective = storeScale > 0 ? storeScale : recipe.baseYield;
 
   const ings = ingredientsFor(recipeId);
   const steps = stepsFor(recipeId);
@@ -84,11 +84,8 @@ function RecipeCard({ recipeId }: { recipeId: string }) {
         <div className="px-4 pb-4 border-t border-border pt-4">
           <div className="flex items-center gap-2 mb-4">
             <label className="text-[12px] text-forest/60">Scale to</label>
-            <input
-              type="number" min={1} value={scaleTo}
-              onChange={(e) => setScaleTo(Number(e.target.value))}
-              className="w-24 font-mono text-[13px] bg-white border border-border rounded-btn px-2.5 py-1.5 focus:outline-none focus:border-sage"
-            />
+            <InlineNumberEdit value={storeScale} min={1} widthClass="w-24"
+              onSave={(n) => setRecipeScale(recipeId, n)} />
             <span className="text-[12px] text-forest/50">
               portions · ×{tidy(factor, 2)} of base
             </span>

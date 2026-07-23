@@ -13,15 +13,21 @@ const SEVERITIES: RestrictionSeverity[] = ['intolerance', 'confirmed', 'anaphyla
 
 export function AddCamperModal({ editId }: { editId?: string }) {
   const {
-    campers, sessions, activeSessionId, restrictionsFor,
+    campers, sessions, activeSessionId, restrictionsFor, sessionIdsFor,
     addCamper, updateCamper, deleteCamper, closeModal,
   } = useCommissaryStore();
   const existing = editId ? campers.find((c) => c.id === editId) ?? null : null;
 
   const [name, setName] = useState(existing?.name ?? '');
   const [cabin, setCabin] = useState(existing?.cabin ?? '');
-  const [sessionId, setSessionId] = useState(existing?.sessionId ?? activeSessionId ?? '');
+  const [sessionIds, setSessionIds] = useState<string[]>(
+    existing ? sessionIdsFor(existing.id) : (activeSessionId ? [activeSessionId] : []),
+  );
   const [notes, setNotes] = useState(existing?.notes ?? '');
+
+  function toggleSession(id: string) {
+    setSessionIds((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+  }
 
   // allergen slug -> severity. Absent = camper does not have it.
   const [allergens, setAllergens] = useState<Record<string, RestrictionSeverity>>(() => {
@@ -62,7 +68,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
 
     const camper: Camper = {
       id: camperId,
-      sessionId: sessionId || null,
+      sessionId: sessionIds[0] ?? null, // legacy single-session column; source of truth is camper_sessions
       name: name.trim(),
       cabin: cabin.trim() || null,
       notes: notes.trim() || null,
@@ -82,8 +88,8 @@ export function AddCamperModal({ editId }: { editId?: string }) {
       })),
     ];
 
-    if (existing) updateCamper(camper, rows);
-    else addCamper(camper, rows);
+    if (existing) updateCamper(camper, rows, sessionIds);
+    else addCamper(camper, rows, sessionIds);
     closeModal();
   }
 
@@ -97,7 +103,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
   return (
     <Modal title={existing ? 'Edit camper' : 'Add camper'} onClose={closeModal} width="600px">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Name *</label>
             <input autoFocus value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="e.g. Sarah M." />
@@ -106,13 +112,25 @@ export function AddCamperModal({ editId }: { editId?: string }) {
             <label className={labelClass}>Cabin</label>
             <input value={cabin} onChange={(e) => setCabin(e.target.value)} className={inputClass} placeholder="Cabin 3" />
           </div>
-          <div>
-            <label className={labelClass}>Session</label>
-            <select value={sessionId} onChange={(e) => setSessionId(e.target.value)} className={inputClass}>
-              <option value="">All sessions</option>
-              {sessions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
+        </div>
+
+        <div>
+          <label className={labelClass}>Sessions attending</label>
+          {sessions.length === 0 ? (
+            <p className="text-[11px] text-forest/45">No sessions yet — create one first. Unassigned campers count toward every session's allergy totals.</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {sessions.map((s) => (
+                <button key={s.id} type="button" onClick={() => toggleSession(s.id)}
+                  className={`px-2.5 py-1 rounded-pill text-[11px] font-medium border transition-colors ${
+                    sessionIds.includes(s.id) ? 'bg-forest text-cream border-forest' : 'bg-white text-forest/50 border-border hover:border-forest/30'
+                  }`}>
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="text-[11px] text-forest/45 mt-1">Pick every session this camper attends — their allergies count only toward those sessions' menus.</p>
         </div>
 
         <div>

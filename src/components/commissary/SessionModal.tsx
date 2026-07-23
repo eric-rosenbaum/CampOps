@@ -4,7 +4,7 @@ import { Button } from '@/components/shared/Button';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { generateId } from '@/lib/utils';
 import type { CommissarySession, MealPeriod } from '@/lib/types';
-import { targetPortions, weekCount, MEAL_PERIODS, MEAL_PERIOD_LABELS } from '@/lib/commissaryUnits';
+import { targetPortions, weekCount, MEAL_PERIODS, MEAL_PERIOD_LABELS, WEEKDAYS } from '@/lib/commissaryUnits';
 import { inputClass, labelClass } from './commissaryUi';
 
 export function SessionModal({ editId }: { editId?: string }) {
@@ -19,6 +19,10 @@ export function SessionModal({ editId }: { editId?: string }) {
   const [isActive, setIsActive] = useState(existing?.isActive ?? true);
   const [budget, setBudget] = useState(existing?.budgetPerPersonPerDay != null ? String(existing.budgetPerPersonPerDay) : '');
   const [mealsPerDay, setMealsPerDay] = useState(String(existing?.mealsPerDay ?? 3));
+  const [orderFrequencyDays, setOrderFrequencyDays] = useState(String(existing?.orderFrequencyDays ?? 7));
+  const [countDay, setCountDay] = useState(existing?.countDay ?? '');
+  const [orderDay, setOrderDay] = useState(existing?.orderDay ?? '');
+  const [deliveryDay, setDeliveryDay] = useState(existing?.deliveryDay ?? '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
 
   const campers = Number(camperCount) || 0;
@@ -55,6 +59,10 @@ export function SessionModal({ editId }: { editId?: string }) {
       budgetPerPersonPerDay: budget === '' ? null : Number(budget),
       mealsPerDay: Math.max(1, Number(mealsPerDay) || 3),
       mealCounts: mealCountsValue,
+      orderFrequencyDays: Math.max(1, Number(orderFrequencyDays) || 7),
+      countDay: countDay || null,
+      orderDay: orderDay || null,
+      deliveryDay: deliveryDay || null,
       notes: notes.trim() || null,
     };
     if (existing) {
@@ -154,6 +162,30 @@ export function SessionModal({ editId }: { editId?: string }) {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Ordering cadence — the weekly rhythm the order coverage window is built from. */}
+        <div className="rounded-card border border-border px-4 py-3 space-y-3">
+          <p className="text-[13px] font-medium text-forest/80">Ordering cadence</p>
+          <p className="text-[11px] text-forest/45 leading-relaxed">
+            When you take inventory, place orders, and receive them. The ordering view covers you until the
+            delivery after the next one — no "generate" needed. Days are optional; blank uses the start date's weekday.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {([['Count day', countDay, setCountDay], ['Order day', orderDay, setOrderDay], ['Delivery day', deliveryDay, setDeliveryDay]] as const).map(([lbl, val, set]) => (
+              <div key={lbl}>
+                <label className="block text-[11px] font-medium text-forest/60 mb-1">{lbl}</label>
+                <select value={val} onChange={(e) => set(e.target.value)} className={inputClass}>
+                  <option value="">—</option>
+                  {WEEKDAYS.map((d) => <option key={d} value={d}>{d[0].toUpperCase() + d.slice(1)}</option>)}
+                </select>
+              </div>
+            ))}
+            <div>
+              <label className="block text-[11px] font-medium text-forest/60 mb-1">Repeat every (days)</label>
+              <input type="number" min="1" value={orderFrequencyDays} onChange={(e) => setOrderFrequencyDays(e.target.value)} className={inputClass} />
+            </div>
+          </div>
         </div>
 
         <label className="flex items-center gap-2.5 cursor-pointer">

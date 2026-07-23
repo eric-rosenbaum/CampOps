@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import {
-  Beef, Milk, Carrot, Wheat, Package, Snowflake, Cookie, CupSoda, Box,
+  Beef, Milk, Carrot, Wheat, Package, Snowflake, Cookie, CupSoda, Box, Check, Pencil,
   type LucideIcon,
 } from 'lucide-react';
 import type { InventoryItem } from '@/lib/types';
@@ -104,6 +105,48 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 export function CategoryIcon({ category, className }: { category: string; className?: string }) {
   const Icon = CATEGORY_ICONS[category] ?? Box;
   return <Icon className={className} />;
+}
+
+/**
+ * A number shown read-only until you click it, then edited and explicitly saved (Enter or
+ * the ✓, Escape to cancel). Avoids accidental inline edits and the "can't blank the cell"
+ * snap-to-zero. `onSave` fires only with a valid value ≥ min.
+ */
+export function InlineNumberEdit({
+  value, onSave, min = 1, suffix, widthClass = 'w-20',
+}: {
+  value: number; onSave: (n: number) => void; min?: number; suffix?: string; widthClass?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  function commit() {
+    const n = Number(draft);
+    if (draft.trim() !== '' && Number.isFinite(n) && n >= min) onSave(n);
+    setEditing(false);
+  }
+
+  if (!editing) {
+    return (
+      <button type="button" onClick={() => { setDraft(String(value)); setEditing(true); }} title="Click to edit"
+        className="group inline-flex items-center gap-1.5 font-mono text-[13px] text-forest bg-white border border-border rounded-btn px-2.5 py-1.5 hover:border-sage transition-colors">
+        {value.toLocaleString()}{suffix ? <span className="text-forest/45 text-[11px] font-sans">{suffix}</span> : null}
+        <Pencil className="w-3 h-3 text-forest/25 group-hover:text-sage" />
+      </button>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <input autoFocus type="number" min={min} value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') commit(); else if (e.key === 'Escape') setEditing(false); }}
+        className={`${widthClass} font-mono text-[13px] bg-white border border-sage rounded-btn px-2.5 py-1.5 focus:outline-none`} />
+      <button type="button" onClick={commit} title="Save"
+        className="p-1.5 rounded-btn bg-sage text-white hover:bg-forest transition-colors">
+        <Check className="w-3.5 h-3.5" />
+      </button>
+    </span>
+  );
 }
 
 export const inputClass =

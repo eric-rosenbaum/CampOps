@@ -3,7 +3,7 @@ import type {
   CommissarySession, CommissaryVendor, InventoryItem, InventoryAdjustment,
   Recipe, RecipeIngredient, RecipeStep, MenuEntry, MealPeriod, AdjustmentReason,
   PurchaseOrder, PurchaseOrderLine, ProductionPlan, ProductionTask, ProductionPrepTask,
-  ProductionIngredient, Camper, CamperRestriction, RestrictionSummaryRow,
+  ProductionIngredient, Camper, CamperRestriction, CamperSession, RestrictionSummaryRow,
   OrderSource, CommissaryExpense, MenuTemplate, MenuTemplateEntry, DietCount,
   MealEvent, CountSession, StorageMap, MenuCourse, MenuSubstitution, CommissaryFile,
   InventoryCategory, StorageLocation, ItemVendorPack, CatalogProduct,
@@ -13,12 +13,13 @@ import {
   dbAddVendor, dbUpdateVendor, dbDeleteVendor,
   dbAddInventoryItem, dbUpdateInventoryItem, dbDeleteInventoryItem, dbAdjustInventory,
   dbReplaceItemVendors, dbUpsertItemVendor, dbUpdateOrderLinePack, dbUpdateOrderVendor, dbSetItemCounted,
+  dbSetItemPrice, dbWipeCommissary,
   dbAddRecipe, dbUpdateRecipe, dbDeleteRecipe, dbReplaceRecipeChildren,
   dbAddMenuEntry, dbDeleteMenuEntry, dbAddMenuEntries, dbDeleteMenuWeek,
   dbCreateOrder, dbUpdateOrderStatus, dbDeleteOrder, dbReceiveOrder,
   dbUpdateOrderLineQty, dbUpdateOrderTotals, dbAddOrderLine, dbDeleteOrderLine,
   dbSavePlan, dbToggleProductionTask, dbToggleProductionPrepTask,
-  dbAddCamper, dbUpdateCamper, dbDeleteCamper, dbReplaceCamperRestrictions, dbImportCampers,
+  dbAddCamper, dbUpdateCamper, dbDeleteCamper, dbReplaceCamperRestrictions, dbReplaceCamperSessions, dbImportCampers,
   dbAddExpense, dbDeleteExpense, dbSaveReceivingLine, dbSaveOrderInvoice,
   dbAddTemplate, dbUpdateTemplate, dbDeleteTemplate, dbAddTemplateEntry,
   dbDeleteTemplateEntry, dbAddTemplateEntries,
@@ -34,6 +35,7 @@ import {
   buildDraftOrders, parRequirements, menuSignature, menuConflicts,
   scaledIngredientLabel, formatInStockUnit, tidy, mealHeadCount, peopleDays, perDiem,
   menuForecastCost, dateForCell, ALLERGENS, MEAL_PERIOD_LABELS, PREP_SLOT_ORDER,
+  addDaysStr, makeProjectionInput, coverageNeedBase, projectedOnHandBase, WEEKDAYS, nextWeekdayOnOrAfter,
   type Allergen, type DemandRow, type StockStatus, type DraftOrder, type MenuConflict,
   type PerDiem, type PrepScheduleSlot, type PrepSlotKey,
 } from '@/lib/commissaryUnits';
@@ -47,7 +49,7 @@ export interface ReceivingLineInput {
   receivedNote: string | null;
 }
 
-export type CommissaryTab = 'inventory' | 'menu' | 'recipes' | 'production' | 'allergy' | 'ordering' | 'cost';
+export type CommissaryTab = 'inventory' | 'menu' | 'recipes' | 'production' | 'allergy' | 'ordering' | 'cost' | 'settings';
 
 /** Menu tab shows either concrete session menus or the reusable templates. */
 export type MenuView = 'session' | 'templates';
@@ -65,6 +67,7 @@ export type CommissaryModal =
   | { kind: 'camper'; editId?: string }
   | { kind: 'importCampers' }
   | { kind: 'sendOrder'; orderId: string }
+  | { kind: 'sendLive' }
   | { kind: 'receiveOrder'; orderId: string }
   | { kind: 'expense' }
   | { kind: 'mealEvent'; editId?: string; date?: string }
@@ -86,6 +89,8 @@ interface CommissaryState {
   recipeFilter: string;      // meal period | 'all'
   recipeSearch: string;
   expandedRecipeId: string | null;
+  /** Per-recipe "scale to" portions on the Recipe guide — persisted so it survives tab switches. */
+  recipeScales: Record<string, number>;
   /** Production tab: which day of the active week is on screen. */
   activeDayIndex: number;
   /** Ordering tab: derive quantities from the week's menu, or top up to par. */
@@ -110,6 +115,7 @@ interface CommissaryState {
   prepTasks: ProductionPrepTask[];
   campers: Camper[];
   restrictions: CamperRestriction[];
+  camperSessions: CamperSession[];
   /** Aggregate counts. Populated for every member, including those denied names. */
   restrictionSummary: RestrictionSummaryRow[];
 
@@ -123,6 +129,7 @@ interface CommissaryState {
   setRecipeFilter: (f: string) => void;
   setRecipeSearch: (q: string) => void;
   toggleExpandedRecipe: (id: string) => void;
+  setRecipeScale: (recipeId: string, portions: number) => void;
   setActiveDayIndex: (i: number) => void;
   setOrderSource: (s: OrderSource) => void;
 
@@ -145,6 +152,7 @@ interface CommissaryState {
   setPrepTasks: (rows: ProductionPrepTask[]) => void;
   setCampers: (rows: Camper[]) => void;
   setRestrictions: (rows: CamperRestriction[]) => void;
+  setCamperSessions: (rows: CamperSession[]) => void;
   setRestrictionSummary: (rows: RestrictionSummaryRow[]) => void;
 
   addSession: (s: CommissarySession) => void;
@@ -176,7 +184,13 @@ interface CommissaryState {
 
   // Ordering
   createOrdersFromDrafts: (drafts: DraftOrder[], source: OrderSource, createdBy: string | null) => void;
-  sendOrder: (orderId: string, deliveryInstructions: string | null) => void;
+  /** A live reconciled order staged for sending (never persisted until Send). */
+  sendDraft: DraftOrder | null;
+  /** Stage a live order for the send flow. */
+  beginSend: (draft: DraftOrder) => void;
+  /** Commit the staged live order straight to a SENT purchase order (the only persist point). */
+  sendReconciledOrder: (deliveryInstructions: string | null, expectedDelivery: string | null, by: string | null) => void;
+  sendOrder: (orderId: string, deliveryInstructions: string | null, expectedDelivery?: string | null) => void;
   receiveOrder: (orderId: string, receivedBy: string | null) => Promise<boolean>;
   cancelOrder: (orderId: string) => void;
   deleteOrder: (orderId: string) => void;
@@ -197,9 +211,14 @@ interface CommissaryState {
   prepTasksForDay: (week: number, dayIndex: number) => ProductionPrepTask[];
 
   // Allergy
-  addCamper: (c: Camper, restrictions: CamperRestriction[]) => void;
-  updateCamper: (c: Camper, restrictions: CamperRestriction[]) => void;
+  /** Delete ALL commissary data for the current camp (settings / testing). Not the global catalog. */
+  wipeAllData: () => Promise<boolean>;
+
+  addCamper: (c: Camper, restrictions: CamperRestriction[], sessionIds: string[]) => void;
+  updateCamper: (c: Camper, restrictions: CamperRestriction[], sessionIds: string[]) => void;
   deleteCamper: (id: string) => void;
+  /** Session ids a camper is assigned to. */
+  sessionIdsFor: (camperId: string) => string[];
   importCampers: (rows: { camper: Camper; restrictions: CamperRestriction[] }[]) => Promise<void>;
 
   // Selectors
@@ -221,6 +240,12 @@ interface CommissaryState {
   stockCounts: () => Record<StockStatus, number>;
   /** How many items still need setup after an import: no reorder level, and/or never counted. */
   setupCounts: () => { needsReorder: number; notCounted: number; either: number };
+  /** Per-item, per-date menu consumption (base units) for the active session. */
+  consumptionByItemDate: () => Map<string, Map<string, number>>;
+  /** Per-item, per-date future deliveries (base units) from sent orders with an ETA. */
+  incomingByItemDate: () => Map<string, Map<string, number>>;
+  /** Date the reconciled projection looks out to. */
+  projectionHorizon: () => string;
   adjustmentsFor: (itemId: string) => InventoryAdjustment[];
   entriesForCell: (week: number, dayIndex: number, meal: MealPeriod) => MenuEntry[];
   entriesForWeek: (week: number) => MenuEntry[];
@@ -233,6 +258,15 @@ interface CommissaryState {
   // Ordering selectors
   summaryMap: () => Map<string, { camperCount: number; anaphylacticCount: number }>;
   draftOrdersFor: (source: OrderSource, week: number) => DraftOrder[];
+  /** The coverage window derived from the active session's order cadence. */
+  orderingWindow: () => { today: string; nextDelivery: string; windowEnd: string; frequency: number; deliveryDay: string | null };
+  /** Reconciled order suggestions: cover the window above the floor, net of projection + in-transit. */
+  reconciledDraftOrders: (windowEndDate: string) => DraftOrder[];
+  /** The per-item math behind the order — every term, for the "show the math" worksheet. */
+  orderMath: (windowEndDate: string) => {
+    item: InventoryItem; onHandNow: number; draw: number; inTransit: number;
+    floor: number; projectedAtEnd: number; need: number; orderQty: number;
+  }[];
   /** Items below the critical threshold, regardless of what's on the menu. */
   criticalItems: () => InventoryItem[];
   /** Draft orders (to reorder level) covering only the critically-low items. */
@@ -368,6 +402,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   recipeFilter: 'all',
   recipeSearch: '',
   expandedRecipeId: null,
+  recipeScales: {},
   activeDayIndex: 0,
   orderSource: 'menu',
 
@@ -388,6 +423,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   prepTasks: [],
   campers: [],
   restrictions: [],
+  camperSessions: [],
   restrictionSummary: [],
 
   setActiveTab: (t) => set({ activeTab: t }),
@@ -400,6 +436,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   setRecipeFilter: (f) => set({ recipeFilter: f }),
   setRecipeSearch: (q) => set({ recipeSearch: q }),
   toggleExpandedRecipe: (id) => set((s) => ({ expandedRecipeId: s.expandedRecipeId === id ? null : id })),
+  setRecipeScale: (recipeId, portions) => set((s) => ({ recipeScales: { ...s.recipeScales, [recipeId]: portions } })),
   setActiveDayIndex: (i) => set({ activeDayIndex: i }),
   setOrderSource: (s) => set({ orderSource: s }),
 
@@ -431,6 +468,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   setPrepTasks: (rows) => set({ prepTasks: rows }),
   setCampers: (rows) => set({ campers: rows }),
   setRestrictions: (rows) => set({ restrictions: rows }),
+  setCamperSessions: (rows) => set({ camperSessions: rows }),
   setRestrictionSummary: (rows) => set({ restrictionSummary: rows }),
 
   addSession: (s) => { set((st) => ({ sessions: [...st.sessions, s], activeSessionId: s.id })); dbAddSession(s); },
@@ -603,6 +641,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
         deliveryInstructions: null,
         createdBy,
         sentAt: null,
+        expectedDelivery: null,
         receivedAt: null,
         invoiceTotal: null,
         invoiceNumber: null,
@@ -624,14 +663,46 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     }
   },
 
-  sendOrder: (orderId, deliveryInstructions) => {
+  sendDraft: null,
+  beginSend: (draft) => set({ sendDraft: draft, modal: { kind: 'sendLive' } }),
+
+  // The reconciled order is live until this moment; sending is the single commit point,
+  // so a stale persisted draft can never exist. Writes straight to a SENT purchase order.
+  sendReconciledOrder: (deliveryInstructions, expectedDelivery, by) => {
+    const draft = get().sendDraft;
+    if (!draft) return;
+    const { activeSessionId, activeWeek } = get();
+    const now = new Date().toISOString();
+    const orderId = generateId();
+    const source: OrderSource = activeSessionId ? 'menu' : 'par';
+    const order: PurchaseOrder = {
+      id: orderId, vendorId: draft.vendorId, vendorName: draft.vendorName,
+      status: 'sent', source,
+      sessionId: source === 'menu' ? activeSessionId : null,
+      weekNumber: source === 'menu' ? activeWeek : null,
+      subtotal: draft.subtotal, deliveryFee: draft.deliveryFee, total: draft.total,
+      deliveryInstructions, createdBy: by, sentAt: now, expectedDelivery, receivedAt: null,
+      invoiceTotal: null, invoiceNumber: null, createdAt: now, updatedAt: now,
+    };
+    const lines: PurchaseOrderLine[] = draft.lines.map((l, idx) => ({
+      id: generateId(), orderId, itemId: l.itemId, itemName: l.itemName,
+      stockUnit: l.stockUnit, purchaseUnit: l.purchaseUnit, purchaseUnitInBase: l.purchaseUnitInBase,
+      onHandBase: l.onHandBase, neededBase: l.neededBase, orderQty: l.orderQty, unitPrice: l.unitPrice,
+      lineTotal: l.lineTotal, receivedQty: null, receivedUnitPrice: null, receivedNote: null,
+      sortOrder: idx, createdAt: now, updatedAt: now,
+    }));
+    set((s) => ({ orders: [order, ...s.orders], orderLines: [...s.orderLines, ...lines], sendDraft: null, modal: null }));
+    dbCreateOrder(order, lines);
+  },
+
+  sendOrder: (orderId, deliveryInstructions, expectedDelivery = null) => {
     const now = new Date().toISOString();
     set((s) => ({
       orders: s.orders.map((o) => o.id === orderId
-        ? { ...o, status: 'sent' as const, sentAt: now, deliveryInstructions }
+        ? { ...o, status: 'sent' as const, sentAt: now, deliveryInstructions, expectedDelivery }
         : o),
     }));
-    dbUpdateOrderStatus(orderId, 'sent', deliveryInstructions);
+    dbUpdateOrderStatus(orderId, 'sent', deliveryInstructions, expectedDelivery);
   },
 
   // Awaits: the RPC books every line into stock atomically and only it knows the
@@ -743,7 +814,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       status: 'draft', source: 'par', sessionId: null, weekNumber: null,
       subtotal: 0, deliveryFee: fee, total: fee,
       invoiceTotal: null, invoiceNumber: null,
-      deliveryInstructions: null, createdBy, sentAt: null, receivedAt: null,
+      deliveryInstructions: null, createdBy, sentAt: null, expectedDelivery: null, receivedAt: null,
       createdAt: now, updatedAt: now,
     };
     set((s) => ({ orders: [order, ...s.orders] }));
@@ -800,7 +871,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       id: destId, vendorId, vendorName: vendor.name, status: 'draft', source: source.source,
       sessionId: source.sessionId, weekNumber: source.weekNumber,
       subtotal: 0, deliveryFee: vendor.deliveryFee ?? 0, total: vendor.deliveryFee ?? 0,
-      deliveryInstructions: null, createdBy: source.createdBy, sentAt: null, receivedAt: null,
+      deliveryInstructions: null, createdBy: source.createdBy, sentAt: null, expectedDelivery: null, receivedAt: null,
       invoiceTotal: null, invoiceNumber: null, createdAt: now, updatedAt: now,
     };
     patchedLine.orderId = destId;
@@ -1041,27 +1112,38 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   // UI never renders the controls in that case, so a rejection here means a bug, not a
   // permission check.
 
-  addCamper: (c, restrictions) => {
-    set((s) => ({ campers: [...s.campers, c], restrictions: [...s.restrictions, ...restrictions] }));
+  addCamper: (c, restrictions, sessionIds) => {
+    const links = sessionIds.map((sid) => ({ camperId: c.id, sessionId: sid }));
+    set((s) => ({
+      campers: [...s.campers, c], restrictions: [...s.restrictions, ...restrictions],
+      camperSessions: [...s.camperSessions, ...links],
+    }));
     dbAddCamper(c, restrictions);
+    dbReplaceCamperSessions(c.id, sessionIds);
   },
 
-  updateCamper: (c, restrictions) => {
+  updateCamper: (c, restrictions, sessionIds) => {
+    const links = sessionIds.map((sid) => ({ camperId: c.id, sessionId: sid }));
     set((s) => ({
       campers: s.campers.map((x) => x.id === c.id ? c : x),
       restrictions: [...s.restrictions.filter((r) => r.camperId !== c.id), ...restrictions],
+      camperSessions: [...s.camperSessions.filter((cs) => cs.camperId !== c.id), ...links],
     }));
     dbUpdateCamper(c);
     dbReplaceCamperRestrictions(c.id, restrictions);
+    dbReplaceCamperSessions(c.id, sessionIds);
   },
 
   deleteCamper: (id) => {
     set((s) => ({
       campers: s.campers.filter((c) => c.id !== id),
       restrictions: s.restrictions.filter((r) => r.camperId !== id),
+      camperSessions: s.camperSessions.filter((cs) => cs.camperId !== id),
     }));
     dbDeleteCamper(id);
   },
+
+  sessionIdsFor: (camperId) => get().camperSessions.filter((cs) => cs.camperId === camperId).map((cs) => cs.sessionId),
 
   importCampers: async (rows) => {
     set((s) => ({
@@ -1069,6 +1151,24 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       restrictions: [...s.restrictions, ...rows.flatMap((r) => r.restrictions)],
     }));
     await dbImportCampers(rows);
+  },
+
+  // Wipe everything camp-scoped in one shot (settings / testing). The global catalog is
+  // untouched. Await the RPC before clearing local so a failed wipe doesn't desync.
+  wipeAllData: async () => {
+    const ok = await dbWipeCommissary();
+    if (!ok) return false;
+    set({
+      items: [], itemVendors: [], adjustments: [], vendors: [],
+      recipes: [], ingredients: [], steps: [],
+      sessions: [], menuEntries: [], orders: [], orderLines: [],
+      plans: [], productionTasks: [], prepTasks: [],
+      campers: [], restrictions: [], camperSessions: [], restrictionSummary: [],
+      expenses: [], templates: [], templateEntries: [], dietCounts: [], mealEvents: [],
+      countSessions: [], storageMap: [], courses: [], substitutions: [], files: [],
+      activeSessionId: null, modal: null,
+    });
+    return true;
   },
 
   // ─── Selectors ─────────────────────────────────────────────────────────────
@@ -1129,6 +1229,53 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       if (inventoryFilter === 'needs_setup') return i.parLevelBase <= 0 || i.lastCountedAt == null;
       return i.category === inventoryFilter;
     });
+  },
+
+  // ── Reconciled projection maps (built once; the UI passes them to the pure engine) ──
+  // Per-item, per-date menu consumption (base units) across the active session.
+  consumptionByItemDate: () => {
+    const state = get();
+    const session = state.activeSession();
+    const map = new Map<string, Map<string, number>>();
+    if (!session) return map;
+    const recipesById = state.recipesById();
+    const ingByRecipe = state.ingredientsByRecipe();
+    for (const e of state.menuEntries.filter((m) => m.sessionId === session.id)) {
+      const dateStr = dateForCell(session.startDate, e.weekNumber, e.dayIndex).toISOString().slice(0, 10);
+      const portions = state.mealCount(dateStr, e.mealPeriod);
+      const demand = demandForEntries([e], recipesById, ingByRecipe, portions);
+      for (const row of demand.values()) {
+        let byDate = map.get(row.itemId);
+        if (!byDate) { byDate = new Map(); map.set(row.itemId, byDate); }
+        byDate.set(dateStr, (byDate.get(dateStr) ?? 0) + row.neededBase);
+      }
+    }
+    return map;
+  },
+
+  // Per-item, per-date FUTURE deliveries (base units) from sent orders with an ETA.
+  incomingByItemDate: () => {
+    const state = get();
+    const map = new Map<string, Map<string, number>>();
+    for (const o of state.orders) {
+      if (o.status !== 'sent' || !o.expectedDelivery) continue;
+      for (const l of state.orderLines) {
+        if (l.orderId !== o.id || !l.itemId) continue;
+        let byDate = map.get(l.itemId);
+        if (!byDate) { byDate = new Map(); map.set(l.itemId, byDate); }
+        byDate.set(o.expectedDelivery, (byDate.get(o.expectedDelivery) ?? 0) + l.orderQty * l.purchaseUnitInBase);
+      }
+    }
+    return map;
+  },
+
+  // How far the projection looks: through the session (menus stop there), min ~3 weeks out.
+  projectionHorizon: () => {
+    const s = get().activeSession();
+    const today = new Date().toISOString().slice(0, 10);
+    const min = addDaysStr(today, 21);
+    if (!s) return min;
+    return s.endDate > min ? s.endDate : min;
   },
 
   setupCounts: () => {
@@ -1200,12 +1347,21 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
 
   // ─── Ordering selectors ────────────────────────────────────────────────────
 
-  summaryMap: () => new Map(
-    get().restrictionSummary.map((r) => [r.restriction, {
-      camperCount: r.camperCount,
-      anaphylacticCount: r.anaphylacticCount,
-    }]),
-  ),
+  // Scoped to the active session: only campers actually present that session drive the
+  // menu's conflict counts. Unassigned campers (null session) count everywhere, fail-safe.
+  // With no active session, fall back to camp-wide (all rows).
+  summaryMap: () => {
+    const activeId = get().activeSessionId;
+    const agg = new Map<string, { camperCount: number; anaphylacticCount: number }>();
+    for (const r of get().restrictionSummary) {
+      if (activeId && r.sessionId !== activeId && r.sessionId !== null) continue;
+      const cur = agg.get(r.restriction) ?? { camperCount: 0, anaphylacticCount: 0 };
+      cur.camperCount += r.camperCount;
+      cur.anaphylacticCount += r.anaphylacticCount;
+      agg.set(r.restriction, cur);
+    }
+    return agg;
+  },
 
   draftOrdersFor: (source, week) => {
     const state = get();
@@ -1221,6 +1377,87 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     const needed = new Map<string, number>();
     for (const row of demand.values()) needed.set(row.itemId, row.neededBase);
     return buildDraftOrders(state.items, needed, vendorsById);
+  },
+
+  // The coverage window from the session's operating cadence: order now, next delivery
+  // lands on the delivery day, and that stock must last until the delivery AFTER it —
+  // so cover [today → next delivery + one cycle]. Day defaults to the session start's weekday.
+  orderingWindow: () => {
+    const s = get().activeSession();
+    const today = new Date().toISOString().slice(0, 10);
+    if (!s) return { today, nextDelivery: addDaysStr(today, 7), windowEnd: addDaysStr(today, 14), frequency: 7, deliveryDay: null as string | null };
+    const frequency = s.orderFrequencyDays || 7;
+    const deliveryDay = s.deliveryDay ?? WEEKDAYS[new Date(`${s.startDate}T00:00:00`).getDay()];
+    const nextDelivery = nextWeekdayOnOrAfter(deliveryDay, addDaysStr(today, 1)) ?? addDaysStr(today, frequency);
+    return { today, nextDelivery, windowEnd: addDaysStr(nextDelivery, frequency), frequency, deliveryDay };
+  },
+
+  // The reconciled order: one calculation unifying menu forecast + floor. For each item,
+  // order enough to end the coverage window at/above its minimum-on-hand, netting out the
+  // projected draw and any in-transit stock, capped by shelf life. Grouped per vendor.
+  reconciledDraftOrders: (windowEndDate) => {
+    const state = get();
+    const consMap = state.consumptionByItemDate();
+    const incMap = state.incomingByItemDate();
+    const today = new Date().toISOString().slice(0, 10);
+    const vendorsById = new Map(state.vendors.map((v) => [v.id, v]));
+    const byVendor = new Map<string, DraftOrder>();
+    for (const item of state.items) {
+      const inp = makeProjectionInput(item, today, consMap, incMap);
+      const need = coverageNeedBase(inp, windowEndDate, item.parLevelBase, item.shelfLifeDays);
+      if (need <= 0) continue;
+      const qty = Math.ceil(need / item.purchaseUnitInBase);
+      if (qty <= 0) continue;
+      const vendor = item.vendorId ? vendorsById.get(item.vendorId) : undefined;
+      const key = vendor?.id ?? '__unassigned';
+      let order = byVendor.get(key);
+      if (!order) {
+        order = { vendorId: vendor?.id ?? null, vendorName: vendor?.name ?? 'No vendor assigned', lines: [], subtotal: 0, deliveryFee: vendor?.deliveryFee ?? 0, total: 0 };
+        byVendor.set(key, order);
+      }
+      const lineTotal = tidy((item.unitPrice ?? 0) * qty);
+      order.lines.push({
+        itemId: item.id, itemName: item.name, stockUnit: item.stockUnit,
+        purchaseUnit: item.purchaseUnit, purchaseUnitInBase: item.purchaseUnitInBase,
+        onHandBase: item.onHandBase, neededBase: need, orderQty: qty,
+        unitPrice: item.unitPrice, lineTotal,
+      });
+      order.subtotal = tidy(order.subtotal + lineTotal);
+    }
+    for (const o of byVendor.values()) {
+      o.lines.sort((a, b) => a.itemName.localeCompare(b.itemName));
+      o.total = tidy(o.subtotal + o.deliveryFee);
+    }
+    return [...byVendor.values()].sort((a, b) => (!a.vendorId ? 1 : !b.vendorId ? -1 : a.vendorName.localeCompare(b.vendorName)));
+  },
+
+  orderMath: (windowEndDate) => {
+    const state = get();
+    const consMap = state.consumptionByItemDate();
+    const incMap = state.incomingByItemDate();
+    const today = new Date().toISOString().slice(0, 10);
+    const inWindow = (m: Map<string, number> | undefined) => {
+      let sum = 0;
+      if (m) for (const [d, b] of m) if (d > today && d <= windowEndDate) sum += b;
+      return sum;
+    };
+    const rows = [];
+    for (const item of state.items) {
+      const inp = makeProjectionInput(item, today, consMap, incMap);
+      const need = coverageNeedBase(inp, windowEndDate, item.parLevelBase, item.shelfLifeDays);
+      if (need <= 0) continue;
+      rows.push({
+        item,
+        onHandNow: projectedOnHandBase(inp, today),
+        draw: inWindow(consMap.get(item.id)),
+        inTransit: inWindow(incMap.get(item.id)),
+        floor: item.parLevelBase,
+        projectedAtEnd: projectedOnHandBase(inp, windowEndDate),
+        need,
+        orderQty: Math.ceil(need / item.purchaseUnitInBase),
+      });
+    }
+    return rows.sort((a, b) => a.item.name.localeCompare(b.item.name));
   },
 
   criticalItems: () => get().items.filter((i) => stockStatus(i) === 'critical'),
@@ -1336,6 +1573,26 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
         return inp ? { ...l, receivedQty: inp.receivedQty, receivedUnitPrice: inp.receivedUnitPrice, receivedNote: inp.receivedNote } : l;
       }),
     }));
+
+    // Feed the invoiced price back as each item's "last paid" estimate, so order estimates
+    // self-improve without anyone maintaining a price list. Only when the pack matches the
+    // item's current one (a price is per purchase unit — don't cross packs).
+    const olState = get().orderLines;
+    const itState = get().items;
+    const priceUpdates: { itemId: string; price: number }[] = [];
+    for (const l of lines) {
+      if (l.receivedUnitPrice == null) continue;
+      const ol = olState.find((x) => x.id === l.lineId);
+      const it = ol?.itemId ? itState.find((i) => i.id === ol.itemId) : undefined;
+      if (it && ol && it.purchaseUnitInBase === ol.purchaseUnitInBase) priceUpdates.push({ itemId: it.id, price: l.receivedUnitPrice });
+    }
+    if (priceUpdates.length) {
+      set((s) => ({ items: s.items.map((it) => {
+        const u = priceUpdates.find((p) => p.itemId === it.id);
+        return u ? { ...it, unitPrice: u.price } : it;
+      }) }));
+      for (const p of priceUpdates) dbSetItemPrice(p.itemId, p.price);
+    }
     return true;
   },
 

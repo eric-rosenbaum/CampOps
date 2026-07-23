@@ -158,6 +158,12 @@ export function CostTab() {
     <div className="flex-1 overflow-y-auto px-7 py-6">
       <ComplianceStrip />
 
+      <p className="text-[12px] text-forest/55 leading-relaxed mb-4">
+        <strong>Actual</strong> figures come from your delivery invoices (captured at receiving) — accurate whether or
+        not you track per-item prices. The <strong>forecast</strong> is only an estimate from the prices you've entered,
+        and improves as receiving records what you actually paid.
+      </p>
+
       <div className="grid grid-cols-4 gap-4 mb-5">
         <StatCard
           label="Per-diem (actual)"
@@ -165,13 +171,13 @@ export function CostTab() {
           hint={pd?.budget != null ? `Budget ${formatCurrency(pd.budget)}` : 'No budget set'}
           variant={perDiemVariant}
         />
+        <StatCard label="Actual spend" value={formatCurrency(pd?.actualSpend ?? 0)} hint={`from invoices · ${pd?.peopleDays ?? 0} person-days so far`} />
         <StatCard
           label="Per-diem (forecast)"
           value={forecastPerDiem != null ? formatCurrency(forecastPerDiem) : '—'}
-          hint="From the planned menu"
+          hint={forecastPerDiem != null ? 'estimate from menu prices' : 'no item prices yet'}
         />
-        <StatCard label="Actual spend" value={formatCurrency(pd?.actualSpend ?? 0)} hint={`${pd?.peopleDays ?? 0} person-days so far`} />
-        <StatCard label="Planned menu cost" value={formatCurrency(forecast)} hint="Whole session" />
+        <StatCard label="Planned menu cost" value={forecast > 0 ? formatCurrency(forecast) : '—'} hint="estimate · whole session" />
       </div>
 
       {pd?.variance != null && (

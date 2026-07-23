@@ -33,8 +33,10 @@ export function AllergyTab() {
   const {
     campers, restrictions, restrictionSummary, restrictionsFor, anaphylacticCampers,
     totalCampersWithRestrictions, recipes, conflictsForRecipe, openModal,
-    substitutionsForSession,
+    substitutionsForSession, sessionIdsFor, sessions,
   } = useCommissaryStore();
+  const sessionNames = (camperId: string) =>
+    sessionIdsFor(camperId).map((id) => sessions.find((s) => s.id === id)?.name).filter(Boolean);
   const replacementCount = substitutionsForSession().length;
   const { canViewCamperHealth, can } = useAuth();
   // Adding a camper needs BOTH the module permission and health access — the DB
@@ -276,7 +278,17 @@ export function AllergyTab() {
                         onClick={() => canManage && openModal({ kind: 'camper', editId: c.id })}
                         className={`border-b border-border last:border-0 ${canManage ? 'cursor-pointer hover:bg-cream-dark/30' : ''}`}
                       >
-                        <td className="px-4 py-2 text-[13px] text-forest whitespace-nowrap">{c.name}</td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <span className="text-[13px] text-forest">{c.name}</span>
+                          {(() => {
+                            const names = sessionNames(c.id);
+                            return (
+                              <span className="block text-[10px] text-forest/40">
+                                {names.length ? names.join(', ') : 'All sessions'}
+                              </span>
+                            );
+                          })()}
+                        </td>
                         <td className="px-2 py-2 text-[12px] text-forest/50 whitespace-nowrap">{c.cabin ?? '—'}</td>
                         {ALLERGENS.map((a) => (
                           <td key={a} className="px-1 py-2 text-center">

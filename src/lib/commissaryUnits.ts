@@ -790,6 +790,40 @@ export function orderToPrintHtml(order: ExportOrder, lines: ExportOrderLine[], d
   </body></html>`;
 }
 
+/** A printable receiving checklist — carry it to the dock and check items off as they arrive. */
+export function receivingSheetToPrintHtml(
+  vendorName: string,
+  dateLabel: string,
+  lines: { itemName: string; orderedQty: number; purchaseUnit: string }[],
+): string {
+  const rows = lines.map((l) => `
+    <tr>
+      <td>☐&nbsp;&nbsp;${l.itemName}</td>
+      <td class="num">${tidy(l.orderedQty).toLocaleString()} ${l.purchaseUnit}</td>
+      <td class="num"><span class="box"></span></td>
+      <td><span class="line"></span></td>
+    </tr>`).join('');
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Receiving — ${vendorName}</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; color: #1a2e1a; padding: 32px; }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .meta { color: #666; font-size: 12px; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; border-bottom: 2px solid #d4cfc4; padding: 6px 8px; font-size: 11px; text-transform: uppercase; color: #666; }
+    td { border-bottom: 1px solid #eee; padding: 8px; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .box { display: inline-block; width: 60px; border-bottom: 1px solid #999; }
+    .line { display: inline-block; width: 100%; min-width: 120px; border-bottom: 1px solid #ccc; }
+  </style></head><body>
+    <h1>Receiving checklist — ${vendorName}</h1>
+    <div class="meta">${dateLabel} · received by ______________</div>
+    <table>
+      <thead><tr><th>Item (✓ as arrived)</th><th class="num">Ordered</th><th class="num">Received</th><th>Notes (short / sub)</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </body></html>`;
+}
+
 // ─── Cost & per-diem ─────────────────────────────────────────────────────────
 // Per-diem (cost per person per day) is the number camps run on. We can compute a
 // FORECAST from the planned menu and recipe costs, and an ACTUAL from received POs +
@@ -905,6 +939,122 @@ function eachDay(startDate: string, endDate: string): string[] {
     d.setDate(d.getDate() + 1);
   }
   return out;
+}
+
+// ─── Date helpers for the reconciled projection ──────────────────────────────
+
+/** Inclusive list of YYYY-MM-DD between two dates. */
+export function datesInRange(startDate: string, endDate: string): string[] {
+  if (endDate < startDate) return [];
+  return eachDay(startDate, endDate);
+}
+
+/** Shift a YYYY-MM-DD by n days (n may be negative). */
+export function addDaysStr(dateStr: string, n: number): string {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Whole days from a → b (b − a). */
+export function daysBetween(a: string, b: string): number {
+  return Math.round((new Date(`${b}T00:00:00`).getTime() - new Date(`${a}T00:00:00`).getTime()) / 86_400_000);
+}
+
+export const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+/** Next date on/after `fromDateStr` that falls on the given weekday name. null if unknown day. */
+export function nextWeekdayOnOrAfter(weekday: string | null, fromDateStr: string): string | null {
+  if (!weekday) return null;
+  const target = WEEKDAYS.indexOf(weekday.trim().toLowerCase());
+  if (target < 0) return null;
+  const from = new Date(`${fromDateStr}T00:00:00`);
+  const delta = (target - from.getDay() + 7) % 7;
+  return addDaysStr(fromDateStr, delta);
+}
+
+// ─── Reconciled projection: what we'll actually have, day by day ─────────────
+// On-hand is the perpetual "book" value (counts, deliveries, adjustments). Projected
+// on-hand = book − theoretical menu consumption since the last count + future (in-transit)
+// deliveries. The weekly count overwrites the book and resets the drift. This unifies the
+// old menu-vs-par toggle: par is now a floor, menu is the forecast draw, one calculation.
+
+export interface ProjectionInput {
+  onHandBase: number;
+  /** Deplete consumption from here forward — the last count date, or today if never counted. */
+  anchorDate: string;
+  today: string;
+  /** This item's consumption per date (base units), from the menu. */
+  consumptionByDate: Map<string, number>;
+  /** This item's future (sent, not-yet-received) deliveries per date (base units). */
+  incomingByDate: Map<string, number>;
+}
+
+/** Projected on-hand (base units) at `targetDate`. */
+export function projectedOnHandBase(inp: ProjectionInput, targetDate: string): number {
+  let level = inp.onHandBase;
+  // Menu consumption is never written to the book, so subtract all of it from the anchor
+  // (last count) through the target — that's the theoretical drawdown.
+  for (const [d, base] of inp.consumptionByDate) {
+    if (d >= inp.anchorDate && d <= targetDate) level -= base;
+  }
+  // The book already holds deliveries received up to now; only FUTURE ones are new stock.
+  for (const [d, base] of inp.incomingByDate) {
+    if (d > inp.today && d <= targetDate) level += base;
+  }
+  return tidy(level, 4);
+}
+
+/** First date (today…horizon) the item is projected to hit zero, or null if it never does. */
+export function runOutDate(inp: ProjectionInput, horizonDate: string): string | null {
+  for (const d of datesInRange(inp.today, horizonDate)) {
+    if (projectedOnHandBase(inp, d) <= 0) return d;
+  }
+  return null;
+}
+
+/** Days of cover from today until the item runs out, or null if it doesn't within the horizon. */
+export function daysOfCover(inp: ProjectionInput, horizonDate: string): number | null {
+  const out = runOutDate(inp, horizonDate);
+  return out == null ? null : Math.max(0, daysBetween(inp.today, out));
+}
+
+/**
+ * Base-unit quantity to order so the item ends the coverage window at or above its floor,
+ * accounting for menu draw and in-transit stock. Perishables are capped so you don't buy
+ * more than roughly a shelf-life's worth.
+ */
+export function coverageNeedBase(
+  inp: ProjectionInput,
+  windowEndDate: string,
+  floorBase: number,
+  shelfLifeDays: number | null,
+): number {
+  const availableAtEnd = projectedOnHandBase(inp, windowEndDate);
+  let need = Math.max(0, floorBase - availableAtEnd);
+  if (need > 0 && shelfLifeDays != null) {
+    const capEnd = addDaysStr(inp.today, shelfLifeDays);
+    let shelfCons = 0;
+    for (const [d, base] of inp.consumptionByDate) if (d >= inp.today && d <= capEnd) shelfCons += base;
+    need = Math.min(need, shelfCons + floorBase);   // at most a shelf-window of draw, plus the floor
+  }
+  return tidy(need, 4);
+}
+
+/** Assemble a ProjectionInput for one item from the camp-wide consumption/incoming maps. */
+export function makeProjectionInput(
+  item: InventoryItem,
+  today: string,
+  consMap: Map<string, Map<string, number>>,
+  incMap: Map<string, Map<string, number>>,
+): ProjectionInput {
+  return {
+    onHandBase: item.onHandBase,
+    anchorDate: item.lastCountedAt ? item.lastCountedAt.slice(0, 10) : today,
+    today,
+    consumptionByDate: consMap.get(item.id) ?? new Map(),
+    incomingByDate: incMap.get(item.id) ?? new Map(),
+  };
 }
 
 /** Sum of effective day counts across [startDate, endDate]. The per-diem denominator. */

@@ -17,6 +17,7 @@ import { OrderingTab } from '@/components/commissary/OrderingTab';
 import { AddCamperModal } from '@/components/commissary/AddCamperModal';
 import { ImportCampersModal } from '@/components/commissary/ImportCampersModal';
 import { SendOrderModal } from '@/components/commissary/SendOrderModal';
+import { SendLiveOrderModal } from '@/components/commissary/SendLiveOrderModal';
 import { ReceiveOrderModal } from '@/components/commissary/ReceiveOrderModal';
 import { AddExpenseModal } from '@/components/commissary/AddExpenseModal';
 import { MealEventModal } from '@/components/commissary/MealEventModal';
@@ -27,6 +28,7 @@ import { DietCountsModal } from '@/components/commissary/DietCountsModal';
 import { CountModal } from '@/components/commissary/CountModal';
 import { CoursesModal } from '@/components/commissary/CoursesModal';
 import { SubstitutionModal } from '@/components/commissary/SubstitutionModal';
+import { SettingsTab } from '@/components/commissary/SettingsTab';
 
 // Production guide and Cost tabs are archived (out of scope for v1). Their components,
 // store selectors, and DB loaders remain in place and unreachable — re-add the entries
@@ -37,6 +39,7 @@ const TABS: { id: CommissaryTab; label: string }[] = [
   { id: 'menu', label: 'Menu builder' },
   { id: 'allergy', label: 'Allergy program' },
   { id: 'ordering', label: 'Ordering' },
+  { id: 'settings', label: 'Settings' },
 ];
 
 export function Commissary() {
@@ -74,7 +77,7 @@ export function Commissary() {
       if (!canViewCamperHealth) return undefined;
       return <Button size="sm" onClick={() => openModal({ kind: 'camper' })}>+ Add camper</Button>;
     }
-    if (activeTab === 'ordering') return undefined;
+    if (activeTab === 'ordering' || activeTab === 'settings') return undefined;
     return <Button size="sm" onClick={() => openModal({ kind: 'session' })}>+ New session</Button>;
   }
 
@@ -106,6 +109,7 @@ export function Commissary() {
         {activeTab === 'recipes' && <RecipesTab />}
         {activeTab === 'allergy' && <AllergyTab />}
         {activeTab === 'ordering' && <OrderingTab />}
+        {activeTab === 'settings' && <SettingsTab />}
       </div>
 
       {modal?.kind === 'item' && <AddEditItemModal editId={modal.editId} />}
@@ -120,6 +124,7 @@ export function Commissary() {
       {modal?.kind === 'camper' && <AddCamperModal editId={modal.editId} />}
       {modal?.kind === 'importCampers' && <ImportCampersModal />}
       {modal?.kind === 'sendOrder' && <SendOrderModal orderId={modal.orderId} />}
+      {modal?.kind === 'sendLive' && <SendLiveOrderModal />}
       {modal?.kind === 'receiveOrder' && <ReceiveOrderModal orderId={modal.orderId} />}
       {modal?.kind === 'expense' && <AddExpenseModal />}
       {modal?.kind === 'mealEvent' && <MealEventModal editId={modal.editId} date={modal.date} />}

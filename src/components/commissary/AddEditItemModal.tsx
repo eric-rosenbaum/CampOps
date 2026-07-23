@@ -71,6 +71,7 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
   const [reorderAt, setReorderAt] = useState(
     existing ? String(tidy(existing.parLevelBase / existing.stockUnitInBase, 4)) : '',
   );
+  const [shelfLife, setShelfLife] = useState(existing?.shelfLifeDays != null ? String(existing.shelfLifeDays) : '');
 
   // ── Vendor packs (multi-vendor). Seed from stored packs; fall back to a legacy item's
   // own single vendor/pack fields if it predates the packs table. ──
@@ -216,6 +217,7 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
       onHandBase,
       parLevelBase: toBase(Number(reorderAt) || 0, stockUnitInBase),
       lastCountedAt,
+      shelfLifeDays: shelfLife.trim() === '' ? null : Math.max(1, Math.round(Number(shelfLife) || 0)),
       vendorId: def?.vendorId ?? null,
       allergens,
       notes: notes.trim() || null,
@@ -320,8 +322,15 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
           </div>
         </div>
         <p className="text-[11px] text-forest/45 -mt-2">
-          "Reorder at" is the level that flags this item as low — your minimum before you restock.
+          "Reorder at" is your minimum on hand — the floor ordering keeps you above.
         </p>
+
+        <div className="flex items-center gap-2">
+          <label className="text-[12px] text-forest/70 whitespace-nowrap">Shelf life</label>
+          <input type="number" min="1" step="1" value={shelfLife} onChange={(e) => setShelfLife(e.target.value)}
+                 className="w-20 text-body bg-white border border-border rounded-btn px-2 py-1.5 focus:outline-none focus:border-sage" placeholder="days" />
+          <span className="text-[11px] text-forest/45">days — leave blank for non-perishable. Caps how far ahead a perishable is ordered.</span>
+        </div>
 
         {/* ── Vendors & pack sizes (multi-vendor) ────────────────────────────── */}
         <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-3 space-y-3">

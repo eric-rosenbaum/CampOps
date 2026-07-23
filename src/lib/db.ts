@@ -20,7 +20,7 @@ import type {
   CommissarySession, CommissaryVendor, InventoryItem, InventoryAdjustment, ItemVendorPack, CatalogProduct,
   Recipe, RecipeIngredient, RecipeStep, MenuEntry, AdjustmentReason,
   PurchaseOrder, PurchaseOrderLine, ProductionPlan, ProductionTask,
-  ProductionIngredient, ProductionPrepTask, Camper, CamperRestriction, RestrictionSummaryRow,
+  ProductionIngredient, ProductionPrepTask, Camper, CamperRestriction, CamperSession, RestrictionSummaryRow,
   CommissaryExpense, MenuTemplate, MenuTemplateEntry, DietCount, MealEvent,
   CountSession, StorageMap, MenuCourse, MenuSubstitution, CommissaryFile,
 } from './types';
@@ -1673,6 +1673,10 @@ function rowToSession(r: Record<string, unknown>): CommissarySession {
     budgetPerPersonPerDay: r.budget_per_person_per_day == null ? null : Number(r.budget_per_person_per_day),
     mealsPerDay: Number(r.meals_per_day ?? 3),
     mealCounts: (r.meal_counts as CommissarySession['mealCounts']) ?? null,
+    orderFrequencyDays: Number(r.order_frequency_days ?? 7),
+    countDay: (r.count_day as string) ?? null,
+    orderDay: (r.order_day as string) ?? null,
+    deliveryDay: (r.delivery_day as string) ?? null,
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
@@ -1714,6 +1718,7 @@ function rowToInventoryItem(r: Record<string, unknown>): InventoryItem {
     onHandBase: Number(r.on_hand_base ?? 0),
     parLevelBase: Number(r.par_level_base ?? 0),
     lastCountedAt: (r.last_counted_at as string) ?? null,
+    shelfLifeDays: r.shelf_life_days == null ? null : Number(r.shelf_life_days),
     vendorId: (r.vendor_id as string) ?? null,
     allergens: (r.allergens as string[]) ?? [],
     notes: (r.notes as string) ?? null,
@@ -1938,6 +1943,7 @@ export async function dbAddSession(s: CommissarySession) {
     camper_count: s.camperCount, staff_count: s.staffCount, is_active: s.isActive,
     notes: s.notes, budget_per_person_per_day: s.budgetPerPersonPerDay,
     meals_per_day: s.mealsPerDay, meal_counts: s.mealCounts,
+    order_frequency_days: s.orderFrequencyDays, count_day: s.countDay, order_day: s.orderDay, delivery_day: s.deliveryDay,
     created_at: s.createdAt, updated_at: s.updatedAt,
   });
   if (error) console.error('dbAddSession error:', error.message);
@@ -1949,6 +1955,7 @@ export async function dbUpdateSession(s: CommissarySession) {
     camper_count: s.camperCount, staff_count: s.staffCount, is_active: s.isActive,
     notes: s.notes, budget_per_person_per_day: s.budgetPerPersonPerDay,
     meals_per_day: s.mealsPerDay, meal_counts: s.mealCounts,
+    order_frequency_days: s.orderFrequencyDays, count_day: s.countDay, order_day: s.orderDay, delivery_day: s.deliveryDay,
     updated_at: new Date().toISOString(),
   }).eq('id', s.id);
   if (error) console.error('dbUpdateSession error:', error.message);
@@ -1995,7 +2002,7 @@ function inventoryItemToRow(i: InventoryItem) {
     stock_unit: i.stockUnit, stock_unit_in_base: i.stockUnitInBase,
     purchase_unit: i.purchaseUnit, purchase_unit_in_base: i.purchaseUnitInBase,
     unit_price: i.unitPrice, on_hand_base: i.onHandBase, par_level_base: i.parLevelBase,
-    last_counted_at: i.lastCountedAt,
+    last_counted_at: i.lastCountedAt, shelf_life_days: i.shelfLifeDays,
     vendor_id: i.vendorId, allergens: i.allergens, notes: i.notes,
     sort_order: i.sortOrder, created_at: i.createdAt, updated_at: i.updatedAt,
   };
@@ -2016,6 +2023,20 @@ export async function dbUpdateInventoryItem(i: InventoryItem) {
 export async function dbDeleteInventoryItem(id: string) {
   const { error } = await supabase.from('inventory_items').delete().eq('id', id);
   if (error) console.error('dbDeleteInventoryItem error:', error.message);
+}
+
+/** Wipe ALL commissary data for the current camp (settings / testing). Never the catalog. */
+export async function dbWipeCommissary(): Promise<boolean> {
+  const { error } = await supabase.rpc('delete_all_commissary_data', { p_camp_id: _campId });
+  if (error) { console.error('dbWipeCommissary error:', error.message); return false; }
+  return true;
+}
+
+/** Update an item's price estimate to what was last actually paid (from a received invoice). */
+export async function dbSetItemPrice(itemId: string, price: number) {
+  const { error } = await supabase.from('inventory_items')
+    .update({ unit_price: price, updated_at: new Date().toISOString() }).eq('id', itemId);
+  if (error) console.error('dbSetItemPrice error:', error.message);
 }
 
 /** Stamp an item as counted (on-hand affirmatively established). Used by count/recount paths. */
@@ -2263,6 +2284,7 @@ function rowToOrder(r: Record<string, unknown>): PurchaseOrder {
     deliveryInstructions: (r.delivery_instructions as string) ?? null,
     createdBy: (r.created_by as string) ?? null,
     sentAt: (r.sent_at as string) ?? null,
+    expectedDelivery: (r.expected_delivery as string) ?? null,
     receivedAt: (r.received_at as string) ?? null,
     invoiceTotal: r.invoice_total == null ? null : Number(r.invoice_total),
     invoiceNumber: (r.invoice_number as string) ?? null,
@@ -2369,6 +2391,7 @@ export interface CommissaryProductionData {
 export interface CommissaryAllergyData {
   campers: Camper[];
   restrictions: CamperRestriction[];
+  camperSessions: CamperSession[];
   /** Aggregate: readable by every member, even those denied camper names. */
   summary: RestrictionSummaryRow[];
   /** Source-document locker. Health-gated, so empty for members without access. */
@@ -2408,9 +2431,10 @@ async function loadProductionData(campId: string): Promise<CommissaryProductionD
  * empty roster as "no campers"; check canViewCamperNames.
  */
 async function loadAllergyData(campId: string): Promise<CommissaryAllergyData> {
-  const [cRes, rRes, sRes, fRes] = await Promise.all([
+  const [cRes, rRes, csRes, sRes, fRes] = await Promise.all([
     supabase.from('campers').select('*').eq('camp_id', campId).order('name', { ascending: true }),
     supabase.from('camper_restrictions').select('*').eq('camp_id', campId),
+    supabase.from('camper_sessions').select('camper_id, session_id').eq('camp_id', campId),
     supabase.from('camper_restriction_summary').select('*').eq('camp_id', campId),
     supabase.from('commissary_files').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
   ]);
@@ -2418,9 +2442,14 @@ async function loadAllergyData(campId: string): Promise<CommissaryAllergyData> {
     files: (fRes.data ?? []).map((r) => rowToCommissaryFile(r as Record<string, unknown>)),
     campers: (cRes.data ?? []).map((r) => rowToCamper(r as Record<string, unknown>)),
     restrictions: (rRes.data ?? []).map((r) => rowToRestriction(r as Record<string, unknown>)),
+    camperSessions: (csRes.data ?? []).map((r) => {
+      const row = r as Record<string, unknown>;
+      return { camperId: row.camper_id as string, sessionId: row.session_id as string };
+    }),
     summary: (sRes.data ?? []).map((r) => {
       const row = r as Record<string, unknown>;
       return {
+        sessionId: (row.session_id as string) ?? null,
         restriction: row.restriction as string,
         kind: (row.kind as RestrictionSummaryRow['kind']) ?? 'allergen',
         camperCount: Number(row.camper_count ?? 0),
@@ -2450,6 +2479,7 @@ export async function dbCreateOrder(order: PurchaseOrder, lines: PurchaseOrderLi
     status: order.status, source: order.source, session_id: order.sessionId,
     week_number: order.weekNumber, subtotal: order.subtotal, delivery_fee: order.deliveryFee,
     total: order.total, delivery_instructions: order.deliveryInstructions,
+    expected_delivery: order.expectedDelivery, sent_at: order.sentAt,
     created_by: order.createdBy, created_at: order.createdAt, updated_at: order.updatedAt,
   });
   if (oErr) { console.error('dbCreateOrder error:', oErr.message); return; }
@@ -2468,10 +2498,11 @@ export async function dbCreateOrder(order: PurchaseOrder, lines: PurchaseOrderLi
   if (lErr) console.error('dbCreateOrder lines error:', lErr.message);
 }
 
-export async function dbUpdateOrderStatus(id: string, status: PurchaseOrder['status'], deliveryInstructions?: string | null) {
+export async function dbUpdateOrderStatus(id: string, status: PurchaseOrder['status'], deliveryInstructions?: string | null, expectedDelivery?: string | null) {
   const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
   if (status === 'sent') patch.sent_at = new Date().toISOString();
   if (deliveryInstructions !== undefined) patch.delivery_instructions = deliveryInstructions;
+  if (expectedDelivery !== undefined) patch.expected_delivery = expectedDelivery;
   const { error } = await supabase.from('purchase_orders').update(patch).eq('id', id);
   if (error) console.error('dbUpdateOrderStatus error:', error.message);
 }
@@ -2675,6 +2706,17 @@ export async function dbReplaceCamperRestrictions(camperId: string, rows: Camper
   if (error) console.error('dbReplaceCamperRestrictions insert error:', error.message);
 }
 
+/** Replace a camper's session assignments (many-to-many). */
+export async function dbReplaceCamperSessions(camperId: string, sessionIds: string[]) {
+  const { error: dErr } = await supabase.from('camper_sessions').delete().eq('camper_id', camperId);
+  if (dErr) console.error('dbReplaceCamperSessions delete error:', dErr.message);
+  if (!sessionIds.length) return;
+  const { error } = await supabase.from('camper_sessions').insert(
+    sessionIds.map((sid) => ({ camp_id: _campId, camper_id: camperId, session_id: sid })),
+  );
+  if (error) console.error('dbReplaceCamperSessions insert error:', error.message);
+}
+
 /** Bulk roster import. Chunked so a 220-camper CSV does not hit request limits. */
 export async function dbImportCampers(rows: { camper: Camper; restrictions: CamperRestriction[] }[]) {
   const CHUNK = 50;
@@ -2723,7 +2765,7 @@ export function subscribeToCommissaryProduction(campId: string, onUpdate: (d: Co
 export function subscribeToCommissaryAllergy(campId: string, onUpdate: (d: CommissaryAllergyData) => void, onEventStart?: () => void): () => void {
   return makeCommissaryChannel(
     `commissary-allergy-${++commissaryChannelCount}`, campId,
-    ['campers', 'camper_restrictions', 'commissary_files'],
+    ['campers', 'camper_restrictions', 'camper_sessions', 'commissary_files'],
     loadAllergyData, onUpdate, onEventStart,
   );
 }

@@ -9,10 +9,12 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import { useSafetyStore } from '@/store/safetyStore';
 import { useAuth } from '@/lib/auth';
 import {
-  CATEGORY_LABELS, STORAGE_LABELS, formatInStockUnit, stockStatus,
-  onHandInStockUnit, parInStockUnit, countSheetToPrintHtml, type PrintCountGroup,
+  CATEGORY_LABELS, STORAGE_LABELS, formatQty, fromBase,
+  onHandInStockUnit, parInStockUnit, countSheetToPrintHtml,
+  makeProjectionInput, projectedOnHandBase, runOutDate, daysOfCover,
+  type PrintCountGroup,
 } from '@/lib/commissaryUnits';
-import { StockBar, OnHandValue, ParValue, CategoryIcon } from './commissaryUi';
+import { OnHandValue, ParValue, CategoryIcon } from './commissaryUi';
 
 const STORAGE_ORDER = ['walk_in_refrigerator', 'walk_in_freezer', 'reach_in_refrigerator', 'dry_storage', 'other'];
 
@@ -29,8 +31,8 @@ export function InventoryTab() {
   const {
     items, filteredItems, stockCounts, setupCounts, openModal, setActiveTab,
     inventoryFilter, setInventoryFilter, inventorySearch, setInventorySearch,
-    activeWeek, weekShortfalls, unlinkedEntryCount, activeSession, weekDemand,
-    storageMap,
+    activeWeek, weekShortfalls, unlinkedEntryCount, activeSession,
+    storageMap, consumptionByItemDate, incomingByItemDate, projectionHorizon,
   } = useCommissaryStore();
   const { tempLogs } = useSafetyStore();
   const { can } = useAuth();
@@ -76,19 +78,26 @@ export function InventoryTab() {
     [session, activeWeek, weekShortfalls],
   );
   const unlinked = session ? unlinkedEntryCount(activeWeek) : 0;
-  const demand = useMemo(
-    () => (session ? weekDemand(activeWeek) : new Map()),
-    [session, activeWeek, weekDemand],
-  );
 
-  // Sort worst-stocked first — the reason anyone opens this screen.
-  const sorted = useMemo(() => {
-    const rank = { critical: 0, low: 1, ok: 2 };
-    return [...rows].sort((a, b) => {
-      const d = rank[stockStatus(a)] - rank[stockStatus(b)];
-      return d !== 0 ? d : a.name.localeCompare(b.name);
-    });
-  }, [rows]);
+  // Reconciled projection: what each item will actually have, and when it runs out.
+  const consMap = consumptionByItemDate();
+  const incMap = incomingByItemDate();
+  const today = new Date().toISOString().slice(0, 10);
+  const horizon = projectionHorizon();
+  const projById = new Map(items.map((it) => {
+    const inp = makeProjectionInput(it, today, consMap, incMap);
+    return [it.id, { now: projectedOnHandBase(inp, today), runOut: runOutDate(inp, horizon), cover: daysOfCover(inp, horizon) }];
+  }));
+
+  // Soonest to run out first — the reason anyone opens this screen. No run-out sorts last.
+  const sorted = [...rows].sort((a, b) => {
+    const ra = projById.get(a.id)?.runOut ?? null;
+    const rb = projById.get(b.id)?.runOut ?? null;
+    if (ra && rb) return ra.localeCompare(rb) || a.name.localeCompare(b.name);
+    if (ra) return -1;
+    if (rb) return 1;
+    return a.name.localeCompare(b.name);
+  });
 
   if (items.length === 0) {
     return (
@@ -207,16 +216,19 @@ export function InventoryTab() {
       </div>
 
       <div className="bg-white rounded-card border border-border overflow-hidden">
-        <div className="grid grid-cols-[2.2fr_1fr_1fr_1fr_1.2fr_auto] gap-3 px-4 py-2.5 bg-cream-dark/50 border-b border-border">
-          {['Item', 'On hand', 'Reorder at', 'Week demand', 'Stock level', ''].map((h) => (
+        <div className="grid grid-cols-[2.2fr_1fr_1fr_1.2fr_1fr_150px] gap-3 px-4 py-2.5 bg-cream-dark/50 border-b border-border">
+          {['Item', 'On hand (counted)', 'Projected now', 'Runs out', 'Min on hand', ''].map((h) => (
             <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>
           ))}
         </div>
 
         {sorted.map((item) => {
-          const need = demand.get(item.id);
+          const p = projById.get(item.id) ?? { now: item.onHandBase, runOut: null, cover: null };
+          const projNow = Math.max(0, p.now);
+          const soon = p.cover != null && p.cover <= 3;
+          const near = p.cover != null && p.cover <= 7;
           return (
-            <div key={item.id} className="grid grid-cols-[2.2fr_1fr_1fr_1fr_1.2fr_auto] gap-3 px-4 py-3 border-b border-border last:border-0 items-center hover:bg-cream-dark/30">
+            <div key={item.id} className="grid grid-cols-[2.2fr_1fr_1fr_1.2fr_1fr_150px] gap-3 px-4 py-3 border-b border-border last:border-0 items-center hover:bg-cream-dark/30">
               <div className="flex items-center gap-2.5 min-w-0">
                 <CategoryIcon category={item.category} className="w-4 h-4 text-forest/40 flex-shrink-0" />
                 <div className="min-w-0">
@@ -227,11 +239,22 @@ export function InventoryTab() {
                 </div>
               </div>
               <OnHandValue item={item} />
-              <ParValue item={item} />
-              <span className="font-mono text-[13px] text-forest/60">
-                {need ? formatInStockUnit(item, need.neededBase) : <span className="text-forest/25">—</span>}
+              <span className={`font-mono text-[13px] ${p.now <= 0 ? 'text-red font-medium' : 'text-forest/70'}`}>
+                {formatQty(fromBase(projNow, item.stockUnitInBase), item.stockUnit)}
               </span>
-              <StockBar item={item} />
+              <span className="text-[12px]">
+                {item.lastCountedAt == null ? (
+                  <span className="text-forest/25">—</span>
+                ) : p.runOut ? (
+                  <span className={soon ? 'text-red font-medium' : near ? 'text-amber-text' : 'text-forest/60'}>
+                    {new Date(`${p.runOut}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                    {p.cover != null && <span className="text-forest/40"> · {p.cover}d</span>}
+                  </span>
+                ) : (
+                  <span className="text-green-muted-text">Covered</span>
+                )}
+              </span>
+              <ParValue item={item} />
               <div className="flex gap-1.5 justify-end">
                 {canManage && (
                   <>

@@ -3,7 +3,8 @@ import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useCommissaryStore, type ReceivingLineInput } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
-import { formatCurrency, tidy } from '@/lib/commissaryUnits';
+import { Printer } from 'lucide-react';
+import { formatCurrency, tidy, receivingSheetToPrintHtml } from '@/lib/commissaryUnits';
 import { inputClass, labelClass } from './commissaryUi';
 
 interface Draft {
@@ -48,6 +49,16 @@ export function ReceiveOrderModal({ orderId }: { orderId: string }) {
   const invoiceTotal = tidy(drafts.reduce((s, d) => s + (Number(d.receivedUnitPrice) || 0) * (Number(d.receivedQty) || 0), 0));
   const discrepancies = drafts.filter((d) => Number(d.receivedQty) !== d.orderedQty || d.note.trim());
 
+  function handlePrintChecklist() {
+    const html = receivingSheetToPrintHtml(
+      order!.vendorName, new Date().toLocaleDateString(),
+      drafts.map((d) => ({ itemName: d.itemName, orderedQty: d.orderedQty, purchaseUnit: d.purchaseUnit })),
+    );
+    const w = window.open('', '_blank');
+    if (!w) { alert('Enable pop-ups to print the checklist.'); return; }
+    w.document.write(html); w.document.close(); w.focus(); w.print();
+  }
+
   async function handleReceive() {
     setSaving(true);
     const lines: ReceivingLineInput[] = drafts.map((d) => ({
@@ -65,23 +76,34 @@ export function ReceiveOrderModal({ orderId }: { orderId: string }) {
   return (
     <Modal title={`Receive — ${order.vendorName}`} onClose={closeModal} width="720px">
       <div className="space-y-4">
-        <p className="text-[12px] text-forest/55 leading-relaxed">
-          Confirm what actually arrived. Received quantities — not ordered — are booked into
-          stock, and short or substituted lines are recorded for the vendor conversation.
-        </p>
+        <div className="flex items-start gap-3">
+          <p className="flex-1 text-[12px] text-forest/55 leading-relaxed">
+            Check off each line as it comes off the truck: tick <strong>Arrived</strong> if it came in as ordered,
+            or type the actual amount. What's received — not what was ordered — is booked into stock.
+          </p>
+          <Button type="button" size="sm" variant="ghost" onClick={handlePrintChecklist}>
+            <Printer className="w-3.5 h-3.5" /> Print checklist
+          </Button>
+        </div>
 
         <div className="rounded-card border border-border overflow-hidden">
-          <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1.4fr] gap-2 px-3 py-2 bg-cream-dark/40 border-b border-border">
-            {['Item', 'Ordered', 'Received', 'Unit price', 'Note (sub / short)'].map((h) => (
+          <div className="grid grid-cols-[1.8fr_0.9fr_0.7fr_1fr_1fr_1.3fr] gap-2 px-3 py-2 bg-cream-dark/40 border-b border-border">
+            {['Item', 'Ordered', 'Arrived', 'Received', 'Unit price', 'Note (sub / short)'].map((h) => (
               <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>
             ))}
           </div>
           {drafts.map((d) => {
             const short = Number(d.receivedQty) < d.orderedQty;
+            const asOrdered = Number(d.receivedQty) === d.orderedQty;
             return (
-              <div key={d.lineId} className="grid grid-cols-[2fr_1fr_1fr_1fr_1.4fr] gap-2 px-3 py-2 border-b border-border last:border-0 items-center">
+              <div key={d.lineId} className="grid grid-cols-[1.8fr_0.9fr_0.7fr_1fr_1fr_1.3fr] gap-2 px-3 py-2 border-b border-border last:border-0 items-center">
                 <span className="text-[12px] text-forest truncate">{d.itemName}</span>
                 <span className="font-mono text-[12px] text-forest/50">{d.orderedQty} {d.purchaseUnit}</span>
+                <input
+                  type="checkbox" checked={asOrdered} title="Arrived as ordered"
+                  onChange={(e) => patch(d.lineId, { receivedQty: e.target.checked ? String(d.orderedQty) : '0' })}
+                  className="accent-sage justify-self-center w-4 h-4"
+                />
                 <input
                   type="number" min="0" step="any" value={d.receivedQty}
                   onChange={(e) => patch(d.lineId, { receivedQty: e.target.value })}

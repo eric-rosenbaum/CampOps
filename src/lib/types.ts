@@ -568,6 +568,12 @@ export interface CommissarySession {
    * One-off per-date changes are handled separately by MealEvent, layered on top.
    */
   mealCounts: Partial<Record<MealPeriod, number>> | null;
+  // ── Operating cadence: the weekly count/order/deliver rhythm that drives the order
+  //    coverage window. Day columns are lowercase weekday names; null = derive from startDate.
+  orderFrequencyDays: number;
+  countDay: string | null;
+  orderDay: string | null;
+  deliveryDay: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -608,9 +614,12 @@ export interface InventoryItem {
   unitPrice: number | null;
 
   onHandBase: number;
+  /** Minimum on hand — the safety floor ordering keeps you above (formerly "par"). */
   parLevelBase: number;
   /** When on-hand was last affirmatively counted/set. null = never (e.g. a fresh import). */
   lastCountedAt: string | null;
+  /** Days a perishable keeps; caps how far ahead it's ordered. null = non-perishable (no cap). */
+  shelfLifeDays: number | null;
 
   vendorId: string | null;
   /** Canonical allergen slugs. Recipes derive theirs from these by union. */
@@ -764,6 +773,8 @@ export interface PurchaseOrder {
   deliveryInstructions: string | null;
   createdBy: string | null;
   sentAt: string | null;
+  /** Expected delivery date, set when the order is sent — drives the in-transit projection. */
+  expectedDelivery: string | null;
   receivedAt: string | null;
   /** Actual invoiced total, set at receiving; drives per-diem actual spend when present. */
   invoiceTotal: number | null;
@@ -900,10 +911,18 @@ export interface CamperRestriction {
  * the menu conflict warnings. Named rosters require health access.
  */
 export interface RestrictionSummaryRow {
+  /** Session these counts are for; null = campers not assigned to any session. */
+  sessionId: string | null;
   restriction: string;
   kind: RestrictionKind;
   camperCount: number;
   anaphylacticCount: number;
+}
+
+/** A camper↔session assignment (many-to-many). A camper can attend several sessions. */
+export interface CamperSession {
+  camperId: string;
+  sessionId: string;
 }
 
 // ─── Commissary phase 3: cost, templates, dietary, events, count, compliance ───

@@ -21,6 +21,7 @@ export function CountModal() {
     .map((loc) => ({ loc, items: items.filter((i) => i.storageLocation === loc).sort((a, b) => a.name.localeCompare(b.name)) }))
     .filter((g) => g.items.length > 0);
 
+  const entered = Object.values(counts).filter((v) => v !== '').length;
   const changed = Object.entries(counts).filter(([id, v]) => {
     if (v === '') return false;
     const item = items.find((i) => i.id === id);
@@ -38,11 +39,12 @@ export function CountModal() {
   }
 
   return (
-    <Modal title="Physical count" onClose={closeModal} width="620px">
+    <Modal title="Take inventory" onClose={closeModal} width="620px">
       <div className="space-y-4">
         <p className="text-[12px] text-forest/55 leading-relaxed">
-          Walk each storage area and enter what you count. Blank rows are left untouched; any
-          number that differs from the last-known amount posts a correction.
+          The weekly walk-the-walk-in. Enter what you count in each storage area — this becomes the
+          truth the projection runs from. Any number that differs posts a correction; entering a
+          matching number still marks the item counted (clearing its "not counted" flag). Blank rows are untouched.
         </p>
 
         <div className="max-h-[55vh] overflow-y-auto space-y-4">
@@ -72,10 +74,12 @@ export function CountModal() {
         </div>
 
         <div className="flex items-center gap-2 pt-1">
-          <span className="text-[12px] text-forest/50">{changed} change{changed === 1 ? '' : 's'} to record</span>
+          <span className="text-[12px] text-forest/50">
+            {entered} counted{changed > 0 ? ` · ${changed} correction${changed === 1 ? '' : 's'}` : ''}
+          </span>
           <div className="flex-1" />
-          <Button onClick={handleSubmit} disabled={changed === 0 || saving}>
-            {saving ? 'Saving…' : `Record count`}
+          <Button onClick={handleSubmit} disabled={entered === 0 || saving}>
+            {saving ? 'Saving…' : 'Record count'}
           </Button>
           <Button variant="ghost" onClick={closeModal}>Cancel</Button>
         </div>

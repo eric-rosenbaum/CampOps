@@ -20,6 +20,7 @@ const MODULE_LABELS: Record<keyof StaffGroupModules, string> = {
   assets: 'Assets & Vehicles',
   building_systems: 'Building Systems',
   commissary: 'Commissary',
+  retreats: 'Retreat Manager',
 };
 
 const ALL_MODULES = Object.keys(MODULE_LABELS) as (keyof StaffGroupModules)[];
@@ -32,6 +33,7 @@ const EMPTY_MODULES: StaffGroupModules = {
   assets: false,
   building_systems: false,
   commissary: false,
+  retreats: false,
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────

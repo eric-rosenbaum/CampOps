@@ -48,17 +48,15 @@ export function PublicReportForm() {
   useEffect(() => {
     if (!slug) { setPageState('not_found'); return; }
     supabasePublic
-      .from('camps')
-      .select('id, name, logo_url, locations')
-      .eq('slug', slug)
-      .single()
+      .rpc('get_public_camp', { p_slug: slug })
       .then(({ data, error }) => {
-        if (error || !data) { setPageState('not_found'); return; }
+        const row = Array.isArray(data) ? data[0] : data;
+        if (error || !row) { setPageState('not_found'); return; }
         setCamp({
-          id: data.id as string,
-          name: data.name as string,
-          logoUrl: (data.logo_url as string) ?? null,
-          locations: (data.locations as string[]) ?? [],
+          id: row.id as string,
+          name: row.name as string,
+          logoUrl: (row.logo_url as string) ?? null,
+          locations: (row.locations as string[]) ?? [],
         });
         setPageState('form');
       });

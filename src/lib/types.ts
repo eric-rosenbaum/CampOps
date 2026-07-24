@@ -1046,3 +1046,249 @@ export interface CommissaryFile {
   uploadedBy: string | null;
   createdAt: string;
 }
+
+// ─── Retreats (external group rentals + guest portal) ───────────────────────────
+// A completely separate domain from the camp's own operations: renting the facility to
+// outside groups. Everything below is camp-scoped. Guest-facing writes go through the
+// token-keyed portal RPCs, never these tables directly.
+
+export type RetreatStatus = 'inquiry' | 'confirmed' | 'ready' | 'active' | 'complete' | 'cancelled';
+
+/** How a group is billed. per_person_night uses ratePerPersonNight; the others use flatRate. */
+export type RetreatPricingModel = 'per_person_night' | 'per_cabin_night' | 'flat';
+
+export interface Retreat {
+  id: string;
+  campId: string;
+  groupName: string;
+  groupType: string;               // synagogue | corporate | youth | alumni | family | school | other
+  arrivalDate: string;
+  departureDate: string;
+  headcount: number;
+  pricingModel: RetreatPricingModel;
+  ratePerPersonNight: number | null;
+  /** For per_cabin_night: rate per cabin per night. For flat: total facility fee for the stay. */
+  flatRate: number | null;
+  depositRequired: number | null;
+  depositReceived: number | null;
+  coordinatorName: string | null;
+  coordinatorEmail: string | null;
+  coordinatorPhone: string | null;
+  status: RetreatStatus;
+  housingDeadline: string | null;
+  headcountCutoff: string | null;
+  /** Aggregate counts, e.g. { vegetarian: 4, gluten_free: 2, kosher: 0, nut_allergy: 1 }. */
+  dietaryFlags: Record<string, number> | null;
+  notes: string | null;
+  /** Secret token for the guest portal link (no password). */
+  portalToken: string;
+  menuPublished: boolean;
+  changeRequestsEnabled: boolean;
+  feedbackOpens: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Camp-level cabin/space inventory, reused across retreats. */
+export interface RetreatSpace {
+  id: string;
+  campId: string;
+  name: string;
+  bedCapacity: number;
+  accessible: boolean;
+  notes: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RetreatHousing {
+  id: string;
+  campId: string;
+  retreatId: string;
+  spaceId: string | null;
+  /** Snapshot so a deleted space still reads. */
+  spaceName: string | null;
+  subgroupName: string | null;
+  peopleCount: number;
+  notes: string | null;
+  locked: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RetreatHousingVersion {
+  id: string;
+  campId: string;
+  retreatId: string;
+  version: number;
+  label: string | null;
+  summary: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export type RetreatDocType = 'agreement' | 'coi' | 'waiver' | 'deposit' | 'other';
+export type RetreatDocStatus = 'missing' | 'pending' | 'received' | 'signed' | 'approved';
+
+export interface RetreatDocument {
+  id: string;
+  campId: string;
+  retreatId: string;
+  docType: RetreatDocType;
+  name: string;
+  status: RetreatDocStatus;
+  filePath: string | null;
+  signedBy: string | null;
+  signedAt: string | null;
+  dueDate: string | null;
+  /** COI: { policyNumber, coverage, expiry, additionalInsured }; waiver: { signedCount, total }. */
+  meta: Record<string, unknown> | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RetreatMeal {
+  id: string;
+  campId: string;
+  retreatId: string;
+  dayDate: string;
+  mealPeriod: MealPeriod;
+  name: string | null;
+  items: string | null;
+  allergens: string[];
+  alternatives: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RetreatRequestKind = 'housing' | 'menu' | 'headcount' | 'other';
+export type RetreatRequestStatus = 'pending' | 'approved' | 'declined' | 'countered';
+
+export interface RetreatChangeRequest {
+  id: string;
+  campId: string;
+  retreatId: string;
+  kind: RetreatRequestKind;
+  submittedBy: string | null;
+  submittedAt: string;
+  body: string;
+  status: RetreatRequestStatus;
+  responseMessage: string | null;
+  /** Not visible to the group. */
+  internalNote: string | null;
+  respondedBy: string | null;
+  respondedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RetreatCost {
+  id: string;
+  campId: string;
+  retreatId: string;
+  category: string;
+  budgeted: number;
+  actual: number | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RetreatCharge {
+  id: string;
+  campId: string;
+  retreatId: string;
+  description: string;
+  qty: number;
+  unitRate: number;
+  amount: number;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RetreatPaymentKind = 'deposit' | 'balance' | 'payment';
+
+export interface RetreatPayment {
+  id: string;
+  campId: string;
+  retreatId: string;
+  paidOn: string;
+  amount: number;
+  method: string | null;
+  kind: RetreatPaymentKind;
+  note: string | null;
+  createdAt: string;
+}
+
+export type RetreatIssueStatus = 'open' | 'in_progress' | 'resolved';
+
+export interface RetreatIssue {
+  id: string;
+  campId: string;
+  retreatId: string;
+  title: string;
+  reportedBy: string | null;
+  priority: string;
+  assignedTo: string | null;
+  status: RetreatIssueStatus;
+  notes: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+  updatedAt: string;
+}
+
+export type RetreatChecklistPhase = 'setup' | 'checkout';
+
+export interface RetreatChecklistItem {
+  id: string;
+  campId: string;
+  retreatId: string;
+  phase: RetreatChecklistPhase;
+  title: string;
+  isDone: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RetreatScheduleItem {
+  id: string;
+  campId: string;
+  retreatId: string;
+  dayDate: string | null;
+  timeLabel: string | null;
+  title: string;
+  location: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RetreatFeedback {
+  id: string;
+  campId: string;
+  retreatId: string;
+  overall: number | null;
+  accommodations: number | null;
+  food: number | null;
+  communication: number | null;
+  comment: string | null;
+  returningStatus: string | null;
+  receivedAt: string;
+  createdAt: string;
+}
+
+export interface RetreatReminder {
+  id: string;
+  campId: string;
+  retreatId: string;
+  reminderType: string | null;
+  message: string | null;
+  sentBy: string | null;
+  sentAt: string;
+}

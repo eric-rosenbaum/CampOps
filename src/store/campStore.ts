@@ -15,6 +15,7 @@ export interface StaffGroupModules {
   assets: boolean;
   building_systems: boolean;
   commissary: boolean;
+  retreats: boolean;
 }
 
 export interface StaffGroup {

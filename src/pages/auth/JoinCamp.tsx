@@ -137,7 +137,7 @@ export function JoinCamp() {
                   <div>
                     <label className="block text-[12px] font-medium text-forest/70 mb-1.5">Password</label>
                     <input
-                      type="password" required minLength={6} value={password}
+                      type="password" required minLength={8} value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
                     />

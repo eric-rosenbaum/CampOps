@@ -1,0 +1,251 @@
+// Data layer for the Retreats module. Kept separate from the (already huge) db.ts.
+// Ops side uses the authenticated `supabase` client + normal RLS; the guest portal talks
+// to token-keyed RPCs from its own anon client (see pages/portal). Low data volume per
+// camp, so a single realtime channel + one loader covers the whole module.
+import { supabase } from './supabase';
+import { campLog, campError } from './campLog';
+import { getCampId } from './db';
+import type {
+  Retreat, RetreatSpace, RetreatHousing, RetreatHousingVersion, RetreatDocument, RetreatMeal,
+  RetreatChangeRequest, RetreatCost, RetreatCharge, RetreatPayment, RetreatIssue,
+  RetreatChecklistItem, RetreatScheduleItem, RetreatFeedback, RetreatReminder, MealPeriod,
+} from './types';
+
+type Row = Record<string, unknown>;
+const s = (v: unknown) => (v == null ? null : String(v));
+const n = (v: unknown) => (v == null ? null : Number(v));
+
+// ─── Row → type ──────────────────────────────────────────────────────────────
+export function rowToRetreat(r: Row): Retreat {
+  return {
+    id: r.id as string, campId: r.camp_id as string,
+    groupName: r.group_name as string, groupType: (r.group_type as string) ?? 'other',
+    arrivalDate: r.arrival_date as string, departureDate: r.departure_date as string,
+    headcount: Number(r.headcount ?? 0),
+    pricingModel: (r.pricing_model as Retreat['pricingModel']) ?? 'per_person_night',
+    ratePerPersonNight: n(r.rate_per_person_night), flatRate: n(r.flat_rate),
+    depositRequired: n(r.deposit_required),
+    depositReceived: n(r.deposit_received),
+    coordinatorName: s(r.coordinator_name), coordinatorEmail: s(r.coordinator_email), coordinatorPhone: s(r.coordinator_phone),
+    status: (r.status as Retreat['status']) ?? 'inquiry',
+    housingDeadline: s(r.housing_deadline), headcountCutoff: s(r.headcount_cutoff),
+    dietaryFlags: (r.dietary_flags as Record<string, number>) ?? null,
+    notes: s(r.notes), portalToken: r.portal_token as string,
+    menuPublished: Boolean(r.menu_published), changeRequestsEnabled: Boolean(r.change_requests_enabled),
+    feedbackOpens: s(r.feedback_opens),
+    createdAt: r.created_at as string, updatedAt: r.updated_at as string,
+  };
+}
+function rowToSpace(r: Row): RetreatSpace {
+  return { id: r.id as string, campId: r.camp_id as string, name: r.name as string, bedCapacity: Number(r.bed_capacity ?? 0), accessible: Boolean(r.accessible), notes: s(r.notes), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+}
+function rowToHousing(r: Row): RetreatHousing {
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, spaceId: s(r.space_id), spaceName: s(r.space_name), subgroupName: s(r.subgroup_name), peopleCount: Number(r.people_count ?? 0), notes: s(r.notes), locked: Boolean(r.locked), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+}
+function rowToHousingVersion(r: Row): RetreatHousingVersion {
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, version: Number(r.version ?? 1), label: s(r.label), summary: s(r.summary), createdBy: s(r.created_by), createdAt: r.created_at as string };
+}
+function rowToDocument(r: Row): RetreatDocument {
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, docType: (r.doc_type as RetreatDocument['docType']) ?? 'other', name: r.name as string, status: (r.status as RetreatDocument['status']) ?? 'missing', filePath: s(r.file_path), signedBy: s(r.signed_by), signedAt: s(r.signed_at), dueDate: s(r.due_date), meta: (r.meta as Record<string, unknown>) ?? null, sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+}
+function rowToMeal(r: Row): RetreatMeal {
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, dayDate: r.day_date as string, mealPeriod: (r.meal_period as MealPeriod) ?? 'breakfast', name: s(r.name), items: s(r.items), allergens: (r.allergens as string[]) ?? [], alternatives: s(r.alternatives), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+}
+function rowToChangeRequest(r: Row): RetreatChangeRequest {
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, kind: (r.kind as RetreatChangeRequest['kind']) ?? 'other', submittedBy: s(r.submitted_by), submittedAt: r.submitted_at as string, body: r.body as string, status: (r.status as RetreatChangeRequest['status']) ?? 'pending', responseMessage: s(r.response_message), internalNote: s(r.internal_note), respondedBy: s(r.responded_by), respondedAt: s(r.responded_at), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+}
+function rowToCost(r: Row): RetreatCost {
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, category: r.category as string, budgeted: Number(r.budgeted ?? 0), actual: n(r.actual), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+}
+function rowToCharge(r: Row): RetreatCharge {
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, description: r.description as string, qty: Number(r.qty ?? 1), unitRate: Number(r.unit_rate ?? 0), amount: Number(r.amount ?? 0), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+}
+function rowToPayment(r: Row): RetreatPayment {
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, paidOn: r.paid_on as string, amount: Number(r.amount ?? 0), method: s(r.method), kind: (r.kind as RetreatPayment['kind']) ?? 'payment', note: s(r.note), createdAt: r.created_at as string };
+}
+function rowToIssue(r: Row): RetreatIssue {
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, title: r.title as string, reportedBy: s(r.reported_by), priority: (r.priority as string) ?? 'normal', assignedTo: s(r.assigned_to), status: (r.status as RetreatIssue['status']) ?? 'open', notes: s(r.notes), createdAt: r.created_at as string, resolvedAt: s(r.resolved_at), updatedAt: r.updated_at as string };
+}
+function rowToChecklistItem(r: Row): RetreatChecklistItem {
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, phase: (r.phase as RetreatChecklistItem['phase']) ?? 'setup', title: r.title as string, isDone: Boolean(r.is_done), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+}
+function rowToScheduleItem(r: Row): RetreatScheduleItem {
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, dayDate: s(r.day_date), timeLabel: s(r.time_label), title: r.title as string, location: s(r.location), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+}
+function rowToFeedback(r: Row): RetreatFeedback {
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, overall: n(r.overall), accommodations: n(r.accommodations), food: n(r.food), communication: n(r.communication), comment: s(r.comment), returningStatus: s(r.returning_status), receivedAt: r.received_at as string, createdAt: r.created_at as string };
+}
+function rowToReminder(r: Row): RetreatReminder {
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, reminderType: s(r.reminder_type), message: s(r.message), sentBy: s(r.sent_by), sentAt: r.sent_at as string };
+}
+
+// ─── Load + subscribe (one domain — retreat data is low-volume) ──────────────
+export interface RetreatData {
+  retreats: Retreat[]; spaces: RetreatSpace[]; housing: RetreatHousing[]; housingVersions: RetreatHousingVersion[];
+  documents: RetreatDocument[]; meals: RetreatMeal[]; changeRequests: RetreatChangeRequest[];
+  costs: RetreatCost[]; charges: RetreatCharge[]; payments: RetreatPayment[]; issues: RetreatIssue[];
+  checklist: RetreatChecklistItem[]; scheduleItems: RetreatScheduleItem[]; feedback: RetreatFeedback[]; reminders: RetreatReminder[];
+}
+
+const RETREAT_TABLES = [
+  'retreats', 'retreat_spaces', 'retreat_housing', 'retreat_housing_versions', 'retreat_documents',
+  'retreat_meals', 'retreat_change_requests', 'retreat_costs', 'retreat_charges', 'retreat_payments',
+  'retreat_issues', 'retreat_checklist', 'retreat_schedule_items', 'retreat_feedback', 'retreat_reminders',
+];
+
+async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
+  const q = (t: string) => supabase.from(t).select('*').eq('camp_id', campId);
+  const [re, sp, ho, hv, docs, meals, cr, costs, charges, pays, iss, chk, sched, fb, rem] = await Promise.all([
+    q('retreats').order('arrival_date', { ascending: true }),
+    q('retreat_spaces').order('sort_order', { ascending: true }),
+    q('retreat_housing').order('sort_order', { ascending: true }),
+    q('retreat_housing_versions').order('version', { ascending: false }),
+    q('retreat_documents').order('sort_order', { ascending: true }),
+    q('retreat_meals').order('day_date', { ascending: true }),
+    q('retreat_change_requests').order('submitted_at', { ascending: false }),
+    q('retreat_costs').order('sort_order', { ascending: true }),
+    q('retreat_charges').order('sort_order', { ascending: true }),
+    q('retreat_payments').order('paid_on', { ascending: false }),
+    q('retreat_issues').order('created_at', { ascending: false }),
+    q('retreat_checklist').order('sort_order', { ascending: true }),
+    q('retreat_schedule_items').order('sort_order', { ascending: true }),
+    q('retreat_feedback').order('received_at', { ascending: false }),
+    q('retreat_reminders').order('sent_at', { ascending: false }),
+  ]);
+  return {
+    retreats: (re.data ?? []).map((r) => rowToRetreat(r as Row)),
+    spaces: (sp.data ?? []).map((r) => rowToSpace(r as Row)),
+    housing: (ho.data ?? []).map((r) => rowToHousing(r as Row)),
+    housingVersions: (hv.data ?? []).map((r) => rowToHousingVersion(r as Row)),
+    documents: (docs.data ?? []).map((r) => rowToDocument(r as Row)),
+    meals: (meals.data ?? []).map((r) => rowToMeal(r as Row)),
+    changeRequests: (cr.data ?? []).map((r) => rowToChangeRequest(r as Row)),
+    costs: (costs.data ?? []).map((r) => rowToCost(r as Row)),
+    charges: (charges.data ?? []).map((r) => rowToCharge(r as Row)),
+    payments: (pays.data ?? []).map((r) => rowToPayment(r as Row)),
+    issues: (iss.data ?? []).map((r) => rowToIssue(r as Row)),
+    checklist: (chk.data ?? []).map((r) => rowToChecklistItem(r as Row)),
+    scheduleItems: (sched.data ?? []).map((r) => rowToScheduleItem(r as Row)),
+    feedback: (fb.data ?? []).map((r) => rowToFeedback(r as Row)),
+    reminders: (rem.data ?? []).map((r) => rowToReminder(r as Row)),
+  };
+}
+
+export async function loadRetreats(campId: string): Promise<RetreatData | null> {
+  try { return await loadRetreatDataInner(campId); }
+  catch (e) { campError('[Supabase] loadRetreats threw:', e); return null; }
+}
+
+let retreatChannelCount = 0;
+export function subscribeToRetreats(campId: string, onUpdate: (d: RetreatData) => void, onEventStart?: () => void): () => void {
+  const reload = async () => { onEventStart?.(); onUpdate(await loadRetreatDataInner(campId)); };
+  let channel = supabase.channel(`retreats-${++retreatChannelCount}`);
+  for (const table of RETREAT_TABLES) {
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, reload);
+  }
+  let everSubscribed = false;
+  channel.subscribe((status) => {
+    campLog(`[CampOps] retreats status:`, status);
+    if (status === 'SUBSCRIBED') {
+      if (everSubscribed) { onEventStart?.(); setTimeout(() => reload(), 10000); } else everSubscribed = true;
+    }
+  });
+  return () => { supabase.removeChannel(channel); };
+}
+
+// ─── Writers (fire-and-forget; realtime delivers the authoritative rows) ─────
+async function ins(table: string, row: Row) { const { error } = await supabase.from(table).insert(row); if (error) campError(`insert ${table}`, error.message); }
+async function upd(table: string, id: string, patch: Row) { const { error } = await supabase.from(table).update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id); if (error) campError(`update ${table}`, error.message); }
+async function del(table: string, id: string) { const { error } = await supabase.from(table).delete().eq('id', id); if (error) campError(`delete ${table}`, error.message); }
+
+const CID = () => getCampId();
+
+export function retreatToRow(r: Retreat): Row {
+  return {
+    id: r.id, camp_id: CID(), group_name: r.groupName, group_type: r.groupType,
+    arrival_date: r.arrivalDate, departure_date: r.departureDate, headcount: r.headcount,
+    pricing_model: r.pricingModel, flat_rate: r.flatRate,
+    rate_per_person_night: r.ratePerPersonNight, deposit_required: r.depositRequired, deposit_received: r.depositReceived,
+    coordinator_name: r.coordinatorName, coordinator_email: r.coordinatorEmail, coordinator_phone: r.coordinatorPhone,
+    status: r.status, housing_deadline: r.housingDeadline, headcount_cutoff: r.headcountCutoff,
+    dietary_flags: r.dietaryFlags, notes: r.notes, portal_token: r.portalToken,
+    menu_published: r.menuPublished, change_requests_enabled: r.changeRequestsEnabled, feedback_opens: r.feedbackOpens,
+    created_at: r.createdAt, updated_at: r.updatedAt,
+  };
+}
+export const dbAddRetreat = (r: Retreat) => ins('retreats', retreatToRow(r));
+export function dbUpdateRetreat(r: Retreat) {
+  const row = retreatToRow(r); delete row.id; delete row.camp_id; delete row.created_at;
+  return upd('retreats', r.id, row);
+}
+export const dbDeleteRetreat = (id: string) => del('retreats', id);
+
+export const dbAddSpace = (x: RetreatSpace) => ins('retreat_spaces', { id: x.id, camp_id: CID(), name: x.name, bed_capacity: x.bedCapacity, accessible: x.accessible, notes: x.notes, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbUpdateSpace = (x: RetreatSpace) => upd('retreat_spaces', x.id, { name: x.name, bed_capacity: x.bedCapacity, accessible: x.accessible, notes: x.notes, sort_order: x.sortOrder });
+export const dbDeleteSpace = (id: string) => del('retreat_spaces', id);
+
+export const dbAddHousing = (x: RetreatHousing) => ins('retreat_housing', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, space_id: x.spaceId, space_name: x.spaceName, subgroup_name: x.subgroupName, people_count: x.peopleCount, notes: x.notes, locked: x.locked, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbUpdateHousing = (x: RetreatHousing) => upd('retreat_housing', x.id, { space_id: x.spaceId, space_name: x.spaceName, subgroup_name: x.subgroupName, people_count: x.peopleCount, notes: x.notes, locked: x.locked, sort_order: x.sortOrder });
+export const dbDeleteHousing = (id: string) => del('retreat_housing', id);
+export async function dbSetHousingLock(retreatId: string, locked: boolean) { const { error } = await supabase.from('retreat_housing').update({ locked, updated_at: new Date().toISOString() }).eq('retreat_id', retreatId); if (error) campError('lock housing', error.message); }
+
+export const dbAddHousingVersion = (x: RetreatHousingVersion) => ins('retreat_housing_versions', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, version: x.version, label: x.label, summary: x.summary, created_by: x.createdBy, created_at: x.createdAt });
+
+export const dbAddDocument = (x: RetreatDocument) => ins('retreat_documents', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, doc_type: x.docType, name: x.name, status: x.status, file_path: x.filePath, signed_by: x.signedBy, signed_at: x.signedAt, due_date: x.dueDate, meta: x.meta, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbUpdateDocument = (x: RetreatDocument) => upd('retreat_documents', x.id, { doc_type: x.docType, name: x.name, status: x.status, file_path: x.filePath, signed_by: x.signedBy, signed_at: x.signedAt, due_date: x.dueDate, meta: x.meta, sort_order: x.sortOrder });
+export const dbDeleteDocument = (id: string) => del('retreat_documents', id);
+
+export const dbAddMeal = (x: RetreatMeal) => ins('retreat_meals', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, day_date: x.dayDate, meal_period: x.mealPeriod, name: x.name, items: x.items, allergens: x.allergens, alternatives: x.alternatives, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbUpdateMeal = (x: RetreatMeal) => upd('retreat_meals', x.id, { day_date: x.dayDate, meal_period: x.mealPeriod, name: x.name, items: x.items, allergens: x.allergens, alternatives: x.alternatives, sort_order: x.sortOrder });
+export const dbDeleteMeal = (id: string) => del('retreat_meals', id);
+
+export const dbAddChangeRequest = (x: RetreatChangeRequest) => ins('retreat_change_requests', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, kind: x.kind, submitted_by: x.submittedBy, submitted_at: x.submittedAt, body: x.body, status: x.status, response_message: x.responseMessage, internal_note: x.internalNote, responded_by: x.respondedBy, responded_at: x.respondedAt, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbUpdateChangeRequest = (x: RetreatChangeRequest) => upd('retreat_change_requests', x.id, { kind: x.kind, body: x.body, status: x.status, response_message: x.responseMessage, internal_note: x.internalNote, responded_by: x.respondedBy, responded_at: x.respondedAt });
+
+export const dbAddCost = (x: RetreatCost) => ins('retreat_costs', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, category: x.category, budgeted: x.budgeted, actual: x.actual, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbUpdateCost = (x: RetreatCost) => upd('retreat_costs', x.id, { category: x.category, budgeted: x.budgeted, actual: x.actual, sort_order: x.sortOrder });
+export const dbDeleteCost = (id: string) => del('retreat_costs', id);
+
+export const dbAddCharge = (x: RetreatCharge) => ins('retreat_charges', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, description: x.description, qty: x.qty, unit_rate: x.unitRate, amount: x.amount, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbUpdateCharge = (x: RetreatCharge) => upd('retreat_charges', x.id, { description: x.description, qty: x.qty, unit_rate: x.unitRate, amount: x.amount, sort_order: x.sortOrder });
+export const dbDeleteCharge = (id: string) => del('retreat_charges', id);
+
+export const dbAddPayment = (x: RetreatPayment) => ins('retreat_payments', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, paid_on: x.paidOn, amount: x.amount, method: x.method, kind: x.kind, note: x.note, created_at: x.createdAt });
+export const dbDeletePayment = (id: string) => del('retreat_payments', id);
+
+export const dbAddIssue = (x: RetreatIssue) => ins('retreat_issues', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, title: x.title, reported_by: x.reportedBy, priority: x.priority, assigned_to: x.assignedTo, status: x.status, notes: x.notes, created_at: x.createdAt, resolved_at: x.resolvedAt, updated_at: x.updatedAt });
+export const dbUpdateIssue = (x: RetreatIssue) => upd('retreat_issues', x.id, { title: x.title, reported_by: x.reportedBy, priority: x.priority, assigned_to: x.assignedTo, status: x.status, notes: x.notes, resolved_at: x.resolvedAt });
+export const dbDeleteIssue = (id: string) => del('retreat_issues', id);
+
+export const dbAddChecklistItem = (x: RetreatChecklistItem) => ins('retreat_checklist', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, phase: x.phase, title: x.title, is_done: x.isDone, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbUpdateChecklistItem = (x: RetreatChecklistItem) => upd('retreat_checklist', x.id, { phase: x.phase, title: x.title, is_done: x.isDone, sort_order: x.sortOrder });
+export const dbDeleteChecklistItem = (id: string) => del('retreat_checklist', id);
+
+export const dbAddScheduleItem = (x: RetreatScheduleItem) => ins('retreat_schedule_items', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, day_date: x.dayDate, time_label: x.timeLabel, title: x.title, location: x.location, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbUpdateScheduleItem = (x: RetreatScheduleItem) => upd('retreat_schedule_items', x.id, { day_date: x.dayDate, time_label: x.timeLabel, title: x.title, location: x.location, sort_order: x.sortOrder });
+export const dbDeleteScheduleItem = (id: string) => del('retreat_schedule_items', id);
+
+export const dbAddFeedback = (x: RetreatFeedback) => ins('retreat_feedback', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, overall: x.overall, accommodations: x.accommodations, food: x.food, communication: x.communication, comment: x.comment, returning_status: x.returningStatus, received_at: x.receivedAt, created_at: x.createdAt });
+export const dbDeleteFeedback = (id: string) => del('retreat_feedback', id);
+
+export const dbAddReminder = (x: RetreatReminder) => ins('retreat_reminders', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, reminder_type: x.reminderType, message: x.message, sent_by: x.sentBy, sent_at: x.sentAt });
+
+// ─── Document storage (private bucket, signed URLs) ──────────────────────────
+export async function dbUploadRetreatDocument(file: File, retreatId: string): Promise<string | null> {
+  const path = `${CID()}/${retreatId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+  const { error } = await supabase.storage.from('retreat-documents').upload(path, file);
+  if (error) { campError('upload retreat doc', error.message); return null; }
+  return path;
+}
+export async function dbSignRetreatDocument(path: string): Promise<string | null> {
+  const { data, error } = await supabase.storage.from('retreat-documents').createSignedUrl(path, 60 * 30);
+  if (error) { campError('sign retreat doc', error.message); return null; }
+  return data?.signedUrl ?? null;
+}
+
+/** Rotate the guest-portal token, invalidating the old link. Returns the new token. */
+export async function dbRegeneratePortalToken(retreatId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc('regenerate_portal_token', { p_retreat_id: retreatId });
+  if (error) { campError('regenerate portal token', error.message); return null; }
+  return (data as string) ?? null;
+}

@@ -1,0 +1,43 @@
+name: Supabase Security Advisors
+
+# Fails the build if the Supabase project reports any ERROR-level security advisor,
+# so schema/policy drift (e.g. an accidentally public table, a SECURITY DEFINER view,
+# an over-broad grant) is caught automatically instead of in the next manual audit.
+#
+# Setup (one time):
+#   1. Create a Supabase personal access token: https://supabase.com/dashboard/account/tokens
+#   2. In this repo: Settings → Secrets and variables → Actions, add:
+#        - secret  SUPABASE_ACCESS_TOKEN  = <the token>
+#        - variable SUPABASE_PROJECT_REF  = fbfxeupqguzxrbyqojyg
+#   3. Verify the advisors endpoint path against the current Management API docs:
+#        https://supabase.com/docs/reference/api  (advisors)
+
+on:
+  schedule:
+    - cron: '0 13 * * 1' # every Monday 13:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  advisors:
+    name: Check security advisors
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch & evaluate security advisors
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ vars.SUPABASE_PROJECT_REF }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TOKEN:-}" ] || [ -z "${REF:-}" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN secret and SUPABASE_PROJECT_REF variable must be set."
+            exit 1
+          fi
+          resp=$(curl -sf -H "Authorization: Bearer $TOKEN" \
+            "https://api.supabase.com/v1/projects/$REF/advisors/security")
+          echo "$resp" | jq -r '.lints[] | "[\(.level)] \(.name): \(.detail)"' || true
+          errors=$(echo "$resp" | jq '[.lints[] | select(.level=="ERROR")] | length')
+          echo "ERROR-level advisors: $errors"
+          if [ "$errors" -gt 0 ]; then
+            echo "::error::Supabase reported $errors ERROR-level security advisor(s). Review before merging/deploying."
+            exit 1
+          fi

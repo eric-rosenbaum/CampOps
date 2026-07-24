@@ -2,13 +2,14 @@ interface Props {
   label: string;
   value: string | number;
   hint?: string;
-  variant?: 'default' | 'red' | 'amber';
+  variant?: 'default' | 'red' | 'amber' | 'green';
 }
 
 const valueColors = {
   default: 'text-forest',
   red: 'text-red',
   amber: 'text-amber',
+  green: 'text-green-muted-text',
 };
 
 export function StatCard({ label, value, hint, variant = 'default' }: Props) {

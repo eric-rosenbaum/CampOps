@@ -29,6 +29,11 @@ import { SafetyCompliance } from '@/pages/SafetyCompliance';
 import AssetVehicles from '@/pages/AssetVehicles';
 import { BuildingSystems } from '@/pages/BuildingSystems';
 import { Commissary } from '@/pages/Commissary';
+import { Retreats } from '@/pages/Retreats';
+import { RetreatPortal } from '@/pages/portal/RetreatPortal';
+import { PrivacyPolicy } from '@/pages/legal/PrivacyPolicy';
+import { SecurityOverview } from '@/pages/legal/SecurityOverview';
+import { Dpa } from '@/pages/legal/Dpa';
 
 // My Tasks
 import { MyTasks } from '@/pages/MyTasks';
@@ -36,6 +41,7 @@ import { MyTasks } from '@/pages/MyTasks';
 // Settings
 import { Team } from '@/pages/settings/Team';
 import { CampSettings } from '@/pages/settings/CampSettings';
+import { SecuritySettings } from '@/pages/settings/SecuritySettings';
 
 // Data loading
 import {
@@ -62,6 +68,8 @@ import { useSafetyStore } from '@/store/safetyStore';
 import { useAssetStore } from '@/store/assetStore';
 import { useBuildingStore } from '@/store/buildingStore';
 import { useCommissaryStore } from '@/store/commissaryStore';
+import { loadRetreats, subscribeToRetreats } from '@/lib/retreatsDb';
+import { useRetreatStore } from '@/store/retreatStore';
 import { useCampStore as useCamp } from '@/store/campStore';
 
 function HomeRouter() {
@@ -91,6 +99,11 @@ function CampDataLoader() {
     setDietCounts, setMealEvents, setExpenses,
     setCourses, setSubstitutions, setFiles,
   } = useCommissaryStore();
+  const {
+    setRetreats, setSpaces, setHousing, setHousingVersions, setDocuments: setRetreatDocs,
+    setMeals: setRetreatMeals, setChangeRequests, setCosts: setRetreatCosts, setCharges, setPayments,
+    setIssues: setRetreatIssues, setChecklist, setScheduleItems, setFeedback, setReminders,
+  } = useRetreatStore();
 
   useEffect(() => {
     if (!campId) return;
@@ -109,6 +122,7 @@ function CampDataLoader() {
     let unsubCommOrders: (() => void) | null = null;
     let unsubCommProduction: (() => void) | null = null;
     let unsubCommAllergy: (() => void) | null = null;
+    let unsubRetreats: (() => void) | null = null;
 
     // Start the Supabase keep-alive heartbeat.  Pings every 30 s while visible to
     // keep the TCP socket from going stale and to refresh the JWT before expiry.
@@ -130,6 +144,7 @@ function CampDataLoader() {
     let commOrdersSyncedAt = 0;
     let commProductionSyncedAt = 0;
     let commAllergySyncedAt = 0;
+    let retreatsSyncedAt = 0;
 
     // Start subscriptions FIRST so any writes during the initial data load are captured.
     // If subscriptions were started after loading, a write that completes before the
@@ -208,6 +223,15 @@ function CampDataLoader() {
       setRestrictionSummary(d.summary);
       setFiles(d.files);
     }, () => { commAllergySyncedAt = Date.now(); });
+
+    // Retreats — one low-volume domain (a handful of retreats per camp).
+    const applyRetreatData = (d: import('@/lib/retreatsDb').RetreatData) => {
+      setRetreats(d.retreats); setSpaces(d.spaces); setHousing(d.housing); setHousingVersions(d.housingVersions);
+      setRetreatDocs(d.documents); setRetreatMeals(d.meals); setChangeRequests(d.changeRequests);
+      setRetreatCosts(d.costs); setCharges(d.charges); setPayments(d.payments); setRetreatIssues(d.issues);
+      setChecklist(d.checklist); setScheduleItems(d.scheduleItems); setFeedback(d.feedback); setReminders(d.reminders);
+    };
+    unsubRetreats = subscribeToRetreats(campId, applyRetreatData, () => { retreatsSyncedAt = Date.now(); });
 
     // Load initial data after subscriptions are live.
     // Skip each setter if the subscription already fired — the subscription's refetch
@@ -317,6 +341,11 @@ function CampDataLoader() {
       setFiles(data.files);
     });
 
+    loadRetreats(campId).then((data) => {
+      if (!data || retreatsSyncedAt > loadStartedAt) return;
+      applyRetreatData(data);
+    });
+
     // Refetch after the tab has been hidden long enough that the realtime subscription
     // may have missed events (e.g. WebSocket disconnected during sleep/long absence).
     // We skip the refetch for short tab switches to avoid a race: a quick refetch can
@@ -412,6 +441,7 @@ function CampDataLoader() {
       unsubCommOrders?.();
       unsubCommProduction?.();
       unsubCommAllergy?.();
+      unsubRetreats?.();
       stopHeartbeat();
       stopWriteQueue();
       document.removeEventListener('visibilitychange', handleVisibility);
@@ -453,6 +483,12 @@ export default function App() {
           {/* Public — handles auth inline */}
           <Route path="/join" element={<JoinCamp />} />
           <Route path="/report/:camp" element={<PublicReportForm />} />
+          <Route path="/portal/:token" element={<RetreatPortal />} />
+
+          {/* Public legal / trust pages */}
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/security" element={<SecurityOverview />} />
+          <Route path="/dpa" element={<Dpa />} />
 
           {/* Authenticated — no camp required */}
           <Route element={<ProtectedRoute />}>
@@ -475,8 +511,10 @@ export default function App() {
                 <Route path="/assets" element={<AssetVehicles />} />
                 <Route path="/building" element={<BuildingSystems />} />
                 <Route path="/commissary" element={<Commissary />} />
+                <Route path="/retreats" element={<Retreats />} />
                 <Route path="/settings" element={<CampSettings />} />
                 <Route path="/settings/team" element={<Team />} />
+                <Route path="/settings/security" element={<SecuritySettings />} />
               </Route>
             </Route>
           </Route>

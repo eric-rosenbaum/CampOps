@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Wrench, ClipboardList,
-  TreePine, Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut,
+  TreePine, Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useCampStore } from '@/store/campStore';
@@ -33,9 +33,14 @@ const facilityItems: NavItem[] = [
   { path: '/commissary', label: 'Commissary', icon: UtensilsCrossed, end: false, module: 'commissary' },
 ];
 
+const retreatItems: NavItem[] = [
+  { path: '/retreats', label: 'Retreat Manager', icon: CalendarRange, end: false, module: 'retreats' },
+];
+
 const settingsItems: NavItem[] = [
   { path: '/settings', label: 'Camp Info', icon: Settings, end: true },
   { path: '/settings/team', label: 'Team', icon: Settings, end: false },
+  { path: '/settings/security', label: 'Security & Privacy', icon: ShieldCheck, end: false },
 ];
 
 export function Sidebar() {
@@ -52,11 +57,17 @@ export function Sidebar() {
   const visibleFacilities = facilityItems.filter(
     (item) => !item.module || canAccessModule(item.module)
   );
+  const visibleRetreats = retreatItems.filter(
+    (item) => !item.module || canAccessModule(item.module)
+  );
 
   const navSections = [
     { section: 'Today', items: todayItems },
     ...(visibleFacilities.length > 0
       ? [{ section: 'Facilities', items: visibleFacilities }]
+      : []),
+    ...(visibleRetreats.length > 0
+      ? [{ section: 'Retreats', items: visibleRetreats }]
       : []),
   ];
 
@@ -126,13 +137,24 @@ export function Sidebar() {
       <div className="px-5 py-4 border-t border-white/10">
         <p className="text-[12px] font-medium text-white/80 truncate">{currentCamp?.name ?? ''}</p>
         <p className="text-[11px] text-white/40 mt-0.5 truncate">{currentUser.name} — {roleLabel}</p>
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-1.5 mt-3 text-[11px] text-white/30 hover:text-white/60 transition-colors"
-        >
-          <LogOut className="w-3 h-3" />
-          Sign out
-        </button>
+        <div className="flex items-center gap-3 mt-3">
+          {role !== 'admin' && (
+            <NavLink
+              to="/settings/security"
+              className="flex items-center gap-1.5 text-[11px] text-white/30 hover:text-white/60 transition-colors"
+            >
+              <Lock className="w-3 h-3" />
+              Security
+            </NavLink>
+          )}
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-1.5 text-[11px] text-white/30 hover:text-white/60 transition-colors"
+          >
+            <LogOut className="w-3 h-3" />
+            Sign out
+          </button>
+        </div>
       </div>
     </aside>
   );

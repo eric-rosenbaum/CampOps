@@ -41,7 +41,11 @@ export function Login() {
             Manage issues, safety, pools, and more — all in one place for your entire staff.
           </p>
         </div>
-        <p className="text-[11px] text-cream/30">Built for camp operators.</p>
+        <div className="flex items-center gap-4 text-[11px] text-cream/30">
+          <span>Built for camp operators.</span>
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-cream/60 transition-colors">Privacy</a>
+          <a href="/security" target="_blank" rel="noopener noreferrer" className="hover:text-cream/60 transition-colors">Security</a>
+        </div>
       </div>
 
       {/* Right form panel */}

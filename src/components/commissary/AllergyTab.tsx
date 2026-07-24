@@ -1,8 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { HeartPulse, AlertTriangle, Lock, Upload, Users } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { StatCard } from '@/components/shared/StatCard';
 import { useCommissaryStore } from '@/store/commissaryStore';
+import { useCampStore } from '@/store/campStore';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import {
   ALLERGENS, ALLERGEN_LABELS, DIETARY_RESTRICTIONS, restrictionLabel,
@@ -39,6 +41,14 @@ export function AllergyTab() {
     sessionIdsFor(camperId).map((id) => sessions.find((s) => s.id === id)?.name).filter(Boolean);
   const replacementCount = substitutionsForSession().length;
   const { canViewCamperHealth, can } = useAuth();
+  const campId = useCampStore((s) => s.currentCamp?.id);
+
+  // Audit access to named camper-health data (once per view), for the compliance trail.
+  useEffect(() => {
+    if (canViewCamperHealth && campId) {
+      supabase.rpc('log_audit_event', { p_camp_id: campId, p_action: 'view_camper_health' });
+    }
+  }, [canViewCamperHealth, campId]);
   // Adding a camper needs BOTH the module permission and health access — the DB
   // rejects the write otherwise, so don't render a control that cannot succeed.
   const canManage = can('manageCommissary') && canViewCamperHealth;

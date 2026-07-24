@@ -47,6 +47,7 @@ const MODULE_OPTIONS = [
   // NOTE: camp.modules uses short keys; StaffGroupModules uses long ones
   // ('building_systems'). Inconsistent, but load-bearing — match, don't refactor.
   { key: 'commissary', label: 'Commissary',           desc: 'Inventory, recipes, menu planning' },
+  { key: 'retreats',   label: 'Retreat Manager',      desc: 'External group rentals, guest portal, invoicing' },
 ];
 
 // ── Profile tab ───────────────────────────────────────────────────────────────

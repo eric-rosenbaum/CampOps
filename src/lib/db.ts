@@ -29,6 +29,8 @@ import type {
 // Set by campStore when a camp is selected, used by all write functions.
 let _campId = '';
 export function setCampId(id: string) { _campId = id; }
+/** Current camp id, for db helpers that live in sibling files (e.g. retreatsDb). */
+export function getCampId() { return _campId; }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -2435,7 +2437,7 @@ async function loadAllergyData(campId: string): Promise<CommissaryAllergyData> {
     supabase.from('campers').select('*').eq('camp_id', campId).order('name', { ascending: true }),
     supabase.from('camper_restrictions').select('*').eq('camp_id', campId),
     supabase.from('camper_sessions').select('camper_id, session_id').eq('camp_id', campId),
-    supabase.from('camper_restriction_summary').select('*').eq('camp_id', campId),
+    supabase.rpc('get_restriction_summary', { p_camp_id: campId }),
     supabase.from('commissary_files').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
   ]);
   return {
@@ -2446,8 +2448,7 @@ async function loadAllergyData(campId: string): Promise<CommissaryAllergyData> {
       const row = r as Record<string, unknown>;
       return { camperId: row.camper_id as string, sessionId: row.session_id as string };
     }),
-    summary: (sRes.data ?? []).map((r) => {
-      const row = r as Record<string, unknown>;
+    summary: ((sRes.data as Record<string, unknown>[] | null) ?? []).map((row) => {
       return {
         sessionId: (row.session_id as string) ?? null,
         restriction: row.restriction as string,

@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CampOps — Retreats</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --forest: #1a2e1a; --forest-mid: #2d4a2d;
+  --sage: #7aab6e; --sage-light: #a8c99f; --sage-pale: #e1f0dc;
+  --cream: #f5f2eb; --cream-dark: #ede9df;
+  --amber: #c47d08; --amber-bg: #fef5e4; --amber-text: #7d4e00;
+  --red: #c0392b; --red-bg: #fdecea; --red-text: #7a1a1a;
+  --green: #1e6b1e; --green-bg: #eaf3e8;
+  --blue: #185fa5; --blue-bg: #e6f1fb; --blue-text: #0c447c;
+  --purple: #6b3fa0; --purple-bg: #f0ebfc; --purple-text: #3d1f6b;
+  --text-primary: #1a2e1a; --text-secondary: #4a6741; --text-muted: #7a9472;
+  --border: #d4cfc4; --white: #ffffff;
+}
+html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--text-primary); }
+.app { display: flex; height: 100vh; overflow: hidden; }
+
+/* Sidebar */
+.sidebar { width: 224px; background: var(--forest); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+.sidebar-logo { padding: 22px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.logo-mark { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; color: var(--sage-light); letter-spacing: 0.08em; text-transform: uppercase; }
+.logo-sub { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 3px; }
+.sidebar-nav { padding: 10px 0; flex: 1; }
+.nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(255,255,255,0.22); padding: 10px 20px 4px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.5); cursor: pointer; border-left: 2px solid transparent; transition: all 0.15s; }
+.nav-item:hover { color: rgba(255,255,255,0.82); background: rgba(255,255,255,0.05); }
+.nav-item.active { color: var(--sage-light); background: rgba(122,171,110,0.14); border-left-color: var(--sage); }
+.nav-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.sidebar-footer { padding: 14px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
+.camp-name { color: rgba(255,255,255,0.65); font-weight: 500; font-size: 12px; }
+.camp-user { color: rgba(255,255,255,0.3); font-size: 11px; margin-top: 2px; }
+
+/* Main */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.page-title { font-size: 18px; font-weight: 600; }
+.page-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.topbar-right { display: flex; gap: 10px; }
+.btn { padding: 8px 16px; border-radius: 7px; font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: var(--forest); color: white; }
+.btn-primary:hover { background: var(--forest-mid); }
+.btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--cream-dark); }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-sage { background: var(--sage); color: white; border: none; }
+.btn-sage:hover { background: var(--sage-light); }
+
+/* Tabs */
+.mod-bar { background: var(--white); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; flex-shrink: 0; overflow-x: auto; }
+.mod-tab { padding: 12px 18px; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.15s; user-select: none; }
+.mod-tab:hover { color: var(--text-secondary); }
+.mod-tab.active { color: var(--forest); border-bottom-color: var(--sage); font-weight: 600; }
+.content { flex: 1; overflow-y: auto; padding: 24px 28px; display: none; }
+.content.active { display: block; }
+
+/* Stats */
+.stat-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+.stat-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+.stat-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.stat-val { font-size: 28px; font-weight: 600; font-family: 'DM Mono', monospace; margin-top: 5px; color: var(--text-primary); }
+.stat-hint { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.stat-card.ok .stat-val { color: var(--green); }
+.stat-card.warn .stat-val { color: var(--amber); } .stat-card.warn .stat-hint { color: var(--amber); }
+.stat-card.alert .stat-val { color: var(--red); } .stat-card.alert .stat-hint { color: var(--red); }
+
+/* Banners */
+.alert-banner { background: var(--red-bg); border: 1px solid #f5c0bc; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+.alert-icon { width: 20px; height: 20px; background: var(--red); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: 700; flex-shrink: 0; }
+.alert-text { font-size: 13px; color: var(--red-text); flex: 1; line-height: 1.5; }
+.alert-btn { font-size: 12px; font-weight: 600; color: var(--red); border: 1px solid var(--red); padding: 5px 12px; border-radius: 5px; background: transparent; font-family: 'DM Sans', sans-serif; cursor: pointer; white-space: nowrap; }
+.warn-banner { background: var(--amber-bg); border: 1px solid #f5d98a; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+.warn-icon { width: 20px; height: 20px; background: var(--amber); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: 700; flex-shrink: 0; }
+.warn-text { font-size: 13px; color: var(--amber-text); flex: 1; line-height: 1.5; }
+
+/* Badges */
+.badge { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; display: inline-block; }
+.badge-ok { background: var(--green-bg); color: var(--green); }
+.badge-warn { background: var(--amber-bg); color: var(--amber-text); }
+.badge-alert { background: var(--red-bg); color: var(--red); }
+.badge-neutral { background: var(--cream-dark); color: var(--text-secondary); }
+.badge-blue { background: var(--blue-bg); color: var(--blue-text); }
+.badge-purple { background: var(--purple-bg); color: var(--purple-text); }
+.badge-sage { background: var(--sage-pale); color: var(--forest); }
+
+/* Section header */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; margin-top: 4px; }
+.section-title { font-size: 14px; font-weight: 600; }
+
+/* Retreat cards — overview */
+.retreat-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+.retreat-card { background: var(--white); border: 1px solid var(--border); border-left: 3px solid transparent; border-radius: 10px; padding: 18px 22px; cursor: pointer; transition: all 0.15s; }
+.retreat-card:hover { box-shadow: 0 3px 14px rgba(26,46,26,0.10); }
+.retreat-card.active-now { border-left-color: var(--sage); }
+.retreat-card.upcoming { border-left-color: var(--blue); }
+.retreat-card.pending { border-left-color: var(--amber); }
+.retreat-card.complete { border-left-color: var(--cream-dark); opacity: 0.8; }
+
+.rc-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+.rc-name { font-size: 15px; font-weight: 600; }
+.rc-type { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.rc-dates { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text-muted); }
+.rc-badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+.rc-progress { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--cream-dark); }
+.rc-phase { text-align: center; }
+.rc-phase-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 4px; }
+.phase-dot { width: 24px; height: 24px; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.phase-done { background: var(--sage); color: white; }
+.phase-active { background: var(--amber); color: white; }
+.phase-locked { background: var(--cream-dark); color: var(--text-muted); }
+
+.rc-footer { display: flex; gap: 8px; margin-top: 14px; }
+
+/* Pipeline view */
+.pipeline { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+.pipeline-col { background: var(--cream-dark); border-radius: 10px; padding: 14px; }
+.pipeline-col-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 10px; }
+.pipeline-item { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; }
+.pipeline-item:hover { box-shadow: 0 2px 8px rgba(26,46,26,0.08); }
+.pi-name { font-size: 13px; font-weight: 600; }
+.pi-dates { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-family: 'DM Mono', monospace; }
+.pi-count { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+
+/* Active retreat detail */
+.active-retreat-header { background: var(--forest); border-radius: 12px; padding: 22px 26px; margin-bottom: 20px; color: white; display: flex; align-items: center; justify-content: space-between; }
+.arh-name { font-size: 20px; font-weight: 600; }
+.arh-meta { font-size: 12px; color: var(--sage-light); margin-top: 4px; }
+.arh-right { text-align: right; }
+.arh-countdown { font-size: 28px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--sage-light); }
+.arh-countdown-label { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+
+.active-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.active-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+.ac-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 12px; }
+.ac-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--cream-dark); font-size: 13px; }
+.ac-row:last-child { border-bottom: none; }
+.ac-key { color: var(--text-muted); }
+.ac-val { font-weight: 500; }
+
+/* Phase timeline */
+.phase-timeline { display: flex; gap: 0; margin-bottom: 24px; }
+.phase-step { flex: 1; position: relative; }
+.phase-step::after { content: ''; position: absolute; top: 20px; right: -1px; width: calc(100% - 40px); height: 2px; background: var(--cream-dark); z-index: 0; }
+.phase-step:last-child::after { display: none; }
+.phase-step.done::after { background: var(--sage); }
+.ps-dot { width: 40px; height: 40px; border-radius: 50%; background: var(--cream-dark); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--text-muted); position: relative; z-index: 1; }
+.phase-step.done .ps-dot { background: var(--sage); border-color: var(--sage); color: white; }
+.phase-step.active .ps-dot { background: var(--amber); border-color: var(--amber); color: white; }
+.ps-label { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-top: 6px; }
+.ps-sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.phase-step.done .ps-label { color: var(--green); }
+.phase-step.active .ps-label { color: var(--amber); font-weight: 700; }
+
+/* Document status */
+.doc-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.doc-row { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 14px; }
+.doc-icon { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.doc-icon.signed { background: var(--green-bg); }
+.doc-icon.pending { background: var(--amber-bg); }
+.doc-icon.missing { background: var(--red-bg); }
+.doc-body { flex: 1; }
+.doc-name { font-size: 13px; font-weight: 600; }
+.doc-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.doc-right { text-align: right; flex-shrink: 0; }
+.doc-date { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text-muted); }
+
+/* Housing grid */
+.housing-phase-banner { border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; }
+.housing-phase-banner.phase-1 { background: var(--blue-bg); border: 1px solid #b5d4f4; }
+.housing-phase-banner.phase-2 { background: var(--amber-bg); border: 1px solid #f5d98a; }
+.housing-phase-banner.phase-3 { background: var(--green-bg); border: 1px solid #a8d8a8; }
+.hpb-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.hpb-title.blue { color: var(--blue-text); }
+.hpb-title.amber { color: var(--amber-text); }
+.hpb-title.green { color: var(--green); }
+.hpb-body { font-size: 12px; line-height: 1.5; }
+.hpb-body.blue { color: var(--blue-text); }
+.hpb-body.amber { color: var(--amber-text); }
+.hpb-body.green { color: var(--green); }
+
+.cabin-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+.cabin-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+.cabin-card.assigned { border-color: var(--sage); background: var(--sage-pale); }
+.cabin-card.modified { border-color: var(--amber); }
+.cabin-card.available { border-color: var(--border); }
+.cabin-card.locked { border-color: var(--sage); }
+.cc-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+.cc-name { font-size: 13px; font-weight: 600; }
+.cc-capacity { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.cc-group { font-size: 12px; color: var(--forest); font-weight: 500; margin-bottom: 6px; }
+.cc-notes { font-size: 11px; color: var(--text-muted); font-style: italic; }
+.cc-beds { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 8px; }
+.bed-dot { width: 10px; height: 10px; border-radius: 50%; }
+.bed-taken { background: var(--sage); }
+.bed-empty { background: var(--cream-dark); }
+
+/* Change request list */
+.cr-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.cr-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; }
+.cr-card.pending { border-left: 3px solid var(--amber); }
+.cr-card.approved { border-left: 3px solid var(--sage); }
+.cr-card.declined { border-left: 3px solid var(--red); }
+.cr-header { display: flex; align-items: flex-start; justify-content: space-between; }
+.cr-title { font-size: 13px; font-weight: 600; }
+.cr-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.cr-body { font-size: 13px; color: var(--text-secondary); margin-top: 8px; line-height: 1.5; }
+.cr-response { font-size: 12px; color: var(--text-muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--cream-dark); font-style: italic; }
+.cr-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+/* Menu table */
+.menu-table { background: var(--white); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+.mt-head { display: grid; grid-template-columns: 80px 1fr 1fr 1fr; padding: 10px 18px; background: var(--cream-dark); border-bottom: 1px solid var(--border); }
+.mt-head span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.mt-row { display: grid; grid-template-columns: 80px 1fr 1fr 1fr; padding: 12px 18px; border-bottom: 1px solid var(--cream-dark); align-items: start; }
+.mt-row:last-child { border-bottom: none; }
+.mt-day { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.mt-meal { }
+.mt-meal-name { font-size: 13px; font-weight: 500; }
+.mt-meal-items { font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
+.mt-allergen { font-size: 10px; background: var(--amber-bg); color: var(--amber-text); padding: 1px 5px; border-radius: 3px; display: inline-block; margin-top: 3px; }
+
+/* Feedback */
+.feedback-summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 20px; }
+.feedback-score { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; text-align: center; }
+.fs-val { font-size: 32px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--forest); }
+.fs-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+.fs-stars { color: var(--amber); font-size: 14px; margin-top: 4px; }
+
+.feedback-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin-bottom: 10px; }
+.fc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.fc-group { font-size: 14px; font-weight: 600; }
+.fc-date { font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+.fc-scores { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 12px; }
+.fc-score { background: var(--cream); border-radius: 6px; padding: 8px 10px; text-align: center; }
+.fc-score-val { font-size: 16px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--forest); }
+.fc-score-label { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.fc-comment { font-size: 13px; color: var(--text-secondary); line-height: 1.6; font-style: italic; padding: 10px 14px; background: var(--cream); border-radius: 6px; }
+.fc-returning { margin-top: 10px; font-size: 12px; }
+
+/* Cost tracker */
+.cost-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.cost-table { background: var(--white); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.ct-head { display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 10px 16px; background: var(--cream-dark); border-bottom: 1px solid var(--border); }
+.ct-head span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.ct-row { display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 10px 16px; border-bottom: 1px solid var(--cream-dark); font-size: 13px; }
+.ct-row:last-child { border-bottom: none; }
+.ct-label { color: var(--text-secondary); }
+.ct-val { font-family: 'DM Mono', monospace; font-weight: 500; }
+.ct-val.cost { color: var(--red); }
+.ct-val.rev { color: var(--green); }
+.ct-val.margin { color: var(--forest); font-weight: 600; }
+.ct-total { display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 12px 16px; background: var(--forest); }
+.ct-total span { font-size: 13px; font-weight: 600; color: white; font-family: 'DM Mono', monospace; }
+.ct-total span:first-child { color: var(--sage-light); }
+
+/* Guest portal preview */
+.portal-preview { background: var(--forest); border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; }
+.pp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.pp-title { font-size: 14px; font-weight: 600; color: white; }
+.pp-url { font-size: 11px; color: var(--sage-light); font-family: 'DM Mono', monospace; margin-top: 3px; }
+.pp-controls { display: flex; gap: 8px; }
+.pp-steps { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; }
+.pp-step { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 12px 14px; }
+.pp-step.unlocked { background: rgba(122,171,110,0.2); border: 1px solid rgba(122,171,110,0.4); }
+.pp-step.locked { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); opacity: 0.5; }
+.pp-step-num { font-size: 10px; font-weight: 700; color: var(--sage-light); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.pp-step-name { font-size: 12px; font-weight: 600; color: white; }
+.pp-step-status { font-size: 10px; color: var(--sage-light); margin-top: 4px; }
+.pp-step.locked .pp-step-status { color: rgba(255,255,255,0.3); }
+
+/* Pills */
+.pill-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.pill { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--white); color: var(--text-secondary); transition: all 0.15s; user-select: none; }
+.pill.on { background: var(--forest); color: white; border-color: var(--forest); }
+.pill:hover:not(.on) { background: var(--cream-dark); }
+
+/* Modal */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(20,36,20,0.5); z-index: 200; align-items: center; justify-content: center; }
+.overlay.open { display: flex; }
+.modal { background: var(--white); border-radius: 14px; width: 520px; max-height: 90vh; overflow-y: auto; padding: 28px; box-shadow: 0 16px 48px rgba(20,36,20,0.22); }
+.modal-lg { width: 680px; }
+.modal-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.modal-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
+.fg { margin-bottom: 14px; }
+.fl { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 5px; }
+.fi, .fs, .ft { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-primary); background: var(--white); outline: none; transition: border-color 0.15s; }
+.fi:focus, .fs:focus, .ft:focus { border-color: var(--sage); }
+.ft { resize: vertical; min-height: 70px; }
+.frow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.frow3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.modal-btns { display: flex; gap: 10px; margin-top: 22px; }
+.modal-btns .btn-primary { flex: 1; }
+
+.upload-zone { border: 2px dashed var(--border); border-radius: 8px; padding: 24px; text-align: center; font-size: 13px; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
+.upload-zone:hover { border-color: var(--sage); background: var(--sage-pale); }
+.upload-zone-icon { font-size: 24px; margin-bottom: 8px; }
+
+.allergen-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
+.allergen-chip { padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; cursor: pointer; transition: all 0.15s; text-align: center; }
+.allergen-chip.sel { background: var(--amber-bg); border-color: var(--amber); color: var(--amber-text); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">CampOps</div>
+      <div class="logo-sub">Operations Platform</div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-label">Facilities</div>
+      <div class="nav-item"><div class="nav-dot"></div> Issues &amp; repairs</div>
+      <div class="nav-item"><div class="nav-dot"></div> Pool management</div>
+      <div class="nav-item"><div class="nav-dot"></div> Safety &amp; compliance</div>
+      <div class="nav-item"><div class="nav-dot"></div> Asset &amp; vehicles</div>
+      <div class="nav-item"><div class="nav-dot"></div> Building systems</div>
+      <div class="nav-label">Retreats</div>
+      <div class="nav-item active"><div class="nav-dot"></div> Retreat manager</div>
+      <div class="nav-label">Commissary</div>
+      <div class="nav-item"><div class="nav-dot"></div> Inventory</div>
+      <div class="nav-item"><div class="nav-dot"></div> Menu builder</div>
+      <div class="nav-item"><div class="nav-dot"></div> Ordering</div>
+      <div class="nav-label">Finance</div>
+      <div class="nav-item"><div class="nav-dot"></div> Cost tracker</div>
+      <div class="nav-item"><div class="nav-dot"></div> Benchmarks</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="camp-name">Pinecrest Summer Camp</div>
+      <div class="camp-user">Jordan M. — Ops Director</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Retreat manager</div>
+        <div class="page-sub">Pinecrest Summer Camp · 3 upcoming retreats · 1 active · 2 pending documents</div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn btn-ghost">Export report</button>
+        <button class="btn btn-primary" onclick="openModal('newRetreatModal')">+ New retreat</button>
+      </div>
+    </div>
+
+    <div class="mod-bar">
+      <div class="mod-tab active" onclick="switchMod(this,'mod-overview')">Overview</div>
+      <div class="mod-tab" onclick="switchMod(this,'mod-active')">Active retreat</div>
+      <div class="mod-tab" onclick="switchMod(this,'mod-documents')">Documents &amp; compliance</div>
+      <div class="mod-tab" onclick="switchMod(this,'mod-housing')">Housing</div>
+      <div class="mod-tab" onclick="switchMod(this,'mod-menu')">Menu &amp; dining</div>
+      <div class="mod-tab" onclick="switchMod(this,'mod-requests')">Change requests</div>
+      <div class="mod-tab" onclick="switchMod(this,'mod-costs')">Costs &amp; invoice</div>
+      <div class="mod-tab" onclick="switchMod(this,'mod-portal')">Guest portal</div>
+      <div class="mod-tab" onclick="switchMod(this,'mod-feedback')">Feedback</div>
+    </div>
+
+    <!-- ═══════════════════════════════
+         OVERVIEW
+    ═══════════════════════════════ -->
+    <div class="content active" id="mod-overview">
+
+      <div class="stat-row">
+        <div class="stat-card ok">
+          <div class="stat-label">Active now</div>
+          <div class="stat-val">1</div>
+          <div class="stat-hint">On property through Jul 10</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Upcoming</div>
+          <div class="stat-val">3</div>
+          <div class="stat-hint">Confirmed this season</div>
+        </div>
+        <div class="stat-card warn">
+          <div class="stat-label">Docs pending</div>
+          <div class="stat-val">2</div>
+          <div class="stat-hint">COI and contract outstanding</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Season revenue</div>
+          <div class="stat-val" style="font-size:20px;margin-top:8px;color:var(--green)">$28,400</div>
+          <div class="stat-hint">4 retreats confirmed</div>
+        </div>
+      </div>
+
+      <div class="alert-banner">
+        <div class="alert-icon">!</div>
+        <div class="alert-text">Congregation Beth Shalom (Sep 19–21) has not yet uploaded their certificate of insurance. COI is required at least 14 days before arrival — deadline is Sep 5. Contact retreat coordinator Rachel Green.</div>
+        <button class="alert-btn" onclick="openModal('sendReminderModal')">Send reminder</button>
+      </div>
+
+      <div class="warn-banner">
+        <div class="warn-icon">!</div>
+        <div class="warn-text">Camp Ramah Alumni Weekend (Aug 23–25) housing submission is open — group has not yet submitted their housing preferences. Submission closes Aug 9.</div>
+      </div>
+
+      <!-- Pipeline view -->
+      <div class="section-header"><div class="section-title">Retreat pipeline</div></div>
+      <div class="pipeline">
+        <div class="pipeline-col">
+          <div class="pipeline-col-label">Inquiry</div>
+          <div class="pipeline-item">
+            <div class="pi-name">Westchester Corporate Group</div>
+            <div class="pi-dates">Oct 3–5 · 45 people</div>
+            <div class="pi-count">Awaiting contract</div>
+          </div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-col-label">Confirmed — setup</div>
+          <div class="pipeline-item">
+            <div class="pi-name">Congregation Beth Shalom</div>
+            <div class="pi-dates">Sep 19–21 · 85 people</div>
+            <div class="pi-count" style="color:var(--red)">COI missing</div>
+          </div>
+          <div class="pipeline-item">
+            <div class="pi-name">Camp Ramah Alumni Weekend</div>
+            <div class="pi-dates">Aug 23–25 · 120 people</div>
+            <div class="pi-count" style="color:var(--amber)">Housing pending</div>
+          </div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-col-label">Ready to go</div>
+          <div class="pipeline-item">
+            <div class="pi-name">Rodef Shalom Family Camp</div>
+            <div class="pi-dates">Jul 25–27 · 62 people</div>
+            <div class="pi-count" style="color:var(--green)">All docs complete</div>
+          </div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-col-label">Active now</div>
+          <div class="pipeline-item" style="border-color:var(--sage);background:var(--sage-pale)">
+            <div class="pi-name">Young Judaea Summer Staff</div>
+            <div class="pi-dates">Jul 7–10 · 38 people</div>
+            <div class="pi-count" style="color:var(--green)">On property · Day 1 of 3</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- All retreats list -->
+      <div class="section-header"><div class="section-title">All retreats this season</div></div>
+
+      <div class="retreat-list">
+
+        <div class="retreat-card active-now">
+          <div class="rc-header">
+            <div>
+              <div class="rc-name">Young Judaea Summer Staff Retreat</div>
+              <div class="rc-type">Staff organization · Jul 7–10 · 38 people · 3 nights</div>
+            </div>
+            <div>
+              <div class="rc-dates">Jul 7 – Jul 10</div>
+              <div class="rc-badges" style="margin-top:6px">
+                <span class="badge badge-sage">Active now</span>
+                <span class="badge badge-ok">All docs complete</span>
+              </div>
+            </div>
+          </div>
+          <div class="rc-progress">
+            <div class="rc-phase"><div class="rc-phase-label">Contract</div><div class="phase-dot phase-done">✓</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">COI</div><div class="phase-dot phase-done">✓</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">Housing</div><div class="phase-dot phase-done">✓</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">Menu</div><div class="phase-dot phase-done">✓</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">On property</div><div class="phase-dot phase-active">→</div></div>
+          </div>
+          <div class="rc-footer">
+            <button class="btn btn-primary btn-sm" onclick="switchMod(document.querySelector('[onclick*=mod-active]'),'mod-active')">View active retreat</button>
+            <button class="btn btn-ghost btn-sm">View documents</button>
+          </div>
+        </div>
+
+        <div class="retreat-card upcoming">
+          <div class="rc-header">
+            <div>
+              <div class="rc-name">Rodef Shalom Family Camp Weekend</div>
+              <div class="rc-type">Synagogue · Jul 25–27 · 62 people · 2 nights</div>
+            </div>
+            <div>
+              <div class="rc-dates">Jul 25 – Jul 27</div>
+              <div class="rc-badges" style="margin-top:6px">
+                <span class="badge badge-blue">18 days away</span>
+                <span class="badge badge-ok">Ready to go</span>
+              </div>
+            </div>
+          </div>
+          <div class="rc-progress">
+            <div class="rc-phase"><div class="rc-phase-label">Contract</div><div class="phase-dot phase-done">✓</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">COI</div><div class="phase-dot phase-done">✓</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">Housing</div><div class="phase-dot phase-done">✓</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">Menu</div><div class="phase-dot phase-done">✓</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">Setup</div><div class="phase-dot phase-locked">○</div></div>
+          </div>
+          <div class="rc-footer">
+            <button class="btn btn-ghost btn-sm" onclick="openModal('setupChecklistModal')">View setup checklist</button>
+            <button class="btn btn-ghost btn-sm">View documents</button>
+            <button class="btn btn-ghost btn-sm">Portal</button>
+          </div>
+        </div>
+
+        <div class="retreat-card upcoming">
+          <div class="rc-header">
+            <div>
+              <div class="rc-name">Camp Ramah Alumni Weekend</div>
+              <div class="rc-type">Alumni organization · Aug 23–25 · 120 people · 2 nights</div>
+            </div>
+            <div>
+              <div class="rc-dates">Aug 23 – Aug 25</div>
+              <div class="rc-badges" style="margin-top:6px">
+                <span class="badge badge-blue">47 days away</span>
+                <span class="badge badge-warn">Housing pending</span>
+              </div>
+            </div>
+          </div>
+          <div class="rc-progress">
+            <div class="rc-phase"><div class="rc-phase-label">Contract</div><div class="phase-dot phase-done">✓</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">COI</div><div class="phase-dot phase-done">✓</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">Housing</div><div class="phase-dot phase-active">!</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">Menu</div><div class="phase-dot phase-locked">○</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">Setup</div><div class="phase-dot phase-locked">○</div></div>
+          </div>
+          <div class="rc-footer">
+            <button class="btn btn-ghost btn-sm" onclick="openModal('sendReminderModal')">Send housing reminder</button>
+            <button class="btn btn-ghost btn-sm">View documents</button>
+          </div>
+        </div>
+
+        <div class="retreat-card pending">
+          <div class="rc-header">
+            <div>
+              <div class="rc-name">Congregation Beth Shalom Shabbaton</div>
+              <div class="rc-type">Synagogue · Sep 19–21 · 85 people · 2 nights</div>
+            </div>
+            <div>
+              <div class="rc-dates">Sep 19 – Sep 21</div>
+              <div class="rc-badges" style="margin-top:6px">
+                <span class="badge badge-blue">74 days away</span>
+                <span class="badge badge-alert">COI missing</span>
+              </div>
+            </div>
+          </div>
+          <div class="rc-progress">
+            <div class="rc-phase"><div class="rc-phase-label">Contract</div><div class="phase-dot phase-done">✓</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">COI</div><div class="phase-dot phase-active">!</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">Housing</div><div class="phase-dot phase-locked">○</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">Menu</div><div class="phase-dot phase-locked">○</div></div>
+            <div class="rc-phase"><div class="rc-phase-label">Setup</div><div class="phase-dot phase-locked">○</div></div>
+          </div>
+          <div class="rc-footer">
+            <button class="btn btn-ghost btn-sm" onclick="openModal('sendReminderModal')">Send COI reminder</button>
+            <button class="btn btn-ghost btn-sm">View documents</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════
+         ACTIVE RETREAT
+    ═══════════════════════════════ -->
+    <div class="content" id="mod-active">
+
+      <div class="active-retreat-header">
+        <div>
+          <div class="arh-name">Young Judaea Summer Staff Retreat</div>
+          <div class="arh-meta">Jul 7–10 · 38 people · Staff organization · Cabins 1–3 active</div>
+        </div>
+        <div class="arh-right">
+          <div class="arh-countdown">Day 1</div>
+          <div class="arh-countdown-label">of 3 · Checkout Jul 10 by 11am</div>
+        </div>
+      </div>
+
+      <div class="active-grid">
+        <div class="active-card">
+          <div class="ac-label">Group details</div>
+          <div class="ac-row"><span class="ac-key">Coordinator</span><span class="ac-val">Rachel Levi — 914-555-0182</span></div>
+          <div class="ac-row"><span class="ac-key">Total headcount</span><span class="ac-val">38 confirmed</span></div>
+          <div class="ac-row"><span class="ac-key">Subgroups</span><span class="ac-val">Staff (28) + Leadership (10)</span></div>
+          <div class="ac-row"><span class="ac-key">Dietary flags</span><span class="ac-val">4 vegetarian · 2 gluten-free</span></div>
+          <div class="ac-row"><span class="ac-key">Special needs</span><span class="ac-val">1 wheelchair accessible (Cabin 1)</span></div>
+        </div>
+        <div class="active-card">
+          <div class="ac-label">Today's schedule</div>
+          <div class="ac-row"><span class="ac-key">Breakfast</span><span class="ac-val">7:30am · Dining hall</span></div>
+          <div class="ac-row"><span class="ac-key">Morning session</span><span class="ac-val">9:00am · Main lodge</span></div>
+          <div class="ac-row"><span class="ac-key">Lunch</span><span class="ac-val">12:30pm · Dining hall</span></div>
+          <div class="ac-row"><span class="ac-key">Afternoon</span><span class="ac-val">Waterfront open 2–5pm</span></div>
+          <div class="ac-row"><span class="ac-key">Dinner</span><span class="ac-val">6:30pm · Dining hall</span></div>
+        </div>
+        <div class="active-card">
+          <div class="ac-label">Housing summary</div>
+          <div class="ac-row"><span class="ac-key">Cabin 1</span><span class="ac-val">Leadership team · 10 people</span></div>
+          <div class="ac-row"><span class="ac-key">Cabin 2</span><span class="ac-val">Staff group A · 14 people</span></div>
+          <div class="ac-row"><span class="ac-key">Cabin 3</span><span class="ac-val">Staff group B · 14 people</span></div>
+          <div class="ac-row"><span class="ac-key">Spaces active</span><span class="ac-val">Dining hall · Main lodge · Waterfront</span></div>
+        </div>
+        <div class="active-card">
+          <div class="ac-label">Financial</div>
+          <div class="ac-row"><span class="ac-key">Rate charged</span><span class="ac-val">$195/person/night</span></div>
+          <div class="ac-row"><span class="ac-key">Total billed</span><span class="ac-val" style="color:var(--green);font-family:'DM Mono',monospace">$22,230</span></div>
+          <div class="ac-row"><span class="ac-key">Deposit received</span><span class="ac-val" style="color:var(--green);font-family:'DM Mono',monospace">$5,000</span></div>
+          <div class="ac-row"><span class="ac-key">Balance due</span><span class="ac-val" style="font-family:'DM Mono',monospace">$17,230 at checkout</span></div>
+        </div>
+      </div>
+
+      <!-- Open issues -->
+      <div class="section-header">
+        <div class="section-title">Open issues during this retreat</div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('logIssueModal')">+ Log issue</button>
+      </div>
+
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--cream-dark);display:flex;align-items:center;gap:12px">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0"></div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">Main lodge projector not connecting to laptop</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Reported by Rachel Levi · Today 8:45am · Tom H. investigating</div>
+          </div>
+          <span class="badge badge-warn">In progress</span>
+          <button class="btn btn-ghost btn-sm">Update</button>
+        </div>
+        <div style="padding:14px 18px;display:flex;align-items:center;gap:12px">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--sage);flex-shrink:0"></div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">Cabin 2 — hot water was cold this morning</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Reported by group · Today 7:00am · Resolved 7:40am — pilot light relit</div>
+          </div>
+          <span class="badge badge-ok">Resolved</span>
+        </div>
+      </div>
+
+      <!-- Checkout checklist -->
+      <div class="section-header">
+        <div class="section-title">Checkout checklist — Jul 10 by 11am</div>
+      </div>
+
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--cream-dark);cursor:pointer" onclick="toggleCheck(this)">
+          <div class="stask-check" style="width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;background:var(--white)"></div>
+          <span style="font-size:13px">Collect all cabin keys and confirm all personal items removed</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--cream-dark);cursor:pointer" onclick="toggleCheck(this)">
+          <div class="stask-check" style="width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;background:var(--white)"></div>
+          <span style="font-size:13px">Inspect all three cabins for damage</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--cream-dark);cursor:pointer" onclick="toggleCheck(this)">
+          <div class="stask-check" style="width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;background:var(--white)"></div>
+          <span style="font-size:13px">Collect final payment — $17,230 balance</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--cream-dark);cursor:pointer" onclick="toggleCheck(this)">
+          <div class="stask-check" style="width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;background:var(--white)"></div>
+          <span style="font-size:13px">Confirm all waterfront equipment returned and accounted for</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 18px;cursor:pointer" onclick="toggleCheck(this)">
+          <div class="stask-check" style="width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;background:var(--white)"></div>
+          <span style="font-size:13px">Send feedback survey link to Rachel Levi</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════
+         DOCUMENTS & COMPLIANCE
+    ═══════════════════════════════ -->
+    <div class="content" id="mod-documents">
+
+      <div class="pill-bar">
+        <div class="pill on" onclick="setPill(this)">All retreats</div>
+        <div class="pill" onclick="setPill(this)">Young Judaea</div>
+        <div class="pill" onclick="setPill(this)">Rodef Shalom</div>
+        <div class="pill" onclick="setPill(this)">Ramah Alumni</div>
+        <div class="pill" onclick="setPill(this)">Beth Shalom</div>
+      </div>
+
+      <!-- Young Judaea - complete -->
+      <div class="section-header"><div class="section-title">Young Judaea Summer Staff Retreat · Jul 7–10</div><span class="badge badge-ok">All documents complete</span></div>
+      <div class="doc-list">
+        <div class="doc-row"><div class="doc-icon signed">📄</div><div class="doc-body"><div class="doc-name">Retreat agreement — signed</div><div class="doc-meta">Signed by Rachel Levi, Director · Jun 15, 2025</div></div><div class="doc-right"><div class="doc-date">Jun 15</div><div style="margin-top:4px"><button class="btn btn-ghost btn-sm">View</button></div></div></div>
+        <div class="doc-row"><div class="doc-icon signed">🛡</div><div class="doc-body"><div class="doc-name">Certificate of insurance — approved</div><div class="doc-meta">Policy #: YJ-2025-441 · $1M general liability · Pinecrest named additional insured · Exp Dec 31</div></div><div class="doc-right"><div class="doc-date">Jun 18</div><div style="margin-top:4px"><button class="btn btn-ghost btn-sm">View</button></div></div></div>
+        <div class="doc-row"><div class="doc-icon signed">🏊</div><div class="doc-body"><div class="doc-name">Waterfront activity waiver — signed</div><div class="doc-meta">38 of 38 participants signed · Collected via portal</div></div><div class="doc-right"><div class="doc-date">Jun 20</div><div style="margin-top:4px"><button class="btn btn-ghost btn-sm">View all</button></div></div></div>
+        <div class="doc-row"><div class="doc-icon signed">💰</div><div class="doc-body"><div class="doc-name">Deposit received — $5,000</div><div class="doc-meta">Check #4421 · Deposited Jun 22 · Balance $17,230 due at checkout</div></div><div class="doc-right"><div class="doc-date">Jun 22</div><div style="margin-top:4px"><button class="btn btn-ghost btn-sm">View</button></div></div></div>
+      </div>
+
+      <!-- Beth Shalom - COI missing -->
+      <div class="section-header" style="margin-top:8px"><div class="section-title">Congregation Beth Shalom Shabbaton · Sep 19–21</div><span class="badge badge-alert">COI missing — due Sep 5</span></div>
+      <div class="doc-list">
+        <div class="doc-row"><div class="doc-icon signed">📄</div><div class="doc-body"><div class="doc-name">Retreat agreement — signed</div><div class="doc-meta">Signed by Rabbi David Cohen · Jul 1, 2025</div></div><div class="doc-right"><div class="doc-date">Jul 1</div><div style="margin-top:4px"><button class="btn btn-ghost btn-sm">View</button></div></div></div>
+        <div class="doc-row" style="background:var(--red-bg)"><div class="doc-icon missing">⚠️</div><div class="doc-body"><div class="doc-name" style="color:var(--red)">Certificate of insurance — NOT received</div><div class="doc-meta" style="color:var(--red-text)">Required: $1M general liability · Pinecrest as additional insured · Must be received by Sep 5</div></div><div class="doc-right"><div class="doc-date" style="color:var(--red)">Overdue</div><div style="margin-top:4px"><button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)" onclick="openModal('sendReminderModal')">Send reminder</button></div></div></div>
+        <div class="doc-row"><div class="doc-icon signed">💰</div><div class="doc-body"><div class="doc-name">Deposit received — $2,500</div><div class="doc-meta">Check #8812 · Deposited Jul 3 · Balance due at checkout</div></div><div class="doc-right"><div class="doc-date">Jul 3</div><div style="margin-top:4px"><button class="btn btn-ghost btn-sm">View</button></div></div></div>
+      </div>
+
+      <!-- Upload COI -->
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:18px 22px;margin-bottom:20px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">Upload certificate of insurance</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Groups can upload directly via the guest portal, or you can upload on their behalf below.</div>
+        <div class="upload-zone" onclick="openModal('uploadCOIModal')">
+          <div class="upload-zone-icon">📎</div>
+          <div style="font-weight:500">Click to upload COI document</div>
+          <div style="font-size:11px;margin-top:4px">PDF, JPG, or PNG · Max 10MB</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════
+         HOUSING
+    ═══════════════════════════════ -->
+    <div class="content" id="mod-housing">
+
+      <div class="pill-bar">
+        <div class="pill on" onclick="setPill(this)">Young Judaea (active)</div>
+        <div class="pill" onclick="setPill(this)">Rodef Shalom</div>
+        <div class="pill" onclick="setPill(this)">Ramah Alumni</div>
+        <div class="pill" onclick="setPill(this)">Beth Shalom</div>
+      </div>
+
+      <!-- Phase banner - locked (current active retreat) -->
+      <div class="housing-phase-banner phase-3">
+        <div class="hpb-title green">Phase 3 — Housing locked · Active retreat</div>
+        <div class="hpb-body green">Housing was finalized on Jun 22. The group is currently on property. Any changes must be requested through the change requests tab and approved by the ops director.</div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:14px;font-weight:600">Housing assignments — Young Judaea · 38 people · Jul 7–10</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="openModal('housingHistoryModal')">View version history</button>
+          <button class="btn btn-ghost btn-sm">Export map</button>
+        </div>
+      </div>
+
+      <div class="cabin-grid">
+
+        <div class="cabin-card locked">
+          <div class="cc-header">
+            <div>
+              <div class="cc-name">Cabin 1</div>
+              <div class="cc-capacity">16 beds · Accessible · ADA compliant</div>
+            </div>
+            <span class="badge badge-ok">🔒 Locked</span>
+          </div>
+          <div class="cc-group">Leadership team · 10 people</div>
+          <div class="cc-notes">Group requested this cabin for proximity to main lodge. 1 wheelchair user confirmed accessible room.</div>
+          <div class="cc-beds">
+            <div class="bed-dot bed-taken" title="Occupied"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-empty"></div>
+            <div class="bed-dot bed-empty"></div>
+            <div class="bed-dot bed-empty"></div>
+            <div class="bed-dot bed-empty"></div>
+            <div class="bed-dot bed-empty"></div>
+            <div class="bed-dot bed-empty"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:6px">10 of 16 beds occupied</div>
+        </div>
+
+        <div class="cabin-card locked">
+          <div class="cc-header">
+            <div>
+              <div class="cc-name">Cabin 2</div>
+              <div class="cc-capacity">16 beds · Standard</div>
+            </div>
+            <span class="badge badge-ok">🔒 Locked</span>
+          </div>
+          <div class="cc-group">Staff group A · 14 people</div>
+          <div class="cc-notes">Camp adjusted from Cabin 4 (under repair) to Cabin 2 — group approved Jun 20.</div>
+          <div class="cc-beds">
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-empty"></div>
+            <div class="bed-dot bed-empty"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:6px">14 of 16 beds occupied</div>
+        </div>
+
+        <div class="cabin-card locked">
+          <div class="cc-header">
+            <div>
+              <div class="cc-name">Cabin 3</div>
+              <div class="cc-capacity">16 beds · Standard</div>
+            </div>
+            <span class="badge badge-ok">🔒 Locked</span>
+          </div>
+          <div class="cc-group">Staff group B · 14 people</div>
+          <div class="cc-notes">As submitted by group coordinator.</div>
+          <div class="cc-beds">
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-taken"></div>
+            <div class="bed-dot bed-empty"></div>
+            <div class="bed-dot bed-empty"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:6px">14 of 16 beds occupied</div>
+        </div>
+
+        <!-- Available cabins shown as inactive -->
+        <div class="cabin-card available" style="opacity:0.4">
+          <div class="cc-header"><div><div class="cc-name">Cabins 4–12</div><div class="cc-capacity">Not activated for this retreat</div></div><span class="badge badge-neutral">Inactive</span></div>
+          <div class="cc-notes" style="margin-top:8px">These cabins are not part of this retreat's housing plan. Building systems remain off.</div>
+        </div>
+
+      </div>
+
+      <!-- Housing for upcoming retreat - phase 1 -->
+      <div style="border-top:1px solid var(--border);padding-top:20px;margin-top:8px">
+        <div style="font-size:14px;font-weight:600;margin-bottom:14px">Ramah Alumni Weekend · Aug 23–25 · Housing phase 1 — awaiting group submission</div>
+        <div class="housing-phase-banner phase-1">
+          <div class="hpb-title blue">Phase 1 — Awaiting group housing submission</div>
+          <div class="hpb-body blue">The guest portal housing section is open. The group coordinator has been notified to submit their housing preferences. Submission deadline is Aug 9. Available cabins are shown below — the group will assign their people to these spaces through the portal.</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <button class="btn btn-ghost btn-sm" onclick="openModal('sendReminderModal')">Send housing reminder</button>
+          <button class="btn btn-ghost btn-sm">View available cabins</button>
+          <button class="btn btn-ghost btn-sm">Extend deadline</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════
+         MENU & DINING
+    ═══════════════════════════════ -->
+    <div class="content" id="mod-menu">
+
+      <div class="pill-bar">
+        <div class="pill on" onclick="setPill(this)">Young Judaea (active)</div>
+        <div class="pill" onclick="setPill(this)">Rodef Shalom</div>
+        <div class="pill" onclick="setPill(this)">Ramah Alumni</div>
+        <div class="pill" onclick="setPill(this)">Beth Shalom</div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:14px;font-weight:600">Menu — Young Judaea Summer Staff Retreat · Jul 7–10</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="openModal('addMealModal')">+ Add meal</button>
+          <button class="btn btn-ghost btn-sm">Publish to portal</button>
+        </div>
+      </div>
+
+      <div style="background:var(--blue-bg);border:1px solid #b5d4f4;border-radius:10px;padding:12px 18px;margin-bottom:16px;font-size:12px;color:var(--blue-text)">
+        <strong>Dietary flags for this group:</strong> 4 vegetarian · 2 gluten-free · 0 kosher · 1 nut allergy. All meals below have been reviewed against these requirements. GF and vegetarian alternatives are noted where applicable.
+      </div>
+
+      <div class="menu-table">
+        <div class="mt-head">
+          <span>Day</span>
+          <span>Breakfast</span>
+          <span>Lunch</span>
+          <span>Dinner</span>
+        </div>
+
+        <div class="mt-row">
+          <div class="mt-day">Mon Jul 7</div>
+          <div class="mt-meal">
+            <div class="mt-meal-name">Arrival — bagel bar</div>
+            <div class="mt-meal-items">Assorted bagels, cream cheese, lox, butter, fruit · Coffee + juice</div>
+            <div class="mt-allergen">Gluten · Dairy · Fish</div>
+            <div style="font-size:10px;color:var(--green);margin-top:3px">GF bagels available</div>
+          </div>
+          <div class="mt-meal">
+            <div class="mt-meal-name">Deli lunch bar</div>
+            <div class="mt-meal-items">Turkey, tuna, veggie options · Soup · Salad bar · Chips</div>
+            <div class="mt-allergen">Gluten · Fish · Egg</div>
+            <div style="font-size:10px;color:var(--green);margin-top:3px">GF bread available</div>
+          </div>
+          <div class="mt-meal">
+            <div class="mt-meal-name">Roast chicken dinner</div>
+            <div class="mt-meal-items">Roast chicken · Mashed potatoes · Green beans · Dinner rolls · Salad</div>
+            <div style="font-size:10px;color:var(--green);margin-top:3px">Vegetarian: Stuffed portobello</div>
+          </div>
+        </div>
+
+        <div class="mt-row">
+          <div class="mt-day">Tue Jul 8</div>
+          <div class="mt-meal">
+            <div class="mt-meal-name">Scrambled eggs &amp; toast</div>
+            <div class="mt-meal-items">Scrambled eggs · Toast · Fresh fruit · Yogurt bar · Coffee + juice</div>
+            <div class="mt-allergen">Egg · Dairy · Gluten</div>
+            <div style="font-size:10px;color:var(--green);margin-top:3px">GF toast available</div>
+          </div>
+          <div class="mt-meal">
+            <div class="mt-meal-name">Pasta bar</div>
+            <div class="mt-meal-items">Penne, marinara + alfredo · Garlic bread · Caesar salad</div>
+            <div class="mt-allergen">Gluten · Dairy · Egg</div>
+            <div style="font-size:10px;color:var(--green);margin-top:3px">GF pasta available</div>
+          </div>
+          <div class="mt-meal">
+            <div class="mt-meal-name">BBQ cookout</div>
+            <div class="mt-meal-items">Burgers · Hot dogs · Corn · Coleslaw · Watermelon · S'mores</div>
+            <div class="mt-allergen">Gluten · Dairy</div>
+            <div style="font-size:10px;color:var(--green);margin-top:3px">Veggie burgers available</div>
+          </div>
+        </div>
+
+        <div class="mt-row">
+          <div class="mt-day">Wed Jul 9</div>
+          <div class="mt-meal">
+            <div class="mt-meal-name">Pancake breakfast</div>
+            <div class="mt-meal-items">Pancakes · Maple syrup · Bacon · Fresh fruit · Coffee + juice</div>
+            <div class="mt-allergen">Gluten · Egg · Dairy</div>
+            <div style="font-size:10px;color:var(--green);margin-top:3px">GF pancakes available</div>
+          </div>
+          <div class="mt-meal">
+            <div class="mt-meal-name">Burger bar</div>
+            <div class="mt-meal-items">Beef burgers · Fries · Salad bar · Lemonade</div>
+            <div class="mt-allergen">Gluten · Dairy · Soy</div>
+            <div style="font-size:10px;color:var(--green);margin-top:3px">GF buns · Veggie burgers</div>
+          </div>
+          <div class="mt-meal">
+            <div class="mt-meal-name">Fish tacos</div>
+            <div class="mt-meal-items">Grilled fish · Flour tortillas · Slaw · Salsa · Black beans · Rice</div>
+            <div class="mt-allergen">Gluten · Fish</div>
+            <div style="font-size:10px;color:var(--green);margin-top:3px">Veggie: Black bean tacos · GF corn tortillas</div>
+          </div>
+        </div>
+
+        <div class="mt-row">
+          <div class="mt-day">Thu Jul 10</div>
+          <div class="mt-meal">
+            <div class="mt-meal-name">Continental breakfast</div>
+            <div class="mt-meal-items">Muffins · Cereal · Yogurt · Fruit · Coffee + juice · Checkout by 11am</div>
+            <div class="mt-allergen">Gluten · Dairy · Egg</div>
+          </div>
+          <div class="mt-meal" style="color:var(--text-muted);font-size:12px">No lunch — checkout day</div>
+          <div class="mt-meal" style="color:var(--text-muted);font-size:12px">No dinner — checkout day</div>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-top:4px"><div class="section-title">Menu change requests from group</div><button class="btn btn-ghost btn-sm" onclick="switchMod(document.querySelectorAll('.mod-tab')[5],'mod-requests')">View all requests</button></div>
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:14px 18px;font-size:13px;color:var(--text-muted);font-style:italic">No pending menu change requests for this retreat.</div>
+
+    </div>
+
+    <!-- ═══════════════════════════════
+         CHANGE REQUESTS
+    ═══════════════════════════════ -->
+    <div class="content" id="mod-requests">
+
+      <div class="stat-row">
+        <div class="stat-card warn">
+          <div class="stat-label">Pending review</div>
+          <div class="stat-val">2</div>
+          <div class="stat-hint">Awaiting your response</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">Approved</div>
+          <div class="stat-val">4</div>
+          <div class="stat-hint">This season</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Declined</div>
+          <div class="stat-val">1</div>
+          <div class="stat-hint">With explanation</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total requests</div>
+          <div class="stat-val">7</div>
+          <div class="stat-hint">Across all retreats</div>
+        </div>
+      </div>
+
+      <div class="section-header"><div class="section-title">Pending requests — requires your response</div></div>
+
+      <div class="cr-list">
+
+        <div class="cr-card pending">
+          <div class="cr-header">
+            <div>
+              <div class="cr-title">Rodef Shalom — menu change request</div>
+              <div class="cr-meta">Submitted by Sarah Goldstein · Jul 6 · Jul 25–27 retreat</div>
+            </div>
+            <span class="badge badge-warn">Pending</span>
+          </div>
+          <div class="cr-body">We have two guests who are strictly vegan (not just vegetarian) joining unexpectedly. Can the Friday night dinner be adjusted to have a proper vegan entree — not just sides — for those two? They are also gluten-free.</div>
+          <div class="cr-actions">
+            <button class="btn btn-primary btn-sm" onclick="openModal('respondRequestModal')">Approve &amp; respond</button>
+            <button class="btn btn-ghost btn-sm" onclick="openModal('respondRequestModal')">Counter-propose</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="openModal('respondRequestModal')">Decline</button>
+          </div>
+        </div>
+
+        <div class="cr-card pending">
+          <div class="cr-header">
+            <div>
+              <div class="cr-title">Young Judaea — housing change request</div>
+              <div class="cr-meta">Submitted by Rachel Levi · Today 9:15am · Active retreat</div>
+            </div>
+            <span class="badge badge-warn">Pending</span>
+          </div>
+          <div class="cr-body">Two of our leadership team members had a disagreement last night and need to be separated. Can we move David Cohen from Cabin 1 to Cabin 2 or 3? Either works, just needs to be away from leadership team area.</div>
+          <div class="cr-actions">
+            <button class="btn btn-primary btn-sm" onclick="openModal('respondRequestModal')">Approve &amp; move</button>
+            <button class="btn btn-ghost btn-sm" onclick="openModal('respondRequestModal')">Counter-propose</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="openModal('respondRequestModal')">Decline</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="section-header"><div class="section-title">Resolved requests</div></div>
+
+      <div class="cr-list">
+
+        <div class="cr-card approved">
+          <div class="cr-header">
+            <div>
+              <div class="cr-title">Young Judaea — housing change</div>
+              <div class="cr-meta">Submitted Jun 18 · Approved Jun 20</div>
+            </div>
+            <span class="badge badge-ok">Approved</span>
+          </div>
+          <div class="cr-body">Requested move from Cabin 4 to a different cabin — Cabin 4 was our first choice but we're flexible.</div>
+          <div class="cr-response">Ops response: Cabin 4 is currently under electrical repair and unavailable. Moved your group to Cabin 2 which is identical in configuration. Updated in your portal — please confirm. · Jordan M. · Jun 20</div>
+        </div>
+
+        <div class="cr-card declined">
+          <div class="cr-header">
+            <div>
+              <div class="cr-title">Rodef Shalom — late headcount addition</div>
+              <div class="cr-meta">Submitted Jul 2 · Declined Jul 3</div>
+            </div>
+            <span class="badge badge-alert">Declined</span>
+          </div>
+          <div class="cr-body">We'd like to add 12 more people to our retreat — can we expand from 62 to 74?</div>
+          <div class="cr-response">Ops response: Unfortunately Cabins 1–4 are at capacity and we cannot accommodate 12 additional guests at this late stage. The dining hall and staffing plan are also set for 62. We can accommodate up to 4 additional guests if that helps. Contact us to discuss. · Jordan M. · Jul 3</div>
+        </div>
+
+        <div class="cr-card approved">
+          <div class="cr-header">
+            <div>
+              <div class="cr-title">Rodef Shalom — menu adjustment</div>
+              <div class="cr-meta">Submitted Jun 28 · Approved Jun 29</div>
+            </div>
+            <span class="badge badge-ok">Approved</span>
+          </div>
+          <div class="cr-body">Can we swap Friday dinner from salmon to a different fish? Some of our members don't eat salmon.</div>
+          <div class="cr-response">Approved — swapped to grilled tilapia with lemon herb butter. Updated in your menu portal. · Jordan M. · Jun 29</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════
+         COSTS & INVOICE
+    ═══════════════════════════════ -->
+    <div class="content" id="mod-costs">
+
+      <div class="pill-bar">
+        <div class="pill on" onclick="setPill(this)">Young Judaea (active)</div>
+        <div class="pill" onclick="setPill(this)">Rodef Shalom</div>
+        <div class="pill" onclick="setPill(this)">Ramah Alumni</div>
+        <div class="pill" onclick="setPill(this)">Beth Shalom</div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-label">Revenue</div>
+          <div class="stat-val" style="color:var(--green)">$22,230</div>
+          <div class="stat-hint">38 × $195 × 3 nights</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total cost</div>
+          <div class="stat-val" style="color:var(--red)">$8,840</div>
+          <div class="stat-hint">Food · staff · utilities · cleaning</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">Gross margin</div>
+          <div class="stat-val">60%</div>
+          <div class="stat-hint">$13,390 net</div>
+        </div>
+        <div class="stat-card warn">
+          <div class="stat-label">Balance due</div>
+          <div class="stat-val" style="font-size:20px;margin-top:7px">$17,230</div>
+          <div class="stat-hint">At checkout Jul 10</div>
+        </div>
+      </div>
+
+      <div class="cost-grid">
+        <div class="cost-table">
+          <div style="padding:14px 16px;background:var(--cream-dark);border-bottom:1px solid var(--border);font-size:13px;font-weight:600">Cost breakdown</div>
+          <div class="ct-head"><span>Category</span><span>Budgeted</span><span>Actual</span></div>
+          <div class="ct-row"><div class="ct-label">Food &amp; beverage</div><div class="ct-val cost">$3,800</div><div class="ct-val cost">$3,640</div></div>
+          <div class="ct-row"><div class="ct-label">Kitchen staff</div><div class="ct-val cost">$1,200</div><div class="ct-val cost">$1,200</div></div>
+          <div class="ct-row"><div class="ct-label">Housekeeping</div><div class="ct-val cost">$840</div><div class="ct-val cost">$840</div></div>
+          <div class="ct-row"><div class="ct-label">Utilities estimate</div><div class="ct-val cost">$480</div><div class="ct-val cost">$480</div></div>
+          <div class="ct-row"><div class="ct-label">Linens &amp; supplies</div><div class="ct-val cost">$380</div><div class="ct-val cost">$380</div></div>
+          <div class="ct-row"><div class="ct-label">Waterfront staff</div><div class="ct-val cost">$600</div><div class="ct-val cost">$600</div></div>
+          <div class="ct-row"><div class="ct-label">Misc / contingency</div><div class="ct-val cost">$300</div><div class="ct-val cost">$160</div></div>
+          <div class="ct-total"><span>Total cost</span><span>$7,600</span><span>$7,300</span></div>
+        </div>
+
+        <div class="cost-table">
+          <div style="padding:14px 16px;background:var(--cream-dark);border-bottom:1px solid var(--border);font-size:13px;font-weight:600">Revenue &amp; payments</div>
+          <div class="ct-head"><span>Item</span><span>Rate</span><span>Amount</span></div>
+          <div class="ct-row"><div class="ct-label">Lodging (3 nights)</div><div class="ct-val">$145/pp/night</div><div class="ct-val rev">$16,530</div></div>
+          <div class="ct-row"><div class="ct-label">Meals (3 full days)</div><div class="ct-val">$45/pp/day</div><div class="ct-val rev">$5,130</div></div>
+          <div class="ct-row"><div class="ct-label">Waterfront access</div><div class="ct-val">$5/pp</div><div class="ct-val rev">$190</div></div>
+          <div class="ct-row"><div class="ct-label">AV equipment</div><div class="ct-val">Flat fee</div><div class="ct-val rev">$150</div></div>
+          <div class="ct-row"><div class="ct-label">Deposit received</div><div class="ct-val">Jun 22</div><div class="ct-val" style="color:var(--text-muted)">($5,000)</div></div>
+          <div class="ct-row"><div class="ct-label">Balance due</div><div class="ct-val">Jul 10</div><div class="ct-val" style="color:var(--amber);font-weight:600">$17,230</div></div>
+          <div class="ct-total"><span>Total revenue</span><span></span><span>$22,000</span></div>
+        </div>
+      </div>
+
+      <div class="section-header"><div class="section-title">Invoice</div><button class="btn btn-primary btn-sm" onclick="openModal('invoiceModal')">Generate &amp; send invoice</button></div>
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:24px 28px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:20px;align-items:flex-start">
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--sage);letter-spacing:0.08em;text-transform:uppercase">CampOps · Pinecrest Summer Camp</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">1 Camp Road · Pinecrest, NY 12345 · (914) 555-0100</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:22px;font-weight:700;color:var(--forest)">INVOICE</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">#RET-2025-007 · Jul 7, 2025</div>
+          </div>
+        </div>
+        <div style="background:var(--cream);border-radius:8px;padding:14px 18px;margin-bottom:18px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Billed to</div>
+          <div style="font-size:13px;font-weight:600">Young Judaea Summer Staff Retreat</div>
+          <div style="font-size:12px;color:var(--text-muted)">Rachel Levi, Director · rachel@youngjudaea.org</div>
+          <div style="font-size:12px;color:var(--text-muted)">Retreat dates: Jul 7–10, 2025 · 38 guests</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
+          <div style="display:grid;grid-template-columns:1fr 80px 80px 100px;padding:8px 14px;background:var(--cream-dark);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)"><span>Description</span><span style="text-align:right">Qty</span><span style="text-align:right">Rate</span><span style="text-align:right">Total</span></div>
+          <div style="display:grid;grid-template-columns:1fr 80px 80px 100px;padding:10px 14px;border-bottom:1px solid var(--cream-dark);font-size:13px"><span>Lodging — 3 nights per person</span><span style="text-align:right;font-family:'DM Mono',monospace">38</span><span style="text-align:right;font-family:'DM Mono',monospace">$435</span><span style="text-align:right;font-family:'DM Mono',monospace">$16,530</span></div>
+          <div style="display:grid;grid-template-columns:1fr 80px 80px 100px;padding:10px 14px;border-bottom:1px solid var(--cream-dark);font-size:13px"><span>Meals — 3 days per person</span><span style="text-align:right;font-family:'DM Mono',monospace">38</span><span style="text-align:right;font-family:'DM Mono',monospace">$135</span><span style="text-align:right;font-family:'DM Mono',monospace">$5,130</span></div>
+          <div style="display:grid;grid-template-columns:1fr 80px 80px 100px;padding:10px 14px;border-bottom:1px solid var(--cream-dark);font-size:13px"><span>Waterfront access</span><span style="text-align:right;font-family:'DM Mono',monospace">38</span><span style="text-align:right;font-family:'DM Mono',monospace">$5</span><span style="text-align:right;font-family:'DM Mono',monospace">$190</span></div>
+          <div style="display:grid;grid-template-columns:1fr 80px 80px 100px;padding:10px 14px;font-size:13px"><span>AV equipment — main lodge</span><span style="text-align:right;font-family:'DM Mono',monospace">1</span><span style="text-align:right;font-family:'DM Mono',monospace">$150</span><span style="text-align:right;font-family:'DM Mono',monospace">$150</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;margin-bottom:16px">
+          <div style="display:flex;gap:40px;font-size:13px"><span style="color:var(--text-muted)">Subtotal</span><span style="font-family:'DM Mono',monospace">$22,000</span></div>
+          <div style="display:flex;gap:40px;font-size:13px"><span style="color:var(--text-muted)">Deposit paid Jun 22</span><span style="font-family:'DM Mono',monospace;color:var(--green)">−$5,000</span></div>
+          <div style="display:flex;gap:40px;font-size:16px;font-weight:700;color:var(--forest);border-top:2px solid var(--forest);padding-top:8px"><span>Balance due Jul 10</span><span style="font-family:'DM Mono',monospace">$17,230</span></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted)">Payment due at checkout · Check payable to Pinecrest Summer Camp · Questions: jordan@pinecrestcamp.org</div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════
+         GUEST PORTAL
+    ═══════════════════════════════ -->
+    <div class="content" id="mod-portal">
+
+      <div class="pill-bar">
+        <div class="pill on" onclick="setPill(this)">Young Judaea (active)</div>
+        <div class="pill" onclick="setPill(this)">Rodef Shalom</div>
+        <div class="pill" onclick="setPill(this)">Ramah Alumni</div>
+        <div class="pill" onclick="setPill(this)">Beth Shalom</div>
+      </div>
+
+      <div class="portal-preview">
+        <div class="pp-header">
+          <div>
+            <div class="pp-title">Guest portal — Young Judaea Summer Staff Retreat</div>
+            <div class="pp-url">campops.io/portal/pinecrest/youngjudaea-jul2025</div>
+          </div>
+          <div class="pp-controls">
+            <button class="btn btn-sage btn-sm">Copy link</button>
+            <button class="btn btn-ghost btn-sm" style="color:white;border-color:rgba(255,255,255,0.3)">Preview portal</button>
+          </div>
+        </div>
+        <div class="pp-steps">
+          <div class="pp-step unlocked">
+            <div class="pp-step-num">Step 1</div>
+            <div class="pp-step-name">Retreat info</div>
+            <div class="pp-step-status">✓ Viewed by group</div>
+          </div>
+          <div class="pp-step unlocked">
+            <div class="pp-step-num">Step 2</div>
+            <div class="pp-step-name">Documents</div>
+            <div class="pp-step-status">✓ Contract signed · COI approved</div>
+          </div>
+          <div class="pp-step unlocked">
+            <div class="pp-step-num">Step 3</div>
+            <div class="pp-step-name">Housing</div>
+            <div class="pp-step-status">✓ Submitted · Finalized Jun 22</div>
+          </div>
+          <div class="pp-step unlocked">
+            <div class="pp-step-num">Step 4</div>
+            <div class="pp-step-name">Menu &amp; dining</div>
+            <div class="pp-step-status">✓ Published · 2 change requests</div>
+          </div>
+          <div class="pp-step unlocked">
+            <div class="pp-step-num">Step 5</div>
+            <div class="pp-step-name">Feedback</div>
+            <div class="pp-step-status">Opens Jul 10 at checkout</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Portal settings -->
+      <div class="section-header"><div class="section-title">Portal settings</div></div>
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--cream-dark)">
+          <div><div style="font-size:13px;font-weight:600">Housing submission deadline</div><div style="font-size:11px;color:var(--text-muted)">After this date the group cannot submit housing — ops must contact them directly</div></div>
+          <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--green)">Jun 15 (passed)</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--cream-dark)">
+          <div><div style="font-size:13px;font-weight:600">Headcount change cutoff</div><div style="font-size:11px;color:var(--text-muted)">After this date headcount is locked — no further changes</div></div>
+          <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--green)">Jul 4 (passed)</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--cream-dark)">
+          <div><div style="font-size:13px;font-weight:600">Menu visible to group</div><div style="font-size:11px;color:var(--text-muted)">Group can see and request changes to published menu</div></div>
+          <span class="badge badge-ok">Published</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--cream-dark)">
+          <div><div style="font-size:13px;font-weight:600">Change requests enabled</div><div style="font-size:11px;color:var(--text-muted)">Group can submit housing and menu change requests (camp approves all changes)</div></div>
+          <span class="badge badge-ok">Enabled</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px">
+          <div><div style="font-size:13px;font-weight:600">Feedback survey</div><div style="font-size:11px;color:var(--text-muted)">Automatically sent to group coordinator at checkout</div></div>
+          <span class="badge badge-neutral">Opens Jul 10</span>
+        </div>
+      </div>
+
+      <!-- What group sees vs what is locked -->
+      <div class="section-header"><div class="section-title">What the group currently sees in their portal</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+        <div style="background:var(--green-bg);border:1px solid #a8d8a8;border-radius:10px;padding:16px 18px">
+          <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Group can see and interact with</div>
+          <div style="font-size:13px;color:var(--green);line-height:1.8">✓ Retreat information and schedule<br>✓ Signed contract (read only)<br>✓ COI status (approved)<br>✓ Finalized housing assignments (read only)<br>✓ Published menu (read only)<br>✓ Submit change requests<br>✓ View status of submitted requests<br>✓ Payment status and balance due</div>
+        </div>
+        <div style="background:var(--red-bg);border:1px solid #f5c0bc;border-radius:10px;padding:16px 18px">
+          <div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Group cannot access or edit</div>
+          <div style="font-size:13px;color:var(--red-text);line-height:1.8">✗ Edit housing directly (locked — request only)<br>✗ Edit menu directly (request only)<br>✗ Change headcount (cutoff passed)<br>✗ View other groups' information<br>✗ Access ops system or internal notes<br>✗ See cost breakdown or margin data<br>✗ Modify contract or COI once approved</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════
+         FEEDBACK
+    ═══════════════════════════════ -->
+    <div class="content" id="mod-feedback">
+
+      <div class="feedback-summary">
+        <div class="feedback-score">
+          <div class="fs-val">4.6</div>
+          <div class="fs-stars">★★★★½</div>
+          <div class="fs-label">Overall avg</div>
+        </div>
+        <div class="feedback-score">
+          <div class="fs-val">4.8</div>
+          <div class="fs-stars">★★★★★</div>
+          <div class="fs-label">Accommodations</div>
+        </div>
+        <div class="feedback-score">
+          <div class="fs-val">4.5</div>
+          <div class="fs-stars">★★★★½</div>
+          <div class="fs-label">Food &amp; dining</div>
+        </div>
+        <div class="feedback-score">
+          <div class="fs-val">4.2</div>
+          <div class="fs-stars">★★★★</div>
+          <div class="fs-label">Communication</div>
+        </div>
+      </div>
+
+      <div class="warn-banner">
+        <div class="warn-icon">!</div>
+        <div class="warn-text">Communication scored 4.2 — three groups mentioned response time on change requests as an area to improve. Consider setting a 24-hour response commitment for all change requests submitted through the portal.</div>
+      </div>
+
+      <div class="section-header"><div class="section-title">Feedback by retreat</div></div>
+
+      <div class="feedback-card">
+        <div class="fc-header">
+          <div class="fc-group">Temple Emanu-El Family Retreat · May 3–5, 2025</div>
+          <div class="fc-date">Feedback received May 6</div>
+        </div>
+        <div class="fc-scores">
+          <div class="fc-score"><div class="fc-score-val">5.0</div><div class="fc-score-label">Overall</div></div>
+          <div class="fc-score"><div class="fc-score-val">5.0</div><div class="fc-score-label">Housing</div></div>
+          <div class="fc-score"><div class="fc-score-val">4.8</div><div class="fc-score-label">Food</div></div>
+          <div class="fc-score"><div class="fc-score-val">4.5</div><div class="fc-score-label">Communication</div></div>
+        </div>
+        <div class="fc-comment">"This was our third year at Pinecrest and by far the smoothest experience. The online portal made it so easy to submit our housing preferences and see exactly what meals were planned. The staff was incredibly responsive. We're already booking for next year."</div>
+        <div class="fc-returning" style="color:var(--green)">✓ Returning next year — already inquired for May 2026</div>
+      </div>
+
+      <div class="feedback-card">
+        <div class="fc-header">
+          <div class="fc-group">Westchester Jewish Council Leadership · Mar 14–16, 2025</div>
+          <div class="fc-date">Feedback received Mar 18</div>
+        </div>
+        <div class="fc-scores">
+          <div class="fc-score"><div class="fc-score-val">4.3</div><div class="fc-score-label">Overall</div></div>
+          <div class="fc-score"><div class="fc-score-val">4.5</div><div class="fc-score-label">Housing</div></div>
+          <div class="fc-score"><div class="fc-score-val">4.2</div><div class="fc-score-label">Food</div></div>
+          <div class="fc-score"><div class="fc-score-val">4.0</div><div class="fc-score-label">Communication</div></div>
+        </div>
+        <div class="fc-comment">"Great facility and the food was excellent. Our one piece of feedback is that when we submitted a change request for housing, it took 3 days to hear back — we were a bit nervous about whether it had been received. A quicker acknowledgment would help. Otherwise a wonderful experience."</div>
+        <div class="fc-returning" style="color:var(--text-muted)">— Not yet confirmed for next year</div>
+      </div>
+
+      <div class="feedback-card">
+        <div class="fc-header">
+          <div class="fc-group">Habonim Dror Staff Training · Feb 7–9, 2025</div>
+          <div class="fc-date">Feedback received Feb 11</div>
+        </div>
+        <div class="fc-scores">
+          <div class="fc-score"><div class="fc-score-val">4.8</div><div class="fc-score-label">Overall</div></div>
+          <div class="fc-score"><div class="fc-score-val">5.0</div><div class="fc-score-label">Housing</div></div>
+          <div class="fc-score"><div class="fc-score-val">4.6</div><div class="fc-score-label">Food</div></div>
+          <div class="fc-score"><div class="fc-score-val">4.5</div><div class="fc-score-label">Communication</div></div>
+        </div>
+        <div class="fc-comment">"The cabins were warm and comfortable even in February — we were impressed. The menu was thoughtful with good vegetarian options throughout. The housing submission process through the portal was incredibly smooth — being able to assign our own subgroups was exactly what we needed. Highly recommend."</div>
+        <div class="fc-returning" style="color:var(--green)">✓ Booked again for Feb 2026</div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- MODALS -->
+
+<div class="overlay" id="newRetreatModal" onclick="closeOutside(event,'newRetreatModal')">
+  <div class="modal">
+    <div class="modal-title">Create new retreat</div>
+    <div class="modal-sub">Set up a new retreat record and generate the guest portal</div>
+    <div class="fg"><label class="fl">Group name</label><input class="fi" type="text" placeholder="e.g. Congregation Beth Shalom"></div>
+    <div class="fg"><label class="fl">Group type</label><select class="fs"><option>Synagogue / Jewish organization</option><option>Corporate / professional</option><option>Youth organization</option><option>Alumni / camp alumni</option><option>Family camp</option><option>School / educational</option><option>Other</option></select></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Arrival date</label><input class="fi" type="date"></div>
+      <div class="fg"><label class="fl">Departure date</label><input class="fi" type="date"></div>
+    </div>
+    <div class="frow3">
+      <div class="fg"><label class="fl">Estimated headcount</label><input class="fi" type="number" placeholder="0"></div>
+      <div class="fg"><label class="fl">Rate per person/night</label><input class="fi" type="text" placeholder="$0"></div>
+      <div class="fg"><label class="fl">Deposit required</label><input class="fi" type="text" placeholder="$0"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Coordinator name</label><input class="fi" type="text" placeholder="Full name"></div>
+      <div class="fg"><label class="fl">Coordinator email</label><input class="fi" type="email" placeholder="email@example.com"></div>
+    </div>
+    <div class="fg"><label class="fl">Housing submission deadline</label><input class="fi" type="date"></div>
+    <div class="fg"><label class="fl">Special notes</label><textarea class="ft" placeholder="Any known requirements, dietary flags, or special considerations..."></textarea></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('newRetreatModal')">Create retreat &amp; generate portal</button><button class="btn btn-ghost" onclick="closeModal('newRetreatModal')">Cancel</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="respondRequestModal" onclick="closeOutside(event,'respondRequestModal')">
+  <div class="modal">
+    <div class="modal-title">Respond to change request</div>
+    <div class="modal-sub">Your response will be visible to the group coordinator immediately in their portal.</div>
+    <div style="background:var(--cream);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text-secondary)">
+      <strong>Request:</strong> We have two guests who are strictly vegan and gluten-free joining unexpectedly. Can the Friday dinner be adjusted?
+    </div>
+    <div class="fg"><label class="fl">Your decision</label><select class="fs"><option>Approved — will accommodate as requested</option><option>Approved with modification</option><option>Counter-proposal — see message below</option><option>Declined — cannot accommodate</option></select></div>
+    <div class="fg"><label class="fl">Response message to group</label><textarea class="ft" placeholder="Explain what you can accommodate, any changes made, or reason for declining..."></textarea></div>
+    <div class="fg"><label class="fl">Internal note (not visible to group)</label><textarea class="ft" style="min-height:50px" placeholder="Any internal notes for your records..."></textarea></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('respondRequestModal')">Send response</button><button class="btn btn-ghost" onclick="closeModal('respondRequestModal')">Cancel</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="sendReminderModal" onclick="closeOutside(event,'sendReminderModal')">
+  <div class="modal">
+    <div class="modal-title">Send reminder to group</div>
+    <div class="modal-sub">Send a notification to the group coordinator through the portal</div>
+    <div class="fg"><label class="fl">Reminder type</label><select class="fs"><option>COI — certificate of insurance required</option><option>Housing submission due</option><option>Contract signature needed</option><option>Deposit outstanding</option><option>Headcount confirmation</option><option>Custom message</option></select></div>
+    <div class="fg"><label class="fl">Message</label><textarea class="ft">Hi — just a reminder that your certificate of insurance is due by Sep 5 for your upcoming retreat. Please upload it directly through your guest portal at the link below. Required coverage: $1M general liability with Pinecrest Summer Camp named as additional insured. Please reach out with any questions.</textarea></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('sendReminderModal')">Send reminder</button><button class="btn btn-ghost" onclick="closeModal('sendReminderModal')">Cancel</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="uploadCOIModal" onclick="closeOutside(event,'uploadCOIModal')">
+  <div class="modal">
+    <div class="modal-title">Upload certificate of insurance</div>
+    <div class="modal-sub">Upload on behalf of Congregation Beth Shalom</div>
+    <div style="background:var(--blue-bg);border:1px solid #b5d4f4;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--blue-text)">Required: $1M general liability · $2M aggregate · Pinecrest Summer Camp named as additional insured · Policy must be valid through Sep 21, 2025</div>
+    <div class="fg">
+      <div class="upload-zone">
+        <div class="upload-zone-icon">📎</div>
+        <div style="font-weight:500">Click to upload COI document</div>
+        <div style="font-size:11px;margin-top:4px">PDF, JPG, or PNG · Max 10MB</div>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Insurance company</label><input class="fi" type="text" placeholder="e.g. Hartford, Travelers"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Policy number</label><input class="fi" type="text" placeholder="Policy #"></div>
+      <div class="fg"><label class="fl">Policy expiration</label><input class="fi" type="date"></div>
+    </div>
+    <div class="fg"><label class="fl">Coverage amount (general liability)</label><input class="fi" type="text" placeholder="$1,000,000"></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('uploadCOIModal')">Upload &amp; review</button><button class="btn btn-ghost" onclick="closeModal('uploadCOIModal')">Cancel</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="setupChecklistModal" onclick="closeOutside(event,'setupChecklistModal')">
+  <div class="modal">
+    <div class="modal-title">Setup checklist — Rodef Shalom Family Camp</div>
+    <div class="modal-sub">Jul 25–27 · 62 people · Setup begins Jul 24</div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:7px;cursor:pointer;background:var(--white);border:1px solid var(--cream-dark)" onclick="toggleCheck(this)">
+        <div class="stask-check" style="width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;background:var(--white)"></div>
+        <span style="font-size:13px">Deep clean Cabins 1–4</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:7px;cursor:pointer;background:var(--white);border:1px solid var(--cream-dark)" onclick="toggleCheck(this)">
+        <div class="stask-check" style="width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;background:var(--white)"></div>
+        <span style="font-size:13px">Make all 62 beds with fresh linens</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:7px;cursor:pointer;background:var(--white);border:1px solid var(--cream-dark)" onclick="toggleCheck(this)">
+        <div class="stask-check" style="width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;background:var(--white)"></div>
+        <span style="font-size:13px">Activate waterfront — check all equipment</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:7px;cursor:pointer;background:var(--white);border:1px solid var(--cream-dark)" onclick="toggleCheck(this)">
+        <div class="stask-check" style="width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;background:var(--white)"></div>
+        <span style="font-size:13px">Stock dining hall for 62 people × 2 days</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:7px;cursor:pointer;background:var(--white);border:1px solid var(--cream-dark)" onclick="toggleCheck(this)">
+        <div class="stask-check" style="width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;background:var(--white)"></div>
+        <span style="font-size:13px">Brief kitchen staff on dietary requirements</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:7px;cursor:pointer;background:var(--white);border:1px solid var(--cream-dark)" onclick="toggleCheck(this)">
+        <div class="stask-check" style="width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;background:var(--white)"></div>
+        <span style="font-size:13px">Set up main lodge for Friday evening program</span>
+      </div>
+    </div>
+    <div class="modal-btns"><button class="btn btn-ghost" onclick="closeModal('setupChecklistModal')">Close</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="addMealModal" onclick="closeOutside(event,'addMealModal')">
+  <div class="modal">
+    <div class="modal-title">Add meal to retreat menu</div>
+    <div class="modal-sub">Young Judaea Summer Staff Retreat</div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Day</label><select class="fs"><option>Monday Jul 7</option><option>Tuesday Jul 8</option><option>Wednesday Jul 9</option><option>Thursday Jul 10</option></select></div>
+      <div class="fg"><label class="fl">Meal period</label><select class="fs"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select></div>
+    </div>
+    <div class="fg"><label class="fl">Meal name</label><input class="fi" type="text" placeholder="e.g. BBQ cookout"></div>
+    <div class="fg"><label class="fl">Items included</label><textarea class="ft" placeholder="List menu items, one per line..."></textarea></div>
+    <div class="fg"><label class="fl">Allergens present</label>
+      <div class="allergen-grid">
+        <div class="allergen-chip" onclick="this.classList.toggle('sel')">Gluten</div>
+        <div class="allergen-chip" onclick="this.classList.toggle('sel')">Dairy</div>
+        <div class="allergen-chip" onclick="this.classList.toggle('sel')">Egg</div>
+        <div class="allergen-chip" onclick="this.classList.toggle('sel')">Peanut</div>
+        <div class="allergen-chip" onclick="this.classList.toggle('sel')">Tree nut</div>
+        <div class="allergen-chip" onclick="this.classList.toggle('sel')">Fish</div>
+        <div class="allergen-chip" onclick="this.classList.toggle('sel')">Shellfish</div>
+        <div class="allergen-chip" onclick="this.classList.toggle('sel')">Soy</div>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Alternatives / accommodations</label><input class="fi" type="text" placeholder="e.g. GF buns available, veggie burgers on request"></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('addMealModal')">Add to menu</button><button class="btn btn-ghost" onclick="closeModal('addMealModal')">Cancel</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="logIssueModal" onclick="closeOutside(event,'logIssueModal')">
+  <div class="modal">
+    <div class="modal-title">Log issue during retreat</div>
+    <div class="modal-sub">Young Judaea Summer Staff Retreat · Jul 7–10</div>
+    <div class="fg"><label class="fl">Issue</label><input class="fi" type="text" placeholder="Briefly describe the problem"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Reported by</label><select class="fs"><option>Group coordinator</option><option>Camp staff</option><option>Ops director</option></select></div>
+      <div class="fg"><label class="fl">Priority</label><select class="fs"><option>Normal</option><option>High</option><option>Urgent</option></select></div>
+    </div>
+    <div class="fg"><label class="fl">Assign to</label><select class="fs"><option>Tom H. (Maintenance)</option><option>Jordan M. (Ops)</option><option>Kitchen staff</option><option>External vendor</option></select></div>
+    <div class="fg"><label class="fl">Notes</label><textarea class="ft" placeholder="Details..."></textarea></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('logIssueModal')">Log issue</button><button class="btn btn-ghost" onclick="closeModal('logIssueModal')">Cancel</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="invoiceModal" onclick="closeOutside(event,'invoiceModal')">
+  <div class="modal">
+    <div class="modal-title">Generate &amp; send invoice</div>
+    <div class="modal-sub">Young Judaea Summer Staff Retreat</div>
+    <div class="fg"><label class="fl">Send to</label><input class="fi" type="email" value="rachel@youngjudaea.org"></div>
+    <div class="fg"><label class="fl">Invoice note</label><textarea class="ft">Thank you for a wonderful retreat at Pinecrest. Please find your invoice attached. Balance of $17,230 is due at checkout on Jul 10. It has been a pleasure hosting your group.</textarea></div>
+    <div class="fg"><label class="fl">Delivery method</label><select class="fs"><option>Send via guest portal + email</option><option>Send via email only</option><option>Download PDF only</option></select></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="closeModal('invoiceModal')">Send invoice</button><button class="btn btn-ghost" onclick="closeModal('invoiceModal')">Cancel</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="housingHistoryModal" onclick="closeOutside(event,'housingHistoryModal')">
+  <div class="modal">
+    <div class="modal-title">Housing version history</div>
+    <div class="modal-sub">Young Judaea Summer Staff Retreat</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:var(--green-bg);border:1px solid #a8d8a8;border-radius:8px;padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:var(--green)"><span>v3 — Final (locked)</span><span style="font-family:'DM Mono',monospace">Jun 22</span></div>
+        <div style="font-size:12px;color:var(--green);margin-top:4px">Cabin 1: Leadership (10) · Cabin 2: Staff A (14) · Cabin 3: Staff B (14). Ops director finalized after group confirmed Cabin 2 substitution.</div>
+      </div>
+      <div style="background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:var(--text-muted)"><span>v2 — Camp adjustment</span><span style="font-family:'DM Mono',monospace">Jun 20</span></div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Ops moved Staff A from Cabin 4 to Cabin 2 (Cabin 4 under electrical repair). Group confirmed acceptance Jun 20.</div>
+      </div>
+      <div style="background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:var(--text-muted)"><span>v1 — Group submission</span><span style="font-family:'DM Mono',monospace">Jun 15</span></div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Original submission by Rachel Levi: Cabin 1: Leadership (10) · Cabin 4: Staff A (14) · Cabin 3: Staff B (14).</div>
+      </div>
+    </div>
+    <div class="modal-btns"><button class="btn btn-ghost" onclick="closeModal('housingHistoryModal')">Close</button></div>
+  </div>
+</div>
+
+<script>
+function switchMod(el, id) {
+  document.querySelectorAll('.mod-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const target = document.getElementById(id);
+  if (target) target.classList.add('active');
+}
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeOutside(e, id) { if (e.target.id === id) closeModal(id); }
+function setPill(el) {
+  el.closest('.pill-bar')?.querySelectorAll('.pill').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+}
+function toggleCheck(el) {
+  const check = el.querySelector('.stask-check');
+  if (!check) return;
+  const isDone = check.style.background === 'rgb(122, 171, 110)';
+  check.style.background = isDone ? 'var(--white)' : 'var(--sage)';
+  check.style.borderColor = isDone ? 'var(--border)' : 'var(--sage)';
+  check.textContent = isDone ? '' : '✓';
+  check.style.color = 'white';
+  check.style.fontSize = '11px';
+  check.style.fontWeight = '700';
+  check.style.display = 'flex';
+  check.style.alignItems = 'center';
+  check.style.justifyContent = 'center';
+}
+</script>
+</body>
+</html>

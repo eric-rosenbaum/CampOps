@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Wrench, ClipboardList,
   TreePine, Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
@@ -19,7 +19,7 @@ interface NavItem {
 }
 
 const todayItems: NavItem[] = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { path: '/home', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { path: '/my-tasks', label: 'My Tasks', icon: CheckSquare, end: false },
 ];
 
@@ -47,11 +47,12 @@ export function Sidebar() {
   const { currentUser, role, roleLabel, canAccessModule } = useAuth();
   const { currentCamp } = useCampStore();
   const signOut = useAuthStore((s) => s.signOut);
-  const navigate = useNavigate();
 
-  function handleSignOut() {
-    navigate('/login', { replace: true });
-    signOut();
+  async function handleSignOut() {
+    await signOut();
+    // Hard redirect to the landing page — clears in-memory state and avoids any
+    // ProtectedRoute race that would otherwise bounce to /login.
+    window.location.href = '/';
   }
 
   const visibleFacilities = facilityItems.filter(

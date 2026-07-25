@@ -34,6 +34,7 @@ import { RetreatPortal } from '@/pages/portal/RetreatPortal';
 import { PrivacyPolicy } from '@/pages/legal/PrivacyPolicy';
 import { SecurityOverview } from '@/pages/legal/SecurityOverview';
 import { Dpa } from '@/pages/legal/Dpa';
+import { LandingPage } from '@/pages/LandingPage';
 
 // My Tasks
 import { MyTasks } from '@/pages/MyTasks';
@@ -77,6 +78,15 @@ function HomeRouter() {
   if (currentMember?.role === 'admin') return <AdminHome />;
   if (currentMember?.role === 'viewer') return <ViewerHome />;
   return <StaffHome />;
+}
+
+// The root path: logged-out visitors get the marketing landing page; signed-in
+// users are sent into the app dashboard at /home.
+function LandingOrHome() {
+  const { session, isLoading } = useAuthStore();
+  if (isLoading) return null;
+  if (session) return <Navigate to="/home" replace />;
+  return <LandingPage />;
 }
 
 function CampDataLoader() {
@@ -476,6 +486,7 @@ export default function App() {
       <AppBootstrap>
         <Routes>
           {/* Public */}
+          <Route path="/" element={<LandingOrHome />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/invite/:token" element={<AcceptInvite />} />
@@ -502,7 +513,7 @@ export default function App() {
             {/* Authenticated + camp required */}
             <Route element={<CampRoute />}>
               <Route element={<><CampDataLoader /><Layout /></>}>
-                <Route path="/" element={<HomeRouter />} />
+                <Route path="/home" element={<HomeRouter />} />
                 <Route path="/my-tasks" element={<MyTasks />} />
                 <Route path="/issues" element={<IssuesRepairs />} />
                 <Route path="/pre-post" element={<PrePostCamp />} />

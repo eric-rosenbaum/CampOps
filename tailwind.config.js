@@ -17,6 +17,7 @@ export default {
       fontFamily: {
         sans: ['"DM Sans"', 'sans-serif'],
         mono: ['"DM Mono"', 'monospace'],
+        display: ['"Fraunces"', 'Georgia', 'serif'],
       },
       borderRadius: {
         card: '10px',

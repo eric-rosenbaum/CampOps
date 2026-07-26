@@ -172,7 +172,7 @@ The rights available depend on applicable law and on your relationship to the da
 - **Correction:** Information entered into CampCommand is **editable** by authorized staff, so records can be corrected or updated.
 - **Deletion:** Data can be **deleted** on request, subject to limited legal or security-related retention.
 
-If you are an individual (for example, a parent asking about your child's record or a staff member asking about your account) and you are not sure who to contact, reach out to your Camp first. You may also contact us at ericrosenbaum77@gmail.com and we will route your request appropriately and assist the Camp as its Processor.
+If you are an individual (for example, a parent asking about your child's record or a staff member asking about your account) and you are not sure who to contact, reach out to your Camp first. You may also contact us at eric@campcommand.app and we will route your request appropriately and assist the Camp as its Processor.
 
 Where required by law, you may also have rights to object to or restrict certain processing, to withdraw consent, and to lodge a complaint with a data-protection authority.
 
@@ -195,7 +195,7 @@ We may update this Privacy Policy as the product, our subprocessors, or legal re
 If you have questions about this policy or about how CampCommand handles data:
 
 **CampCommand**
-Email: ericrosenbaum77@gmail.com
+Email: eric@campcommand.app
 Governing jurisdiction: the State of Delaware, United States
 
 If you are a camper, parent/guardian, guest, or staff member with questions about a specific Camp's records, please contact that **Camp** directly, as it is the Controller of that information. We will support the Camp in responding.

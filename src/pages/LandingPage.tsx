@@ -6,13 +6,13 @@ import {
   Smartphone, Camera, Wifi,
 } from 'lucide-react';
 
-const DEMO_MAILTO = 'mailto:support@campcommand.com?subject=CampCommand%20demo%20request&body=Hi%20%E2%80%94%20I%27d%20like%20to%20see%20a%20demo%20of%20CampCommand%20for%20our%20camp.';
+const DEMO_MAILTO = 'mailto:eric@campcommand.app?subject=CampCommand%20demo%20request&body=Hi%20%E2%80%94%20I%27d%20like%20to%20see%20a%20demo%20of%20CampCommand%20for%20our%20camp.';
 
 // Paste your booking page URL here to turn "Book a demo" into an in-page scheduler that
 // drops the meeting straight onto your Google Calendar. Works with a Google Calendar
 // Appointment Schedule link (calendar.google.com/calendar/appointments/…) or a Calendly
 // link (calendly.com/…). Leave it as '' and "Book a demo" falls back to an email.
-const DEMO_SCHEDULING_URL: string = 'https://calendar.app.google/rh5cKVSicRksH8Re8';
+const DEMO_SCHEDULING_URL: string = 'https://calendar.app.google/Cwfexway6Wswhf6p9';
 
 function scrollToId(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });

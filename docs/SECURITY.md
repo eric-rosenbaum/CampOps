@@ -1,7 +1,7 @@
 # CampCommand Security Overview
 
 _Last updated: July 24, 2026_
-_Owner: ericrosenbaum77@gmail.com_
+_Owner: eric@campcommand.app_
 
 ---
 
@@ -118,7 +118,7 @@ We provide the controls; camps decide who gets access to what.
 
 ## Responsible disclosure
 
-We welcome reports from security researchers and users. If you believe you have found a security vulnerability in CampCommand, please contact us at **ericrosenbaum77@gmail.com** with:
+We welcome reports from security researchers and users. If you believe you have found a security vulnerability in CampCommand, please contact us at **eric@campcommand.app** with:
 
 - A description of the issue and the potential impact.
 - Steps to reproduce, if available.
@@ -132,4 +132,4 @@ CampCommand does not currently operate a formal bug-bounty program but welcomes 
 
 ## Questions
 
-For security questions that are not vulnerability reports, contact **ericrosenbaum77@gmail.com**.
+For security questions that are not vulnerability reports, contact **eric@campcommand.app**.

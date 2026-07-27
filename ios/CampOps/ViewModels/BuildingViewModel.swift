@@ -1,6 +1,22 @@
 import Foundation
 import Combine
 
+// TODO: Locations-tree migration (backend unified all physical locations).
+// This module still reads the RETAINED legacy tables/columns:
+//   • `buildings`        -> now legacy; a "building" is a top-level `locations`
+//     row that has a `building_details` row (see BuildingDetails / DataService
+//     .fetchBuildingDetails()).
+//   • `building_rooms`   -> now legacy; a "room" is a child `locations` row
+//     (parent_id = the building's location id).
+//   • `building_components.location_id` and
+//     `building_seasonal_tasks.location_id` now point at location nodes
+//     (added ALONGSIDE the still-present `building_id` / `room_id`).
+// Full migration path: fetch `locations` (filtered to nodes with a
+// building_details row for structures, and their children for rooms) via
+// LocationStore, map components/seasonal tasks by location_id, and drop the
+// legacy `buildings` / `building_rooms` fetches. Kept legacy for now so the
+// substantial Building UI (panel schedules, cross-building electrical/plumbing
+// views, seasonal checklist) stays consistent and compiling.
 @MainActor
 final class BuildingViewModel: ObservableObject {
     @Published var buildings: [Building] = []

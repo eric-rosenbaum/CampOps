@@ -40,6 +40,7 @@ function issueToRow(issue: Issue) {
     camp_id: _campId,
     title: issue.title,
     description: issue.description,
+    location_ids: issue.locationIds,
     locations: issue.locations,
     priority: issue.priority,
     status: issue.status,
@@ -65,6 +66,7 @@ function rowToIssue(row: Record<string, unknown>, activityLog: ActivityEntry[]):
     id: row.id as string,
     title: row.title as string,
     description: (row.description as string) ?? '',
+    locationIds: (row.location_ids as string[]) ?? [],
     locations: ((row.locations as string[]) ?? []) as Issue['locations'],
     priority: row.priority as Issue['priority'],
     status: row.status as Issue['status'],
@@ -92,6 +94,7 @@ function taskToRow(task: ChecklistTask) {
     camp_id: _campId,
     title: task.title,
     description: task.description,
+    location_ids: task.locationIds,
     locations: task.locations,
     priority: task.priority,
     status: task.status,
@@ -111,6 +114,7 @@ function rowToTask(row: Record<string, unknown>, activityLog: ActivityEntry[]): 
     id: row.id as string,
     title: row.title as string,
     description: (row.description as string) ?? '',
+    locationIds: (row.location_ids as string[]) ?? [],
     locations: ((row.locations as string[]) ?? []) as ChecklistTask['locations'],
     priority: row.priority as ChecklistTask['priority'],
     status: row.status as ChecklistTask['status'],
@@ -733,6 +737,7 @@ function rowToSafetyItem(r: Record<string, unknown>): SafetyItem {
     name: r.name as string,
     category: r.category as SafetyItem['category'],
     type: r.type as SafetyItem['type'],
+    locationId: (r.location_id as string) ?? null,
     location: (r.location as string) ?? '',
     unitCount: (r.unit_count as number) ?? 1,
     frequency: r.frequency as SafetyItem['frequency'],
@@ -870,7 +875,7 @@ export async function loadSafetyFromSupabase(campId: string): Promise<SafetyData
 export async function dbAddSafetyItem(item: SafetyItem) {
   const { error } = await supabase.from('safety_items').insert({
     id: item.id, camp_id: _campId, name: item.name, category: item.category, type: item.type,
-    location: item.location, unit_count: item.unitCount, frequency: item.frequency,
+    location_id: item.locationId, location: item.location, unit_count: item.unitCount, frequency: item.frequency,
     frequency_days: item.frequencyDays, last_inspected: item.lastInspected,
     next_due: item.nextDue, vendor: item.vendor, notes: item.notes,
     metadata: item.metadata, created_at: item.createdAt, updated_at: item.updatedAt,
@@ -1105,6 +1110,7 @@ function rowToAsset(r: Record<string, unknown>): CampAsset {
     serialNumber: (r.serial_number as string) ?? null,
     licensePlate: (r.license_plate as string) ?? null,
     registrationExpiry: (r.registration_expiry as string) ?? null,
+    locationId: (r.location_id as string) ?? null,
     storageLocation: (r.storage_location as string) ?? '',
     status: r.status as CampAsset['status'],
     currentOdometer: (r.current_odometer as number) ?? null,
@@ -1221,7 +1227,7 @@ export async function dbUpsertAsset(a: CampAsset) {
     id: a.id, camp_id: _campId, name: a.name, category: a.category, subtype: a.subtype,
     make: a.make, model: a.model, year: a.year, serial_number: a.serialNumber,
     license_plate: a.licensePlate, registration_expiry: a.registrationExpiry,
-    storage_location: a.storageLocation, status: a.status,
+    location_id: a.locationId, storage_location: a.storageLocation, status: a.status,
     current_odometer: a.currentOdometer, current_hours: a.currentHours,
     tracks_odometer: a.tracksOdometer, tracks_hours: a.tracksHours,
     notes: a.notes, is_active: a.isActive,
@@ -1374,41 +1380,14 @@ export function subscribeToAssets(campId: string, onUpdate: AssetDataCallback, o
 
 // ─── Building Systems ───────────────────────────────────────────────────────────
 
-function rowToBuilding(r: Record<string, unknown>): Building {
-  return {
-    id: r.id as string,
-    name: r.name as string,
-    type: (r.type as Building['type']) ?? 'other',
-    locationLabel: (r.location_label as string) ?? null,
-    mainWaterShutoff: (r.main_water_shutoff as string) ?? null,
-    mainElectricalPanel: (r.main_electrical_panel as string) ?? null,
-    mainGasShutoff: (r.main_gas_shutoff as string) ?? null,
-    yearBuilt: (r.year_built as number) ?? null,
-    notes: (r.notes as string) ?? null,
-    sortOrder: (r.sort_order as number) ?? 0,
-    createdAt: r.created_at as string,
-    updatedAt: r.updated_at as string,
-  };
-}
-
-function rowToRoom(r: Record<string, unknown>): BuildingRoom {
-  return {
-    id: r.id as string,
-    buildingId: r.building_id as string,
-    name: r.name as string,
-    floor: (r.floor as string) ?? null,
-    notes: (r.notes as string) ?? null,
-    sortOrder: (r.sort_order as number) ?? 0,
-    createdAt: r.created_at as string,
-    updatedAt: r.updated_at as string,
-  };
-}
+// Buildings and rooms are no longer their own tables — they are nodes in the
+// unified `locations` tree (loaded by locationStore). This module now loads only
+// the electrical/plumbing data that hangs off those location nodes.
 
 function rowToComponent(r: Record<string, unknown>): BuildingComponent {
   return {
     id: r.id as string,
-    buildingId: r.building_id as string,
-    roomId: (r.room_id as string) ?? null,
+    locationId: r.location_id as string,
     system: r.system as BuildingComponent['system'],
     type: r.type as BuildingComponent['type'],
     label: r.label as string,
@@ -1445,7 +1424,7 @@ function rowToCircuit(r: Record<string, unknown>): BuildingCircuit {
 function rowToBuildingSeasonalTask(r: Record<string, unknown>): BuildingSeasonalTask {
   return {
     id: r.id as string,
-    buildingId: (r.building_id as string) ?? null,
+    locationId: (r.location_id as string) ?? null,
     title: r.title as string,
     detail: (r.detail as string) ?? null,
     phase: r.phase as BuildingSeasonalTask['phase'],
@@ -1468,16 +1447,16 @@ export type BuildingData = {
 };
 
 async function loadBuildingData(campId: string): Promise<BuildingData> {
-  const [bRes, rRes, cRes, ciRes, sRes] = await Promise.all([
-    supabase.from('buildings').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
-    supabase.from('building_rooms').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+  // Buildings & rooms now live in the `locations` tree (loaded by locationStore).
+  // This loader only fetches the infrastructure data keyed by location_id.
+  const [cRes, ciRes, sRes] = await Promise.all([
     supabase.from('building_components').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('building_circuits').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('building_seasonal_tasks').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
   ]);
   return {
-    buildings: (bRes.data ?? []).map((r) => rowToBuilding(r as Record<string, unknown>)),
-    rooms: (rRes.data ?? []).map((r) => rowToRoom(r as Record<string, unknown>)),
+    buildings: [],
+    rooms: [],
     components: (cRes.data ?? []).map((r) => rowToComponent(r as Record<string, unknown>)),
     circuits: (ciRes.data ?? []).map((r) => rowToCircuit(r as Record<string, unknown>)),
     seasonalTasks: (sRes.data ?? []).map((r) => rowToBuildingSeasonalTask(r as Record<string, unknown>)),
@@ -1493,60 +1472,13 @@ export async function loadBuildingFromSupabase(campId: string): Promise<Building
   }
 }
 
-// Buildings
-export async function dbAddBuilding(b: Building) {
-  const { error } = await supabase.from('buildings').insert({
-    id: b.id, camp_id: _campId, name: b.name, type: b.type,
-    location_label: b.locationLabel, main_water_shutoff: b.mainWaterShutoff,
-    main_electrical_panel: b.mainElectricalPanel, main_gas_shutoff: b.mainGasShutoff,
-    year_built: b.yearBuilt, notes: b.notes, sort_order: b.sortOrder,
-    created_at: b.createdAt, updated_at: b.updatedAt,
-  });
-  if (error) console.error('dbAddBuilding error:', error.message);
-}
-
-export async function dbUpdateBuilding(b: Building) {
-  const { error } = await supabase.from('buildings').update({
-    name: b.name, type: b.type, location_label: b.locationLabel,
-    main_water_shutoff: b.mainWaterShutoff, main_electrical_panel: b.mainElectricalPanel,
-    main_gas_shutoff: b.mainGasShutoff, year_built: b.yearBuilt, notes: b.notes,
-    sort_order: b.sortOrder, updated_at: new Date().toISOString(),
-  }).eq('id', b.id);
-  if (error) console.error('dbUpdateBuilding error:', error.message);
-}
-
-export async function dbDeleteBuilding(id: string) {
-  const { error } = await supabase.from('buildings').delete().eq('id', id);
-  if (error) console.error('dbDeleteBuilding error:', error.message);
-}
-
-// Rooms
-export async function dbAddRoom(r: BuildingRoom) {
-  const { error } = await supabase.from('building_rooms').insert({
-    id: r.id, camp_id: _campId, building_id: r.buildingId, name: r.name,
-    floor: r.floor, notes: r.notes, sort_order: r.sortOrder,
-    created_at: r.createdAt, updated_at: r.updatedAt,
-  });
-  if (error) console.error('dbAddRoom error:', error.message);
-}
-
-export async function dbUpdateRoom(r: BuildingRoom) {
-  const { error } = await supabase.from('building_rooms').update({
-    name: r.name, floor: r.floor, notes: r.notes, sort_order: r.sortOrder,
-    updated_at: new Date().toISOString(),
-  }).eq('id', r.id);
-  if (error) console.error('dbUpdateRoom error:', error.message);
-}
-
-export async function dbDeleteRoom(id: string) {
-  const { error } = await supabase.from('building_rooms').delete().eq('id', id);
-  if (error) console.error('dbDeleteRoom error:', error.message);
-}
+// Buildings & rooms are created/edited/deleted through the locations tree
+// (locationStore + locationsDb), so this module no longer writes those tables.
 
 // Components
 function componentToRow(c: BuildingComponent) {
   return {
-    id: c.id, camp_id: _campId, building_id: c.buildingId, room_id: c.roomId,
+    id: c.id, camp_id: _campId, location_id: c.locationId,
     system: c.system, type: c.type, label: c.label, location_detail: c.locationDetail,
     status: c.status, status_detail: c.statusDetail, last_serviced: c.lastServiced,
     next_service_due: c.nextServiceDue, photo_url: c.photoUrl, metadata: c.metadata,
@@ -1599,7 +1531,7 @@ export async function dbDeleteCircuit(id: string) {
 // Seasonal tasks
 export async function dbAddBuildingSeasonalTask(t: BuildingSeasonalTask) {
   const { error } = await supabase.from('building_seasonal_tasks').insert({
-    id: t.id, camp_id: _campId, building_id: t.buildingId, title: t.title,
+    id: t.id, camp_id: _campId, location_id: t.locationId, title: t.title,
     detail: t.detail, phase: t.phase, is_complete: t.isComplete,
     completed_by: t.completedBy, completed_date: t.completedDate,
     assignees: t.assignees, sort_order: t.sortOrder,
@@ -1613,7 +1545,7 @@ export async function dbUpdateBuildingSeasonalTask(id: string, patch: Partial<Bu
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.detail !== undefined) row.detail = patch.detail;
   if (patch.phase !== undefined) row.phase = patch.phase;
-  if (patch.buildingId !== undefined) row.building_id = patch.buildingId;
+  if (patch.locationId !== undefined) row.location_id = patch.locationId;
   if (patch.assignees !== undefined) row.assignees = patch.assignees;
   if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder;
   const { error } = await supabase.from('building_seasonal_tasks').update(row).eq('id', id);
@@ -1639,7 +1571,7 @@ type BuildingDataCallback = (data: BuildingData) => void;
 export function subscribeToBuilding(campId: string, onUpdate: BuildingDataCallback, onEventStart?: () => void): () => void {
   const channelName = `building-channel-${++buildingChannelCount}`;
   const reload = async () => { onEventStart?.(); onUpdate(await loadBuildingData(campId)); };
-  const tables = ['buildings', 'building_rooms', 'building_components', 'building_circuits', 'building_seasonal_tasks'];
+  const tables = ['building_components', 'building_circuits', 'building_seasonal_tasks'];
   let channel = supabase.channel(channelName);
   for (const table of tables) {
     channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, reload);

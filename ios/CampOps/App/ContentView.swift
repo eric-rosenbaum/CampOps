@@ -66,31 +66,34 @@ struct ContentView: View {
     }
 
     private func loadCampData() async {
+        async let l = LocationStore.shared.load()
         async let i = issueVM.load()
         async let c = checklistVM.load()
         async let p = poolVM.load()
         async let a = assetVM.load()
         async let b = buildingVM.load()
-        _ = await (i, c, p, a, b)
+        _ = await (l, i, c, p, a, b)
         await syncService.subscribeToChanges(
             onIssueChange:      { await issueVM.refresh() },
             onTaskChange:       { await checklistVM.refresh() },
             onPoolChange:       { await poolVM.refresh() },
             onAssetChange:      { await assetVM.refresh() },
             onBuildingChange:   { await buildingVM.refresh() },
+            onLocationChange:   { await LocationStore.shared.refresh() },
             onPermissionChange: { await authManager.reloadMemberAndGroup() }
         )
     }
 
     // Refreshes all data without touching subscriptions (used on foreground resume).
     private func refreshAll() async {
+        async let l = LocationStore.shared.refresh()
         async let i = issueVM.refresh()
         async let c = checklistVM.refresh()
         async let p = poolVM.refresh()
         async let a = assetVM.refresh()
         async let b = buildingVM.refresh()
         async let m = authManager.reloadMemberAndGroup()
-        _ = await (i, c, p, a, b, m)
+        _ = await (l, i, c, p, a, b, m)
     }
 }
 

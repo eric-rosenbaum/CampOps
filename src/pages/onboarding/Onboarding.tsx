@@ -10,6 +10,8 @@ import { usePoolStore } from '@/store/poolStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useSafetyStore } from '@/store/safetyStore';
 import { useAssetStore } from '@/store/assetStore';
+import { useLocationStore } from '@/store/locationStore';
+import { LocationPicker } from '@/components/shared/LocationPicker';
 import { generateId } from '@/lib/utils';
 import type { PoolType, SafetyItemType, SafetyFrequency, AssetCategory } from '@/lib/types';
 
@@ -120,14 +122,32 @@ function SheetPicker({ columns, nameCol, sizeCol, onNameCol, onSizeCol, onConfir
 
 // ─── STEP: Locations ─────────────────────────────────────────────────────────
 
-function LocationsStep({ campType, onDone }: { campType: string | null; onDone: (locs: string[]) => void }) {
+// Best-guess mapping from a common preset area → seeded category name.
+const AREA_CATEGORY: Record<string, string> = {
+  'Waterfront': 'Waterfront',
+  'Dining Hall': 'Dining', 'Kitchen': 'Dining', 'Camp Store': 'Dining',
+  'Health Center / Infirmary': 'Health & Safety',
+  'Athletic Fields': 'Athletics',
+  'Maintenance / Shop': 'Maintenance', 'Laundry': 'Maintenance', 'Parking / Roads': 'Maintenance',
+  'Main Lodge': 'Admin',
+  'Arts & Crafts': 'Program', 'Theater / Performance': 'Program',
+  'Challenge Course / Ropes': 'Outdoor', 'Archery Range': 'Outdoor',
+  'Staff Housing': 'Housing',
+};
+
+interface CabinEntry { name: string; beds: number | null; }
+
+function LocationsStep({ campType, onDone }: { campType: string | null; onDone: () => void }) {
+  const { categories, bulkAdd } = useLocationStore();
+
   const [selected, setSelected] = useState<Set<string>>(
     new Set(['Waterfront', 'Dining Hall', 'Main Lodge', 'Health Center / Infirmary', 'Kitchen', 'Athletic Fields', 'Maintenance / Shop'])
   );
   const [custom, setCustom] = useState('');
   const [extras, setExtras] = useState<string[]>([]);
 
-  // Cabin individual entry
+  // Cabins (dorms) — kept separate so we can flag them as dorms with bed counts.
+  const [cabins, setCabins] = useState<CabinEntry[]>([]);
   const [cabinInput, setCabinInput] = useState('');
   const [showCabinSection, setShowCabinSection] = useState(false);
 
@@ -139,6 +159,9 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
   const [sizeCol, setSizeCol] = useState('');
   const [showPicker, setShowPicker] = useState(false);
 
+  const catId = (name: string) => categories.find(c => c.name === name)?.id ?? null;
+  const total = selected.size + extras.length + cabins.length;
+
   function toggle(loc: string) {
     setSelected(prev => {
       const next = new Set(prev);
@@ -149,24 +172,20 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
 
   function addCustom() {
     const val = custom.trim();
-    if (!val || selected.has(val) || extras.includes(val)) return;
+    if (!val || extras.includes(val)) return;
     setExtras(prev => [...prev, val]);
-    setSelected(prev => new Set(prev).add(val));
     setCustom('');
   }
 
   function addCabin() {
     const val = cabinInput.trim();
-    if (!val || selected.has(val) || extras.includes(val)) return;
-    setExtras(prev => [...prev, val]);
-    setSelected(prev => new Set(prev).add(val));
+    if (!val || cabins.some(c => c.name === val)) return;
+    setCabins(prev => [...prev, { name: val, beds: null }]);
     setCabinInput('');
   }
 
-  function removeExtra(loc: string) {
-    setExtras(prev => prev.filter(e => e !== loc));
-    setSelected(prev => { const next = new Set(prev); next.delete(loc); return next; });
-  }
+  function removeExtra(loc: string) { setExtras(prev => prev.filter(e => e !== loc)); }
+  function removeCabin(name: string) { setCabins(prev => prev.filter(c => c.name !== name)); }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -197,27 +216,33 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
   }
 
   function importFromSheet() {
-    const names = sheetRows
+    const imported: CabinEntry[] = sheetRows
       .map(r => {
         const name = String(r[nameCol] ?? '').trim();
-        const size = sizeCol ? String(r[sizeCol] ?? '').trim() : '';
-        return size ? `${name} (${size})` : name;
+        const bedsRaw = sizeCol ? parseInt(String(r[sizeCol] ?? '').replace(/[^0-9]/g, ''), 10) : NaN;
+        return { name, beds: Number.isNaN(bedsRaw) ? null : bedsRaw };
       })
-      .filter(Boolean);
+      .filter(c => c.name && !cabins.some(x => x.name === c.name));
 
-    const newNames = names.filter(n => !selected.has(n) && !extras.includes(n));
-    setExtras(prev => [...prev, ...newNames]);
-    setSelected(prev => {
-      const next = new Set(prev);
-      newNames.forEach(n => next.add(n));
-      return next;
-    });
+    setCabins(prev => [...prev, ...imported]);
     setShowPicker(false);
     setSheetRows([]);
     setSheetColumns([]);
   }
 
-  const cabinExtras = extras.filter(e => selected.has(e));
+  function handleDone() {
+    const housing = catId('Housing');
+    const other = catId('Other');
+    const areaRows = [...selected, ...extras].map(name => ({
+      name,
+      categoryId: catId(AREA_CATEGORY[name] ?? 'Other') ?? other,
+    }));
+    const cabinRows = cabins.map(c => ({
+      name: c.name, isDorm: true, bedCapacity: c.beds, categoryId: housing,
+    }));
+    bulkAdd([...areaRows, ...cabinRows]);
+    onDone();
+  }
 
   return (
     <div className="space-y-6">
@@ -305,12 +330,12 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
         )}
 
         {/* Added cabins list */}
-        {cabinExtras.length > 0 && (
+        {cabins.length > 0 && (
           <div className="mt-3 space-y-1.5">
-            {cabinExtras.map(loc => (
-              <div key={loc} className="flex items-center justify-between text-[13px] text-forest bg-stone-50 border border-stone-200 rounded-lg px-3 py-2">
-                <span>{loc}</span>
-                <button onClick={() => removeExtra(loc)} className="text-forest/30 hover:text-red-500 transition-colors">
+            {cabins.map(c => (
+              <div key={c.name} className="flex items-center justify-between text-[13px] text-forest bg-stone-50 border border-stone-200 rounded-lg px-3 py-2">
+                <span>{c.name}{c.beds ? <span className="text-forest/40"> · {c.beds} beds</span> : null}</span>
+                <button onClick={() => removeCabin(c.name)} className="text-forest/30 hover:text-red-500 transition-colors">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -332,9 +357,9 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
           />
           <button onClick={addCustom} disabled={!custom.trim()} className="bg-forest text-cream text-[13px] font-medium px-4 rounded-lg disabled:opacity-40">Add</button>
         </div>
-        {extras.filter(e => !cabinExtras.includes(e) && selected.has(e)).length > 0 && (
+        {extras.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-2">
-            {extras.filter(e => !cabinExtras.includes(e) && selected.has(e)).map(loc => (
+            {extras.map(loc => (
               <span key={loc} className="inline-flex items-center gap-1 text-[12px] bg-forest/10 text-forest px-2.5 py-1 rounded-full">
                 {loc}
                 <button onClick={() => removeExtra(loc)} className="text-forest/40 hover:text-forest"><X className="w-3 h-3" /></button>
@@ -345,8 +370,8 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
       </div>
 
       <div className="flex gap-3">
-        <PrimaryButton onClick={() => onDone([...selected])} disabled={selected.size === 0}>
-          Save {selected.size} location{selected.size !== 1 ? 's' : ''} →
+        <PrimaryButton onClick={handleDone} disabled={total === 0}>
+          Save {total} location{total !== 1 ? 's' : ''} →
         </PrimaryButton>
       </div>
     </div>
@@ -393,7 +418,7 @@ function PoolStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }
   }
 
   function toggleEquip(e: string) {
-    setCheckedEquip(prev => { const n = new Set(prev); n.has(e) ? n.delete(e) : n.add(e); return n; });
+    setCheckedEquip(prev => { const n = new Set(prev); if (n.has(e)) n.delete(e); else n.add(e); return n; });
   }
 
   function addCustomEquip() {
@@ -592,7 +617,7 @@ function ChecklistsStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => 
 
 // ─── STEP: Safety ─────────────────────────────────────────────────────────────
 
-interface FireEquipEntry { type: 'extinguisher' | 'co_alarm'; location: string; expiry: string; }
+interface FireEquipEntry { type: 'extinguisher' | 'co_alarm'; locationId: string; location: string; expiry: string; }
 interface DrillEntry { type: string; scheduledDate: string; lead: string; notes: string; }
 
 const DRILL_TYPES = [
@@ -606,13 +631,11 @@ const DRILL_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-const DEFAULT_SAFETY_LOCATIONS = ['Dining Hall', 'Main Lodge', 'Kitchen', 'Health Center / Infirmary', 'Waterfront', 'Athletic Fields', 'Maintenance / Shop'];
-
 function SafetyStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }) {
   const { addItem, addDrill } = useSafetyStore();
-  const campLocations = useCampStore(s => s.currentCamp?.locations ?? DEFAULT_SAFETY_LOCATIONS);
+  const locationById = useLocationStore(s => s.locationById);
 
-  const [fireEquip, setFireEquip] = useState<FireEquipEntry[]>([{ type: 'extinguisher', location: '', expiry: '' }]);
+  const [fireEquip, setFireEquip] = useState<FireEquipEntry[]>([{ type: 'extinguisher', locationId: '', location: '', expiry: '' }]);
   const [hoodDate, setHoodDate] = useState('');
   const [drills, setDrills] = useState<DrillEntry[]>([{ type: 'fire_evacuation', scheduledDate: '', lead: '', notes: '' }]);
   const [saving, setSaving] = useState(false);
@@ -635,7 +658,7 @@ function SafetyStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void
       addItem({
         id: generateId(),
         name: e.type === 'extinguisher' ? `Fire Extinguisher — ${e.location}` : `CO₂ Alarm — ${e.location}`,
-        category: 'fire', type, location: e.location,
+        category: 'fire', type, locationId: e.locationId || null, location: e.location,
         unitCount: 1, frequency: freq, frequencyDays: 365,
         lastInspected: null, nextDue: e.expiry || null,
         vendor: null, notes: null, metadata: {}, createdAt: now, updatedAt: now,
@@ -645,7 +668,7 @@ function SafetyStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void
     if (hoodDate) {
       addItem({
         id: generateId(), name: 'Kitchen Hood / Exhaust Fan', category: 'kitchen', type: 'hood_fan',
-        location: 'Kitchen', unitCount: 1, frequency: 'quarterly', frequencyDays: 90,
+        locationId: null, location: 'Kitchen', unitCount: 1, frequency: 'quarterly', frequencyDays: 90,
         lastInspected: hoodDate, nextDue: null,
         vendor: null, notes: null, metadata: {}, createdAt: now, updatedAt: now,
       });
@@ -680,10 +703,16 @@ function SafetyStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void
                 <option value="extinguisher">Extinguisher</option>
                 <option value="co_alarm">CO₂ Alarm</option>
               </select>
-              <select value={e.location} onChange={ev => updateFireEquip(i, 'location', ev.target.value)} className={selectCls}>
-                <option value="">Select location…</option>
-                {campLocations.map(l => <option key={l} value={l}>{l}</option>)}
-              </select>
+              <LocationPicker
+                multiple={false}
+                value={e.locationId ? [e.locationId] : []}
+                onChange={ids => {
+                  const id = ids[0] ?? '';
+                  setFireEquip(prev => prev.map((x, idx) => idx === i ? { ...x, locationId: id, location: id ? (locationById(id)?.name ?? '') : '' } : x));
+                }}
+                placeholder="Select location…"
+                emptyHint="No locations yet — add them in the Locations step."
+              />
               <div>
                 <label className="block text-[10px] text-forest/40 mb-0.5">Expiry / next service</label>
                 <input type="date" value={e.expiry} onChange={ev => updateFireEquip(i, 'expiry', ev.target.value)} className={inputCls + ' w-36'} />
@@ -691,7 +720,7 @@ function SafetyStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void
               <button onClick={() => setFireEquip(prev => prev.filter((_, idx) => idx !== i))} className="text-stone-400 hover:text-red-500 px-1 self-end pb-2"><X className="w-4 h-4" /></button>
             </div>
           ))}
-          <button onClick={() => setFireEquip(prev => [...prev, { type: 'extinguisher', location: '', expiry: '' }])}
+          <button onClick={() => setFireEquip(prev => [...prev, { type: 'extinguisher', locationId: '', location: '', expiry: '' }])}
             className="inline-flex items-center gap-1.5 text-[12px] text-forest/50 hover:text-forest border border-dashed border-stone-300 px-3 py-2 rounded-lg hover:border-forest/40 transition-colors">
             <Plus className="w-3.5 h-3.5" /> Add item
           </button>
@@ -765,7 +794,7 @@ function AssetsStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void
         id: generateId(), name: a.name.trim(), category: a.category, subtype: '',
         make: a.make || null, model: null, year: a.year ? parseInt(a.year) : null,
         serialNumber: null, licensePlate: null, registrationExpiry: null,
-        storageLocation: '', status: 'available',
+        locationId: null, storageLocation: '', status: 'available',
         currentOdometer: null, currentHours: null,
         tracksOdometer: a.category === 'vehicle', tracksHours: false,
         notes: a.notes || null, isActive: true,
@@ -909,7 +938,7 @@ function TeamStep({ onDone }: { onDone: () => void }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function Onboarding() {
-  const { currentCamp, updateCamp } = useCampStore();
+  const { currentCamp } = useCampStore();
   const navigate = useNavigate();
 
   const modules = currentCamp?.modules ?? {};
@@ -938,10 +967,8 @@ export function Onboarding() {
     }
   }
 
-  function handleLocationsDone(locs: string[]) {
-    if (currentCamp) {
-      updateCamp(currentCamp.id, { locations: locs }).catch(e => console.error('Failed to save locations:', e));
-    }
+  // LocationsStep writes to the unified locations table itself (via useLocationStore.bulkAdd).
+  function handleLocationsDone() {
     advance('locations');
   }
 

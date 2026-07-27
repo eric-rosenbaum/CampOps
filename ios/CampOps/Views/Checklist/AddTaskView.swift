@@ -56,7 +56,7 @@ struct AddTaskView: View {
     @State private var title = ""
     @State private var description = ""
     @State private var phase: ChecklistPhase = .pre
-    @State private var locations: [String] = []
+    @State private var locationIds: [String] = []
     @State private var priority: Priority = .normal
     @State private var assigneeId: String? = nil
     @State private var selectedTiming: TimingOption = preBuckets[0]
@@ -83,12 +83,12 @@ struct AddTaskView: View {
                         selectedTiming = matchBucket(selectedTiming.value, phase: newPhase)
                     }
                     NavigationLink {
-                        LocationPickerView(selected: $locations)
+                        LocationTreePicker(selectedIds: $locationIds)
                     } label: {
                         HStack {
                             Text("Location")
                             Spacer()
-                            Text(locations.isEmpty ? "None" : locations.joined(separator: ", "))
+                            Text(locationIds.isEmpty ? "None" : LocationStore.shared.names(for: locationIds).joined(separator: ", "))
                                 .foregroundColor(.secondary).lineLimit(1)
                         }
                     }
@@ -128,7 +128,10 @@ struct AddTaskView: View {
     private func populate() {
         guard let t = editingTask else { return }
         title = t.title; description = t.description
-        phase = t.phase; locations = t.locations; priority = t.priority
+        phase = t.phase; priority = t.priority
+        locationIds = t.locationIds.isEmpty
+            ? LocationStore.shared.ids(forNames: t.locations)
+            : t.locationIds
         assigneeId = t.assigneeId
         if t.daysRelativeToOpening == nil, let due = t.dueDate {
             selectedTiming = .custom
@@ -145,11 +148,14 @@ struct AddTaskView: View {
         let daysRel: Int? = isCustom ? nil : selectedTiming.value
         let dueDate = computeDueDate(isCustom: isCustom, daysRel: daysRel)
 
+        let names = LocationStore.shared.names(for: locationIds)
         if let existing = editingTask {
             var updated = existing
             updated.title = title.trimmingCharacters(in: .whitespaces)
             updated.description = description
-            updated.phase = phase; updated.locations = locations; updated.priority = priority
+            updated.phase = phase
+            updated.locationIds = locationIds; updated.locations = names
+            updated.priority = priority
             updated.assigneeId = assigneeId
             updated.daysRelativeToOpening = daysRel
             updated.dueDate = dueDate
@@ -158,7 +164,7 @@ struct AddTaskView: View {
             let task = ChecklistTask(
                 title: title.trimmingCharacters(in: .whitespaces),
                 description: description,
-                locations: locations, priority: priority,
+                locationIds: locationIds, locations: names, priority: priority,
                 assigneeId: assigneeId, phase: phase,
                 daysRelativeToOpening: daysRel,
                 dueDate: dueDate)

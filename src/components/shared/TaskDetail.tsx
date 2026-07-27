@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import type { ChecklistTask, ChecklistStatus, Priority, Location } from '@/lib/types';
+import type { ChecklistTask, ChecklistStatus, Priority } from '@/lib/types';
 import { getBuckets, getBucketLabel, bucketValueToString, stringToBucketValue } from '@/lib/timingBuckets';
-
-const DEFAULT_LOCATIONS = ['Waterfront', 'Dining Hall', 'Main Lodge', 'Health Center', 'Kitchen', 'Athletic Fields', 'Maintenance', 'Other'];
 import { useCampStore } from '@/store/campStore';
+import { useLocationStore } from '@/store/locationStore';
+import { LocationPicker } from '@/components/shared/LocationPicker';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useAuth } from '@/lib/auth';
 import { PriorityBadge } from './PriorityBadge';
@@ -20,14 +20,13 @@ export function TaskDetail({ task }: Props) {
   const { updateTask, completeTask, addActivityEntry, deleteTask, selectTask, season } = useChecklistStore();
   const { currentUser, can } = useAuth();
   const members = useCampStore((s) => s.members);
-  const campLocations = useCampStore((s) => s.currentCamp?.locations ?? DEFAULT_LOCATIONS);
   const memberName = (userId: string | null) => userId ? (members.find((m) => m.userId === userId)?.fullName ?? null) : null;
 
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDescription, setEditDescription] = useState(task.description);
-  const [editLocations, setEditLocations] = useState<Location[]>(task.locations);
+  const [editLocationIds, setEditLocationIds] = useState<string[]>(task.locationIds ?? []);
   const [editPriority, setEditPriority] = useState<Priority>(task.priority);
   const [editPhase, setEditPhase] = useState<'pre' | 'post'>(task.phase);
   const [editTimingBucket, setEditTimingBucket] = useState(
@@ -87,7 +86,8 @@ export function TaskDetail({ task }: Props) {
     updateTask(task.id, {
       title: editTitle.trim(),
       description: editDescription,
-      locations: editLocations,
+      locationIds: editLocationIds,
+      locations: useLocationStore.getState().namesFor(editLocationIds),
       priority: editPriority,
       phase: editPhase,
       daysRelativeToOpening: daysRel,
@@ -135,23 +135,7 @@ export function TaskDetail({ task }: Props) {
           </div>
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Locations</label>
-            <div className="grid grid-cols-2 gap-1">
-              {campLocations.map((l) => (
-                <label key={l} className="flex items-center gap-1.5 text-[13px] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="w-3.5 h-3.5 accent-sage"
-                    checked={editLocations.includes(l)}
-                    onChange={(e) => {
-                      setEditLocations(e.target.checked
-                        ? [...editLocations, l]
-                        : editLocations.filter((x) => x !== l));
-                    }}
-                  />
-                  {l}
-                </label>
-              ))}
-            </div>
+            <LocationPicker value={editLocationIds} onChange={setEditLocationIds} />
           </div>
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Priority</label>

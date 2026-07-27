@@ -13,7 +13,39 @@ export type IssueStatus = 'unassigned' | 'assigned' | 'in_progress' | 'resolved'
 
 export type ChecklistStatus = 'pending' | 'in_progress' | 'complete';
 
-export type Location = string;
+// ─── Unified locations (one nestable, categorized tree per camp) ───────────────────
+export interface CampLocation {
+  id: string;
+  campId: string;
+  parentId: string | null;
+  name: string;
+  categoryId: string | null;
+  isDorm: boolean;
+  retreatAvailable: boolean;
+  bedCapacity: number | null;
+  accessible: boolean;
+  sortOrder: number;
+  isActive: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface LocationCategory {
+  id: string;
+  campId: string;
+  name: string;
+  sortOrder: number;
+  isPreset: boolean;
+}
+export interface BuildingDetail {
+  locationId: string;
+  campId: string;
+  buildingType: string | null;
+  mainWaterShutoff: string | null;
+  mainElectricalPanel: string | null;
+  mainGasShutoff: string | null;
+  yearBuilt: number | null;
+}
 
 export type RecurringInterval = 'daily' | 'weekly' | 'monthly' | 'annually';
 
@@ -29,7 +61,8 @@ export interface Issue {
   id: string;
   title: string;
   description: string;
-  locations: Location[];
+  locationIds: string[];
+  locations: string[]; // denormalized name snapshot (display + iOS/back-compat)
   priority: Priority;
   status: IssueStatus;
   assigneeId: string | null;
@@ -53,7 +86,8 @@ export interface ChecklistTask {
   id: string;
   title: string;
   description: string;
-  locations: Location[];
+  locationIds: string[];
+  locations: string[]; // denormalized name snapshot (display + iOS/back-compat)
   priority: Priority;
   status: ChecklistStatus;
   assigneeId: string | null;
@@ -215,7 +249,8 @@ export interface SafetyItem {
   name: string;
   category: SafetyCategory;
   type: SafetyItemType;
-  location: string;
+  locationId: string | null;
+  location: string; // denormalized name snapshot
   unitCount: number;
   frequency: SafetyFrequency;
   frequencyDays: number;
@@ -354,7 +389,8 @@ export interface CampAsset {
   serialNumber: string | null;
   licensePlate: string | null;
   registrationExpiry: string | null;
-  storageLocation: string;
+  locationId: string | null;
+  storageLocation: string; // denormalized name snapshot
   status: AssetStatus;
   currentOdometer: number | null;
   currentHours: number | null;
@@ -478,8 +514,10 @@ export interface BuildingRoom {
 
 export interface BuildingComponent {
   id: string;
-  buildingId: string;
-  roomId: string | null;
+  // The `locations` node this component lives on — either a building (top-level
+  // structure) location or one of its room (child) locations. Post unification,
+  // this replaces the legacy building_id/room_id pair.
+  locationId: string;
   system: BuildingSystem;
   type: BuildingComponentType;
   label: string;
@@ -516,8 +554,8 @@ export interface BuildingCircuit {
 
 export interface BuildingSeasonalTask {
   id: string;
-  // null = camp-wide task (not tied to one building).
-  buildingId: string | null;
+  // The `locations` node this task is scoped to (building or room). null = camp-wide.
+  locationId: string | null;
   title: string;
   detail: string | null;
   phase: SeasonalPhase;
@@ -1106,8 +1144,10 @@ export interface RetreatHousing {
   id: string;
   campId: string;
   retreatId: string;
+  /** Dorm node in the unified locations tree this housing references. */
+  locationId: string | null;
   spaceId: string | null;
-  /** Snapshot so a deleted space still reads. */
+  /** Snapshot so a deleted space (or renamed dorm) still reads. */
   spaceName: string | null;
   subgroupName: string | null;
   peopleCount: number;

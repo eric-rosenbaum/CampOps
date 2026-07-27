@@ -83,6 +83,9 @@
 		B7C8D9E0F1A2B3C4D5E6F7A8 /* ReturnAssetSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B8C9D0E1F2A3B4C5D6E7F8 /* ReturnAssetSheet.swift */; };
 		B8C9D0E1F2A3B4C5D6E7F8A9 /* LogAssetServiceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8B9C0D1E2F3A4B5C6D7E8F9 /* LogAssetServiceSheet.swift */; };
 		B9C0D1E2F3A4B5C6D7E8F9A0 /* AddMaintenanceTaskSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B0C1D2E3F4A5B6C7D8E9F0 /* AddMaintenanceTaskSheet.swift */; };
+		DA0CA71000000000000000A2 /* Location.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0CA71000000000000000A1 /* Location.swift */; };
+		DA0CA71000000000000000A4 /* LocationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0CA71000000000000000A3 /* LocationStore.swift */; };
+		DA0CA71000000000000000A6 /* LocationTreePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0CA71000000000000000A5 /* LocationTreePicker.swift */; };
 		49E5A7AC2F81A914007122C8 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 49E5A7AB2F81A914007122C8 /* Auth */; };
 		49E5A7AE2F81A914007122C8 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 49E5A7AD2F81A914007122C8 /* Functions */; };
 		49E5A7B02F81A914007122C8 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 49E5A7AF2F81A914007122C8 /* PostgREST */; };
@@ -169,6 +172,9 @@
 		A7B8C9D0E1F2A3B4C5D6E7F8 /* ReturnAssetSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnAssetSheet.swift; sourceTree = "<group>"; };
 		A8B9C0D1E2F3A4B5C6D7E8F9 /* LogAssetServiceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogAssetServiceSheet.swift; sourceTree = "<group>"; };
 		A9B0C1D2E3F4A5B6C7D8E9F0 /* AddMaintenanceTaskSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMaintenanceTaskSheet.swift; sourceTree = "<group>"; };
+		DA0CA71000000000000000A1 /* Location.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Location.swift; sourceTree = "<group>"; };
+		DA0CA71000000000000000A3 /* LocationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationStore.swift; sourceTree = "<group>"; };
+		DA0CA71000000000000000A5 /* LocationTreePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationTreePicker.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -255,6 +261,7 @@
 			isa = PBXGroup;
 			children = (
 				DD1A2B3C4D5E6F7A8B9C0D1E /* AuthManager.swift */,
+				DA0CA71000000000000000A3 /* LocationStore.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -265,6 +272,7 @@
 				49E5A75C2F81A74E007122C8 /* ActivityEntry.swift */,
 				49E5A75D2F81A74E007122C8 /* AppEnums.swift */,
 				DD2B3C4D5E6F7A8B9C0D1E2F /* CampModels.swift */,
+				DA0CA71000000000000000A1 /* Location.swift */,
 				49E5A75E2F81A74E007122C8 /* ChecklistTask.swift */,
 				49E5A75F2F81A74E007122C8 /* Issue.swift */,
 				8B42C2CB70B347BC90227634 /* PoolModels.swift */,
@@ -353,6 +361,7 @@
 				49E5A7812F81A74E007122C8 /* StatusBadge.swift */,
 				49E5A7822F81A74E007122C8 /* UserPickerRow.swift */,
 				49E5A7BC2F81A74E007122C8 /* LocationPickerView.swift */,
+				DA0CA71000000000000000A5 /* LocationTreePicker.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -596,6 +605,9 @@
 				B7C8D9E0F1A2B3C4D5E6F7A8 /* ReturnAssetSheet.swift in Sources */,
 				B8C9D0E1F2A3B4C5D6E7F8A9 /* LogAssetServiceSheet.swift in Sources */,
 				B9C0D1E2F3A4B5C6D7E8F9A0 /* AddMaintenanceTaskSheet.swift in Sources */,
+				DA0CA71000000000000000A2 /* Location.swift in Sources */,
+				DA0CA71000000000000000A4 /* LocationStore.swift in Sources */,
+				DA0CA71000000000000000A6 /* LocationTreePicker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

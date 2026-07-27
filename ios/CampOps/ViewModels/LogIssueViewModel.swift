@@ -5,7 +5,7 @@ import Combine
 final class LogIssueViewModel: ObservableObject {
     @Published var title = ""
     @Published var description = ""
-    @Published var locations: [String] = []
+    @Published var locationIds: [String] = []
     @Published var priority: Priority = .normal
     @Published var assigneeId: String? = nil
     @Published var estimatedCost = ""
@@ -20,7 +20,10 @@ final class LogIssueViewModel: ObservableObject {
             editingIssue = issue
             title = issue.title
             description = issue.description ?? ""
-            locations = issue.locations
+            // Prefer canonical ids; fall back to resolving the legacy name snapshot.
+            locationIds = issue.locationIds.isEmpty
+                ? LocationStore.shared.ids(forNames: issue.locations)
+                : issue.locationIds
             priority = issue.priority
             assigneeId = issue.assigneeId
             estimatedCost = issue.estimatedCost.map { String($0) } ?? ""
@@ -28,6 +31,9 @@ final class LogIssueViewModel: ObservableObject {
     }
 
     var isValid: Bool { !title.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    /// Display names for the currently selected location ids.
+    var locationNames: [String] { LocationStore.shared.names(for: locationIds) }
 
     func save(reportedBy user: CampUser) async throws -> Issue {
         isSaving = true; defer { isSaving = false }
@@ -37,10 +43,12 @@ final class LogIssueViewModel: ObservableObject {
         if let img = selectedPhoto {
             photoUrl = try await PhotoService.shared.uploadPhoto(img, issueId: id)
         }
+        let names = LocationStore.shared.names(for: locationIds)
         if var existing = editingIssue {
             existing.title = title.trimmingCharacters(in: .whitespaces)
             existing.description = description.isEmpty ? nil : description
-            existing.locations = locations; existing.priority = priority
+            existing.locationIds = locationIds; existing.locations = names
+            existing.priority = priority
             existing.assigneeId = assigneeId; existing.estimatedCost = cost
             existing.photoUrl = photoUrl; existing.updatedAt = Date()
             let entry = ActivityEntry(id: UUID().uuidString, userId: user.id,
@@ -52,7 +60,7 @@ final class LogIssueViewModel: ObservableObject {
         } else {
             let issue = Issue(id: id, title: title.trimmingCharacters(in: .whitespaces),
                 description: description.isEmpty ? nil : description,
-                locations: locations, priority: priority,
+                locationIds: locationIds, locations: names, priority: priority,
                 status: assigneeId != nil ? .assigned : .unassigned,
                 assigneeId: assigneeId, reportedById: user.id,
                 estimatedCost: cost, photoUrl: photoUrl)

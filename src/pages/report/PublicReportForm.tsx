@@ -10,11 +10,13 @@ import { dbUploadPublicReportPhoto } from '@/lib/db';
 import { generateId } from '@/lib/utils';
 import { Camera, X, CheckCircle, AlertCircle, TreePine } from 'lucide-react';
 
+interface CampLocationOption { id: string; name: string; }
+
 interface CampInfo {
   id: string;
   name: string;
   logoUrl: string | null;
-  locations: string[];
+  locations: CampLocationOption[];
 }
 
 type PageState = 'loading' | 'not_found' | 'form' | 'submitting' | 'success';
@@ -38,6 +40,7 @@ export function PublicReportForm() {
   }, []);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [locationId, setLocationId] = useState('');
   const [reporterName, setReporterName] = useState('');
   const [reporterContact, setReporterContact] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -56,7 +59,7 @@ export function PublicReportForm() {
           id: row.id as string,
           name: row.name as string,
           logoUrl: (row.logo_url as string) ?? null,
-          locations: (row.locations as string[]) ?? [],
+          locations: (row.locations as CampLocationOption[]) ?? [],
         });
         setPageState('form');
       });
@@ -96,12 +99,15 @@ export function PublicReportForm() {
         }
       }
 
+      const selectedLoc = camp.locations.find(l => l.id === locationId);
+
       const { error } = await supabasePublic.from('issues').insert({
         id: issueId,
         camp_id: camp.id,
         title: title.trim(),
         description: description.trim() || null,
-        locations: [],
+        locations: selectedLoc ? [selectedLoc.name] : [],
+        location_ids: selectedLoc ? [selectedLoc.id] : [],
         priority: 'normal',
         status: 'unassigned',
         assignee_id: null,
@@ -158,6 +164,7 @@ export function PublicReportForm() {
     function handleSubmitAnother() {
       setTitle('');
       setDescription('');
+      setLocationId('');
       setReporterName('');
       setReporterContact('');
       setPhotoFile(null);
@@ -237,6 +244,26 @@ export function PublicReportForm() {
               disabled={pageState === 'submitting'}
             />
           </div>
+
+          {/* Location */}
+          {camp && camp.locations.length > 0 && (
+            <div>
+              <label className={labelClass}>
+                Location <span className="text-stone-300 normal-case font-normal tracking-normal">— optional</span>
+              </label>
+              <select
+                value={locationId}
+                onChange={(e) => setLocationId(e.target.value)}
+                disabled={pageState === 'submitting'}
+                className={`${inputClass} appearance-none bg-white`}
+              >
+                <option value="">Where is it? (select a place)</option>
+                {camp.locations.map((l) => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Photo */}
           <div>

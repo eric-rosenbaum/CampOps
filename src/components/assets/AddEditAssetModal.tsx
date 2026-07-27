@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
+import { LocationPicker } from '@/components/shared/LocationPicker';
 import { useAssetStore, SUBTYPES_BY_CATEGORY } from '@/store/assetStore';
 import { useUIStore } from '@/store/uiStore';
-import { useCampStore } from '@/store/campStore';
+import { useLocationStore } from '@/store/locationStore';
 import { generateId } from '@/lib/utils';
 import type { CampAsset, AssetCategory, AssetStatus } from '@/lib/types';
-
-const DEFAULT_LOCATIONS = ['Maintenance Shed', 'Barn', 'Garage', 'Waterfront', 'Athletic Fields', 'Other'];
 
 const CATEGORIES: { value: AssetCategory; label: string }[] = [
   { value: 'golf_cart', label: 'Golf Cart / Utility Cart' },
@@ -28,7 +27,6 @@ const STATUSES: { value: AssetStatus; label: string }[] = [
 export function AddEditAssetModal() {
   const { assets, addAsset, updateAsset } = useAssetStore();
   const { isAddEditAssetModalOpen, editingAssetId, closeAllModals } = useUIStore();
-  const campLocations = useCampStore((s) => s.currentCamp?.locations ?? DEFAULT_LOCATIONS);
 
   const editing = editingAssetId ? assets.find((a) => a.id === editingAssetId) : null;
 
@@ -42,6 +40,7 @@ export function AddEditAssetModal() {
   const [licensePlate, setLicensePlate] = useState('');
   const [registrationExpiry, setRegistrationExpiry] = useState('');
   const [storageLocation, setStorageLocation] = useState('');
+  const [locationId, setLocationId] = useState<string | null>(null);
   const [status, setStatus] = useState<AssetStatus>('available');
   const [tracksOdometer, setTracksOdometer] = useState(false);
   const [currentOdometer, setCurrentOdometer] = useState('');
@@ -69,6 +68,7 @@ export function AddEditAssetModal() {
       setLicensePlate(editing.licensePlate ?? '');
       setRegistrationExpiry(editing.registrationExpiry ?? '');
       setStorageLocation(editing.storageLocation);
+      setLocationId(editing.locationId ?? null);
       setStatus(editing.status === 'checked_out' ? 'available' : editing.status);
       setTracksOdometer(editing.tracksOdometer);
       setCurrentOdometer(editing.currentOdometer?.toString() ?? '');
@@ -111,6 +111,7 @@ export function AddEditAssetModal() {
       serialNumber: serialNumber.trim() || null,
       licensePlate: licensePlate.trim() || null,
       registrationExpiry: registrationExpiry || null,
+      locationId,
       storageLocation: storageLocation.trim(),
       status: editing?.status === 'checked_out' ? 'checked_out' : status,
       tracksOdometer,
@@ -205,12 +206,15 @@ export function AddEditAssetModal() {
                 </div>
                 <div>
                   <label className="text-body font-medium text-forest mb-1 block">Storage location <span className="text-red">*</span></label>
-                  <select value={storageLocation} onChange={(e) => setStorageLocation(e.target.value)} className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage bg-white">
-                    <option value="">Select location…</option>
-                    {campLocations.map((loc) => (
-                      <option key={loc} value={loc}>{loc}</option>
-                    ))}
-                  </select>
+                  <LocationPicker
+                    multiple={false}
+                    value={locationId ? [locationId] : []}
+                    onChange={(ids) => {
+                      const id = ids[0] ?? null;
+                      setLocationId(id);
+                      setStorageLocation(id ? (useLocationStore.getState().locationById(id)?.name ?? '') : '');
+                    }}
+                  />
                 </div>
               </div>
             </div>

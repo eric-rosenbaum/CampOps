@@ -12,6 +12,7 @@ import { AddEditRoomModal } from '@/components/building/AddEditRoomModal';
 import { AddEditComponentModal } from '@/components/building/AddEditComponentModal';
 import { AddEditCircuitModal } from '@/components/building/AddEditCircuitModal';
 import { FlagComponentIssueModal } from '@/components/building/FlagComponentIssueModal';
+import { useBuildings } from '@/components/building/useBuildings';
 
 const TABS: { id: BuildingTab; label: string }[] = [
   { id: 'buildings', label: 'Buildings' },
@@ -21,9 +22,10 @@ const TABS: { id: BuildingTab; label: string }[] = [
 
 export function BuildingSystems() {
   const {
-    buildings, activeTab, activeBuildingId,
+    activeTab, activeBuildingId,
     setActiveTab, setActiveBuilding, openModal, modal,
   } = useBuildingStore();
+  const buildings = useBuildings();
   const { can } = useAuth();
   const canManage = can('manageBuildingSystems');
 
@@ -95,7 +97,7 @@ export function BuildingSystems() {
         <AddEditComponentModal
           buildingId={modal.buildingId}
           editId={modal.editId}
-          defaultRoomId={modal.defaultRoomId}
+          defaultLocationId={modal.defaultLocationId}
           defaultSystem={modal.defaultSystem}
         />
       )}

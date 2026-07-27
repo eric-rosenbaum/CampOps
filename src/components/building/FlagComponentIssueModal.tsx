@@ -3,21 +3,26 @@ import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useBuildingStore, COMPONENT_TYPE_LABELS } from '@/store/buildingStore';
 import { useIssuesStore } from '@/store/issuesStore';
+import { useLocationStore } from '@/store/locationStore';
 import { useAuth } from '@/lib/auth';
 import { generateId } from '@/lib/utils';
+import { buildingLocationFor } from './useBuildings';
 import type { ComponentStatus, Issue } from '@/lib/types';
 
 const inputClass = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
 const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
 
 export function FlagComponentIssueModal({ componentId }: { componentId: string }) {
-  const { components, buildings, rooms, updateComponent, closeModal } = useBuildingStore();
+  const { components, updateComponent, closeModal } = useBuildingStore();
   const { addIssue, selectIssue } = useIssuesStore();
+  const locationById = useLocationStore((s) => s.locationById);
   const { currentUser } = useAuth();
 
   const component = components.find((c) => c.id === componentId) ?? null;
-  const building = component ? buildings.find((b) => b.id === component.buildingId) ?? null : null;
-  const room = component?.roomId ? rooms.find((r) => r.id === component.roomId) ?? null : null;
+  const building = component ? buildingLocationFor(component.locationId) ?? null : null;
+  // The component's own location node is a room when it differs from the building.
+  const locationNode = component ? locationById(component.locationId) : undefined;
+  const room = locationNode && locationNode.parentId ? locationNode : null;
 
   const alreadyFlagged = component ? component.status !== 'operational' : false;
   const [severity, setSeverity] = useState<Exclude<ComponentStatus, 'operational'>>(
@@ -35,13 +40,14 @@ export function FlagComponentIssueModal({ componentId }: { componentId: string }
     updateComponent({ ...component, status: severity, statusDetail: detail || null, updatedAt: now });
 
     if (createIssue) {
-      const locationName = building?.locationLabel || building?.name || '';
+      const locationName = building?.name || '';
       const where = [building?.name, room?.name].filter(Boolean).join(' · ');
       const id = generateId();
       const newIssue: Issue = {
         id,
         title: `${component.label} — ${COMPONENT_TYPE_LABELS[component.type]}`,
         description: [where, detail].filter(Boolean).join('\n'),
+        locationIds: component.locationId ? [component.locationId] : [],
         locations: locationName ? [locationName] : [],
         priority: severity === 'out_of_service' ? 'high' : 'normal',
         status: 'unassigned',
@@ -104,7 +110,7 @@ export function FlagComponentIssueModal({ componentId }: { componentId: string }
           <input type="checkbox" checked={createIssue} onChange={(e) => setCreateIssue(e.target.checked)} className="w-4 h-4 accent-forest rounded mt-0.5" />
           <span className="text-body text-forest/80">
             Also create a ticket in Issues &amp; Repairs
-            {building && <span className="text-forest/40"> (location: {building.locationLabel || building.name})</span>}
+            {building && <span className="text-forest/40"> (location: {building.name})</span>}
           </span>
         </label>
 

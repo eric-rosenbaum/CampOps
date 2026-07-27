@@ -2,15 +2,16 @@ import { Building2 } from 'lucide-react';
 import { useBuildingStore, COMPONENT_TYPE_LABELS, componentSummary } from '@/store/buildingStore';
 import { StatusDot, ComponentIcon } from './buildingUi';
 import { useJumpToComponent } from './useBuildingNav';
+import { useBuildings } from './useBuildings';
 import type { BuildingSystem } from '@/lib/types';
 
 export function CrossBuildingList({ system }: { system: BuildingSystem }) {
-  const { buildings, components } = useBuildingStore();
+  const { componentsForBuilding } = useBuildingStore();
+  const buildings = useBuildings();
   const jump = useJumpToComponent();
-  const sortedBuildings = [...buildings].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
 
-  const withItems = sortedBuildings
-    .map((b) => ({ building: b, comps: components.filter((c) => c.buildingId === b.id && c.system === system) }))
+  const withItems = buildings
+    .map((b) => ({ building: b, comps: componentsForBuilding(b.id).filter((c) => c.system === system) }))
     .filter((g) => g.comps.length > 0);
 
   if (withItems.length === 0) {

@@ -485,6 +485,9 @@ struct FlagComponentSheet: View {
         let where_ = [b?.name, component.roomId.flatMap { id in vm.rooms.first { $0.id == id }?.name }]
             .compactMap { $0 }.joined(separator: " · ")
         let id = UUID().uuidString
+        // TODO (locations migration): once buildings are location nodes, also set
+        // `locationIds` here to the building's location id so the flagged issue
+        // links to the canonical tree. For now only the name snapshot is written.
         let issue = Issue(
             id: id,
             title: "\(component.label) — \(BuildingTaxonomy.label(for: component.type))",

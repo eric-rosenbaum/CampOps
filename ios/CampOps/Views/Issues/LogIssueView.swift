@@ -21,12 +21,12 @@ struct LogIssueView: View {
                 }
                 Section("Location & Priority") {
                     NavigationLink {
-                        LocationPickerView(selected: $vm.locations)
+                        LocationTreePicker(selectedIds: $vm.locationIds)
                     } label: {
                         HStack {
                             Text("Location")
                             Spacer()
-                            Text(vm.locations.isEmpty ? "None" : vm.locations.joined(separator: ", "))
+                            Text(vm.locationIds.isEmpty ? "None" : vm.locationNames.joined(separator: ", "))
                                 .foregroundColor(.secondary).lineLimit(1)
                         }
                     }

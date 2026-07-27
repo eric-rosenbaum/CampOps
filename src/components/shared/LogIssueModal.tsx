@@ -5,11 +5,11 @@ import { Button } from './Button';
 import { useUIStore } from '@/store/uiStore';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useCampStore } from '@/store/campStore';
-
-const DEFAULT_LOCATIONS = ['Waterfront', 'Dining Hall', 'Main Lodge', 'Health Center', 'Kitchen', 'Athletic Fields', 'Maintenance', 'Other'];
+import { useLocationStore } from '@/store/locationStore';
+import { LocationPicker } from '@/components/shared/LocationPicker';
 import { useAuth } from '@/lib/auth';
 import { dbUploadPhoto, dbDeletePhoto } from '@/lib/db';
-import type { Issue, Location, Priority, RecurringInterval } from '@/lib/types';
+import type { Issue, Priority, RecurringInterval } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { Camera, X } from 'lucide-react';
 
@@ -30,10 +30,9 @@ export function LogIssueModal() {
   const { addIssue, updateIssue, addActivityEntry, selectIssue, issues } = useIssuesStore();
   const { currentUser, can } = useAuth();
   const members = useCampStore((s) => s.members);
-  const campLocations = useCampStore((s) => s.currentCamp?.locations ?? DEFAULT_LOCATIONS);
   const editingIssue = editingIssueId ? issues.find((i) => i.id === editingIssueId) : null;
 
-  const [locations, setLocations] = useState<Location[]>([]);
+  const [locationIds, setLocationIds] = useState<string[]>([]);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [removeExistingPhoto, setRemoveExistingPhoto] = useState(false);
@@ -54,7 +53,7 @@ export function LogIssueModal() {
     setRemoveExistingPhoto(false);
 
     if (editingIssue) {
-      setLocations(editingIssue.locations);
+      setLocationIds(editingIssue.locationIds ?? []);
       reset({
         title: editingIssue.title,
         priority: editingIssue.priority,
@@ -66,7 +65,7 @@ export function LogIssueModal() {
         recurringInterval: editingIssue.recurringInterval ?? 'weekly',
       });
     } else {
-      setLocations([]);
+      setLocationIds([]);
       reset({
         priority: 'normal',
         isRecurring: false,
@@ -121,6 +120,7 @@ export function LogIssueModal() {
     const assigneeId = data.assigneeId || null;
     const assigneeName = assigneeId ? (members.find((m) => m.userId === assigneeId)?.fullName ?? null) : null;
     const { display, value } = parseCost(data.costEstimate);
+    const locations = useLocationStore.getState().namesFor(locationIds);
 
     if (editingIssue) {
       // Resolve photo for edit
@@ -138,6 +138,7 @@ export function LogIssueModal() {
 
       updateIssue(editingIssue.id, {
         title: data.title,
+        locationIds,
         locations,
         priority: data.priority,
         description: data.description,
@@ -190,6 +191,7 @@ export function LogIssueModal() {
         id,
         title: data.title,
         description: data.description,
+        locationIds,
         locations,
         priority: data.priority,
         status: assigneeId ? 'assigned' : 'unassigned',
@@ -240,21 +242,7 @@ export function LogIssueModal() {
 
         <div>
           <label className={labelClass}>Location</label>
-          <div className="grid grid-cols-3 gap-1.5 p-2.5 bg-white border border-border rounded-btn">
-            {campLocations.map((l) => (
-              <label key={l} className="flex items-center gap-1.5 text-[13px] cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  className="w-3.5 h-3.5 accent-sage flex-shrink-0"
-                  checked={locations.includes(l)}
-                  onChange={(e) => {
-                    setLocations(e.target.checked ? [...locations, l] : locations.filter((x) => x !== l));
-                  }}
-                />
-                {l}
-              </label>
-            ))}
-          </div>
+          <LocationPicker value={locationIds} onChange={setLocationIds} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">

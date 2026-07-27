@@ -2,9 +2,11 @@ import { X, Pencil, Trash2, Flag, Plus, Zap } from 'lucide-react';
 import {
   useBuildingStore, COMPONENT_TYPE_LABELS, COMPONENT_SPECS, type SpecField,
 } from '@/store/buildingStore';
+import { useLocationStore } from '@/store/locationStore';
 import { useAuth } from '@/lib/auth';
 import { formatDate } from '@/lib/utils';
 import { ComponentStatusBadge, ComponentIcon } from './buildingUi';
+import { buildingLocationFor } from './useBuildings';
 import type { BuildingComponent } from '@/lib/types';
 
 function formatSpecValue(field: SpecField, value: unknown): string {
@@ -16,12 +18,15 @@ function formatSpecValue(field: SpecField, value: unknown): string {
 
 export function ComponentDetailPanel({ component }: { component: BuildingComponent }) {
   const {
-    setActiveComponent, deleteComponent, openModal, rooms, circuitsForPanel, deleteCircuit,
+    setActiveComponent, deleteComponent, openModal, circuitsForPanel, deleteCircuit,
   } = useBuildingStore();
   const { can } = useAuth();
   const canManage = can('manageBuildingSystems');
 
-  const room = rooms.find((r) => r.id === component.roomId);
+  // The component's location is a room when it has a parent (the building node itself has none).
+  const locationNode = useLocationStore((s) => s.locationById(component.locationId));
+  const room = locationNode?.parentId ? locationNode : undefined;
+  const buildingId = buildingLocationFor(component.locationId)?.id ?? component.locationId;
   const specs = COMPONENT_SPECS[component.type] ?? [];
   const isPanel = component.type === 'breaker_panel' || component.type === 'sub_panel';
   const circuits = isPanel ? circuitsForPanel(component.id) : [];
@@ -140,7 +145,7 @@ export function ComponentDetailPanel({ component }: { component: BuildingCompone
             </button>
             <div className="flex gap-1.5">
               <button
-                onClick={() => openModal({ kind: 'component', buildingId: component.buildingId, editId: component.id })}
+                onClick={() => openModal({ kind: 'component', buildingId, editId: component.id })}
                 className="flex-1 inline-flex items-center justify-center gap-1.5 text-body font-medium text-forest border border-border rounded-btn py-2 hover:bg-cream-dark transition-colors"
               >
                 <Pencil className="w-3.5 h-3.5" /> Edit

@@ -5,13 +5,13 @@ import { useForm, useWatch } from 'react-hook-form';
 import { useUIStore } from '@/store/uiStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useCampStore } from '@/store/campStore';
+import { useLocationStore } from '@/store/locationStore';
+import { LocationPicker } from '@/components/shared/LocationPicker';
 import { useAuth } from '@/lib/auth';
-import type { ChecklistTask, Location, Priority } from '@/lib/types';
+import type { ChecklistTask, Priority } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { addDays } from 'date-fns';
 import { getBuckets, bucketValueToString, stringToBucketValue } from '@/lib/timingBuckets';
-
-const DEFAULT_LOCATIONS = ['Waterfront', 'Dining Hall', 'Main Lodge', 'Health Center', 'Kitchen', 'Athletic Fields', 'Maintenance', 'Other'];
 
 interface FormValues {
   title: string;
@@ -29,9 +29,8 @@ export function LogTaskModal() {
   const { addTask, season, activePhase } = useChecklistStore();
   const { currentUser, can } = useAuth();
   const members = useCampStore((s) => s.members);
-  const campLocations = useCampStore((s) => s.currentCamp?.locations ?? DEFAULT_LOCATIONS);
 
-  const [locations, setLocations] = useState<Location[]>(['Waterfront']);
+  const [locationIds, setLocationIds] = useState<string[]>([]);
 
   const { register, handleSubmit, control, setValue, formState: { errors } } = useForm<FormValues>({
     defaultValues: {
@@ -52,7 +51,9 @@ export function LogTaskModal() {
   }, [phase, setValue]);
 
   function onSubmit(data: FormValues) {
+    if (locationIds.length === 0) return;
     const now = new Date().toISOString();
+    const locations = useLocationStore.getState().namesFor(locationIds);
     const isCustom = data.timingBucket === 'custom';
     const daysRel = isCustom ? null : stringToBucketValue(data.timingBucket);
 
@@ -68,6 +69,7 @@ export function LogTaskModal() {
       id: generateId(),
       title: data.title,
       description: data.description,
+      locationIds,
       locations,
       priority: data.priority,
       status: 'pending',
@@ -114,22 +116,8 @@ export function LogTaskModal() {
         </div>
 
         <div>
-          <label className={labelClass}>Location * {locations.length === 0 && <span className="text-red text-[11px]">Select at least one</span>}</label>
-          <div className="grid grid-cols-3 gap-1.5 p-2.5 bg-white border border-border rounded-btn">
-            {campLocations.map((l) => (
-              <label key={l} className="flex items-center gap-1.5 text-[13px] cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  className="w-3.5 h-3.5 accent-sage flex-shrink-0"
-                  checked={locations.includes(l)}
-                  onChange={(e) => {
-                    setLocations(e.target.checked ? [...locations, l] : locations.filter((x) => x !== l));
-                  }}
-                />
-                {l}
-              </label>
-            ))}
-          </div>
+          <label className={labelClass}>Location * {locationIds.length === 0 && <span className="text-red text-[11px]">Select at least one</span>}</label>
+          <LocationPicker value={locationIds} onChange={setLocationIds} />
         </div>
 
         <div>
@@ -201,7 +189,7 @@ export function LogTaskModal() {
         </div>
 
         <div className="flex gap-2 pt-2">
-          <Button type="submit" className="flex-1 justify-center">
+          <Button type="submit" className="flex-1 justify-center" disabled={locationIds.length === 0}>
             Add task
           </Button>
           <Button type="button" variant="ghost" onClick={closeAllModals}>

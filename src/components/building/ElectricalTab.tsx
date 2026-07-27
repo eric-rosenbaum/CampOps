@@ -2,9 +2,10 @@ import { Building2, Power } from 'lucide-react';
 import { useBuildingStore } from '@/store/buildingStore';
 import { CrossBuildingList } from './CrossBuildingList';
 import { useJumpToComponent } from './useBuildingNav';
+import { buildingLocationFor } from './useBuildings';
 
 export function ElectricalTab() {
-  const { panels, circuitsForPanel, buildings } = useBuildingStore();
+  const { panels, circuitsForPanel } = useBuildingStore();
   const jump = useJumpToComponent();
   const allPanels = panels();
 
@@ -20,7 +21,7 @@ export function ElectricalTab() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {allPanels.map((panel) => {
-              const building = buildings.find((b) => b.id === panel.buildingId);
+              const building = buildingLocationFor(panel.locationId);
               const circuits = circuitsForPanel(panel.id);
               return (
                 <div key={panel.id} className="bg-white border border-border rounded-card p-4">

@@ -2,8 +2,9 @@ import { Home, Lock, Unlock, History, Download, Plus, Pencil, Settings2 } from '
 import { Button } from '@/components/shared/Button';
 import { FilterPill } from '@/components/shared/FilterPill';
 import { useRetreatStore } from '@/store/retreatStore';
+import { useLocationStore } from '@/store/locationStore';
 import { useAuth } from '@/lib/auth';
-import type { Retreat, RetreatSpace, RetreatHousing } from '@/lib/types';
+import type { Retreat, CampLocation, RetreatHousing } from '@/lib/types';
 import { Badge, fmtDate, fmtDateFull } from './retreatUi';
 
 type Phase = 1 | 2 | 3;
@@ -27,9 +28,9 @@ function BedDots({ taken, capacity }: { taken: number; capacity: number }) {
   );
 }
 
-function exportMap(retreat: Retreat, rows: RetreatHousing[], spaceById: Map<string, RetreatSpace>) {
+function exportMap(retreat: Retreat, rows: RetreatHousing[], dormById: Map<string, CampLocation>) {
   const lines = rows.map((h) => {
-    const cap = h.spaceId ? spaceById.get(h.spaceId)?.bedCapacity ?? h.peopleCount : h.peopleCount;
+    const cap = (h.locationId ? dormById.get(h.locationId)?.bedCapacity : null) ?? h.peopleCount;
     return `<tr><td>${h.spaceName ?? '—'}</td><td>${h.subgroupName ?? '—'}</td><td>${h.peopleCount} / ${cap}</td><td>${h.notes ?? ''}</td></tr>`;
   }).join('');
   const html = `<!doctype html><html><head><title>Housing map — ${retreat.groupName}</title>
@@ -48,8 +49,9 @@ function exportMap(retreat: Retreat, rows: RetreatHousing[], spaceById: Map<stri
 export function HousingTab() {
   const {
     retreats, activeRetreatId, setActiveRetreat, selectedRetreat,
-    housingFor, spaces, openModal, setHousingLocked, saveHousingVersion,
+    housingFor, openModal, setHousingLocked, saveHousingVersion,
   } = useRetreatStore();
+  const dorms = useLocationStore((s) => s.retreatDorms());
   const { can, currentUser } = useAuth();
   const canManage = can('manageRetreats');
 
@@ -72,9 +74,9 @@ export function HousingTab() {
   }
 
   const rows = retreat ? housingFor(retreat.id) : [];
-  const spaceById = new Map(spaces.map((s) => [s.id, s]));
-  const usedSpaceIds = new Set(rows.map((h) => h.spaceId).filter(Boolean) as string[]);
-  const inactiveSpaces = spaces.filter((s) => !usedSpaceIds.has(s.id));
+  const dormById = new Map(dorms.map((d) => [d.id, d]));
+  const usedDormIds = new Set(rows.map((h) => h.locationId).filter(Boolean) as string[]);
+  const inactiveSpaces = dorms.filter((d) => !usedDormIds.has(d.id));
 
   const phase = derivePhase(rows);
   const allLocked = phase === 3;
@@ -142,7 +144,7 @@ export function HousingTab() {
               <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'housingHistory', retreatId: retreat.id })}>
                 <History className="w-3.5 h-3.5" /> View version history
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => exportMap(retreat, rows, spaceById)}>
+              <Button size="sm" variant="ghost" onClick={() => exportMap(retreat, rows, dormById)}>
                 <Download className="w-3.5 h-3.5" /> Export map
               </Button>
               {canManage && (
@@ -165,8 +167,8 @@ export function HousingTab() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
             {rows.map((h) => {
-              const space = h.spaceId ? spaceById.get(h.spaceId) : undefined;
-              const capacity = space?.bedCapacity ?? h.peopleCount;
+              const dorm = h.locationId ? dormById.get(h.locationId) : undefined;
+              const capacity = dorm?.bedCapacity ?? h.peopleCount;
               return (
                 <div
                   key={h.id}
@@ -177,7 +179,7 @@ export function HousingTab() {
                     <div className="min-w-0">
                       <p className="text-[13px] font-semibold text-forest truncate">{h.spaceName ?? 'Unassigned space'}</p>
                       <p className="text-[11px] text-forest/45 mt-0.5">
-                        {capacity} bed{capacity === 1 ? '' : 's'}{space?.accessible ? ' · Accessible' : ''}
+                        {capacity} bed{capacity === 1 ? '' : 's'}{dorm?.accessible ? ' · Accessible' : ''}
                       </p>
                     </div>
                     {h.locked
@@ -207,7 +209,7 @@ export function HousingTab() {
                   <Badge tone="neutral">Inactive</Badge>
                 </div>
                 <p className="text-[11px] text-forest/50 italic">
-                  {s.bedCapacity} beds{s.accessible ? ' · Accessible' : ''}. Not part of this retreat's housing plan.
+                  {s.bedCapacity ?? 0} beds{s.accessible ? ' · Accessible' : ''}. Not part of this retreat's housing plan.
                 </p>
               </div>
             ))}

@@ -7,6 +7,23 @@ final class DataService {
     fileprivate var campId: String { AuthManager.shared.currentCamp?.id ?? "" }
     private init() {}
 
+    // MARK: - Locations (unified tree)
+
+    func fetchLocations() async throws -> [Location] {
+        try await supabase.from("locations")
+            .select().eq("camp_id", value: campId).order("sort_order", ascending: true).execute().value
+    }
+
+    func fetchLocationCategories() async throws -> [LocationCategory] {
+        try await supabase.from("location_categories")
+            .select().eq("camp_id", value: campId).order("sort_order", ascending: true).execute().value
+    }
+
+    func fetchBuildingDetails() async throws -> [BuildingDetails] {
+        try await supabase.from("building_details")
+            .select().eq("camp_id", value: campId).execute().value
+    }
+
     // MARK: - Issues
 
     func fetchIssues() async throws -> [Issue] {
@@ -419,11 +436,12 @@ private struct TaskActivityRow: Codable {
 
 private struct IssueInsert: Encodable {
     let id, campId, title: String; let description: String?
-    let locations: [String]; let priority, status: String
+    let locationIds: [String]; let locations: [String]; let priority, status: String
     let assigneeId: String?; let reportedById: String
     let estimatedCost: Double?; let actualCost: Double?; let photoUrl: String?
     enum CodingKeys: String, CodingKey {
         case id, title, description, locations, priority, status
+        case locationIds   = "location_ids"
         case campId        = "camp_id"
         case assigneeId    = "assignee_id"
         case reportedById  = "reported_by_id"
@@ -434,7 +452,8 @@ private struct IssueInsert: Encodable {
     init(issue: Issue) {
         id = issue.id; campId = DataService.shared.campId
         title = issue.title; description = issue.description
-        locations = issue.locations; priority = issue.priority.rawValue
+        locationIds = issue.locationIds; locations = issue.locations
+        priority = issue.priority.rawValue
         status = issue.status.rawValue; assigneeId = issue.assigneeId
         reportedById = issue.reportedById; estimatedCost = issue.estimatedCost
         actualCost = issue.actualCost; photoUrl = issue.photoUrl
@@ -443,11 +462,12 @@ private struct IssueInsert: Encodable {
 
 private struct IssueUpdate: Encodable {
     let title: String; let description: String?
-    let locations: [String]; let priority, status: String
+    let locationIds: [String]; let locations: [String]; let priority, status: String
     let assigneeId: String?; let estimatedCost: Double?
     let actualCost: Double?; let photoUrl: String?; let updatedAt: Date
     enum CodingKeys: String, CodingKey {
         case title, description, locations, priority, status
+        case locationIds   = "location_ids"
         case assigneeId    = "assignee_id"
         case estimatedCost = "estimated_cost"
         case actualCost    = "actual_cost"
@@ -456,7 +476,8 @@ private struct IssueUpdate: Encodable {
     }
     init(issue: Issue) {
         title = issue.title; description = issue.description
-        locations = issue.locations; priority = issue.priority.rawValue
+        locationIds = issue.locationIds; locations = issue.locations
+        priority = issue.priority.rawValue
         status = issue.status.rawValue; assigneeId = issue.assigneeId
         estimatedCost = issue.estimatedCost; actualCost = issue.actualCost
         photoUrl = issue.photoUrl; updatedAt = Date()
@@ -465,11 +486,12 @@ private struct IssueUpdate: Encodable {
 
 private struct TaskInsert: Encodable {
     let id, campId, title, description: String
-    let locations: [String]; let priority, status, phase: String
+    let locationIds: [String]; let locations: [String]; let priority, status, phase: String
     let assigneeId: String?; let daysRelativeToOpening: Int?
     let dueDate: String?; let isRecurring: Bool
     enum CodingKeys: String, CodingKey {
         case id, title, description, locations, priority, status, phase
+        case locationIds           = "location_ids"
         case campId                = "camp_id"
         case assigneeId            = "assignee_id"
         case daysRelativeToOpening = "days_relative_to_opening"
@@ -479,7 +501,8 @@ private struct TaskInsert: Encodable {
     init(task: ChecklistTask) {
         id = task.id; campId = DataService.shared.campId
         title = task.title; description = task.description
-        locations = task.locations; priority = task.priority.rawValue
+        locationIds = task.locationIds; locations = task.locations
+        priority = task.priority.rawValue
         status = task.status.rawValue; phase = task.phase.rawValue
         assigneeId = task.assigneeId; daysRelativeToOpening = task.daysRelativeToOpening
         dueDate = task.dueDate; isRecurring = task.isRecurring
@@ -488,17 +511,19 @@ private struct TaskInsert: Encodable {
 
 private struct TaskUpdate: Encodable {
     let title, description: String
-    let locations: [String]; let priority, status, phase: String
+    let locationIds: [String]; let locations: [String]; let priority, status, phase: String
     let assigneeId: String?; let dueDate: String?; let updatedAt: Date
     enum CodingKeys: String, CodingKey {
         case title, description, locations, priority, status, phase
+        case locationIds = "location_ids"
         case assigneeId = "assignee_id"
         case dueDate    = "due_date"
         case updatedAt  = "updated_at"
     }
     init(task: ChecklistTask) {
         title = task.title; description = task.description
-        locations = task.locations; priority = task.priority.rawValue
+        locationIds = task.locationIds; locations = task.locations
+        priority = task.priority.rawValue
         status = task.status.rawValue; phase = task.phase.rawValue
         assigneeId = task.assigneeId; dueDate = task.dueDate; updatedAt = Date()
     }

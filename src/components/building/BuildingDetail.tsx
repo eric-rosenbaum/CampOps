@@ -2,10 +2,12 @@ import { ChevronLeft, Pencil, Plus, Zap, Droplet, Power, Flame } from 'lucide-re
 import {
   useBuildingStore, BUILDING_TYPE_LABELS, COMPONENT_TYPE_LABELS, componentSummary,
 } from '@/store/buildingStore';
+import { useLocationStore } from '@/store/locationStore';
 import { useAuth } from '@/lib/auth';
 import { StatusDot, ComponentIcon } from './buildingUi';
 import { ComponentDetailPanel } from './ComponentDetailPanel';
-import type { BuildingComponent, BuildingSystem } from '@/lib/types';
+import { useRooms, useBuildingDetail } from './useBuildings';
+import type { BuildingComponent, BuildingSystem, BuildingType } from '@/lib/types';
 
 function ComponentRow({ component }: { component: BuildingComponent }) {
   const { activeComponentId, setActiveComponent } = useBuildingStore();
@@ -67,40 +69,42 @@ function SystemGroup({ system, components, canManage, onAdd }: SystemGroupProps)
 }
 
 export function BuildingDetail() {
-  const {
-    activeBuilding, activeComponent, roomsForBuilding, componentsForRoom, componentsForBuilding,
-    setActiveBuilding, openModal,
-  } = useBuildingStore();
+  const { activeBuildingId, activeComponent, componentsForLocation, setActiveBuilding, openModal } = useBuildingStore();
+  const building = useLocationStore((s) => (activeBuildingId ? s.locationById(activeBuildingId) : undefined));
+  const detail = useBuildingDetail(activeBuildingId);
+  const rooms = useRooms(activeBuildingId ?? '');
   const { can } = useAuth();
   const canManage = can('manageBuildingSystems');
 
-  const building = activeBuilding();
   if (!building) return null;
+  const buildingId = building.id;
   const selected = activeComponent();
+  // Components attached directly to the building node (no room).
+  const buildingLevel = componentsForLocation(buildingId);
 
-  const rooms = roomsForBuilding(building.id);
-  const allComponents = componentsForBuilding(building.id);
-  const unassigned = allComponents.filter((c) => c.roomId === null);
+  const typeLabel = detail?.buildingType
+    ? (BUILDING_TYPE_LABELS[detail.buildingType as BuildingType] ?? detail.buildingType)
+    : 'Building';
 
   const refs = [
-    { icon: Droplet, label: 'Water shutoff', value: building.mainWaterShutoff },
-    { icon: Power, label: 'Main panel', value: building.mainElectricalPanel },
-    { icon: Flame, label: 'Gas shutoff', value: building.mainGasShutoff },
+    { icon: Droplet, label: 'Water shutoff', value: detail?.mainWaterShutoff },
+    { icon: Power, label: 'Main panel', value: detail?.mainElectricalPanel },
+    { icon: Flame, label: 'Gas shutoff', value: detail?.mainGasShutoff },
   ].filter((r) => r.value);
 
-  function renderRoom(roomId: string | null, name: string, subtitle?: string) {
-    const comps = componentsForRoom(roomId, building!.id);
+  function renderGroup(locationId: string, name: string, isRoom: boolean, subtitle?: string) {
+    const comps = componentsForLocation(locationId);
     const electrical = comps.filter((c) => c.system === 'electrical');
     const plumbing = comps.filter((c) => c.system === 'plumbing');
     return (
-      <div key={roomId ?? 'unassigned'} className="bg-white border border-border rounded-card p-4 mb-4">
+      <div key={locationId} className="bg-white border border-border rounded-card p-4 mb-4">
         <div className="flex items-center gap-2 mb-3">
           <span className="text-card-title font-semibold text-forest">{name}</span>
           {subtitle && <span className="text-meta text-forest/40">{subtitle}</span>}
           <span className="text-meta text-forest/30 ml-1">{comps.length} item{comps.length !== 1 ? 's' : ''}</span>
-          {canManage && roomId && (
+          {canManage && isRoom && (
             <button
-              onClick={() => openModal({ kind: 'room', buildingId: building!.id, editId: roomId })}
+              onClick={() => openModal({ kind: 'room', buildingId, editId: locationId })}
               className="ml-auto p-1 rounded text-forest/30 hover:text-forest hover:bg-cream transition-colors"
               title="Edit room"
             >
@@ -112,13 +116,13 @@ export function BuildingDetail() {
           system="electrical"
           components={electrical}
           canManage={canManage}
-          onAdd={() => openModal({ kind: 'component', buildingId: building!.id, defaultRoomId: roomId, defaultSystem: 'electrical' })}
+          onAdd={() => openModal({ kind: 'component', buildingId, defaultLocationId: locationId, defaultSystem: 'electrical' })}
         />
         <SystemGroup
           system="plumbing"
           components={plumbing}
           canManage={canManage}
-          onAdd={() => openModal({ kind: 'component', buildingId: building!.id, defaultRoomId: roomId, defaultSystem: 'plumbing' })}
+          onAdd={() => openModal({ kind: 'component', buildingId, defaultLocationId: locationId, defaultSystem: 'plumbing' })}
         />
       </div>
     );
@@ -138,14 +142,11 @@ export function BuildingDetail() {
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <h2 className="text-panel-title font-semibold text-forest">{building.name}</h2>
-            <p className="text-meta text-forest/40">
-              {BUILDING_TYPE_LABELS[building.type]}
-              {building.locationLabel ? ` · ${building.locationLabel}` : ''}
-            </p>
+            <p className="text-meta text-forest/40">{typeLabel}</p>
           </div>
           {canManage && (
             <button
-              onClick={() => openModal({ kind: 'building', editId: building.id })}
+              onClick={() => openModal({ kind: 'building', editId: buildingId })}
               className="inline-flex items-center gap-1 text-meta text-forest/50 hover:text-forest font-medium transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" /> Edit building
@@ -172,13 +173,13 @@ export function BuildingDetail() {
         {canManage && (
           <div className="flex gap-2 mb-4">
             <button
-              onClick={() => openModal({ kind: 'room', buildingId: building.id })}
+              onClick={() => openModal({ kind: 'room', buildingId })}
               className="inline-flex items-center gap-1 text-meta font-medium text-forest/60 hover:text-forest border border-border rounded-btn px-2.5 py-1.5 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" /> Add room
             </button>
             <button
-              onClick={() => openModal({ kind: 'component', buildingId: building.id, defaultRoomId: null })}
+              onClick={() => openModal({ kind: 'component', buildingId, defaultLocationId: buildingId })}
               className="inline-flex items-center gap-1 text-meta font-medium text-forest/60 hover:text-forest border border-border rounded-btn px-2.5 py-1.5 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" /> Add component
@@ -186,14 +187,14 @@ export function BuildingDetail() {
           </div>
         )}
 
-        {rooms.length === 0 && unassigned.length === 0 && (
+        {rooms.length === 0 && buildingLevel.length === 0 && (
           <p className="text-body text-forest/40 px-1">
             No rooms or components yet.{canManage ? ' Add a room, or add components directly to the building.' : ''}
           </p>
         )}
 
-        {rooms.map((r) => renderRoom(r.id, r.name, r.floor ?? undefined))}
-        {unassigned.length > 0 && renderRoom(null, 'Unassigned', 'not tied to a room')}
+        {rooms.map((r) => renderGroup(r.id, r.name, true))}
+        {buildingLevel.length > 0 && renderGroup(buildingId, 'Building-level', false, 'not tied to a room')}
       </div>
 
       {/* Right: component detail panel */}

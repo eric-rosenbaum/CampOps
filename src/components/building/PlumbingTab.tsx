@@ -2,9 +2,10 @@ import { Building2, Gauge } from 'lucide-react';
 import { useBuildingStore, componentSummary } from '@/store/buildingStore';
 import { CrossBuildingList } from './CrossBuildingList';
 import { useJumpToComponent } from './useBuildingNav';
+import { buildingLocationFor } from './useBuildings';
 
 export function PlumbingTab() {
-  const { shutoffValves, buildings } = useBuildingStore();
+  const { shutoffValves } = useBuildingStore();
   const jump = useJumpToComponent();
   const valves = shutoffValves();
 
@@ -19,7 +20,7 @@ export function PlumbingTab() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {valves.map((v) => {
-              const building = buildings.find((b) => b.id === v.buildingId);
+              const building = buildingLocationFor(v.locationId);
               const summary = componentSummary(v);
               return (
                 <button

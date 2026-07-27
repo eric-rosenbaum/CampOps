@@ -3,9 +3,8 @@ import type {
   Building, BuildingRoom, BuildingComponent, BuildingCircuit, BuildingSeasonalTask,
   BuildingType, BuildingSystem, ComponentStatus, SeasonalPhase,
 } from '@/lib/types';
+import { useLocationStore } from '@/store/locationStore';
 import {
-  dbAddBuilding, dbUpdateBuilding, dbDeleteBuilding,
-  dbAddRoom, dbUpdateRoom, dbDeleteRoom,
   dbAddComponent, dbUpdateComponent, dbDeleteComponent,
   dbAddCircuit, dbUpdateCircuit, dbDeleteCircuit,
   dbAddBuildingSeasonalTask, dbUpdateBuildingSeasonalTask,
@@ -16,10 +15,12 @@ export type BuildingTab = 'buildings' | 'electrical' | 'plumbing';
 
 // Discriminated modal state for the module. Components dispatch `openModal`; the
 // page renders the matching modal. Keeps modal wiring out of prop-drilling.
+// All ids below (buildingId, editId, defaultLocationId) are `locations` node ids:
+// a building is a top-level location, a room is a child location.
 export type BuildingModal =
   | { kind: 'building'; editId?: string }
   | { kind: 'room'; buildingId: string; editId?: string }
-  | { kind: 'component'; buildingId: string; editId?: string; defaultRoomId?: string | null; defaultSystem?: BuildingSystem }
+  | { kind: 'component'; buildingId: string; editId?: string; defaultLocationId?: string; defaultSystem?: BuildingSystem }
   | { kind: 'circuit'; panelId: string; editId?: string }
   | { kind: 'flag'; componentId: string };
 
@@ -226,10 +227,13 @@ export function worstStatus(statuses: ComponentStatus[]): ComponentStatus {
 
 interface BuildingState {
   activeTab: BuildingTab;
+  // activeBuildingId is a top-level `locations` node id.
   activeBuildingId: string | null;
   activeComponentId: string | null;
   modal: BuildingModal | null;
 
+  // Legacy arrays kept only so the app-wide loader/subscription wiring keeps its
+  // shape. Buildings & rooms now come from locationStore; nothing reads these.
   buildings: Building[];
   rooms: BuildingRoom[];
   components: BuildingComponent[];
@@ -248,14 +252,6 @@ interface BuildingState {
   setCircuits: (rows: BuildingCircuit[]) => void;
   setSeasonalTasks: (rows: BuildingSeasonalTask[]) => void;
 
-  addBuilding: (b: Building) => void;
-  updateBuilding: (b: Building) => void;
-  deleteBuilding: (id: string) => void;
-
-  addRoom: (r: BuildingRoom) => void;
-  updateRoom: (r: BuildingRoom) => void;
-  deleteRoom: (id: string) => void;
-
   addComponent: (c: BuildingComponent) => void;
   updateComponent: (c: BuildingComponent) => void;
   deleteComponent: (id: string) => void;
@@ -269,14 +265,14 @@ interface BuildingState {
   toggleSeasonalTask: (id: string, userName: string) => void;
   deleteSeasonalTask: (id: string) => void;
 
-  // Selectors
-  activeBuilding: () => Building | null;
+  // Selectors — all *locationId* args are `locations` node ids.
   activeComponent: () => BuildingComponent | null;
-  roomsForBuilding: (buildingId: string) => BuildingRoom[];
-  componentsForBuilding: (buildingId: string) => BuildingComponent[];
-  componentsForRoom: (roomId: string | null, buildingId: string) => BuildingComponent[];
+  /** Components attached directly to one location node (a building OR a room). */
+  componentsForLocation: (locationId: string) => BuildingComponent[];
+  /** Every component under a building: those on the building node + all its rooms. */
+  componentsForBuilding: (buildingLocationId: string) => BuildingComponent[];
   circuitsForPanel: (panelId: string) => BuildingCircuit[];
-  buildingStatus: (buildingId: string) => ComponentStatus;
+  buildingStatus: (buildingLocationId: string) => ComponentStatus;
   panels: () => BuildingComponent[];
   shutoffValves: () => BuildingComponent[];
   seasonalProgressByPhase: (phase: SeasonalPhase) => { total: number; done: number };
@@ -305,42 +301,6 @@ export const useBuildingStore = create<BuildingState>((set, get) => ({
   setComponents: (rows) => set({ components: rows }),
   setCircuits: (rows) => set({ circuits: rows }),
   setSeasonalTasks: (rows) => set({ seasonalTasks: rows }),
-
-  addBuilding: (b) => {
-    set((s) => ({ buildings: [...s.buildings, b] }));
-    dbAddBuilding(b);
-  },
-  updateBuilding: (b) => {
-    set((s) => ({ buildings: s.buildings.map((x) => x.id === b.id ? b : x) }));
-    dbUpdateBuilding(b);
-  },
-  deleteBuilding: (id) => {
-    set((s) => ({
-      buildings: s.buildings.filter((b) => b.id !== id),
-      rooms: s.rooms.filter((r) => r.buildingId !== id),
-      components: s.components.filter((c) => c.buildingId !== id),
-      seasonalTasks: s.seasonalTasks.filter((t) => t.buildingId !== id),
-      activeBuildingId: s.activeBuildingId === id ? null : s.activeBuildingId,
-    }));
-    dbDeleteBuilding(id);
-  },
-
-  addRoom: (r) => {
-    set((s) => ({ rooms: [...s.rooms, r] }));
-    dbAddRoom(r);
-  },
-  updateRoom: (r) => {
-    set((s) => ({ rooms: s.rooms.map((x) => x.id === r.id ? r : x) }));
-    dbUpdateRoom(r);
-  },
-  deleteRoom: (id) => {
-    set((s) => ({
-      rooms: s.rooms.filter((r) => r.id !== id),
-      // Components in a deleted room fall back to "unassigned" (room_id set null in DB).
-      components: s.components.map((c) => c.roomId === id ? { ...c, roomId: null } : c),
-    }));
-    dbDeleteRoom(id);
-  },
 
   addComponent: (c) => {
     set((s) => ({ components: [...s.components, c] }));
@@ -409,26 +369,22 @@ export const useBuildingStore = create<BuildingState>((set, get) => ({
 
   // ─── Selectors ──────────────────────────────────────────────────────────────
 
-  activeBuilding: () => {
-    const { buildings, activeBuildingId } = get();
-    return buildings.find((b) => b.id === activeBuildingId) ?? null;
-  },
   activeComponent: () => {
     const { components, activeComponentId } = get();
     return components.find((c) => c.id === activeComponentId) ?? null;
   },
-  roomsForBuilding: (buildingId) =>
-    get().rooms.filter((r) => r.buildingId === buildingId)
-      .sort((a, b) => a.sortOrder - b.sortOrder),
-  componentsForBuilding: (buildingId) =>
-    get().components.filter((c) => c.buildingId === buildingId),
-  componentsForRoom: (roomId, buildingId) =>
-    get().components.filter((c) => c.buildingId === buildingId && c.roomId === roomId),
+  componentsForLocation: (locationId) =>
+    get().components.filter((c) => c.locationId === locationId),
+  componentsForBuilding: (buildingLocationId) => {
+    const roomIds = useLocationStore.getState().childrenOf(buildingLocationId).map((r) => r.id);
+    const ids = new Set<string>([buildingLocationId, ...roomIds]);
+    return get().components.filter((c) => ids.has(c.locationId));
+  },
   circuitsForPanel: (panelId) =>
     get().circuits.filter((c) => c.panelId === panelId)
       .sort((a, b) => a.sortOrder - b.sortOrder),
-  buildingStatus: (buildingId) =>
-    worstStatus(get().components.filter((c) => c.buildingId === buildingId).map((c) => c.status)),
+  buildingStatus: (buildingLocationId) =>
+    worstStatus(get().componentsForBuilding(buildingLocationId).map((c) => c.status)),
   panels: () =>
     get().components.filter((c) => c.type === 'breaker_panel' || c.type === 'sub_panel'),
   shutoffValves: () =>

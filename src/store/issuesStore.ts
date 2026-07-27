@@ -338,6 +338,7 @@ export function startIssueWriteQueue(): () => void {
       id: crypto.randomUUID(),
       title: `[AUTO-TEST] ${new Date().toLocaleTimeString()}`,
       description: 'Automated stale-TCP write test',
+      locationIds: [],
       locations: [],
       priority: 'normal',
       status: 'unassigned',

@@ -1,19 +1,18 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
+import { LocationPicker } from '@/components/shared/LocationPicker';
 import { useUIStore } from '@/store/uiStore';
 import { useSafetyStore, FREQUENCY_DAYS } from '@/store/safetyStore';
-import { useCampStore } from '@/store/campStore';
+import { useLocationStore } from '@/store/locationStore';
 import { useAuth } from '@/lib/auth';
 import { generateId } from '@/lib/utils';
 import type { SafetyItem, SafetyItemType } from '@/lib/types';
 import { addDays } from 'date-fns';
 
-const DEFAULT_LOCATIONS = ['Waterfront', 'Dining Hall', 'Main Lodge', 'Health Center', 'Kitchen', 'Athletic Fields', 'Maintenance', 'Other'];
-
 interface FormValues {
   name: string;
-  location: string;
   unitCount: number;
   frequency: SafetyItem['frequency'];
   lastInspected: string;
@@ -127,17 +126,18 @@ function showVendor(type: SafetyItemType) {
 export function AddSafetyItemModal() {
   const { closeAllModals, addItemModalDefaultType, editingSafetyItemId } = useUIStore();
   const { items, addItem, updateItem, deleteItem } = useSafetyStore();
-  const campLocations = useCampStore((s) => s.currentCamp?.locations ?? DEFAULT_LOCATIONS);
   const { currentUser } = useAuth();
 
   const editing = editingSafetyItemId ? items.find((i) => i.id === editingSafetyItemId) ?? null : null;
   const itemType = (editing?.type ?? addItemModalDefaultType ?? 'extinguisher') as SafetyItemType;
   const meta = (editing?.metadata ?? {}) as Record<string, unknown>;
 
+  const [locationId, setLocationId] = useState<string | null>(editing?.locationId ?? null);
+  const [locationError, setLocationError] = useState(false);
+
   const { register, handleSubmit, watch, formState: { isSubmitting, errors } } = useForm<FormValues>({
     defaultValues: {
       name: editing?.name ?? '',
-      location: editing?.location ?? '',
       unitCount: editing?.unitCount ?? 1,
       frequency: editing?.frequency ?? DEFAULT_FREQUENCIES[itemType],
       lastInspected: editing?.lastInspected ?? '',
@@ -159,6 +159,8 @@ export function AddSafetyItemModal() {
     : '';
 
   function onSubmit(data: FormValues) {
+    if (!locationId) { setLocationError(true); return; }
+    const locationName = useLocationStore.getState().locationById(locationId)?.name ?? '';
     const now = new Date().toISOString();
     const freqDays = FREQUENCY_DAYS[data.frequency];
     const nextDue = data.lastInspected
@@ -181,7 +183,8 @@ export function AddSafetyItemModal() {
     if (editing) {
       updateItem(editing.id, {
         name: data.name,
-        location: data.location,
+        locationId,
+        location: locationName,
         unitCount: showUnitCount(itemType) ? (Number(data.unitCount) || 1) : 1,
         frequency: data.frequency,
         frequencyDays: freqDays,
@@ -197,7 +200,8 @@ export function AddSafetyItemModal() {
         name: data.name,
         category: TYPE_CATEGORY[itemType],
         type: itemType,
-        location: data.location,
+        locationId,
+        location: locationName,
         unitCount: showUnitCount(itemType) ? (Number(data.unitCount) || 1) : 1,
         frequency: data.frequency,
         frequencyDays: freqDays,
@@ -254,16 +258,12 @@ export function AddSafetyItemModal() {
         <div className={showUnitCount(itemType) ? 'grid grid-cols-2 gap-3' : ''}>
           <div>
             <label className={lc}>Location *</label>
-            <select
-              {...register('location', { required: true })}
-              className={errors.location ? icErr : ic}
-            >
-              <option value="">— Select location —</option>
-              {campLocations.map((l) => (
-                <option key={l} value={l}>{l}</option>
-              ))}
-            </select>
-            {errors.location && <p className="text-[11px] text-red mt-1">Location is required.</p>}
+            <LocationPicker
+              multiple={false}
+              value={locationId ? [locationId] : []}
+              onChange={(ids) => { setLocationId(ids[0] ?? null); if (ids[0]) setLocationError(false); }}
+            />
+            {locationError && <p className="text-[11px] text-red mt-1">Location is required.</p>}
           </div>
           {showUnitCount(itemType) && (
             <div>

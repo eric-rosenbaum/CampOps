@@ -40,7 +40,7 @@ function rowToSpace(r: Row): RetreatSpace {
   return { id: r.id as string, campId: r.camp_id as string, name: r.name as string, bedCapacity: Number(r.bed_capacity ?? 0), accessible: Boolean(r.accessible), notes: s(r.notes), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
 }
 function rowToHousing(r: Row): RetreatHousing {
-  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, spaceId: s(r.space_id), spaceName: s(r.space_name), subgroupName: s(r.subgroup_name), peopleCount: Number(r.people_count ?? 0), notes: s(r.notes), locked: Boolean(r.locked), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, locationId: s(r.location_id), spaceId: s(r.space_id), spaceName: s(r.space_name), subgroupName: s(r.subgroup_name), peopleCount: Number(r.people_count ?? 0), notes: s(r.notes), locked: Boolean(r.locked), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
 }
 function rowToHousingVersion(r: Row): RetreatHousingVersion {
   return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, version: Number(r.version ?? 1), label: s(r.label), summary: s(r.summary), createdBy: s(r.created_by), createdAt: r.created_at as string };
@@ -184,8 +184,8 @@ export const dbAddSpace = (x: RetreatSpace) => ins('retreat_spaces', { id: x.id,
 export const dbUpdateSpace = (x: RetreatSpace) => upd('retreat_spaces', x.id, { name: x.name, bed_capacity: x.bedCapacity, accessible: x.accessible, notes: x.notes, sort_order: x.sortOrder });
 export const dbDeleteSpace = (id: string) => del('retreat_spaces', id);
 
-export const dbAddHousing = (x: RetreatHousing) => ins('retreat_housing', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, space_id: x.spaceId, space_name: x.spaceName, subgroup_name: x.subgroupName, people_count: x.peopleCount, notes: x.notes, locked: x.locked, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
-export const dbUpdateHousing = (x: RetreatHousing) => upd('retreat_housing', x.id, { space_id: x.spaceId, space_name: x.spaceName, subgroup_name: x.subgroupName, people_count: x.peopleCount, notes: x.notes, locked: x.locked, sort_order: x.sortOrder });
+export const dbAddHousing = (x: RetreatHousing) => ins('retreat_housing', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, location_id: x.locationId, space_id: x.spaceId, space_name: x.spaceName, subgroup_name: x.subgroupName, people_count: x.peopleCount, notes: x.notes, locked: x.locked, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbUpdateHousing = (x: RetreatHousing) => upd('retreat_housing', x.id, { location_id: x.locationId, space_id: x.spaceId, space_name: x.spaceName, subgroup_name: x.subgroupName, people_count: x.peopleCount, notes: x.notes, locked: x.locked, sort_order: x.sortOrder });
 export const dbDeleteHousing = (id: string) => del('retreat_housing', id);
 export async function dbSetHousingLock(retreatId: string, locked: boolean) { const { error } = await supabase.from('retreat_housing').update({ locked, updated_at: new Date().toISOString() }).eq('retreat_id', retreatId); if (error) campError('lock housing', error.message); }
 

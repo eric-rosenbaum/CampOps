@@ -71,6 +71,8 @@ import { useBuildingStore } from '@/store/buildingStore';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { loadRetreats, subscribeToRetreats } from '@/lib/retreatsDb';
 import { useRetreatStore } from '@/store/retreatStore';
+import { loadLocations, subscribeToLocations } from '@/lib/locationsDb';
+import { useLocationStore } from '@/store/locationStore';
 import { useCampStore as useCamp } from '@/store/campStore';
 
 function HomeRouter() {
@@ -114,6 +116,7 @@ function CampDataLoader() {
     setMeals: setRetreatMeals, setChangeRequests, setCosts: setRetreatCosts, setCharges, setPayments,
     setIssues: setRetreatIssues, setChecklist, setScheduleItems, setFeedback, setReminders,
   } = useRetreatStore();
+  const { setLocations, setCategories, setBuildingDetails } = useLocationStore();
 
   useEffect(() => {
     if (!campId) return;
@@ -133,6 +136,7 @@ function CampDataLoader() {
     let unsubCommProduction: (() => void) | null = null;
     let unsubCommAllergy: (() => void) | null = null;
     let unsubRetreats: (() => void) | null = null;
+    let unsubLocations: (() => void) | null = null;
 
     // Start the Supabase keep-alive heartbeat.  Pings every 30 s while visible to
     // keep the TCP socket from going stale and to refresh the JWT before expiry.
@@ -155,6 +159,7 @@ function CampDataLoader() {
     let commProductionSyncedAt = 0;
     let commAllergySyncedAt = 0;
     let retreatsSyncedAt = 0;
+    let locationsSyncedAt = 0;
 
     // Start subscriptions FIRST so any writes during the initial data load are captured.
     // If subscriptions were started after loading, a write that completes before the
@@ -242,6 +247,12 @@ function CampDataLoader() {
       setChecklist(d.checklist); setScheduleItems(d.scheduleItems); setFeedback(d.feedback); setReminders(d.reminders);
     };
     unsubRetreats = subscribeToRetreats(campId, applyRetreatData, () => { retreatsSyncedAt = Date.now(); });
+
+    // Unified locations tree (camp-wide reference data).
+    const applyLocationData = (d: import('@/lib/locationsDb').LocationData) => {
+      setLocations(d.locations); setCategories(d.categories); setBuildingDetails(d.buildingDetails);
+    };
+    unsubLocations = subscribeToLocations(campId, applyLocationData, () => { locationsSyncedAt = Date.now(); });
 
     // Load initial data after subscriptions are live.
     // Skip each setter if the subscription already fired — the subscription's refetch
@@ -356,6 +367,11 @@ function CampDataLoader() {
       applyRetreatData(data);
     });
 
+    loadLocations(campId).then((data) => {
+      if (locationsSyncedAt > loadStartedAt) return;
+      applyLocationData(data);
+    });
+
     // Refetch after the tab has been hidden long enough that the realtime subscription
     // may have missed events (e.g. WebSocket disconnected during sleep/long absence).
     // We skip the refetch for short tab switches to avoid a race: a quick refetch can
@@ -452,6 +468,7 @@ function CampDataLoader() {
       unsubCommProduction?.();
       unsubCommAllergy?.();
       unsubRetreats?.();
+      unsubLocations?.();
       stopHeartbeat();
       stopWriteQueue();
       document.removeEventListener('visibilitychange', handleVisibility);

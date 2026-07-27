@@ -1,21 +1,26 @@
 import { Building2, Droplet, Power, Flame, Zap } from 'lucide-react';
 import { useBuildingStore, BUILDING_TYPE_LABELS } from '@/store/buildingStore';
 import { ComponentStatusBadge } from './buildingUi';
-import type { Building } from '@/lib/types';
+import { useBuildings, useRooms, useBuildingDetail } from './useBuildings';
+import type { BuildingType, CampLocation } from '@/lib/types';
 
-function BuildingCard({ building }: { building: Building }) {
-  const { setActiveBuilding, componentsForBuilding, buildingStatus, roomsForBuilding } = useBuildingStore();
+function BuildingCard({ building }: { building: CampLocation }) {
+  const { setActiveBuilding, componentsForBuilding, buildingStatus } = useBuildingStore();
+  const detail = useBuildingDetail(building.id);
+  const rooms = useRooms(building.id);
   const components = componentsForBuilding(building.id);
   const status = buildingStatus(building.id);
-  const rooms = roomsForBuilding(building.id);
   const electrical = components.filter((c) => c.system === 'electrical').length;
   const plumbing = components.filter((c) => c.system === 'plumbing').length;
   const flagged = components.filter((c) => c.status !== 'operational').length;
+  const typeLabel = detail?.buildingType
+    ? (BUILDING_TYPE_LABELS[detail.buildingType as BuildingType] ?? detail.buildingType)
+    : 'Building';
 
   const refs = [
-    { icon: Droplet, label: 'Water shutoff', value: building.mainWaterShutoff },
-    { icon: Power, label: 'Main panel', value: building.mainElectricalPanel },
-    { icon: Flame, label: 'Gas shutoff', value: building.mainGasShutoff },
+    { icon: Droplet, label: 'Water shutoff', value: detail?.mainWaterShutoff },
+    { icon: Power, label: 'Main panel', value: detail?.mainElectricalPanel },
+    { icon: Flame, label: 'Gas shutoff', value: detail?.mainGasShutoff },
   ].filter((r) => r.value);
 
   return (
@@ -30,7 +35,7 @@ function BuildingCard({ building }: { building: Building }) {
           </div>
           <div className="min-w-0">
             <p className="text-card-title font-semibold text-forest truncate">{building.name}</p>
-            <p className="text-meta text-forest/40">{BUILDING_TYPE_LABELS[building.type]}</p>
+            <p className="text-meta text-forest/40">{typeLabel}</p>
           </div>
         </div>
         {components.length > 0 && <ComponentStatusBadge status={status} />}
@@ -62,13 +67,12 @@ function BuildingCard({ building }: { building: Building }) {
 }
 
 export function BuildingsOverview() {
-  const buildings = useBuildingStore((s) => s.buildings);
-  const sorted = [...buildings].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+  const buildings = useBuildings();
 
   return (
     <div className="flex-1 overflow-y-auto px-7 py-6">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {sorted.map((b) => <BuildingCard key={b.id} building={b} />)}
+        {buildings.map((b) => <BuildingCard key={b.id} building={b} />)}
       </div>
     </div>
   );

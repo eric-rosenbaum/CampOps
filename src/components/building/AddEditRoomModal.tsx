@@ -2,39 +2,36 @@ import { useState } from 'react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useBuildingStore } from '@/store/buildingStore';
-import { generateId } from '@/lib/utils';
-import type { BuildingRoom } from '@/lib/types';
+import { useLocationStore } from '@/store/locationStore';
+import type { CampLocation } from '@/lib/types';
 
 const inputClass = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
 const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
 
+// A room is a child `locations` node under its building. Deleting cascades to any
+// components/child nodes (DB ON DELETE CASCADE on locations.parent_id).
 export function AddEditRoomModal({ buildingId, editId }: { buildingId: string; editId?: string }) {
-  const { rooms, roomsForBuilding, addRoom, updateRoom, deleteRoom, closeModal } = useBuildingStore();
-  const existing = editId ? rooms.find((r) => r.id === editId) ?? null : null;
+  const { closeModal } = useBuildingStore();
+  const { locations, addLocation, updateLocation, deleteLocation } = useLocationStore();
+  const existing: CampLocation | null = editId ? locations.find((l) => l.id === editId) ?? null : null;
 
   const [name, setName] = useState(existing?.name ?? '');
-  const [floor, setFloor] = useState(existing?.floor ?? '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    const now = new Date().toISOString();
     if (existing) {
-      updateRoom({ ...existing, name: name.trim(), floor: floor || null, notes: notes || null });
+      updateLocation({ ...existing, name: name.trim(), notes: notes || null });
     } else {
-      const r: BuildingRoom = {
-        id: generateId(), buildingId, name: name.trim(), floor: floor || null, notes: notes || null,
-        sortOrder: roomsForBuilding(buildingId).length, createdAt: now, updatedAt: now,
-      };
-      addRoom(r);
+      addLocation({ name: name.trim(), parentId: buildingId, notes: notes || null });
     }
     closeModal();
   }
 
   function handleDelete() {
-    if (existing && confirm(`Delete room "${existing.name}"? Its components will become unassigned.`)) {
-      deleteRoom(existing.id);
+    if (existing && confirm(`Delete room "${existing.name}"? Its components will be removed too.`)) {
+      deleteLocation(existing.id);
       closeModal();
     }
   }
@@ -45,10 +42,6 @@ export function AddEditRoomModal({ buildingId, editId }: { buildingId: string; e
         <div>
           <label className={labelClass}>Room name *</label>
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="e.g. Shower room A, Kitchen, Main hall" />
-        </div>
-        <div>
-          <label className={labelClass}>Floor / level</label>
-          <input value={floor} onChange={(e) => setFloor(e.target.value)} className={inputClass} placeholder="optional" />
         </div>
         <div>
           <label className={labelClass}>Notes</label>

@@ -4,6 +4,7 @@ import { Button } from '@/components/shared/Button';
 import {
   useBuildingStore, componentTypesFor, COMPONENT_SPECS, STATUS_LABELS, type SpecField,
 } from '@/store/buildingStore';
+import { useRooms } from './useBuildings';
 import { generateId } from '@/lib/utils';
 import type {
   BuildingComponent, BuildingComponentType, BuildingSystem, ComponentStatus,
@@ -13,22 +14,25 @@ const inputClass = 'w-full text-body bg-white border border-border rounded-btn p
 const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
 
 interface Props {
+  // Building location id. defaultLocationId is the pre-selected attach target: a
+  // room location id, or the building id itself for a building-level component.
   buildingId: string;
   editId?: string;
-  defaultRoomId?: string | null;
+  defaultLocationId?: string;
   defaultSystem?: BuildingSystem;
 }
 
-export function AddEditComponentModal({ buildingId, editId, defaultRoomId, defaultSystem }: Props) {
-  const { components, roomsForBuilding, addComponent, updateComponent, closeModal } = useBuildingStore();
+export function AddEditComponentModal({ buildingId, editId, defaultLocationId, defaultSystem }: Props) {
+  const { components, componentsForBuilding, addComponent, updateComponent, closeModal } = useBuildingStore();
   const existing = editId ? components.find((c) => c.id === editId) ?? null : null;
-  const rooms = roomsForBuilding(buildingId);
+  const rooms = useRooms(buildingId);
 
   const [system, setSystem] = useState<BuildingSystem>(existing?.system ?? defaultSystem ?? 'electrical');
   const initialTypes = componentTypesFor(existing?.system ?? defaultSystem ?? 'electrical');
   const [type, setType] = useState<BuildingComponentType>(existing?.type ?? (initialTypes[0].value as BuildingComponentType));
   const [label, setLabel] = useState(existing?.label ?? '');
-  const [roomId, setRoomId] = useState<string | null>(existing?.roomId ?? defaultRoomId ?? null);
+  // Where the component attaches: a room location id, or the building id ("building-level").
+  const [locationId, setLocationId] = useState<string>(existing?.locationId ?? defaultLocationId ?? buildingId);
   const [locationDetail, setLocationDetail] = useState(existing?.locationDetail ?? '');
   const [status, setStatus] = useState<ComponentStatus>(existing?.status ?? 'operational');
   const [statusDetail, setStatusDetail] = useState(existing?.statusDetail ?? '');
@@ -67,18 +71,18 @@ export function AddEditComponentModal({ buildingId, editId, defaultRoomId, defau
     const now = new Date().toISOString();
     if (existing) {
       updateComponent({
-        ...existing, system, type, label: label.trim(), roomId,
+        ...existing, system, type, label: label.trim(), locationId,
         locationDetail: locationDetail || null, status, statusDetail: statusDetail || null,
         metadata: cleanMeta, lastServiced: lastServiced || null, nextServiceDue: nextServiceDue || null,
         notes: notes || null,
       });
     } else {
       const c: BuildingComponent = {
-        id: generateId(), buildingId, roomId, system, type, label: label.trim(),
+        id: generateId(), locationId, system, type, label: label.trim(),
         locationDetail: locationDetail || null, status, statusDetail: statusDetail || null,
         lastServiced: lastServiced || null, nextServiceDue: nextServiceDue || null,
         photoUrl: null, metadata: cleanMeta, controllingCircuitId: null, notes: notes || null,
-        sortOrder: components.filter((x) => x.buildingId === buildingId).length,
+        sortOrder: componentsForBuilding(buildingId).length,
         createdAt: now, updatedAt: now,
       };
       addComponent(c);
@@ -114,8 +118,8 @@ export function AddEditComponentModal({ buildingId, editId, defaultRoomId, defau
           </div>
           <div>
             <label className={labelClass}>Room</label>
-            <select value={roomId ?? ''} onChange={(e) => setRoomId(e.target.value || null)} className={inputClass}>
-              <option value="">Unassigned</option>
+            <select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={inputClass}>
+              <option value={buildingId}>Building-level (no room)</option>
               {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </div>

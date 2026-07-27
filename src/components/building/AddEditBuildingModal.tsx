@@ -2,56 +2,82 @@ import { useState } from 'react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useBuildingStore, BUILDING_TYPE_LABELS } from '@/store/buildingStore';
-import { useCampStore } from '@/store/campStore';
-import { generateId } from '@/lib/utils';
-import type { Building, BuildingType } from '@/lib/types';
+import { useLocationStore } from '@/store/locationStore';
+import type { BuildingType, CampLocation } from '@/lib/types';
 
 const inputClass = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
 const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
 
+// A building is a top-level `locations` node that also carries a building_details
+// row. Create = addLocation (parent null) + upsertBuildingDetail; edit updates both.
 export function AddEditBuildingModal({ editId }: { editId?: string }) {
-  const { buildings, addBuilding, updateBuilding, deleteBuilding, closeModal } = useBuildingStore();
-  const { currentCamp } = useCampStore();
-  const existing = editId ? buildings.find((b) => b.id === editId) ?? null : null;
+  const { closeModal, setActiveBuilding } = useBuildingStore();
+  const { locations, categories, buildingDetails, buildingDetailFor, addLocation, updateLocation, deleteLocation, upsertBuildingDetail } = useLocationStore();
+
+  const existing: CampLocation | null = editId ? locations.find((l) => l.id === editId) ?? null : null;
+  const existingDetail = editId ? buildingDetailFor(editId) : undefined;
+
+  // Existing top-level locations that aren't already buildings — you can attach infra to one
+  // of these ("promote" it) instead of creating a duplicate location.
+  const buildingIds = new Set(buildingDetails.map((b) => b.locationId));
+  const candidates = locations
+    .filter((l) => l.parentId == null && l.isActive && !buildingIds.has(l.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const [locationChoice, setLocationChoice] = useState<string>('__new__'); // '__new__' or an existing location id
 
   const [name, setName] = useState(existing?.name ?? '');
-  const [type, setType] = useState<BuildingType>(existing?.type ?? 'cabin');
-  const [locationLabel, setLocationLabel] = useState(existing?.locationLabel ?? '');
-  const [water, setWater] = useState(existing?.mainWaterShutoff ?? '');
-  const [panel, setPanel] = useState(existing?.mainElectricalPanel ?? '');
-  const [gas, setGas] = useState(existing?.mainGasShutoff ?? '');
-  const [yearBuilt, setYearBuilt] = useState(existing?.yearBuilt ? String(existing.yearBuilt) : '');
+  const [type, setType] = useState<BuildingType>((existingDetail?.buildingType as BuildingType) ?? 'cabin');
+  const [water, setWater] = useState(existingDetail?.mainWaterShutoff ?? '');
+  const [panel, setPanel] = useState(existingDetail?.mainElectricalPanel ?? '');
+  const [gas, setGas] = useState(existingDetail?.mainGasShutoff ?? '');
+  const [yearBuilt, setYearBuilt] = useState(existingDetail?.yearBuilt ? String(existingDetail.yearBuilt) : '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [saving, setSaving] = useState(false);
 
-  const locations = currentCamp?.locations ?? [];
+  // Best-effort default category from the building type label (e.g. type "cabin"
+  // matches a "Cabins" category). Never auto-creates a category.
+  function defaultCategoryId(t: BuildingType): string | null {
+    const label = BUILDING_TYPE_LABELS[t].toLowerCase();
+    return categories.find((c) => {
+      const n = c.name.toLowerCase();
+      return n === label || n.includes(label) || label.includes(n);
+    })?.id ?? null;
+  }
+
+  const creatingNew = !existing && locationChoice === '__new__';
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (creatingNew && !name.trim()) return;
     setSaving(true);
-    const now = new Date().toISOString();
+    let locationId: string;
     if (existing) {
-      updateBuilding({
-        ...existing, name: name.trim(), type, locationLabel: locationLabel || null,
-        mainWaterShutoff: water || null, mainElectricalPanel: panel || null, mainGasShutoff: gas || null,
-        yearBuilt: yearBuilt ? Number(yearBuilt) : null, notes: notes || null,
-      });
+      updateLocation({ ...existing, name: name.trim(), notes: notes || null });
+      locationId = existing.id;
+    } else if (locationChoice !== '__new__') {
+      // Attach infra to an existing location (no duplicate created).
+      locationId = locationChoice;
     } else {
-      const b: Building = {
-        id: generateId(), name: name.trim(), type, locationLabel: locationLabel || null,
-        mainWaterShutoff: water || null, mainElectricalPanel: panel || null, mainGasShutoff: gas || null,
-        yearBuilt: yearBuilt ? Number(yearBuilt) : null, notes: notes || null,
-        sortOrder: buildings.length, createdAt: now, updatedAt: now,
-      };
-      addBuilding(b);
+      const loc = addLocation({ name: name.trim(), parentId: null, categoryId: defaultCategoryId(type), notes: notes || null });
+      locationId = loc.id;
     }
+    upsertBuildingDetail({
+      locationId,
+      campId: existing?.campId ?? '',
+      buildingType: type,
+      mainWaterShutoff: water || null,
+      mainElectricalPanel: panel || null,
+      mainGasShutoff: gas || null,
+      yearBuilt: yearBuilt ? Number(yearBuilt) : null,
+    });
+    if (!existing) setActiveBuilding(locationId);
     closeModal();
   }
 
   function handleDelete() {
     if (existing && confirm(`Delete "${existing.name}" and all its rooms and components? This can't be undone.`)) {
-      deleteBuilding(existing.id);
+      deleteLocation(existing.id);
+      setActiveBuilding(null);
       closeModal();
     }
   }
@@ -60,10 +86,26 @@ export function AddEditBuildingModal({ editId }: { editId?: string }) {
     <Modal title={existing ? 'Edit building' : 'Add building'} onClose={closeModal} width="480px">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">
-            <label className={labelClass}>Name *</label>
-            <input autoFocus value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="e.g. Cabin 7, Main Bathhouse" />
-          </div>
+          {!existing && (
+            <div className="col-span-2">
+              <label className={labelClass}>Location</label>
+              <select value={locationChoice} onChange={(e) => setLocationChoice(e.target.value)} className={inputClass}>
+                <option value="__new__">+ Create a new location…</option>
+                {candidates.length > 0 && (
+                  <optgroup label="Or add infrastructure to an existing location">
+                    {candidates.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </optgroup>
+                )}
+              </select>
+              <p className="text-[11px] text-forest/40 mt-1">Pick a location you already have (e.g. a cabin) to track its electrical/plumbing here — no duplicate is created.</p>
+            </div>
+          )}
+          {(existing || creatingNew) && (
+            <div className="col-span-2">
+              <label className={labelClass}>Name *</label>
+              <input autoFocus value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="e.g. Cabin 7, Main Bathhouse" />
+            </div>
+          )}
           <div>
             <label className={labelClass}>Type</label>
             <select value={type} onChange={(e) => setType(e.target.value as BuildingType)} className={inputClass}>
@@ -71,19 +113,6 @@ export function AddEditBuildingModal({ editId }: { editId?: string }) {
                 <option key={t} value={t}>{BUILDING_TYPE_LABELS[t]}</option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className={labelClass}>Location / area</label>
-            <input
-              value={locationLabel}
-              onChange={(e) => setLocationLabel(e.target.value)}
-              className={inputClass}
-              list="building-locations"
-              placeholder="optional"
-            />
-            <datalist id="building-locations">
-              {locations.map((l) => <option key={l} value={l} />)}
-            </datalist>
           </div>
         </div>
 
@@ -117,7 +146,7 @@ export function AddEditBuildingModal({ editId }: { editId?: string }) {
         </div>
 
         <div className="flex gap-2 pt-1">
-          <Button type="submit" className="flex-1 justify-center" disabled={saving}>
+          <Button type="submit" className="flex-1 justify-center" disabled={saving || (creatingNew && !name.trim())}>
             {existing ? 'Save changes' : 'Add building'}
           </Button>
           {existing && (

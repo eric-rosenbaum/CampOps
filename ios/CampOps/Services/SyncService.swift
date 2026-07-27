@@ -24,6 +24,7 @@ final class SyncService: ObservableObject {
                             onPoolChange: (() async -> Void)? = nil,
                             onAssetChange: (() async -> Void)? = nil,
                             onBuildingChange: (() async -> Void)? = nil,
+                            onLocationChange: (() async -> Void)? = nil,
                             onPermissionChange: (() async -> Void)? = nil) async {
         // Unsubscribe from any existing channel before resubscribing.
         await channel?.unsubscribe()
@@ -48,6 +49,8 @@ final class SyncService: ObservableObject {
         let bSeasonalStream  = await ch.postgresChange(AnyAction.self, schema: "public", table: "building_seasonal_tasks")
         let memberStream     = await ch.postgresChange(AnyAction.self, schema: "public", table: "camp_members")
         let groupStream      = await ch.postgresChange(AnyAction.self, schema: "public", table: "staff_groups")
+        let locationStream   = await ch.postgresChange(AnyAction.self, schema: "public", table: "locations")
+        let locCategoryStream = await ch.postgresChange(AnyAction.self, schema: "public", table: "location_categories")
 
         await ch.subscribe()
 
@@ -68,6 +71,8 @@ final class SyncService: ObservableObject {
         Task { for await _ in bSeasonalStream { if let f = onBuildingChange   { await f() } } }
         Task { for await _ in memberStream   { if let f = onPermissionChange  { await f() } } }
         Task { for await _ in groupStream    { if let f = onPermissionChange  { await f() } } }
+        Task { for await _ in locationStream    { if let f = onLocationChange { await f() } } }
+        Task { for await _ in locCategoryStream { if let f = onLocationChange { await f() } } }
     }
 
     func unsubscribe() async {

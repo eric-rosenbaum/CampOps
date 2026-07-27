@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
-import { Plus, X, Pencil, Calendar, Sun, Copy, Check } from 'lucide-react';
+import { Plus, X, Pencil, Calendar, Sun, Copy, Check, Trash2, Upload, CornerDownRight, ChevronDown, ChevronRight } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
+import { useLocationStore } from '@/store/locationStore';
+import { dbUploadLocationImport } from '@/lib/locationsDb';
 import { usePoolStore, POOL_TYPE_LABELS } from '@/store/poolStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { AddEditPoolModal } from '@/components/pool/AddEditPoolModal';
-import type { Season } from '@/lib/types';
+import type { Season, CampLocation } from '@/lib/types';
 import { Link } from 'react-router-dom';
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
@@ -25,6 +28,9 @@ const TABS: { id: TabId; label: string }[] = [
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
 const inputCls = 'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
+// Same as inputCls but without w-full — use when the field's width is controlled by flex (side-by-side rows),
+// since a baked-in w-full beats flex-1/w-40 in Tailwind's stylesheet order and collapses the layout.
+const fieldCls = 'text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
 const labelCls = 'block text-[12px] font-medium text-forest/60 mb-1';
 const cardCls  = 'bg-white border border-stone-200 rounded-xl p-5';
 
@@ -382,75 +388,411 @@ function SeasonTab() {
 
 // ── Locations tab ─────────────────────────────────────────────────────────────
 
-function LocationsTab() {
-  const { currentCamp, updateCamp } = useCampStore();
-  const [newLoc, setNewLoc] = useState('');
+const toggleCls = (on: boolean) =>
+  `flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-btn border transition-colors ${
+    on ? 'bg-forest/8 border-forest/30 text-forest' : 'border-stone-200 text-forest/40 hover:border-stone-300'
+  }`;
 
-  const locations = currentCamp?.locations ?? [];
+// One editable location row (name commits on blur), with dorm controls + children.
+function LocationRow({ loc, depth }: { loc: CampLocation; depth: number }) {
+  const { childrenOf, categories, updateLocation, deleteLocation, addLocation } = useLocationStore();
+  const [name, setName] = useState(loc.name);
+  // Sync local edit buffer when the underlying location name changes (render-phase, not an effect).
+  const [syncedName, setSyncedName] = useState(loc.name);
+  if (loc.name !== syncedName) { setSyncedName(loc.name); setName(loc.name); }
 
-  function addLocation() {
-    const trimmed = newLoc.trim();
-    if (!trimmed || !currentCamp) return;
-    if (locations.map(l => l.toLowerCase()).includes(trimmed.toLowerCase())) return;
-    updateCamp(currentCamp.id, { locations: [...locations, trimmed] });
-    setNewLoc('');
-  }
+  const kids = childrenOf(loc.id);
 
-  function removeLocation(loc: string) {
-    if (!currentCamp) return;
-    updateCamp(currentCamp.id, { locations: locations.filter(l => l !== loc) });
+  function commitName() {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === loc.name) { setName(loc.name); return; }
+    updateLocation({ ...loc, name: trimmed });
   }
 
   return (
-    <div className="p-7 max-w-xl">
+    <>
+      <div className="flex flex-col gap-1.5 py-2" style={{ paddingLeft: `${depth * 20}px` }}>
+        {/* Primary line: the location NAME + row actions */}
+        <div className="flex items-center gap-2">
+          {depth > 0 && <CornerDownRight className="w-3.5 h-3.5 text-forest/25 flex-shrink-0" />}
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onBlur={commitName}
+            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+            placeholder="Location name"
+            className={`${inputCls} flex-1 min-w-0 font-medium`}
+          />
+          <button onClick={() => updateLocation({ ...loc, isDorm: !loc.isDorm })} className={toggleCls(loc.isDorm)} title="Mark as a dorm / sleeping quarters">Dorm</button>
+          <button onClick={() => addLocation({ name: 'New sub-location', parentId: loc.id })} className="text-forest/40 hover:text-forest transition-colors p-1 flex-shrink-0" title="Add sub-location"><Plus className="w-4 h-4" /></button>
+          <button onClick={() => { if (confirm(`Delete "${loc.name || 'this location'}"${kids.length ? ' and its sub-locations' : ''}?`)) deleteLocation(loc.id); }} className="text-forest/30 hover:text-red transition-colors p-1 flex-shrink-0" title="Delete"><Trash2 className="w-4 h-4" /></button>
+        </div>
+
+        {/* Secondary line: category (top-level) + dorm details */}
+        {(depth === 0 || loc.isDorm) && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pl-1">
+            {depth === 0 && (
+              <label className="flex items-center gap-1.5 text-[12px] text-forest/50">
+                Category
+                <select
+                  value={loc.categoryId ?? ''}
+                  onChange={e => updateLocation({ ...loc, categoryId: e.target.value || null })}
+                  className={`${inputCls} w-44 py-1`}
+                >
+                  <option value="">Uncategorized</option>
+                  {[...categories].sort((a, b) => a.sortOrder - b.sortOrder).map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {loc.isDorm && (
+              <>
+                <label className="flex items-center gap-1.5 text-[12px] text-forest/50">
+                  Beds
+                  <input
+                    type="number" min={0}
+                    value={loc.bedCapacity ?? ''}
+                    onChange={e => updateLocation({ ...loc, bedCapacity: e.target.value === '' ? null : Number(e.target.value) })}
+                    className={`${inputCls} w-20 py-1`}
+                  />
+                </label>
+                <button onClick={() => updateLocation({ ...loc, accessible: !loc.accessible })} className={toggleCls(loc.accessible)}>
+                  {loc.accessible && <Check className="w-3 h-3" />} Accessible
+                </button>
+                <button onClick={() => updateLocation({ ...loc, retreatAvailable: !loc.retreatAvailable })} className={toggleCls(loc.retreatAvailable)}>
+                  {loc.retreatAvailable && <Check className="w-3 h-3" />} Retreat-available
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {kids.map(k => <LocationRow key={k.id} loc={k} depth={depth + 1} />)}
+    </>
+  );
+}
+
+interface ParsedRow { name: string; category: string; parent: string; isDorm: boolean; beds: number | null; accessible: boolean; }
+
+function truthy(v: unknown) { return /^(y|yes|true|1|x|dorm|accessible)$/i.test(String(v ?? '').trim()); }
+
+function LocationsTab() {
+  const { topLevel, categories, addLocation, addCategory, deleteCategory } = useLocationStore();
+  const locations = useLocationStore(s => s.locations);
+
+  const [newTop, setNewTop] = useState('');
+  const [newTopCat, setNewTopCat] = useState('');
+  const [newCat, setNewCat] = useState('');
+  const [showCats, setShowCats] = useState(false);
+
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<{ rows: ParsedRow[]; fileName: string } | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+
+  // Two import paths: (a) hand the raw file off to our team, (b) DIY spreadsheet import.
+  const handoffRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [handoff, setHandoff] = useState<{ status: 'uploading' | 'done' | 'error'; fileName: string } | null>(null);
+  const [showInstructions, setShowInstructions] = useState(false);
+
+  function sendToTeam(file: File | undefined) {
+    if (!file) return;
+    setHandoff({ status: 'uploading', fileName: file.name });
+    dbUploadLocationImport(file).then(ok =>
+      setHandoff({ status: ok ? 'done' : 'error', fileName: file.name })
+    );
+  }
+
+  const sortedCats = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
+  const tops = topLevel();
+
+  // Group top-level locations by category (+ an Uncategorized bucket for the rest).
+  const groups: { key: string; label: string; catId: string | null; items: CampLocation[] }[] = [];
+  for (const c of sortedCats) {
+    groups.push({ key: c.id, label: c.name, catId: c.id, items: tops.filter(l => l.categoryId === c.id) });
+  }
+  const uncategorized = tops.filter(l => !l.categoryId || !categories.some(c => c.id === l.categoryId));
+  if (uncategorized.length) groups.push({ key: '_none', label: 'Uncategorized', catId: null, items: uncategorized });
+
+  function addTop() {
+    const n = newTop.trim();
+    if (!n) return;
+    addLocation({ name: n, categoryId: newTopCat || null });
+    setNewTop('');
+  }
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const wb = XLSX.read(ev.target?.result, { type: 'binary' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
+        if (!raw.length) { alert('That file had no rows.'); return; }
+        const cols = Object.keys(raw[0]);
+        const find = (re: RegExp) => cols.find(c => re.test(c));
+        const nameC = find(/^name$|cabin|bunk|location|area/i) ?? cols[0];
+        const catC = find(/categor|type|group/i);
+        const parentC = find(/parent/i);
+        const dormC = find(/dorm/i);
+        const bedsC = find(/bed|capacit|size|sleeps/i);
+        const accC = find(/accessible|ada/i);
+        const rows: ParsedRow[] = raw.map(r => {
+          const bedsVal = bedsC ? parseInt(String(r[bedsC]).replace(/[^0-9]/g, ''), 10) : NaN;
+          return {
+            name: String(r[nameC] ?? '').trim(),
+            category: catC ? String(r[catC] ?? '').trim() : '',
+            parent: parentC ? String(r[parentC] ?? '').trim() : '',
+            isDorm: dormC ? truthy(r[dormC]) : false,
+            beds: Number.isNaN(bedsVal) ? null : bedsVal,
+            accessible: accC ? truthy(r[accC]) : false,
+          };
+        }).filter(r => r.name);
+        if (!rows.length) { alert('No usable rows (a "name" column is required).'); return; }
+        setPreview({ rows, fileName: file.name });
+        setSummary(null);
+      } catch {
+        alert('Could not read that file. Use a .csv or .xlsx file.');
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = '';
+  }
+
+  function runImport() {
+    if (!preview) return;
+    const store = useLocationStore.getState();
+
+    // Resolve / create categories referenced by the import.
+    const catMap = new Map<string, string>();
+    store.categories.forEach(c => catMap.set(c.name.toLowerCase(), c.id));
+    for (const r of preview.rows) {
+      const key = r.category.toLowerCase();
+      if (r.category && !catMap.has(key)) catMap.set(key, store.addCategory(r.category).id);
+    }
+    const resolveCat = (t: string) => (t ? catMap.get(t.toLowerCase()) ?? null : null);
+
+    // Pass 1 — top-levels (no parent).
+    const topRows = preview.rows.filter(r => !r.parent).map(r => ({
+      name: r.name, categoryId: resolveCat(r.category), isDorm: r.isDorm,
+      bedCapacity: r.beds, accessible: r.accessible,
+    }));
+    store.bulkAdd(topRows);
+
+    // Build a name → id map of all current top-levels (existing + just-added).
+    const topByName = new Map<string, string>();
+    useLocationStore.getState().topLevel().forEach(l => topByName.set(l.name.toLowerCase(), l.id));
+
+    // Pass 2 — children (resolve parent by name; unmatched parents become top-level).
+    const childRows = preview.rows.filter(r => r.parent).map(r => ({
+      name: r.name, parentId: topByName.get(r.parent.toLowerCase()) ?? null,
+      categoryId: resolveCat(r.category), isDorm: r.isDorm,
+      bedCapacity: r.beds, accessible: r.accessible,
+    }));
+    useLocationStore.getState().bulkAdd(childRows);
+
+    const dorms = preview.rows.filter(r => r.isDorm).length;
+    setSummary(`Imported ${preview.rows.length} location${preview.rows.length !== 1 ? 's' : ''}${dorms ? ` (${dorms} dorm${dorms !== 1 ? 's' : ''})` : ''}.`);
+    setPreview(null);
+  }
+
+  return (
+    <div className="p-7 max-w-3xl space-y-5">
+      {/* Locations tree */}
       <div className={cardCls}>
         <h2 className="text-[13px] font-semibold text-forest mb-1">Camp locations</h2>
         <p className="text-[12px] text-forest/40 mb-4">
-          Areas and buildings used across the app to tag issues, tasks, and repairs.
+          The unified place inventory — used across the app to tag issues, tasks, assets, dorms, and retreats.
         </p>
 
-        {locations.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4">
-            {locations.map(loc => (
-              <div
-                key={loc}
-                className="flex items-center gap-1.5 bg-cream border border-border rounded-full px-3 py-1"
-              >
-                <span className="text-[12px] font-medium text-forest">{loc}</span>
-                <button
-                  onClick={() => removeLocation(loc)}
-                  className="text-forest/30 hover:text-red transition-colors ml-0.5 flex-shrink-0"
-                  title={`Remove ${loc}`}
-                >
-                  <X className="w-3 h-3" />
-                </button>
+        {/* Two import paths: hand off to our team, or DIY spreadsheet import */}
+        <div className="grid sm:grid-cols-2 gap-3 mb-4">
+          {/* (a) Drop a file for our team */}
+          <div
+            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={e => { e.preventDefault(); setDragOver(false); sendToTeam(e.dataTransfer.files?.[0]); }}
+            onClick={() => handoff?.status !== 'uploading' && handoffRef.current?.click()}
+            className={`cursor-pointer rounded-xl border border-dashed px-4 py-5 text-center transition-colors ${dragOver ? 'border-sage bg-sage-pale/40' : 'border-stone-300 hover:border-forest/40 bg-stone-50/60'}`}
+          >
+            <input ref={handoffRef} type="file" accept=".csv,.xlsx,.xls,.numbers,.pdf,.txt" className="hidden" onChange={e => { sendToTeam(e.target.files?.[0]); e.target.value = ''; }} />
+            {handoff?.status === 'done' ? (
+              <div className="flex flex-col items-center gap-1.5 text-sage">
+                <Check className="w-5 h-5" />
+                <p className="text-[12px] font-medium">Got it — {handoff.fileName}</p>
+                <p className="text-[11px] text-forest/45">Our team will set up your locations and follow up. <span className="underline">Send another</span></p>
               </div>
-            ))}
+            ) : handoff?.status === 'uploading' ? (
+              <p className="text-[12px] text-forest/50 py-2">Uploading {handoff.fileName}…</p>
+            ) : (
+              <div className="flex flex-col items-center gap-1.5">
+                <Upload className={`w-5 h-5 ${dragOver ? 'text-sage' : 'text-forest/35'}`} />
+                <p className="text-[12px] font-semibold text-forest">Send us your list</p>
+                <p className="text-[11px] text-forest/45 leading-snug">Drop your spreadsheet (any format) and our team will set up your locations for you.</p>
+                {handoff?.status === 'error' && <p className="text-[11px] text-red">Upload failed — try again.</p>}
+              </div>
+            )}
+          </div>
+
+          {/* (b) DIY spreadsheet import */}
+          <div className="rounded-xl border border-stone-200 px-4 py-5 text-center bg-white flex flex-col items-center gap-1.5">
+            <Upload className="w-5 h-5 text-forest/35" />
+            <p className="text-[12px] font-semibold text-forest">Upload it yourself</p>
+            <p className="text-[11px] text-forest/45 leading-snug">Format a CSV or spreadsheet and import it directly.</p>
+            <div className="flex items-center gap-3 mt-1.5">
+              <button onClick={() => fileRef.current?.click()} className="text-[12px] font-medium text-forest border border-stone-300 hover:border-forest/40 px-3 py-1.5 rounded-btn transition-colors">Choose file</button>
+              <button onClick={() => setShowInstructions(v => !v)} className="text-[12px] text-forest/50 hover:text-forest inline-flex items-center gap-1">
+                {showInstructions ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />} Formatting guide
+              </button>
+            </div>
+            <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFile} />
+          </div>
+        </div>
+
+        {/* Collapsible DIY formatting instructions */}
+        {showInstructions && (
+          <div className="mb-4 text-[12px] text-forest/55 bg-cream/60 border border-border rounded-btn px-3.5 py-2.5 leading-relaxed">
+            <span className="font-semibold text-forest/70">Spreadsheet format</span> — one row per location. Column headers are matched loosely (case-insensitive):
+            <ul className="mt-1.5 space-y-0.5 list-disc pl-4">
+              <li><span className="font-medium text-forest/70">name</span> <span className="text-forest/40">(required)</span> — the location's name, e.g. “Birch Cabin”.</li>
+              <li><span className="font-medium text-forest/70">category</span> — e.g. Housing, Waterfront, Dining. Created automatically if it's new.</li>
+              <li><span className="font-medium text-forest/70">parent</span> — the exact name of another location to nest under (list parents above their children).</li>
+              <li><span className="font-medium text-forest/70">dorm</span> — yes / true / x to mark a sleeping quarters.</li>
+              <li><span className="font-medium text-forest/70">beds</span> — number of beds (dorms).</li>
+              <li><span className="font-medium text-forest/70">accessible</span> — yes / true if ADA-accessible.</li>
+            </ul>
+            <p className="mt-1.5 text-forest/40">Example row: <code className="bg-white border border-border rounded px-1">Birch Cabin, Housing, , yes, 12, yes</code></p>
           </div>
         )}
 
-        {locations.length === 0 && (
-          <p className="text-[13px] text-forest/30 italic mb-4">No locations added yet.</p>
+        {/* Import preview */}
+        {preview && (
+          <div className="mb-4 p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-2">
+            <p className="text-[12px] font-medium text-forest">
+              {preview.fileName} — {preview.rows.length} row{preview.rows.length !== 1 ? 's' : ''} ready
+            </p>
+            <div className="max-h-32 overflow-y-auto text-[12px] text-forest/60 space-y-0.5">
+              {preview.rows.slice(0, 8).map((r, i) => (
+                <div key={i} className="flex gap-2">
+                  {r.parent && <CornerDownRight className="w-3.5 h-3.5 text-forest/25" />}
+                  <span className="text-forest">{r.name}</span>
+                  {r.category && <span className="text-forest/40">· {r.category}</span>}
+                  {r.isDorm && <span className="text-sage">· dorm{r.beds ? ` (${r.beds})` : ''}</span>}
+                </div>
+              ))}
+              {preview.rows.length > 8 && <p className="text-forest/30 italic">…and {preview.rows.length - 8} more</p>}
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={runImport} className="bg-forest text-cream text-[12px] font-medium px-3 py-1.5 rounded-btn">Import {preview.rows.length}</button>
+              <button onClick={() => setPreview(null)} className="text-[12px] text-forest/50 hover:text-forest px-3 py-1.5">Cancel</button>
+            </div>
+          </div>
+        )}
+        {summary && (
+          <div className="mb-4 flex items-center gap-2 text-[12px] text-sage bg-sage-pale/50 border border-sage/20 rounded-btn px-3 py-2">
+            <Check className="w-3.5 h-3.5" /> {summary}
+          </div>
         )}
 
-        <div className="flex gap-2">
+        {locations.length === 0 && !preview && (
+          <p className="text-[13px] text-forest/30 italic mb-4">No locations yet — add areas below or import a spreadsheet.</p>
+        )}
+
+        {/* Grouped tree */}
+        <div className="space-y-4">
+          {groups.filter(g => g.items.length > 0).map(g => (
+            <div key={g.key}>
+              <div className="flex items-center justify-between mb-0.5 pb-1 border-b border-stone-100">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/45">{g.label}</p>
+                {g.catId && (
+                  <button
+                    onClick={() => addLocation({ name: 'New location', categoryId: g.catId })}
+                    className="text-[11px] text-forest/40 hover:text-forest transition-colors flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" /> Add
+                  </button>
+                )}
+              </div>
+              <div className="divide-y divide-stone-100">
+                {g.items.map(l => <LocationRow key={l.id} loc={l} depth={0} />)}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Add top-level location */}
+        <div className="flex gap-2 mt-5 pt-4 border-t border-border">
           <input
-            type="text"
-            value={newLoc}
-            onChange={e => setNewLoc(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addLocation(); } }}
-            className={`${inputCls} flex-1`}
+            value={newTop}
+            onChange={e => setNewTop(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTop(); } }}
+            className={`${fieldCls} flex-1 min-w-0`}
             placeholder="e.g. Waterfront, Dining Hall, Bunk Row A"
           />
+          <select value={newTopCat} onChange={e => setNewTopCat(e.target.value)} className={`${fieldCls} w-40 flex-shrink-0`}>
+            <option value="">Uncategorized</option>
+            {sortedCats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
           <button
-            onClick={addLocation}
-            disabled={!newLoc.trim()}
-            className="flex items-center gap-1.5 bg-forest text-cream text-[13px] font-medium px-4 py-2 rounded-btn hover:bg-forest/90 transition-colors disabled:opacity-40"
+            onClick={addTop}
+            disabled={!newTop.trim()}
+            className="flex items-center gap-1.5 bg-forest text-cream text-[13px] font-medium px-4 py-2 rounded-btn hover:bg-forest/90 transition-colors disabled:opacity-40 flex-shrink-0"
           >
-            <Plus className="w-3.5 h-3.5" />
-            Add
+            <Plus className="w-3.5 h-3.5" /> Add
           </button>
         </div>
+      </div>
+
+      {/* Category management */}
+      <div className={cardCls}>
+        <button onClick={() => setShowCats(v => !v)} className="flex items-center gap-1.5 text-[13px] font-semibold text-forest w-full">
+          {showCats ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Categories
+          <span className="text-[11px] font-normal text-forest/40 ml-1">({sortedCats.length})</span>
+        </button>
+
+        {showCats && (
+          <div className="mt-4">
+            <div className="flex flex-wrap gap-2 mb-4">
+              {sortedCats.map(c => (
+                <div key={c.id} className="flex items-center gap-1.5 bg-cream border border-border rounded-full px-3 py-1">
+                  <span className="text-[12px] font-medium text-forest">{c.name}</span>
+                  {c.isPreset ? (
+                    <span className="text-[9px] font-semibold uppercase tracking-wide text-forest/30">preset</span>
+                  ) : (
+                    <button
+                      onClick={() => { if (confirm(`Delete category "${c.name}"? Locations in it become Uncategorized.`)) deleteCategory(c.id); }}
+                      className="text-forest/30 hover:text-red transition-colors"
+                      title={`Delete ${c.name}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={newCat}
+                onChange={e => setNewCat(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && newCat.trim()) { e.preventDefault(); addCategory(newCat.trim()); setNewCat(''); } }}
+                className={`${inputCls} flex-1`}
+                placeholder="Add a custom category…"
+              />
+              <button
+                onClick={() => { if (newCat.trim()) { addCategory(newCat.trim()); setNewCat(''); } }}
+                disabled={!newCat.trim()}
+                className="flex items-center gap-1.5 bg-forest text-cream text-[13px] font-medium px-4 py-2 rounded-btn hover:bg-forest/90 transition-colors disabled:opacity-40 flex-shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

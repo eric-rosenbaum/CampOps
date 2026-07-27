@@ -41,6 +41,7 @@ export const SEED_ISSUES: Issue[] = [
     description:
       'Third plank from the end is cracked through. Campers using the dock for kayak launch this afternoon. Needs to be roped off or repaired before the 2pm activity block.',
     locations: ['Waterfront'],
+    locationIds: [],
     priority: 'urgent',
     status: 'assigned',
     assigneeId: 'u2',
@@ -80,6 +81,7 @@ export const SEED_ISSUES: Issue[] = [
     description:
       'Temp reading 48°F, should be below 40°F. Compressor making intermittent clicking noise. Health code risk — food safety issue. Need emergency HVAC/refrigeration tech.',
     locations: ['Dining Hall'],
+    locationIds: [],
     priority: 'urgent',
     status: 'unassigned',
     assigneeId: null,
@@ -112,6 +114,7 @@ export const SEED_ISSUES: Issue[] = [
     description:
       'Screen door in Cabin 7 has come off the bottom hinge. Door is hanging at an angle. Need to re-hang and possibly replace hinge hardware.',
     locations: ['Cabins'],
+    locationIds: [],
     priority: 'high',
     status: 'assigned',
     assigneeId: 'u2',
@@ -151,6 +154,7 @@ export const SEED_ISSUES: Issue[] = [
     description:
       'Active drip in the north corner of the Art Barn, directly above the paper and canvas storage. Tarped the supplies temporarily. Need roofer to assess — likely flashing failure.',
     locations: ['Art Barn'],
+    locationIds: [],
     priority: 'high',
     status: 'unassigned',
     assigneeId: null,
@@ -183,6 +187,7 @@ export const SEED_ISSUES: Issue[] = [
     description:
       'Main circulation pump is producing a high-pitched whine during operation. Flow rate appears normal but noise started yesterday. Likely bearing wear — may need pump replacement.',
     locations: ['Aquatics'],
+    locationIds: [],
     priority: 'normal',
     status: 'in_progress',
     assigneeId: 'u2',
@@ -222,6 +227,7 @@ export const SEED_ISSUES: Issue[] = [
     description:
       'Two overhead fluorescent fixtures in the main lodge common area have failed. Replaced bulbs — no change. Likely ballast issue. Non-urgent but affects evening activities.',
     locations: ['Main Lodge'],
+    locationIds: [],
     priority: 'normal',
     status: 'resolved',
     assigneeId: 'u2',
@@ -268,6 +274,7 @@ export const SEED_ISSUES: Issue[] = [
     description:
       'One of the pop-up irrigation heads on field 2 is broken — stuck in the up position and spraying sideways. Needs to be replaced before it becomes a trip hazard.',
     locations: ['Athletic Fields'],
+    locationIds: [],
     priority: 'normal',
     status: 'unassigned',
     assigneeId: null,
@@ -300,6 +307,7 @@ export const SEED_ISSUES: Issue[] = [
     description:
       'The vinyl padding on the exam table has a tear approximately 8 inches long on the seat edge. Needs to be replaced before next medical check-in. Infection control concern.',
     locations: ['Health Center'],
+    locationIds: [],
     priority: 'high',
     status: 'in_progress',
     assigneeId: 'u3',
@@ -339,6 +347,7 @@ export const SEED_ISSUES: Issue[] = [
     title: 'Waterfront dock — loose railing section',
     description: 'South railing section had two loose bolts. Tightened and reinforced.',
     locations: ['Waterfront'],
+    locationIds: [],
     priority: 'high',
     status: 'resolved',
     assigneeId: 'u2',
@@ -370,6 +379,7 @@ export const SEED_ISSUES: Issue[] = [
     title: 'Dining hall — dishwasher drain clog',
     description: 'Commercial dishwasher draining slowly. Cleared grease buildup from drain line.',
     locations: ['Dining Hall'],
+    locationIds: [],
     priority: 'normal',
     status: 'resolved',
     assigneeId: 'u4',
@@ -471,6 +481,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     description:
       'Check all bunk frames for structural integrity, inspect mattresses for damage or mold. Replace any mattresses that fail inspection.',
     locations: ['Cabins'],
+    locationIds: [],
     priority: 'high',
     status: 'complete',
     assigneeId: 'u2',
@@ -496,6 +507,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     description:
       'Full structural inspection of main dock, kayak launch, and swim area roping. Check all hardware, flotation, and safety equipment.',
     locations: ['Waterfront'],
+    locationIds: [],
     priority: 'urgent',
     status: 'complete',
     assigneeId: 'u2',
@@ -521,6 +533,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     description:
       'Test every smoke detector and carbon monoxide detector in all buildings. Replace batteries in all units regardless of current charge. Log results.',
     locations: ['Main Lodge'],
+    locationIds: [],
     priority: 'urgent',
     status: 'complete',
     assigneeId: 'u4',
@@ -546,6 +559,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     description:
       'Commercial deep clean of all cooking equipment, hoods, filters, walk-in cooler/freezer, and dishwashing station. Must pass health inspection standard.',
     locations: ['Dining Hall'],
+    locationIds: [],
     priority: 'high',
     status: 'complete',
     assigneeId: 'u3',
@@ -571,6 +585,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     description:
       'Test all pool water parameters (pH, chlorine, alkalinity, cyanuric acid). Perform opening shock treatment. Verify all safety equipment in place.',
     locations: ['Aquatics'],
+    locationIds: [],
     priority: 'urgent',
     status: 'in_progress',
     assigneeId: 'u2',
@@ -596,6 +611,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     description:
       'Inventory all first aid supplies, medications (where permitted), and medical equipment. Restock to opening-day par levels. Check all expiration dates.',
     locations: ['Health Center'],
+    locationIds: [],
     priority: 'normal',
     status: 'pending',
     assigneeId: 'u3',
@@ -613,6 +629,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     description:
       'Touch up peeling or damaged exterior paint on all cabin buildings. Focus on trim, door frames, and shutters. Use color-matched paint from maintenance storage.',
     locations: ['Cabins'],
+    locationIds: [],
     priority: 'normal',
     status: 'pending',
     assigneeId: null,
@@ -630,6 +647,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     description:
       'Re-stripe all athletic field boundary lines, penalty areas, and center markings. Use field-safe chalk or paint. Include basketball court and volleyball court.',
     locations: ['Athletic Fields'],
+    locationIds: [],
     priority: 'normal',
     status: 'pending',
     assigneeId: null,
@@ -648,6 +666,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     description:
       'Lower pool water level, add winterizing chemicals, blow out all lines, install winter cover. Drain all pumps and filters. Document closing chemistry readings.',
     locations: ['Aquatics'],
+    locationIds: [],
     priority: 'high',
     status: 'pending',
     assigneeId: 'u2',
@@ -665,6 +684,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     description:
       'Full deep clean of all cabin interiors: sweep, mop, wipe down all surfaces, clean windows, launder linens. Remove all personal items left by campers.',
     locations: ['Cabins'],
+    locationIds: [],
     priority: 'high',
     status: 'pending',
     assigneeId: null,
@@ -682,6 +702,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     description:
       'Count and condition-check all athletic equipment. Clean and store in proper storage areas. Flag any items needing replacement before next season.',
     locations: ['Athletic Fields'],
+    locationIds: [],
     priority: 'normal',
     status: 'pending',
     assigneeId: 'u4',
@@ -699,6 +720,7 @@ export const SEED_TASKS: ChecklistTask[] = [
     description:
       'Inspect all building roofs for damage, missing shingles, or flashing issues. Clean all gutters and downspouts. Seal any gaps before winter weather.',
     locations: ['Main Lodge'],
+    locationIds: [],
     priority: 'high',
     status: 'pending',
     assigneeId: null,
@@ -715,14 +737,14 @@ export const SEED_TASKS: ChecklistTask[] = [
 // ─── Assets & Vehicles seed data ─────────────────────────────────────────────
 
 export const SEED_ASSETS: CampAsset[] = [
-  { id: 'asset-001', name: 'Golf Cart 1', category: 'golf_cart', subtype: 'golf_cart', make: 'Club Car', model: 'Onward', year: 2021, serialNumber: 'CC21-00421', licensePlate: null, registrationExpiry: null, storageLocation: 'Maintenance Shed', status: 'available', currentOdometer: null, currentHours: 412, tracksOdometer: false, tracksHours: true, notes: 'Rear seat converts to cargo bed.', isActive: true, hullId: null, uscgRegistration: null, uscgRegistrationExpiry: null, capacity: null, motorType: null, hasLifejackets: null, lifejacketCount: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-06T00:00:00.000Z' },
-  { id: 'asset-002', name: 'Golf Cart 2', category: 'golf_cart', subtype: 'golf_cart', make: 'E-Z-GO', model: 'RXV', year: 2019, serialNumber: 'EZGO-19-8847', licensePlate: null, registrationExpiry: null, storageLocation: 'Maintenance Shed', status: 'checked_out', currentOdometer: null, currentHours: 876, tracksOdometer: false, tracksHours: true, notes: null, isActive: true, hullId: null, uscgRegistration: null, uscgRegistrationExpiry: null, capacity: null, motorType: null, hasLifejackets: null, lifejacketCount: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-07T00:00:00.000Z' },
-  { id: 'asset-003', name: 'Camp Bus', category: 'vehicle', subtype: 'van_15_passenger', make: 'Ford', model: 'E-350 Transit', year: 2018, serialNumber: '1FTFE4FS8JKA12345', licensePlate: 'GCX-4821', registrationExpiry: '2025-12-31', storageLocation: 'Upper Parking Lot', status: 'in_service', currentOdometer: 84200, currentHours: null, tracksOdometer: true, tracksHours: false, notes: 'Requires CDL endorsement. DOT inspection due.', isActive: true, hullId: null, uscgRegistration: null, uscgRegistrationExpiry: null, capacity: null, motorType: null, hasLifejackets: null, lifejacketCount: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-05T00:00:00.000Z' },
-  { id: 'asset-004', name: 'Maintenance Truck', category: 'vehicle', subtype: 'pickup_truck', make: 'Ford', model: 'F-250', year: 2020, serialNumber: '1FT7W2BT0LEE55512', licensePlate: 'KMP-7730', registrationExpiry: '2026-03-15', storageLocation: 'Maintenance Shed', status: 'available', currentOdometer: 47850, currentHours: null, tracksOdometer: true, tracksHours: false, notes: null, isActive: true, hullId: null, uscgRegistration: null, uscgRegistrationExpiry: null, capacity: null, motorType: null, hasLifejackets: null, lifejacketCount: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-15T00:00:00.000Z' },
-  { id: 'asset-005', name: 'John Deere Mower', category: 'large_equipment', subtype: 'riding_mower', make: 'John Deere', model: 'X590', year: 2022, serialNumber: 'GXS590P010001', licensePlate: null, registrationExpiry: null, storageLocation: 'Equipment Barn', status: 'available', currentOdometer: null, currentHours: 188, tracksOdometer: false, tracksHours: true, notes: 'Oil change overdue.', isActive: true, hullId: null, uscgRegistration: null, uscgRegistrationExpiry: null, capacity: null, motorType: null, hasLifejackets: null, lifejacketCount: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-01T00:00:00.000Z' },
-  { id: 'asset-006', name: 'Honda Generator', category: 'large_equipment', subtype: 'generator', make: 'Honda', model: 'EU7000iS', year: 2020, serialNumber: 'EAJD-1069142', licensePlate: null, registrationExpiry: null, storageLocation: 'Equipment Barn', status: 'available', currentOdometer: null, currentHours: 64, tracksOdometer: false, tracksHours: true, notes: 'Emergency backup power. Test monthly.', isActive: true, hullId: null, uscgRegistration: null, uscgRegistrationExpiry: null, capacity: null, motorType: null, hasLifejackets: null, lifejacketCount: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-01T00:00:00.000Z' },
-  { id: 'asset-007', name: 'Camp Motorboat', category: 'watercraft', subtype: 'motorboat', make: 'Alumacraft', model: 'Classic 165 CS', year: 2017, serialNumber: null, licensePlate: null, registrationExpiry: '2026-04-30', storageLocation: 'Dock', status: 'available', currentOdometer: null, currentHours: 310, tracksOdometer: false, tracksHours: true, notes: 'Used for waterfront supervision and rescue.', isActive: true, hullId: 'AAWCS165H617', uscgRegistration: 'ME-8821-TC', uscgRegistrationExpiry: '2026-04-30', capacity: 6, motorType: '40hp Mercury', hasLifejackets: true, lifejacketCount: 8, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-20T00:00:00.000Z' },
-  { id: 'asset-008', name: 'Utility Trailer', category: 'trailer', subtype: 'utility_trailer', make: null, model: null, year: 2016, serialNumber: '5JTUT2026H1004422', licensePlate: 'TRL-0042', registrationExpiry: '2025-09-30', storageLocation: 'Upper Parking Lot', status: 'available', currentOdometer: null, currentHours: null, tracksOdometer: false, tracksHours: false, notes: '6x10 open trailer. Used with Maintenance Truck.', isActive: true, hullId: null, uscgRegistration: null, uscgRegistrationExpiry: null, capacity: null, motorType: null, hasLifejackets: null, lifejacketCount: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'asset-001', name: 'Golf Cart 1', category: 'golf_cart', subtype: 'golf_cart', make: 'Club Car', model: 'Onward', year: 2021, serialNumber: 'CC21-00421', licensePlate: null, registrationExpiry: null, locationId: null, storageLocation: 'Maintenance Shed', status: 'available', currentOdometer: null, currentHours: 412, tracksOdometer: false, tracksHours: true, notes: 'Rear seat converts to cargo bed.', isActive: true, hullId: null, uscgRegistration: null, uscgRegistrationExpiry: null, capacity: null, motorType: null, hasLifejackets: null, lifejacketCount: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-06T00:00:00.000Z' },
+  { id: 'asset-002', name: 'Golf Cart 2', category: 'golf_cart', subtype: 'golf_cart', make: 'E-Z-GO', model: 'RXV', year: 2019, serialNumber: 'EZGO-19-8847', licensePlate: null, registrationExpiry: null, locationId: null, storageLocation: 'Maintenance Shed', status: 'checked_out', currentOdometer: null, currentHours: 876, tracksOdometer: false, tracksHours: true, notes: null, isActive: true, hullId: null, uscgRegistration: null, uscgRegistrationExpiry: null, capacity: null, motorType: null, hasLifejackets: null, lifejacketCount: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-07T00:00:00.000Z' },
+  { id: 'asset-003', name: 'Camp Bus', category: 'vehicle', subtype: 'van_15_passenger', make: 'Ford', model: 'E-350 Transit', year: 2018, serialNumber: '1FTFE4FS8JKA12345', licensePlate: 'GCX-4821', registrationExpiry: '2025-12-31', locationId: null, storageLocation: 'Upper Parking Lot', status: 'in_service', currentOdometer: 84200, currentHours: null, tracksOdometer: true, tracksHours: false, notes: 'Requires CDL endorsement. DOT inspection due.', isActive: true, hullId: null, uscgRegistration: null, uscgRegistrationExpiry: null, capacity: null, motorType: null, hasLifejackets: null, lifejacketCount: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-05T00:00:00.000Z' },
+  { id: 'asset-004', name: 'Maintenance Truck', category: 'vehicle', subtype: 'pickup_truck', make: 'Ford', model: 'F-250', year: 2020, serialNumber: '1FT7W2BT0LEE55512', licensePlate: 'KMP-7730', registrationExpiry: '2026-03-15', locationId: null, storageLocation: 'Maintenance Shed', status: 'available', currentOdometer: 47850, currentHours: null, tracksOdometer: true, tracksHours: false, notes: null, isActive: true, hullId: null, uscgRegistration: null, uscgRegistrationExpiry: null, capacity: null, motorType: null, hasLifejackets: null, lifejacketCount: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-15T00:00:00.000Z' },
+  { id: 'asset-005', name: 'John Deere Mower', category: 'large_equipment', subtype: 'riding_mower', make: 'John Deere', model: 'X590', year: 2022, serialNumber: 'GXS590P010001', licensePlate: null, registrationExpiry: null, locationId: null, storageLocation: 'Equipment Barn', status: 'available', currentOdometer: null, currentHours: 188, tracksOdometer: false, tracksHours: true, notes: 'Oil change overdue.', isActive: true, hullId: null, uscgRegistration: null, uscgRegistrationExpiry: null, capacity: null, motorType: null, hasLifejackets: null, lifejacketCount: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-01T00:00:00.000Z' },
+  { id: 'asset-006', name: 'Honda Generator', category: 'large_equipment', subtype: 'generator', make: 'Honda', model: 'EU7000iS', year: 2020, serialNumber: 'EAJD-1069142', licensePlate: null, registrationExpiry: null, locationId: null, storageLocation: 'Equipment Barn', status: 'available', currentOdometer: null, currentHours: 64, tracksOdometer: false, tracksHours: true, notes: 'Emergency backup power. Test monthly.', isActive: true, hullId: null, uscgRegistration: null, uscgRegistrationExpiry: null, capacity: null, motorType: null, hasLifejackets: null, lifejacketCount: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-01T00:00:00.000Z' },
+  { id: 'asset-007', name: 'Camp Motorboat', category: 'watercraft', subtype: 'motorboat', make: 'Alumacraft', model: 'Classic 165 CS', year: 2017, serialNumber: null, licensePlate: null, registrationExpiry: '2026-04-30', locationId: null, storageLocation: 'Dock', status: 'available', currentOdometer: null, currentHours: 310, tracksOdometer: false, tracksHours: true, notes: 'Used for waterfront supervision and rescue.', isActive: true, hullId: 'AAWCS165H617', uscgRegistration: 'ME-8821-TC', uscgRegistrationExpiry: '2026-04-30', capacity: 6, motorType: '40hp Mercury', hasLifejackets: true, lifejacketCount: 8, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-20T00:00:00.000Z' },
+  { id: 'asset-008', name: 'Utility Trailer', category: 'trailer', subtype: 'utility_trailer', make: null, model: null, year: 2016, serialNumber: '5JTUT2026H1004422', licensePlate: 'TRL-0042', registrationExpiry: '2025-09-30', locationId: null, storageLocation: 'Upper Parking Lot', status: 'available', currentOdometer: null, currentHours: null, tracksOdometer: false, tracksHours: false, notes: '6x10 open trailer. Used with Maintenance Truck.', isActive: true, hullId: null, uscgRegistration: null, uscgRegistrationExpiry: null, capacity: null, motorType: null, hasLifejackets: null, lifejacketCount: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
 ];
 
 export const SEED_ASSET_CHECKOUTS: AssetCheckout[] = [

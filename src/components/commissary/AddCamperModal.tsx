@@ -101,7 +101,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
   }
 
   return (
-    <Modal title={existing ? 'Edit camper' : 'Add camper'} onClose={closeModal} width="600px">
+    <Modal title={existing ? 'Edit person' : 'Add person'} onClose={closeModal} width="600px">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -117,7 +117,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
         <div>
           <label className={labelClass}>Sessions attending</label>
           {sessions.length === 0 ? (
-            <p className="text-[11px] text-forest/45">No sessions yet — create one first. Unassigned campers count toward every session's allergy totals.</p>
+            <p className="text-[11px] text-forest/45">No sessions yet — create one first. Unassigned people count toward every session's allergy totals.</p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {sessions.map((s) => (
@@ -130,11 +130,12 @@ export function AddCamperModal({ editId }: { editId?: string }) {
               ))}
             </div>
           )}
-          <p className="text-[11px] text-forest/45 mt-1">Pick every session this camper attends — their allergies count only toward those sessions' menus.</p>
+          <p className="text-[11px] text-forest/45 mt-1">Pick every session this person attends — their allergies count only toward those sessions' menus.</p>
         </div>
 
         <div>
-          <label className={labelClass}>Allergies</label>
+          <label className={labelClass}>Allergens / Dietary preferences</label>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-forest/40 mb-1.5">Allergens <span className="normal-case font-normal text-forest/35">— safety</span></p>
           <p className="text-[11px] text-forest/45 mb-2">
             Select an allergen, then set how severe it is. Anaphylactic flags appear in red
             on every affected recipe and prep task.
@@ -179,13 +180,8 @@ export function AddCamperModal({ editId }: { editId?: string }) {
               );
             })}
           </div>
-        </div>
 
-        <div>
-          <label className={labelClass}>Dietary preferences</label>
-          <p className="text-[11px] text-forest/45 mb-2">
-            An accommodation, not a safety hazard — these do not raise allergen warnings.
-          </p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-forest/40 mt-3 mb-1.5">Dietary <span className="normal-case font-normal text-forest/35">— accommodation, not a safety hazard</span></p>
           <div className="flex flex-wrap gap-1.5">
             {DIETARY_RESTRICTIONS.map((d) => (
               <button
@@ -208,7 +204,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
         </div>
 
         <div className="flex gap-2 pt-1">
-          <Button type="submit" className="flex-1 justify-center">{existing ? 'Save changes' : 'Add camper'}</Button>
+          <Button type="submit" className="flex-1 justify-center">{existing ? 'Save changes' : 'Add person'}</Button>
           {existing && <Button type="button" variant="ghost" className="text-red hover:bg-red-bg" onClick={handleDelete}>Delete</Button>}
           <Button type="button" variant="ghost" onClick={closeModal}>Cancel</Button>
         </div>

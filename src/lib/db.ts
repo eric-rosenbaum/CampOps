@@ -1655,6 +1655,7 @@ function rowToInventoryItem(r: Record<string, unknown>): InventoryItem {
     shelfLifeDays: r.shelf_life_days == null ? null : Number(r.shelf_life_days),
     vendorId: (r.vendor_id as string) ?? null,
     allergens: (r.allergens as string[]) ?? [],
+    dietary: (r.dietary as string[]) ?? [],
     notes: (r.notes as string) ?? null,
     sortOrder: Number(r.sort_order ?? 0),
     createdAt: r.created_at as string,
@@ -1955,7 +1956,7 @@ function inventoryItemToRow(i: InventoryItem) {
     purchase_unit: i.purchaseUnit, purchase_unit_in_base: i.purchaseUnitInBase,
     unit_price: i.unitPrice, on_hand_base: i.onHandBase, par_level_base: i.parLevelBase,
     last_counted_at: i.lastCountedAt, shelf_life_days: i.shelfLifeDays,
-    vendor_id: i.vendorId, allergens: i.allergens, notes: i.notes,
+    vendor_id: i.vendorId, allergens: i.allergens, dietary: i.dietary, notes: i.notes,
     sort_order: i.sortOrder, created_at: i.createdAt, updated_at: i.updatedAt,
   };
 }

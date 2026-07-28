@@ -151,7 +151,7 @@ export function CSVImportModal() {
         // flagged for setup. If the sheet carried an on-hand value, treat it as counted.
         lastCountedAt: get(row, 'onHand') !== '' ? now : null,
         shelfLifeDays: null,
-        vendorId: null, allergens: [], notes: null,
+        vendorId: null, allergens: [], dietary: [], notes: null,
         sortOrder: items.length + rows.length, createdAt: now, updatedAt: now,
       };
       rows.push({ name, mode: 'new', stockUnit: opt.value, category, packUnitRaw, packSizeRaw, priceRaw, item, newPack, mergePack: null });

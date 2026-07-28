@@ -134,7 +134,7 @@ export function ImportCampersModal() {
   }
 
   return (
-    <Modal title="Import camper roster" onClose={closeModal} width="600px">
+    <Modal title="Import camp roster" onClose={closeModal} width="600px">
       <div className="space-y-4">
         {rows.length === 0 ? (
           <>

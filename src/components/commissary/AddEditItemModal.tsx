@@ -6,7 +6,7 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import { generateId } from '@/lib/utils';
 import type { InventoryCategory, StorageLocation, CommissaryVendor, ItemVendorPack, CatalogProduct } from '@/lib/types';
 import {
-  ALLERGENS, ALLERGEN_LABELS, CATEGORY_LABELS, STORAGE_LABELS,
+  ALLERGENS, ALLERGEN_LABELS, DIETARY_RESTRICTIONS, DIETARY_LABELS, CATEGORY_LABELS, STORAGE_LABELS,
   STOCK_UNIT_OPTIONS, STOCK_UNIT_GROUPS, resolveStockUnit, BASE_UNIT, toBase, tidy,
   suggestStockUnit,
 } from '@/lib/commissaryUnits';
@@ -101,6 +101,7 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
   });
 
   const [allergens, setAllergens] = useState<string[]>(existing?.allergens ?? []);
+  const [dietary, setDietary] = useState<string[]>(existing?.dietary ?? []);
   const [notes, setNotes] = useState(existing?.notes ?? '');
 
   // "Add from catalog" — autofill name/category/unit/pack/allergens from the shared catalog.
@@ -143,6 +144,9 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
 
   function toggleAllergen(a: string) {
     setAllergens((prev) => prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]);
+  }
+  function toggleDietary(d: string) {
+    setDietary((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
   }
 
   // Rows with a chosen (or newly named) vendor and a valid pack size are the real packs.
@@ -220,6 +224,7 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
       shelfLifeDays: shelfLife.trim() === '' ? null : Math.max(1, Math.round(Number(shelfLife) || 0)),
       vendorId: def?.vendorId ?? null,
       allergens,
+      dietary,
       notes: notes.trim() || null,
     };
 
@@ -389,8 +394,9 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
         </div>
 
         <div>
-          <label className={labelClass}>Allergens</label>
+          <label className={labelClass}>Allergens / Dietary preferences</label>
           <p className="text-[11px] text-forest/45 mb-2">Tagged once here; every recipe using this item inherits them.</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-forest/40 mb-1.5">Allergens <span className="normal-case font-normal text-forest/35">— safety</span></p>
           <div className="flex flex-wrap gap-1.5">
             {ALLERGENS.map((a) => (
               <button key={a} type="button" onClick={() => toggleAllergen(a)}
@@ -400,6 +406,19 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
                     : 'bg-white text-forest/50 border-border hover:border-forest/30'
                 }`}>
                 {ALLERGEN_LABELS[a]}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-forest/40 mt-3 mb-1.5">Dietary <span className="normal-case font-normal text-forest/35">— accommodation</span></p>
+          <div className="flex flex-wrap gap-1.5">
+            {DIETARY_RESTRICTIONS.map((d) => (
+              <button key={d} type="button" onClick={() => toggleDietary(d)}
+                className={`px-2.5 py-1 rounded-pill text-[11px] font-medium border transition-colors ${
+                  dietary.includes(d)
+                    ? 'bg-sage-pale text-forest border-sage/40'
+                    : 'bg-white text-forest/50 border-border hover:border-forest/30'
+                }`}>
+                {DIETARY_LABELS[d]}
               </button>
             ))}
           </div>

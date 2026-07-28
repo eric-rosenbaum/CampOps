@@ -86,8 +86,8 @@ export function AllergyTab() {
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No dietary restrictions recorded</h3>
           <p className="text-[13px] text-forest/50 leading-relaxed">
-            When camper allergies are entered, you'll see counts here and warnings on any
-            menu item that conflicts with them. Camper names are visible only to
+            When allergies are entered, you'll see counts here and warnings on any
+            menu item that conflicts with them. Names are visible only to
             administrators and staff groups with health access.
           </p>
         </div>
@@ -103,14 +103,14 @@ export function AllergyTab() {
           <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
             <HeartPulse className="w-7 h-7 text-stone-400" />
           </div>
-          <h3 className="text-[15px] font-semibold text-forest mb-1.5">No campers yet</h3>
+          <h3 className="text-[15px] font-semibold text-forest mb-1.5">No one added yet</h3>
           <p className="text-[13px] text-forest/50 leading-relaxed mb-4">
-            Add campers with their allergies and dietary restrictions. Menu items and prep
+            Add people with their allergies and dietary preferences. Menu items and prep
             tasks will then warn when they conflict with someone.
           </p>
           {canManage && (
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => openModal({ kind: 'camper' })}>+ Add camper</Button>
+              <Button size="sm" onClick={() => openModal({ kind: 'camper' })}>+ Add person</Button>
               <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'importCampers' })}>
                 <Upload className="w-3.5 h-3.5" /> Import roster
               </Button>
@@ -126,7 +126,7 @@ export function AllergyTab() {
       {canViewCamperHealth && <CommissaryFilesPanel />}
       <div className="grid grid-cols-4 gap-4 mb-5">
         <StatCard
-          label="Campers with restrictions"
+          label="People with restrictions"
           value={canViewCamperHealth ? totalCampersWithRestrictions() : '—'}
           hint={canViewCamperHealth ? `of ${campers.length} on the roster` : 'Requires health access'}
         />
@@ -150,7 +150,7 @@ export function AllergyTab() {
             <p className="text-[11px] text-red/70 mt-1 leading-relaxed">
               {canViewCamperHealth
                 ? anaphylacticCampers().map((c) => `${c.name}${c.cabin ? ` — ${c.cabin}` : ''}`).join(' · ')
-                : 'Camper names and cabins are restricted to administrators and health staff.'}
+                : 'Names and cabins are restricted to administrators and health staff.'}
             </p>
           </div>
         </div>
@@ -232,7 +232,7 @@ export function AllergyTab() {
       {!canViewCamperHealth ? (
         <div className="bg-white rounded-card border border-border px-6 py-8 text-center">
           <Lock className="w-6 h-6 text-stone-300 mx-auto mb-3" />
-          <p className="text-[14px] font-semibold text-forest mb-1">Camper names are restricted</p>
+          <p className="text-[14px] font-semibold text-forest mb-1">Names are restricted</p>
           <p className="text-[13px] text-forest/50 max-w-lg mx-auto leading-relaxed">
             You can see how many campers each restriction affects and which recipes conflict,
             which is what the kitchen needs to cook safely. Names, cabins and individual
@@ -244,7 +244,7 @@ export function AllergyTab() {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">
-              Camper roster ({campers.length})
+              Camp roster ({campers.length})
             </p>
             <div className="flex-1" />
             {canManage && (
@@ -252,7 +252,7 @@ export function AllergyTab() {
                 <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'importCampers' })}>
                   <Upload className="w-3.5 h-3.5" /> Import
                 </Button>
-                <Button size="sm" onClick={() => openModal({ kind: 'camper' })}>+ Add camper</Button>
+                <Button size="sm" onClick={() => openModal({ kind: 'camper' })}>+ Add person</Button>
               </>
             )}
           </div>
@@ -260,14 +260,14 @@ export function AllergyTab() {
           {campers.length === 0 ? (
             <div className="bg-white rounded-card border border-border px-6 py-8 text-center">
               <Users className="w-6 h-6 text-stone-300 mx-auto mb-2" />
-              <p className="text-[13px] text-forest/50">No campers on the roster yet.</p>
+              <p className="text-[13px] text-forest/50">No one on the roster yet.</p>
             </div>
           ) : (
             <div className="bg-white rounded-card border border-border overflow-x-auto">
               <table className="w-full min-w-[720px]">
                 <thead>
                   <tr className="bg-cream-dark/40 border-b border-border">
-                    <th className="text-left px-4 py-2 text-[10px] font-semibold uppercase tracking-widest text-forest/40">Camper</th>
+                    <th className="text-left px-4 py-2 text-[10px] font-semibold uppercase tracking-widest text-forest/40">Name</th>
                     <th className="text-left px-2 py-2 text-[10px] font-semibold uppercase tracking-widest text-forest/40">Cabin</th>
                     {ALLERGENS.map((a) => (
                       <th key={a} className="px-1 py-2 text-[10px] font-medium text-forest/40 text-center whitespace-nowrap">

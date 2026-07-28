@@ -662,6 +662,8 @@ export interface InventoryItem {
   vendorId: string | null;
   /** Canonical allergen slugs. Recipes derive theirs from these by union. */
   allergens: string[];
+  /** Dietary tags (vegetarian/vegan/kosher/halal) — accommodations, kept apart from allergens. */
+  dietary: string[];
   notes: string | null;
   sortOrder: number;
   createdAt: string;

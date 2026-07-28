@@ -9,6 +9,13 @@ import { inputClass, labelClass, GROUP_TYPE_OPTIONS, STATUS_LABELS, PRICING_MODE
 
 const STATUS_ORDER: RetreatStatus[] = ['inquiry', 'confirmed', 'ready', 'active', 'complete', 'cancelled'];
 
+/** Add days to a YYYY-MM-DD date. */
+function addDays(iso: string, days: number): string {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
   const { retreatById, addRetreat, updateRetreat, deleteRetreat, closeModal } = useRetreatStore();
   const { can } = useAuth();
@@ -26,14 +33,20 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
   const [rate, setRate] = useState(existing?.ratePerPersonNight != null ? String(existing.ratePerPersonNight) : '');
   const [flatRate, setFlatRate] = useState(existing?.flatRate != null ? String(existing.flatRate) : '');
   const [deposit, setDeposit] = useState(existing?.depositRequired != null ? String(existing.depositRequired) : '');
+  const [depositDue, setDepositDue] = useState(existing?.depositDue ?? '');
   const [coordName, setCoordName] = useState(existing?.coordinatorName ?? '');
   const [coordEmail, setCoordEmail] = useState(existing?.coordinatorEmail ?? '');
   const [coordPhone, setCoordPhone] = useState(existing?.coordinatorPhone ?? '');
   const [housingDeadline, setHousingDeadline] = useState(existing?.housingDeadline ?? '');
+  const [headcountCutoff, setHeadcountCutoff] = useState(existing?.headcountCutoff ?? '');
   const [status, setStatus] = useState<RetreatStatus>(existing?.status ?? 'confirmed');
   const [notes, setNotes] = useState(existing?.notes ?? '');
 
   const valid = groupName.trim() && groupType && arrivalDate && departureDate && Number(headcount) > 0 && departureDate >= arrivalDate;
+
+  // Final-headcount confirmation defaults to two weeks before arrival; the camp can override.
+  const defaultHeadcountCutoff = arrivalDate ? addDays(arrivalDate, -14) : '';
+  const effectiveHeadcountCutoff = headcountCutoff || defaultHeadcountCutoff;
 
   const perPerson = pricingModel === 'per_person_night';
   const rateValue = perPerson ? rate : flatRate;
@@ -59,10 +72,12 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
         ratePerPersonNight: rate ? Number(rate) : null,
         flatRate: flatRate ? Number(flatRate) : null,
         depositRequired: deposit ? Number(deposit) : null,
+        depositDue: depositDue || null,
         coordinatorName: coordName.trim() || null,
         coordinatorEmail: coordEmail.trim() || null,
         coordinatorPhone: coordPhone.trim() || null,
         housingDeadline: housingDeadline || null,
+        headcountCutoff: effectiveHeadcountCutoff || null,
         status,
         notes: notes.trim() || null,
         updatedAt: now,
@@ -82,12 +97,16 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
         flatRate: flatRate ? Number(flatRate) : null,
         depositRequired: deposit ? Number(deposit) : null,
         depositReceived: null,
+        depositDue: depositDue || null,
         coordinatorName: coordName.trim() || null,
         coordinatorEmail: coordEmail.trim() || null,
         coordinatorPhone: coordPhone.trim() || null,
         status: 'confirmed',
         housingDeadline: housingDeadline || null,
-        headcountCutoff: null,
+        headcountCutoff: effectiveHeadcountCutoff || null,
+        finalHeadcount: null,
+        finalHeadcountAt: null,
+        finalHeadcountBy: null,
         dietaryFlags: null,
         notes: notes.trim() || null,
         portalToken: generateId() + generateId(),
@@ -160,6 +179,14 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
           </div>
         </div>
 
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass}>Deposit due</label>
+            <input type="date" value={depositDue} onChange={(e) => setDepositDue(e.target.value)} className={inputClass} />
+            <p className="text-[11px] text-forest/40 mt-1">Shown in the guest portal — paying the deposit holds their dates.</p>
+          </div>
+        </div>
+
         <div>
           <label className={labelClass}>Coordinator name</label>
           <input value={coordName} onChange={(e) => setCoordName(e.target.value)} className={inputClass} placeholder="e.g. Rachel Green" />
@@ -179,6 +206,12 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
           <div>
             <label className={labelClass}>Housing deadline</label>
             <input type="date" value={housingDeadline} onChange={(e) => setHousingDeadline(e.target.value)} className={inputClass} />
+            <p className="text-[11px] text-forest/40 mt-1">Portal default: 1 week before arrival.</p>
+          </div>
+          <div>
+            <label className={labelClass}>Final headcount due</label>
+            <input type="date" value={effectiveHeadcountCutoff} onChange={(e) => setHeadcountCutoff(e.target.value)} className={inputClass} />
+            <p className="text-[11px] text-forest/40 mt-1">When the group confirms their final number — defaults to 2 weeks before arrival.</p>
           </div>
           {editing && (
             <div>

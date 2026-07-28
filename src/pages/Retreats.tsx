@@ -113,7 +113,7 @@ export function Retreats() {
       {modal?.kind === 'scheduleItem' && <ScheduleItemModal retreatId={modal.retreatId} itemId={modal.itemId} />}
       {modal?.kind === 'cost' && <CostModal retreatId={modal.retreatId} costId={modal.costId} />}
       {modal?.kind === 'charge' && <ChargeModal retreatId={modal.retreatId} chargeId={modal.chargeId} />}
-      {modal?.kind === 'payment' && <PaymentModal retreatId={modal.retreatId} />}
+      {modal?.kind === 'payment' && <PaymentModal retreatId={modal.retreatId} defaultKind={modal.defaultKind} />}
       {modal?.kind === 'feedback' && <FeedbackModal retreatId={modal.retreatId} />}
     </div>
   );

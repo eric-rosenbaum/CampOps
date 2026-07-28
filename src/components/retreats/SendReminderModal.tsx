@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
+import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
+import { sendEmail, textToHtml } from '@/lib/email';
 import type { Retreat } from '@/lib/types';
 import { inputClass, labelClass, fmtDateFull, fmtRange } from './retreatUi';
 
@@ -52,6 +55,7 @@ const REMINDER_TYPES: ReminderType[] = [
 
 export function SendReminderModal({ retreatId, reminderType }: { retreatId: string; reminderType?: string }) {
   const { retreatById, sendReminder, closeModal } = useRetreatStore();
+  const { currentCamp } = useCampStore();
   const { can, currentUser } = useAuth();
   const canManage = can('manageRetreats');
   const retreat = retreatById(retreatId);
@@ -59,6 +63,10 @@ export function SendReminderModal({ retreatId, reminderType }: { retreatId: stri
   const initial = REMINDER_TYPES.find((t) => t.value === reminderType) ?? REMINDER_TYPES[0];
   const [typeValue, setTypeValue] = useState(initial.value);
   const [message, setMessage] = useState(initial.message(retreat));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const hasEmail = !!retreat?.coordinatorEmail;
 
   function selectType(value: string) {
     setTypeValue(value);
@@ -66,11 +74,27 @@ export function SendReminderModal({ retreatId, reminderType }: { retreatId: stri
     if (t) setMessage(t.message(retreat));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canManage || !message.trim()) return;
+    if (!canManage || !message.trim() || busy) return;
     const label = REMINDER_TYPES.find((t) => t.value === typeValue)?.label ?? typeValue;
+    setBusy(true); setError(null);
+
+    // Always log the reminder to the retreat's history.
     sendReminder(retreatId, label, message.trim(), currentUser.name || null);
+
+    // Email the coordinator if we have an address.
+    if (retreat?.coordinatorEmail) {
+      const res = await sendEmail({
+        to: retreat.coordinatorEmail,
+        subject: `${label} — ${retreat.groupName}`,
+        html: textToHtml(message.trim()),
+        fromName: currentCamp?.name,
+        replyTo: currentUser.email || undefined,
+      });
+      if (!res.ok) { setError(`${res.error} (The reminder was still logged to history.)`); setBusy(false); return; }
+    }
+    setBusy(false);
     closeModal();
   }
 
@@ -96,11 +120,18 @@ export function SendReminderModal({ retreatId, reminderType }: { retreatId: stri
         </div>
 
         <p className="text-[11px] text-forest/45 leading-relaxed bg-cream-dark/50 border border-border rounded-btn px-3 py-2">
-          This logs the reminder in the retreat's history — no email is actually sent. Use it to keep a record of when you followed up.
+          {hasEmail
+            ? <>This emails {retreat?.coordinatorName ?? 'the coordinator'} from your camp (replies come back to you) and logs it in the retreat's history.</>
+            : <>No coordinator email on file — this will only log the reminder to history. Add an email on the retreat to send it.</>}
         </p>
 
+        {error && <p className="text-[12px] text-red">{error}</p>}
+
         <div className="flex gap-2 pt-1">
-          <Button type="submit" className="flex-1 justify-center" disabled={!canManage || !message.trim()}>Send reminder</Button>
+          <Button type="submit" className="flex-1 justify-center" disabled={!canManage || !message.trim() || busy}>
+            {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+            {busy ? 'Sending…' : hasEmail ? 'Send reminder' : 'Log reminder'}
+          </Button>
           <Button type="button" variant="ghost" onClick={closeModal}>Cancel</Button>
         </div>
       </form>

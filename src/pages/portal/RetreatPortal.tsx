@@ -1,14 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import {
   TreePine, CalendarDays, Users, User, Moon, AlertCircle, CheckCircle2, FileText,
   PenLine, ShieldCheck, BedDouble, Accessibility, UtensilsCrossed, MessageSquarePlus,
   Star, Clock, Plus, Trash2, Send, Lock, ClipboardList, Loader2,
+  Circle, ChevronRight, Wallet, UploadCloud, ListChecks, DollarSign, AlertTriangle,
 } from 'lucide-react';
 import {
   money, fmtDateFull, fmtRange, nights, MEAL_PERIOD_LABELS,
 } from '@/components/retreats/retreatUi';
+import { printInvoice } from '@/lib/invoiceHtml';
 
 // This page renders OUTSIDE the authenticated app shell. It talks to Supabase only
 // through token-validated RPCs using its own anonymous client — never the ops store.
@@ -22,6 +24,7 @@ interface PortalRetreat {
   id: string;
   group_name: string;
   group_type: string | null;
+  camp_name?: string | null;
   arrival_date: string;
   departure_date: string;
   headcount: number | null;
@@ -32,6 +35,16 @@ interface PortalRetreat {
   change_requests_enabled: boolean;
   feedback_opens: string | null;
   housing_deadline: string | null;
+  headcount_cutoff: string | null;
+  pricing_model: string | null;
+  rate_per_person_night: number | null;
+  nights: number | null;
+  deposit_required: number | null;
+  deposit_received: number | null;
+  deposit_due: string | null;
+  final_headcount: number | null;
+  final_headcount_at: string | null;
+  final_headcount_by: string | null;
   total_charges: number | null;
   total_paid: number | null;
   balance_due: number | null;
@@ -45,6 +58,7 @@ interface PortalDocument {
   signed_at: string | null;
   signed_by: string | null;
   meta: Record<string, unknown> | null;
+  has_file?: boolean;
 }
 interface PortalSpace {
   id: string;
@@ -78,9 +92,21 @@ interface PortalChangeRequest {
   response_message: string | null;
   responded_at: string | null;
 }
+interface PortalInvoice {
+  id: string;
+  kind: 'deposit' | 'balance';
+  number: string;
+  amount: number;
+  note: string | null;
+  due_date: string | null;
+  status: string;
+  line_items: { description: string; amount: number }[];
+  issued_at: string;
+}
 interface PortalData {
   retreat: PortalRetreat;
   documents: PortalDocument[];
+  invoices: PortalInvoice[];
   spaces: PortalSpace[];
   housing: PortalHousing[];
   meals: PortalMeal[];
@@ -94,6 +120,26 @@ type PageState = 'loading' | 'not_found' | 'ready';
 function todayISO(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+/** Add days to a YYYY-MM-DD date, returning YYYY-MM-DD. Used to derive default deadlines from arrival. */
+function addDays(iso: string, days: number): string {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+/** Whole days from today until an ISO date (negative if past). */
+function daysUntil(iso: string): number {
+  const a = new Date(todayISO() + 'T00:00:00').getTime();
+  const b = new Date(iso + 'T00:00:00').getTime();
+  return Math.round((b - a) / 86400000);
+}
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 function fmtDateTime(iso: string | null): string {
   if (!iso) return '—';
@@ -279,18 +325,116 @@ export function RetreatPortal() {
   return <PortalContent data={data} token={token!} refetch={fetchData} />;
 }
 
+// ─── Workflow checklist model ─────────────────────────────────────────────────
+type StepState = 'done' | 'overdue' | 'due_soon' | 'todo' | 'locked';
+interface Step {
+  key: string;
+  label: string;
+  hint: string;
+  state: StepState;
+  dueDate: string | null;
+  sectionId: string;
+  counts: boolean; // whether it counts toward the progress bar
+}
+
+function buildSteps(data: PortalData): Step[] {
+  const { retreat, documents, housing } = data;
+  const arrival = retreat.arrival_date;
+
+  const agreementDoc = documents.find((d) => d.doc_type === 'agreement' || d.doc_type === 'contract');
+  const coiDoc = documents.find((d) => d.doc_type === 'coi');
+
+  // Effective deadlines: explicit if set, otherwise derived from arrival.
+  const housingDue = retreat.housing_deadline ?? addDays(arrival, -7);
+  const headcountDue = retreat.headcount_cutoff ?? addDays(arrival, -14);
+  const coiDue = coiDoc?.due_date ?? addDays(arrival, -1);
+
+  // Urgency helper for an incomplete, dated task.
+  const urgency = (due: string | null): StepState => {
+    if (!due) return 'todo';
+    const d = daysUntil(due);
+    if (d < 0) return 'overdue';
+    if (d <= 7) return 'due_soon';
+    return 'todo';
+  };
+
+  const steps: Step[] = [];
+
+  // 1 — Agreement (only if the camp has shared one)
+  if (agreementDoc) {
+    const signed = agreementDoc.status === 'signed' || agreementDoc.status === 'approved' || !!agreementDoc.signed_at;
+    steps.push({
+      key: 'agreement', label: 'Sign the retreat agreement',
+      hint: signed ? `Signed${agreementDoc.signed_by ? ` by ${agreementDoc.signed_by}` : ''}` : agreementDoc.due_date ? `Due ${fmtDateFull(agreementDoc.due_date)}` : 'Awaiting your signature',
+      state: signed ? 'done' : urgency(agreementDoc.due_date), dueDate: agreementDoc.due_date, sectionId: 'documents', counts: true,
+    });
+  }
+
+  // 2 — Deposit (only if one is required)
+  if (retreat.deposit_required != null && retreat.deposit_required > 0) {
+    const paid = (retreat.deposit_received ?? 0) >= retreat.deposit_required;
+    const partial = (retreat.deposit_received ?? 0) > 0 && !paid;
+    steps.push({
+      key: 'deposit', label: 'Pay deposit to hold your dates',
+      hint: paid ? 'Paid — your dates are secured' : partial ? 'Partial payment received' : retreat.deposit_due ? `Due ${fmtDateFull(retreat.deposit_due)}` : 'Invoice sent — pay to lock in your dates',
+      state: paid ? 'done' : urgency(retreat.deposit_due), dueDate: retreat.deposit_due, sectionId: 'documents', counts: true,
+    });
+  }
+
+  // 3 — Housing
+  const housingLocked = housing.length > 0 && housing.some((h) => h.locked);
+  const housingSubmitted = housing.length > 0;
+  steps.push({
+    key: 'housing', label: 'Assign your group to housing',
+    hint: housingLocked ? 'Finalized & locked' : housingSubmitted ? 'Submitted — you can still edit until the deadline' : `Due ${fmtDateFull(housingDue)}`,
+    state: housingLocked ? 'done' : housingSubmitted ? 'done' : urgency(housingDue), dueDate: housingDue, sectionId: 'housing', counts: true,
+  });
+
+  // 4 — Final headcount
+  const headcountDone = retreat.final_headcount != null;
+  steps.push({
+    key: 'headcount', label: 'Confirm final headcount',
+    hint: headcountDone ? `Confirmed: ${retreat.final_headcount} guests` : `Due ${fmtDateFull(headcountDue)} (about 2 weeks out)`,
+    state: headcountDone ? 'done' : urgency(headcountDue), dueDate: headcountDue, sectionId: 'final', counts: true,
+  });
+
+  // 5 — COI
+  const coiDone = !!coiDoc && (coiDoc.status === 'received' || coiDoc.status === 'approved' || !!coiDoc.has_file);
+  steps.push({
+    key: 'coi', label: 'Submit certificate of insurance',
+    hint: coiDone ? 'Received' : `Required before arrival${coiDue ? ` · due ${fmtDateFull(coiDue)}` : ''}`,
+    state: coiDone ? 'done' : (daysUntil(arrival) < 0 ? 'overdue' : urgency(coiDue)), dueDate: coiDue, sectionId: 'final', counts: true,
+  });
+
+  return steps;
+}
+
 // ─── Portal content (only rendered with valid data) ───────────────────────────
 function PortalContent({ data, token, refetch }: { data: PortalData; token: string; refetch: () => Promise<void>; }) {
-  const { retreat, documents, spaces, housing, meals, change_requests, feedback_submitted } = data;
+  const { retreat, documents, invoices, spaces, housing, meals, change_requests, feedback_submitted } = data;
   const today = todayISO();
   const numNights = nights(retreat.arrival_date, retreat.departure_date);
 
+  const steps = buildSteps(data);
+  const counted = steps.filter((s) => s.counts);
+  const doneCount = counted.filter((s) => s.state === 'done').length;
+  const allDone = counted.length > 0 && doneCount === counted.length;
+
+  // Countdown label
+  const dUntil = daysUntil(retreat.arrival_date);
+  const dUntilDepart = daysUntil(retreat.departure_date);
+  const countdown = dUntil > 0 ? `${dUntil} ${dUntil === 1 ? 'day' : 'days'} until arrival`
+    : dUntilDepart >= 0 ? 'Your retreat is underway'
+    : 'Retreat complete';
+
   const NAV = [
-    { id: 'info', label: 'Info' },
-    { id: 'documents', label: 'Documents' },
+    { id: 'todo', label: 'To-do' },
+    { id: 'info', label: 'Overview' },
+    { id: 'documents', label: 'Agreement' },
     { id: 'housing', label: 'Housing' },
-    { id: 'menu', label: 'Menu' },
     ...(retreat.change_requests_enabled ? [{ id: 'requests', label: 'Requests' }] : []),
+    { id: 'final', label: 'Final steps' },
+    { id: 'menu', label: 'Menu' },
     { id: 'feedback', label: 'Feedback' },
   ];
 
@@ -300,17 +444,20 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
 
   return (
     <div className="min-h-screen bg-cream w-full">
-      {/* Branded header */}
+      {/* Branded header with countdown */}
       <div className="bg-forest text-white">
         <div className="max-w-lg mx-auto px-5 pt-7 pb-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-sage rounded-xl flex items-center justify-center flex-shrink-0">
               <TreePine className="w-5 h-5 text-white" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] font-semibold text-sage-light uppercase tracking-widest">Retreat Portal</p>
               <h1 className="text-[19px] font-bold leading-tight truncate">{retreat.group_name}</h1>
             </div>
+            <span className="flex-shrink-0 inline-flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 text-[12px] font-semibold text-sage-light">
+              <Clock className="w-3.5 h-3.5" /> {countdown}
+            </span>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-white/80">
             <span className="inline-flex items-center gap-1.5">
@@ -324,10 +471,23 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
             {retreat.headcount != null && (
               <span className="inline-flex items-center gap-1.5">
                 <Users className="w-4 h-4 text-sage-light" />
-                {retreat.headcount} guests
+                {retreat.final_headcount ?? retreat.headcount} guests
               </span>
             )}
           </div>
+
+          {/* Progress bar */}
+          {counted.length > 0 && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-[12px] text-white/70 mb-1.5">
+                <span>{allDone ? "You're all set 🎉" : 'Your progress'}</span>
+                <span className="font-semibold text-white">{doneCount} of {counted.length} done</span>
+              </div>
+              <div className="h-2 rounded-full bg-white/15 overflow-hidden">
+                <div className="h-full bg-sage rounded-full transition-all" style={{ width: `${(doneCount / counted.length) * 100}%` }} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -349,22 +509,25 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
       </div>
 
       <div className="max-w-lg mx-auto px-5 py-7 space-y-9">
-        {/* 0 — Welcome / orientation */}
+        {/* 0 — Welcome */}
         <div className="bg-sage-pale border border-sage/30 rounded-2xl px-5 py-4 -mb-3">
-          <p className="text-[15px] font-bold text-forest">Welcome to your retreat portal 👋</p>
+          <p className="text-[15px] font-bold text-forest">Welcome, {retreat.coordinator_name?.split(' ')[0] ?? retreat.group_name} 👋</p>
           <p className="text-[13px] text-forest/75 mt-1.5 leading-relaxed">
-            This is the private hub for <span className="font-semibold text-forest">{retreat.group_name}</span>'s
-            stay ({fmtRange(retreat.arrival_date, retreat.departure_date)}). Sign your documents, assign your
-            group to cabins,{retreat.change_requests_enabled ? ' send us requests,' : ''} review the menu, and
-            track your balance — all in one place. Your changes save automatically.
+            This is your private hub for {retreat.group_name}'s stay. The checklist below shows
+            everything the camp needs from you before you arrive — tap any item to jump to it. Your changes save automatically.
           </p>
           <p className="text-[12px] text-forest/50 mt-2.5">
             🔖 Bookmark this page — it's your private link, so there's no password to remember.
           </p>
         </div>
 
-        {/* 1 — Retreat info */}
-        <Section id="info" icon={<ClipboardList className="w-4.5 h-4.5" />} title="Retreat information" subtitle="Your booking at a glance">
+        {/* 1 — To-do checklist (the hero) */}
+        <Section id="todo" icon={<ListChecks className="w-4.5 h-4.5" />} title="Your checklist" subtitle={allDone ? 'Everything is in — thank you!' : "What the camp needs from you"}>
+          <ChecklistBlock steps={steps} onJump={scrollTo} />
+        </Section>
+
+        {/* 2 — Overview */}
+        <Section id="info" icon={<ClipboardList className="w-4.5 h-4.5" />} title="Booking overview" subtitle="Your reservation at a glance">
           <div className={`${cardClass} divide-y divide-cream-dark overflow-hidden`}>
             <div className="flex items-center justify-between py-3 px-4">
               <span className="text-[12px] font-semibold uppercase tracking-wide text-forest/45">Status</span>
@@ -376,9 +539,7 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
             )}
             <InfoRow icon={<CalendarDays className="w-4 h-4" />} label="Dates" value={fmtRange(retreat.arrival_date, retreat.departure_date)} />
             <InfoRow icon={<Moon className="w-4 h-4" />} label="Nights" value={numNights} />
-            {retreat.headcount != null && (
-              <InfoRow icon={<Users className="w-4 h-4" />} label="Headcount" value={retreat.headcount} />
-            )}
+            <InfoRow icon={<Users className="w-4 h-4" />} label={retreat.final_headcount != null ? 'Final headcount' : 'Estimated headcount'} value={retreat.final_headcount ?? retreat.headcount} />
             {retreat.coordinator_name && (
               <InfoRow icon={<User className="w-4 h-4" />} label="Coordinator" value={retreat.coordinator_name} />
             )}
@@ -397,11 +558,15 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
             </div>
           )}
 
-          {/* Balance — read only */}
           {(retreat.balance_due != null || retreat.total_charges != null) && (
             <div className={`${cardClass} p-4 mt-3`}>
               <p className={labelClass}>Account balance</p>
               <div className="space-y-1.5 text-[14px]">
+                {retreat.pricing_model === 'per_person_night' && retreat.rate_per_person_night != null && (
+                  <div className="flex justify-between text-forest/50 text-[12px]">
+                    <span>{money(retreat.rate_per_person_night)}/person/night × {retreat.headcount ?? 0} × {retreat.nights ?? 0} night{(retreat.nights ?? 0) === 1 ? '' : 's'}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-forest/70">
                   <span>Total charges</span><span className="font-mono">{money(retreat.total_charges)}</span>
                 </div>
@@ -420,24 +585,27 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
           )}
         </Section>
 
-        {/* 2 — Documents */}
-        <Section id="documents" icon={<FileText className="w-4.5 h-4.5" />} title="Documents" subtitle="Agreements, waivers & insurance">
-          <DocumentsBlock documents={documents} token={token} refetch={refetch} />
+        {/* 3 — Agreement & deposit */}
+        <Section id="documents" icon={<FileText className="w-4.5 h-4.5" />} title="Agreement & deposit" subtitle="Secure your booking">
+          <DepositCard retreat={retreat} />
+          {invoices.length > 0 && (
+            <div className="mt-3">
+              <InvoicesBlock retreat={retreat} invoices={invoices} />
+            </div>
+          )}
+          <div className="mt-3">
+            <DocumentsBlock documents={documents.filter((d) => d.doc_type !== 'coi')} token={token} refetch={refetch} />
+          </div>
         </Section>
 
-        {/* 3 — Housing */}
-        <Section id="housing" icon={<BedDouble className="w-4.5 h-4.5" />} title="Housing" subtitle="Cabin & room assignments">
+        {/* 4 — Housing */}
+        <Section id="housing" icon={<BedDouble className="w-4.5 h-4.5" />} title="Housing" subtitle="Assign your group to cabins & rooms">
           <HousingBlock retreat={retreat} spaces={spaces} housing={housing} token={token} refetch={refetch} today={today} />
         </Section>
 
-        {/* 4 — Menu */}
-        <Section id="menu" icon={<UtensilsCrossed className="w-4.5 h-4.5" />} title="Menu & dining" subtitle="What's being served">
-          <MenuBlock published={retreat.menu_published} meals={meals} />
-        </Section>
-
-        {/* 5 — Change requests */}
+        {/* 5 — Special requests */}
         {retreat.change_requests_enabled && (
-          <Section id="requests" icon={<MessageSquarePlus className="w-4.5 h-4.5" />} title="Change requests" subtitle="Ask the camp to adjust something">
+          <Section id="requests" icon={<MessageSquarePlus className="w-4.5 h-4.5" />} title="Special requests" subtitle="Program spaces, dietary, childcare & more">
             <ChangeRequestsBlock
               requests={change_requests}
               defaultName={retreat.coordinator_name}
@@ -447,13 +615,291 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
           </Section>
         )}
 
-        {/* 6 — Feedback */}
+        {/* 6 — Final steps */}
+        <Section id="final" icon={<ListChecks className="w-4.5 h-4.5" />} title="Final steps" subtitle="Due in the weeks before arrival">
+          <div className="space-y-3">
+            <HeadcountBlock retreat={retreat} token={token} refetch={refetch} />
+            <CoiBlock retreat={retreat} documents={documents} token={token} refetch={refetch} />
+          </div>
+        </Section>
+
+        {/* 7 — Menu */}
+        <Section id="menu" icon={<UtensilsCrossed className="w-4.5 h-4.5" />} title="Menu & dining" subtitle="What's being served">
+          <MenuBlock published={retreat.menu_published} meals={meals} />
+        </Section>
+
+        {/* 8 — Feedback */}
         <Section id="feedback" icon={<Star className="w-4.5 h-4.5" />} title="Feedback" subtitle="Tell us how it went">
           <FeedbackBlock retreat={retreat} submitted={feedback_submitted} token={token} refetch={refetch} today={today} />
         </Section>
 
         <div className="pt-2 pb-6 text-center">
           <p className="text-[11px] text-forest/35">Powered by CampCommand · This is a private link — please don't share it publicly.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Checklist block ──────────────────────────────────────────────────────────
+function ChecklistBlock({ steps, onJump }: { steps: Step[]; onJump: (id: string) => void }) {
+  // Show incomplete items first (most urgent at top), completed at the bottom.
+  const rank: Record<StepState, number> = { overdue: 0, due_soon: 1, todo: 2, locked: 3, done: 4 };
+  const ordered = [...steps].sort((a, b) => rank[a.state] - rank[b.state]);
+
+  const styleFor = (s: StepState) => {
+    switch (s) {
+      case 'done': return { icon: <CheckCircle2 className="w-5 h-5 text-sage" />, chip: 'bg-green-muted-bg text-green-muted-text', chipText: 'Done' };
+      case 'overdue': return { icon: <AlertTriangle className="w-5 h-5 text-red" />, chip: 'bg-red-bg text-red', chipText: 'Overdue' };
+      case 'due_soon': return { icon: <Circle className="w-5 h-5 text-amber-text" />, chip: 'bg-amber-bg text-amber-text', chipText: 'Due soon' };
+      case 'locked': return { icon: <Lock className="w-5 h-5 text-forest/35" />, chip: 'bg-cream-dark text-forest/55', chipText: 'Locked' };
+      default: return { icon: <Circle className="w-5 h-5 text-forest/30" />, chip: 'bg-cream-dark text-forest/55', chipText: 'To do' };
+    }
+  };
+
+  return (
+    <div className={`${cardClass} divide-y divide-cream-dark overflow-hidden`}>
+      {ordered.map((step) => {
+        const st = styleFor(step.state);
+        return (
+          <button
+            key={step.key}
+            onClick={() => onJump(step.sectionId)}
+            className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-cream/50 transition-colors"
+          >
+            <span className="flex-shrink-0">{st.icon}</span>
+            <span className="min-w-0 flex-1">
+              <span className={`block text-[14px] font-semibold leading-tight ${step.state === 'done' ? 'text-forest/55' : 'text-forest'}`}>{step.label}</span>
+              <span className="block text-[12px] text-forest/50 mt-0.5">{step.hint}</span>
+            </span>
+            <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${st.chip}`}>{st.chipText}</span>
+            <ChevronRight className="w-4 h-4 text-forest/25 flex-shrink-0" />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Deposit card ─────────────────────────────────────────────────────────────
+function DepositCard({ retreat }: { retreat: PortalRetreat }) {
+  if (retreat.deposit_required == null || retreat.deposit_required <= 0) return null;
+  const paid = (retreat.deposit_received ?? 0) >= retreat.deposit_required;
+  const partial = (retreat.deposit_received ?? 0) > 0 && !paid;
+
+  return (
+    <div className={`${cardClass} p-4 ${paid ? 'border-sage' : ''}`}>
+      <div className="flex items-start gap-3">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${paid ? 'bg-green-muted-bg text-green-muted-text' : 'bg-amber-bg text-amber-text'}`}>
+          {paid ? <ShieldCheck className="w-4.5 h-4.5" /> : <Wallet className="w-4.5 h-4.5" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-[14px] font-semibold text-forest leading-tight">Deposit — holds your dates</p>
+            <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${paid ? 'bg-green-muted-bg text-green-muted-text' : partial ? 'bg-amber-bg text-amber-text' : 'bg-cream-dark text-forest/60'}`}>
+              {paid ? 'Paid' : partial ? 'Partial' : 'Due'}
+            </span>
+          </div>
+          <p className="text-[12px] text-forest/50 mt-0.5">
+            {paid ? 'Your dates are secured — thank you!'
+              : retreat.deposit_due ? `Please pay by ${fmtDateFull(retreat.deposit_due)} to lock in your dates.`
+              : 'Paying your deposit locks in your dates.'}
+          </p>
+          <div className="mt-3 bg-cream rounded-xl p-3 flex items-center justify-between text-[14px]">
+            <span className="inline-flex items-center gap-1.5 text-forest/60"><DollarSign className="w-4 h-4" /> Deposit</span>
+            <span className="font-semibold text-forest">
+              {partial && <span className="text-forest/45 font-normal">{money(retreat.deposit_received)} of </span>}
+              {money(retreat.deposit_required)}
+            </span>
+          </div>
+          {!paid && <p className="text-[11px] text-forest/40 mt-2.5">Payment is handled directly with the camp — contact your coordinator to pay.</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Invoices block ───────────────────────────────────────────────────────────
+function InvoicesBlock({ retreat, invoices }: { retreat: PortalRetreat; invoices: PortalInvoice[] }) {
+  function download(inv: PortalInvoice) {
+    const ok = printInvoice({
+      campName: retreat.camp_name ?? 'Camp', groupName: retreat.group_name,
+      number: inv.number, kind: inv.kind, issuedAt: inv.issued_at, dueDate: inv.due_date,
+      lineItems: inv.line_items ?? [], amount: inv.amount, note: inv.note,
+      arrivalDate: retreat.arrival_date, departureDate: retreat.departure_date,
+    });
+    if (!ok) alert('Enable pop-ups to download your invoice.');
+  }
+  return (
+    <div className="space-y-3">
+      {invoices.map((inv) => {
+        const paid = inv.status === 'paid';
+        return (
+          <div key={inv.id} className={`${cardClass} p-4`}>
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-cream-dark text-forest/50 flex items-center justify-center flex-shrink-0">
+                <FileText className="w-4.5 h-4.5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[14px] font-semibold text-forest leading-tight">
+                    {inv.kind === 'deposit' ? 'Deposit invoice' : 'Invoice'} · {money(inv.amount)}
+                  </p>
+                  <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${paid ? 'bg-green-muted-bg text-green-muted-text' : 'bg-amber-bg text-amber-text'}`}>
+                    {paid ? 'Paid' : 'Due'}
+                  </span>
+                </div>
+                <p className="text-[12px] text-forest/45 mt-0.5">
+                  {inv.number}{inv.due_date ? ` · due ${fmtDateFull(inv.due_date)}` : ''}
+                </p>
+                {inv.note && <p className="text-[12px] text-forest/55 mt-1.5 leading-relaxed">{inv.note}</p>}
+                <button onClick={() => download(inv)} className="mt-2.5 text-[13px] font-semibold text-forest inline-flex items-center gap-1.5 hover:text-forest-mid">
+                  <FileText className="w-3.5 h-3.5" /> Download PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      <p className="text-[11px] text-forest/40 px-1">Payment is handled directly with the camp — contact your coordinator to pay.</p>
+    </div>
+  );
+}
+
+// ─── Final headcount block ────────────────────────────────────────────────────
+function HeadcountBlock({ retreat, token, refetch }: { retreat: PortalRetreat; token: string; refetch: () => Promise<void>; }) {
+  const confirmed = retreat.final_headcount != null;
+  const [count, setCount] = useState(confirmed ? String(retreat.final_headcount) : (retreat.headcount ? String(retreat.headcount) : ''));
+  const [name, setName] = useState(retreat.coordinator_name ?? '');
+  const [editing, setEditing] = useState(!confirmed);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const due = retreat.headcount_cutoff ?? addDays(retreat.arrival_date, -14);
+
+  async function submit() {
+    const n = parseInt(count, 10);
+    if (Number.isNaN(n) || n < 0) { setError('Enter your final number of guests.'); return; }
+    if (!name.trim()) { setError('Please enter your name.'); return; }
+    setBusy(true); setError(null);
+    const { data: ok, error: err } = await supabasePublic.rpc('portal_confirm_headcount', {
+      p_token: token, p_headcount: n, p_submitted_by: name.trim(),
+    });
+    if (err || !ok) { setError('Could not save. Please try again.'); setBusy(false); return; }
+    setEditing(false); setBusy(false);
+    await refetch();
+  }
+
+  return (
+    <div className={`${cardClass} p-4`}>
+      <div className="flex items-start gap-3">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${confirmed && !editing ? 'bg-green-muted-bg text-green-muted-text' : 'bg-cream-dark text-forest/50'}`}>
+          <Users className="w-4.5 h-4.5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] font-semibold text-forest leading-tight">Confirm final headcount</p>
+          <p className="text-[12px] text-forest/50 mt-0.5">
+            {confirmed && !editing
+              ? `Confirmed: ${retreat.final_headcount} guests${retreat.final_headcount_by ? ` · by ${retreat.final_headcount_by}` : ''}`
+              : `Your final number of guests. Due ${fmtDateFull(due)} — about two weeks before arrival.`}
+          </p>
+
+          {confirmed && !editing ? (
+            <button onClick={() => setEditing(true)} className="mt-3 text-[13px] font-semibold text-forest inline-flex items-center gap-1.5 hover:text-forest-mid">
+              <PenLine className="w-3.5 h-3.5" /> Update headcount
+            </button>
+          ) : (
+            <div className="mt-3 space-y-2.5">
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className={labelClass}>Final guests</label>
+                  <input type="number" inputMode="numeric" min={0} value={count} onChange={(e) => setCount(e.target.value)} className={inputClass} placeholder="0" disabled={busy} />
+                </div>
+                <div>
+                  <label className={labelClass}>Your name</label>
+                  <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Your name" disabled={busy} />
+                </div>
+              </div>
+              {error && <p className="text-[12px] text-red">{error}</p>}
+              <button onClick={submit} disabled={busy} className={`${btnPrimary} w-full`}>
+                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                {busy ? 'Saving…' : 'Confirm headcount'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── COI upload block ─────────────────────────────────────────────────────────
+function CoiBlock({ retreat, documents, token, refetch }: { retreat: PortalRetreat; documents: PortalDocument[]; token: string; refetch: () => Promise<void>; }) {
+  const coiDoc = documents.find((d) => d.doc_type === 'coi');
+  const received = !!coiDoc && (coiDoc.status === 'received' || coiDoc.status === 'approved' || !!coiDoc.has_file);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { setError('File must be under 10 MB.'); return; }
+    setBusy(true); setError(null);
+    try {
+      const b64 = await fileToBase64(file);
+      const { data: res, error: err } = await supabasePublic.functions.invoke('portal-upload-coi', {
+        body: { token, fileBase64: b64, fileName: file.name, contentType: file.type, uploadedBy: retreat.coordinator_name },
+      });
+      if (err || !(res as { ok?: boolean })?.ok) { setError('Could not upload. Use a PDF, JPG or PNG under 10 MB.'); setBusy(false); return; }
+      setBusy(false);
+      await refetch();
+    } catch {
+      setError('Could not upload. Please try again.');
+      setBusy(false);
+    }
+  }
+
+  const dueLabel = coiDoc?.due_date ? fmtDateFull(coiDoc.due_date) : 'before arrival';
+
+  return (
+    <div className={`${cardClass} p-4 ${received ? 'border-sage' : ''}`}>
+      <div className="flex items-start gap-3">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${received ? 'bg-green-muted-bg text-green-muted-text' : 'bg-cream-dark text-forest/50'}`}>
+          <ShieldCheck className="w-4.5 h-4.5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-[14px] font-semibold text-forest leading-tight">Certificate of insurance (COI)</p>
+            <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${received ? 'bg-green-muted-bg text-green-muted-text' : 'bg-cream-dark text-forest/60'}`}>
+              {received ? 'Received' : 'Required'}
+            </span>
+          </div>
+          <p className="text-[12px] text-forest/50 mt-0.5">
+            {received ? 'Thanks — we have your COI on file.' : `Required before your group enters camp — due ${dueLabel}.`}
+          </p>
+
+          {/* COI meta if the camp recorded any */}
+          {coiDoc?.meta && Object.keys(coiDoc.meta).filter((k) => !['uploaded_by', 'uploaded_via', 'original_name'].includes(k)).length > 0 && (
+            <div className="mt-3 bg-cream rounded-xl p-3 space-y-1">
+              {Object.entries(coiDoc.meta)
+                .filter(([k]) => !['uploaded_by', 'uploaded_via', 'original_name'].includes(k))
+                .map(([k, v]) => (
+                  <div key={k} className="flex justify-between gap-3 text-[12px]">
+                    <span className="text-forest/50 capitalize">{k.replace(/_/g, ' ')}</span>
+                    <span className="text-forest font-medium text-right">{String(v)}</span>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic" className="hidden" onChange={onFile} />
+          <button onClick={() => fileRef.current?.click()} disabled={busy} className={`${received ? 'mt-3 text-[13px] font-semibold text-forest inline-flex items-center gap-1.5 hover:text-forest-mid' : `${btnPrimary} w-full mt-3`}`}>
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+            {busy ? 'Uploading…' : received ? 'Replace file' : 'Upload your COI'}
+          </button>
+          {error && <p className="text-[12px] text-red mt-2">{error}</p>}
         </div>
       </div>
     </div>
@@ -649,6 +1095,7 @@ function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePass
     if (err || !ok) { setError('Could not submit housing. It may now be locked — please contact the camp.'); setBusy(false); return; }
     setDone(true);
     await refetch();
+    setBusy(false);
   }
 
   const usedSpaceIds = rows.map((r) => r.space_id);
@@ -845,12 +1292,15 @@ function MenuBlock({ published, meals }: { published: boolean; meals: PortalMeal
 }
 
 // ─── Change requests block ────────────────────────────────────────────────────
-const KIND_LABELS: Record<string, string> = { housing: 'Housing', menu: 'Menu', headcount: 'Headcount', other: 'Other' };
+const KIND_LABELS: Record<string, string> = {
+  program_space: 'Program / meeting space', dietary: 'Dietary & allergies', childcare: 'Childcare',
+  equipment: 'Equipment / AV', housing: 'Housing', menu: 'Menu', headcount: 'Headcount', other: 'Other',
+};
 
 function ChangeRequestsBlock({ requests, defaultName, token, refetch }: {
   requests: PortalChangeRequest[]; defaultName: string | null; token: string; refetch: () => Promise<void>;
 }) {
-  const [kind, setKind] = useState('housing');
+  const [kind, setKind] = useState('program_space');
   const [body, setBody] = useState('');
   const [name, setName] = useState(defaultName ?? '');
   const [busy, setBusy] = useState(false);
@@ -876,9 +1326,12 @@ function ChangeRequestsBlock({ requests, defaultName, token, refetch }: {
         <div>
           <label className={labelClass}>What's this about?</label>
           <select value={kind} onChange={(e) => setKind(e.target.value)} className={inputClass} disabled={busy}>
+            <option value="program_space">Program / meeting space</option>
+            <option value="dietary">Dietary & allergies</option>
+            <option value="childcare">Childcare</option>
+            <option value="equipment">Equipment / AV</option>
             <option value="housing">Housing</option>
             <option value="menu">Menu & dining</option>
-            <option value="headcount">Headcount</option>
             <option value="other">Other</option>
           </select>
         </div>

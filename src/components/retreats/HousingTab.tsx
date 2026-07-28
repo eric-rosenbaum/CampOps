@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Home, Lock, Unlock, History, Download, Plus, Pencil, Settings2 } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { FilterPill } from '@/components/shared/FilterPill';
@@ -51,7 +52,13 @@ export function HousingTab() {
     retreats, activeRetreatId, setActiveRetreat, selectedRetreat,
     housingFor, openModal, setHousingLocked, saveHousingVersion,
   } = useRetreatStore();
-  const dorms = useLocationStore((s) => s.retreatDorms());
+  // Subscribe to the stable `locations` array, then derive — returning a fresh array
+  // straight from a selector infinite-loops under React 19 + zustand v5.
+  const locations = useLocationStore((s) => s.locations);
+  const dorms = useMemo(
+    () => locations.filter((l) => l.isDorm && l.retreatAvailable && l.isActive).sort((a, b) => a.name.localeCompare(b.name)),
+    [locations],
+  );
   const { can, currentUser } = useAuth();
   const canManage = can('manageRetreats');
 

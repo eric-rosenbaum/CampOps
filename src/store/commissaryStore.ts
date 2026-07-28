@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type {
   CommissarySession, CommissaryVendor, InventoryItem, InventoryAdjustment,
-  Recipe, RecipeIngredient, RecipeStep, MenuEntry, MealPeriod, AdjustmentReason,
+  Recipe, RecipeIngredient, RecipeStep, MenuEntry, RetreatMenuEntry, MealPeriod, AdjustmentReason,
   PurchaseOrder, PurchaseOrderLine, ProductionPlan, ProductionTask, ProductionPrepTask,
   ProductionIngredient, Camper, CamperRestriction, CamperSession, RestrictionSummaryRow,
   OrderSource, CommissaryExpense, MenuTemplate, MenuTemplateEntry, DietCount,
@@ -16,6 +16,7 @@ import {
   dbSetItemPrice, dbWipeCommissary,
   dbAddRecipe, dbUpdateRecipe, dbDeleteRecipe, dbReplaceRecipeChildren,
   dbAddMenuEntry, dbDeleteMenuEntry, dbAddMenuEntries, dbDeleteMenuWeek,
+  dbAddRetreatMenuEntry, dbUpdateRetreatMenuEntry, dbDeleteRetreatMenuEntry,
   dbCreateOrder, dbUpdateOrderStatus, dbDeleteOrder, dbReceiveOrder,
   dbUpdateOrderLineQty, dbUpdateOrderTotals, dbAddOrderLine, dbDeleteOrderLine,
   dbSavePlan, dbToggleProductionTask, dbToggleProductionPrepTask,
@@ -40,6 +41,7 @@ import {
   type PerDiem, type PrepScheduleSlot, type PrepSlotKey,
 } from '@/lib/commissaryUnits';
 import { generateId } from '@/lib/utils';
+import { useRetreatStore } from '@/store/retreatStore';
 
 /** Line actuals collected in the receiving screen. */
 export interface ReceivingLineInput {
@@ -50,6 +52,9 @@ export interface ReceivingLineInput {
 }
 
 export type CommissaryTab = 'inventory' | 'menu' | 'recipes' | 'production' | 'allergy' | 'ordering' | 'cost' | 'settings';
+
+/** The module plans either camp sessions (default) or retreats (all combined). */
+export type CommissaryMode = 'session' | 'retreats';
 
 /** Menu tab shows either concrete session menus or the reusable templates. */
 export type MenuView = 'session' | 'templates';
@@ -62,6 +67,7 @@ export type CommissaryModal =
   | { kind: 'adjust'; itemId: string }
   | { kind: 'recipe'; editId?: string }
   | { kind: 'menuEntry'; weekNumber: number; dayIndex: number; mealPeriod: MealPeriod }
+  | { kind: 'retreatMenuEntry'; retreatId: string; dayDate: string; mealPeriod: MealPeriod; editId?: string }
   | { kind: 'session'; editId?: string }
   | { kind: 'vendor'; editId?: string }
   | { kind: 'camper'; editId?: string }
@@ -108,6 +114,7 @@ interface CommissaryState {
   ingredients: RecipeIngredient[];
   steps: RecipeStep[];
   menuEntries: MenuEntry[];
+  retreatMenuEntries: RetreatMenuEntry[];
   orders: PurchaseOrder[];
   orderLines: PurchaseOrderLine[];
   plans: ProductionPlan[];
@@ -118,6 +125,21 @@ interface CommissaryState {
   camperSessions: CamperSession[];
   /** Aggregate counts. Populated for every member, including those denied names. */
   restrictionSummary: RestrictionSummaryRow[];
+
+  /** Whether the module is planning camp sessions or retreats (combined). */
+  mode: CommissaryMode;
+  /** Retreats-mode ordering coverage window (YYYY-MM-DD); '' = use defaults. */
+  retreatCoverageStart: string;
+  retreatCoverageEnd: string;
+
+  setMode: (m: CommissaryMode) => void;
+  setRetreatCoverage: (start: string, end: string) => void;
+  setRetreatMenuEntries: (rows: RetreatMenuEntry[]) => void;
+  addRetreatMenuEntry: (m: RetreatMenuEntry) => void;
+  updateRetreatMenuEntry: (m: RetreatMenuEntry) => void;
+  deleteRetreatMenuEntry: (id: string) => void;
+  /** Structured menu entries for a retreat, optionally a specific day + meal. */
+  retreatEntriesFor: (retreatId: string, dayDate?: string, meal?: MealPeriod) => RetreatMenuEntry[];
 
   setActiveTab: (t: CommissaryTab) => void;
   openModal: (m: CommissaryModal) => void;
@@ -416,6 +438,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   ingredients: [],
   steps: [],
   menuEntries: [],
+  retreatMenuEntries: [],
   orders: [],
   orderLines: [],
   plans: [],
@@ -425,6 +448,20 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   restrictions: [],
   camperSessions: [],
   restrictionSummary: [],
+
+  mode: 'session',
+  retreatCoverageStart: '',
+  retreatCoverageEnd: '',
+
+  setMode: (m) => set({ mode: m }),
+  setRetreatCoverage: (start, end) => set({ retreatCoverageStart: start, retreatCoverageEnd: end }),
+  setRetreatMenuEntries: (rows) => set({ retreatMenuEntries: rows }),
+  addRetreatMenuEntry: (m) => { set((s) => ({ retreatMenuEntries: [...s.retreatMenuEntries, m] })); dbAddRetreatMenuEntry(m); },
+  updateRetreatMenuEntry: (m) => { set((s) => ({ retreatMenuEntries: s.retreatMenuEntries.map((x) => x.id === m.id ? m : x) })); dbUpdateRetreatMenuEntry(m); },
+  deleteRetreatMenuEntry: (id) => { set((s) => ({ retreatMenuEntries: s.retreatMenuEntries.filter((x) => x.id !== id) })); dbDeleteRetreatMenuEntry(id); },
+  retreatEntriesFor: (retreatId, dayDate, meal) => get().retreatMenuEntries
+    .filter((m) => m.retreatId === retreatId && (dayDate == null || m.dayDate === dayDate) && (meal == null || m.mealPeriod === meal))
+    .sort((a, b) => a.sortOrder - b.sortOrder),
 
   setActiveTab: (t) => set({ activeTab: t }),
   openModal: (m) => set({ modal: m }),
@@ -1235,20 +1272,37 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   // Per-item, per-date menu consumption (base units) across the active session.
   consumptionByItemDate: () => {
     const state = get();
-    const session = state.activeSession();
     const map = new Map<string, Map<string, number>>();
-    if (!session) return map;
     const recipesById = state.recipesById();
     const ingByRecipe = state.ingredientsByRecipe();
+    const add = (itemId: string, dateStr: string, base: number) => {
+      let byDate = map.get(itemId);
+      if (!byDate) { byDate = new Map(); map.set(itemId, byDate); }
+      byDate.set(dateStr, (byDate.get(dateStr) ?? 0) + base);
+    };
+
+    if (state.mode === 'retreats') {
+      // All retreats combined: each entry draws on its absolute date, scaled by its own
+      // portions override or the parent retreat's headcount.
+      const headcountById = new Map(useRetreatStore.getState().retreats.map((r) => [r.id, r.headcount]));
+      for (const e of state.retreatMenuEntries) {
+        const portions = e.portionsOverride ?? headcountById.get(e.retreatId) ?? 0;
+        if (portions <= 0) continue;
+        // Adapt to the MenuEntry shape demandForEntries expects (it only reads recipe/item fields).
+        const asEntry = { ...e, sessionId: '', weekNumber: 0, dayIndex: 0, course: null } as unknown as MenuEntry;
+        const demand = demandForEntries([asEntry], recipesById, ingByRecipe, portions);
+        for (const row of demand.values()) add(row.itemId, e.dayDate, row.neededBase);
+      }
+      return map;
+    }
+
+    const session = state.activeSession();
+    if (!session) return map;
     for (const e of state.menuEntries.filter((m) => m.sessionId === session.id)) {
       const dateStr = dateForCell(session.startDate, e.weekNumber, e.dayIndex).toISOString().slice(0, 10);
       const portions = state.mealCount(dateStr, e.mealPeriod);
       const demand = demandForEntries([e], recipesById, ingByRecipe, portions);
-      for (const row of demand.values()) {
-        let byDate = map.get(row.itemId);
-        if (!byDate) { byDate = new Map(); map.set(row.itemId, byDate); }
-        byDate.set(dateStr, (byDate.get(dateStr) ?? 0) + row.neededBase);
-      }
+      for (const row of demand.values()) add(row.itemId, dateStr, row.neededBase);
     }
     return map;
   },
@@ -1383,8 +1437,22 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   // lands on the delivery day, and that stock must last until the delivery AFTER it —
   // so cover [today → next delivery + one cycle]. Day defaults to the session start's weekday.
   orderingWindow: () => {
-    const s = get().activeSession();
+    const state = get();
     const today = new Date().toISOString().slice(0, 10);
+    if (state.mode === 'retreats') {
+      // Retreats: cover a user-picked window, defaulting to today → the last upcoming
+      // retreat's departure (or +14 days if none), so one order spans every group in range.
+      const start = state.retreatCoverageStart || today;
+      let end = state.retreatCoverageEnd;
+      if (!end) {
+        const departures = useRetreatStore.getState().retreats
+          .filter((r) => r.status !== 'cancelled' && r.departureDate >= today)
+          .map((r) => r.departureDate).sort();
+        end = departures[departures.length - 1] ?? addDaysStr(today, 14);
+      }
+      return { today: start, nextDelivery: start, windowEnd: end, frequency: 7, deliveryDay: null as string | null };
+    }
+    const s = state.activeSession();
     if (!s) return { today, nextDelivery: addDaysStr(today, 7), windowEnd: addDaysStr(today, 14), frequency: 7, deliveryDay: null as string | null };
     const frequency = s.orderFrequencyDays || 7;
     const deliveryDay = s.deliveryDay ?? WEEKDAYS[new Date(`${s.startDate}T00:00:00`).getDay()];

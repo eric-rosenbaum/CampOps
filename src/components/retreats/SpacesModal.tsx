@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Check } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
@@ -65,11 +65,12 @@ function DormRow({ dorm, canManage }: { dorm: CampLocation; canManage: boolean }
 
 export function SpacesModal() {
   const { closeModal } = useRetreatStore();
-  const dorms = useLocationStore((s) => s.locations.filter((l) => l.isDorm));
+  const locations = useLocationStore((s) => s.locations);
+  const dorms = useMemo(() => locations.filter((l) => l.isDorm), [locations]);
   const { can } = useAuth();
   const canManage = can('manageRetreats');
 
-  const sorted = [...dorms].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+  const sorted = useMemo(() => [...dorms].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)), [dorms]);
 
   return (
     <Modal title="Retreat dorms" onClose={closeModal} width="560px">

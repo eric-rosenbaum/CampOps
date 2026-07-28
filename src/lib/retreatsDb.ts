@@ -9,6 +9,7 @@ import type {
   Retreat, RetreatSpace, RetreatHousing, RetreatHousingVersion, RetreatDocument, RetreatMeal,
   RetreatChangeRequest, RetreatCost, RetreatCharge, RetreatPayment, RetreatIssue,
   RetreatChecklistItem, RetreatScheduleItem, RetreatFeedback, RetreatReminder, MealPeriod,
+  RetreatInvoice, RetreatInvoiceLine,
 } from './types';
 
 type Row = Record<string, unknown>;
@@ -26,9 +27,11 @@ export function rowToRetreat(r: Row): Retreat {
     ratePerPersonNight: n(r.rate_per_person_night), flatRate: n(r.flat_rate),
     depositRequired: n(r.deposit_required),
     depositReceived: n(r.deposit_received),
+    depositDue: s(r.deposit_due),
     coordinatorName: s(r.coordinator_name), coordinatorEmail: s(r.coordinator_email), coordinatorPhone: s(r.coordinator_phone),
     status: (r.status as Retreat['status']) ?? 'inquiry',
     housingDeadline: s(r.housing_deadline), headcountCutoff: s(r.headcount_cutoff),
+    finalHeadcount: n(r.final_headcount), finalHeadcountAt: s(r.final_headcount_at), finalHeadcountBy: s(r.final_headcount_by),
     dietaryFlags: (r.dietary_flags as Record<string, number>) ?? null,
     notes: s(r.notes), portalToken: r.portal_token as string,
     menuPublished: Boolean(r.menu_published), changeRequestsEnabled: Boolean(r.change_requests_enabled),
@@ -78,6 +81,17 @@ function rowToFeedback(r: Row): RetreatFeedback {
 function rowToReminder(r: Row): RetreatReminder {
   return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, reminderType: s(r.reminder_type), message: s(r.message), sentBy: s(r.sent_by), sentAt: r.sent_at as string };
 }
+function rowToInvoice(r: Row): RetreatInvoice {
+  return {
+    id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string,
+    kind: (r.kind as RetreatInvoice['kind']) ?? 'balance', number: r.number as string,
+    amount: Number(r.amount ?? 0), note: s(r.note), dueDate: s(r.due_date),
+    status: (r.status as RetreatInvoice['status']) ?? 'sent',
+    lineItems: Array.isArray(r.line_items) ? (r.line_items as RetreatInvoiceLine[]) : [],
+    issuedAt: (r.issued_at as string) ?? (r.created_at as string), createdBy: s(r.created_by),
+    createdAt: r.created_at as string, updatedAt: r.updated_at as string,
+  };
+}
 
 // ─── Load + subscribe (one domain — retreat data is low-volume) ──────────────
 export interface RetreatData {
@@ -85,17 +99,19 @@ export interface RetreatData {
   documents: RetreatDocument[]; meals: RetreatMeal[]; changeRequests: RetreatChangeRequest[];
   costs: RetreatCost[]; charges: RetreatCharge[]; payments: RetreatPayment[]; issues: RetreatIssue[];
   checklist: RetreatChecklistItem[]; scheduleItems: RetreatScheduleItem[]; feedback: RetreatFeedback[]; reminders: RetreatReminder[];
+  invoices: RetreatInvoice[];
 }
 
 const RETREAT_TABLES = [
   'retreats', 'retreat_spaces', 'retreat_housing', 'retreat_housing_versions', 'retreat_documents',
   'retreat_meals', 'retreat_change_requests', 'retreat_costs', 'retreat_charges', 'retreat_payments',
   'retreat_issues', 'retreat_checklist', 'retreat_schedule_items', 'retreat_feedback', 'retreat_reminders',
+  'retreat_invoices',
 ];
 
 async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
   const q = (t: string) => supabase.from(t).select('*').eq('camp_id', campId);
-  const [re, sp, ho, hv, docs, meals, cr, costs, charges, pays, iss, chk, sched, fb, rem] = await Promise.all([
+  const [re, sp, ho, hv, docs, meals, cr, costs, charges, pays, iss, chk, sched, fb, rem, inv] = await Promise.all([
     q('retreats').order('arrival_date', { ascending: true }),
     q('retreat_spaces').order('sort_order', { ascending: true }),
     q('retreat_housing').order('sort_order', { ascending: true }),
@@ -111,6 +127,7 @@ async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
     q('retreat_schedule_items').order('sort_order', { ascending: true }),
     q('retreat_feedback').order('received_at', { ascending: false }),
     q('retreat_reminders').order('sent_at', { ascending: false }),
+    q('retreat_invoices').order('issued_at', { ascending: false }),
   ]);
   return {
     retreats: (re.data ?? []).map((r) => rowToRetreat(r as Row)),
@@ -128,6 +145,7 @@ async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
     scheduleItems: (sched.data ?? []).map((r) => rowToScheduleItem(r as Row)),
     feedback: (fb.data ?? []).map((r) => rowToFeedback(r as Row)),
     reminders: (rem.data ?? []).map((r) => rowToReminder(r as Row)),
+    invoices: (inv.data ?? []).map((r) => rowToInvoice(r as Row)),
   };
 }
 
@@ -166,8 +184,10 @@ export function retreatToRow(r: Retreat): Row {
     arrival_date: r.arrivalDate, departure_date: r.departureDate, headcount: r.headcount,
     pricing_model: r.pricingModel, flat_rate: r.flatRate,
     rate_per_person_night: r.ratePerPersonNight, deposit_required: r.depositRequired, deposit_received: r.depositReceived,
+    deposit_due: r.depositDue,
     coordinator_name: r.coordinatorName, coordinator_email: r.coordinatorEmail, coordinator_phone: r.coordinatorPhone,
     status: r.status, housing_deadline: r.housingDeadline, headcount_cutoff: r.headcountCutoff,
+    final_headcount: r.finalHeadcount, final_headcount_at: r.finalHeadcountAt, final_headcount_by: r.finalHeadcountBy,
     dietary_flags: r.dietaryFlags, notes: r.notes, portal_token: r.portalToken,
     menu_published: r.menuPublished, change_requests_enabled: r.changeRequestsEnabled, feedback_opens: r.feedbackOpens,
     created_at: r.createdAt, updated_at: r.updatedAt,
@@ -211,6 +231,8 @@ export const dbUpdateCharge = (x: RetreatCharge) => upd('retreat_charges', x.id,
 export const dbDeleteCharge = (id: string) => del('retreat_charges', id);
 
 export const dbAddPayment = (x: RetreatPayment) => ins('retreat_payments', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, paid_on: x.paidOn, amount: x.amount, method: x.method, kind: x.kind, note: x.note, created_at: x.createdAt });
+// retreat_payments has no updated_at column, so we can't use the shared `upd` helper.
+export async function dbUpdatePayment(x: RetreatPayment) { const { error } = await supabase.from('retreat_payments').update({ paid_on: x.paidOn, amount: x.amount, method: x.method, kind: x.kind, note: x.note }).eq('id', x.id); if (error) campError('update payment', error.message); }
 export const dbDeletePayment = (id: string) => del('retreat_payments', id);
 
 export const dbAddIssue = (x: RetreatIssue) => ins('retreat_issues', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, title: x.title, reported_by: x.reportedBy, priority: x.priority, assigned_to: x.assignedTo, status: x.status, notes: x.notes, created_at: x.createdAt, resolved_at: x.resolvedAt, updated_at: x.updatedAt });
@@ -229,6 +251,10 @@ export const dbAddFeedback = (x: RetreatFeedback) => ins('retreat_feedback', { i
 export const dbDeleteFeedback = (id: string) => del('retreat_feedback', id);
 
 export const dbAddReminder = (x: RetreatReminder) => ins('retreat_reminders', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, reminder_type: x.reminderType, message: x.message, sent_by: x.sentBy, sent_at: x.sentAt });
+
+export const dbAddInvoice = (x: RetreatInvoice) => ins('retreat_invoices', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, kind: x.kind, number: x.number, amount: x.amount, note: x.note, due_date: x.dueDate, status: x.status, line_items: x.lineItems, issued_at: x.issuedAt, created_by: x.createdBy, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbUpdateInvoice = (x: RetreatInvoice) => upd('retreat_invoices', x.id, { kind: x.kind, number: x.number, amount: x.amount, note: x.note, due_date: x.dueDate, status: x.status, line_items: x.lineItems });
+export const dbDeleteInvoice = (id: string) => del('retreat_invoices', id);
 
 // ─── Document storage (private bucket, signed URLs) ──────────────────────────
 export async function dbUploadRetreatDocument(file: File, retreatId: string): Promise<string | null> {

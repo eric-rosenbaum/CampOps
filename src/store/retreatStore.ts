@@ -3,7 +3,7 @@ import type {
   Retreat, RetreatStatus, RetreatSpace, RetreatHousing, RetreatHousingVersion, RetreatDocument,
   RetreatDocType, RetreatMeal, RetreatChangeRequest, RetreatRequestStatus, RetreatCost, RetreatCharge,
   RetreatPayment, RetreatIssue, RetreatChecklistItem, RetreatChecklistPhase, RetreatScheduleItem,
-  RetreatFeedback, RetreatReminder, MealPeriod,
+  RetreatFeedback, RetreatReminder, RetreatInvoice, MealPeriod,
 } from '@/lib/types';
 import {
   dbAddRetreat, dbUpdateRetreat, dbDeleteRetreat,
@@ -14,11 +14,12 @@ import {
   dbAddChangeRequest, dbUpdateChangeRequest,
   dbAddCost, dbUpdateCost, dbDeleteCost,
   dbAddCharge, dbUpdateCharge, dbDeleteCharge,
-  dbAddPayment, dbDeletePayment,
+  dbAddPayment, dbUpdatePayment, dbDeletePayment,
   dbAddIssue, dbUpdateIssue, dbDeleteIssue,
   dbAddChecklistItem, dbUpdateChecklistItem, dbDeleteChecklistItem,
   dbAddScheduleItem, dbUpdateScheduleItem, dbDeleteScheduleItem,
   dbAddFeedback, dbDeleteFeedback, dbAddReminder,
+  dbAddInvoice, dbUpdateInvoice, dbDeleteInvoice,
   dbRegeneratePortalToken,
 } from '@/lib/retreatsDb';
 import { generateId } from '@/lib/utils';
@@ -46,7 +47,7 @@ export type RetreatModal =
   | { kind: 'scheduleItem'; retreatId: string; itemId?: string }
   | { kind: 'cost'; retreatId: string; costId?: string }
   | { kind: 'charge'; retreatId: string; chargeId?: string }
-  | { kind: 'payment'; retreatId: string }
+  | { kind: 'payment'; retreatId: string; defaultKind?: 'deposit' | 'balance' | 'payment' }
   | { kind: 'feedback'; retreatId: string };
 
 export interface Balance { totalCharges: number; totalPaid: number; balance: number }
@@ -71,6 +72,7 @@ interface RetreatState {
   scheduleItems: RetreatScheduleItem[];
   feedback: RetreatFeedback[];
   reminders: RetreatReminder[];
+  invoices: RetreatInvoice[];
 
   setActiveTab: (t: RetreatTab) => void;
   setActiveRetreat: (id: string | null) => void;
@@ -92,6 +94,7 @@ interface RetreatState {
   setScheduleItems: (r: RetreatScheduleItem[]) => void;
   setFeedback: (r: RetreatFeedback[]) => void;
   setReminders: (r: RetreatReminder[]) => void;
+  setInvoices: (r: RetreatInvoice[]) => void;
 
   // Retreats
   addRetreat: (r: Retreat) => void;
@@ -134,6 +137,7 @@ interface RetreatState {
   updateCharge: (x: RetreatCharge) => void;
   deleteCharge: (id: string) => void;
   addPayment: (x: RetreatPayment) => void;
+  updatePayment: (x: RetreatPayment) => void;
   deletePayment: (id: string) => void;
 
   // Issues
@@ -157,6 +161,11 @@ interface RetreatState {
   deleteFeedback: (id: string) => void;
   sendReminder: (retreatId: string, reminderType: string, message: string, by: string | null) => void;
 
+  // Invoices
+  addInvoice: (x: RetreatInvoice) => void;
+  updateInvoice: (x: RetreatInvoice) => void;
+  deleteInvoice: (id: string) => void;
+
   // Selectors
   retreatById: (id: string) => Retreat | null;
   selectedRetreat: () => Retreat | null;
@@ -175,6 +184,7 @@ interface RetreatState {
   scheduleFor: (retreatId: string) => RetreatScheduleItem[];
   feedbackFor: (retreatId: string) => RetreatFeedback[];
   remindersFor: (retreatId: string) => RetreatReminder[];
+  invoicesFor: (retreatId: string) => RetreatInvoice[];
   balanceFor: (retreatId: string) => Balance;
   phaseProgress: (retreatId: string) => PhaseProgress;
   pendingRequestCount: () => number;
@@ -191,7 +201,7 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
 
   retreats: [], spaces: [], housing: [], housingVersions: [], documents: [], meals: [],
   changeRequests: [], costs: [], charges: [], payments: [], issues: [], checklist: [],
-  scheduleItems: [], feedback: [], reminders: [],
+  scheduleItems: [], feedback: [], reminders: [], invoices: [],
 
   setActiveTab: (t) => set({ activeTab: t }),
   setActiveRetreat: (id) => set({ activeRetreatId: id }),
@@ -218,6 +228,7 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   setScheduleItems: (rows) => set({ scheduleItems: rows }),
   setFeedback: (rows) => set({ feedback: rows }),
   setReminders: (rows) => set({ reminders: rows }),
+  setInvoices: (rows) => set({ invoices: rows }),
 
   addRetreat: (r) => { set((s) => ({ retreats: [...s.retreats, r], activeRetreatId: r.id })); dbAddRetreat(r); },
   updateRetreat: (r) => { set((s) => ({ retreats: s.retreats.map((x) => x.id === r.id ? r : x) })); dbUpdateRetreat(r); },
@@ -282,6 +293,7 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   updateCharge: (x) => { set((s) => ({ charges: s.charges.map((y) => y.id === x.id ? x : y) })); dbUpdateCharge(x); },
   deleteCharge: (id) => { set((s) => ({ charges: s.charges.filter((y) => y.id !== id) })); dbDeleteCharge(id); },
   addPayment: (x) => { set((s) => ({ payments: [x, ...s.payments] })); dbAddPayment(x); },
+  updatePayment: (x) => { set((s) => ({ payments: s.payments.map((y) => y.id === x.id ? x : y) })); dbUpdatePayment(x); },
   deletePayment: (id) => { set((s) => ({ payments: s.payments.filter((y) => y.id !== id) })); dbDeletePayment(id); },
 
   addIssue: (x) => { set((s) => ({ issues: [x, ...s.issues] })); dbAddIssue(x); },
@@ -307,6 +319,10 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
     const x: RetreatReminder = { id: generateId(), campId: '', retreatId, reminderType, message, sentBy: by, sentAt: now() };
     set((s) => ({ reminders: [x, ...s.reminders] })); dbAddReminder(x);
   },
+
+  addInvoice: (x) => { set((s) => ({ invoices: [x, ...s.invoices] })); dbAddInvoice(x); },
+  updateInvoice: (x) => { set((s) => ({ invoices: s.invoices.map((y) => y.id === x.id ? x : y) })); dbUpdateInvoice(x); },
+  deleteInvoice: (id) => { set((s) => ({ invoices: s.invoices.filter((y) => y.id !== id) })); dbDeleteInvoice(id); },
 
   // ─── Selectors ─────────────────────────────────────────────────────────────
   retreatById: (id) => get().retreats.find((r) => r.id === id) ?? null,
@@ -335,6 +351,7 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   scheduleFor: (id) => get().scheduleItems.filter((s) => s.retreatId === id).sort((a, b) => a.sortOrder - b.sortOrder),
   feedbackFor: (id) => get().feedback.filter((f) => f.retreatId === id),
   remindersFor: (id) => get().reminders.filter((r) => r.retreatId === id),
+  invoicesFor: (id) => get().invoices.filter((r) => r.retreatId === id),
 
   balanceFor: (id) => {
     const totalCharges = get().charges.filter((c) => c.retreatId === id).reduce((s, c) => s + c.amount, 0);

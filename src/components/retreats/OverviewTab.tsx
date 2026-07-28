@@ -1,6 +1,7 @@
 import { Button } from '@/components/shared/Button';
 import { StatCard } from '@/components/shared/StatCard';
 import { AlertBanner } from '@/components/shared/AlertBanner';
+import { AvailabilityCalendar } from './AvailabilityCalendar';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { Retreat } from '@/lib/types';
@@ -73,15 +74,17 @@ export function OverviewTab() {
     return !d.contractOk || !d.coiOk;
   }).length;
 
-  const seasonRevenue = retreats
-    .filter((r) => r.status !== 'cancelled')
-    .reduce((sum, r) => {
-      const charged = balanceFor(r.id).totalCharges;
-      if (charged > 0) return sum + charged;
-      return sum + estimateRevenue(r, housingFor(r.id).length);
-    }, 0);
-
-  const confirmedCount = retreats.filter((r) => r.status !== 'inquiry' && r.status !== 'cancelled').length;
+  // Expected total revenue = actual charges where billed, else an estimate. We break it into
+  // money actually received (deposits + payments) and the estimated remainder still to come,
+  // since the final take from a retreat often isn't known until after the stay.
+  const nonCancelled = retreats.filter((r) => r.status !== 'cancelled');
+  const revenueReceived = nonCancelled.reduce((sum, r) => sum + balanceFor(r.id).totalPaid, 0);
+  const expectedRevenue = nonCancelled.reduce((sum, r) => {
+    const charged = balanceFor(r.id).totalCharges;
+    return sum + (charged > 0 ? charged : estimateRevenue(r, housingFor(r.id).length));
+  }, 0);
+  const revenueEstimated = Math.max(0, expectedRevenue - revenueReceived);
+  const seasonRevenue = revenueReceived + revenueEstimated;
 
   // ─── Banners ──────────────────────────────────────────────────────────────
   const coiOverdue = retreats.filter((r) => ACTIVEISH.includes(r.status) && !derive(r).coiOk);
@@ -120,7 +123,7 @@ export function OverviewTab() {
         <StatCard label="Active now" value={activeNow} hint={activeNow ? 'On property' : 'None on property'} />
         <StatCard label="Upcoming" value={upcoming} hint="Confirmed this season" />
         <StatCard label="Docs pending" value={docsPending} variant={docsPending ? 'amber' : 'default'} hint="COI / contract outstanding" />
-        <StatCard label="Season revenue" value={money(seasonRevenue)} variant={seasonRevenue > 0 ? 'green' : 'default'} hint={`${confirmedCount} retreat${confirmedCount === 1 ? '' : 's'} confirmed`} />
+        <StatCard label="Season revenue" value={money(seasonRevenue)} variant={seasonRevenue > 0 ? 'green' : 'default'} hint={`${money(revenueReceived)} received + ${money(revenueEstimated)} estimated`} />
       </div>
 
       {/* Banners */}
@@ -223,6 +226,12 @@ export function OverviewTab() {
           );
         })}
       </div>
+
+      {/* Availability */}
+      <div className="flex items-center justify-between mt-7 mb-3.5">
+        <h2 className="text-[14px] font-semibold text-forest">Availability</h2>
+      </div>
+      <AvailabilityCalendar retreats={seasonList} />
     </div>
   );
 }

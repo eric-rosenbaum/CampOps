@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
@@ -9,7 +9,11 @@ import { inputClass, labelClass } from './retreatUi';
 
 export function HousingAssignModal({ retreatId, housingId }: { retreatId: string; housingId?: string }) {
   const { housingFor, addHousing, updateHousing, deleteHousing, closeModal } = useRetreatStore();
-  const dorms = useLocationStore((s) => s.retreatDorms());
+  const locations = useLocationStore((s) => s.locations);
+  const dorms = useMemo(
+    () => locations.filter((l) => l.isDorm && l.retreatAvailable && l.isActive).sort((a, b) => a.name.localeCompare(b.name)),
+    [locations],
+  );
   const existing = housingId ? housingFor(retreatId).find((h) => h.id === housingId) ?? null : null;
 
   const [locationId, setLocationId] = useState(existing?.locationId ?? '');

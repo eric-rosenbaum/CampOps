@@ -3,7 +3,7 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { Retreat, RetreatIssue } from '@/lib/types';
 import {
-  money, fmtDate, fmtRange, nights, Badge, GROUP_TYPE_LABELS, rateSummary, type BadgeTone,
+  money, fmtDate, fmtRange, nights, Badge, GROUP_TYPE_LABELS, rateSummary, pricingRate, estimateRevenue, type BadgeTone,
 } from './retreatUi';
 
 function dayOf(r: Retreat): { day: number; total: number } {
@@ -165,14 +165,26 @@ export function ActiveRetreatTab() {
           ))}
         </div>
 
-        {/* Financial */}
-        <div className="bg-white rounded-card border border-border px-5 py-4">
-          <CardLabel>Financial</CardLabel>
-          <Row k="Rate charged" v={rateSummary(r)} />
-          <Row k="Total billed" v={<span className="font-mono text-green-muted-text">{money(bal.totalCharges)}</span>} />
-          <Row k="Deposit received" v={<span className="font-mono text-green-muted-text">{money(r.depositReceived ?? bal.totalPaid)}</span>} />
-          <Row k="Balance due" v={<span className="font-mono">{money(bal.balance)} at checkout</span>} />
-        </div>
+        {/* Financial — billed total is the rate × people × nights when no manual charges were added. */}
+        {(() => {
+          const nightCount = nights(r.arrivalDate, r.departureDate);
+          const expected = bal.totalCharges > 0 ? bal.totalCharges : estimateRevenue(r, housingFor(r.id).length);
+          const expectedBalance = expected - bal.totalPaid;
+          const rate = pricingRate(r);
+          const perPerson = r.pricingModel === 'per_person_night';
+          return (
+            <div className="bg-white rounded-card border border-border px-5 py-4">
+              <CardLabel>Financial</CardLabel>
+              <Row k="Rate charged" v={rateSummary(r)} />
+              {perPerson && rate != null && (
+                <Row k="Billed" v={<span className="font-mono text-forest/60">{money(rate)} × {r.headcount} × {nightCount} night{nightCount === 1 ? '' : 's'}</span>} />
+              )}
+              <Row k={bal.totalCharges > 0 ? 'Total billed' : 'Estimated total'} v={<span className="font-mono text-green-muted-text">{money(expected)}</span>} />
+              <Row k="Deposit received" v={<span className="font-mono text-green-muted-text">{money(r.depositReceived ?? bal.totalPaid)}</span>} />
+              <Row k="Balance due" v={<span className="font-mono">{money(expectedBalance)} at checkout</span>} />
+            </div>
+          );
+        })()}
       </div>
 
       {/* Open issues */}

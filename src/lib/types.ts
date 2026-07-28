@@ -1109,12 +1109,17 @@ export interface Retreat {
   flatRate: number | null;
   depositRequired: number | null;
   depositReceived: number | null;
+  depositDue: string | null;
   coordinatorName: string | null;
   coordinatorEmail: string | null;
   coordinatorPhone: string | null;
   status: RetreatStatus;
   housingDeadline: string | null;
   headcountCutoff: string | null;
+  /** Final headcount the group confirmed through the guest portal (null until they submit). */
+  finalHeadcount: number | null;
+  finalHeadcountAt: string | null;
+  finalHeadcountBy: string | null;
   /** Aggregate counts, e.g. { vegetarian: 4, gluten_free: 2, kosher: 0, nut_allergy: 1 }. */
   dietaryFlags: Record<string, number> | null;
   notes: string | null;
@@ -1263,6 +1268,48 @@ export interface RetreatPayment {
   kind: RetreatPaymentKind;
   note: string | null;
   createdAt: string;
+}
+
+export type RetreatInvoiceKind = 'deposit' | 'balance';
+export type RetreatInvoiceStatus = 'draft' | 'sent' | 'paid' | 'void';
+export interface RetreatInvoiceLine { description: string; amount: number; }
+
+export interface RetreatInvoice {
+  id: string;
+  campId: string;
+  retreatId: string;
+  kind: RetreatInvoiceKind;
+  number: string;
+  amount: number;
+  note: string | null;
+  dueDate: string | null;
+  status: RetreatInvoiceStatus;
+  /** Snapshot of the billed lines at issue time (immutable). */
+  lineItems: RetreatInvoiceLine[];
+  issuedAt: string;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Structured retreat menu entry (managed in Commissary retreats mode). Recipe/item-linked
+ *  entries drive combined ordering; label-only entries are display-only. */
+export interface RetreatMenuEntry {
+  id: string;
+  campId: string;
+  retreatId: string;
+  dayDate: string;              // YYYY-MM-DD (absolute)
+  mealPeriod: MealPeriod;
+  recipeId: string | null;
+  itemId: string | null;
+  itemQtyBase: number | null;
+  label: string | null;         // free-text dish name (or override display)
+  allergens: string[] | null;
+  alternatives: string | null;  // guest-facing veg/GF note
+  portionsOverride: number | null; // null = use the retreat's headcount
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type RetreatIssueStatus = 'open' | 'in_progress' | 'resolved';

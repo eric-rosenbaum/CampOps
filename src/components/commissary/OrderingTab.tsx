@@ -315,10 +315,12 @@ export function OrderingTab() {
   const {
     orders, reconciledDraftOrders, orderingWindow, orderMath,
     createBlankOrder, activeSession, setActiveTab, items, vendors, criticalItems,
+    mode, retreatCoverageStart, retreatCoverageEnd, setRetreatCoverage,
   } = useCommissaryStore();
   const { can, currentUser } = useAuth();
   const canManage = can('manageCommissary');
   const session = activeSession();
+  const retreatsMode = mode === 'retreats';
   const [blankVendorId, setBlankVendorId] = useState('');
   const [showMath, setShowMath] = useState(false);
 
@@ -405,10 +407,20 @@ export function OrderingTab() {
       {/* One reconciled suggestion, always live: cover the menu draw and stay above each
           item's minimum through the next delivery cycle, netting out on-hand + in-transit. */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <span className="text-[12px] text-forest/60">
-          Covering through <span className="font-medium text-forest">{windowLabel}</span>
-          <span className="text-forest/40"> · next delivery {fmtDay(win.nextDelivery)} · {win.frequency}-day cycle</span>
-        </span>
+        {retreatsMode ? (
+          <span className="text-[12px] text-forest/60 inline-flex items-center gap-2">
+            Order to cover through
+            <input type="date" value={retreatCoverageEnd || windowEnd}
+              onChange={(e) => setRetreatCoverage(retreatCoverageStart, e.target.value)}
+              className="text-[12px] bg-white border border-border rounded-btn px-2 py-1 focus:outline-none focus:border-sage" />
+            <span className="text-forest/40">· covers every group between now and this date</span>
+          </span>
+        ) : (
+          <span className="text-[12px] text-forest/60">
+            Covering through <span className="font-medium text-forest">{windowLabel}</span>
+            <span className="text-forest/40"> · next delivery {fmtDay(win.nextDelivery)} · {win.frequency}-day cycle</span>
+          </span>
+        )}
         <div className="flex-1" />
         {canManage && (
           <>
@@ -424,10 +436,16 @@ export function OrderingTab() {
         )}
       </div>
 
-      {!session && (
+      {!retreatsMode && !session && (
         <p className="text-[12px] text-forest/45 mb-4">
           No active session, so there's no menu to forecast against — suggestions here are driven purely by
           each item's minimum on hand. Pick a session on the Menu tab to order against the menu too.
+        </p>
+      )}
+      {retreatsMode && (
+        <p className="text-[12px] text-forest/45 mb-4">
+          Ordering across all retreats combined — the forecast sums every group's menu in the coverage window
+          above, netted against on-hand stock, in-transit deliveries, and each item's minimum.
         </p>
       )}
 

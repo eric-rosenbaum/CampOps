@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
@@ -17,40 +17,46 @@ const KIND_LABELS: Record<RetreatPaymentKind, string> = {
   payment: 'Payment',
 };
 
-/** Record a payment against a retreat and review / delete existing ones. */
-export function PaymentModal({ retreatId }: { retreatId: string }) {
-  const { paymentsFor, addPayment, deletePayment, balanceFor, closeModal } = useRetreatStore();
+/** Record a payment against a retreat and review / edit / delete existing ones. */
+export function PaymentModal({ retreatId, defaultKind }: { retreatId: string; defaultKind?: RetreatPaymentKind }) {
+  const { paymentsFor, addPayment, updatePayment, deletePayment, balanceFor, closeModal } = useRetreatStore();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
 
   const payments = paymentsFor(retreatId).slice().sort((a, b) => b.paidOn.localeCompare(a.paidOn));
   const bal = balanceFor(retreatId);
 
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [paidOn, setPaidOn] = useState(today());
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('');
-  const [kind, setKind] = useState<RetreatPaymentKind>('payment');
+  const [kind, setKind] = useState<RetreatPaymentKind>(defaultKind ?? 'payment');
   const [note, setNote] = useState('');
+
+  function resetForm() {
+    setEditingId(null); setPaidOn(today()); setAmount(''); setMethod(''); setKind(defaultKind ?? 'payment'); setNote('');
+  }
+  function startEdit(p: RetreatPayment) {
+    setEditingId(p.id); setPaidOn(p.paidOn); setAmount(String(p.amount));
+    setMethod(p.method ?? ''); setKind(p.kind); setNote(p.note ?? '');
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canManage) return;
     const amt = Number(amount);
     if (!paidOn || !Number.isFinite(amt) || amt <= 0) return;
-    const row: RetreatPayment = {
-      id: generateId(),
-      campId: '',
-      retreatId,
-      paidOn,
-      amount: amt,
-      method: method.trim() || null,
-      kind,
-      note: note.trim() || null,
-      createdAt: now(),
-    };
-    addPayment(row);
-    setAmount('');
-    setNote('');
+    if (editingId) {
+      const existing = payments.find((p) => p.id === editingId);
+      if (existing) updatePayment({ ...existing, paidOn, amount: amt, method: method.trim() || null, kind, note: note.trim() || null });
+      resetForm();
+      return;
+    }
+    addPayment({
+      id: generateId(), campId: '', retreatId, paidOn, amount: amt,
+      method: method.trim() || null, kind, note: note.trim() || null, createdAt: now(),
+    });
+    setAmount(''); setNote('');
   }
 
   return (
@@ -73,7 +79,10 @@ export function PaymentModal({ retreatId }: { retreatId: string }) {
 
         {canManage && (
           <form onSubmit={handleSubmit} className="space-y-3 border-t border-border pt-4">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40">Record a payment</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40">{editingId ? 'Edit payment' : 'Record a payment'}</p>
+              {editingId && <button type="button" onClick={resetForm} className="text-[11px] text-forest/50 hover:text-forest">Cancel edit</button>}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Paid on</label>
@@ -102,7 +111,7 @@ export function PaymentModal({ retreatId }: { retreatId: string }) {
               <label className={labelClass}>Note</label>
               <input value={note} onChange={(e) => setNote(e.target.value)} className={inputClass} placeholder="Optional" />
             </div>
-            <Button type="submit" className="justify-center" disabled={!amount}>+ Record payment</Button>
+            <Button type="submit" className="justify-center" disabled={!amount}>{editingId ? 'Save changes' : '+ Record payment'}</Button>
           </form>
         )}
 
@@ -117,15 +126,20 @@ export function PaymentModal({ retreatId }: { retreatId: string }) {
           ) : (
             <div className="rounded-card border border-border overflow-hidden">
               {payments.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0">
+                <div key={p.id} className={`flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0 ${editingId === p.id ? 'bg-sage-pale/50' : ''}`}>
                   <span className="text-[12px] font-mono text-forest/50 w-24 flex-shrink-0">{fmtDateFull(p.paidOn)}</span>
                   <span className="text-[11px] text-forest/60 w-16 flex-shrink-0">{KIND_LABELS[p.kind]}</span>
                   <span className="text-[12px] text-forest/70 flex-1 truncate">{p.method ?? p.note ?? '—'}</span>
                   <span className="font-mono text-[13px] text-green-muted-text">{money(p.amount)}</span>
                   {canManage && (
-                    <button onClick={() => { if (confirm('Delete this payment?')) deletePayment(p.id); }} className="p-1 text-forest/30 hover:text-red" aria-label="Delete">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <>
+                      <button onClick={() => startEdit(p)} className="p-1 text-forest/30 hover:text-forest" aria-label="Edit">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => { if (confirm('Delete this payment?')) { if (editingId === p.id) resetForm(); deletePayment(p.id); } }} className="p-1 text-forest/30 hover:text-red" aria-label="Delete">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
                   )}
                 </div>
               ))}

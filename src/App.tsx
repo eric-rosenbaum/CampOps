@@ -104,7 +104,7 @@ function CampDataLoader() {
   const { setBuildings, setRooms, setComponents, setCircuits, setSeasonalTasks: setBuildingSeasonalTasks } = useBuildingStore();
   const {
     setItems: setInventoryItems, setAdjustments, setVendors, setItemVendors, setCatalog,
-    setRecipes, setIngredients, setSteps, setSessions, setMenuEntries,
+    setRecipes, setIngredients, setSteps, setSessions, setMenuEntries, setRetreatMenuEntries,
     setOrders, setOrderLines, setPlans, setProductionTasks, setPrepTasks,
     setCampers, setRestrictions, setCamperSessions, setRestrictionSummary,
     setCountSessions, setStorageMap, setTemplates, setTemplateEntries,
@@ -114,7 +114,7 @@ function CampDataLoader() {
   const {
     setRetreats, setSpaces, setHousing, setHousingVersions, setDocuments: setRetreatDocs,
     setMeals: setRetreatMeals, setChangeRequests, setCosts: setRetreatCosts, setCharges, setPayments,
-    setIssues: setRetreatIssues, setChecklist, setScheduleItems, setFeedback, setReminders,
+    setIssues: setRetreatIssues, setChecklist, setScheduleItems, setFeedback, setReminders, setInvoices,
   } = useRetreatStore();
   const { setLocations, setCategories, setBuildingDetails } = useLocationStore();
 
@@ -214,6 +214,7 @@ function CampDataLoader() {
     unsubCommMenu = subscribeToCommissaryMenu(campId, (d) => {
       setSessions(d.sessions);
       setMenuEntries(d.menuEntries);
+      setRetreatMenuEntries(d.retreatMenuEntries);
       setTemplates(d.templates);
       setTemplateEntries(d.templateEntries);
       setDietCounts(d.dietCounts);
@@ -245,6 +246,7 @@ function CampDataLoader() {
       setRetreatDocs(d.documents); setRetreatMeals(d.meals); setChangeRequests(d.changeRequests);
       setRetreatCosts(d.costs); setCharges(d.charges); setPayments(d.payments); setRetreatIssues(d.issues);
       setChecklist(d.checklist); setScheduleItems(d.scheduleItems); setFeedback(d.feedback); setReminders(d.reminders);
+      setInvoices(d.invoices);
     };
     unsubRetreats = subscribeToRetreats(campId, applyRetreatData, () => { retreatsSyncedAt = Date.now(); });
 
@@ -329,6 +331,7 @@ function CampDataLoader() {
       if (!data || commMenuSyncedAt > loadStartedAt) return;
       setSessions(data.sessions);
       setMenuEntries(data.menuEntries);
+      setRetreatMenuEntries(data.retreatMenuEntries);
       setTemplates(data.templates);
       setTemplateEntries(data.templateEntries);
       setDietCounts(data.dietCounts);

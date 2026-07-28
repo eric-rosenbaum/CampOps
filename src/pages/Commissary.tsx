@@ -4,6 +4,8 @@ import { useCommissaryStore, type CommissaryTab } from '@/store/commissaryStore'
 import { useAuth } from '@/lib/auth';
 import { InventoryTab } from '@/components/commissary/InventoryTab';
 import { MenuTab } from '@/components/commissary/MenuTab';
+import { RetreatMenuBuilder } from '@/components/commissary/RetreatMenuBuilder';
+import { RetreatMenuEntryModal } from '@/components/commissary/RetreatMenuEntryModal';
 import { RecipesTab } from '@/components/commissary/RecipesTab';
 import { AddEditItemModal } from '@/components/commissary/AddEditItemModal';
 import { CSVImportModal } from '@/components/commissary/CSVImportModal';
@@ -45,17 +47,29 @@ const TABS: { id: CommissaryTab; label: string }[] = [
 export function Commissary() {
   const {
     activeTab, setActiveTab, modal, openModal,
-    items, recipes, activeSession, portions,
+    items, recipes, activeSession, portions, mode, setMode,
   } = useCommissaryStore();
   const { can, canViewCamperHealth } = useAuth();
   const canManage = can('manageCommissary');
 
   const session = activeSession();
   const total = portions();
+  const retreatsMode = mode === 'retreats';
 
-  const subtitle = session
-    ? `${session.name} · ${session.camperCount} campers + ${session.staffCount} staff = ${total} total`
-    : `${items.length} item${items.length === 1 ? '' : 's'} · ${recipes.length} recipe${recipes.length === 1 ? '' : 's'}`;
+  // Allergy is session-camper-based; hide it in retreats mode.
+  const visibleTabs = retreatsMode ? TABS.filter((t) => t.id !== 'allergy') : TABS;
+
+  function switchMode(m: 'session' | 'retreats') {
+    if (m === mode) return;
+    setMode(m);
+    if (m === 'retreats' && activeTab === 'allergy') setActiveTab('menu');
+  }
+
+  const subtitle = retreatsMode
+    ? 'Retreats — all groups planned as one combined kitchen'
+    : session
+      ? `${session.name} · ${session.camperCount} campers + ${session.staffCount} staff = ${total} total`
+      : `${items.length} item${items.length === 1 ? '' : 's'} · ${recipes.length} recipe${recipes.length === 1 ? '' : 's'}`;
 
   function topAction() {
     if (!canManage) return undefined;
@@ -78,6 +92,8 @@ export function Commissary() {
       return <Button size="sm" onClick={() => openModal({ kind: 'camper' })}>+ Add camper</Button>;
     }
     if (activeTab === 'ordering' || activeTab === 'settings') return undefined;
+    // Menu tab: session mode offers "+ New session"; retreats mode manages menus per retreat inside the builder.
+    if (retreatsMode) return undefined;
     return <Button size="sm" onClick={() => openModal({ kind: 'session' })}>+ New session</Button>;
   }
 
@@ -85,9 +101,9 @@ export function Commissary() {
     <div className="flex flex-col h-full min-h-0">
       <Topbar title="Commissary" subtitle={subtitle} actions={topAction()} />
 
-      <div className="bg-white border-b border-border px-7 flex-shrink-0">
+      <div className="bg-white border-b border-border px-7 flex-shrink-0 flex items-center justify-between">
         <div className="flex">
-          {TABS.map((tab) => (
+          {visibleTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -101,13 +117,27 @@ export function Commissary() {
             </button>
           ))}
         </div>
+        {/* Session ⇄ Retreats scope toggle */}
+        <div className="flex gap-1 bg-cream-dark rounded-btn p-0.5">
+          {(['session', 'retreats'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => switchMode(m)}
+              className={`text-[12px] font-semibold px-3 py-1 rounded-[6px] transition-colors capitalize ${
+                mode === m ? 'bg-white text-forest shadow-sm' : 'text-forest/50 hover:text-forest'
+              }`}
+            >
+              {m === 'session' ? 'Sessions' : 'Retreats'}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col">
         {activeTab === 'inventory' && <InventoryTab />}
-        {activeTab === 'menu' && <MenuTab />}
+        {activeTab === 'menu' && (retreatsMode ? <RetreatMenuBuilder /> : <MenuTab />)}
         {activeTab === 'recipes' && <RecipesTab />}
-        {activeTab === 'allergy' && <AllergyTab />}
+        {activeTab === 'allergy' && !retreatsMode && <AllergyTab />}
         {activeTab === 'ordering' && <OrderingTab />}
         {activeTab === 'settings' && <SettingsTab />}
       </div>
@@ -118,6 +148,9 @@ export function Commissary() {
       {modal?.kind === 'recipe' && <AddEditRecipeModal editId={modal.editId} />}
       {modal?.kind === 'menuEntry' && (
         <MenuEntryModal weekNumber={modal.weekNumber} dayIndex={modal.dayIndex} mealPeriod={modal.mealPeriod} />
+      )}
+      {modal?.kind === 'retreatMenuEntry' && (
+        <RetreatMenuEntryModal retreatId={modal.retreatId} dayDate={modal.dayDate} mealPeriod={modal.mealPeriod} editId={modal.editId} />
       )}
       {modal?.kind === 'session' && <SessionModal editId={modal.editId} />}
       {modal?.kind === 'vendor' && <VendorsModal editId={modal.editId} />}

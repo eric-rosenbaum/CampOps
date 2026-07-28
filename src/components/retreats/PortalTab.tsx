@@ -11,8 +11,8 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 export function PortalTab() {
   const {
-    retreats, selectedRetreat, setActiveRetreat, docsFor, housingFor, mealsFor,
-    requestsFor, updateRetreat, portalUrl, regeneratePortalToken,
+    retreats, selectedRetreat, setActiveRetreat, docsFor, housingFor, paymentsFor,
+    updateRetreat, portalUrl, regeneratePortalToken,
   } = useRetreatStore();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
@@ -37,12 +37,16 @@ export function PortalTab() {
   const url = portalUrl(retreat);
   const docs = docsFor(retreat.id);
   const housing = housingFor(retreat.id);
-  const meals = mealsFor(retreat.id);
-  const requests = requestsFor(retreat.id);
 
   const contractOk = docs.some((d) => d.docType === 'agreement' && ['signed', 'approved'].includes(d.status));
   const coiOk = docs.some((d) => d.docType === 'coi' && ['received', 'signed', 'approved'].includes(d.status));
   const housingLocked = housing.length > 0 && housing.every((h) => h.locked);
+  const housingSubmitted = housing.length > 0;
+  const depositApplies = retreat.depositRequired != null && retreat.depositRequired > 0;
+  // Deposits are recorded as retreat_payments (kind='deposit') in the Payments modal.
+  const depositPaid = paymentsFor(retreat.id).filter((p) => p.kind === 'deposit').reduce((s, p) => s + p.amount, 0);
+  const depositOk = depositApplies && Math.max(retreat.depositReceived ?? 0, depositPaid) >= (retreat.depositRequired ?? 0);
+  const headcountConfirmed = retreat.finalHeadcount != null;
   const feedbackOpen = retreat.feedbackOpens != null && retreat.feedbackOpens <= today();
 
   function copyLink() {
@@ -63,25 +67,35 @@ export function PortalTab() {
     setRegenerating(false);
   }
 
+  // Mirrors the guest checklist so the camp can see the group's progress at a glance.
   const steps: { num: number; name: string; status: string; unlocked: boolean }[] = [
-    { num: 1, name: 'Retreat info', status: 'Visible to group', unlocked: true },
     {
-      num: 2, name: 'Documents',
-      status: contractOk && coiOk ? '✓ Contract signed · COI approved' : contractOk ? 'Contract signed · COI pending' : 'Awaiting documents',
+      num: 1, name: 'Agreement',
+      status: contractOk ? '✓ Signed' : 'Awaiting signature',
       unlocked: contractOk,
     },
     {
+      num: 2, name: 'Deposit',
+      status: !depositApplies ? 'Not required' : depositOk ? '✓ Paid · dates held' : 'Awaiting payment',
+      unlocked: !depositApplies || depositOk,
+    },
+    {
       num: 3, name: 'Housing',
-      status: housingLocked ? '✓ Finalized' : housing.length > 0 ? 'Submitted · not yet locked' : 'Not submitted',
-      unlocked: housing.length > 0,
+      status: housingLocked ? '✓ Finalized' : housingSubmitted ? 'Submitted · not yet locked' : 'Not submitted',
+      unlocked: housingSubmitted,
     },
     {
-      num: 4, name: 'Menu & dining',
-      status: retreat.menuPublished ? `✓ Published${requests.length ? ` · ${requests.length} request${requests.length === 1 ? '' : 's'}` : ''}` : 'Not published',
-      unlocked: retreat.menuPublished && meals.length > 0,
+      num: 4, name: 'Final headcount',
+      status: headcountConfirmed ? `✓ ${retreat.finalHeadcount} confirmed` : 'Not confirmed',
+      unlocked: headcountConfirmed,
     },
     {
-      num: 5, name: 'Feedback',
+      num: 5, name: 'COI',
+      status: coiOk ? '✓ Received' : 'Awaiting upload',
+      unlocked: coiOk,
+    },
+    {
+      num: 6, name: 'Feedback',
       status: feedbackOpen ? '✓ Survey open' : retreat.feedbackOpens ? `Opens ${fmtDateFull(retreat.feedbackOpens)}` : 'Opens at checkout',
       unlocked: feedbackOpen,
     },
@@ -132,7 +146,7 @@ export function PortalTab() {
             )}
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
           {steps.map((s) => (
             <div
               key={s.num}
@@ -152,14 +166,28 @@ export function PortalTab() {
       </div>
       <div className="bg-white rounded-card border border-border overflow-hidden mb-6">
         <SettingRow
+          title="Deposit due date"
+          desc="Shown in the guest portal — paying the deposit holds their dates"
+          right={<span className="font-mono text-[13px] font-semibold text-forest/70">{deadlineLabel(retreat.depositDue)}</span>}
+        />
+        <SettingRow
           title="Housing submission deadline"
-          desc="After this date the group cannot submit housing — ops must contact them directly"
+          desc="After this date the group cannot submit housing — ops must contact them directly (portal defaults to 1 week before arrival)"
           right={<span className="font-mono text-[13px] font-semibold text-forest/70">{deadlineLabel(retreat.housingDeadline)}</span>}
         />
         <SettingRow
-          title="Headcount change cutoff"
-          desc="After this date headcount is locked — no further changes"
+          title="Final headcount cutoff"
+          desc="Portal asks the group to confirm by this date (defaults to 2 weeks before arrival)"
           right={<span className="font-mono text-[13px] font-semibold text-forest/70">{deadlineLabel(retreat.headcountCutoff)}</span>}
+        />
+        <SettingRow
+          title="Final headcount confirmed"
+          desc={headcountConfirmed && retreat.finalHeadcountBy ? `Submitted by ${retreat.finalHeadcountBy} via the portal` : 'The group confirms their final number in the portal'}
+          right={
+            <Badge tone={headcountConfirmed ? 'ok' : 'neutral'}>
+              {headcountConfirmed ? `${retreat.finalHeadcount} guests` : 'Not yet'}
+            </Badge>
+          }
         />
         <SettingRow
           title="Menu visible to group"
@@ -208,13 +236,14 @@ export function PortalTab() {
           <p className="text-[12px] font-semibold text-green-muted-text uppercase tracking-wide mb-2.5">Group can see and interact with</p>
           <ul className="text-[13px] text-green-muted-text leading-[1.9]">
             {[
-              'Retreat information and schedule',
-              'Signed contract (read only)',
-              coiOk ? 'COI status (approved)' : 'COI status',
+              'Guided checklist with countdown & progress',
+              'Sign the retreat agreement',
+              depositApplies ? (depositOk ? 'Deposit status (paid · dates held)' : 'Deposit due — pay to hold dates') : 'Booking overview',
               housingLocked ? 'Finalized housing assignments (read only)' : 'Housing preferences submission',
+              headcountConfirmed ? 'Final headcount (confirmed)' : 'Confirm final headcount',
+              coiOk ? 'COI (received)' : 'Upload certificate of insurance',
+              retreat.changeRequestsEnabled ? 'Submit special requests (spaces, dietary, childcare…)' : 'View submitted requests',
               retreat.menuPublished ? 'Published menu (read only)' : 'Menu (when published)',
-              retreat.changeRequestsEnabled ? 'Submit change requests' : 'View submitted requests',
-              'View status of submitted requests',
               'Payment status and balance due',
             ].map((t) => <li key={t}>✓ {t}</li>)}
           </ul>

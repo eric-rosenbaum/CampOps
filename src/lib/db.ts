@@ -18,7 +18,7 @@ import type {
   CampAsset, AssetCheckout, AssetServiceRecord, AssetMaintenanceTask,
   Building, BuildingRoom, BuildingComponent, BuildingCircuit, BuildingSeasonalTask,
   CommissarySession, CommissaryVendor, InventoryItem, InventoryAdjustment, ItemVendorPack, CatalogProduct,
-  Recipe, RecipeIngredient, RecipeStep, MenuEntry, AdjustmentReason,
+  Recipe, RecipeIngredient, RecipeStep, MenuEntry, RetreatMenuEntry, AdjustmentReason,
   PurchaseOrder, PurchaseOrderLine, ProductionPlan, ProductionTask,
   ProductionIngredient, ProductionPrepTask, Camper, CamperRestriction, CamperSession, RestrictionSummaryRow,
   CommissaryExpense, MenuTemplate, MenuTemplateEntry, DietCount, MealEvent,
@@ -1790,9 +1790,25 @@ export interface CommissaryCatalogData {
   ingredients: RecipeIngredient[];
   steps: RecipeStep[];
 }
+function rowToRetreatMenuEntry(r: Record<string, unknown>): RetreatMenuEntry {
+  return {
+    id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string,
+    dayDate: r.day_date as string, mealPeriod: (r.meal_period as RetreatMenuEntry['mealPeriod']) ?? 'breakfast',
+    recipeId: (r.recipe_id as string) ?? null, itemId: (r.item_id as string) ?? null,
+    itemQtyBase: r.item_qty_base == null ? null : Number(r.item_qty_base),
+    label: (r.label as string) ?? null,
+    allergens: Array.isArray(r.allergens) ? (r.allergens as string[]) : null,
+    alternatives: (r.alternatives as string) ?? null,
+    portionsOverride: r.portions_override == null ? null : Number(r.portions_override),
+    sortOrder: Number(r.sort_order ?? 0),
+    createdAt: r.created_at as string, updatedAt: r.updated_at as string,
+  };
+}
+
 export interface CommissaryMenuData {
   sessions: CommissarySession[];
   menuEntries: MenuEntry[];
+  retreatMenuEntries: RetreatMenuEntry[];
   templates: MenuTemplate[];
   templateEntries: MenuTemplateEntry[];
   dietCounts: DietCount[];
@@ -1835,9 +1851,10 @@ async function loadCatalogData(campId: string): Promise<CommissaryCatalogData> {
 }
 
 async function loadMenuData(campId: string): Promise<CommissaryMenuData> {
-  const [sRes, mRes, tRes, teRes, dcRes, meRes, coRes, subRes] = await Promise.all([
+  const [sRes, mRes, rmRes, tRes, teRes, dcRes, meRes, coRes, subRes] = await Promise.all([
     supabase.from('commissary_sessions').select('*').eq('camp_id', campId).order('start_date', { ascending: true }),
     supabase.from('menu_entries').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
+    supabase.from('retreat_menu_entries').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('menu_templates').select('*').eq('camp_id', campId).order('name', { ascending: true }),
     supabase.from('menu_template_entries').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('commissary_diet_counts').select('*').eq('camp_id', campId),
@@ -1848,6 +1865,7 @@ async function loadMenuData(campId: string): Promise<CommissaryMenuData> {
   return {
     sessions: (sRes.data ?? []).map((r) => rowToSession(r as Record<string, unknown>)),
     menuEntries: (mRes.data ?? []).map((r) => rowToMenuEntry(r as Record<string, unknown>)),
+    retreatMenuEntries: (rmRes.data ?? []).map((r) => rowToRetreatMenuEntry(r as Record<string, unknown>)),
     templates: (tRes.data ?? []).map((r) => rowToTemplate(r as Record<string, unknown>)),
     templateEntries: (teRes.data ?? []).map((r) => rowToTemplateEntry(r as Record<string, unknown>)),
     dietCounts: (dcRes.data ?? []).map((r) => rowToDietCount(r as Record<string, unknown>)),
@@ -2125,6 +2143,28 @@ export async function dbDeleteMenuEntry(id: string) {
   if (error) console.error('dbDeleteMenuEntry error:', error.message);
 }
 
+// Retreat menu entries (commissary retreats mode)
+function retreatMenuEntryRow(m: RetreatMenuEntry) {
+  return {
+    id: m.id, camp_id: _campId, retreat_id: m.retreatId, day_date: m.dayDate, meal_period: m.mealPeriod,
+    recipe_id: m.recipeId, item_id: m.itemId, item_qty_base: m.itemQtyBase, label: m.label,
+    allergens: m.allergens, alternatives: m.alternatives, portions_override: m.portionsOverride,
+    sort_order: m.sortOrder, updated_at: m.updatedAt,
+  };
+}
+export async function dbAddRetreatMenuEntry(m: RetreatMenuEntry) {
+  const { error } = await supabase.from('retreat_menu_entries').insert({ ...retreatMenuEntryRow(m), created_at: m.createdAt });
+  if (error) console.error('dbAddRetreatMenuEntry error:', error.message);
+}
+export async function dbUpdateRetreatMenuEntry(m: RetreatMenuEntry) {
+  const { error } = await supabase.from('retreat_menu_entries').update(retreatMenuEntryRow(m)).eq('id', m.id);
+  if (error) console.error('dbUpdateRetreatMenuEntry error:', error.message);
+}
+export async function dbDeleteRetreatMenuEntry(id: string) {
+  const { error } = await supabase.from('retreat_menu_entries').delete().eq('id', id);
+  if (error) console.error('dbDeleteRetreatMenuEntry error:', error.message);
+}
+
 /** Bulk insert — used by "Copy last week". */
 export async function dbAddMenuEntries(entries: MenuEntry[]) {
   if (!entries.length) return;
@@ -2193,7 +2233,7 @@ export function subscribeToCommissaryCatalog(campId: string, onUpdate: (d: Commi
 export function subscribeToCommissaryMenu(campId: string, onUpdate: (d: CommissaryMenuData) => void, onEventStart?: () => void): () => void {
   return makeCommissaryChannel(
     `commissary-menu-${++commissaryChannelCount}`, campId,
-    ['commissary_sessions', 'menu_entries', 'menu_templates', 'menu_template_entries',
+    ['commissary_sessions', 'menu_entries', 'retreat_menu_entries', 'menu_templates', 'menu_template_entries',
      'commissary_diet_counts', 'commissary_meal_events', 'commissary_menu_courses', 'menu_substitutions'],
     loadMenuData, onUpdate, onEventStart,
   );

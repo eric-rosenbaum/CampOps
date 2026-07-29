@@ -83,17 +83,19 @@ function HomeRouter() {
   return <StaffHome />;
 }
 
-// The root path. On the app subdomain (app.campcommand.app) it's the product front door:
-// signed-in → /home, signed-out → /login. On the marketing host (apex) signed-out visitors
-// get the landing page. (Safe on the current single domain / localhost: falls back to today's
-// behavior — marketing when logged out, /home when logged in.)
+// The root path, resolved by surface:
+//  • App subdomain (app.campcommand.app): product front door — signed-in → /home, else /login.
+//  • Marketing host (campcommand.app / www): ALWAYS the public landing page, regardless of any
+//    (possibly stale) session — marketing is a public surface and must never route into the app,
+//    otherwise a leftover session bounces "/" → /home → (HostGuard) → app → /login.
+//  • Dev / preview (localhost, *.vercel.app): behave like a single domain.
 function LandingOrHome() {
   const { session, isLoading } = useAuthStore();
-  const isAppHost = typeof window !== 'undefined' && window.location.hostname.startsWith('app.');
+  const host = typeof window !== 'undefined' ? window.location.hostname : '';
   if (isLoading) return null;
-  if (session) return <Navigate to="/home" replace />;
-  if (isAppHost) return <Navigate to="/login" replace />;
-  return <LandingPage />;
+  if (host.startsWith('app.')) return <Navigate to={session ? '/home' : '/login'} replace />;
+  if (MARKETING_HOSTS.includes(host)) return <LandingPage />;
+  return session ? <Navigate to="/home" replace /> : <LandingPage />;
 }
 
 function CampDataLoader() {

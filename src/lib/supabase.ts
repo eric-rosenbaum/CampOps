@@ -150,8 +150,13 @@ async function lockNoOp<R>(name: string, _acquireTimeout: number, fn: () => Prom
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: { fetch: fetchWithRetry },
   auth: {
+    // Persist the session in localStorage (per-origin) so returning users to
+    // app.campcommand.app stay logged in. Per-origin storage is also what keeps the
+    // marketing host (campcommand.app) session-free.
+    persistSession: true,
     // Disabled: auto-refresh fires on every visibilitychange and hangs on stale
-    // TCP, blocking everything behind it.  We refresh manually in the heartbeat.
+    // TCP, blocking everything behind it.  We refresh manually in the heartbeat and
+    // once at load (authStore.initialize).
     autoRefreshToken: false,
     lock: lockNoOp,
   },

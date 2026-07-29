@@ -28,7 +28,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: true,
 
   initialize: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    let session = (await supabase.auth.getSession()).data.session;
+    // autoRefreshToken is disabled (stale-TCP safety), so a returning user's stored access
+    // token may be expired. Refresh it once here using the refresh token, otherwise they'd
+    // appear logged out (or hit 401s) until the heartbeat fires. Keeps "remember me" working.
+    if (session?.expires_at && session.expires_at * 1000 - Date.now() < 60_000) {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (!error && data.session) session = data.session;
+      else if (error) session = null; // refresh token dead → truly signed out
+    }
     if (session?.user) {
       const profile = await fetchProfile(session.user.id);
       set({ session, user: session.user, profile, isLoading: false });

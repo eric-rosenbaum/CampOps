@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { TreePine } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
@@ -105,6 +105,12 @@ export function Login() {
                 {loading ? 'Signing in…' : 'Sign in'}
               </button>
             </form>
+
+            <div className="mt-4 text-center">
+              <Link to="/forgot-password" className="text-[12px] text-forest/50 hover:text-forest transition-colors">
+                Forgot your password?
+              </Link>
+            </div>
           </div>
         </div>
       </div>

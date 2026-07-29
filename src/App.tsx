@@ -12,6 +12,8 @@ import { PublicReportForm } from '@/pages/report/PublicReportForm';
 // Auth pages
 import { Login } from '@/pages/auth/Login';
 import { Signup } from '@/pages/auth/Signup';
+import { ForgotPassword } from '@/pages/auth/ForgotPassword';
+import { ResetPassword } from '@/pages/auth/ResetPassword';
 import { CampSetup } from '@/pages/auth/CampSetup';
 import { JoinCamp } from '@/pages/auth/JoinCamp';
 import { AcceptInvite } from '@/pages/auth/AcceptInvite';
@@ -538,6 +540,8 @@ export default function App() {
           {/* Public */}
           <Route path="/" element={<LandingOrHome />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/invite/:token" element={<AcceptInvite />} />
 

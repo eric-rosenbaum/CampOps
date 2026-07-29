@@ -99,6 +99,7 @@ All from the camps list in `/admin`:
 - **Reactivate** — un-suspends.
 - **Plan** — click the plan cell and type/adjust the label (informational; billing is external).
 - **Set seed / Unseed** — designate which camp trials clone from.
+- **Delete** — moves the camp and all its data to the trash. You must **type the camp's exact name** to confirm (no accidents). It's **recoverable for 30 days** from the **"Recently deleted"** list at the bottom of the console (click **Restore**); after 30 days a nightly job permanently deletes it. Members lose access immediately.
 
 ---
 
@@ -139,6 +140,7 @@ insert into platform_admins (user_id) select id from auth.users where email = 'x
 | Get into a customer's account to help | **Open** → do the thing → **Exit to admin** |
 | Pause an account | **Suspend** (reverse with **Reactivate**) |
 | Give a prospect more time | **+30d** |
+| Delete a camp (recoverable 30 days) | **Delete** → type the exact name → confirm; restore from **Recently deleted** |
 | Refresh the demo data | **Open** the seed camp, edit, done |
 
 ---

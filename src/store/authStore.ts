@@ -18,6 +18,8 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (email: string, password: string, fullName: string) => Promise<string | null>;
   signOut: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<string | null>;
+  updatePassword: (password: string) => Promise<string | null>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -74,6 +76,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await supabase.auth.signOut();
     set({ session: null, user: null, profile: null });
     useCampStore.setState({ currentCamp: null, currentMember: null, members: [], camps: [], isLoading: true });
+  },
+
+  requestPasswordReset: async (email) => {
+    // The reset email links back to /reset-password on whatever host sent it (app subdomain
+    // in production). That path is in Supabase's allowed redirect URLs.
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return error?.message ?? null;
+  },
+
+  updatePassword: async (password) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    return error?.message ?? null;
   },
 
   refreshProfile: async () => {

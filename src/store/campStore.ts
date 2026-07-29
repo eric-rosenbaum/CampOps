@@ -65,6 +65,7 @@ export interface Camp {
   plan: string | null;
   trialEndsAt: string | null;
   orgId: string | null;
+  deletedAt: string | null;
 }
 
 // A camps row from the DB → Camp (used by both member-load and admin/impersonation load).
@@ -84,6 +85,7 @@ function rowToCamp(c: Record<string, unknown>): Camp {
     plan: (c.plan as string) ?? null,
     trialEndsAt: (c.trial_ends_at as string) ?? null,
     orgId: (c.org_id as string) ?? null,
+    deletedAt: (c.deleted_at as string) ?? null,
   };
 }
 
@@ -183,7 +185,7 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     const { data, error } = await supabase
       .from('camp_members')
-      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, state, modules, locations, dietary_defaults, account_type, status, plan, trial_ends_at, org_id)')
+      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, state, modules, locations, dietary_defaults, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
       .eq('user_id', user.id)
       .eq('is_active', true);
 
@@ -192,7 +194,8 @@ export const useCampStore = create<CampState>((set, get) => ({
     const camps: Camp[] = [];
     for (const row of data) {
       const c = row.camps as unknown as Record<string, unknown> | null;
-      if (c) camps.push(rowToCamp(c));
+      // Deleted camps (in the 30-day trash) are hidden from members entirely.
+      if (c && !(c.deleted_at)) camps.push(rowToCamp(c));
     }
 
     set({ camps, isLoading: false, isPlatformAdmin });

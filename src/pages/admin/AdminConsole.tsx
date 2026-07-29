@@ -25,10 +25,11 @@ function daysLeft(iso: string | null): number | null {
 }
 
 export function AdminConsole() {
-  const { camps, orgs, loading, load } = useAdminStore();
+  const { camps, deletedCamps, orgs, loading, load } = useAdminStore();
   const openCampAsAdmin = useCampStore((s) => s.openCampAsAdmin);
   const navigate = useNavigate();
   const [modal, setModal] = useState<'customer' | 'trial' | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminCamp | null>(null);
 
   useEffect(() => { load(); }, [load]);
 
@@ -81,20 +82,23 @@ export function AdminConsole() {
                 </tr>
               </thead>
               <tbody>
-                {camps.map((c) => <CampRow key={c.id} c={c} orgs={orgs} onOpen={() => open(c.id)} />)}
+                {camps.map((c) => <CampRow key={c.id} c={c} orgs={orgs} onOpen={() => open(c.id)} onDelete={() => setDeleteTarget(c)} />)}
               </tbody>
             </table>
           </div>
         )}
+
+        {deletedCamps.length > 0 && <DeletedCamps camps={deletedCamps} />}
       </div>
 
       {modal === 'customer' && <ProvisionCustomerModal onClose={() => setModal(null)} />}
       {modal === 'trial' && <SpinUpTrialModal onClose={() => setModal(null)} />}
+      {deleteTarget && <DeleteCampModal camp={deleteTarget} onClose={() => setDeleteTarget(null)} />}
     </div>
   );
 }
 
-function CampRow({ c, orgs, onOpen }: { c: AdminCamp; orgs: { id: string; name: string }[]; onOpen: () => void }) {
+function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: string; name: string }[]; onOpen: () => void; onDelete: () => void }) {
   const { setStatus, extendTrial, convertTrialToCustomer, setPlan, setSeed, setCampOrg } = useAdminStore();
   const [busy, setBusy] = useState(false);
   const dl = daysLeft(c.trialEndsAt);
@@ -134,9 +138,73 @@ function CampRow({ c, orgs, onOpen }: { c: AdminCamp; orgs: { id: string; name: 
               {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
           )}
+          <button onClick={onDelete} disabled={busy} className="inline-flex items-center gap-1 text-[12px] text-red/80 hover:text-red px-2 py-1 rounded-btn hover:bg-red-bg transition-colors" title="Delete camp">
+            <Trash2 className="w-3.5 h-3.5" /> Delete
+          </button>
         </div>
       </td>
     </tr>
+  );
+}
+
+function DeleteCampModal({ camp, onClose }: { camp: AdminCamp; onClose: () => void }) {
+  const { deleteCamp } = useAdminStore();
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const match = typed.trim() === camp.name;
+
+  async function confirm() {
+    if (!match) return;
+    setBusy(true); setErr(null);
+    try { await deleteCamp(camp.id); onClose(); }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Failed'); setBusy(false); }
+  }
+
+  return (
+    <Modal title="Delete camp" onClose={onClose} width="460px">
+      <div className="space-y-4">
+        <div className="bg-red-bg border border-red/20 rounded-card px-4 py-3 text-[13px] text-red-text leading-relaxed">
+          This moves <span className="font-semibold">{camp.name}</span> and all its data to the trash. It’s
+          <span className="font-semibold"> recoverable for 30 days</span>, then permanently deleted. Members lose access immediately.
+        </div>
+        <div>
+          <label className="block text-[12px] font-semibold uppercase tracking-wide text-forest/45 mb-1">
+            Type <span className="text-forest normal-case font-bold">{camp.name}</span> to confirm
+          </label>
+          <input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} className={INPUT} placeholder={camp.name} />
+        </div>
+        {err && <p className="text-[12px] text-red">{err}</p>}
+        <div className="flex gap-2 pt-1">
+          <Button className="flex-1 justify-center !bg-red hover:!bg-red/90" disabled={!match || busy} onClick={confirm}>
+            {busy ? 'Deleting…' : 'Delete camp'}
+          </Button>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function DeletedCamps({ camps }: { camps: AdminCamp[] }) {
+  const { restoreCamp } = useAdminStore();
+  return (
+    <div className="mt-6">
+      <h2 className="text-[12px] font-semibold uppercase tracking-widest text-forest/40 mb-2">Recently deleted (auto-purges after 30 days)</h2>
+      <div className="bg-white rounded-card border border-border divide-y divide-cream-dark">
+        {camps.map((c) => {
+          const purgeDays = c.deletedAt ? Math.max(0, 30 + Math.ceil((new Date(c.deletedAt).getTime() - new Date().getTime()) / 86400000)) : 0;
+          return (
+            <div key={c.id} className="flex items-center gap-3 px-4 py-2.5 text-[13px]">
+              <Trash2 className="w-4 h-4 text-forest/30 flex-shrink-0" />
+              <span className="font-medium text-forest flex-1 truncate">{c.name}</span>
+              <span className="text-[11px] text-forest/45">{purgeDays} day{purgeDays === 1 ? '' : 's'} until permanent deletion</span>
+              <Button size="sm" variant="ghost" onClick={() => restoreCamp(c.id)}>Restore</Button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

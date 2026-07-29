@@ -14,12 +14,14 @@ export interface AdminCamp {
   isSeed: boolean;
   createdAt: string;
   memberCount: number;
+  deletedAt: string | null;
 }
 export interface AdminOrg { id: string; name: string; }
 export interface PlatformAdmin { userId: string; email: string; addedAt: string; }
 
 interface AdminState {
   camps: AdminCamp[];
+  deletedCamps: AdminCamp[];
   orgs: AdminOrg[];
   platformAdmins: PlatformAdmin[];
   loading: boolean;
@@ -27,6 +29,8 @@ interface AdminState {
 
   addPlatformAdmin: (email: string) => Promise<void>;
   removePlatformAdmin: (userId: string) => Promise<void>;
+  deleteCamp: (campId: string) => Promise<void>;
+  restoreCamp: (campId: string) => Promise<void>;
 
   provisionCustomer: (opts: { name: string; plan: string | null; orgId: string | null; buyerEmail: string }) => Promise<{ campId: string; inviteUrl: string }>;
   spinUpTrial: (opts: { name: string; sourceCampId: string; buyerEmail: string; trialDays?: number }) => Promise<{ campId: string; inviteUrl: string }>;
@@ -49,6 +53,7 @@ async function inviteAdmin(campId: string, email: string): Promise<string> {
 
 export const useAdminStore = create<AdminState>((set, get) => ({
   camps: [],
+  deletedCamps: [],
   orgs: [],
   platformAdmins: [],
   loading: true,
@@ -56,7 +61,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   load: async () => {
     set({ loading: true });
     const [campsRes, orgsRes, membersRes, adminsRes] = await Promise.all([
-      supabase.from('camps').select('id, name, slug, account_type, status, plan, trial_ends_at, org_id, is_seed, created_at').order('created_at', { ascending: false }),
+      supabase.from('camps').select('id, name, slug, account_type, status, plan, trial_ends_at, org_id, is_seed, created_at, deleted_at').order('created_at', { ascending: false }),
       supabase.from('organizations').select('id, name').order('name'),
       supabase.from('camp_members').select('camp_id').eq('is_active', true),
       supabase.rpc('list_platform_admins'),
@@ -64,14 +69,19 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     const platformAdmins: PlatformAdmin[] = (adminsRes.data ?? []).map((a: { user_id: string; email: string; added_at: string }) => ({ userId: a.user_id, email: a.email, addedAt: a.added_at }));
     const counts = new Map<string, number>();
     for (const m of membersRes.data ?? []) counts.set(m.camp_id as string, (counts.get(m.camp_id as string) ?? 0) + 1);
-    const camps: AdminCamp[] = (campsRes.data ?? []).map((c) => ({
+    const all: AdminCamp[] = (campsRes.data ?? []).map((c) => ({
       id: c.id, name: c.name, slug: c.slug,
       accountType: (c.account_type as CampAccountType) ?? 'customer',
       status: (c.status as CampStatus) ?? 'active',
       plan: c.plan ?? null, trialEndsAt: c.trial_ends_at ?? null, orgId: c.org_id ?? null,
       isSeed: !!c.is_seed, createdAt: c.created_at, memberCount: counts.get(c.id) ?? 0,
+      deletedAt: c.deleted_at ?? null,
     }));
-    set({ camps, orgs: (orgsRes.data ?? []) as AdminOrg[], platformAdmins, loading: false });
+    set({
+      camps: all.filter((c) => !c.deletedAt),
+      deletedCamps: all.filter((c) => c.deletedAt),
+      orgs: (orgsRes.data ?? []) as AdminOrg[], platformAdmins, loading: false,
+    });
   },
 
   addPlatformAdmin: async (email) => {
@@ -121,6 +131,8 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     await get().load();
   },
   setSeed: async (campId, isSeed) => { await supabase.from('camps').update({ is_seed: isSeed }).eq('id', campId); await get().load(); },
+  deleteCamp: async (campId) => { const { error } = await supabase.rpc('soft_delete_camp', { p_camp_id: campId }); if (error) throw new Error(error.message); await get().load(); },
+  restoreCamp: async (campId) => { const { error } = await supabase.rpc('restore_camp', { p_camp_id: campId }); if (error) throw new Error(error.message); await get().load(); },
   createOrg: async (name) => { await supabase.from('organizations').insert({ name }); await get().load(); },
   setCampOrg: async (campId, orgId) => { await supabase.from('camps').update({ org_id: orgId }).eq('id', campId); await get().load(); },
 }));

@@ -1,11 +1,20 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { TreePine, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
 export function Signup() {
   const signUp = useAuthStore((s) => s.signUp);
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  // Account creation is invite-only: allowed only when arriving from an invitation
+  // (/invite/:token → /signup?invite=…), never as a public self-serve signup.
+  const inviteToken = params.get('invite') || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('pendingInviteToken') : null);
+  useEffect(() => {
+    const q = params.get('invite');
+    if (q) sessionStorage.setItem('pendingInviteToken', q);
+  }, [params]);
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,7 +49,32 @@ export function Signup() {
       return;
     }
 
-    navigate('/setup', { replace: true });
+    // No invite context shouldn't reach here (gated below), but never drop into self-serve setup.
+    navigate('/no-access', { replace: true });
+  }
+
+  // Invite-only gate: without an invitation, there's nothing to sign up for.
+  if (!inviteToken) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-stone-50 p-6">
+        <div className="w-full max-w-sm text-center">
+          <div className="flex items-center gap-2 mb-8 justify-center">
+            <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-cream" /></div>
+            <span className="text-lg font-semibold text-forest">CampCommand</span>
+          </div>
+          <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-8">
+            <h1 className="text-[18px] font-semibold text-forest mb-2">Accounts are by invitation</h1>
+            <p className="text-[13px] text-forest/60 leading-relaxed mb-5">
+              CampCommand is set up for your camp by our team. Book a demo to get started, and we’ll create your account.
+            </p>
+            <a href="https://www.campcommand.app" className="inline-flex items-center justify-center w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors mb-3">
+              Book a demo
+            </a>
+            <Link to="/login" className="text-[13px] font-medium text-forest hover:underline">Already have an account? Sign in</Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

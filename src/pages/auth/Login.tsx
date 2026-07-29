@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { TreePine } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
@@ -106,13 +106,6 @@ export function Login() {
               </button>
             </form>
           </div>
-
-          <p className="text-center text-[12px] text-forest/50 mt-5">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-forest font-medium hover:underline">
-              Sign up
-            </Link>
-          </p>
         </div>
       </div>
     </div>

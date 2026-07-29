@@ -528,12 +528,12 @@ export default function App() {
 
           {/* Authenticated — no camp required */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/setup" element={<CampSetup />} />
             <Route path="/no-access" element={<NoCampAccess />} />
 
-            {/* Founder super-admin console */}
+            {/* Founder super-admin only: the admin console + direct camp setup */}
             <Route element={<PlatformAdminRoute />}>
               <Route path="/admin" element={<AdminConsole />} />
+              <Route path="/setup" element={<CampSetup />} />
             </Route>
 
             {/* Authenticated + camp required, full-screen */}

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TreePine, Plus, FlaskConical, LogIn, Copy, Check, Building2 } from 'lucide-react';
+import { TreePine, Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useAdminStore, type AdminCamp } from '@/store/adminStore';
 import { useCampStore } from '@/store/campStore';
+import { useAuthStore } from '@/store/authStore';
 
 const TYPE_STYLE: Record<string, string> = {
   customer: 'bg-green-muted-bg text-green-muted-text',
@@ -61,6 +62,7 @@ export function AdminConsole() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-6">
+        <PlatformAdmins />
         <OrgQuickAdd />
         {loading ? (
           <p className="text-[13px] text-forest/50 py-10 text-center">Loading…</p>
@@ -135,6 +137,53 @@ function CampRow({ c, orgs, onOpen }: { c: AdminCamp; orgs: { id: string; name: 
         </div>
       </td>
     </tr>
+  );
+}
+
+function PlatformAdmins() {
+  const { platformAdmins, addPlatformAdmin, removePlatformAdmin } = useAdminStore();
+  const myId = useAuthStore((s) => s.user?.id);
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function add() {
+    if (!email.trim()) return;
+    setBusy(true); setErr(null);
+    try { await addPlatformAdmin(email); setEmail(''); }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Failed'); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className="bg-white rounded-card border border-border p-4 mb-4">
+      <div className="flex items-center gap-2 mb-2.5">
+        <ShieldCheck className="w-4 h-4 text-forest" />
+        <h2 className="text-[13px] font-semibold text-forest">Platform admins (founders / super-admins)</h2>
+      </div>
+      <p className="text-[11px] text-forest/50 mb-3">Full access to this console and every camp. Add someone only after they've signed in once.</p>
+      <div className="flex flex-wrap gap-2 mb-3">
+        {platformAdmins.map((a) => (
+          <span key={a.userId} className="inline-flex items-center gap-1.5 bg-cream border border-border rounded-full pl-3 pr-1.5 py-1 text-[12px] text-forest">
+            {a.email}{a.userId === myId && <span className="text-[10px] font-semibold text-sage uppercase">you</span>}
+            {a.userId !== myId && (
+              <button onClick={() => removePlatformAdmin(a.userId)} className="text-forest/30 hover:text-red p-0.5" title={`Remove ${a.email}`}>
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </span>
+        ))}
+        {platformAdmins.length === 0 && <span className="text-[12px] text-forest/40">No platform admins loaded.</span>}
+      </div>
+      <div className="flex items-center gap-2">
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="founder@campcommand.app"
+          className="flex-1 max-w-xs text-[13px] bg-white border border-border rounded-btn px-3 py-1.5 focus:outline-none focus:border-sage" />
+        <Button size="sm" variant="ghost" disabled={busy || !email.trim()} onClick={add}>
+          <Plus className="w-3.5 h-3.5" /> Add super-admin
+        </Button>
+      </div>
+      {err && <p className="text-[12px] text-red mt-2">{err}</p>}
+    </div>
   );
 }
 

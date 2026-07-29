@@ -16,12 +16,17 @@ export interface AdminCamp {
   memberCount: number;
 }
 export interface AdminOrg { id: string; name: string; }
+export interface PlatformAdmin { userId: string; email: string; addedAt: string; }
 
 interface AdminState {
   camps: AdminCamp[];
   orgs: AdminOrg[];
+  platformAdmins: PlatformAdmin[];
   loading: boolean;
   load: () => Promise<void>;
+
+  addPlatformAdmin: (email: string) => Promise<void>;
+  removePlatformAdmin: (userId: string) => Promise<void>;
 
   provisionCustomer: (opts: { name: string; plan: string | null; orgId: string | null; buyerEmail: string }) => Promise<{ campId: string; inviteUrl: string }>;
   spinUpTrial: (opts: { name: string; sourceCampId: string; buyerEmail: string; trialDays?: number }) => Promise<{ campId: string; inviteUrl: string }>;
@@ -45,15 +50,18 @@ async function inviteAdmin(campId: string, email: string): Promise<string> {
 export const useAdminStore = create<AdminState>((set, get) => ({
   camps: [],
   orgs: [],
+  platformAdmins: [],
   loading: true,
 
   load: async () => {
     set({ loading: true });
-    const [campsRes, orgsRes, membersRes] = await Promise.all([
+    const [campsRes, orgsRes, membersRes, adminsRes] = await Promise.all([
       supabase.from('camps').select('id, name, slug, account_type, status, plan, trial_ends_at, org_id, is_seed, created_at').order('created_at', { ascending: false }),
       supabase.from('organizations').select('id, name').order('name'),
       supabase.from('camp_members').select('camp_id').eq('is_active', true),
+      supabase.rpc('list_platform_admins'),
     ]);
+    const platformAdmins: PlatformAdmin[] = (adminsRes.data ?? []).map((a: { user_id: string; email: string; added_at: string }) => ({ userId: a.user_id, email: a.email, addedAt: a.added_at }));
     const counts = new Map<string, number>();
     for (const m of membersRes.data ?? []) counts.set(m.camp_id as string, (counts.get(m.camp_id as string) ?? 0) + 1);
     const camps: AdminCamp[] = (campsRes.data ?? []).map((c) => ({
@@ -63,7 +71,18 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       plan: c.plan ?? null, trialEndsAt: c.trial_ends_at ?? null, orgId: c.org_id ?? null,
       isSeed: !!c.is_seed, createdAt: c.created_at, memberCount: counts.get(c.id) ?? 0,
     }));
-    set({ camps, orgs: (orgsRes.data ?? []) as AdminOrg[], loading: false });
+    set({ camps, orgs: (orgsRes.data ?? []) as AdminOrg[], platformAdmins, loading: false });
+  },
+
+  addPlatformAdmin: async (email) => {
+    const { error } = await supabase.rpc('add_platform_admin', { p_email: email.trim() });
+    if (error) throw new Error(error.message);
+    await get().load();
+  },
+  removePlatformAdmin: async (userId) => {
+    const { error } = await supabase.rpc('remove_platform_admin', { p_user_id: userId });
+    if (error) throw new Error(error.message);
+    await get().load();
   },
 
   provisionCustomer: async ({ name, plan, orgId, buyerEmail }) => {

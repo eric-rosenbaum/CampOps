@@ -22,7 +22,7 @@ Companion docs: architecture + decisions live in `production-restructure-spec.md
 ## 1. Getting into the admin console
 
 1. Go to **`https://app.campcommand.app`** and sign in with your founder account.
-2. If your account isn't a member of any camp, you land on **`/admin`** automatically. If you *are* in a camp, you land in the app — click **"Admin console"** in the left sidebar (bottom section, founders only), or go to `app.campcommand.app/admin`.
+2. You land on **`/admin`** automatically — founders always start in the console, never inside a camp. To work inside a camp, click **Open** on its row; return via **Exit to admin** in the banner. (You can also go straight to `app.campcommand.app/admin` any time.)
 
 The admin console lists every camp with its type, status, plan, member count, and trial countdown, plus the action buttons described below.
 

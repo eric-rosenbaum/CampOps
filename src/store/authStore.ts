@@ -88,8 +88,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   updatePassword: async (password) => {
-    const { error } = await supabase.auth.updateUser({ password });
-    return error?.message ?? null;
+    // Race against a timeout: this app runs Supabase auth with a no-op lock + no auto-refresh,
+    // and updateUser can occasionally never settle. Always resolve so the UI can't hang.
+    try {
+      const res = await Promise.race([
+        supabase.auth.updateUser({ password }),
+        new Promise<{ error: { message: string } }>((resolve) =>
+          setTimeout(() => resolve({ error: { message: 'The request timed out — please try again.' } }), 15000)),
+      ]);
+      return (res as { error: { message: string } | null }).error?.message ?? null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not update your password.';
+    }
   },
 
   refreshProfile: async () => {

@@ -200,7 +200,9 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     set({ camps, isLoading: false, isPlatformAdmin });
 
-    if (camps.length > 0) {
+    // Platform admins operate from the admin console and enter camps explicitly via "Open".
+    // Don't auto-drop them into a camp (they may hold a leftover membership on a seed/demo camp).
+    if (camps.length > 0 && !isPlatformAdmin) {
       const saved = localStorage.getItem('campcommand_selected_camp_id');
       const toSelect = (saved && camps.some(c => c.id === saved)) ? saved : camps[0].id;
       await get().selectCamp(toSelect);
@@ -228,12 +230,15 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     if (!campRow) return;
 
-    // A platform admin can open a camp they're not a member of — synthesize an admin member
-    // so the app treats them as a camp admin. This is the "impersonation" access model.
-    const impersonating = !memberRow;
-    if (!memberRow && !get().isPlatformAdmin) return;
+    // A platform admin always operates as a full camp admin, regardless of whether they hold a
+    // real membership (they may be a leftover staff member of a seed/demo camp with a limited
+    // staff group — that must not downgrade them). Synthesize an admin member and treat it as
+    // impersonation so the "Viewing … as CampCommand admin" banner shows.
+    const isPA = get().isPlatformAdmin;
+    if (!memberRow && !isPA) return;
+    const impersonating = isPA;
 
-    const member: CampMember = memberRow ? {
+    const member: CampMember = (memberRow && !isPA) ? {
       id: memberRow.id,
       campId: memberRow.camp_id,
       userId: memberRow.user_id,

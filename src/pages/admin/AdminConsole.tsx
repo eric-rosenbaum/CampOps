@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TreePine, Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2 } from 'lucide-react';
+import { TreePine, Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2, LogOut } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useAdminStore, type AdminCamp } from '@/store/adminStore';
@@ -30,8 +30,15 @@ export function AdminConsole() {
   const navigate = useNavigate();
   const [modal, setModal] = useState<'customer' | 'trial' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminCamp | null>(null);
+  const signOut = useAuthStore((s) => s.signOut);
 
   useEffect(() => { load(); }, [load]);
+
+  async function handleSignOut() {
+    await signOut();
+    // Sign-out always returns to the marketing site (by design).
+    window.location.href = window.location.hostname.startsWith('app.') ? 'https://campcommand.app' : '/';
+  }
 
   async function open(campId: string) {
     await openCampAsAdmin(campId);
@@ -58,6 +65,12 @@ export function AdminConsole() {
             <Button size="sm" onClick={() => setModal('customer')}>
               <Plus className="w-3.5 h-3.5" /> Provision customer
             </Button>
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-1.5 text-[12px] text-white/55 hover:text-white/90 transition-colors ml-1 pl-3 border-l border-white/15"
+            >
+              <LogOut className="w-3.5 h-3.5" /> Sign out
+            </button>
           </div>
         </div>
       </div>

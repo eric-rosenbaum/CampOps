@@ -38,11 +38,16 @@ export function ResetPassword() {
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (password !== confirm) { setError('Passwords do not match.'); return; }
     setSaving(true);
-    const err = await updatePassword(password);
-    setSaving(false);
-    if (err) { setError(err); return; }
-    setPhase('done');
-    setTimeout(() => navigate('/', { replace: true }), 1400);
+    try {
+      const err = await updatePassword(password);
+      if (err) { setError(err); return; }
+      setPhase('done');
+      setTimeout(() => navigate('/', { replace: true }), 1400);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not update your password. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

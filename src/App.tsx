@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { ProtectedRoute, CampRoute, PlatformAdminRoute, NoCampAccess } from '@/components/auth/ProtectedRoute';
 import { AdminConsole } from '@/pages/admin/AdminConsole';
@@ -489,6 +489,28 @@ function CampDataLoader() {
   return null;
 }
 
+// Keep the marketing host (campcommand.app / www) to public pages only; the product — login
+// and every authenticated route — lives on app.campcommand.app. Any app route requested on the
+// marketing host is redirected to the app subdomain. Non-marketing hosts (app.*, localhost,
+// Vercel previews) are unrestricted so dev/preview keep working.
+const MARKETING_HOSTS = ['campcommand.app', 'www.campcommand.app'];
+const APP_HOST = 'app.campcommand.app';
+function isPublicMarketingPath(p: string): boolean {
+  return p === '/' || p === '/privacy' || p === '/security' || p === '/dpa'
+    || p.startsWith('/portal/') || p.startsWith('/report/');
+}
+function HostGuard() {
+  const loc = useLocation();
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!MARKETING_HOSTS.includes(window.location.hostname)) return;
+    if (!isPublicMarketingPath(loc.pathname)) {
+      window.location.href = `https://${APP_HOST}${loc.pathname}${loc.search}`;
+    }
+  }, [loc.pathname, loc.search]);
+  return null;
+}
+
 function AppBootstrap({ children }: { children: React.ReactNode }) {
   const initialize = useAuthStore((s) => s.initialize);
   const loadMyCamps = useCampStore((s) => s.loadMyCamps);
@@ -509,6 +531,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AppBootstrap>
+        <HostGuard />
         <Routes>
           {/* Public */}
           <Route path="/" element={<LandingOrHome />} />

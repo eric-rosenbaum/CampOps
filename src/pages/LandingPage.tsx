@@ -511,9 +511,18 @@ function Footer({ onSignIn, onBookDemo }: { onSignIn: () => void; onBookDemo: ()
 
 // ─── Page ───────────────────────────────────────────────────────────────────────
 
+const MARKETING_HOSTS = ['campcommand.app', 'www.campcommand.app'];
+
 export function LandingPage() {
   const navigate = useNavigate();
-  const onSignIn = () => navigate('/login');
+  // From the marketing host, sign-in jumps to the product subdomain; in dev/preview stay in-app.
+  const onSignIn = () => {
+    if (typeof window !== 'undefined' && MARKETING_HOSTS.includes(window.location.hostname)) {
+      window.location.href = 'https://app.campcommand.app/login';
+    } else {
+      navigate('/login');
+    }
+  };
   // Open the booking page (Google Appointment Schedule) in a new tab — Google refuses to be
   // embedded in an iframe. Falls back to email if no scheduling URL is configured.
   const onBookDemo = () => {

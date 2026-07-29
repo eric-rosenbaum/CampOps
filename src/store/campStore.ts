@@ -46,6 +46,9 @@ export interface CampMember {
   isActive: boolean;
 }
 
+export type CampAccountType = 'customer' | 'trial' | 'demo' | 'internal';
+export type CampStatus = 'active' | 'suspended' | 'trial_expired';
+
 export interface Camp {
   id: string;
   name: string;
@@ -57,6 +60,31 @@ export interface Camp {
   locations: string[];
   /** Camp-wide dietary facts, e.g. { kosher: true }. Used by Commissary. */
   dietaryDefaults: Record<string, boolean>;
+  accountType: CampAccountType;
+  status: CampStatus;
+  plan: string | null;
+  trialEndsAt: string | null;
+  orgId: string | null;
+}
+
+// A camps row from the DB → Camp (used by both member-load and admin/impersonation load).
+function rowToCamp(c: Record<string, unknown>): Camp {
+  return {
+    id: c.id as string,
+    name: c.name as string,
+    slug: c.slug as string,
+    logoUrl: (c.logo_url as string) ?? null,
+    campType: (c.camp_type as string) ?? null,
+    state: (c.state as string) ?? null,
+    modules: (c.modules as Record<string, boolean>) ?? {},
+    locations: (c.locations as string[]) ?? [],
+    dietaryDefaults: (c.dietary_defaults as Record<string, boolean>) ?? {},
+    accountType: (c.account_type as CampAccountType) ?? 'customer',
+    status: (c.status as CampStatus) ?? 'active',
+    plan: (c.plan as string) ?? null,
+    trialEndsAt: (c.trial_ends_at as string) ?? null,
+    orgId: (c.org_id as string) ?? null,
+  };
 }
 
 export interface MemberWithProfile extends CampMember {
@@ -98,9 +126,16 @@ interface CampState {
   staffGroups: StaffGroup[];
   camps: Camp[];
   isLoading: boolean;
+  /** Founder super-admin (from platform_admins). Grants the admin console + all-camp access. */
+  isPlatformAdmin: boolean;
+  /** True when a platform admin is viewing a camp they are not a member of. */
+  impersonating: boolean;
 
   loadMyCamps: () => Promise<void>;
   selectCamp: (campId: string) => Promise<void>;
+  /** Platform-admin: open any camp (not a member) and act within it. */
+  openCampAsAdmin: (campId: string) => Promise<void>;
+  exitImpersonation: () => void;
   createCamp: (data: {
     name: string; slug: string; campType: string; state: string; modules: Record<string, boolean>;
   }) => Promise<string>;
@@ -134,47 +169,39 @@ export const useCampStore = create<CampState>((set, get) => ({
   staffGroups: [],
   camps: [],
   isLoading: true,
+  isPlatformAdmin: false,
+  impersonating: false,
 
   loadMyCamps: async () => {
-    console.log('[campStore] loadMyCamps: start');
     set({ isLoading: true });
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { set({ isLoading: false }); return; }
+
+    // Founder super-admin?
+    const { data: pa } = await supabase.rpc('is_platform_admin');
+    const isPlatformAdmin = pa === true;
+
     const { data, error } = await supabase
       .from('camp_members')
-      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, state, modules, locations)')
+      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, state, modules, locations, dietary_defaults, account_type, status, plan, trial_ends_at, org_id)')
       .eq('user_id', user.id)
       .eq('is_active', true);
 
-    console.log('[campStore] loadMyCamps: query done', { rowCount: data?.length, error });
-    if (error || !data) { set({ isLoading: false }); return; }
+    if (error || !data) { set({ isLoading: false, isPlatformAdmin }); return; }
 
     const camps: Camp[] = [];
     for (const row of data) {
       const c = row.camps as unknown as Record<string, unknown> | null;
-      if (c) {
-        camps.push({
-          id: c.id as string,
-          name: c.name as string,
-          slug: c.slug as string,
-          logoUrl: (c.logo_url as string) ?? null,
-          campType: (c.camp_type as string) ?? null,
-          state: (c.state as string) ?? null,
-          modules: (c.modules as Record<string, boolean>) ?? {},
-          locations: (c.locations as string[]) ?? [],
-          dietaryDefaults: (c.dietary_defaults as Record<string, boolean>) ?? {},
-        });
-      }
+      if (c) camps.push(rowToCamp(c));
     }
 
-    set({ camps, isLoading: false });
+    set({ camps, isLoading: false, isPlatformAdmin });
 
     if (camps.length > 0) {
       const saved = localStorage.getItem('campcommand_selected_camp_id');
       const toSelect = (saved && camps.some(c => c.id === saved)) ? saved : camps[0].id;
       await get().selectCamp(toSelect);
     }
-    console.log('[campStore] loadMyCamps: done');
   },
 
   selectCamp: async (campId) => {
@@ -196,12 +223,14 @@ export const useCampStore = create<CampState>((set, get) => ({
       .eq('id', campId)
       .single();
 
-    if (!memberRow || !campRow) {
-      console.warn('[campStore] selectCamp: early return — memberRow or campRow missing');
-      return;
-    }
+    if (!campRow) return;
 
-    const member: CampMember = {
+    // A platform admin can open a camp they're not a member of — synthesize an admin member
+    // so the app treats them as a camp admin. This is the "impersonation" access model.
+    const impersonating = !memberRow;
+    if (!memberRow && !get().isPlatformAdmin) return;
+
+    const member: CampMember = memberRow ? {
       id: memberRow.id,
       campId: memberRow.camp_id,
       userId: memberRow.user_id,
@@ -210,19 +239,12 @@ export const useCampStore = create<CampState>((set, get) => ({
       staffGroupId: memberRow.staff_group_id ?? null,
       displayName: memberRow.display_name,
       isActive: memberRow.is_active,
+    } : {
+      id: 'platform-admin', campId, userId: user.id, role: 'admin',
+      department: null, staffGroupId: null, displayName: 'CampCommand admin', isActive: true,
     };
 
-    const camp: Camp = {
-      id: campRow.id,
-      name: campRow.name,
-      slug: campRow.slug,
-      logoUrl: campRow.logo_url ?? null,
-      campType: campRow.camp_type ?? null,
-      state: campRow.state ?? null,
-      modules: campRow.modules ?? {},
-      locations: (campRow.locations as string[]) ?? [],
-      dietaryDefaults: (campRow.dietary_defaults as Record<string, boolean>) ?? {},
-    };
+    const camp: Camp = rowToCamp(campRow as Record<string, unknown>);
 
     localStorage.setItem('campcommand_selected_camp_id', campId);
     setCampId(campId);
@@ -236,8 +258,16 @@ export const useCampStore = create<CampState>((set, get) => ({
       ? staffGroups.find((g) => g.id === member.staffGroupId) ?? null
       : null;
 
-    set({ currentCamp: camp, currentMember: member, members, staffGroups, currentStaffGroup });
-    console.log('[campStore] selectCamp: done');
+    set({ currentCamp: camp, currentMember: member, members, staffGroups, currentStaffGroup, impersonating });
+  },
+
+  openCampAsAdmin: async (campId) => {
+    await get().selectCamp(campId);
+  },
+  exitImpersonation: () => {
+    localStorage.removeItem('campcommand_selected_camp_id');
+    setCampId('');
+    set({ currentCamp: null, currentMember: null, currentStaffGroup: null, members: [], staffGroups: [], impersonating: false });
   },
 
   createCamp: async ({ name, slug, campType, state, modules }) => {

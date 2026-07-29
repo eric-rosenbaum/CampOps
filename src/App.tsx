@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
-import { ProtectedRoute, CampRoute } from '@/components/auth/ProtectedRoute';
+import { ProtectedRoute, CampRoute, PlatformAdminRoute, NoCampAccess } from '@/components/auth/ProtectedRoute';
+import { AdminConsole } from '@/pages/admin/AdminConsole';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
 
@@ -82,12 +83,16 @@ function HomeRouter() {
   return <StaffHome />;
 }
 
-// The root path: logged-out visitors get the marketing landing page; signed-in
-// users are sent into the app dashboard at /home.
+// The root path. On the app subdomain (app.campcommand.app) it's the product front door:
+// signed-in → /home, signed-out → /login. On the marketing host (apex) signed-out visitors
+// get the landing page. (Safe on the current single domain / localhost: falls back to today's
+// behavior — marketing when logged out, /home when logged in.)
 function LandingOrHome() {
   const { session, isLoading } = useAuthStore();
+  const isAppHost = typeof window !== 'undefined' && window.location.hostname.startsWith('app.');
   if (isLoading) return null;
   if (session) return <Navigate to="/home" replace />;
+  if (isAppHost) return <Navigate to="/login" replace />;
   return <LandingPage />;
 }
 
@@ -524,6 +529,12 @@ export default function App() {
           {/* Authenticated — no camp required */}
           <Route element={<ProtectedRoute />}>
             <Route path="/setup" element={<CampSetup />} />
+            <Route path="/no-access" element={<NoCampAccess />} />
+
+            {/* Founder super-admin console */}
+            <Route element={<PlatformAdminRoute />}>
+              <Route path="/admin" element={<AdminConsole />} />
+            </Route>
 
             {/* Authenticated + camp required, full-screen */}
             <Route element={<CampRoute />}>

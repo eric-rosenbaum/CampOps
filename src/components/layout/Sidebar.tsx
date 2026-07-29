@@ -45,7 +45,7 @@ const settingsItems: NavItem[] = [
 
 export function Sidebar() {
   const { currentUser, role, roleLabel, canAccessModule } = useAuth();
-  const { currentCamp } = useCampStore();
+  const { currentCamp, isPlatformAdmin } = useCampStore();
   const signOut = useAuthStore((s) => s.signOut);
 
   async function handleSignOut() {
@@ -131,6 +131,23 @@ export function Sidebar() {
                 {item.label}
               </NavLink>
             ))}
+          </div>
+        )}
+
+        {isPlatformAdmin && (
+          <div className="mb-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 px-2 mb-1.5">CampCommand</p>
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 px-2 py-2 rounded-btn text-[13px] font-medium transition-colors mb-0.5 ${
+                  isActive ? 'border-l-2 border-sage bg-sage/[0.14] text-sage-light pl-[6px]'
+                  : 'text-white/60 hover:text-white/90 hover:bg-white/5 border-l-2 border-transparent'}`
+              }
+            >
+              <ShieldCheck className="w-4 h-4 flex-shrink-0" />
+              Admin console
+            </NavLink>
           </div>
         )}
       </div>

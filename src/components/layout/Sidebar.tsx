@@ -50,9 +50,10 @@ export function Sidebar() {
 
   async function handleSignOut() {
     await signOut();
-    // Hard redirect to the landing page — clears in-memory state and avoids any
-    // ProtectedRoute race that would otherwise bounce to /login.
-    window.location.href = '/';
+    // Return to the public marketing site. On the app subdomain, "/" is the login page, so
+    // send sign-outs to the marketing host; elsewhere (dev/preview) "/" is the landing page.
+    const onAppHost = window.location.hostname.startsWith('app.');
+    window.location.href = onAppHost ? 'https://campcommand.app' : '/';
   }
 
   const visibleFacilities = facilityItems.filter(

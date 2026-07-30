@@ -18,6 +18,15 @@ export interface AdminCamp {
 }
 export interface AdminOrg { id: string; name: string; }
 export interface PlatformAdmin { userId: string; email: string; addedAt: string; }
+export interface CampAccount {
+  userId: string | null;
+  email: string;
+  fullName: string | null;
+  role: string;
+  staffGroup: string | null;
+  status: 'active' | 'inactive' | 'invited';
+  since: string;
+}
 
 interface AdminState {
   camps: AdminCamp[];
@@ -27,6 +36,7 @@ interface AdminState {
   loading: boolean;
   load: () => Promise<void>;
 
+  listCampAccounts: (campId: string) => Promise<CampAccount[]>;
   addPlatformAdmin: (email: string) => Promise<void>;
   removePlatformAdmin: (userId: string) => Promise<void>;
   deleteCamp: (campId: string) => Promise<void>;
@@ -82,6 +92,15 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       deletedCamps: all.filter((c) => c.deletedAt),
       orgs: (orgsRes.data ?? []) as AdminOrg[], platformAdmins, loading: false,
     });
+  },
+
+  listCampAccounts: async (campId) => {
+    const { data, error } = await supabase.rpc('admin_list_camp_accounts', { p_camp_id: campId });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((a: { user_id: string | null; email: string; full_name: string | null; role: string; staff_group: string | null; status: string; since: string }) => ({
+      userId: a.user_id, email: a.email, fullName: a.full_name, role: a.role,
+      staffGroup: a.staff_group, status: a.status as CampAccount['status'], since: a.since,
+    }));
   },
 
   addPlatformAdmin: async (email) => {

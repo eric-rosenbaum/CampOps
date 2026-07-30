@@ -198,15 +198,26 @@ export const useCampStore = create<CampState>((set, get) => ({
       if (c && !(c.deleted_at)) camps.push(rowToCamp(c));
     }
 
-    set({ camps, isLoading: false, isPlatformAdmin });
+    set({ camps, isPlatformAdmin });
 
     // Platform admins operate from the admin console and enter camps explicitly via "Open".
-    // Don't auto-drop them into a camp (they may hold a leftover membership on a seed/demo camp).
-    if (camps.length > 0 && !isPlatformAdmin) {
+    // We DON'T auto-drop them into a camp on a fresh login (they may hold a leftover membership
+    // on a seed/demo camp). But if they're mid-session viewing a camp and just refreshed the page,
+    // restore that camp — the target is kept in sessionStorage (per-tab, cleared on Exit to admin),
+    // so a refresh stays put while a brand-new login still lands on /admin.
+    if (isPlatformAdmin) {
+      const viewing = sessionStorage.getItem('campcommand_admin_camp_id');
+      if (viewing) await get().selectCamp(viewing);
+      set({ isLoading: false });
+      return;
+    }
+
+    if (camps.length > 0) {
       const saved = localStorage.getItem('campcommand_selected_camp_id');
       const toSelect = (saved && camps.some(c => c.id === saved)) ? saved : camps[0].id;
       await get().selectCamp(toSelect);
     }
+    set({ isLoading: false });
   },
 
   selectCamp: async (campId) => {
@@ -270,10 +281,13 @@ export const useCampStore = create<CampState>((set, get) => ({
   },
 
   openCampAsAdmin: async (campId) => {
+    // Remember the camp for this tab so a page refresh keeps the admin here (not back to /admin).
+    sessionStorage.setItem('campcommand_admin_camp_id', campId);
     await get().selectCamp(campId);
   },
   exitImpersonation: () => {
     localStorage.removeItem('campcommand_selected_camp_id');
+    sessionStorage.removeItem('campcommand_admin_camp_id');
     setCampId('');
     set({ currentCamp: null, currentMember: null, currentStaffGroup: null, members: [], staffGroups: [], impersonating: false });
   },

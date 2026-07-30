@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TreePine, Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2, LogOut } from 'lucide-react';
+import { TreePine, Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2, LogOut, Users, ChevronDown, ChevronRight } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
-import { useAdminStore, type AdminCamp } from '@/store/adminStore';
+import { useAdminStore, type AdminCamp, type CampAccount } from '@/store/adminStore';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
 
@@ -112,12 +112,26 @@ export function AdminConsole() {
 }
 
 function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: string; name: string }[]; onOpen: () => void; onDelete: () => void }) {
-  const { setStatus, extendTrial, convertTrialToCustomer, setPlan, setSeed, setCampOrg } = useAdminStore();
+  const { setStatus, extendTrial, convertTrialToCustomer, setPlan, setSeed, setCampOrg, listCampAccounts } = useAdminStore();
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [accounts, setAccounts] = useState<CampAccount[] | null>(null);
+  const [accErr, setAccErr] = useState<string | null>(null);
   const dl = daysLeft(c.trialEndsAt);
   const wrap = (fn: () => Promise<void>) => async () => { setBusy(true); try { await fn(); } finally { setBusy(false); } };
 
+  async function toggleAccounts() {
+    const next = !open;
+    setOpen(next);
+    if (next && accounts === null) {
+      setAccErr(null);
+      try { setAccounts(await listCampAccounts(c.id)); }
+      catch (e) { setAccErr(e instanceof Error ? e.message : 'Failed to load accounts'); }
+    }
+  }
+
   return (
+    <>
     <tr className="border-t border-cream-dark align-top">
       <td className="px-4 py-3">
         <p className="font-semibold text-forest">{c.name}{c.isSeed && <span className="ml-1.5 text-[10px] text-sage font-semibold uppercase">seed</span>}</p>
@@ -129,7 +143,12 @@ function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: stri
         <input defaultValue={c.plan ?? ''} placeholder="—" onBlur={(e) => e.target.value !== (c.plan ?? '') && setPlan(c.id, e.target.value.trim() || null)}
           className="w-24 text-[12px] bg-transparent border border-transparent hover:border-border focus:border-sage rounded px-1 py-0.5 focus:outline-none" />
       </td>
-      <td className="px-3 py-3 text-forest/60">{c.memberCount}</td>
+      <td className="px-3 py-3">
+        <button onClick={toggleAccounts} className="inline-flex items-center gap-1 text-forest/60 hover:text-forest transition-colors" title="View accounts">
+          {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          <Users className="w-3.5 h-3.5" /> {c.memberCount}
+        </button>
+      </td>
       <td className="px-3 py-3 text-forest/60">{c.accountType === 'trial' && dl != null ? (dl >= 0 ? `${dl}d left` : 'expired') : '—'}</td>
       <td className="px-4 py-3">
         <div className="flex flex-wrap gap-1.5 justify-end">
@@ -157,8 +176,58 @@ function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: stri
         </div>
       </td>
     </tr>
+    {open && (
+      <tr className="border-t border-cream-dark bg-cream-dark/20">
+        <td colSpan={7} className="px-4 py-3">
+          <AccountsPanel accounts={accounts} error={accErr} />
+        </td>
+      </tr>
+    )}
+    </>
   );
 }
+
+function AccountsPanel({ accounts, error }: { accounts: CampAccount[] | null; error: string | null }) {
+  if (error) return <p className="text-[12px] text-red py-1">{error}</p>;
+  if (accounts === null) return <p className="text-[12px] text-forest/45 py-1">Loading accounts…</p>;
+  if (accounts.length === 0) return <p className="text-[12px] text-forest/45 py-1">No accounts or pending invites yet.</p>;
+  return (
+    <div className="max-w-2xl">
+      <table className="w-full text-[12px]">
+        <thead>
+          <tr className="text-[10px] font-semibold uppercase tracking-widest text-forest/40 text-left">
+            <th className="py-1 pr-4">Email</th>
+            <th className="py-1 pr-4">Name</th>
+            <th className="py-1 pr-4">Role</th>
+            <th className="py-1 pr-4">Group</th>
+            <th className="py-1">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {accounts.map((a, i) => (
+            <tr key={(a.userId ?? a.email) + i} className="border-t border-cream-dark/60">
+              <td className="py-1.5 pr-4 font-medium text-forest">{a.email}</td>
+              <td className="py-1.5 pr-4 text-forest/60">{a.fullName ?? '—'}</td>
+              <td className="py-1.5 pr-4 text-forest/70 capitalize">{a.role}</td>
+              <td className="py-1.5 pr-4 text-forest/50">{a.staffGroup ?? '—'}</td>
+              <td className="py-1.5">
+                <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${ACCT_STATUS_STYLE[a.status]}`}>
+                  {a.status === 'invited' ? 'invited (pending)' : a.status}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const ACCT_STATUS_STYLE: Record<string, string> = {
+  active: 'bg-green-100 text-green-700',
+  inactive: 'bg-stone-200 text-stone-600',
+  invited: 'bg-amber-100 text-amber-700',
+};
 
 function DeleteCampModal({ camp, onClose }: { camp: AdminCamp; onClose: () => void }) {
   const { deleteCamp } = useAdminStore();

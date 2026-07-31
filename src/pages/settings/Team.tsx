@@ -559,13 +559,14 @@ export function Team() {
         timeout,
       ]);
       const link = `${window.location.origin}/invite/${token}`;
-      setInviteLinkEmail(to);
-      setInviteLink(link);
-      // Send the invite email (same flow as customer provisioning). The link still shows as backup.
+      // Send the invite email (same flow as customer provisioning), THEN reveal the result — so we
+      // don't flash "couldn't send" before the send resolves. The link shows as a backup.
       const { subject, html } = buildInviteEmail(currentCamp?.name ?? 'your camp', link, { owner: false });
       const res = await sendEmail({ to, subject, html, fromName: currentCamp?.name ?? 'CampCommand', fromEmail: 'invites@campcommand.app' });
       setInviteEmailed(res.ok);
       setInviteEmailError(res.ok ? null : res.error);
+      setInviteLinkEmail(to);
+      setInviteLink(link);
       setInviteEmail('');
       setInviteGroupId('');
       setShowInviteForm(false);

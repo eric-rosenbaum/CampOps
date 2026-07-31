@@ -31,18 +31,24 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   return { ok: true, id: (data as { id?: string }).id };
 }
 
-/** Build the customer-invite email (welcome + sign-in link). */
-export function buildInviteEmail(campName: string, url: string): { subject: string; html: string } {
+/**
+ * Build an invite email (welcome + set-password link). `owner` = the customer admin we provisioned
+ * (they run the camp); otherwise it's a team member invited by a camp admin.
+ */
+export function buildInviteEmail(campName: string, url: string, opts?: { owner?: boolean }): { subject: string; html: string } {
+  const owner = opts?.owner ?? true;
   const safeName = campName.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
-  const subject = `Your CampCommand account for ${campName} is ready`;
+  const subject = owner
+    ? `Your CampCommand account for ${campName} is ready`
+    : `You're invited to join ${campName} on CampCommand`;
+  const intro = owner
+    ? `Your CampCommand account for <strong>${safeName}</strong> has been created. Click below to set your password and sign in — you'll be the administrator and can invite your team.`
+    : `You've been invited to join <strong>${safeName}</strong> on CampCommand. Click below to set your password and sign in.`;
   const html = `
   <div style="font-family:-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;color:#1a2e1a">
     <div style="font-size:18px;font-weight:600;color:#2f4f2f;margin-bottom:16px">CampCommand</div>
     <p style="font-size:15px;line-height:1.6;margin:0 0 14px">Hi there,</p>
-    <p style="font-size:15px;line-height:1.6;margin:0 0 14px">
-      Your CampCommand account for <strong>${safeName}</strong> has been created. Click below to set your
-      password and sign in — you'll be the administrator and can invite your team.
-    </p>
+    <p style="font-size:15px;line-height:1.6;margin:0 0 14px">${intro}</p>
     <p style="margin:24px 0">
       <a href="${url}" style="background:#2f4f2f;color:#fdfcf7;text-decoration:none;font-size:15px;font-weight:600;padding:12px 22px;border-radius:8px;display:inline-block">
         Set up your account

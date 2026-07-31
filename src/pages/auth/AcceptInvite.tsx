@@ -1,85 +1,181 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { TreePine } from 'lucide-react';
-import { useCampStore } from '@/store/campStore';
-import { useAuthStore } from '@/store/authStore';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { TreePine, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/authStore';
+import { useCampStore } from '@/store/campStore';
 
+type Info = { email: string; campName: string; role: string };
+type Phase = 'loading' | 'invalid' | 'ready' | 'joining' | 'done';
+
+function reasonText(reason: string): string {
+  if (reason === 'used') return 'This invitation has already been used. If that wasn’t you, ask for a new one.';
+  if (reason === 'expired') return 'This invitation has expired. Ask whoever invited you to send a new link.';
+  return 'This invitation link isn’t valid.';
+}
+function roleLabel(role: string): string {
+  return role === 'admin' ? 'an administrator' : role === 'viewer' ? 'a viewer' : 'a team member';
+}
+
+// Accept an invitation. The email is LOCKED to what the invite was sent to (read from the token):
+// the invitee just sets a password and signs in. Works for the initial customer admin and for any
+// team member a camp admin invites — same link, same flow.
 export function AcceptInvite() {
   const { token } = useParams<{ token: string }>();
-  const { acceptInvitation } = useCampStore();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [phase, setPhase] = useState<Phase>('loading');
+  const [info, setInfo] = useState<Info | null>(null);
+  const [invalidMsg, setInvalidMsg] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [mode, setMode] = useState<'create' | 'signin'>('create'); // 'signin' if the email already has an account
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  async function acceptAndGo() {
+    setPhase('joining');
+    const { data, error: rpcErr } = await supabase.rpc('accept_invitation', { p_token: token });
+    if (rpcErr) throw new Error(rpcErr.message);
+    const r = (data ?? {}) as { error?: string; camp_id?: string };
+    if (r.error) throw new Error(r.error);
+    await useCampStore.getState().loadMyCamps();
+    setPhase('done');
+    setTimeout(() => navigate('/home', { replace: true }), 1200);
+  }
+
+  // Load the invite's details and lock the email. If already signed in AS the invited person,
+  // accept straight away; otherwise show the set-password form.
   useEffect(() => {
     if (!token) return;
+    (async () => {
+      const { data, error: e } = await supabase.rpc('invitation_info', { p_token: token });
+      const d = (data ?? {}) as { valid?: boolean; reason?: string; email?: string; camp_name?: string; role?: string };
+      if (e || !d.valid || !d.email) { setInvalidMsg(reasonText(d.reason ?? 'not_found')); setPhase('invalid'); return; }
+      setInfo({ email: d.email, campName: d.camp_name ?? 'your camp', role: d.role ?? 'staff' });
 
-    // Check session directly from Supabase to avoid race with auth store initialization
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        sessionStorage.setItem('pendingInviteToken', token);
-        navigate(`/signup?invite=${token}`, { replace: true });
-        return;
+      const session = (await supabase.auth.getSession()).data.session;
+      if (session?.user?.email && session.user.email.toLowerCase() === d.email.toLowerCase()) {
+        try { await acceptAndGo(); } catch (err) { setError(err instanceof Error ? err.message : 'Could not join.'); setPhase('ready'); }
+      } else {
+        setPhase('ready');
       }
-      acceptToken();
-    });
+    })();
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function acceptToken() {
-    if (!token) return;
-    const result = await acceptInvitation(token);
-    if ('error' in result) {
-      setError(result.error);
-      setStatus('error');
-    } else {
-      setStatus('success');
-      setTimeout(() => navigate('/', { replace: true }), 1500);
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!info) return;
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (mode === 'create' && password !== confirm) { setError('Passwords don’t match.'); return; }
+    setBusy(true);
+    try {
+      // If a different account is signed in on this device, drop it so we act as the invited user.
+      const cur = (await supabase.auth.getSession()).data.session;
+      if (cur?.user?.email && cur.user.email.toLowerCase() !== info.email.toLowerCase()) {
+        await supabase.auth.signOut();
+      }
+
+      if (mode === 'create') {
+        const err = await useAuthStore.getState().signUp(info.email, password, fullName.trim() || info.email.split('@')[0]);
+        if (err) {
+          if (/already|registered|exists/i.test(err)) {
+            setMode('signin');
+            setError('An account already exists for this email. Enter its password to sign in and join.');
+            setBusy(false);
+            return;
+          }
+          setError(err); setBusy(false); return;
+        }
+      } else {
+        const err = await useAuthStore.getState().signIn(info.email, password);
+        if (err) { setError(err); setBusy(false); return; }
+      }
+      await acceptAndGo();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setPhase('ready');
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-stone-50 p-6">
       <div className="w-full max-w-sm">
-        <div className="flex items-center gap-2.5 mb-8 justify-center">
-          <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center">
-            <TreePine className="w-4.5 h-4.5 text-cream" />
-          </div>
-          <span className="text-xl font-semibold text-forest">CampCommand</span>
+        <div className="flex items-center gap-2 mb-8 justify-center">
+          <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-cream" /></div>
+          <span className="text-lg font-semibold text-forest">CampCommand</span>
         </div>
 
-        <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-8 text-center">
-          {status === 'loading' ? (
-            <>
+        <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-8">
+          {(phase === 'loading' || phase === 'joining') && (
+            <div className="text-center py-2">
               <div className="w-8 h-8 border-2 border-forest border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-[14px] font-medium text-forest">Accepting invitation…</p>
-            </>
-          ) : status === 'success' ? (
+              <p className="text-[14px] font-medium text-forest">{phase === 'joining' ? 'Joining…' : 'Loading your invitation…'}</p>
+            </div>
+          )}
+
+          {phase === 'invalid' && (
+            <div className="text-center">
+              <h1 className="text-[18px] font-semibold text-forest mb-2">Invitation unavailable</h1>
+              <p className="text-[13px] text-forest/60 leading-relaxed mb-5">{invalidMsg}</p>
+              <Link to="/login" className="text-[13px] font-medium text-forest hover:underline">Go to sign in</Link>
+            </div>
+          )}
+
+          {phase === 'done' && (
+            <div className="text-center">
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4"><span className="text-green-600 text-lg">✓</span></div>
+              <p className="text-[15px] font-semibold text-forest mb-1">You’re in</p>
+              <p className="text-[12px] text-forest/50">Taking you to {info?.campName}…</p>
+            </div>
+          )}
+
+          {phase === 'ready' && info && (
             <>
-              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                <span className="text-green-600 text-lg">✓</span>
-              </div>
-              <p className="text-[15px] font-semibold text-forest mb-1">Invitation accepted</p>
-              <p className="text-[12px] text-forest/50">Redirecting you now…</p>
-            </>
-          ) : (
-            <>
-              <p className="text-[14px] font-semibold text-forest mb-2">Couldn't accept invitation</p>
-              <p className="text-[12px] text-forest/60 mb-5 leading-relaxed">{error}</p>
-              <div className="flex flex-col items-center gap-2.5">
-                <button
-                  onClick={async () => {
-                    await useAuthStore.getState().signOut();
-                    // Full reload into the invite link: with no session it routes to signup (new
-                    // buyer) or lets an existing user sign in, then resumes acceptance cleanly.
-                    window.location.href = token ? `/invite/${token}` : '/login';
-                  }}
-                  className="text-[13px] font-medium text-forest hover:underline"
-                >
-                  Sign out and try with the invited account
+              <h1 className="text-[18px] font-semibold text-forest mb-1.5">Join {info.campName}</h1>
+              <p className="text-[13px] text-forest/55 mb-5">You’ve been invited as {roleLabel(info.role)}. {mode === 'create' ? 'Set a password to create your account.' : 'Sign in to join.'}</p>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-[12px] font-medium text-forest/70 mb-1.5">Email</label>
+                  <div className="flex items-center gap-2 w-full px-3 py-2 rounded-lg border border-stone-200 bg-stone-50 text-[13px] text-forest/70">
+                    <Lock className="w-3.5 h-3.5 text-forest/35 flex-shrink-0" />
+                    <span className="truncate">{info.email}</span>
+                  </div>
+                  <p className="text-[11px] text-forest/40 mt-1">This invite is locked to this address.</p>
+                </div>
+                {mode === 'create' && (
+                  <div>
+                    <label className="block text-[12px] font-medium text-forest/70 mb-1.5">Your name</label>
+                    <input type="text" autoFocus autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40" />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-[12px] font-medium text-forest/70 mb-1.5">{mode === 'create' ? 'Create a password' : 'Password'}</label>
+                  <input type="password" required autoComplete={mode === 'create' ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40" />
+                  {mode === 'create' && <p className="text-[11px] text-forest/40 mt-1">Minimum 8 characters</p>}
+                </div>
+                {mode === 'create' && (
+                  <div>
+                    <label className="block text-[12px] font-medium text-forest/70 mb-1.5">Confirm password</label>
+                    <input type="password" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40" />
+                  </div>
+                )}
+                {error && <p className="text-[12px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
+                <button type="submit" disabled={busy} className="w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50 mt-1">
+                  {busy ? 'Setting up…' : mode === 'create' ? 'Create account & join' : 'Sign in & join'}
                 </button>
-                <Link to="/" className="text-[12px] text-forest/45 hover:underline">Go to dashboard</Link>
-              </div>
+                {mode === 'signin' && (
+                  <p className="text-center text-[12px] text-forest/50">
+                    Forgot it? <Link to="/forgot-password" className="text-forest font-medium hover:underline">Reset your password</Link>
+                  </p>
+                )}
+              </form>
             </>
           )}
         </div>

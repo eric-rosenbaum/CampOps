@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useCampStore } from '@/store/campStore';
 import type { CampRole, StaffGroup, StaffGroupModules, Invitation, JoinCode } from '@/store/campStore';
+import { sendEmail, buildInviteEmail } from '@/lib/email';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -496,6 +497,8 @@ export function Team() {
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [inviteLinkEmail, setInviteLinkEmail] = useState('');
+  const [inviteEmailed, setInviteEmailed] = useState(false);
+  const [inviteEmailError, setInviteEmailError] = useState<string | null>(null);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [roleError, setRoleError] = useState<string | null>(null);
@@ -550,12 +553,19 @@ export function Team() {
         setTimeout(() => reject(new Error('Request timed out — check your connection and try again.')), 30_000)
       );
       const groupId = inviteRole === 'staff' ? inviteGroupId || null : null;
+      const to = inviteEmail.trim();
       const token = await Promise.race([
-        inviteMember(campId, inviteEmail, inviteRole, groupId),
+        inviteMember(campId, to, inviteRole, groupId),
         timeout,
       ]);
-      setInviteLinkEmail(inviteEmail);
-      setInviteLink(`${window.location.origin}/invite/${token}`);
+      const link = `${window.location.origin}/invite/${token}`;
+      setInviteLinkEmail(to);
+      setInviteLink(link);
+      // Send the invite email (same flow as customer provisioning). The link still shows as backup.
+      const { subject, html } = buildInviteEmail(currentCamp?.name ?? 'your camp', link, { owner: false });
+      const res = await sendEmail({ to, subject, html, fromName: currentCamp?.name ?? 'CampCommand', fromEmail: 'invites@campcommand.app' });
+      setInviteEmailed(res.ok);
+      setInviteEmailError(res.ok ? null : res.error);
       setInviteEmail('');
       setInviteGroupId('');
       setShowInviteForm(false);
@@ -689,7 +699,7 @@ export function Team() {
       <div className="bg-white border border-stone-200 rounded-xl p-5 mb-6">
         <h2 className="text-[13px] font-semibold text-forest mb-0.5">Invite by email</h2>
         <p className="text-[11px] text-forest/40 leading-relaxed mb-4">
-          For specific people. The link is tied to their email address — only they can use it.
+          We email the person a link. They set a password on the account for that address and sign in.
         </p>
 
         {!showInviteForm && !inviteLink && (
@@ -761,7 +771,7 @@ export function Team() {
                 disabled={inviteLoading || (inviteRole === 'staff' && !inviteGroupId)}
                 className="flex-1 bg-forest text-cream text-[12px] font-medium py-1.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50"
               >
-                {inviteLoading ? 'Generating…' : 'Generate link'}
+                {inviteLoading ? 'Sending…' : 'Send invite'}
               </button>
             </div>
           </form>
@@ -769,8 +779,10 @@ export function Team() {
 
         {inviteLink && (
           <div>
-            <p className="text-[11px] text-forest/50 mb-2">
-              Share this link with <strong>{inviteLinkEmail}</strong>:
+            <p className="text-[11px] mb-2">
+              {inviteEmailed
+                ? <span className="text-green-700 font-medium">✓ Invite emailed to <strong>{inviteLinkEmail}</strong>. Here’s the link as a backup:</span>
+                : <span className="text-amber-700 font-medium">Couldn’t email {inviteLinkEmail}{inviteEmailError ? ` (${inviteEmailError})` : ''} — copy the link and send it manually:</span>}
             </p>
             <div className="bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 mb-2.5">
               <code className="text-[10px] text-forest break-all leading-relaxed">{inviteLink}</code>

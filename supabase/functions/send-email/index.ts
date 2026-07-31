@@ -11,6 +11,8 @@ const json = (body: unknown, status = 200) =>
 
 // The verified sending domain in Resend. Group replies go to the camp (reply_to).
 const FROM_ADDRESS = Deno.env.get("RETREAT_FROM_EMAIL") ?? "retreats@campcommand.app";
+// Callers may pick a sender address, but only within our verified domain (no spoofing).
+const SENDER_DOMAIN = "campcommand.app";
 
 function isEmail(s: unknown): s is string {
   return typeof s === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
@@ -33,16 +35,19 @@ Deno.serve(async (req) => {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) return json({ error: "Email is not configured yet (missing RESEND_API_KEY)." }, 503);
 
-  let to: string, subject: string, html: string, fromName: string | undefined, replyTo: string | undefined;
+  let to: string, subject: string, html: string, fromName: string | undefined, replyTo: string | undefined, fromEmail: string | undefined;
   try {
-    ({ to, subject, html, fromName, replyTo } = await req.json());
+    ({ to, subject, html, fromName, replyTo, fromEmail } = await req.json());
   } catch {
     return json({ error: "Invalid request body." }, 400);
   }
   if (!isEmail(to)) return json({ error: "A valid recipient email is required." }, 400);
   if (!subject || !html) return json({ error: "subject and html are required." }, 400);
 
-  const from = `${(fromName ?? "CampCommand").replace(/[<>\n"]/g, "")} <${FROM_ADDRESS}>`;
+  // Sender address: caller may choose one, but only within our verified domain.
+  const fromAddress = (isEmail(fromEmail) && fromEmail.toLowerCase().endsWith("@" + SENDER_DOMAIN))
+    ? fromEmail : FROM_ADDRESS;
+  const from = `${(fromName ?? "CampCommand").replace(/[<>\n"]/g, "")} <${fromAddress}>`;
   const payload: Record<string, unknown> = { from, to: [to], subject, html };
   if (isEmail(replyTo)) payload.reply_to = replyTo;
 

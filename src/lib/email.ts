@@ -8,6 +8,7 @@ export interface SendEmailInput {
   html: string;
   fromName?: string;   // camp name — appears before the @campcommand.app sender
   replyTo?: string;    // camp/staff email so the group replies to the camp
+  fromEmail?: string;  // sender address; must be within campcommand.app or it's ignored
 }
 
 export type SendEmailResult = { ok: true; id?: string } | { ok: false; error: string };

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { TreePine } from 'lucide-react';
 import { useCampStore } from '@/store/campStore';
+import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
 
 export function AcceptInvite() {
@@ -65,9 +66,20 @@ export function AcceptInvite() {
             <>
               <p className="text-[14px] font-semibold text-forest mb-2">Couldn't accept invitation</p>
               <p className="text-[12px] text-forest/60 mb-5 leading-relaxed">{error}</p>
-              <Link to="/" className="text-[13px] font-medium text-forest hover:underline">
-                Go to dashboard
-              </Link>
+              <div className="flex flex-col items-center gap-2.5">
+                <button
+                  onClick={async () => {
+                    await useAuthStore.getState().signOut();
+                    // Full reload into the invite link: with no session it routes to signup (new
+                    // buyer) or lets an existing user sign in, then resumes acceptance cleanly.
+                    window.location.href = token ? `/invite/${token}` : '/login';
+                  }}
+                  className="text-[13px] font-medium text-forest hover:underline"
+                >
+                  Sign out and try with the invited account
+                </button>
+                <Link to="/" className="text-[12px] text-forest/45 hover:underline">Go to dashboard</Link>
+              </div>
             </>
           )}
         </div>

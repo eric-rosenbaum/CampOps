@@ -25,7 +25,7 @@ function StatusBanners() {
     return (
       <div className="flex items-center justify-center gap-2 bg-amber-bg text-amber-text text-[12px] font-medium px-4 py-1.5 flex-shrink-0">
         <Clock className="w-3.5 h-3.5" />
-        {trialDays >= 0 ? `Trial — ${trialDays} day${trialDays === 1 ? '' : 's'} left` : 'Trial ended'}
+        {trialDays >= 0 ? `Demo — ${trialDays} day${trialDays === 1 ? '' : 's'} left` : 'Demo ended'}
       </div>
     );
   }

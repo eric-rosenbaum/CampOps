@@ -1,6 +1,6 @@
 # CampCommand — Founder Operations Runbook
 
-How you (Eric + Prakash) run the business day-to-day: the golden seed, demos, trials, provisioning real customers, supporting accounts, and managing the platform. Everything below happens in the **Admin console**.
+How you (Eric + Prakash) run the business day-to-day: the golden seed, demos, provisioning real customers, supporting accounts, and managing the platform. Everything below happens in the **Admin console**.
 
 Companion docs: architecture + decisions live in `production-restructure-spec.md`.
 
@@ -10,12 +10,14 @@ Companion docs: architecture + decisions live in `production-restructure-spec.md
 
 - **Two surfaces.** `campcommand.app` = public marketing (book a demo). `app.campcommand.app` = the product + your admin console. Sign in only happens on `app.`
 - **Accounts are invite-only.** Nobody self-signs-up. You create every account from the admin console; the buyer/prospect gets an invite link.
-- **Every account is a "camp"** with an **account type**:
-  - `customer` — a paying camp.
-  - `trial` — a prospect's 30-day hands-on account (a clone of the golden seed, fake data).
-  - `demo` — a camp you keep for live demos / the golden seed.
-  - `internal` — your own scratch camps.
+- **Every account is a "camp"** with an **account type** (the UI label is in **bold**):
+  - `customer` → **customer** — a paying camp (real accounts, email-invited).
+  - `trial` → **demo** — a prospect's 30-day hands-on environment (a clone of the golden seed, fake data). The prospect's whole team gets in through a single **no-login link**; each prospect's demo is its own isolated camp, so they never see each other's data.
+  - `demo` → **showcase** — a camp you keep for live sales calls / the golden seed.
+  - `internal` → **internal** — your own scratch camps.
 - **You are "platform admins"** — a super-role that lets you open the admin console and enter *any* camp.
+
+> **One-time setup:** demo links use anonymous sessions, so **Anonymous sign-ins** must be ON in Supabase → **Authentication → Sign In / Providers**. Flip it once.
 
 ---
 
@@ -24,13 +26,13 @@ Companion docs: architecture + decisions live in `production-restructure-spec.md
 1. Go to **`https://app.campcommand.app`** and sign in with your founder account.
 2. You land on **`/admin`** automatically — founders always start in the console, never inside a camp. To work inside a camp, click **Open** on its row; return via **Exit to admin** in the banner. (You can also go straight to `app.campcommand.app/admin` any time.)
 
-The admin console lists every camp with its type, status, plan, member count, and trial countdown, plus the action buttons described below.
+The admin console lists every camp with its type, status, plan, member count, and demo countdown, plus the action buttons described below.
 
 ---
 
 ## 2. Build the golden seed (do this once, maintain over time)
 
-The **golden seed** is one polished, realistic **fake** camp. Every prospect trial is a clone of it, so it's your most important sales asset — it's what makes a trial feel alive on day one.
+The **golden seed** is one polished, realistic **fake** camp. Every prospect demo is a clone of it, so it's your most important sales asset — it's what makes a demo feel alive on day one.
 
 1. **Create the seed camp.** Easiest: from the admin console, **Provision customer** (see §4) with a name like *"CampCommand Demo"* and your own email as the admin — or reuse an existing internal camp. (It doesn't matter that it's typed `customer`; what matters is the `is_seed` flag in step 4.)
 2. **Open it.** In the camps list, click **Open** next to that camp. You're now inside it as an admin (a "Viewing … as CampCommand admin" banner appears up top).
@@ -45,23 +47,27 @@ The **golden seed** is one polished, realistic **fake** camp. Every prospect tri
    - **Team:** a couple of fake staff members.
 4. **Mark it as the seed.** Back in `/admin`, click **Set seed** on that camp. (Only one seed is needed; you can re-mark a different camp any time.)
 
-> ⚠️ **Fake data only — never real camper info.** Trials are clones of this camp, and it holds minors-adjacent data types. Use made-up names/photos throughout.
+> ⚠️ **Fake data only — never real camper info.** Demos are clones of this camp, and it holds minors-adjacent data types. Use made-up names/photos throughout.
 
-**To refresh the demo later:** Open the seed camp, edit the data, done — new trials clone the updated version automatically. No re-marking needed.
+**To refresh the demo later:** Open the seed camp, edit the data, done — new demos clone the updated version automatically. No re-marking needed.
 
 ---
 
-## 3. Give a prospect a hands-on trial (after a demo)
+## 3. Give a prospect a hands-on demo (after a sales call)
 
-1. In `/admin`, click **Spin up trial**.
-2. Enter the **prospect/camp name** (e.g. "Maplewood (trial)") and the **prospect's email**.
+1. In `/admin`, click **Spin up demo**.
+2. Enter the **prospect/camp name** (e.g. "Maplewood (demo)").
 3. **Seed to clone** defaults to your golden seed — leave it.
-4. Click **Spin up + invite**. This clones the seed into a fresh **30-day trial** account and generates an **invite link**.
-5. **Copy the invite link and send it to the prospect.** They open it, set a password, and become the admin of their trial camp — pre-loaded with the demo data, ready to explore and invite their own team.
+4. Click **Spin up demo**. This clones the seed into a fresh, **isolated 30-day demo** and gives you a **no-login share link**.
+5. **Copy the link and send it to the prospect.** Anyone who opens it lands straight in the demo — **no email, no password**. Their whole team can share the one link and they'll all be in the same environment (and only that one — no other camp's data is reachable).
 
-**What the prospect sees:** a "Trial — N days left" banner. When 30 days pass, the trial hard-stops with a "your trial has ended — email prakash@campcommand.app" screen (data is retained so it can convert).
+**Need the link again later?** Click **Demo link** on that camp's row in `/admin` to copy it any time.
 
-**Extend a trial:** click **+30d** on that camp in `/admin`.
+**What the prospect sees:** the app, immediately, with a "Demo — N days left" banner. When 30 days pass, the demo hard-stops with a "your demo has ended — email prakash@campcommand.app" screen (data is retained so it can convert).
+
+**Extend a demo:** click **+30d** on that camp in `/admin`.
+
+**Note:** demo visitors are anonymous throwaway accounts — a nightly job clears them out automatically after ~40 days.
 
 ---
 
@@ -75,7 +81,7 @@ Do this when a deal closes.
 4. **Send the invite link to the buyer.** They set a password, become admin, and invite their staff.
 5. **Get their data in.** Either they self-onboard, or use the white-glove path: Camp Info → Locations → **"Send us your list"** lets them drop a spreadsheet for you to load. (Billing is handled by you out-of-band — send the invoice separately.)
 
-**Convert a trial into a paying customer** (keeps all their trial data — no re-setup): click **→ Customer** on the trial in `/admin`. It flips the account to `customer`, clears the trial clock, and keeps them running.
+**Convert a demo into a paying customer** (keeps all their demo data — no re-setup): click **→ Customer** on that camp in `/admin`. It flips the account to `customer` and clears the 30-day clock. Then send the buyer a real **admin invite** (Provision-style email invite) so they have a named login going forward — the anonymous demo visitors stop mattering once real accounts exist.
 
 ---
 
@@ -98,7 +104,7 @@ All from the camps list in `/admin`:
 - **Suspend** — blocks the camp's members at login with a "contact us" screen (you're exempt). Use for non-payment or off-boarding.
 - **Reactivate** — un-suspends.
 - **Plan** — click the plan cell and type/adjust the label (informational; billing is external).
-- **Set seed / Unseed** — designate which camp trials clone from.
+- **Set seed / Unseed** — designate which camp demos clone from.
 - **Delete** — moves the camp and all its data to the trash. You must **type the camp's exact name** to confirm (no accidents). It's **recoverable for 30 days** from the **"Recently deleted"** list at the bottom of the console (click **Restore**); after 30 days a nightly job permanently deletes it. Members lose access immediately.
 
 ---
@@ -134,9 +140,10 @@ insert into platform_admins (user_id) select id from auth.users where email = 'x
 | You want to… | Do this |
 |---|---|
 | Run a live demo on a call | `/admin` → **Open** the golden seed camp, drive it on screen |
-| Let a prospect try it themselves | **Spin up trial** → send the invite link |
+| Let a prospect try it themselves | **Spin up demo** → send the no-login link |
+| Re-send a prospect their demo link | **Demo link** on the camp row (copies it) |
 | Turn a won deal into an account | **Provision customer** → send the invite link |
-| Turn a trial into a paid account | **→ Customer** on the trial |
+| Turn a demo into a paid account | **→ Customer**, then send a real admin invite |
 | Get into a customer's account to help | **Open** → do the thing → **Exit to admin** |
 | Pause an account | **Suspend** (reverse with **Reactivate**) |
 | Give a prospect more time | **+30d** |
@@ -148,7 +155,7 @@ insert into platform_admins (user_id) select id from auth.users where email = 'x
 ## 10. Gotchas
 
 - **Invite links are how people get in.** After Provision/Spin-up, *you* send the link (copy it from the success screen). It makes the recipient the camp **admin**.
-- **Trials are fake-data only.** Never load real camper PII into a demo/trial.
+- **Demos are fake-data only.** Never load real camper PII into a demo.
 - **Sign out returns to marketing** (`campcommand.app`), by design — sign back in at `app.campcommand.app`.
 - **"Remember me"** is per-device on `app.campcommand.app`; how long it lasts is the Supabase refresh-token setting.
 - **Deploys:** changes go live when you deploy to Vercel; the DB (Supabase) is shared/live immediately.

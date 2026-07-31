@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TreePine, Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2, LogOut, Users, ChevronDown, ChevronRight } from 'lucide-react';
+import { TreePine, Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2, LogOut, Users, ChevronDown, ChevronRight, Link as LinkIcon } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useAdminStore, type AdminCamp, type CampAccount } from '@/store/adminStore';
@@ -12,6 +12,14 @@ const TYPE_STYLE: Record<string, string> = {
   trial: 'bg-amber-bg text-amber-text',
   demo: 'bg-blue-bg text-blue-text',
   internal: 'bg-cream-dark text-forest/60',
+};
+// DB values stay customer/trial/demo/internal; the UI calls the 30-day prospect env a "demo"
+// (that's the `trial` type) and the internal showcase camps "showcase" (the `demo` type).
+const TYPE_LABEL: Record<string, string> = {
+  customer: 'customer',
+  trial: 'demo',
+  demo: 'showcase',
+  internal: 'internal',
 };
 const STATUS_STYLE: Record<string, string> = {
   active: 'bg-green-muted-bg text-green-muted-text',
@@ -55,12 +63,12 @@ export function AdminConsole() {
             <div className="w-8 h-8 bg-sage rounded-btn flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-forest" /></div>
             <div>
               <p className="text-[15px] font-semibold">CampCommand — Admin</p>
-              <p className="text-[11px] text-white/50">{camps.length} camps · {byType('customer')} customers · {byType('trial')} trials · {byType('demo')} demo</p>
+              <p className="text-[11px] text-white/50">{camps.length} camps · {byType('customer')} customers · {byType('trial')} demos · {byType('demo')} showcase</p>
             </div>
           </div>
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" className="!text-cream border border-white/25 hover:bg-white/10" onClick={() => setModal('trial')}>
-              <FlaskConical className="w-3.5 h-3.5" /> Spin up trial
+              <FlaskConical className="w-3.5 h-3.5" /> Spin up demo
             </Button>
             <Button size="sm" onClick={() => setModal('customer')}>
               <Plus className="w-3.5 h-3.5" /> Provision customer
@@ -137,7 +145,7 @@ function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: stri
         <p className="font-semibold text-forest">{c.name}{c.isSeed && <span className="ml-1.5 text-[10px] text-sage font-semibold uppercase">seed</span>}</p>
         <p className="text-[11px] text-forest/40">{orgs.find((o) => o.id === c.orgId)?.name ?? 'No org'}</p>
       </td>
-      <td className="px-3 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${TYPE_STYLE[c.accountType]}`}>{c.accountType}</span></td>
+      <td className="px-3 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${TYPE_STYLE[c.accountType]}`}>{TYPE_LABEL[c.accountType] ?? c.accountType}</span></td>
       <td className="px-3 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${STATUS_STYLE[c.status]}`}>{c.status.replace('_', ' ')}</span></td>
       <td className="px-3 py-3">
         <input defaultValue={c.plan ?? ''} placeholder="—" onBlur={(e) => e.target.value !== (c.plan ?? '') && setPlan(c.id, e.target.value.trim() || null)}
@@ -158,6 +166,7 @@ function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: stri
             : <Button size="sm" variant="ghost" disabled={busy} onClick={wrap(() => setStatus(c.id, 'active'))}>Reactivate</Button>}
           {c.accountType === 'trial' && (
             <>
+              <DemoLinkButton campId={c.id} />
               <Button size="sm" variant="ghost" disabled={busy} onClick={wrap(() => extendTrial(c.id, 30))}>+30d</Button>
               <Button size="sm" variant="ghost" disabled={busy} onClick={wrap(() => convertTrialToCustomer(c.id, c.plan))}>→ Customer</Button>
             </>
@@ -184,6 +193,25 @@ function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: stri
       </tr>
     )}
     </>
+  );
+}
+
+function DemoLinkButton({ campId }: { campId: string }) {
+  const demoLink = useAdminStore((s) => s.demoLink);
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  async function copy() {
+    setBusy(true);
+    try {
+      const url = await demoLink(campId);
+      await navigator.clipboard?.writeText(url);
+      setCopied(true); setTimeout(() => setCopied(false), 1600);
+    } finally { setBusy(false); }
+  }
+  return (
+    <Button size="sm" variant="ghost" disabled={busy} onClick={copy} title="Copy the no-login demo link to share with the prospect">
+      {copied ? <Check className="w-3.5 h-3.5" /> : <LinkIcon className="w-3.5 h-3.5" />} {copied ? 'Copied' : 'Demo link'}
+    </Button>
   );
 }
 
@@ -366,6 +394,22 @@ function InviteResult({ url }: { url: string }) {
   );
 }
 
+function ShareLinkResult({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="bg-green-muted-bg border border-sage/30 rounded-card p-4">
+      <p className="text-[13px] font-semibold text-green-muted-text mb-1.5">Demo ready ✓ — send this link to the prospect:</p>
+      <div className="flex items-center gap-2">
+        <input readOnly value={url} className="flex-1 text-[12px] font-mono bg-white border border-border rounded-btn px-2.5 py-1.5" />
+        <Button size="sm" onClick={() => { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
+          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+        </Button>
+      </div>
+      <p className="text-[11px] text-forest/45 mt-2">Anyone who opens it lands straight in this demo — no sign-in, no password. Their whole team can share the one link.</p>
+    </div>
+  );
+}
+
 function ProvisionCustomerModal({ onClose }: { onClose: () => void }) {
   const { orgs, provisionCustomer } = useAdminStore();
   const [name, setName] = useState('');
@@ -413,37 +457,35 @@ function SpinUpTrialModal({ onClose }: { onClose: () => void }) {
   const { camps, spinUpTrial } = useAdminStore();
   const seeds = camps.filter((c) => c.isSeed);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [source, setSource] = useState(seeds[0]?.id ?? camps[0]?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
   async function submit() {
-    if (!name.trim() || !email.trim() || !source) return;
+    if (!name.trim() || !source) return;
     setBusy(true); setErr(null);
     try {
-      const { inviteUrl } = await spinUpTrial({ name: name.trim(), sourceCampId: source, buyerEmail: email.trim() });
-      setResult(inviteUrl);
+      const { shareUrl } = await spinUpTrial({ name: name.trim(), sourceCampId: source });
+      setResult(shareUrl);
     } catch (e) { setErr(e instanceof Error ? e.message : 'Failed'); } finally { setBusy(false); }
   }
 
   return (
-    <Modal title="Spin up a trial" onClose={onClose} width="480px">
-      {result ? <div className="space-y-4"><InviteResult url={result} /><Button className="w-full justify-center" onClick={onClose}>Done</Button></div> : (
+    <Modal title="Spin up a demo" onClose={onClose} width="480px">
+      {result ? <div className="space-y-4"><ShareLinkResult url={result} /><Button className="w-full justify-center" onClick={onClose}>Done</Button></div> : (
         <div className="space-y-3.5">
-          <p className="text-[12px] text-forest/55 bg-cream-dark/40 rounded-btn px-3 py-2">A fresh 30-day trial is cloned from the seed camp — fake data only. The prospect gets an admin invite.</p>
-          <Field label="Prospect / camp name *"><input autoFocus value={name} onChange={(e) => setName(e.target.value)} className={INPUT} placeholder="e.g. Maplewood (trial)" /></Field>
+          <p className="text-[12px] text-forest/55 bg-cream-dark/40 rounded-btn px-3 py-2">A fresh 30-day demo is cloned from the seed — fake data only, fully isolated from every other camp. You’ll get one no-login link the whole prospect team can share.</p>
+          <Field label="Prospect / camp name *"><input autoFocus value={name} onChange={(e) => setName(e.target.value)} className={INPUT} placeholder="e.g. Maplewood (demo)" /></Field>
           <Field label="Seed to clone *">
             <select value={source} onChange={(e) => setSource(e.target.value)} className={INPUT}>
               {seeds.length === 0 && <option value="" disabled>No seed marked — pick any camp below or mark one “seed”</option>}
               {(seeds.length ? seeds : camps).map((c) => <option key={c.id} value={c.id}>{c.name}{c.isSeed ? ' (seed)' : ''}</option>)}
             </select>
           </Field>
-          <Field label="Prospect email (trial admin) *"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={INPUT} placeholder="coordinator@prospect.org" /></Field>
           {err && <p className="text-[12px] text-red">{err}</p>}
           <div className="flex gap-2 pt-1">
-            <Button className="flex-1 justify-center" disabled={busy || !name.trim() || !email.trim() || !source} onClick={submit}>{busy ? 'Cloning…' : 'Spin up + invite'}</Button>
+            <Button className="flex-1 justify-center" disabled={busy || !name.trim() || !source} onClick={submit}>{busy ? 'Cloning…' : 'Spin up demo'}</Button>
             <Button variant="ghost" onClick={onClose}>Cancel</Button>
           </div>
         </div>

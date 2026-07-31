@@ -43,7 +43,8 @@ interface AdminState {
   restoreCamp: (campId: string) => Promise<void>;
 
   provisionCustomer: (opts: { name: string; plan: string | null; orgId: string | null; buyerEmail: string }) => Promise<{ campId: string; inviteUrl: string }>;
-  spinUpTrial: (opts: { name: string; sourceCampId: string; buyerEmail: string; trialDays?: number }) => Promise<{ campId: string; inviteUrl: string }>;
+  spinUpTrial: (opts: { name: string; sourceCampId: string; trialDays?: number }) => Promise<{ campId: string; shareUrl: string }>;
+  demoLink: (campId: string) => Promise<string>;
   setStatus: (campId: string, status: CampStatus) => Promise<void>;
   extendTrial: (campId: string, days: number) => Promise<void>;
   setPlan: (campId: string, plan: string | null) => Promise<void>;
@@ -125,15 +126,20 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     return { campId, inviteUrl };
   },
 
-  spinUpTrial: async ({ name, sourceCampId, buyerEmail, trialDays = 30 }) => {
+  spinUpTrial: async ({ name, sourceCampId, trialDays = 30 }) => {
     const { data, error } = await supabase.rpc('clone_camp', {
       p_source: sourceCampId, p_new_name: name, p_account_type: 'trial', p_trial_days: trialDays,
     });
     if (error) throw new Error(error.message);
     const campId = data as string;
-    const inviteUrl = await inviteAdmin(campId, buyerEmail);
+    const shareUrl = await get().demoLink(campId);
     await get().load();
-    return { campId, inviteUrl };
+    return { campId, shareUrl };
+  },
+  demoLink: async (campId) => {
+    const { data, error } = await supabase.rpc('demo_share_link', { p_camp_id: campId });
+    if (error) throw new Error(error.message);
+    return `${window.location.origin}/try/${data as string}`;
   },
 
   setStatus: async (campId, status) => { await supabase.from('camps').update({ status }).eq('id', campId); await get().load(); },

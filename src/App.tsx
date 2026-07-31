@@ -17,6 +17,7 @@ import { ResetPassword } from '@/pages/auth/ResetPassword';
 import { CampSetup } from '@/pages/auth/CampSetup';
 import { JoinCamp } from '@/pages/auth/JoinCamp';
 import { AcceptInvite } from '@/pages/auth/AcceptInvite';
+import { TryDemo } from '@/pages/auth/TryDemo';
 import { Onboarding } from '@/pages/onboarding/Onboarding';
 
 // Home screens
@@ -544,6 +545,7 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/invite/:token" element={<AcceptInvite />} />
+          <Route path="/try/:token" element={<TryDemo />} />
 
           {/* Public — handles auth inline */}
           <Route path="/join" element={<JoinCamp />} />

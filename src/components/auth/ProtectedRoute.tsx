@@ -67,11 +67,11 @@ function CampBlockedScreen({ status }: { status: string }) {
     <div className="fixed inset-0 bg-cream flex items-center justify-center p-6 z-50">
       <div className="max-w-md text-center">
         <h1 className="text-[22px] font-bold text-forest mb-3">
-          {trial ? 'Your trial has ended' : 'Your account is paused'}
+          {trial ? 'Your demo has ended' : 'Your account is paused'}
         </h1>
         <p className="text-[14px] text-forest/60 leading-relaxed mb-6">
           {trial
-            ? 'Your 30-day CampCommand trial is over. To keep your account and continue where you left off, get in touch and we’ll set you up.'
+            ? 'Your 30-day CampCommand demo is over. To set up a real account and pick up where you left off, get in touch and we’ll get you started.'
             : 'This account is currently paused. Please reach out and we’ll get you back up and running.'}
         </p>
         <a href={`mailto:${SUPPORT_EMAIL}`} className="inline-flex items-center justify-center px-5 py-3 rounded-btn bg-sage text-forest text-[15px] font-semibold hover:bg-sage-light transition-colors">

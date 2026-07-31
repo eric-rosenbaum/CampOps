@@ -48,7 +48,6 @@ interface AdminState {
   setStatus: (campId: string, status: CampStatus) => Promise<void>;
   extendTrial: (campId: string, days: number) => Promise<void>;
   setPlan: (campId: string, plan: string | null) => Promise<void>;
-  convertTrialToCustomer: (campId: string, plan: string | null) => Promise<void>;
   setSeed: (campId: string, isSeed: boolean) => Promise<void>;
   createOrg: (name: string) => Promise<void>;
   setCampOrg: (campId: string, orgId: string | null) => Promise<void>;
@@ -151,10 +150,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     await get().load();
   },
   setPlan: async (campId, plan) => { await supabase.from('camps').update({ plan }).eq('id', campId); await get().load(); },
-  convertTrialToCustomer: async (campId, plan) => {
-    await supabase.from('camps').update({ account_type: 'customer', status: 'active', trial_ends_at: null, plan }).eq('id', campId);
-    await get().load();
-  },
   setSeed: async (campId, isSeed) => { await supabase.from('camps').update({ is_seed: isSeed }).eq('id', campId); await get().load(); },
   deleteCamp: async (campId) => { const { error } = await supabase.rpc('soft_delete_camp', { p_camp_id: campId }); if (error) throw new Error(error.message); await get().load(); },
   restoreCamp: async (campId) => { const { error } = await supabase.rpc('restore_camp', { p_camp_id: campId }); if (error) throw new Error(error.message); await get().load(); },

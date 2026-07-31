@@ -53,7 +53,7 @@ BEGIN
       AND ci.accepted_at IS NULL
       AND ci.expires_at > now()
 
-    ORDER BY status, email;
+    ORDER BY 6, 2;  -- status, email (UNION requires output-column positions, not names)
 END;
 $$;
 

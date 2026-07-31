@@ -120,7 +120,7 @@ export function AdminConsole() {
 }
 
 function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: string; name: string }[]; onOpen: () => void; onDelete: () => void }) {
-  const { setStatus, extendTrial, convertTrialToCustomer, setPlan, setSeed, setCampOrg, listCampAccounts } = useAdminStore();
+  const { setStatus, extendTrial, setPlan, setSeed, setCampOrg, listCampAccounts } = useAdminStore();
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [accounts, setAccounts] = useState<CampAccount[] | null>(null);
@@ -168,7 +168,6 @@ function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: stri
             <>
               <DemoLinkButton campId={c.id} />
               <Button size="sm" variant="ghost" disabled={busy} onClick={wrap(() => extendTrial(c.id, 30))}>+30d</Button>
-              <Button size="sm" variant="ghost" disabled={busy} onClick={wrap(() => convertTrialToCustomer(c.id, c.plan))}>→ Customer</Button>
             </>
           )}
           <Button size="sm" variant="ghost" disabled={busy} onClick={wrap(() => setSeed(c.id, !c.isSeed))}>{c.isSeed ? 'Unseed' : 'Set seed'}</Button>
@@ -234,7 +233,7 @@ function AccountsPanel({ accounts, error }: { accounts: CampAccount[] | null; er
         <tbody>
           {accounts.map((a, i) => (
             <tr key={(a.userId ?? a.email) + i} className="border-t border-cream-dark/60">
-              <td className="py-1.5 pr-4 font-medium text-forest">{a.email}</td>
+              <td className="py-1.5 pr-4 font-medium text-forest">{a.email ?? <span className="text-forest/40 italic">demo guest (no email)</span>}</td>
               <td className="py-1.5 pr-4 text-forest/60">{a.fullName ?? '—'}</td>
               <td className="py-1.5 pr-4 text-forest/70 capitalize">{a.role}</td>
               <td className="py-1.5 pr-4 text-forest/50">{a.staffGroup ?? '—'}</td>

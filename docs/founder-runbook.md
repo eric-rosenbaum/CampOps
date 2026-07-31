@@ -81,7 +81,7 @@ Do this when a deal closes.
 4. **Send the invite link to the buyer.** They set a password, become admin, and invite their staff.
 5. **Get their data in.** Either they self-onboard, or use the white-glove path: Camp Info → Locations → **"Send us your list"** lets them drop a spreadsheet for you to load. (Billing is handled by you out-of-band — send the invoice separately.)
 
-**Convert a demo into a paying customer** (keeps all their demo data — no re-setup): click **→ Customer** on that camp in `/admin`. It flips the account to `customer` and clears the 30-day clock. Then send the buyer a real **admin invite** (Provision-style email invite) so they have a named login going forward — the anonymous demo visitors stop mattering once real accounts exist.
+**Demos never become customer accounts.** A demo is entered through an anonymous no-login link, so there are no real, verified identities in it — upgrading it in place would leave the account wide open. When a deal closes you **always create a fresh, invite-only customer account** with **Provision customer** (above): the buyer gets a link to *their email*, sets a password, and signs in as a real named admin. (Demos are for exploring; the customer account is where real data lives.)
 
 ---
 
@@ -143,7 +143,7 @@ insert into platform_admins (user_id) select id from auth.users where email = 'x
 | Let a prospect try it themselves | **Spin up demo** → send the no-login link |
 | Re-send a prospect their demo link | **Demo link** on the camp row (copies it) |
 | Turn a won deal into an account | **Provision customer** → send the invite link |
-| Turn a demo into a paid account | **→ Customer**, then send a real admin invite |
+| Turn a won deal into a paid account | **Provision customer** (fresh email-invited account) — demos can't be upgraded in place |
 | Get into a customer's account to help | **Open** → do the thing → **Exit to admin** |
 | Pause an account | **Suspend** (reverse with **Reactivate**) |
 | Give a prospect more time | **+30d** |

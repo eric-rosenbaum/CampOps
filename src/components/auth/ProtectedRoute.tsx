@@ -5,6 +5,21 @@ import { useCampStore } from '@/store/campStore';
 
 const SUPPORT_EMAIL = 'prakash@campcommand.app';
 
+// Sign out and return to the marketing site. Lets someone who signed in with the wrong email
+// (and got blocked) start over with a different account.
+async function signOutToMarketing() {
+  await useAuthStore.getState().signOut();
+  window.location.href = window.location.hostname.startsWith('app.') ? 'https://campcommand.app' : '/';
+}
+
+function SignOutRetry({ label = 'Sign out and try a different account' }: { label?: string }) {
+  return (
+    <button onClick={signOutToMarketing} className="mt-4 text-[13px] font-medium text-forest/50 hover:text-forest underline transition-colors">
+      {label}
+    </button>
+  );
+}
+
 // Requires authentication. Redirects to /login if not signed in.
 export function ProtectedRoute() {
   const { session, isLoading: authLoading } = useAuthStore();
@@ -77,6 +92,7 @@ function CampBlockedScreen({ status }: { status: string }) {
         <a href={`mailto:${SUPPORT_EMAIL}`} className="inline-flex items-center justify-center px-5 py-3 rounded-btn bg-sage text-forest text-[15px] font-semibold hover:bg-sage-light transition-colors">
           Email {SUPPORT_EMAIL}
         </a>
+        <div><SignOutRetry /></div>
       </div>
     </div>
   );
@@ -88,12 +104,13 @@ export function NoCampAccess() {
       <div className="max-w-md text-center">
         <h1 className="text-[22px] font-bold text-forest mb-3">Your account isn’t set up yet</h1>
         <p className="text-[14px] text-forest/60 leading-relaxed mb-6">
-          You’re signed in, but you don’t have access to a camp yet. If you’re expecting access,
-          reach out and we’ll get you connected.
+          You’re signed in, but you don’t have access to a camp yet. If you signed in with the wrong
+          email, sign out and try again with the address your invite was sent to.
         </p>
         <a href={`mailto:${SUPPORT_EMAIL}`} className="inline-flex items-center justify-center px-5 py-3 rounded-btn bg-sage text-forest text-[15px] font-semibold hover:bg-sage-light transition-colors">
           Email {SUPPORT_EMAIL}
         </a>
+        <div><SignOutRetry label="Sign out and use a different email" /></div>
       </div>
     </div>
   );

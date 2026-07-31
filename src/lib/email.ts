@@ -30,6 +30,32 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   return { ok: true, id: (data as { id?: string }).id };
 }
 
+/** Build the customer-invite email (welcome + sign-in link). */
+export function buildInviteEmail(campName: string, url: string): { subject: string; html: string } {
+  const safeName = campName.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+  const subject = `Your CampCommand account for ${campName} is ready`;
+  const html = `
+  <div style="font-family:-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;color:#1a2e1a">
+    <div style="font-size:18px;font-weight:600;color:#2f4f2f;margin-bottom:16px">CampCommand</div>
+    <p style="font-size:15px;line-height:1.6;margin:0 0 14px">Hi there,</p>
+    <p style="font-size:15px;line-height:1.6;margin:0 0 14px">
+      Your CampCommand account for <strong>${safeName}</strong> has been created. Click below to set your
+      password and sign in — you'll be the administrator and can invite your team.
+    </p>
+    <p style="margin:24px 0">
+      <a href="${url}" style="background:#2f4f2f;color:#fdfcf7;text-decoration:none;font-size:15px;font-weight:600;padding:12px 22px;border-radius:8px;display:inline-block">
+        Set up your account
+      </a>
+    </p>
+    <p style="font-size:13px;line-height:1.6;color:#5a6b5a;margin:0 0 6px">Or paste this link into your browser:</p>
+    <p style="font-size:13px;line-height:1.5;word-break:break-all;margin:0 0 20px"><a href="${url}" style="color:#2f4f2f">${url}</a></p>
+    <p style="font-size:12px;color:#8a978a;line-height:1.6;margin:20px 0 0;border-top:1px solid #e7e2d6;padding-top:14px">
+      If you weren't expecting this, you can ignore this email.
+    </p>
+  </div>`;
+  return { subject, html };
+}
+
 /** Wrap plain text (user-typed reminders) into simple, safe HTML. */
 export function textToHtml(text: string): string {
   const esc = text.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));

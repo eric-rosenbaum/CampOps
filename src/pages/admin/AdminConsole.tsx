@@ -377,11 +377,15 @@ function OrgQuickAdd() {
   );
 }
 
-function InviteResult({ url }: { url: string }) {
+function InviteResult({ url, email, emailed, emailError }: { url: string; email: string; emailed: boolean; emailError?: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="bg-green-muted-bg border border-sage/30 rounded-card p-4">
-      <p className="text-[13px] font-semibold text-green-muted-text mb-1.5">Created ✓ — send this invite link to the buyer:</p>
+      {emailed ? (
+        <p className="text-[13px] font-semibold text-green-muted-text mb-1.5">Created ✓ — invite emailed to <span className="font-mono">{email}</span></p>
+      ) : (
+        <p className="text-[13px] font-semibold text-amber-text mb-1.5">Created ✓ — but the email didn’t send{emailError ? ` (${emailError})` : ''}. Copy the link and send it manually:</p>
+      )}
       <div className="flex items-center gap-2">
         <input readOnly value={url} className="flex-1 text-[12px] font-mono bg-white border border-border rounded-btn px-2.5 py-1.5" />
         <Button size="sm" onClick={() => { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
@@ -417,20 +421,20 @@ function ProvisionCustomerModal({ onClose }: { onClose: () => void }) {
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<{ url: string; email: string; emailed: boolean; emailError?: string } | null>(null);
 
   async function submit() {
     if (!name.trim() || !email.trim()) return;
     setBusy(true); setErr(null);
     try {
-      const { inviteUrl } = await provisionCustomer({ name: name.trim(), plan: plan.trim() || null, orgId: orgId || null, buyerEmail: email.trim() });
-      setResult(inviteUrl);
+      const { inviteUrl, email: to, emailed, emailError } = await provisionCustomer({ name: name.trim(), plan: plan.trim() || null, orgId: orgId || null, buyerEmail: email.trim() });
+      setResult({ url: inviteUrl, email: to, emailed, emailError });
     } catch (e) { setErr(e instanceof Error ? e.message : 'Failed'); } finally { setBusy(false); }
   }
 
   return (
     <Modal title="Provision a customer" onClose={onClose} width="480px">
-      {result ? <div className="space-y-4"><InviteResult url={result} /><Button className="w-full justify-center" onClick={onClose}>Done</Button></div> : (
+      {result ? <div className="space-y-4"><InviteResult url={result.url} email={result.email} emailed={result.emailed} emailError={result.emailError} /><Button className="w-full justify-center" onClick={onClose}>Done</Button></div> : (
         <div className="space-y-3.5">
           <Field label="Camp name *"><input autoFocus value={name} onChange={(e) => setName(e.target.value)} className={INPUT} placeholder="e.g. Camp Pinecrest" /></Field>
           <Field label="Plan (label, optional)"><input value={plan} onChange={(e) => setPlan(e.target.value)} className={INPUT} placeholder="e.g. Standard – founding" /></Field>
@@ -443,7 +447,7 @@ function ProvisionCustomerModal({ onClose }: { onClose: () => void }) {
           <Field label="Buyer email (camp admin) *"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={INPUT} placeholder="director@camp.org" /></Field>
           {err && <p className="text-[12px] text-red">{err}</p>}
           <div className="flex gap-2 pt-1">
-            <Button className="flex-1 justify-center" disabled={busy || !name.trim() || !email.trim()} onClick={submit}>{busy ? 'Provisioning…' : 'Provision + invite'}</Button>
+            <Button className="flex-1 justify-center" disabled={busy || !name.trim() || !email.trim()} onClick={submit}>{busy ? 'Provisioning…' : 'Provision + email invite'}</Button>
             <Button variant="ghost" onClick={onClose}>Cancel</Button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { sendEmail, buildInviteEmail } from '@/lib/email';
 import { useCampStore, type CampAccountType, type CampStatus } from '@/store/campStore';
 
 export interface AdminCamp {
@@ -42,7 +43,7 @@ interface AdminState {
   deleteCamp: (campId: string) => Promise<void>;
   restoreCamp: (campId: string) => Promise<void>;
 
-  provisionCustomer: (opts: { name: string; plan: string | null; orgId: string | null; buyerEmail: string }) => Promise<{ campId: string; inviteUrl: string }>;
+  provisionCustomer: (opts: { name: string; plan: string | null; orgId: string | null; buyerEmail: string }) => Promise<{ campId: string; inviteUrl: string; email: string; emailed: boolean; emailError?: string }>;
   spinUpTrial: (opts: { name: string; sourceCampId: string; trialDays?: number }) => Promise<{ campId: string; shareUrl: string }>;
   demoLink: (campId: string) => Promise<string>;
   setStatus: (campId: string, status: CampStatus) => Promise<void>;
@@ -120,9 +121,14 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     });
     if (error) throw new Error(error.message);
     const campId = data as string;
-    const inviteUrl = await inviteAdmin(campId, buyerEmail);
+    const email = buyerEmail.trim();
+    const inviteUrl = await inviteAdmin(campId, email);
+    // Email the buyer their sign-in link. If it fails (email not configured, provider error),
+    // we still return the link so the founder can send it manually — provisioning itself succeeds.
+    const { subject, html } = buildInviteEmail(name, inviteUrl);
+    const res = await sendEmail({ to: email, subject, html, fromName: 'CampCommand' });
     await get().load();
-    return { campId, inviteUrl };
+    return { campId, inviteUrl, email, emailed: res.ok, emailError: res.ok ? undefined : res.error };
   },
 
   spinUpTrial: async ({ name, sourceCampId, trialDays = 30 }) => {

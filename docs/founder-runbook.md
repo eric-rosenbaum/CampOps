@@ -77,8 +77,8 @@ Do this when a deal closes.
 
 1. In `/admin`, click **Provision customer**.
 2. Enter the **camp name**, optionally a **plan** label (free text, e.g. "Standard – founding") and an **organization** (see §7), and the **buyer's email** (they become the camp admin).
-3. Click **Provision + invite** → creates a fresh **empty** `customer` camp and an **invite link**.
-4. **Send the invite link to the buyer.** They set a password, become admin, and invite their staff.
+3. Click **Provision + email invite** → creates a fresh **empty** `customer` camp and **emails the buyer their sign-in link automatically**. (The link is also shown on screen as a backup — if the email fails to send, you'll see a warning and can copy it to send manually.)
+4. The buyer opens the emailed link, sets a password, becomes admin, and invites their staff.
 5. **Get their data in.** Either they self-onboard, or use the white-glove path: Camp Info → Locations → **"Send us your list"** lets them drop a spreadsheet for you to load. (Billing is handled by you out-of-band — send the invoice separately.)
 
 **Demos never become customer accounts.** A demo is entered through an anonymous no-login link, so there are no real, verified identities in it — upgrading it in place would leave the account wide open. When a deal closes you **always create a fresh, invite-only customer account** with **Provision customer** (above): the buyer gets a link to *their email*, sets a password, and signs in as a real named admin. (Demos are for exploring; the customer account is where real data lives.)
@@ -159,3 +159,4 @@ insert into platform_admins (user_id) select id from auth.users where email = 'x
 - **Sign out returns to marketing** (`campcommand.app`), by design — sign back in at `app.campcommand.app`.
 - **"Remember me"** is per-device on `app.campcommand.app`; how long it lasts is the Supabase refresh-token setting.
 - **Deploys:** changes go live when you deploy to Vercel; the DB (Supabase) is shared/live immediately.
+- **Invite emails** are sent by the `send-email` edge function via Resend. If a buyer never gets their email, the `RESEND_API_KEY` secret isn't set (Supabase → Edge Functions → secrets) or the sending domain isn't verified in Resend. Provisioning still works — the modal shows the link so you can send it by hand. (Sender is `CampCommand <retreats@campcommand.app>`; set `RETREAT_FROM_EMAIL` to change it.)

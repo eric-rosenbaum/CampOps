@@ -60,6 +60,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signIn: async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error) {
+      // A deliberate login always starts fresh: a platform admin lands on /admin, never dropped
+      // into a camp. (The per-tab "currently viewing" marker only survives a page refresh.)
+      sessionStorage.removeItem('campcommand_admin_camp_id');
+    }
     return error?.message ?? null;
   },
 
@@ -74,6 +79,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signOut: async () => {
     await supabase.auth.signOut();
+    // Clear the "currently viewing" markers so the next login starts clean (admins → /admin).
+    sessionStorage.removeItem('campcommand_admin_camp_id');
+    localStorage.removeItem('campcommand_selected_camp_id');
     set({ session: null, user: null, profile: null });
     useCampStore.setState({ currentCamp: null, currentMember: null, members: [], camps: [], isLoading: true });
   },

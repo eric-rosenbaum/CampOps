@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
-import { Plus, X, Pencil, Calendar, Sun, Copy, Check, Trash2, Upload, CornerDownRight, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, X, Pencil, Calendar, Sun, Copy, Check, Upload, CornerDownRight, ChevronDown, ChevronRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
@@ -11,6 +11,7 @@ import { usePoolStore, POOL_TYPE_LABELS } from '@/store/poolStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { AddEditPoolModal } from '@/components/pool/AddEditPoolModal';
+import { Modal } from '@/components/shared/Modal';
 import type { Season, CampLocation } from '@/lib/types';
 import { Link } from 'react-router-dom';
 
@@ -388,89 +389,175 @@ function SeasonTab() {
 
 // ── Locations tab ─────────────────────────────────────────────────────────────
 
-const toggleCls = (on: boolean) =>
-  `flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-btn border transition-colors ${
-    on ? 'bg-forest/8 border-forest/30 text-forest' : 'border-stone-200 text-forest/40 hover:border-stone-300'
-  }`;
+// Locations overview: read-only rows that open a detail editor modal.
+function LocBadge({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'neutral' | 'sage' | 'blue' | 'muted' }) {
+  const cls = tone === 'sage' ? 'bg-sage-pale text-forest' : tone === 'blue' ? 'bg-blue-bg text-blue-text'
+    : tone === 'muted' ? 'bg-cream-dark text-forest/45' : 'bg-cream-dark text-forest/60';
+  return <span className={`inline-flex px-1.5 py-0.5 rounded-tag text-[10px] font-semibold uppercase tracking-wide ${cls}`}>{children}</span>;
+}
 
-// One editable location row (name commits on blur), with dorm controls + children.
-function LocationRow({ loc, depth }: { loc: CampLocation; depth: number }) {
-  const { childrenOf, categories, updateLocation, deleteLocation, addLocation } = useLocationStore();
-  const [name, setName] = useState(loc.name);
-  // Sync local edit buffer when the underlying location name changes (render-phase, not an effect).
-  const [syncedName, setSyncedName] = useState(loc.name);
-  if (loc.name !== syncedName) { setSyncedName(loc.name); setName(loc.name); }
-
+/** Read-only overview row. Click to open the detail editor; children render indented below. */
+function LocationRow({ loc, depth, onOpen }: { loc: CampLocation; depth: number; onOpen: (l: CampLocation) => void }) {
+  const { childrenOf, categories } = useLocationStore();
   const kids = childrenOf(loc.id);
-
-  function commitName() {
-    const trimmed = name.trim();
-    if (!trimmed || trimmed === loc.name) { setName(loc.name); return; }
-    updateLocation({ ...loc, name: trimmed });
-  }
+  const isRoom = loc.parentId != null;
+  const catName = categories.find(c => c.id === loc.categoryId)?.name;
 
   return (
     <>
-      <div className="flex flex-col gap-1.5 py-2" style={{ paddingLeft: `${depth * 20}px` }}>
-        {/* Primary line: the location NAME + row actions */}
-        <div className="flex items-center gap-2">
-          {depth > 0 && <CornerDownRight className="w-3.5 h-3.5 text-forest/25 flex-shrink-0" />}
-          <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onBlur={commitName}
-            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-            placeholder="Location name"
-            className={`${inputCls} flex-1 min-w-0 font-medium`}
-          />
-          <button onClick={() => updateLocation({ ...loc, isDorm: !loc.isDorm })} className={toggleCls(loc.isDorm)} title="Mark as a dorm / sleeping quarters">Dorm</button>
-          <button onClick={() => addLocation({ name: 'New sub-location', parentId: loc.id })} className="text-forest/40 hover:text-forest transition-colors p-1 flex-shrink-0" title="Add sub-location"><Plus className="w-4 h-4" /></button>
-          <button onClick={() => { if (confirm(`Delete "${loc.name || 'this location'}"${kids.length ? ' and its sub-locations' : ''}?`)) deleteLocation(loc.id); }} className="text-forest/30 hover:text-red transition-colors p-1 flex-shrink-0" title="Delete"><Trash2 className="w-4 h-4" /></button>
+      <button
+        type="button"
+        onClick={() => onOpen(loc)}
+        className="w-full flex items-center gap-2 py-2 pr-1 text-left rounded-btn hover:bg-cream-dark/30 transition-colors"
+        style={{ paddingLeft: `${depth * 20 + 4}px` }}
+      >
+        {depth > 0 && <CornerDownRight className="w-3.5 h-3.5 text-forest/25 flex-shrink-0" />}
+        <span className={`text-[13px] font-medium truncate ${loc.isActive ? 'text-forest' : 'text-forest/40 line-through'}`}>
+          {loc.name || 'Untitled location'}
+        </span>
+        <span className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+          {loc.isDorm && <LocBadge>Dorm</LocBadge>}
+          {isRoom && loc.bedCapacity != null && <LocBadge>{loc.bedCapacity} beds</LocBadge>}
+          {loc.retreatAvailable && <LocBadge tone="sage">Retreat</LocBadge>}
+          {loc.accessible && <LocBadge tone="blue">ADA</LocBadge>}
+          {!loc.isActive && <LocBadge tone="muted">Blocked</LocBadge>}
+          {depth === 0 && catName && <span className="text-[11px] text-forest/35">{catName}</span>}
+        </span>
+        <Pencil className="w-3.5 h-3.5 text-forest/25 flex-shrink-0" />
+      </button>
+      {kids.map(k => <LocationRow key={k.id} loc={k} depth={depth + 1} onOpen={onOpen} />)}
+    </>
+  );
+}
+
+/** Detail editor for one location. Buildings carry dorm/category; rooms carry beds. Save/Cancel. */
+function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onClose: () => void; onOpen: (l: CampLocation) => void }) {
+  const { categories, updateLocation, deleteLocation, addLocation, childrenOf } = useLocationStore();
+  const isRoom = loc.parentId != null;
+  const kids = childrenOf(loc.id);
+  // A room can only be offered to retreats if its building is. Guard the toggle + save.
+  const parent = useLocationStore((s) => (loc.parentId ? s.locations.find((l) => l.id === loc.parentId) ?? null : null));
+  const parentAvailable = !!parent?.retreatAvailable;
+
+  const [name, setName] = useState(loc.name);
+  const [categoryId, setCategoryId] = useState(loc.categoryId ?? '');
+  const [isDorm, setIsDorm] = useState(loc.isDorm);
+  const [retreatAvailable, setRetreatAvailable] = useState(loc.retreatAvailable);
+  const [accessible, setAccessible] = useState(loc.accessible);
+  const [isActive, setIsActive] = useState(loc.isActive);
+  const [beds, setBeds] = useState(loc.bedCapacity != null ? String(loc.bedCapacity) : '');
+  const [notes, setNotes] = useState(loc.notes ?? '');
+
+  function save() {
+    updateLocation({
+      ...loc,
+      name: name.trim() || loc.name,
+      categoryId: isRoom ? loc.categoryId : (categoryId || null),
+      isDorm: isRoom ? loc.isDorm : isDorm,
+      retreatAvailable: isRoom ? (parentAvailable && retreatAvailable) : (isDorm ? retreatAvailable : false),
+      accessible,
+      isActive,
+      bedCapacity: isRoom ? (beds === '' ? null : Math.max(0, Math.round(Number(beds) || 0))) : loc.bedCapacity,
+      notes: notes.trim() || null,
+    });
+    onClose();
+  }
+  function remove() {
+    if (confirm(`Delete "${loc.name || 'this location'}"${kids.length ? ' and its sub-locations' : ''}? This can't be undone.`)) {
+      deleteLocation(loc.id);
+      onClose();
+    }
+  }
+  function addRoom() {
+    const r = addLocation({ name: 'New room', parentId: loc.id });
+    onOpen(r); // switch the editor to the new room
+  }
+
+  const sortedCats = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
+  const toggle = (on: boolean) => `inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1.5 rounded-pill border transition-colors ${on ? 'bg-sage text-white border-sage' : 'bg-white text-forest/50 border-border hover:border-forest/30'}`;
+
+  return (
+    <Modal title={isRoom ? 'Edit room' : 'Edit location'} onClose={onClose} width="460px">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-[12px] font-medium text-forest/70 mb-1">Name</label>
+          <input autoFocus value={name} onChange={e => setName(e.target.value)} className={inputCls} placeholder="e.g. Birch Cabin, Room 2" />
         </div>
 
-        {/* Secondary line: category (top-level) + dorm details */}
-        {(depth === 0 || loc.isDorm) && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pl-1">
-            {depth === 0 && (
-              <label className="flex items-center gap-1.5 text-[12px] text-forest/50">
-                Category
-                <select
-                  value={loc.categoryId ?? ''}
-                  onChange={e => updateLocation({ ...loc, categoryId: e.target.value || null })}
-                  className={`${inputCls} w-44 py-1`}
-                >
-                  <option value="">Uncategorized</option>
-                  {[...categories].sort((a, b) => a.sortOrder - b.sortOrder).map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {loc.isDorm && (
-              <>
-                <label className="flex items-center gap-1.5 text-[12px] text-forest/50">
-                  Beds
-                  <input
-                    type="number" min={0}
-                    value={loc.bedCapacity ?? ''}
-                    onChange={e => updateLocation({ ...loc, bedCapacity: e.target.value === '' ? null : Number(e.target.value) })}
-                    className={`${inputCls} w-20 py-1`}
-                  />
-                </label>
-                <button onClick={() => updateLocation({ ...loc, accessible: !loc.accessible })} className={toggleCls(loc.accessible)}>
-                  {loc.accessible && <Check className="w-3 h-3" />} Accessible
-                </button>
-                <button onClick={() => updateLocation({ ...loc, retreatAvailable: !loc.retreatAvailable })} className={toggleCls(loc.retreatAvailable)}>
-                  {loc.retreatAvailable && <Check className="w-3 h-3" />} Retreat-available
-                </button>
-              </>
+        {!isRoom && (
+          <>
+            <div>
+              <label className="block text-[12px] font-medium text-forest/70 mb-1">Category</label>
+              <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className={inputCls}>
+                <option value="">Uncategorized</option>
+                {sortedCats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setIsDorm(v => !v)} className={toggle(isDorm)}>{isDorm && <Check className="w-3 h-3" />} Dorm / sleeping quarters</button>
+              {isDorm && <button type="button" onClick={() => setRetreatAvailable(v => !v)} className={toggle(retreatAvailable)}>{retreatAvailable && <Check className="w-3 h-3" />} Available to retreats</button>}
+            </div>
+            {isDorm && <p className="text-[11px] text-forest/45 -mt-1.5">Beds live on this building's rooms — add rooms below and set their beds.</p>}
+          </>
+        )}
+
+        {isRoom && (
+          <>
+            <div>
+              <label className="block text-[12px] font-medium text-forest/70 mb-1">Beds</label>
+              <input type="number" min={0} value={beds} onChange={e => setBeds(e.target.value)} className={`${inputCls} w-28`} placeholder="0" />
+            </div>
+            <div>
+              <button type="button" disabled={!parentAvailable} onClick={() => setRetreatAvailable(v => !v)}
+                className={`${toggle(parentAvailable && retreatAvailable)} ${!parentAvailable ? 'opacity-40 cursor-not-allowed' : ''}`}>
+                {parentAvailable && retreatAvailable && <Check className="w-3 h-3" />} Available to retreats
+              </button>
+              {!parentAvailable && (
+                <p className="text-[11px] text-forest/45 mt-1">Mark <span className="font-medium">{parent?.name ?? 'the building'}</span> available to retreats first.</p>
+              )}
+            </div>
+          </>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setAccessible(v => !v)} className={toggle(accessible)}>{accessible && <Check className="w-3 h-3" />} Accessible / ADA</button>
+          <button type="button" onClick={() => setIsActive(v => !v)} className={toggle(isActive)}>{isActive ? <><Check className="w-3 h-3" /> Active</> : 'Blocked / inactive'}</button>
+        </div>
+
+        <div>
+          <label className="block text-[12px] font-medium text-forest/70 mb-1">Notes</label>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={`${inputCls} resize-none`} placeholder="optional" />
+        </div>
+
+        {!isRoom && (
+          <div className="border-t border-border pt-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[12px] font-semibold text-forest/60">Rooms / sub-locations</p>
+              <button type="button" onClick={addRoom} className="inline-flex items-center gap-1 text-[12px] font-medium text-forest/60 hover:text-forest"><Plus className="w-3.5 h-3.5" /> Add room</button>
+            </div>
+            {kids.length === 0 ? (
+              <p className="text-[11px] text-forest/40 italic">No rooms yet.</p>
+            ) : (
+              <div className="divide-y divide-stone-100">
+                {kids.map(k => (
+                  <button key={k.id} type="button" onClick={() => onOpen(k)} className="w-full flex items-center gap-2 py-1.5 text-left text-[12px] text-forest hover:text-sage">
+                    <CornerDownRight className="w-3.5 h-3.5 text-forest/25" />
+                    <span className={k.isActive ? '' : 'text-forest/40 line-through'}>{k.name}</span>
+                    {k.bedCapacity != null && <span className="text-forest/40">· {k.bedCapacity} beds</span>}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         )}
-      </div>
 
-      {kids.map(k => <LocationRow key={k.id} loc={k} depth={depth + 1} />)}
-    </>
+        <div className="flex gap-2 pt-1">
+          <button onClick={save} className="flex-1 bg-forest text-cream text-[13px] font-medium py-2 rounded-btn hover:bg-forest/90 transition-colors">Save changes</button>
+          <button onClick={remove} className="text-[13px] text-red hover:bg-red-bg px-3 py-2 rounded-btn transition-colors">Delete</button>
+          <button onClick={onClose} className="text-[13px] text-forest/50 hover:text-forest px-3 py-2 rounded-btn transition-colors">Cancel</button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -486,6 +573,7 @@ function LocationsTab() {
   const [newTopCat, setNewTopCat] = useState('');
   const [newCat, setNewCat] = useState('');
   const [showCats, setShowCats] = useState(false);
+  const [detailLoc, setDetailLoc] = useState<CampLocation | null>(null);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<{ rows: ParsedRow[]; fileName: string } | null>(null);
@@ -519,8 +607,9 @@ function LocationsTab() {
   function addTop() {
     const n = newTop.trim();
     if (!n) return;
-    addLocation({ name: n, categoryId: newTopCat || null });
+    const l = addLocation({ name: n, categoryId: newTopCat || null });
     setNewTop('');
+    setDetailLoc(l); // open the detail editor for the new location
   }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -602,6 +691,7 @@ function LocationsTab() {
 
   return (
     <div className="p-7 max-w-3xl space-y-5">
+      {detailLoc && <LocationDetailModal key={detailLoc.id} loc={detailLoc} onClose={() => setDetailLoc(null)} onOpen={setDetailLoc} />}
       {/* Locations tree */}
       <div className={cardCls}>
         <h2 className="text-[13px] font-semibold text-forest mb-1">Camp locations</h2>
@@ -710,7 +800,7 @@ function LocationsTab() {
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/45">{g.label}</p>
                 {g.catId && (
                   <button
-                    onClick={() => addLocation({ name: 'New location', categoryId: g.catId })}
+                    onClick={() => setDetailLoc(addLocation({ name: 'New location', categoryId: g.catId }))}
                     className="text-[11px] text-forest/40 hover:text-forest transition-colors flex items-center gap-1"
                   >
                     <Plus className="w-3 h-3" /> Add
@@ -718,7 +808,7 @@ function LocationsTab() {
                 )}
               </div>
               <div className="divide-y divide-stone-100">
-                {g.items.map(l => <LocationRow key={l.id} loc={l} depth={0} />)}
+                {g.items.map(l => <LocationRow key={l.id} loc={l} depth={0} onOpen={setDetailLoc} />)}
               </div>
             </div>
           ))}

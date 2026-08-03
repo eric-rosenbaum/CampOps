@@ -124,6 +124,8 @@ export function DocumentsTab() {
   const docs = retreat ? docsFor(retreat.id) : [];
   const coi = docs.find((d) => d.docType === 'coi');
   const coiMissing = retreat && (!coi || coi.status === 'missing');
+  const agreement = docs.find((d) => d.docType === 'agreement');
+  const agreementMissing = retreat && !agreement;
 
   return (
     <div className="flex-1 overflow-y-auto px-7 py-6">
@@ -214,9 +216,26 @@ export function DocumentsTab() {
               <span className="text-[12px] text-forest/45">
                 {docs.length} document{docs.length === 1 ? '' : 's'} tracked for this retreat.
               </span>
-              <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'uploadDoc', retreatId: retreat.id })}>
-                <Plus className="w-3.5 h-3.5" /> Add document
+              <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'uploadDoc', retreatId: retreat.id, docType: 'other' })}>
+                <Plus className="w-3.5 h-3.5" /> Add other document
               </Button>
+            </div>
+          )}
+
+          {/* Retreat agreement — a dedicated slot; upload here or it shows in the list once added. */}
+          {canManage && agreementMissing && (
+            <div className="bg-white rounded-card border border-border px-5 py-4 mb-3">
+              <p className="text-[13px] font-semibold text-forest mb-1">Add the retreat agreement</p>
+              <p className="text-[12px] text-forest/50 mb-3.5">Upload the signed rental / retreat agreement for this group.</p>
+              <button
+                type="button"
+                onClick={() => openModal({ kind: 'uploadDoc', retreatId: retreat.id, docType: 'agreement' })}
+                className="w-full rounded-btn border-2 border-dashed border-border hover:border-sage hover:bg-sage-pale/40 transition-colors px-4 py-6 text-center cursor-pointer"
+              >
+                <Paperclip className="w-6 h-6 text-forest/40 mx-auto mb-2" />
+                <p className="text-[13px] font-medium text-forest">Click to upload retreat agreement</p>
+                <p className="text-[11px] text-forest/45 mt-1">PDF, JPG, or PNG · Max 10MB</p>
+              </button>
             </div>
           )}
 

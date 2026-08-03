@@ -29,9 +29,9 @@ function BedDots({ taken, capacity }: { taken: number; capacity: number }) {
   );
 }
 
-function exportMap(retreat: Retreat, rows: RetreatHousing[], dormById: Map<string, CampLocation>) {
+function exportMap(retreat: Retreat, rows: RetreatHousing[], locById: Map<string, CampLocation>) {
   const lines = rows.map((h) => {
-    const cap = (h.locationId ? dormById.get(h.locationId)?.bedCapacity : null) ?? h.peopleCount;
+    const cap = (h.locationId ? locById.get(h.locationId)?.bedCapacity : null) ?? h.peopleCount;
     return `<tr><td>${h.spaceName ?? '—'}</td><td>${h.subgroupName ?? '—'}</td><td>${h.peopleCount} / ${cap}</td><td>${h.notes ?? ''}</td></tr>`;
   }).join('');
   const html = `<!doctype html><html><head><title>Housing map — ${retreat.groupName}</title>
@@ -56,7 +56,7 @@ export function HousingTab() {
   // straight from a selector infinite-loops under React 19 + zustand v5.
   const locations = useLocationStore((s) => s.locations);
   const dorms = useMemo(
-    () => locations.filter((l) => l.isDorm && l.retreatAvailable && l.isActive).sort((a, b) => a.name.localeCompare(b.name)),
+    () => locations.filter((l) => l.isDorm && l.retreatAvailable && l.isActive && l.parentId == null).sort((a, b) => a.name.localeCompare(b.name)),
     [locations],
   );
   const { can, currentUser } = useAuth();
@@ -81,9 +81,19 @@ export function HousingTab() {
   }
 
   const rows = retreat ? housingFor(retreat.id) : [];
-  const dormById = new Map(dorms.map((d) => [d.id, d]));
-  const usedDormIds = new Set(rows.map((h) => h.locationId).filter(Boolean) as string[]);
-  const inactiveSpaces = dorms.filter((d) => !usedDormIds.has(d.id));
+  const locById = new Map(locations.map((l) => [l.id, l]));
+  const usedSpaceIds = new Set(rows.map((h) => h.locationId).filter(Boolean) as string[]);
+  // Assignable spaces are ROOMS (retreat-available children of retreat-available buildings), each
+  // shown with its building as subtext; a building with no rooms is itself one space.
+  const availableSpaces = dorms.flatMap((b) => {
+    const rms = locations.filter((l) => l.parentId === b.id);
+    const avail = rms.filter((l) => l.retreatAvailable && l.isActive)
+      .sort((a, c) => a.sortOrder - c.sortOrder || a.name.localeCompare(c.name));
+    if (avail.length > 0) return avail.map((rm) => ({ id: rm.id, name: rm.name, building: b.name, beds: rm.bedCapacity, accessible: rm.accessible }));
+    if (rms.length === 0) return [{ id: b.id, name: b.name, building: null as string | null, beds: b.bedCapacity, accessible: b.accessible }];
+    return [];
+  });
+  const unassignedSpaces = availableSpaces.filter((s) => !usedSpaceIds.has(s.id));
 
   const phase = derivePhase(rows);
   const allLocked = phase === 3;
@@ -151,7 +161,7 @@ export function HousingTab() {
               <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'housingHistory', retreatId: retreat.id })}>
                 <History className="w-3.5 h-3.5" /> View version history
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => exportMap(retreat, rows, dormById)}>
+              <Button size="sm" variant="ghost" onClick={() => exportMap(retreat, rows, locById)}>
                 <Download className="w-3.5 h-3.5" /> Export map
               </Button>
               {canManage && (
@@ -174,8 +184,11 @@ export function HousingTab() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
             {rows.map((h) => {
-              const dorm = h.locationId ? dormById.get(h.locationId) : undefined;
-              const capacity = dorm?.bedCapacity ?? h.peopleCount;
+              // The assignment may point at a room (child location), so resolve against all
+              // locations, not just dorm buildings. spaceName already reads "Building · Room".
+              const loc = h.locationId ? locations.find((l) => l.id === h.locationId) : undefined;
+              const capacity = loc?.bedCapacity ?? h.peopleCount;
+              const building = loc?.parentId ? locById.get(loc.parentId)?.name ?? null : null;
               return (
                 <div
                   key={h.id}
@@ -184,9 +197,10 @@ export function HousingTab() {
                 >
                   <div className="flex items-start justify-between mb-2 gap-2">
                     <div className="min-w-0">
-                      <p className="text-[13px] font-semibold text-forest truncate">{h.spaceName ?? 'Unassigned space'}</p>
+                      <p className="text-[13px] font-semibold text-forest truncate">{loc?.name ?? h.spaceName ?? 'Unassigned space'}</p>
+                      {building && <p className="text-[11px] text-forest/45 mt-0.5">{building}</p>}
                       <p className="text-[11px] text-forest/45 mt-0.5">
-                        {capacity} bed{capacity === 1 ? '' : 's'}{dorm?.accessible ? ' · Accessible' : ''}
+                        {capacity} bed{capacity === 1 ? '' : 's'}{loc?.accessible ? ' · Accessible' : ''}
                       </p>
                     </div>
                     {h.locked
@@ -206,22 +220,22 @@ export function HousingTab() {
               );
             })}
 
-            {inactiveSpaces.map((s) => (
-              <div key={s.id} className="rounded-card border border-border bg-white px-4 py-4 opacity-40">
+            {unassignedSpaces.map((s) => (
+              <div key={s.id} className="rounded-card border border-dashed border-border bg-white px-4 py-4 opacity-70">
                 <div className="flex items-start justify-between mb-2 gap-2">
                   <div className="min-w-0">
                     <p className="text-[13px] font-semibold text-forest truncate">{s.name}</p>
-                    <p className="text-[11px] text-forest/45 mt-0.5">Not activated for this retreat</p>
+                    {s.building && <p className="text-[11px] text-forest/45 mt-0.5">{s.building}</p>}
                   </div>
-                  <Badge tone="neutral">Inactive</Badge>
+                  <Badge tone="neutral">Unassigned</Badge>
                 </div>
                 <p className="text-[11px] text-forest/50 italic">
-                  {s.bedCapacity ?? 0} beds{s.accessible ? ' · Accessible' : ''}. Not part of this retreat's housing plan.
+                  {s.beds ?? 0} beds{s.accessible ? ' · Accessible' : ''}. Assign a subgroup to put them here.
                 </p>
               </div>
             ))}
 
-            {rows.length === 0 && inactiveSpaces.length === 0 && (
+            {rows.length === 0 && unassignedSpaces.length === 0 && (
               <div className="col-span-full bg-white rounded-card border border-border px-4 py-8 text-center">
                 <p className="text-[13px] text-forest/50 mb-3">
                   No cabins defined yet. Add your camp's spaces first, then assign this group.

@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import {
   ALLERGENS, ALLERGEN_LABELS, DIETARY_RESTRICTIONS, restrictionLabel,
-  MEAL_PERIOD_LABELS, type Allergen,
+  MEAL_PERIOD_LABELS,
 } from '@/lib/commissaryUnits';
 import { CommissaryFilesPanel } from './CommissaryFilesPanel';
 
@@ -215,7 +215,7 @@ export function AllergyTab() {
                             : 'bg-amber-bg text-amber-text border-amber/20'
                         }`}
                       >
-                        {ALLERGEN_LABELS[c.allergen as Allergen] ?? c.allergen}
+                        {restrictionLabel(c.allergen)}
                         <span className="font-mono">{c.camperCount}</span>
                         {c.anaphylacticCount > 0 && <span className="font-bold">⚠</span>}
                       </span>

@@ -8,7 +8,7 @@ import type { Retreat } from '@/lib/types';
 import {
   money, fmtRange, fmtDate, nights, daysUntil,
   StatusBadge, Badge, PhaseTracker, statusAccent,
-  GROUP_TYPE_LABELS, estimateRevenue, type BadgeTone,
+  GROUP_TYPE_LABELS, type BadgeTone,
 } from './retreatUi';
 
 const ACTIVEISH: Retreat['status'][] = ['confirmed', 'ready', 'active'];
@@ -29,7 +29,7 @@ interface DerivedState {
 
 export function OverviewTab() {
   const {
-    retreats, retreatsByStatus, docsFor, housingFor, balanceFor,
+    retreats, retreatsByStatus, docsFor, housingFor, financialsFor,
     phaseProgress, setActiveRetreat, setActiveTab, openModal,
   } = useRetreatStore();
   const { can } = useAuth();
@@ -78,11 +78,8 @@ export function OverviewTab() {
   // money actually received (deposits + payments) and the estimated remainder still to come,
   // since the final take from a retreat often isn't known until after the stay.
   const nonCancelled = retreats.filter((r) => r.status !== 'cancelled');
-  const revenueReceived = nonCancelled.reduce((sum, r) => sum + balanceFor(r.id).totalPaid, 0);
-  const expectedRevenue = nonCancelled.reduce((sum, r) => {
-    const charged = balanceFor(r.id).totalCharges;
-    return sum + (charged > 0 ? charged : estimateRevenue(r, housingFor(r.id).length));
-  }, 0);
+  const revenueReceived = nonCancelled.reduce((sum, r) => sum + financialsFor(r.id).collected, 0);
+  const expectedRevenue = nonCancelled.reduce((sum, r) => sum + financialsFor(r.id).expected, 0);
   const revenueEstimated = Math.max(0, expectedRevenue - revenueReceived);
   const seasonRevenue = revenueReceived + revenueEstimated;
 

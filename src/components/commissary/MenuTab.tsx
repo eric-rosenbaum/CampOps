@@ -5,8 +5,8 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
 import type { MealPeriod } from '@/lib/types';
 import {
-  MEAL_PERIODS, MEAL_PERIOD_LABELS, DAY_LABELS, dateForCell, ALLERGEN_LABELS, restrictionLabel,
-  menuWeekToPrintHtml, type Allergen, type PrintMenuCell,
+  MEAL_PERIODS, MEAL_PERIOD_LABELS, DAY_LABELS, dateForCell, restrictionLabel,
+  menuWeekToPrintHtml, type PrintMenuCell,
 } from '@/lib/commissaryUnits';
 import { TemplatesView } from './TemplatesView';
 
@@ -64,9 +64,9 @@ function MenuCell({ week, dayIndex, meal }: { week: number; dayIndex: number; me
               unlinked
                 ? 'Free text — excluded from ordering demand and allergen totals'
                 : conflicted
-                  ? `Conflicts with campers: ${conflicts.map((c) => `${ALLERGEN_LABELS[c.allergen as Allergen] ?? c.allergen} (${c.camperCount}${c.anaphylacticCount > 0 ? `, ${c.anaphylacticCount} anaphylactic` : ''})`).join('; ')}${allCovered ? ' — replacement plated' : ''}`
+                  ? `Conflicts with campers: ${conflicts.map((c) => `${restrictionLabel(c.allergen)} (${c.camperCount}${c.anaphylacticCount > 0 ? `, ${c.anaphylacticCount} anaphylactic` : ''})`).join('; ')}${allCovered ? ' — replacement plated' : ''}`
                   : allergens.length
-                    ? `Contains ${allergens.map((a) => ALLERGEN_LABELS[a as Allergen]).join(', ')} — no camper affected`
+                    ? `Contains ${allergens.map((a) => restrictionLabel(a)).join(', ')} — no camper affected`
                     : 'No major allergens'
             }
           >

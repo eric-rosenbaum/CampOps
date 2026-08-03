@@ -41,6 +41,24 @@ export const ALLERGEN_LABELS: Record<Allergen, string> = {
   sesame: 'Sesame',
 };
 
+// Item-side dietary flags. These live alongside allergens on an inventory item and flag on the
+// menu builder EXACTLY like allergens — a "contains meat" item warns against vegetarian/vegan
+// campers, "contains animal products" against vegans. (Replaces the old vegetarian/vegan/kosher/
+// halal item tags: an item states what it CONTAINS; the camper states what they avoid.)
+export const DIET_FLAGS = ['contains_meat', 'contains_animal_products'] as const;
+export type DietFlag = (typeof DIET_FLAGS)[number];
+export const DIET_FLAG_LABELS: Record<DietFlag, string> = {
+  contains_meat: 'Contains meat',
+  contains_animal_products: 'Contains animal products',
+};
+// One combined set of everything an inventory item can be flagged with (stored in item.allergens).
+export const ITEM_FLAGS = [...ALLERGENS, ...DIET_FLAGS] as const;
+// Which camper dietary restrictions each item flag conflicts with (for menu warnings).
+export const DIET_FLAG_CONFLICTS: Record<string, readonly string[]> = {
+  contains_meat: ['vegetarian', 'vegan'],
+  contains_animal_products: ['vegan'],
+};
+
 // ─── Dimensions & base units ─────────────────────────────────────────────────
 
 export type UnitDimension = 'count' | 'weight' | 'volume';
@@ -302,17 +320,17 @@ export function ingredientAllergens(
   return item?.allergens ?? [];
 }
 
-/** Union across a recipe's ingredients, in canonical ALLERGENS order. */
+/** Union across a recipe's ingredients (allergens + diet flags), in canonical order. */
 export function recipeAllergens(
   ingredients: RecipeIngredient[],
   itemsById: Map<string, InventoryItem>,
-): Allergen[] {
+): string[] {
   const found = new Set<string>();
   for (const ing of ingredients) {
     const item = ing.itemId ? itemsById.get(ing.itemId) : undefined;
     for (const a of ingredientAllergens(ing, item)) found.add(a);
   }
-  return ALLERGENS.filter((a) => found.has(a));
+  return ITEM_FLAGS.filter((a) => found.has(a));
 }
 
 // ─── Menu demand ─────────────────────────────────────────────────────────────
@@ -459,18 +477,18 @@ export function dateForCell(startDate: string, weekNumber: number, dayIndex: num
 // One canonical set, with a `kind` that separates a safety hazard from an
 // accommodation. Severity is only meaningful for allergens.
 
-export const DIETARY_RESTRICTIONS = ['vegetarian', 'vegan', 'kosher', 'halal'] as const;
+// Camper dietary preferences (what a person avoids). Kosher/halal were dropped.
+export const DIETARY_RESTRICTIONS = ['vegetarian', 'vegan'] as const;
 export type DietaryRestriction = (typeof DIETARY_RESTRICTIONS)[number];
 
 export const DIETARY_LABELS: Record<DietaryRestriction, string> = {
   vegetarian: 'Vegetarian',
   vegan: 'Vegan',
-  kosher: 'Kosher',
-  halal: 'Halal',
 };
 
 export function restrictionLabel(slug: string): string {
   return (ALLERGEN_LABELS as Record<string, string>)[slug]
+    ?? (DIET_FLAG_LABELS as Record<string, string>)[slug]
     ?? (DIETARY_LABELS as Record<string, string>)[slug]
     ?? slug;
 }
@@ -516,9 +534,17 @@ export function menuConflicts(
 ): MenuConflict[] {
   const out: MenuConflict[] = [];
   for (const a of recipeAllergenSlugs) {
-    const row = summary.get(a);
-    if (row && row.camperCount > 0) {
-      out.push({ allergen: a, camperCount: row.camperCount, anaphylacticCount: row.anaphylacticCount });
+    const dietConflicts = DIET_FLAG_CONFLICTS[a];
+    if (dietConflicts) {
+      // A "contains meat / animal products" item conflicts with vegetarian/vegan campers.
+      let camperCount = 0;
+      for (const s of dietConflicts) camperCount += summary.get(s)?.camperCount ?? 0;
+      if (camperCount > 0) out.push({ allergen: a, camperCount, anaphylacticCount: 0 });
+    } else {
+      const row = summary.get(a);
+      if (row && row.camperCount > 0) {
+        out.push({ allergen: a, camperCount: row.camperCount, anaphylacticCount: row.anaphylacticCount });
+      }
     }
   }
   return out.sort((x, y) => y.anaphylacticCount - x.anaphylacticCount || y.camperCount - x.camperCount);

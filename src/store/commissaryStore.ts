@@ -35,9 +35,9 @@ import {
   demandForEntries, stockStatus, targetPortions, weekCount, recipeAllergens,
   buildDraftOrders, parRequirements, menuSignature, menuConflicts,
   scaledIngredientLabel, formatInStockUnit, tidy, mealHeadCount, peopleDays, perDiem,
-  menuForecastCost, dateForCell, ALLERGENS, MEAL_PERIOD_LABELS, PREP_SLOT_ORDER,
+  menuForecastCost, dateForCell, ITEM_FLAGS, MEAL_PERIOD_LABELS, PREP_SLOT_ORDER,
   addDaysStr, makeProjectionInput, coverageNeedBase, projectedOnHandBase, WEEKDAYS, nextWeekdayOnOrAfter,
-  type Allergen, type DemandRow, type StockStatus, type DraftOrder, type MenuConflict,
+  type DemandRow, type StockStatus, type DraftOrder, type MenuConflict,
   type PerDiem, type PrepScheduleSlot, type PrepSlotKey,
 } from '@/lib/commissaryUnits';
 import { generateId } from '@/lib/utils';
@@ -256,7 +256,7 @@ interface CommissaryState {
   ingredientsByRecipe: () => Map<string, RecipeIngredient[]>;
   ingredientsFor: (recipeId: string) => RecipeIngredient[];
   stepsFor: (recipeId: string) => RecipeStep[];
-  allergensFor: (recipeId: string) => Allergen[];
+  allergensFor: (recipeId: string) => string[];
   filteredItems: () => InventoryItem[];
   filteredRecipes: () => Recipe[];
   stockCounts: () => Record<StockStatus, number>;
@@ -401,7 +401,7 @@ interface CommissaryState {
   deleteFile: (f: CommissaryFile) => Promise<void>;
 
   /** Allergens for any chip — recipe union, single item's allergens, or none. */
-  entryAllergens: (entry: MenuEntry) => Allergen[];
+  entryAllergens: (entry: MenuEntry) => string[];
   /** Camper conflicts for any chip (recipe or item), driven by the aggregate summary. */
   conflictsForEntry: (entry: MenuEntry) => MenuConflict[];
 
@@ -1002,7 +1002,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
           id: generateId(), planId, recipeId: null, mealPeriod: entry.mealPeriod,
           title: entry.label ?? item?.name ?? 'Item', portions: mealPortions,
           ingredients: item ? [{ label: item.name, qty: formatInStockUnit(item, base), linked: true }] : [],
-          allergens: item ? ALLERGENS.filter((a) => item.allergens.includes(a)) : [],
+          allergens: item ? ITEM_FLAGS.filter((a) => item.allergens.includes(a)) : [],
           prepTime: null, cookTime: null, notes: 'Serve — no prep needed.',
           isComplete: false, completedBy: null, completedAt: null,
           sortOrder: sort++, createdAt: now, updatedAt: now,
@@ -1953,7 +1953,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     if (entry.recipeId) return get().allergensFor(entry.recipeId);
     if (entry.itemId) {
       const item = get().itemsById().get(entry.itemId);
-      return item ? ALLERGENS.filter((a) => item.allergens.includes(a)) : [];
+      return item ? ITEM_FLAGS.filter((a) => item.allergens.includes(a)) : [];
     }
     return [];
   },

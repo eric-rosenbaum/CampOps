@@ -60,6 +60,8 @@ export interface Camp {
   locations: string[];
   /** Camp-wide dietary facts, e.g. { kosher: true }. Used by Commissary. */
   dietaryDefaults: Record<string, boolean>;
+  /** Default payment/banking instructions prefilled into retreat invoice notes. */
+  retreatPaymentNote: string | null;
   accountType: CampAccountType;
   status: CampStatus;
   plan: string | null;
@@ -80,6 +82,7 @@ function rowToCamp(c: Record<string, unknown>): Camp {
     modules: (c.modules as Record<string, boolean>) ?? {},
     locations: (c.locations as string[]) ?? [],
     dietaryDefaults: (c.dietary_defaults as Record<string, boolean>) ?? {},
+    retreatPaymentNote: (c.retreat_payment_note as string) ?? null,
     accountType: (c.account_type as CampAccountType) ?? 'customer',
     status: (c.status as CampStatus) ?? 'active',
     plan: (c.plan as string) ?? null,
@@ -144,6 +147,7 @@ interface CampState {
   joinWithCode: (code: string) => Promise<{ campId: string; campName: string } | { error: string }>;
   acceptInvitation: (token: string) => Promise<{ campId: string } | { error: string }>;
   updateCamp: (campId: string, data: Partial<Pick<Camp, 'name' | 'campType' | 'state' | 'modules' | 'locations' | 'dietaryDefaults'>>) => Promise<void>;
+  setRetreatPaymentNote: (campId: string, note: string | null) => Promise<void>;
 
   loadMembers: (campId: string) => Promise<MemberWithProfile[]>;
   inviteMember: (campId: string, email: string, role: CampRole, staffGroupId: string | null) => Promise<string>;
@@ -185,7 +189,7 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     const { data, error } = await supabase
       .from('camp_members')
-      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, state, modules, locations, dietary_defaults, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
+      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, state, modules, locations, dietary_defaults, retreat_payment_note, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
       .eq('user_id', user.id)
       .eq('is_active', true);
 
@@ -347,6 +351,13 @@ export const useCampStore = create<CampState>((set, get) => ({
       p_dietary_defaults: data.dietaryDefaults ?? null,
     });
     if (error) console.error('[campStore] updateCamp error:', error);
+  },
+
+  setRetreatPaymentNote: async (campId, note) => {
+    const current = get().currentCamp;
+    if (current && current.id === campId) set({ currentCamp: { ...current, retreatPaymentNote: note } });
+    const { error } = await supabase.from('camps').update({ retreat_payment_note: note }).eq('id', campId);
+    if (error) console.error('[campStore] setRetreatPaymentNote error:', error);
   },
 
   loadMembers: async (campId) => {

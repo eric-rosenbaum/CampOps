@@ -5,8 +5,8 @@ import {
 } from 'lucide-react';
 import type { InventoryItem } from '@/lib/types';
 import {
-  ALLERGEN_LABELS, STOCK_STATUS_LABELS, stockPercent, stockStatus,
-  onHandInStockUnit, parInStockUnit, type Allergen, type StockStatus,
+  restrictionLabel, STOCK_STATUS_LABELS, stockPercent, stockStatus,
+  onHandInStockUnit, parInStockUnit, type StockStatus,
 } from '@/lib/commissaryUnits';
 
 const STOCK_STYLES: Record<StockStatus, { bar: string; text: string; badge: string }> = {
@@ -81,7 +81,7 @@ export function AllergenChips({ allergens, size = 'sm' }: { allergens: readonly 
     <div className="flex flex-wrap gap-1">
       {allergens.map((a) => (
         <span key={a} className={`inline-flex items-center rounded-tag font-medium border bg-amber-bg text-amber-text border-amber/20 ${pad}`}>
-          {ALLERGEN_LABELS[a as Allergen] ?? a}
+          {restrictionLabel(a)}
         </span>
       ))}
     </div>

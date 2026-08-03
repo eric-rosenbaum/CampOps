@@ -3,7 +3,7 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { Retreat, RetreatIssue } from '@/lib/types';
 import {
-  money, fmtDate, fmtRange, nights, Badge, GROUP_TYPE_LABELS, rateSummary, pricingRate, estimateRevenue, type BadgeTone,
+  money, fmtDate, fmtRange, nights, Badge, GROUP_TYPE_LABELS, rateSummary, pricingRate, type BadgeTone,
 } from './retreatUi';
 
 function dayOf(r: Retreat): { day: number; total: number } {
@@ -34,7 +34,7 @@ function CardLabel({ children }: { children: React.ReactNode }) {
 
 export function ActiveRetreatTab() {
   const {
-    activeRetreat, selectedRetreat, scheduleFor, housingFor, balanceFor,
+    activeRetreat, selectedRetreat, scheduleFor, housingFor, financialsFor,
     issuesFor, checklistFor, toggleChecklistItem, openModal,
   } = useRetreatStore();
   const { can } = useAuth();
@@ -61,7 +61,6 @@ export function ActiveRetreatTab() {
   const schedule = scheduleFor(r.id).filter((s) => !s.dayDate || s.dayDate === today);
   const allSchedule = scheduleFor(r.id);
   const housing = housingFor(r.id);
-  const bal = balanceFor(r.id);
   const issues = issuesFor(r.id);
   const checkout = checklistFor(r.id, 'checkout');
 
@@ -165,11 +164,10 @@ export function ActiveRetreatTab() {
           ))}
         </div>
 
-        {/* Financial — billed total is the rate × people × nights when no manual charges were added. */}
+        {/* Financial — one shared calculation (financialsFor) drives every money figure module-wide. */}
         {(() => {
           const nightCount = nights(r.arrivalDate, r.departureDate);
-          const expected = bal.totalCharges > 0 ? bal.totalCharges : estimateRevenue(r, housingFor(r.id).length);
-          const expectedBalance = expected - bal.totalPaid;
+          const fin = financialsFor(r.id);
           const rate = pricingRate(r);
           const perPerson = r.pricingModel === 'per_person_night';
           return (
@@ -179,9 +177,9 @@ export function ActiveRetreatTab() {
               {perPerson && rate != null && (
                 <Row k="Billed" v={<span className="font-mono text-forest/60">{money(rate)} × {r.headcount} × {nightCount} night{nightCount === 1 ? '' : 's'}</span>} />
               )}
-              <Row k={bal.totalCharges > 0 ? 'Total billed' : 'Estimated total'} v={<span className="font-mono text-green-muted-text">{money(expected)}</span>} />
-              <Row k="Deposit received" v={<span className="font-mono text-green-muted-text">{money(r.depositReceived ?? bal.totalPaid)}</span>} />
-              <Row k="Balance due" v={<span className="font-mono">{money(expectedBalance)} at checkout</span>} />
+              <Row k={fin.source === 'estimate' ? 'Estimated total' : 'Total billed'} v={<span className="font-mono text-green-muted-text">{money(fin.expected)}</span>} />
+              <Row k="Deposit received" v={<span className="font-mono text-green-muted-text">{money(fin.depositReceived)}</span>} />
+              <Row k="Balance due" v={<span className="font-mono">{money(fin.outstanding)} at checkout</span>} />
             </div>
           );
         })()}

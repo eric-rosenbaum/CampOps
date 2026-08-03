@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Wallet, Plus, FileText, Pencil } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { StatCard } from '@/components/shared/StatCard';
-import { useRetreatStore } from '@/store/retreatStore';
+import { useRetreatStore, type RetreatFinancials } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { Retreat } from '@/lib/types';
 import { money, fmtRange, StatusBadge } from './retreatUi';
@@ -11,7 +11,7 @@ const currentYear = () => new Date().getFullYear();
 
 export function RetreatCostsTab() {
   const {
-    retreats, paymentsFor, chargesFor, balanceFor, invoicesFor, openModal,
+    retreats, paymentsFor, financialsFor, invoicesFor, openModal,
   } = useRetreatStore();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
@@ -46,18 +46,18 @@ export function RetreatCostsTab() {
     );
   }
 
-  // Year aggregate.
+  // Year aggregate — driven entirely by the shared financialsFor calc so these totals always
+  // match the Active-retreat panel and Overview (expected shows the moment a group is scheduled).
   let billed = 0, collected = 0, depositsIn = 0, depositsDue = 0;
   for (const r of yearRetreats) {
-    const bal = balanceFor(r.id);
-    billed += bal.totalCharges;
-    collected += bal.totalPaid;
-    if ((r.depositRequired ?? 0) > 0) {
-      const dp = paymentsFor(r.id).filter((p) => p.kind === 'deposit').reduce((s, p) => s + p.amount, 0);
-      if (dp >= (r.depositRequired ?? 0)) depositsIn++; else depositsDue++;
+    const fin = financialsFor(r.id);
+    billed += fin.expected;
+    collected += fin.collected;
+    if (fin.depositRequired > 0) {
+      if (fin.depositReceived >= fin.depositRequired) depositsIn++; else depositsDue++;
     }
   }
-  const outstanding = billed - collected;
+  const outstanding = Math.max(0, billed - collected);
 
   return (
     <div className="flex-1 overflow-y-auto px-7 py-6">
@@ -91,10 +91,8 @@ export function RetreatCostsTab() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
         {yearRetreats.map((r) => (
           <GroupFinanceCard key={r.id} retreat={r}
-            bal={balanceFor(r.id)}
-            depositPaid={paymentsFor(r.id).filter((p) => p.kind === 'deposit').reduce((s, p) => s + p.amount, 0)}
+            fin={financialsFor(r.id)}
             paymentCount={paymentsFor(r.id).length}
-            chargeCount={chargesFor(r.id).length}
             invoiceCount={invoicesFor(r.id).length}
             canManage={canManage}
             openModal={openModal}
@@ -106,26 +104,27 @@ export function RetreatCostsTab() {
 }
 
 function GroupFinanceCard({
-  retreat: r, bal, depositPaid, paymentCount, chargeCount, invoiceCount, canManage, openModal,
+  retreat: r, fin, paymentCount, invoiceCount, canManage, openModal,
 }: {
   retreat: Retreat;
-  bal: { totalCharges: number; totalPaid: number; balance: number };
-  depositPaid: number; paymentCount: number; chargeCount: number; invoiceCount: number;
+  fin: RetreatFinancials;
+  paymentCount: number; invoiceCount: number;
   canManage: boolean;
   openModal: (m: { kind: 'payment'; retreatId: string; defaultKind?: 'deposit' | 'balance' | 'payment' } | { kind: 'invoice'; retreatId: string }) => void;
 }) {
-  const depositReq = r.depositRequired ?? 0;
+  const depositReq = fin.depositRequired;
+  const depositPaid = fin.depositReceived;
   const depositOk = depositReq > 0 && depositPaid >= depositReq;
-  const pct = bal.totalCharges > 0 ? Math.min(100, Math.round((bal.totalPaid / bal.totalCharges) * 100)) : 0;
+  const pct = fin.expected > 0 ? Math.min(100, Math.round((fin.collected / fin.expected) * 100)) : 0;
 
   // A short standing label.
-  const standing = bal.totalCharges === 0
-    ? { text: 'Not invoiced', tone: 'neutral' as const }
-    : bal.balance <= 0
+  const standing = fin.expected === 0
+    ? { text: 'No rate set', tone: 'neutral' as const }
+    : fin.outstanding <= 0
       ? { text: 'Paid in full', tone: 'ok' as const }
       : depositReq > 0 && !depositOk
         ? { text: 'Deposit pending', tone: 'warn' as const }
-        : { text: `${money(bal.balance)} outstanding`, tone: 'warn' as const };
+        : { text: `${money(fin.outstanding)} outstanding`, tone: 'warn' as const };
 
   const standingCls = standing.tone === 'ok' ? 'bg-green-muted-bg text-green-muted-text'
     : standing.tone === 'warn' ? 'bg-amber-bg text-amber-text' : 'bg-cream-dark text-forest/55';
@@ -145,9 +144,9 @@ function GroupFinanceCard({
 
       {/* Numbers */}
       <div className="grid grid-cols-3 divide-x divide-cream-dark border-b border-cream-dark">
-        <Fig label="Billed" value={money(bal.totalCharges)} />
-        <Fig label="Paid" value={money(bal.totalPaid)} tone="green" />
-        <Fig label="Balance" value={money(bal.balance)} tone={bal.balance > 0 ? 'amber' : 'default'} />
+        <Fig label={fin.source === 'estimate' ? 'Expected' : 'Billed'} value={money(fin.expected)} />
+        <Fig label="Paid" value={money(fin.collected)} tone="green" />
+        <Fig label="Balance" value={money(fin.outstanding)} tone={fin.outstanding > 0 ? 'amber' : 'default'} />
       </div>
 
       {/* Progress + deposit + standing */}
@@ -183,8 +182,8 @@ function GroupFinanceCard({
           </Button>
         </div>
       )}
-      {chargeCount === 0 && (
-        <p className="px-4 pb-3 -mt-1 text-[11px] text-forest/40">No charges yet — add lodging/meal charges from a group's Invoice to bill them.</p>
+      {fin.source === 'estimate' && fin.expected > 0 && (
+        <p className="px-4 pb-3 -mt-1 text-[11px] text-forest/40">Showing the rate estimate — send an invoice to lock the billed amount.</p>
       )}
     </div>
   );

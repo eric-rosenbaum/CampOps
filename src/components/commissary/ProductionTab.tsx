@@ -7,9 +7,9 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
 import { Printer } from 'lucide-react';
 import {
-  MEAL_PERIODS, MEAL_PERIOD_LABELS, DAY_LABELS, dateForCell, ALLERGEN_LABELS,
+  MEAL_PERIODS, MEAL_PERIOD_LABELS, DAY_LABELS, dateForCell,
   restrictionLabel, productionPlanToPrintHtml,
-  PREP_SLOT_LABELS, type Allergen, type PrintTask, type PrepScheduleSlot, type PrepSlotKey,
+  PREP_SLOT_LABELS, type PrintTask, type PrepScheduleSlot, type PrepSlotKey,
 } from '@/lib/commissaryUnits';
 import { useCampStore } from '@/store/campStore';
 import type { ProductionTask, ProductionPrepTask } from '@/lib/types';
@@ -65,7 +65,7 @@ function TaskRow({ task }: { task: ProductionTask }) {
             <p className={`text-[11px] mt-2 flex items-start gap-1.5 ${anaphylactic ? 'text-red' : 'text-amber-text'}`}>
               <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
               <span>
-                Contains {conflicts.map((c) => ALLERGEN_LABELS[c.allergen as Allergen] ?? c.allergen).join(', ').toLowerCase()} —{' '}
+                Contains {conflicts.map((c) => restrictionLabel(c.allergen)).join(', ').toLowerCase()} —{' '}
                 {conflicts.map((c) => `${c.camperCount} camper${c.camperCount === 1 ? '' : 's'}`).join(', ')} affected
                 {anaphylactic && '. One or more is ANAPHYLACTIC — prepare a separate portion with dedicated equipment.'}
               </span>
@@ -257,7 +257,7 @@ export function ProductionTab() {
       const conflicts = conflictsForRecipe(t.recipeId);
       for (const c of conflicts) {
         const ana = c.anaphylacticCount > 0;
-        lines.push(`${t.title}: ${c.camperCount} camper${c.camperCount === 1 ? '' : 's'} allergic to ${ALLERGEN_LABELS[c.allergen as Allergen] ?? c.allergen}${ana ? ' — ANAPHYLACTIC, dedicated prep' : ''}.`);
+        lines.push(`${t.title}: ${c.camperCount} camper${c.camperCount === 1 ? '' : 's'} allergic to ${restrictionLabel(c.allergen)}${ana ? ' — ANAPHYLACTIC, dedicated prep' : ''}.`);
       }
     }
     return lines;
@@ -268,7 +268,7 @@ export function ProductionTab() {
     const printTasks: PrintTask[] = tasks.map((t) => {
       const conflicts = t.recipeId ? conflictsForRecipe(t.recipeId) : [];
       const note = conflicts.length
-        ? `Allergen: ${conflicts.map((c) => `${ALLERGEN_LABELS[c.allergen as Allergen] ?? c.allergen} (${c.camperCount})`).join(', ')}`
+        ? `Allergen: ${conflicts.map((c) => `${restrictionLabel(c.allergen)} (${c.camperCount})`).join(', ')}`
         : null;
       return {
         mealLabel: MEAL_PERIOD_LABELS[t.mealPeriod],

@@ -10,42 +10,49 @@ import { inputClass, labelClass } from './retreatUi';
 export function HousingAssignModal({ retreatId, housingId }: { retreatId: string; housingId?: string }) {
   const { housingFor, addHousing, updateHousing, deleteHousing, closeModal } = useRetreatStore();
   const locations = useLocationStore((s) => s.locations);
+  // Buildings are TOP-LEVEL dorms marked available to retreats.
   const dorms = useMemo(
-    () => locations.filter((l) => l.isDorm && l.retreatAvailable && l.isActive).sort((a, b) => a.name.localeCompare(b.name)),
+    () => locations.filter((l) => l.isDorm && l.retreatAvailable && l.isActive && l.parentId == null).sort((a, b) => a.name.localeCompare(b.name)),
     [locations],
   );
   const existing = housingId ? housingFor(retreatId).find((h) => h.id === housingId) ?? null : null;
 
-  const [locationId, setLocationId] = useState(existing?.locationId ?? '');
+  // A stored assignment points at either a dorm building or one of its rooms (a child location).
+  // Split it back into building + room so editing shows both selectors correctly.
+  const existingLoc = existing ? locations.find((l) => l.id === existing.locationId) ?? null : null;
+  const [buildingId, setBuildingId] = useState(existingLoc ? (existingLoc.parentId ?? existingLoc.id) : '');
+  const [roomId, setRoomId] = useState(existingLoc?.parentId ? existingLoc.id : '');
   const [subgroupName, setSubgroupName] = useState(existing?.subgroupName ?? '');
   const [peopleCount, setPeopleCount] = useState(existing ? String(existing.peopleCount) : '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
 
-  const selectedDorm = dorms.find((d) => d.id === locationId) ?? null;
-  const capacity = selectedDorm?.bedCapacity ?? 0;
+  const selectedDorm = dorms.find((d) => d.id === buildingId) ?? null;
+  // Rooms = direct children of the building that are available to retreats (blocked rooms drop out).
+  const rooms = useMemo(
+    () => locations.filter((l) => l.parentId === buildingId && l.isActive && l.retreatAvailable).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
+    [locations, buildingId],
+  );
+  const selectedRoom = rooms.find((r) => r.id === roomId) ?? null;
+  const capacity = (selectedRoom ?? selectedDorm)?.bedCapacity ?? 0;
   const people = Math.max(0, Math.round(Number(peopleCount) || 0));
-  const overCapacity = selectedDorm != null && capacity > 0 && people > capacity;
+  const overCapacity = capacity > 0 && people > capacity;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!locationId) return;
+    if (!buildingId) return;
     const now = new Date().toISOString();
-    const spaceName = dorms.find((d) => d.id === locationId)?.name ?? existing?.spaceName ?? null;
+    const targetId = roomId || buildingId;
+    // Snapshot a friendly label: "Cabin 7 · Room B" for a room, else just the building.
+    const spaceName = selectedRoom
+      ? `${selectedDorm?.name ?? ''} · ${selectedRoom.name}`.replace(/^ · /, '')
+      : selectedDorm?.name ?? existing?.spaceName ?? null;
 
     if (existing) {
-      updateHousing({
-        ...existing,
-        locationId,
-        spaceName,
-        subgroupName: subgroupName.trim() || null,
-        peopleCount: people,
-        notes: notes.trim() || null,
-        updatedAt: now,
-      });
+      updateHousing({ ...existing, locationId: targetId, spaceName, subgroupName: subgroupName.trim() || null, peopleCount: people, notes: notes.trim() || null, updatedAt: now });
     } else {
       const row: RetreatHousing = {
         id: generateId(), campId: '', retreatId,
-        locationId, spaceId: null, spaceName,
+        locationId: targetId, spaceId: null, spaceName,
         subgroupName: subgroupName.trim() || null,
         peopleCount: people,
         notes: notes.trim() || null,
@@ -66,41 +73,49 @@ export function HousingAssignModal({ retreatId, housingId }: { retreatId: string
   }
 
   return (
-    <Modal title={existing ? 'Edit cabin assignment' : 'Assign cabin'} onClose={closeModal} width="480px">
+    <Modal title={existing ? 'Edit assignment' : 'Assign housing'} onClose={closeModal} width="480px">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className={labelClass}>Dorm *</label>
-          <select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={inputClass}>
-            <option value="">Select a dorm / cabin…</option>
-            {dorms.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name} — {d.bedCapacity ?? 0} beds{d.accessible ? ' · accessible' : ''}
-              </option>
-            ))}
-          </select>
-          {dorms.length === 0 && (
-            <p className="text-[11px] text-amber-text mt-1">
-              No retreat-available dorms yet — toggle dorms on from "Manage spaces" first.
-            </p>
-          )}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass}>Building *</label>
+            <select value={buildingId} onChange={(e) => { setBuildingId(e.target.value); setRoomId(''); }} className={inputClass}>
+              <option value="">Select a building…</option>
+              {dorms.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}{d.bedCapacity ? ` — ${d.bedCapacity} beds` : ''}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelClass}>Room</label>
+            <select value={roomId} onChange={(e) => setRoomId(e.target.value)} className={inputClass} disabled={!buildingId || rooms.length === 0}>
+              <option value="">{rooms.length === 0 ? 'Whole building' : 'Whole building (no specific room)'}</option>
+              {rooms.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}{r.bedCapacity ? ` — ${r.bedCapacity} beds` : ''}{r.accessible ? ' · accessible' : ''}</option>
+              ))}
+            </select>
+          </div>
         </div>
+        {dorms.length === 0 && (
+          <p className="text-[11px] text-amber-text">No retreat-available buildings yet — toggle them on from "Manage spaces" first.</p>
+        )}
+        {buildingId && rooms.length === 0 && (
+          <p className="text-[11px] text-forest/45">This building has no rooms. Add rooms as sub-locations in Camp Info → Locations to assign by room.</p>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Subgroup</label>
-            <input value={subgroupName} onChange={(e) => setSubgroupName(e.target.value)} className={inputClass}
-                   placeholder="e.g. Leadership team" />
+            <input value={subgroupName} onChange={(e) => setSubgroupName(e.target.value)} className={inputClass} placeholder="e.g. Leadership team" />
           </div>
           <div>
             <label className={labelClass}>People</label>
-            <input type="number" min="0" step="1" value={peopleCount} onChange={(e) => setPeopleCount(e.target.value)}
-                   className={inputClass} placeholder="0" />
+            <input type="number" min="0" step="1" value={peopleCount} onChange={(e) => setPeopleCount(e.target.value)} className={inputClass} placeholder="0" />
           </div>
         </div>
 
         {overCapacity && (
           <p className="text-[11px] text-red">
-            {people} people exceeds {selectedDorm!.name}'s {capacity}-bed capacity.
+            {people} people exceeds {(selectedRoom ?? selectedDorm)!.name}'s {capacity}-bed capacity.
           </p>
         )}
 
@@ -111,8 +126,8 @@ export function HousingAssignModal({ retreatId, housingId }: { retreatId: string
         </div>
 
         <div className="flex gap-2 pt-1">
-          <Button type="submit" disabled={!locationId} className="flex-1 justify-center">
-            {existing ? 'Save assignment' : 'Assign cabin'}
+          <Button type="submit" disabled={!buildingId} className="flex-1 justify-center">
+            {existing ? 'Save assignment' : 'Assign'}
           </Button>
           {existing && <Button type="button" variant="ghost" className="text-red hover:bg-red-bg" onClick={handleDelete}>Delete</Button>}
           <Button type="button" variant="ghost" onClick={closeModal}>Cancel</Button>

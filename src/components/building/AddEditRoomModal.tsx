@@ -8,11 +8,11 @@ import type { CampLocation } from '@/lib/types';
 const inputClass = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
 const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
 
-// A room is a child `locations` node under its building. Deleting cascades to any
-// components/child nodes (DB ON DELETE CASCADE on locations.parent_id).
-export function AddEditRoomModal({ buildingId, editId }: { buildingId: string; editId?: string }) {
+// A room is a child `locations` node under its building. New rooms are added in Camp Info →
+// Locations; this modal only edits/renames an existing room from Building Systems.
+export function AddEditRoomModal({ editId }: { buildingId: string; editId?: string }) {
   const { closeModal } = useBuildingStore();
-  const { locations, addLocation, updateLocation, deleteLocation } = useLocationStore();
+  const { locations, updateLocation, deleteLocation } = useLocationStore();
   const existing: CampLocation | null = editId ? locations.find((l) => l.id === editId) ?? null : null;
 
   const [name, setName] = useState(existing?.name ?? '');
@@ -20,12 +20,8 @@ export function AddEditRoomModal({ buildingId, editId }: { buildingId: string; e
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
-    if (existing) {
-      updateLocation({ ...existing, name: name.trim(), notes: notes || null });
-    } else {
-      addLocation({ name: name.trim(), parentId: buildingId, notes: notes || null });
-    }
+    if (!name.trim() || !existing) { closeModal(); return; }
+    updateLocation({ ...existing, name: name.trim(), notes: notes || null });
     closeModal();
   }
 

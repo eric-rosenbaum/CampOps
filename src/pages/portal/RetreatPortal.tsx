@@ -63,6 +63,8 @@ interface PortalDocument {
 interface PortalSpace {
   id: string;
   name: string;
+  building_id: string | null;
+  building: string | null;
   bed_capacity: number | null;
   accessible: boolean | null;
 }
@@ -1018,11 +1020,14 @@ function HousingBlock({ retreat, spaces, housing, token, refetch, today }: {
           {housing.map((h) => {
             const space = spaces.find((s) => s.id === h.space_id);
             const cap = space?.bed_capacity ?? h.people_count ?? 0;
+            const label = space && space.building && space.building !== space.name
+              ? `${space.building} · ${space.name}`
+              : (h.space_name ?? space?.name ?? 'Space');
             return (
               <div key={h.id} className={`${cardClass} border-sage p-4`}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-[15px] font-bold text-forest">{h.space_name}</p>
+                    <p className="text-[15px] font-bold text-forest">{label}</p>
                     {h.subgroup_name && <p className="text-[13px] text-forest/60">{h.subgroup_name}</p>}
                   </div>
                   <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-forest">
@@ -1051,7 +1056,7 @@ function HousingBlock({ retreat, spaces, housing, token, refetch, today }: {
   );
 }
 
-interface HousingRow { space_id: string; subgroup_name: string; people_count: string; notes: string; }
+interface HousingRow { building_id: string; space_id: string; subgroup_name: string; people_count: string; notes: string; }
 
 function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePassed }: {
   retreat: PortalRetreat; spaces: PortalSpace[]; housing: PortalHousing[];
@@ -1060,13 +1065,18 @@ function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePass
   const [rows, setRows] = useState<HousingRow[]>(() =>
     housing.length > 0
       ? housing.map((h) => ({
+          building_id: spaces.find((s) => s.id === h.space_id)?.building_id ?? '',
           space_id: h.space_id,
           subgroup_name: h.subgroup_name ?? '',
           people_count: h.people_count != null ? String(h.people_count) : '',
           notes: h.notes ?? '',
         }))
-      : [{ space_id: '', subgroup_name: '', people_count: '', notes: '' }],
+      : [{ building_id: '', space_id: '', subgroup_name: '', people_count: '', notes: '' }],
   );
+  // Distinct buildings, for the first (building) step of the picker.
+  const buildings = Array.from(
+    new Map(spaces.filter((s) => s.building_id).map((s) => [s.building_id as string, s.building ?? ''])).entries(),
+  ).map(([id, bname]) => ({ id, name: bname })).sort((a, b) => a.name.localeCompare(b.name));
   const [name, setName] = useState(retreat.coordinator_name ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1075,7 +1085,7 @@ function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePass
   function update(i: number, patch: Partial<HousingRow>) {
     setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
-  function addRow() { setRows((rs) => [...rs, { space_id: '', subgroup_name: '', people_count: '', notes: '' }]); }
+  function addRow() { setRows((rs) => [...rs, { building_id: '', space_id: '', subgroup_name: '', people_count: '', notes: '' }]); }
   function removeRow(i: number) { setRows((rs) => rs.filter((_, idx) => idx !== i)); }
 
   async function submit() {
@@ -1132,27 +1142,41 @@ function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePass
                 </button>
               )}
             </div>
-            <div>
-              <label className={labelClass}>Cabin / space</label>
-              <select
-                value={row.space_id}
-                onChange={(e) => update(i, { space_id: e.target.value })}
-                className={inputClass}
-                disabled={busy}
-              >
-                <option value="">Select a space…</option>
-                {spaces.map((s) => (
-                  <option key={s.id} value={s.id} disabled={usedSpaceIds.includes(s.id) && s.id !== row.space_id}>
-                    {s.name}{s.bed_capacity ? ` · ${s.bed_capacity} beds` : ''}{s.accessible ? ' · accessible' : ''}
-                  </option>
-                ))}
-              </select>
-              {space?.accessible && (
-                <p className="inline-flex items-center gap-1 text-[11px] text-blue-text mt-1.5">
-                  <Accessibility className="w-3.5 h-3.5" /> Accessible space
-                </p>
-              )}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass}>Building</label>
+                <select
+                  value={row.building_id}
+                  onChange={(e) => update(i, { building_id: e.target.value, space_id: '' })}
+                  className={inputClass}
+                  disabled={busy}
+                >
+                  <option value="">Select a building…</option>
+                  {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Room</label>
+                <select
+                  value={row.space_id}
+                  onChange={(e) => update(i, { space_id: e.target.value })}
+                  className={inputClass}
+                  disabled={busy || !row.building_id}
+                >
+                  <option value="">{row.building_id ? 'Select a room…' : 'Pick a building first'}</option>
+                  {spaces.filter((s) => s.building_id === row.building_id).map((s) => (
+                    <option key={s.id} value={s.id} disabled={usedSpaceIds.includes(s.id) && s.id !== row.space_id}>
+                      {s.name}{s.bed_capacity ? ` · ${s.bed_capacity} beds` : ''}{s.accessible ? ' · accessible' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
+            {space?.accessible && (
+              <p className="inline-flex items-center gap-1 text-[11px] text-blue-text -mt-1">
+                <Accessibility className="w-3.5 h-3.5" /> Accessible room
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Subgroup name</label>

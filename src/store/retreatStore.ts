@@ -23,6 +23,7 @@ import {
   dbRegeneratePortalToken,
 } from '@/lib/retreatsDb';
 import { generateId } from '@/lib/utils';
+import { estimateRevenue } from '@/components/retreats/retreatUi';
 
 export type RetreatTab = 'overview' | 'active' | 'documents' | 'housing' | 'menu' | 'requests' | 'costs' | 'portal' | 'feedback';
 
@@ -51,6 +52,16 @@ export type RetreatModal =
   | { kind: 'feedback'; retreatId: string };
 
 export interface Balance { totalCharges: number; totalPaid: number; balance: number }
+/** Single source of truth for a retreat's money, used by EVERY financial figure so they never drift. */
+export interface RetreatFinancials {
+  expected: number;        // best-known gross owed: newest balance invoice ?? charges ?? rate estimate
+  collected: number;       // all payments received (incl. deposits)
+  outstanding: number;     // max(0, expected − collected)
+  depositReceived: number; // deposit column vs deposit-kind payments, whichever is greater
+  depositRequired: number;
+  totalCharges: number;
+  source: 'invoice' | 'charges' | 'estimate';
+}
 
 interface RetreatState {
   activeTab: RetreatTab;
@@ -186,6 +197,7 @@ interface RetreatState {
   remindersFor: (retreatId: string) => RetreatReminder[];
   invoicesFor: (retreatId: string) => RetreatInvoice[];
   balanceFor: (retreatId: string) => Balance;
+  financialsFor: (retreatId: string) => RetreatFinancials;
   phaseProgress: (retreatId: string) => PhaseProgress;
   pendingRequestCount: () => number;
   portalUrl: (r: Retreat) => string;
@@ -357,6 +369,39 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
     const totalCharges = get().charges.filter((c) => c.retreatId === id).reduce((s, c) => s + c.amount, 0);
     const totalPaid = get().payments.filter((p) => p.retreatId === id).reduce((s, p) => s + p.amount, 0);
     return { totalCharges, totalPaid, balance: totalCharges - totalPaid };
+  },
+
+  // THE one calculation every money figure must use (Overview, Active-retreat panel, Retreat
+  // financials cards, per-group card, account balance). Expected gross owed is resolved from the
+  // best-known source so the number shows the moment a retreat is scheduled and snaps to invoice
+  // totals once fees/headcount are billed — and always agrees across the whole module.
+  financialsFor: (id) => {
+    const r = get().retreatById(id);
+    const payments = get().payments.filter((p) => p.retreatId === id);
+    const invoices = get().invoices.filter((i) => i.retreatId === id);
+    const housingCount = get().housing.filter((h) => h.retreatId === id).length;
+
+    const collected = payments.reduce((s, p) => s + p.amount, 0);
+    const depositPaid = payments.filter((p) => p.kind === 'deposit').reduce((s, p) => s + p.amount, 0);
+    const depositReceived = Math.max(r?.depositReceived ?? 0, depositPaid);
+    const depositRequired = r?.depositRequired ?? 0;
+    const totalCharges = get().charges.filter((c) => c.retreatId === id).reduce((s, c) => s + c.amount, 0);
+
+    // Priority: newest non-void balance invoice's gross (bakes in fees + headcount changes)
+    // → manual charges → rate-card estimate.
+    const latestBal = invoices
+      .filter((i) => i.kind === 'balance' && i.status !== 'void')
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0];
+    const invoiceGross = latestBal
+      ? latestBal.lineItems.filter((l) => l.amount > 0).reduce((s, l) => s + l.amount, 0)
+      : null;
+
+    let expected: number; let source: RetreatFinancials['source'];
+    if (invoiceGross != null) { expected = invoiceGross; source = 'invoice'; }
+    else if (totalCharges > 0) { expected = totalCharges; source = 'charges'; }
+    else { expected = r ? estimateRevenue(r, housingCount) : 0; source = 'estimate'; }
+
+    return { expected, collected, outstanding: Math.max(0, expected - collected), depositReceived, depositRequired, totalCharges, source };
   },
 
   phaseProgress: (id) => {

@@ -171,19 +171,14 @@ export function BuildingDetail() {
         )}
 
         {canManage && (
-          <div className="flex gap-2 mb-4">
-            <button
-              onClick={() => openModal({ kind: 'room', buildingId })}
-              className="inline-flex items-center gap-1 text-meta font-medium text-forest/60 hover:text-forest border border-border rounded-btn px-2.5 py-1.5 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add room
-            </button>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
             <button
               onClick={() => openModal({ kind: 'component', buildingId, defaultLocationId: buildingId })}
               className="inline-flex items-center gap-1 text-meta font-medium text-forest/60 hover:text-forest border border-border rounded-btn px-2.5 py-1.5 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" /> Add component
             </button>
+            <span className="text-meta text-forest/40">Rooms are added in <span className="font-medium">Camp Info → Locations</span> (as sub-locations of this building).</span>
           </div>
         )}
 

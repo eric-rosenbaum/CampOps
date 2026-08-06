@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Wrench, ClipboardList,
@@ -48,12 +49,21 @@ export function Sidebar() {
   const { currentCamp } = useCampStore();
   const signOut = useAuthStore((s) => s.signOut);
 
+  const [signingOut, setSigningOut] = useState(false);
+
   async function handleSignOut() {
-    await signOut();
-    // Return to the public marketing site. On the app subdomain, "/" is the login page, so
-    // send sign-outs to the marketing host; elsewhere (dev/preview) "/" is the landing page.
-    const onAppHost = window.location.hostname.startsWith('app.');
-    window.location.href = onAppHost ? 'https://campcommand.app' : '/';
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await signOut();
+    } finally {
+      // Redirect in `finally`: leaving the app is the point, so it must happen even if the
+      // store's sign-out threw. Return to the public marketing site — on the app subdomain
+      // "/" is the login page, so send sign-outs to the marketing host; elsewhere
+      // (dev/preview) "/" is the landing page.
+      const onAppHost = window.location.hostname.startsWith('app.');
+      window.location.href = onAppHost ? 'https://campcommand.app' : '/';
+    }
   }
 
   const visibleFacilities = facilityItems.filter(
@@ -152,10 +162,11 @@ export function Sidebar() {
           )}
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-1.5 text-[11px] text-white/30 hover:text-white/60 transition-colors"
+            disabled={signingOut}
+            className="flex items-center gap-1.5 text-[11px] text-white/30 hover:text-white/60 transition-colors disabled:cursor-wait"
           >
             <LogOut className="w-3 h-3" />
-            Sign out
+            {signingOut ? 'Signing out…' : 'Sign out'}
           </button>
         </div>
       </div>

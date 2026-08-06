@@ -8,8 +8,13 @@ const SUPPORT_EMAIL = 'prakash@campcommand.app';
 // Sign out and return to the marketing site. Lets someone who signed in with the wrong email
 // (and got blocked) start over with a different account.
 async function signOutToMarketing() {
-  await useAuthStore.getState().signOut();
-  window.location.href = window.location.hostname.startsWith('app.') ? 'https://campcommand.app' : '/';
+  // `finally`: leaving must happen even if the sign-out itself failed, or the button
+  // reads as broken. authStore.signOut has already cleared this device either way.
+  try {
+    await useAuthStore.getState().signOut();
+  } finally {
+    window.location.href = window.location.hostname.startsWith('app.') ? 'https://campcommand.app' : '/';
+  }
 }
 
 function SignOutRetry({ label = 'Sign out and try a different account' }: { label?: string }) {

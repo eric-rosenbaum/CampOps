@@ -110,7 +110,10 @@ export function CampSetup() {
         <div className="w-full max-w-md">
           <button
             onClick={async () => {
-              if (step === 0) { await signOut(); window.location.href = window.location.hostname.startsWith('app.') ? 'https://campcommand.app' : '/'; }
+              if (step === 0) {
+                try { await signOut(); }
+                finally { window.location.href = window.location.hostname.startsWith('app.') ? 'https://campcommand.app' : '/'; }
+              }
               else setStep(0);
             }}
             className="inline-flex items-center gap-1.5 text-[12px] text-forest/50 hover:text-forest mb-6 transition-colors"

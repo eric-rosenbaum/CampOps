@@ -208,12 +208,12 @@ function HowItWorks() {
 // ─── Feature spotlights (built UI mockups) ───────────────────────────────────────
 
 const MODULES = [
-  { icon: Wrench, title: 'Issues & Repairs' },
-  { icon: ShieldCheck, title: 'Safety & Compliance' },
-  { icon: Waves, title: 'Pool Management' },
-  { icon: Building2, title: 'Building Systems' },
-  { icon: UtensilsCrossed, title: 'Commissary' },
-  { icon: CalendarRange, title: 'Retreats' },
+  { icon: Wrench, title: 'Issues & Repairs', desc: 'Log, assign, and track maintenance requests from any device — with photos and status.' },
+  { icon: ShieldCheck, title: 'Safety & Compliance', desc: 'Run safety checks, drills, and headcounts with an airtight, timestamped record.' },
+  { icon: Waves, title: 'Pool Management', desc: 'Log pool chemistry, scan test strips with AI, and keep every reading on record.' },
+  { icon: Building2, title: 'Building Systems', desc: 'Track electrical, plumbing, and shutoffs room by room, ready before you need them.' },
+  { icon: UtensilsCrossed, title: 'Commissary', desc: 'Plan menus, manage inventory, and order food for sessions and retreats with less waste.' },
+  { icon: CalendarRange, title: 'Retreats', desc: 'Rent your facility to outside groups with a self-serve guest portal and full oversight.' },
 ];
 
 /* Realistic iPhone frame: thin uniform bezel, Dynamic Island, iOS status bar */
@@ -409,19 +409,51 @@ function FeatureSpotlights() {
         </div>
 
         {/* breadth strip */}
-        <div className="mt-24 pt-14 border-t border-black/5 text-center">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-forest/40 mb-7">One login also covers</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 max-w-4xl mx-auto">
-            {MODULES.map((m) => (
-              <div key={m.title} className="flex flex-col items-center gap-2 rounded-card border border-border px-3 py-5 hover:border-sage transition-colors">
-                <div className="w-10 h-10 rounded-lg bg-cream flex items-center justify-center"><m.icon className="w-5 h-5 text-forest" /></div>
-                <span className="text-[12.5px] font-medium text-forest text-center leading-tight">{m.title}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <ModuleBreadth />
       </div>
     </section>
+  );
+}
+
+// The six "also covers" tiles. Each reveals a one-line description on hover (desktop) and
+// on tap (touch) — a lightweight, modern reveal rather than a separate tooltip layer.
+function ModuleBreadth() {
+  const [active, setActive] = useState<string | null>(null);
+  return (
+    <div className="mt-24 pt-14 border-t border-black/5 text-center">
+      <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-forest/40 mb-7">One login also covers</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 max-w-4xl mx-auto items-start">
+        {MODULES.map((m) => {
+          const open = active === m.title;
+          return (
+            <button
+              key={m.title}
+              type="button"
+              onMouseEnter={() => setActive(m.title)}
+              onMouseLeave={() => setActive((cur) => (cur === m.title ? null : cur))}
+              onFocus={() => setActive(m.title)}
+              onBlur={() => setActive((cur) => (cur === m.title ? null : cur))}
+              onClick={() => setActive((cur) => (cur === m.title ? null : m.title))}
+              aria-expanded={open}
+              className={`flex flex-col items-center gap-2 rounded-card border px-3 py-5 text-center transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-sage ${
+                open ? 'border-sage bg-sage-pale/25' : 'border-border hover:border-sage'
+              }`}
+            >
+              <div className="w-10 h-10 rounded-lg bg-cream flex items-center justify-center"><m.icon className="w-5 h-5 text-forest" /></div>
+              {/* Reserve two lines so a wrapping title (e.g. "Safety & Compliance") doesn't make its card taller than the rest. */}
+              <span className="text-[12.5px] font-medium text-forest leading-tight min-h-[2.5em] flex items-center justify-center text-center">{m.title}</span>
+              <span
+                className={`overflow-hidden text-[11.5px] leading-snug text-forest/55 transition-all duration-300 ${
+                  open ? 'max-h-24 opacity-100 mt-0.5' : 'max-h-0 opacity-0'
+                }`}
+              >
+                {m.desc}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

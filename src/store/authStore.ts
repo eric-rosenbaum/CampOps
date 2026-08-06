@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '@/lib/supabase';
+import { supabase, clearStoredAuthSession } from '@/lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
 import { useCampStore } from '@/store/campStore';
 
@@ -77,8 +77,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return error?.message ?? null;
   },
 
+  /**
+   * Sign out. Never rejects, and never waits on the network longer than it has to.
+   *
+   * `supabase.auth.signOut()` POSTs to /auth/v1/logout. On a stale TCP connection — the
+   * same failure this client's XHR/retry wrapper exists for — that call either retries for
+   * ~15 seconds or rejects. Callers awaited it before redirecting, so the redirect never
+   * ran and the button looked dead until the page was refreshed (a refresh gets a fresh
+   * connection, which is why the second attempt always worked).
+   *
+   * Revoking the refresh token server-side is best effort; being signed out on THIS device
+   * is not. So we time-box the request and, if it does not answer, drop the stored session
+   * locally and let the refresh token expire on its own.
+   */
   signOut: async () => {
-    await supabase.auth.signOut();
+    // Below the fetch wrapper's own 4s per-attempt abort, so a stale connection costs one
+    // short wait instead of the full retry ladder.
+    const REVOKE_TIMEOUT_MS = 3500;
+    let revoked = false;
+    try {
+      revoked = await Promise.race([
+        supabase.auth.signOut().then(({ error }) => !error),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), REVOKE_TIMEOUT_MS)),
+      ]);
+    } catch {
+      revoked = false;
+    }
+    if (!revoked) clearStoredAuthSession();
+
     // Clear the "currently viewing" markers so the next login starts clean (admins → /admin).
     sessionStorage.removeItem('campcommand_admin_camp_id');
     localStorage.removeItem('campcommand_selected_camp_id');

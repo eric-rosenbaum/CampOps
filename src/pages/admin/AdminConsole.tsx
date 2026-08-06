@@ -43,9 +43,13 @@ export function AdminConsole() {
   useEffect(() => { load(); }, [load]);
 
   async function handleSignOut() {
-    await signOut();
-    // Sign-out always returns to the marketing site (by design).
-    window.location.href = window.location.hostname.startsWith('app.') ? 'https://campcommand.app' : '/';
+    // Sign-out always returns to the marketing site (by design), and always redirects —
+    // see the `finally` note in authStore.signOut.
+    try {
+      await signOut();
+    } finally {
+      window.location.href = window.location.hostname.startsWith('app.') ? 'https://campcommand.app' : '/';
+    }
   }
 
   async function open(campId: string) {

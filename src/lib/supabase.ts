@@ -198,6 +198,24 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+/**
+ * Drop Supabase's persisted session from this browser.
+ *
+ * The fallback for when the network sign-out does not answer: the SDK only clears storage
+ * once its own request settles, so a hung /auth/v1/logout leaves the token behind and the
+ * next page load signs the user straight back in. Matches the chunked keys the SDK writes
+ * for large sessions (`sb-<ref>-auth-token.0`) as well as the plain one.
+ */
+export function clearStoredAuthSession(): void {
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (/^sb-.+-auth-token/.test(key)) localStorage.removeItem(key);
+    }
+  } catch {
+    // Storage can be unavailable (private mode, blocked cookies). Nothing to clear.
+  }
+}
+
 // Stub out auth-js's visibility handler.  On every visibilitychange to 'visible'
 // it acquires the auth lock and runs _recoverAndRefresh, which can make a network
 // call (_getUser).  On stale TCP that call hangs and holds the lock indefinitely,

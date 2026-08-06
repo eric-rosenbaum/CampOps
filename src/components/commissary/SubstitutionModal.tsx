@@ -5,7 +5,7 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import { generateId } from '@/lib/utils';
 import type { MealPeriod, MenuSubstitution } from '@/lib/types';
 import {
-  MEAL_PERIOD_LABELS, DAY_LABELS, dateForCell, restrictionLabel,
+  MEAL_PERIOD_LABELS, dateForCell, restrictionLabel,
 } from '@/lib/commissaryUnits';
 import { inputClass, labelClass } from './commissaryUi';
 
@@ -121,7 +121,7 @@ export function SubstitutionModal({ weekNumber, dayIndex, mealPeriod, editId }: 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-2.5">
           <p className="text-[12px] text-forest/60">
-            {MEAL_PERIOD_LABELS[mealPeriod]} · {DAY_LABELS[dayIndex]} · {dateLabel} · week {weekNumber}
+            {MEAL_PERIOD_LABELS[mealPeriod]} · {dateLabel} · week {weekNumber}
           </p>
         </div>
 

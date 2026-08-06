@@ -67,6 +67,8 @@ interface PortalSpace {
   building: string | null;
   bed_capacity: number | null;
   accessible: boolean | null;
+  /** Held by another retreat whose stay overlaps these dates. Not pickable. */
+  taken_by_other?: boolean;
 }
 interface PortalHousing {
   id: string;
@@ -1073,14 +1075,42 @@ function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePass
         }))
       : [{ building_id: '', space_id: '', subgroup_name: '', people_count: '', notes: '' }],
   );
-  // Distinct buildings, for the first (building) step of the picker.
-  const buildings = Array.from(
-    new Map(spaces.filter((s) => s.building_id).map((s) => [s.building_id as string, s.building ?? ''])).entries(),
-  ).map(([id, bname]) => ({ id, name: bname })).sort((a, b) => a.name.localeCompare(b.name));
   const [name, setName] = useState(retreat.coordinator_name ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+
+  const usedSpaceIds = rows.map((r) => r.space_id);
+
+  /**
+   * A room is pickable unless another group already holds it for these dates. Rooms this
+   * coordinator has already put in another row of this form stay "available" in the count
+   * — they are still theirs — but cannot be picked twice.
+   */
+  const isFree = (s: PortalSpace) => !s.taken_by_other;
+  const roomsIn = (buildingId: string) => spaces.filter((s) => s.building_id === buildingId);
+
+  // Distinct buildings, for the first (building) step of the picker, each carrying how
+  // many of its rooms and beds are actually free — choosing blind and being told later
+  // that a cabin was already gone was the whole problem.
+  const buildings = Array.from(
+    new Map(spaces.filter((s) => s.building_id).map((s) => [s.building_id as string, s.building ?? ''])).entries(),
+  )
+    .map(([id, bname]) => {
+      const rooms = roomsIn(id);
+      const free = rooms.filter(isFree);
+      return {
+        id,
+        name: bname,
+        totalRooms: rooms.length,
+        freeRooms: free.length,
+        freeBeds: free.reduce((sum, s) => sum + (s.bed_capacity ?? 0), 0),
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const totalFreeRooms = buildings.reduce((sum, b) => sum + b.freeRooms, 0);
+  const totalFreeBeds = buildings.reduce((sum, b) => sum + b.freeBeds, 0);
 
   function update(i: number, patch: Partial<HousingRow>) {
     setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -1108,8 +1138,6 @@ function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePass
     setBusy(false);
   }
 
-  const usedSpaceIds = rows.map((r) => r.space_id);
-
   return (
     <div className="space-y-3">
       {deadlinePassed ? (
@@ -1120,6 +1148,9 @@ function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePass
       ) : (
         <Banner tone="info">
           Assign your group to cabins below.{retreat.housing_deadline ? ` Please submit by ${fmtDateFull(retreat.housing_deadline)}.` : ''}
+          {' '}
+          <strong>{totalFreeRooms} room{totalFreeRooms === 1 ? '' : 's'}</strong> ({totalFreeBeds} bed{totalFreeBeds === 1 ? '' : 's'}) are
+          available for your dates.
         </Banner>
       )}
 
@@ -1152,7 +1183,13 @@ function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePass
                   disabled={busy}
                 >
                   <option value="">Select a building…</option>
-                  {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  {buildings.map((b) => (
+                    <option key={b.id} value={b.id} disabled={b.freeRooms === 0}>
+                      {b.name} — {b.freeRooms === 0
+                        ? 'fully booked'
+                        : `${b.freeRooms} of ${b.totalRooms} room${b.totalRooms === 1 ? '' : 's'} available · ${b.freeBeds} beds`}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -1164,12 +1201,31 @@ function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePass
                   disabled={busy || !row.building_id}
                 >
                   <option value="">{row.building_id ? 'Select a room…' : 'Pick a building first'}</option>
-                  {spaces.filter((s) => s.building_id === row.building_id).map((s) => (
-                    <option key={s.id} value={s.id} disabled={usedSpaceIds.includes(s.id) && s.id !== row.space_id}>
-                      {s.name}{s.bed_capacity ? ` · ${s.bed_capacity} beds` : ''}{s.accessible ? ' · accessible' : ''}
-                    </option>
-                  ))}
+                  {roomsIn(row.building_id).map((s) => {
+                    const takenByYou = usedSpaceIds.includes(s.id) && s.id !== row.space_id;
+                    const beds = s.bed_capacity ? `${s.bed_capacity} bed${s.bed_capacity === 1 ? '' : 's'}` : 'beds not listed';
+                    const status = s.taken_by_other
+                      ? 'booked by another group'
+                      : takenByYou ? 'already used above' : 'available';
+                    return (
+                      <option
+                        key={s.id}
+                        value={s.id}
+                        disabled={takenByYou || Boolean(s.taken_by_other)}
+                      >
+                        {s.name} · {beds} · {status}{s.accessible ? ' · accessible' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
+                {row.building_id && (() => {
+                  const b = buildings.find((x) => x.id === row.building_id);
+                  return b ? (
+                    <p className="text-[11px] text-forest/45 mt-1">
+                      {b.freeRooms} of {b.totalRooms} room{b.totalRooms === 1 ? '' : 's'} free in {b.name} · {b.freeBeds} beds
+                    </p>
+                  ) : null;
+                })()}
               </div>
             </div>
             {space?.accessible && (

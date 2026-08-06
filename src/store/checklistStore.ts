@@ -8,6 +8,7 @@ import {
   dbUpsertSeason,
   dbDeleteTask,
 } from '@/lib/db';
+import { toDateStr, parseDateStr } from '@/lib/utils';
 
 type FilterType = 'all' | 'pending' | 'in_progress' | 'complete';
 
@@ -41,7 +42,7 @@ interface ChecklistStore {
 function computeDueDate(season: { openingDate: string; closingDate: string }, phase: 'pre' | 'post', daysRelative: number | null): string | null {
   if (daysRelative === null) return null;
   const baseDate = phase === 'post' ? season.closingDate : season.openingDate;
-  return addDays(new Date(baseDate), daysRelative).toISOString().split('T')[0];
+  return toDateStr(addDays(parseDateStr(baseDate), daysRelative));
 }
 
 export const useChecklistStore = create<ChecklistStore>((set, get) => ({

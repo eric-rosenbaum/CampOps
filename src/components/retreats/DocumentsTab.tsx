@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { dbSignRetreatDocument } from '@/lib/retreatsDb';
 import type { Retreat, RetreatDocument, RetreatDocType, RetreatDocStatus } from '@/lib/types';
 import { Badge, fmtDate, fmtDateFull, money } from './retreatUi';
+import { toDateStr } from '@/lib/utils';
 
 const DOC_TYPE_LABEL: Record<RetreatDocType, string> = {
   agreement: 'Retreat agreement',
@@ -51,7 +52,7 @@ function DocIcon({ doc }: { doc: RetreatDocument }) {
 function coiDueDate(arrival: string): string {
   const d = new Date(`${arrival}T00:00:00`);
   d.setDate(d.getDate() - 14);
-  return d.toISOString().slice(0, 10);
+  return toDateStr(d);
 }
 
 /** The one line under a doc name — shaped by type + its meta blob. */

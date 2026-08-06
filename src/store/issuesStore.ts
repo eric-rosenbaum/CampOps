@@ -11,6 +11,7 @@ import {
 } from '@/lib/db';
 import { enqueueIssue, dequeueIssue, getQueuedIssues, loadInitialPending } from '@/lib/writeQueue';
 import { useCampStore } from '@/store/campStore';
+import { toDateStr } from '@/lib/utils';
 
 type FilterType = 'all' | 'urgent' | 'unassigned' | 'in_progress' | 'resolved' | 'public';
 
@@ -51,10 +52,10 @@ function computeNextDueDate(dueDate: string | null, interval: Issue['recurringIn
   if (!dueDate || !interval) return null;
   const d = new Date(dueDate + 'T00:00:00');
   switch (interval) {
-    case 'daily': return addDays(d, 1).toISOString().split('T')[0];
-    case 'weekly': return addWeeks(d, 1).toISOString().split('T')[0];
-    case 'monthly': return addMonths(d, 1).toISOString().split('T')[0];
-    case 'annually': return addYears(d, 1).toISOString().split('T')[0];
+    case 'daily': return toDateStr(addDays(d, 1));
+    case 'weekly': return toDateStr(addWeeks(d, 1));
+    case 'monthly': return toDateStr(addMonths(d, 1));
+    case 'annually': return toDateStr(addYears(d, 1));
   }
 }
 

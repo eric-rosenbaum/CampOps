@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { createClient } from '@supabase/supabase-js';
 import { campLog, campError } from './campLog';
+import { loadAndApply, debounce, WAL_DEBOUNCE_MS } from './syncGuard';
 
 // Plain client for public (unauthenticated) form submissions — no custom fetch
 // wrapper, no timeout logic, no XHR workarounds. Mobile browsers handle vanilla
@@ -24,6 +25,7 @@ import type {
   CommissaryExpense, MenuTemplate, MenuTemplateEntry, DietCount, MealEvent,
   CountSession, StorageMap, MenuCourse, MenuSubstitution, CommissaryFile,
 } from './types';
+import { todayStr } from '@/lib/utils';
 
 // ─── Camp ID ──────────────────────────────────────────────────────────────────
 // Set by campStore when a camp is selected, used by all write functions.
@@ -337,11 +339,10 @@ type TaskCallback = (tasks: ChecklistTask[]) => void;
 let issueChannelCount = 0;
 let taskChannelCount = 0;
 
-export function subscribeToIssues(campId: string, onUpdate: IssueCallback, onEventStart?: () => void): () => void {
+export function subscribeToIssues(campId: string, onUpdate: IssueCallback): () => void {
   const channelName = `issues-channel-${++issueChannelCount}`;
-  const reload = async (source = 'WAL') => {
+  const loadIssues = async (source: string): Promise<Issue[]> => {
     campLog('[CampOps] issues reload START source=' + source);
-    onEventStart?.();
     const { data: issueRows, error: issueErr } = await supabase.from('issues').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
     const { data: activityRows } = await supabase.from('issue_activity').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
     if (issueErr) campError('[CampOps] issues reload query error', issueErr);
@@ -350,16 +351,18 @@ export function subscribeToIssues(campId: string, onUpdate: IssueCallback, onEve
       return rowToIssue(row as Record<string, unknown>, log);
     });
     campLog('[CampOps] issues reload DONE count=' + issues.length + ' source=' + source);
-    onUpdate(issues);
+    return issues;
   };
+  const reload = (source = 'WAL') => loadAndApply('issues', () => loadIssues(source), onUpdate);
+  const onWal = debounce(() => reload('WAL'), WAL_DEBOUNCE_MS);
   let everSubscribed = false;
   const channel = supabase
     .channel(channelName)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'issues', filter: `camp_id=eq.${campId}` }, () => reload('WAL'))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'issues', filter: `camp_id=eq.${campId}` }, onWal)
     .subscribe((status) => {
       campLog('[CampOps] issues channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) { campLog('[CampOps] issues reconnected — reloading in 10s'); onEventStart?.(); setTimeout(() => reload('reconnect'), 10000); }
+        if (everSubscribed) { campLog('[CampOps] issues reconnected — reloading in 10s'); setTimeout(() => reload('reconnect'), 10000); }
         else { campLog('[CampOps] issues initial subscription'); everSubscribed = true; }
       }
     });
@@ -367,26 +370,26 @@ export function subscribeToIssues(campId: string, onUpdate: IssueCallback, onEve
   return () => { supabase.removeChannel(channel); };
 }
 
-export function subscribeToTasks(campId: string, onUpdate: TaskCallback, onEventStart?: () => void): () => void {
+export function subscribeToTasks(campId: string, onUpdate: TaskCallback): () => void {
   const channelName = `tasks-channel-${++taskChannelCount}`;
-  const reload = async () => {
-    onEventStart?.();
+  const loadTasks = async (): Promise<ChecklistTask[]> => {
     const { data: taskRows } = await supabase.from('checklist_tasks').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
     const { data: taskActivityRows } = await supabase.from('checklist_activity').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
-    const tasks: ChecklistTask[] = (taskRows ?? []).map((row) => {
+    return (taskRows ?? []).map((row) => {
       const log = (taskActivityRows ?? []).filter((a) => a.task_id === row.id).map(activityRowToEntry);
       return rowToTask(row as Record<string, unknown>, log);
     });
-    onUpdate(tasks);
   };
+  const reload = () => loadAndApply('tasks', loadTasks, onUpdate);
+  const onWal = debounce(reload, WAL_DEBOUNCE_MS);
   let everSubscribed = false;
   const channel = supabase
     .channel(channelName)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_tasks', filter: `camp_id=eq.${campId}` }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_tasks', filter: `camp_id=eq.${campId}` }, onWal)
     .subscribe((status) => {
       campLog('[CampOps] tasks channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) { campLog('[CampOps] tasks reconnected — reloading in 10s'); onEventStart?.(); setTimeout(() => reload(), 10000); }
+        if (everSubscribed) { campLog('[CampOps] tasks reconnected — reloading in 10s'); setTimeout(() => reload(), 10000); }
         else { campLog('[CampOps] tasks initial subscription'); everSubscribed = true; }
       }
     });
@@ -666,7 +669,7 @@ export async function dbAddPool(pool: CampPool) {
       id: crypto.randomUUID(),
       camp_id: _campId, pool_id: pool.id,
       name: t.name, frequency: t.frequency, authority: t.authority, standard: t.standard,
-      status: 'due', last_completed: null, next_due: new Date().toISOString().split('T')[0],
+      status: 'due', last_completed: null, next_due: todayStr(),
       history: [], created_at: now, updated_at: now,
     }));
   if (inspections.length > 0) {
@@ -700,19 +703,20 @@ export async function dbDeleteAllPoolData() {
 
 let poolChannelCount = 0;
 
-export function subscribeToPool(campId: string, onUpdate: PoolDataCallback, onEventStart?: () => void): () => void {
+export function subscribeToPool(campId: string, onUpdate: PoolDataCallback): () => void {
   const channelName = `pool-channel-${++poolChannelCount}`;
   const tables = ['pools', 'pool_chemical_readings', 'pool_equipment', 'pool_service_log', 'pool_seasonal_tasks', 'pool_inspections', 'pool_inspection_log'];
-  const reload = async () => { onEventStart?.(); onUpdate(await loadPoolData(campId)); };
+  const reload = () => loadAndApply('pool', () => loadPoolData(campId), onUpdate);
+  const onWal = debounce(reload, WAL_DEBOUNCE_MS);
   let channel = supabase.channel(channelName);
   for (const table of tables) {
-    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, reload);
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, onWal);
   }
   let everSubscribed = false;
   channel.subscribe((status) => {
     campLog('[CampOps] pool channel status:', status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) { campLog('[CampOps] pool reconnected — reloading in 10s'); onEventStart?.(); setTimeout(() => reload(), 10000); }
+      if (everSubscribed) { campLog('[CampOps] pool reconnected — reloading in 10s'); setTimeout(() => reload(), 10000); }
       else { campLog('[CampOps] pool initial subscription'); everSubscribed = true; }
     }
   });
@@ -1073,23 +1077,24 @@ export async function dbDeleteSafetyLicense(id: string) {
 let safetyChannelCount = 0;
 type SafetyDataCallback = (data: SafetyData) => void;
 
-export function subscribeToSafety(campId: string, onUpdate: SafetyDataCallback, onEventStart?: () => void): () => void {
+export function subscribeToSafety(campId: string, onUpdate: SafetyDataCallback): () => void {
   const channelName = `safety-channel-${++safetyChannelCount}`;
-  const reload = async () => { onEventStart?.(); onUpdate(await loadSafetyData(campId)); };
+  const reload = () => loadAndApply('safety', () => loadSafetyData(campId), onUpdate);
+  const onWal = debounce(reload, WAL_DEBOUNCE_MS);
   let everSubscribed = false;
   const channel = supabase
     .channel(channelName)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_items', filter: `camp_id=eq.${campId}` }, reload)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_inspection_log', filter: `camp_id=eq.${campId}` }, reload)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_drills', filter: `camp_id=eq.${campId}` }, reload)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_staff', filter: `camp_id=eq.${campId}` }, reload)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_certifications', filter: `camp_id=eq.${campId}` }, reload)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_temp_logs', filter: `camp_id=eq.${campId}` }, reload)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_licenses', filter: `camp_id=eq.${campId}` }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_items', filter: `camp_id=eq.${campId}` }, onWal)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_inspection_log', filter: `camp_id=eq.${campId}` }, onWal)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_drills', filter: `camp_id=eq.${campId}` }, onWal)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_staff', filter: `camp_id=eq.${campId}` }, onWal)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_certifications', filter: `camp_id=eq.${campId}` }, onWal)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_temp_logs', filter: `camp_id=eq.${campId}` }, onWal)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_licenses', filter: `camp_id=eq.${campId}` }, onWal)
     .subscribe((status) => {
       campLog('[CampOps] safety channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) { campLog('[CampOps] safety reconnected — reloading in 10s'); onEventStart?.(); setTimeout(() => reload(), 10000); }
+        if (everSubscribed) { campLog('[CampOps] safety reconnected — reloading in 10s'); setTimeout(() => reload(), 10000); }
         else { campLog('[CampOps] safety initial subscription'); everSubscribed = true; }
       }
     });
@@ -1359,19 +1364,20 @@ export async function dbDeleteMaintenanceTask(id: string) {
 let assetChannelCount = 0;
 type AssetDataCallback = (data: AssetData) => void;
 
-export function subscribeToAssets(campId: string, onUpdate: AssetDataCallback, onEventStart?: () => void): () => void {
+export function subscribeToAssets(campId: string, onUpdate: AssetDataCallback): () => void {
   const channelName = `assets-channel-${++assetChannelCount}`;
-  const reload = async () => { onEventStart?.(); onUpdate(await loadAssetData(campId)); };
+  const reload = () => loadAndApply('assets', () => loadAssetData(campId), onUpdate);
+  const onWal = debounce(reload, WAL_DEBOUNCE_MS);
   const tables = ['camp_assets', 'asset_checkouts', 'asset_service_records', 'asset_maintenance_tasks'];
   let channel = supabase.channel(channelName);
   for (const table of tables) {
-    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, reload);
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, onWal);
   }
   let everSubscribed = false;
   channel.subscribe((status) => {
     campLog('[CampOps] assets channel status:', status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) { campLog('[CampOps] assets reconnected — reloading in 10s'); onEventStart?.(); setTimeout(() => reload(), 10000); }
+      if (everSubscribed) { campLog('[CampOps] assets reconnected — reloading in 10s'); setTimeout(() => reload(), 10000); }
       else { campLog('[CampOps] assets initial subscription'); everSubscribed = true; }
     }
   });
@@ -1568,19 +1574,20 @@ export async function dbDeleteBuildingSeasonalTask(id: string) {
 let buildingChannelCount = 0;
 type BuildingDataCallback = (data: BuildingData) => void;
 
-export function subscribeToBuilding(campId: string, onUpdate: BuildingDataCallback, onEventStart?: () => void): () => void {
+export function subscribeToBuilding(campId: string, onUpdate: BuildingDataCallback): () => void {
   const channelName = `building-channel-${++buildingChannelCount}`;
-  const reload = async () => { onEventStart?.(); onUpdate(await loadBuildingData(campId)); };
+  const reload = () => loadAndApply('building', () => loadBuildingData(campId), onUpdate);
+  const onWal = debounce(reload, WAL_DEBOUNCE_MS);
   const tables = ['building_components', 'building_circuits', 'building_seasonal_tasks'];
   let channel = supabase.channel(channelName);
   for (const table of tables) {
-    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, reload);
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, onWal);
   }
   let everSubscribed = false;
   channel.subscribe((status) => {
     campLog('[CampOps] building channel status:', status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) { campLog('[CampOps] building reconnected — reloading in 10s'); onEventStart?.(); setTimeout(() => reload(), 10000); }
+      if (everSubscribed) { campLog('[CampOps] building reconnected — reloading in 10s'); setTimeout(() => reload(), 10000); }
       else { campLog('[CampOps] building initial subscription'); everSubscribed = true; }
     }
   });
@@ -1721,6 +1728,7 @@ function rowToRecipe(r: Record<string, unknown>): Recipe {
     name: r.name as string,
     mealPeriod: (r.meal_period as Recipe['mealPeriod']) ?? 'dinner',
     baseYield: Number(r.base_yield ?? 50),
+    scaleTo: r.scale_to == null ? null : Number(r.scale_to),
     prepTime: (r.prep_time as string) ?? null,
     cookTime: (r.cook_time as string) ?? null,
     method: (r.method as string) ?? null,
@@ -2067,7 +2075,7 @@ export async function dbAdjustInventory(
 export async function dbAddRecipe(r: Recipe) {
   const { error } = await supabase.from('recipes').insert({
     id: r.id, camp_id: _campId, name: r.name, meal_period: r.mealPeriod,
-    base_yield: r.baseYield, prep_time: r.prepTime, cook_time: r.cookTime,
+    base_yield: r.baseYield, scale_to: r.scaleTo, prep_time: r.prepTime, cook_time: r.cookTime,
     method: r.method, notes: r.notes, created_at: r.createdAt, updated_at: r.updatedAt,
   });
   if (error) console.error('dbAddRecipe error:', error.message);
@@ -2075,11 +2083,23 @@ export async function dbAddRecipe(r: Recipe) {
 
 export async function dbUpdateRecipe(r: Recipe) {
   const { error } = await supabase.from('recipes').update({
-    name: r.name, meal_period: r.mealPeriod, base_yield: r.baseYield,
+    name: r.name, meal_period: r.mealPeriod, base_yield: r.baseYield, scale_to: r.scaleTo,
     prep_time: r.prepTime, cook_time: r.cookTime, method: r.method, notes: r.notes,
     updated_at: new Date().toISOString(),
   }).eq('id', r.id);
   if (error) console.error('dbUpdateRecipe error:', error.message);
+}
+
+/**
+ * Persist just the recipe card's "Scale to" number. Its own writer rather than a full
+ * dbUpdateRecipe because it is edited inline from the recipe list, where nothing else on
+ * the recipe is in play — a whole-row update there would write back whatever the local
+ * copy happened to hold for every other field.
+ */
+export async function dbUpdateRecipeScale(recipeId: string, scaleTo: number | null) {
+  const { error } = await supabase.from('recipes')
+    .update({ scale_to: scaleTo, updated_at: new Date().toISOString() }).eq('id', recipeId);
+  if (error) console.error('dbUpdateRecipeScale error:', error.message);
 }
 
 export async function dbDeleteRecipe(id: string) {
@@ -2195,18 +2215,23 @@ function makeCommissaryChannel<T>(
   tables: string[],
   load: (campId: string) => Promise<T>,
   onUpdate: (data: T) => void,
-  onEventStart?: () => void,
 ): () => void {
-  const reload = async () => { onEventStart?.(); onUpdate(await load(campId)); };
+  // `domain` is stable across reconnects (the channel name carries a counter), so the
+  // snapshot ordering in syncGuard survives a resubscribe.
+  const domain = name.replace(/-\d+$/, '');
+  const reload = () => loadAndApply(domain, () => load(campId), onUpdate);
+  // WAL events arrive one per changed row; a single save can fire a dozen. Debounce so
+  // the burst costs one reload, and so the reload starts after the save has finished.
+  const onWal = debounce(reload, WAL_DEBOUNCE_MS);
   let channel = supabase.channel(name);
   for (const table of tables) {
-    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, reload);
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, onWal);
   }
   let everSubscribed = false;
   channel.subscribe((status) => {
     campLog(`[CampOps] ${name} status:`, status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) { campLog(`[CampOps] ${name} reconnected — reloading in 10s`); onEventStart?.(); setTimeout(() => reload(), 10000); }
+      if (everSubscribed) { campLog(`[CampOps] ${name} reconnected — reloading in 10s`); setTimeout(() => reload(), 10000); }
       else { campLog(`[CampOps] ${name} initial subscription`); everSubscribed = true; }
     }
   });
@@ -2215,28 +2240,28 @@ function makeCommissaryChannel<T>(
 
 let commissaryChannelCount = 0;
 
-export function subscribeToCommissaryInventory(campId: string, onUpdate: (d: CommissaryInventoryData) => void, onEventStart?: () => void): () => void {
+export function subscribeToCommissaryInventory(campId: string, onUpdate: (d: CommissaryInventoryData) => void): () => void {
   return makeCommissaryChannel(
     `commissary-inventory-${++commissaryChannelCount}`, campId,
     ['inventory_items', 'inventory_adjustments', 'commissary_vendors', 'commissary_item_vendors', 'commissary_count_sessions', 'commissary_storage_map'],
-    loadInventoryData, onUpdate, onEventStart,
+    loadInventoryData, onUpdate,
   );
 }
 
-export function subscribeToCommissaryCatalog(campId: string, onUpdate: (d: CommissaryCatalogData) => void, onEventStart?: () => void): () => void {
+export function subscribeToCommissaryCatalog(campId: string, onUpdate: (d: CommissaryCatalogData) => void): () => void {
   return makeCommissaryChannel(
     `commissary-catalog-${++commissaryChannelCount}`, campId,
     ['recipes', 'recipe_ingredients', 'recipe_steps'],
-    loadCatalogData, onUpdate, onEventStart,
+    loadCatalogData, onUpdate,
   );
 }
 
-export function subscribeToCommissaryMenu(campId: string, onUpdate: (d: CommissaryMenuData) => void, onEventStart?: () => void): () => void {
+export function subscribeToCommissaryMenu(campId: string, onUpdate: (d: CommissaryMenuData) => void): () => void {
   return makeCommissaryChannel(
     `commissary-menu-${++commissaryChannelCount}`, campId,
     ['commissary_sessions', 'menu_entries', 'retreat_menu_entries', 'menu_templates', 'menu_template_entries',
      'commissary_diet_counts', 'commissary_meal_events', 'commissary_menu_courses', 'menu_substitutions'],
-    loadMenuData, onUpdate, onEventStart,
+    loadMenuData, onUpdate,
   );
 }
 
@@ -2666,18 +2691,38 @@ export async function dbDeleteCamper(id: string) {
   if (error) console.error('dbDeleteCamper error:', error.message);
 }
 
+/**
+ * Replace a camper's allergies and dietary preferences.
+ *
+ * Written as upsert-then-delete-the-rest rather than delete-then-insert. Delete-first
+ * loses the whole set if the insert fails (offline, RLS, a bad row), and this is health
+ * data — losing it silently is the worst outcome available. `camper_restrictions` has a
+ * UNIQUE (camper_id, restriction), so the upsert is well defined and the delete only has
+ * to remove what the user actually unchecked.
+ */
 export async function dbReplaceCamperRestrictions(camperId: string, rows: CamperRestriction[]) {
-  const { error: dErr } = await supabase.from('camper_restrictions').delete().eq('camper_id', camperId);
+  if (rows.length) {
+    // `id` and `created_at` are deliberately omitted: they default on insert, and on
+    // conflict an existing row keeps the identity and creation time it already had.
+    const { error } = await supabase.from('camper_restrictions').upsert(
+      rows.map((r) => ({
+        camp_id: _campId, camper_id: camperId, restriction: r.restriction,
+        kind: r.kind, severity: r.severity, notes: r.notes, updated_at: r.updatedAt,
+      })),
+      { onConflict: 'camper_id,restriction' },
+    );
+    // Bail out before the delete: if we could not write the new set, keeping the old one
+    // is strictly better than ending up with neither.
+    if (error) { console.error('dbReplaceCamperRestrictions upsert error:', error.message); return; }
+  }
+
+  let stale = supabase.from('camper_restrictions').delete().eq('camper_id', camperId);
+  if (rows.length) {
+    const keep = rows.map((r) => `"${r.restriction.replace(/"/g, '')}"`).join(',');
+    stale = stale.not('restriction', 'in', `(${keep})`);
+  }
+  const { error: dErr } = await stale;
   if (dErr) console.error('dbReplaceCamperRestrictions delete error:', dErr.message);
-  if (!rows.length) return;
-  const { error } = await supabase.from('camper_restrictions').insert(
-    rows.map((r) => ({
-      id: r.id, camp_id: _campId, camper_id: camperId, restriction: r.restriction,
-      kind: r.kind, severity: r.severity, notes: r.notes,
-      created_at: r.createdAt, updated_at: r.updatedAt,
-    })),
-  );
-  if (error) console.error('dbReplaceCamperRestrictions insert error:', error.message);
 }
 
 /** Replace a camper's session assignments (many-to-many). */
@@ -2718,29 +2763,29 @@ export async function dbImportCampers(rows: { camper: Camper; restrictions: Camp
   }
 }
 
-export function subscribeToCommissaryOrders(campId: string, onUpdate: (d: CommissaryOrderData) => void, onEventStart?: () => void): () => void {
+export function subscribeToCommissaryOrders(campId: string, onUpdate: (d: CommissaryOrderData) => void): () => void {
   return makeCommissaryChannel(
     `commissary-orders-${++commissaryChannelCount}`, campId,
     ['purchase_orders', 'purchase_order_lines', 'commissary_expenses'],
-    loadOrderData, onUpdate, onEventStart,
+    loadOrderData, onUpdate,
   );
 }
 
-export function subscribeToCommissaryProduction(campId: string, onUpdate: (d: CommissaryProductionData) => void, onEventStart?: () => void): () => void {
+export function subscribeToCommissaryProduction(campId: string, onUpdate: (d: CommissaryProductionData) => void): () => void {
   return makeCommissaryChannel(
     `commissary-production-${++commissaryChannelCount}`, campId,
     ['production_plans', 'production_tasks', 'production_prep_tasks'],
-    loadProductionData, onUpdate, onEventStart,
+    loadProductionData, onUpdate,
   );
 }
 
 // Realtime respects RLS, so a client without camper health access receives no events
 // on these tables. Their aggregate refreshes via the app's periodic refetchAll.
-export function subscribeToCommissaryAllergy(campId: string, onUpdate: (d: CommissaryAllergyData) => void, onEventStart?: () => void): () => void {
+export function subscribeToCommissaryAllergy(campId: string, onUpdate: (d: CommissaryAllergyData) => void): () => void {
   return makeCommissaryChannel(
     `commissary-allergy-${++commissaryChannelCount}`, campId,
     ['campers', 'camper_restrictions', 'camper_sessions', 'commissary_files'],
-    loadAllergyData, onUpdate, onEventStart,
+    loadAllergyData, onUpdate,
   );
 }
 

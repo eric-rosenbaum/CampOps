@@ -4,7 +4,7 @@ import { Button } from '@/components/shared/Button';
 import { useUIStore } from '@/store/uiStore';
 import { useSafetyStore } from '@/store/safetyStore';
 import { useAuth } from '@/lib/auth';
-import { generateId } from '@/lib/utils';
+import { generateId, todayStr, toDateStr, parseDateStr } from '@/lib/utils';
 import type { SafetyInspectionLog, SafetyItem } from '@/lib/types';
 import { addDays } from 'date-fns';
 
@@ -48,7 +48,7 @@ export function LogInspectionModal() {
     defaultValues: {
       itemId: editing?.itemId ?? preselectedItem?.id ?? '',
       locationNote: editing?.locationNote ?? preselectedItem?.location ?? '',
-      inspectionDate: editing?.inspectionDate ?? new Date().toISOString().slice(0, 10),
+      inspectionDate: editing?.inspectionDate ?? todayStr(),
       completedBy: editing?.completedBy ?? currentUser.name,
       result: editing?.result ?? 'passed',
       notes: editing?.notes ?? '',
@@ -63,7 +63,7 @@ export function LogInspectionModal() {
 
   // Suggest next due based on selected item's frequency
   const suggestedNextDue = selectedItem && inspectionDate
-    ? addDays(new Date(inspectionDate + 'T00:00:00'), selectedItem.frequencyDays).toISOString().slice(0, 10)
+    ? toDateStr(addDays(parseDateStr(inspectionDate), selectedItem.frequencyDays))
     : '';
 
   function onSubmit(data: FormValues) {

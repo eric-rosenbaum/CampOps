@@ -725,6 +725,12 @@ export interface Recipe {
   mealPeriod: MealPeriod;
   /** Ingredient quantities are expressed per this many portions. */
   baseYield: number;
+  /**
+   * Portions the recipe card is scaled to on screen and in print. Null follows the
+   * active session's head count, which is the default. Persisted so a cook's "we make
+   * this for 80" survives a refresh.
+   */
+  scaleTo: number | null;
   prepTime: string | null;
   cookTime: string | null;
   method: string | null;

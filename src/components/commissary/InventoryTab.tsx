@@ -13,6 +13,7 @@ import {
   onHandInStockUnit, parInStockUnit, countSheetToPrintHtml,
   makeProjectionInput, projectedOnHandBase, runOutDate, daysOfCover,
   type PrintCountGroup,
+  todayStr,
 } from '@/lib/commissaryUnits';
 import { OnHandValue, ParValue, CategoryIcon } from './commissaryUi';
 
@@ -82,7 +83,7 @@ export function InventoryTab() {
   // Reconciled projection: what each item will actually have, and when it runs out.
   const consMap = consumptionByItemDate();
   const incMap = incomingByItemDate();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
   const horizon = projectionHorizon();
   const projById = new Map(items.map((it) => {
     const inp = makeProjectionInput(it, today, consMap, incMap);

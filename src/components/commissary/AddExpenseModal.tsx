@@ -4,7 +4,7 @@ import { Button } from '@/components/shared/Button';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
 import type { InventoryCategory } from '@/lib/types';
-import { CATEGORY_LABELS } from '@/lib/commissaryUnits';
+import { CATEGORY_LABELS, todayStr } from '@/lib/commissaryUnits';
 import { inputClass, labelClass } from './commissaryUi';
 
 /** A cost that didn't come through a purchase order (cash run, Costco, standing contract). */
@@ -12,7 +12,7 @@ export function AddExpenseModal() {
   const { addExpense, closeModal } = useCommissaryStore();
   const { currentUser } = useAuth();
 
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(todayStr());
   const [category, setCategory] = useState<InventoryCategory>('produce');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');

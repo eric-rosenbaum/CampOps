@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useCommissaryStore } from '@/store/commissaryStore';
-import { formatCurrency, tidy, addDaysStr, nextWeekdayOnOrAfter } from '@/lib/commissaryUnits';
+import { formatCurrency, tidy, addDaysStr, nextWeekdayOnOrAfter, todayStr } from '@/lib/commissaryUnits';
 import { inputClass, labelClass } from './commissaryUi';
 
 /**
@@ -15,7 +15,7 @@ export function SendOrderModal({ orderId }: { orderId: string }) {
   const { orders, linesForOrder, vendors, sendOrder, closeModal } = useCommissaryStore();
   const order = orders.find((o) => o.id === orderId);
   const orderVendor = order?.vendorId ? vendors.find((v) => v.id === order.vendorId) : undefined;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
   const [instructions, setInstructions] = useState(order?.deliveryInstructions ?? '');
   const [expectedDelivery, setExpectedDelivery] = useState(
     order?.expectedDelivery ?? nextWeekdayOnOrAfter(orderVendor?.deliveryDay ?? null, addDaysStr(today, 1)) ?? '',

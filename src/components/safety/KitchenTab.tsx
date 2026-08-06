@@ -4,7 +4,7 @@ import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { AlertBanner } from '@/components/shared/AlertBanner';
 import { Button } from '@/components/shared/Button';
-import { generateId } from '@/lib/utils';
+import { generateId, todayStr } from '@/lib/utils';
 import type { SafetyItem, SafetyTempLog } from '@/lib/types';
 
 const RESULT_LABELS: Record<string, string> = {
@@ -234,7 +234,7 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
   const { tempLogsForItem, tempLogs, addTempLog } = useSafetyStore();
   const { openLogTempModal, openEditTempLogModal } = useUIStore();
   const { currentUser } = useAuth();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
   const { am, pm } = tempLogsForItem(item.id, today);
   const meta = item.metadata as Record<string, number>;
   const [showHistory, setShowHistory] = useState(false);
@@ -386,7 +386,7 @@ export function KitchenTab() {
   const healthInspections = itemsByType('health_inspection');
 
   const stats = categoryStats('kitchen');
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
 
   const overdueKitchen = [...hoodFans, ...refrigeration, ...healthInspections].filter((i) => safetyItemStatus(i) === 'alert');
 

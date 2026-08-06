@@ -13,6 +13,7 @@ import {
   dbAddSafetyTempLog, dbUpdateSafetyTempLog, dbDeleteSafetyTempLog,
   dbAddSafetyLicense, dbUpdateSafetyLicense, dbDeleteSafetyLicense,
 } from '@/lib/db';
+import { todayStr } from '@/lib/utils';
 
 export type SafetyTab = 'overview' | 'fire' | 'kitchen' | 'drills' | 'staff';
 
@@ -355,7 +356,7 @@ export const useSafetyStore = create<SafetyStore>((set, get) => ({
   },
 
   tempLogsForItem: (itemId, date) => {
-    const d = date ?? new Date().toISOString().slice(0, 10);
+    const d = date ?? todayStr();
     const logs = get().tempLogs.filter((l) => l.itemId === itemId && l.logDate === d);
     return {
       am: logs.find((l) => l.session === 'am') ?? null,

@@ -65,6 +65,7 @@ import {
   type AssetData, type BuildingData,
 } from '@/lib/db';
 import { startSupabaseHeartbeat } from '@/lib/supabase';
+import { awaitWriteQuiet, beginSnapshot, shouldApplySnapshot, loadAndApply } from '@/lib/syncGuard';
 import { campLog } from '@/lib/campLog';
 import { useIssuesStore, startIssueWriteQueue } from '@/store/issuesStore';
 import { useChecklistStore } from '@/store/checklistStore';
@@ -153,31 +154,15 @@ function CampDataLoader() {
     const stopHeartbeat = startSupabaseHeartbeat();
     const stopWriteQueue = startIssueWriteQueue();
 
-    // Track when each subscription last fired a WAL event (ms since epoch, 0 = never).
-    // Used to prevent both the initial load and refetchAll from overwriting a fresher
-    // snapshot that the subscription already delivered after a user write.
-    let issuesSyncedAt = 0;
-    let tasksSyncedAt = 0;
-    let poolSyncedAt = 0;
-    let safetySyncedAt = 0;
-    let assetsSyncedAt = 0;
-    let buildingSyncedAt = 0;
-    let commInventorySyncedAt = 0;
-    let commCatalogSyncedAt = 0;
-    let commMenuSyncedAt = 0;
-    let commOrdersSyncedAt = 0;
-    let commProductionSyncedAt = 0;
-    let commAllergySyncedAt = 0;
-    let retreatsSyncedAt = 0;
-    let locationsSyncedAt = 0;
-
-    // Start subscriptions FIRST so any writes during the initial data load are captured.
-    // If subscriptions were started after loading, a write that completes before the
-    // subscription starts would fire a WAL event nobody is listening to, and the
-    // subsequent setIssues(initialData) would overwrite the optimistic update permanently.
-    unsubIssues = subscribeToIssues(campId, (issues) => { setIssues(issues); }, () => { issuesSyncedAt = Date.now(); });
-    unsubTasks = subscribeToTasks(campId, (tasks) => { setTasks(tasks); }, () => { tasksSyncedAt = Date.now(); });
-    unsubPool = subscribeToPool(campId, (d) => {
+    // Ordering between the initial load, the realtime reloads and refetchAll is handled
+    // centrally by lib/syncGuard: every read takes a per-domain token first and is dropped
+    // on arrival if a newer read for that domain already landed, and every read waits for
+    // in-flight writes to settle. That replaces the old "syncedAt vs loadStartedAt"
+    // timestamps, which could not tell a stale snapshot from a fresh one and so let a
+    // reload started mid-save overwrite an optimistic update.
+    //
+    // The apply callbacks below are the single place each domain's slices are written.
+    const applyPool = (d: NonNullable<Awaited<ReturnType<typeof loadPoolFromSupabase>>>) => {
       setPools(d.pools);
       setChemicalReadings(d.readings);
       setEquipment(d.equipment);
@@ -185,8 +170,8 @@ function CampDataLoader() {
       setInspections(d.inspections);
       setInspectionLog(d.inspectionLog);
       setSeasonalTasks(d.seasonalTasks);
-    }, () => { poolSyncedAt = Date.now(); });
-    unsubSafety = subscribeToSafety(campId, (d) => {
+    };
+    const applySafety = (d: NonNullable<Awaited<ReturnType<typeof loadSafetyFromSupabase>>>) => {
       setItems(d.items);
       setSafetyLog(d.inspectionLog);
       setDrills(d.drills);
@@ -194,34 +179,34 @@ function CampDataLoader() {
       setCertifications(d.certifications);
       setTempLogs(d.tempLogs);
       setLicenses(d.licenses);
-    }, () => { safetySyncedAt = Date.now(); });
-    unsubAssets = subscribeToAssets(campId, (d) => {
+    };
+    const applyAssets = (d: AssetData) => {
       setAssets(d.assets);
       setCheckouts(d.checkouts);
       setServiceRecords(d.serviceRecords);
       setMaintenanceTasks(d.maintenanceTasks);
-    }, () => { assetsSyncedAt = Date.now(); });
-    unsubBuilding = subscribeToBuilding(campId, (d) => {
+    };
+    const applyBuilding = (d: BuildingData) => {
       setBuildings(d.buildings);
       setRooms(d.rooms);
       setComponents(d.components);
       setCircuits(d.circuits);
       setBuildingSeasonalTasks(d.seasonalTasks);
-    }, () => { buildingSyncedAt = Date.now(); });
-    unsubCommInventory = subscribeToCommissaryInventory(campId, (d) => {
+    };
+    const applyCommInventory = (d: NonNullable<Awaited<ReturnType<typeof loadCommissaryInventory>>>) => {
       setInventoryItems(d.items);
       setAdjustments(d.adjustments);
       setVendors(d.vendors);
       setItemVendors(d.itemVendors);
       setCountSessions(d.countSessions);
       setStorageMap(d.storageMap);
-    }, () => { commInventorySyncedAt = Date.now(); });
-    unsubCommCatalog = subscribeToCommissaryCatalog(campId, (d) => {
+    };
+    const applyCommCatalog = (d: NonNullable<Awaited<ReturnType<typeof loadCommissaryCatalog>>>) => {
       setRecipes(d.recipes);
       setIngredients(d.ingredients);
       setSteps(d.steps);
-    }, () => { commCatalogSyncedAt = Date.now(); });
-    unsubCommMenu = subscribeToCommissaryMenu(campId, (d) => {
+    };
+    const applyCommMenu = (d: NonNullable<Awaited<ReturnType<typeof loadCommissaryMenu>>>) => {
       setSessions(d.sessions);
       setMenuEntries(d.menuEntries);
       setRetreatMenuEntries(d.retreatMenuEntries);
@@ -231,24 +216,41 @@ function CampDataLoader() {
       setMealEvents(d.mealEvents);
       setCourses(d.courses);
       setSubstitutions(d.substitutions);
-    }, () => { commMenuSyncedAt = Date.now(); });
-    unsubCommOrders = subscribeToCommissaryOrders(campId, (d) => {
+    };
+    const applyCommOrders = (d: NonNullable<Awaited<ReturnType<typeof loadCommissaryOrders>>>) => {
       setOrders(d.orders);
       setOrderLines(d.orderLines);
       setExpenses(d.expenses);
-    }, () => { commOrdersSyncedAt = Date.now(); });
-    unsubCommProduction = subscribeToCommissaryProduction(campId, (d) => {
+    };
+    const applyCommProduction = (d: NonNullable<Awaited<ReturnType<typeof loadCommissaryProduction>>>) => {
       setPlans(d.plans);
       setProductionTasks(d.productionTasks);
       setPrepTasks(d.prepTasks);
-    }, () => { commProductionSyncedAt = Date.now(); });
-    unsubCommAllergy = subscribeToCommissaryAllergy(campId, (d) => {
+    };
+    const applyCommAllergy = (d: NonNullable<Awaited<ReturnType<typeof loadCommissaryAllergy>>>) => {
       setCampers(d.campers);
       setRestrictions(d.restrictions);
       setCamperSessions(d.camperSessions);
       setRestrictionSummary(d.summary);
       setFiles(d.files);
-    }, () => { commAllergySyncedAt = Date.now(); });
+    };
+
+    // Start subscriptions FIRST so any writes during the initial data load are captured.
+    // If subscriptions were started after loading, a write that completes before the
+    // subscription starts would fire a WAL event nobody is listening to, and the
+    // subsequent setIssues(initialData) would overwrite the optimistic update permanently.
+    unsubIssues = subscribeToIssues(campId, setIssues);
+    unsubTasks = subscribeToTasks(campId, setTasks);
+    unsubPool = subscribeToPool(campId, applyPool);
+    unsubSafety = subscribeToSafety(campId, applySafety);
+    unsubAssets = subscribeToAssets(campId, applyAssets);
+    unsubBuilding = subscribeToBuilding(campId, applyBuilding);
+    unsubCommInventory = subscribeToCommissaryInventory(campId, applyCommInventory);
+    unsubCommCatalog = subscribeToCommissaryCatalog(campId, applyCommCatalog);
+    unsubCommMenu = subscribeToCommissaryMenu(campId, applyCommMenu);
+    unsubCommOrders = subscribeToCommissaryOrders(campId, applyCommOrders);
+    unsubCommProduction = subscribeToCommissaryProduction(campId, applyCommProduction);
+    unsubCommAllergy = subscribeToCommissaryAllergy(campId, applyCommAllergy);
 
     // Retreats — one low-volume domain (a handful of retreats per camp).
     const applyRetreatData = (d: import('@/lib/retreatsDb').RetreatData) => {
@@ -258,171 +260,82 @@ function CampDataLoader() {
       setChecklist(d.checklist); setScheduleItems(d.scheduleItems); setFeedback(d.feedback); setReminders(d.reminders);
       setInvoices(d.invoices);
     };
-    unsubRetreats = subscribeToRetreats(campId, applyRetreatData, () => { retreatsSyncedAt = Date.now(); });
+    unsubRetreats = subscribeToRetreats(campId, applyRetreatData);
 
     // Unified locations tree (camp-wide reference data).
     const applyLocationData = (d: import('@/lib/locationsDb').LocationData) => {
       setLocations(d.locations); setCategories(d.categories); setBuildingDetails(d.buildingDetails);
     };
-    unsubLocations = subscribeToLocations(campId, applyLocationData, () => { locationsSyncedAt = Date.now(); });
+    unsubLocations = subscribeToLocations(campId, applyLocationData);
 
-    // Load initial data after subscriptions are live.
-    // Skip each setter if the subscription already fired — the subscription's refetch
-    // happened after a user write and is strictly more current than our snapshot.
-    const loadStartedAt = Date.now();
-
-    initializeSupabase(campId).then((data) => {
-      if (!data) return;
-      if (issuesSyncedAt <= loadStartedAt) setIssues(data.issues);
-      if (tasksSyncedAt <= loadStartedAt) setTasks(data.tasks);
+    // Load initial data after subscriptions are live. Each load goes through the sync
+    // guard, so a subscription reload that lands first is never overwritten by this
+    // (older) snapshot.
+    // Issues and tasks share one loader but are two sync-guard domains, so each gets its
+    // own token rather than going through loadAndApply twice (which would fetch twice).
+    const loadIssuesAndTasks = async (): Promise<boolean> => {
+      await awaitWriteQuiet();
+      const issuesToken = beginSnapshot('issues');
+      const tasksToken = beginSnapshot('tasks');
+      const data = await initializeSupabase(campId);
+      if (!data) return false;
+      let applied = false;
+      if (shouldApplySnapshot('issues', issuesToken)) { setIssues(data.issues); applied = true; }
+      if (shouldApplySnapshot('tasks', tasksToken)) { setTasks(data.tasks); applied = true; }
       if (data.season) setSeason(data.season);
-    });
+      return applied;
+    };
 
-    loadPoolFromSupabase(campId).then((data) => {
-      if (!data || poolSyncedAt > loadStartedAt) return;
-      setPools(data.pools);
-      setChemicalReadings(data.readings);
-      setEquipment(data.equipment);
-      setServiceLog(data.serviceLog);
-      setInspections(data.inspections);
-      setInspectionLog(data.inspectionLog);
-      setSeasonalTasks(data.seasonalTasks);
-    });
-
-    loadSafetyFromSupabase(campId).then((data) => {
-      if (!data || safetySyncedAt > loadStartedAt) return;
-      setItems(data.items);
-      setSafetyLog(data.inspectionLog);
-      setDrills(data.drills);
-      setStaff(data.staff);
-      setCertifications(data.certifications);
-      setTempLogs(data.tempLogs);
-      setLicenses(data.licenses);
-    });
-
-    loadAssetsFromSupabase(campId).then((data: AssetData | null) => {
-      if (!data || assetsSyncedAt > loadStartedAt) return;
-      setAssets(data.assets);
-      setCheckouts(data.checkouts);
-      setServiceRecords(data.serviceRecords);
-      setMaintenanceTasks(data.maintenanceTasks);
-    });
-
-    loadBuildingFromSupabase(campId).then((data: BuildingData | null) => {
-      if (!data || buildingSyncedAt > loadStartedAt) return;
-      setBuildings(data.buildings);
-      setRooms(data.rooms);
-      setComponents(data.components);
-      setCircuits(data.circuits);
-      setBuildingSeasonalTasks(data.seasonalTasks);
-    });
+    loadIssuesAndTasks();
+    loadAndApply('pool', () => loadPoolFromSupabase(campId), applyPool);
+    loadAndApply('safety', () => loadSafetyFromSupabase(campId), applySafety);
+    loadAndApply('assets', () => loadAssetsFromSupabase(campId), applyAssets);
+    loadAndApply('building', () => loadBuildingFromSupabase(campId), applyBuilding);
 
     // Global shared catalog — not camp-scoped, loaded once (no realtime channel).
     loadProductCatalog().then((rows) => { if (rows) setCatalog(rows); });
 
-    loadCommissaryInventory(campId).then((data) => {
-      if (!data || commInventorySyncedAt > loadStartedAt) return;
-      setInventoryItems(data.items);
-      setAdjustments(data.adjustments);
-      setVendors(data.vendors);
-      setItemVendors(data.itemVendors);
-      setCountSessions(data.countSessions);
-      setStorageMap(data.storageMap);
-    });
-
-    loadCommissaryCatalog(campId).then((data) => {
-      if (!data || commCatalogSyncedAt > loadStartedAt) return;
-      setRecipes(data.recipes);
-      setIngredients(data.ingredients);
-      setSteps(data.steps);
-    });
-
-    loadCommissaryMenu(campId).then((data) => {
-      if (!data || commMenuSyncedAt > loadStartedAt) return;
-      setSessions(data.sessions);
-      setMenuEntries(data.menuEntries);
-      setRetreatMenuEntries(data.retreatMenuEntries);
-      setTemplates(data.templates);
-      setTemplateEntries(data.templateEntries);
-      setDietCounts(data.dietCounts);
-      setMealEvents(data.mealEvents);
-      setCourses(data.courses);
-      setSubstitutions(data.substitutions);
-    });
-
-    loadCommissaryOrders(campId).then((data) => {
-      if (!data || commOrdersSyncedAt > loadStartedAt) return;
-      setOrders(data.orders);
-      setOrderLines(data.orderLines);
-      setExpenses(data.expenses);
-    });
-
-    loadCommissaryProduction(campId).then((data) => {
-      if (!data || commProductionSyncedAt > loadStartedAt) return;
-      setPlans(data.plans);
-      setProductionTasks(data.productionTasks);
-      setPrepTasks(data.prepTasks);
-    });
-
+    loadAndApply('commissary-inventory', () => loadCommissaryInventory(campId), applyCommInventory);
+    loadAndApply('commissary-catalog', () => loadCommissaryCatalog(campId), applyCommCatalog);
+    loadAndApply('commissary-menu', () => loadCommissaryMenu(campId), applyCommMenu);
+    loadAndApply('commissary-orders', () => loadCommissaryOrders(campId), applyCommOrders);
+    loadAndApply('commissary-production', () => loadCommissaryProduction(campId), applyCommProduction);
     // For members without camper health access, campers/restrictions come back empty by
     // RLS design and only `summary` is populated. That is not an error state.
-    loadCommissaryAllergy(campId).then((data) => {
-      if (!data || commAllergySyncedAt > loadStartedAt) return;
-      setCampers(data.campers);
-      setRestrictions(data.restrictions);
-      setCamperSessions(data.camperSessions);
-      setRestrictionSummary(data.summary);
-      setFiles(data.files);
-    });
-
-    loadRetreats(campId).then((data) => {
-      if (!data || retreatsSyncedAt > loadStartedAt) return;
-      applyRetreatData(data);
-    });
-
-    loadLocations(campId).then((data) => {
-      if (locationsSyncedAt > loadStartedAt) return;
-      applyLocationData(data);
-    });
+    loadAndApply('commissary-allergy', () => loadCommissaryAllergy(campId), applyCommAllergy);
+    loadAndApply('retreats', () => loadRetreats(campId), applyRetreatData);
+    loadAndApply('locations', () => loadLocations(campId), applyLocationData);
 
     // Refetch after the tab has been hidden long enough that the realtime subscription
     // may have missed events (e.g. WebSocket disconnected during sleep/long absence).
     // We skip the refetch for short tab switches to avoid a race: a quick refetch can
     // overwrite an in-flight save (optimistic update) before the subscription catches it.
     const REFETCH_AFTER_HIDDEN_MS = 2 * 60 * 1000; // 2 minutes
-    const PERIODIC_REFETCH_MS = 30 * 1000; // 30 seconds
+    const PERIODIC_REFETCH_MS = 3 * 60 * 1000; // 3 minutes
     let hiddenAt: number | null = null;
 
+    // A safety net, not the primary sync path — realtime is. Every domain goes through
+    // the sync guard, so a refetch that raced a save is dropped instead of applied.
     async function refetchAll(reason: string) {
       if (!campId) return;
       campLog(`[CampOps] refetchAll START reason=${reason} t=${Date.now()}`);
-      const refetchStartedAt = Date.now();
-      const [issuesData, poolData, safetyData, assetData, buildingData, commInvData, commCatData, commMenuData, commOrderData, commProdData, commAllergyData] = await Promise.all([
-        initializeSupabase(campId),
-        loadPoolFromSupabase(campId),
-        loadSafetyFromSupabase(campId),
-        loadAssetsFromSupabase(campId),
-        loadBuildingFromSupabase(campId),
-        loadCommissaryInventory(campId),
-        loadCommissaryCatalog(campId),
-        loadCommissaryMenu(campId),
-        loadCommissaryOrders(campId),
-        loadCommissaryProduction(campId),
-        loadCommissaryAllergy(campId),
+      const results = await Promise.all([
+        loadIssuesAndTasks().then((ok) => ok && 'issues'),
+        loadAndApply('pool', () => loadPoolFromSupabase(campId), applyPool).then((ok) => ok && 'pool'),
+        loadAndApply('safety', () => loadSafetyFromSupabase(campId), applySafety).then((ok) => ok && 'safety'),
+        loadAndApply('assets', () => loadAssetsFromSupabase(campId), applyAssets).then((ok) => ok && 'assets'),
+        loadAndApply('building', () => loadBuildingFromSupabase(campId), applyBuilding).then((ok) => ok && 'building'),
+        loadAndApply('commissary-inventory', () => loadCommissaryInventory(campId), applyCommInventory).then((ok) => ok && 'comm-inventory'),
+        loadAndApply('commissary-catalog', () => loadCommissaryCatalog(campId), applyCommCatalog).then((ok) => ok && 'comm-catalog'),
+        loadAndApply('commissary-menu', () => loadCommissaryMenu(campId), applyCommMenu).then((ok) => ok && 'comm-menu'),
+        loadAndApply('commissary-orders', () => loadCommissaryOrders(campId), applyCommOrders).then((ok) => ok && 'comm-orders'),
+        loadAndApply('commissary-production', () => loadCommissaryProduction(campId), applyCommProduction).then((ok) => ok && 'comm-production'),
+        loadAndApply('commissary-allergy', () => loadCommissaryAllergy(campId), applyCommAllergy).then((ok) => ok && 'comm-allergy'),
+        loadAndApply('retreats', () => loadRetreats(campId), applyRetreatData).then((ok) => ok && 'retreats'),
+        loadAndApply('locations', () => loadLocations(campId), applyLocationData).then((ok) => ok && 'locations'),
       ]);
-      const applied: string[] = [];
-      if (issuesData && issuesSyncedAt <= refetchStartedAt) { setIssues(issuesData.issues); setTasks(issuesData.tasks); if (issuesData.season) setSeason(issuesData.season); applied.push('issues'); }
-      if (poolData && poolSyncedAt <= refetchStartedAt) { setPools(poolData.pools); setChemicalReadings(poolData.readings); setEquipment(poolData.equipment); setServiceLog(poolData.serviceLog); setInspections(poolData.inspections); setInspectionLog(poolData.inspectionLog); setSeasonalTasks(poolData.seasonalTasks); applied.push('pool'); }
-      if (safetyData && safetySyncedAt <= refetchStartedAt) { setItems(safetyData.items); setSafetyLog(safetyData.inspectionLog); setDrills(safetyData.drills); setStaff(safetyData.staff); setCertifications(safetyData.certifications); setTempLogs(safetyData.tempLogs); setLicenses(safetyData.licenses); applied.push('safety'); }
-      if (assetData && assetsSyncedAt <= refetchStartedAt) { setAssets(assetData.assets); setCheckouts(assetData.checkouts); setServiceRecords(assetData.serviceRecords); setMaintenanceTasks(assetData.maintenanceTasks); applied.push('assets'); }
-      if (buildingData && buildingSyncedAt <= refetchStartedAt) { setBuildings(buildingData.buildings); setRooms(buildingData.rooms); setComponents(buildingData.components); setCircuits(buildingData.circuits); setBuildingSeasonalTasks(buildingData.seasonalTasks); applied.push('building'); }
-      if (commInvData && commInventorySyncedAt <= refetchStartedAt) { setInventoryItems(commInvData.items); setAdjustments(commInvData.adjustments); setVendors(commInvData.vendors); setItemVendors(commInvData.itemVendors); setCountSessions(commInvData.countSessions); setStorageMap(commInvData.storageMap); applied.push('comm-inventory'); }
-      if (commCatData && commCatalogSyncedAt <= refetchStartedAt) { setRecipes(commCatData.recipes); setIngredients(commCatData.ingredients); setSteps(commCatData.steps); applied.push('comm-catalog'); }
-      if (commMenuData && commMenuSyncedAt <= refetchStartedAt) { setSessions(commMenuData.sessions); setMenuEntries(commMenuData.menuEntries); setTemplates(commMenuData.templates); setTemplateEntries(commMenuData.templateEntries); setDietCounts(commMenuData.dietCounts); setMealEvents(commMenuData.mealEvents); setCourses(commMenuData.courses); setSubstitutions(commMenuData.substitutions); applied.push('comm-menu'); }
-      if (commOrderData && commOrdersSyncedAt <= refetchStartedAt) { setOrders(commOrderData.orders); setOrderLines(commOrderData.orderLines); setExpenses(commOrderData.expenses); applied.push('comm-orders'); }
-      if (commProdData && commProductionSyncedAt <= refetchStartedAt) { setPlans(commProdData.plans); setProductionTasks(commProdData.productionTasks); setPrepTasks(commProdData.prepTasks); applied.push('comm-production'); }
-      if (commAllergyData && commAllergySyncedAt <= refetchStartedAt) { setCampers(commAllergyData.campers); setRestrictions(commAllergyData.restrictions); setCamperSessions(commAllergyData.camperSessions); setRestrictionSummary(commAllergyData.summary); setFiles(commAllergyData.files); applied.push('comm-allergy'); }
-      campLog(`[CampOps] refetchAll DONE applied=${applied.join(',') || 'none(WAL-guard)'} syncedAts=issues:${issuesSyncedAt} pool:${poolSyncedAt} safety:${safetySyncedAt} assets:${assetsSyncedAt} building:${buildingSyncedAt} commInv:${commInventorySyncedAt} commCat:${commCatalogSyncedAt} commMenu:${commMenuSyncedAt} refetchStartedAt:${refetchStartedAt}`);
+      const applied = results.filter(Boolean);
+      campLog(`[CampOps] refetchAll DONE applied=${applied.join(',') || 'none(sync-guard)'}`);
     }
 
     function handleVisibility() {

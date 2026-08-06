@@ -9,6 +9,7 @@ import type {
   CampAsset, AssetCheckout, AssetServiceRecord, AssetMaintenanceTask,
   AssetCategory, AssetStatus, AssetMaintenancePhase, CheckoutCondition, FuelLevel,
 } from '@/lib/types';
+import { todayStr, toDateStr } from '@/lib/utils';
 
 export type AssetPageTab = 'fleet' | 'checked_out' | 'maintenance_due' | 'log';
 export type AssetDetailTab = 'overview' | 'checkouts' | 'service' | 'maintenance';
@@ -353,7 +354,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   },
 
   toggleMaintenanceTask: (id, _assetId, done, completedBy) => {
-    const now = new Date().toISOString().split('T')[0];
+    const now = todayStr();
     set((s) => ({
       maintenanceTasks: s.maintenanceTasks.map((t) =>
         t.id === id
@@ -435,7 +436,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   },
 
   maintenanceOverdue: () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayStr();
     const { assets, serviceRecords } = get();
     const result: { asset: CampAsset; record: AssetServiceRecord }[] = [];
     for (const record of serviceRecords) {
@@ -452,10 +453,10 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   },
 
   maintenanceDueSoon: (days = 14) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayStr();
     const future = new Date();
     future.setDate(future.getDate() + days);
-    const futureStr = future.toISOString().split('T')[0];
+    const futureStr = toDateStr(future);
     const { assets, serviceRecords } = get();
     const result: { asset: CampAsset; record: AssetServiceRecord }[] = [];
     for (const record of serviceRecords) {
@@ -473,7 +474,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   maintenanceScheduled: () => {
     const future = new Date();
     future.setDate(future.getDate() + 14);
-    const futureStr = future.toISOString().split('T')[0];
+    const futureStr = toDateStr(future);
     const { assets, serviceRecords } = get();
     const result: { asset: CampAsset; record: AssetServiceRecord }[] = [];
     for (const record of serviceRecords) {

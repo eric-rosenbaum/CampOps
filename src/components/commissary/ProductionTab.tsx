@@ -7,7 +7,7 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
 import { Printer } from 'lucide-react';
 import {
-  MEAL_PERIODS, MEAL_PERIOD_LABELS, DAY_LABELS, dateForCell,
+  MEAL_PERIODS, MEAL_PERIOD_LABELS, dateForCell, dayLabelForCell, dayLabelsForWeek,
   restrictionLabel, productionPlanToPrintHtml,
   PREP_SLOT_LABELS, type PrintTask, type PrepScheduleSlot, type PrepSlotKey,
 } from '@/lib/commissaryUnits';
@@ -277,7 +277,7 @@ export function ProductionTab() {
         conflictNote: note,
       };
     });
-    const dayLabel = `${DAY_LABELS[activeDayIndex]} ${dateForCell(session!.startDate, activeWeek, activeDayIndex).toLocaleDateString()}`;
+    const dayLabel = `${dayLabelForCell(session!.startDate, activeWeek, activeDayIndex)} ${dateForCell(session!.startDate, activeWeek, activeDayIndex).toLocaleDateString()}`;
     const html = productionPlanToPrintHtml(dayLabel, printTasks, [...worklist, ...subLines]);
     const w = window.open('', '_blank');
     if (!w) { alert('Enable pop-ups to print the plan.'); return; }
@@ -317,12 +317,12 @@ export function ProductionTab() {
       <>
       {/* Day selector */}
       <div className="flex items-center gap-1.5 mb-5">
-        {DAY_LABELS.map((day, i) => {
+        {dayLabelsForWeek(session.startDate, activeWeek).map((day, i) => {
           const d = dateForCell(session.startDate, activeWeek, i);
           const active = i === activeDayIndex;
           return (
             <button
-              key={day}
+              key={i}
               onClick={() => setActiveDayIndex(i)}
               className={`px-3 py-2 rounded-btn border text-center transition-colors ${
                 active
@@ -408,7 +408,7 @@ export function ProductionTab() {
       {!plan ? (
         <div className="bg-white rounded-card border border-border px-6 py-10 text-center">
           <ChefHat className="w-7 h-7 text-stone-300 mx-auto mb-3" />
-          <p className="text-[14px] font-semibold text-forest mb-1">No plan for {DAY_LABELS[activeDayIndex]}</p>
+          <p className="text-[14px] font-semibold text-forest mb-1">No plan for {dayLabelForCell(session.startDate, activeWeek, activeDayIndex)}</p>
           <p className="text-[13px] text-forest/50 max-w-md mx-auto leading-relaxed">
             {linkedCount === 0
               ? "Nothing on this day's menu is linked to a recipe, so there is nothing to prep against. Attach recipes on the Menu tab."

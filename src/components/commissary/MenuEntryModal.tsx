@@ -6,7 +6,7 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import { generateId } from '@/lib/utils';
 import type { MealPeriod, MenuEntry } from '@/lib/types';
 import {
-  MEAL_PERIOD_LABELS, DAY_LABELS, dateForCell, MEASURE_UNITS, toBase, formatQty, fromBase,
+  MEAL_PERIOD_LABELS, dateForCell, MEASURE_UNITS, toBase, formatQty, fromBase,
 } from '@/lib/commissaryUnits';
 import { inputClass, labelClass } from './commissaryUi';
 
@@ -111,7 +111,7 @@ export function MenuEntryModal({ weekNumber, dayIndex, mealPeriod }: Props) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-2.5">
           <p className="text-[12px] text-forest/60">
-            {DAY_LABELS[dayIndex]} · {dateLabel} · week {weekNumber}
+            {dateLabel} · week {weekNumber}
           </p>
         </div>
 

@@ -3,7 +3,7 @@ import { Button } from '@/components/shared/Button';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
 import type { MealPeriod } from '@/lib/types';
-import { MEAL_PERIODS, MEAL_PERIOD_LABELS, DAY_LABELS } from '@/lib/commissaryUnits';
+import { MEAL_PERIODS, MEAL_PERIOD_LABELS, TEMPLATE_DAY_LABELS } from '@/lib/commissaryUnits';
 
 function TemplateCell({ templateId, week, dayIndex, meal }: { templateId: string; week: number; dayIndex: number; meal: MealPeriod }) {
   const { templateCellEntries, deleteTemplateEntry, openModal } = useCommissaryStore();
@@ -104,7 +104,7 @@ export function TemplatesView() {
           <div className="bg-white rounded-card border border-border overflow-hidden">
             <div className="grid grid-cols-[92px_repeat(7,minmax(0,1fr))]">
               <div className="border-r border-b border-border bg-cream-dark/50" />
-              {DAY_LABELS.map((day) => (
+              {TEMPLATE_DAY_LABELS.map((day) => (
                 <div key={day} className="border-r border-b border-border bg-cream-dark/50 px-2 py-2 text-center last:border-r-0">
                   <p className="text-[11px] font-semibold text-forest">{day}</p>
                 </div>
@@ -114,7 +114,7 @@ export function TemplatesView() {
                   <div className="border-r border-b border-border bg-cream-dark/50 px-2 py-2 flex items-start">
                     <p className="text-[11px] font-semibold text-forest">{MEAL_PERIOD_LABELS[meal]}</p>
                   </div>
-                  {DAY_LABELS.map((_, dayIndex) => (
+                  {TEMPLATE_DAY_LABELS.map((_, dayIndex) => (
                     <TemplateCell key={`${meal}-${dayIndex}`} templateId={template.id} week={activeTemplateWeek} dayIndex={dayIndex} meal={meal} />
                   ))}
                 </div>

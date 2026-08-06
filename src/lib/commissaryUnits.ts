@@ -17,6 +17,9 @@ import type {
   InventoryItem, MealPeriod, Recipe, RecipeIngredient, MenuEntry,
   CommissarySession, MealEvent, ProductionIngredient, RecipeStep, PrepTimeSlot,
 } from './types';
+import { toDateStr, todayStr, parseDateStr } from './utils';
+
+export { toDateStr, todayStr, parseDateStr };
 
 // ─── Allergens ───────────────────────────────────────────────────────────────
 // Canonical set. Deliberately allergens only — dietary preferences (vegetarian,
@@ -451,7 +454,14 @@ export const MEAL_PERIOD_LABELS: Record<MealPeriod, string> = {
   snack: 'Snack',
 };
 
-export const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// A session week runs from the session's OWN start date, so day 0 is whatever weekday the
+// session begins on — not Monday. Labelling the columns Mon–Sun produced impossible dates
+// ("Mon Aug 4" for a session starting Tuesday Aug 4) and put the menu a day out of step
+// with inventory, which reads real calendar dates. Weekday names must come from the date.
+//
+// Templates are not tied to a calendar at all (they are applied to any week of any
+// session), so they are numbered rather than named.
+export const TEMPLATE_DAY_LABELS = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'];
 
 // ─── Session weeks ───────────────────────────────────────────────────────────
 // Weeks are derived from the session's own dates, not a hardcoded list of four.
@@ -465,9 +475,24 @@ export function weekCount(startDate: string, endDate: string): number {
 
 /** Calendar date of a given weekNumber (1-based) + dayIndex (0-based). */
 export function dateForCell(startDate: string, weekNumber: number, dayIndex: number): Date {
-  const start = new Date(`${startDate}T00:00:00`);
+  const start = parseDateStr(startDate);
   start.setDate(start.getDate() + (weekNumber - 1) * 7 + dayIndex);
   return start;
+}
+
+/** Same cell, as a YYYY-MM-DD calendar day. */
+export function dateStrForCell(startDate: string, weekNumber: number, dayIndex: number): string {
+  return toDateStr(dateForCell(startDate, weekNumber, dayIndex));
+}
+
+/** The real weekday of a cell — 'Tue' for a session that starts on a Tuesday. */
+export function dayLabelForCell(startDate: string, weekNumber: number, dayIndex: number): string {
+  return dateForCell(startDate, weekNumber, dayIndex).toLocaleDateString('en-US', { weekday: 'short' });
+}
+
+/** The seven real weekday labels of one session week, in column order. */
+export function dayLabelsForWeek(startDate: string, weekNumber: number): string[] {
+  return Array.from({ length: 7 }, (_, i) => dayLabelForCell(startDate, weekNumber, i));
 }
 
 // ─── Restrictions: allergens vs dietary ──────────────────────────────────────
@@ -532,22 +557,32 @@ export function menuConflicts(
   recipeAllergenSlugs: readonly string[],
   summary: Map<string, { camperCount: number; anaphylacticCount: number }>,
 ): MenuConflict[] {
-  const out: MenuConflict[] = [];
+  // Conflicts are keyed by the CAMPER RESTRICTION, never by the item flag that implied it.
+  // A "contains meat" item does not conflict with "contains meat" — it conflicts with the
+  // vegetarians and vegans in camp. Reporting the flag slug here used to make replacement
+  // meals unmatchable: a substitution is saved against a restriction ('vegetarian'), so
+  // nothing ever matched 'contains_meat' and the chip stayed amber however many
+  // replacements were plated. Two flags can implicate the same restriction (meat and
+  // animal products both hit vegan), hence the merge.
+  const byRestriction = new Map<string, MenuConflict>();
+  const add = (restriction: string) => {
+    const row = summary.get(restriction);
+    if (!row || row.camperCount <= 0) return;
+    byRestriction.set(restriction, {
+      allergen: restriction,
+      camperCount: row.camperCount,
+      anaphylacticCount: row.anaphylacticCount,
+    });
+  };
+
   for (const a of recipeAllergenSlugs) {
     const dietConflicts = DIET_FLAG_CONFLICTS[a];
-    if (dietConflicts) {
-      // A "contains meat / animal products" item conflicts with vegetarian/vegan campers.
-      let camperCount = 0;
-      for (const s of dietConflicts) camperCount += summary.get(s)?.camperCount ?? 0;
-      if (camperCount > 0) out.push({ allergen: a, camperCount, anaphylacticCount: 0 });
-    } else {
-      const row = summary.get(a);
-      if (row && row.camperCount > 0) {
-        out.push({ allergen: a, camperCount: row.camperCount, anaphylacticCount: row.anaphylacticCount });
-      }
-    }
+    if (dietConflicts) for (const s of dietConflicts) add(s);
+    else add(a);
   }
-  return out.sort((x, y) => y.anaphylacticCount - x.anaphylacticCount || y.camperCount - x.camperCount);
+
+  return [...byRestriction.values()]
+    .sort((x, y) => y.anaphylacticCount - x.anaphylacticCount || y.camperCount - x.camperCount);
 }
 
 // ─── Recipe-step prep timing ─────────────────────────────────────────────────
@@ -958,10 +993,10 @@ export function effectiveDayCount(session: CommissarySession, events: MealEvent[
 
 function eachDay(startDate: string, endDate: string): string[] {
   const out: string[] = [];
-  const d = new Date(`${startDate}T00:00:00`);
-  const end = new Date(`${endDate}T00:00:00`);
+  const d = parseDateStr(startDate);
+  const end = parseDateStr(endDate);
   while (d <= end) {
-    out.push(d.toISOString().slice(0, 10));
+    out.push(toDateStr(d));
     d.setDate(d.getDate() + 1);
   }
   return out;
@@ -977,14 +1012,14 @@ export function datesInRange(startDate: string, endDate: string): string[] {
 
 /** Shift a YYYY-MM-DD by n days (n may be negative). */
 export function addDaysStr(dateStr: string, n: number): string {
-  const d = new Date(`${dateStr}T00:00:00`);
+  const d = parseDateStr(dateStr);
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return toDateStr(d);
 }
 
 /** Whole days from a → b (b − a). */
 export function daysBetween(a: string, b: string): number {
-  return Math.round((new Date(`${b}T00:00:00`).getTime() - new Date(`${a}T00:00:00`).getTime()) / 86_400_000);
+  return Math.round((parseDateStr(b).getTime() - parseDateStr(a).getTime()) / 86_400_000);
 }
 
 export const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];

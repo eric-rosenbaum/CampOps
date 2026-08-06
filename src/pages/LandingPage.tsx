@@ -171,9 +171,9 @@ function Hero({ onSignIn, onBookDemo }: { onSignIn: () => void; onBookDemo: () =
 // ─── How it works ───────────────────────────────────────────────────────────────
 
 const STEPS = [
-  { icon: Users, n: '01', title: 'Set up your camp', body: "Add your team, upload your camp data (or let us handle it), and you're ready to go. Roles and permissions are set up in minutes." },
-  { icon: CheckSquare, n: '02', title: 'Run the day', body: 'Staff can manage maintenance, aquatics, compliance, food service, and retreats. Everything updates in real time across your whole team.' },
-  { icon: Eye, n: '03', title: 'Stay ahead', body: 'One platform to manage daily operations, keep teams aligned, and ensure nothing gets overlooked.' },
+  { icon: Users, n: '01', title: 'Set up your camp', body: 'Add your team, cabins, and the modules you use. Roles and permissions take minutes – everyone sees exactly what they should.' },
+  { icon: CheckSquare, n: '02', title: 'Run the day', body: 'Staff log issues, pool readings, safety checks, and meals from any device. Everything updates in real time across your whole team.' },
+  { icon: Eye, n: '03', title: 'Stay ahead', body: 'See the whole camp at a glance, keep compliance airtight, and never let a task slip through the cracks again.' },
 ];
 
 function HowItWorks() {
@@ -183,7 +183,7 @@ function HowItWorks() {
         <div className="text-center max-w-2xl mx-auto mb-14">
           <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-sage mb-3">How it works</p>
           <h2 className="font-display text-forest font-semibold text-[clamp(2rem,4vw,2.9rem)] leading-[1.1] tracking-[-0.01em]">
-            The central hub for camp operations
+            Everything camp runs on, in one calm place
           </h2>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
@@ -208,12 +208,12 @@ function HowItWorks() {
 // ─── Feature spotlights (built UI mockups) ───────────────────────────────────────
 
 const MODULES = [
-  { icon: Wrench, title: 'Issues & Repairs', desc: 'Log, assign, and track maintenance requests from any device — with photos and status.' },
-  { icon: ShieldCheck, title: 'Safety & Compliance', desc: 'Run safety checks, drills, and headcounts with an airtight, timestamped record.' },
-  { icon: Waves, title: 'Pool Management', desc: 'Log pool chemistry, scan test strips with AI, and keep every reading on record.' },
-  { icon: Building2, title: 'Building Systems', desc: 'Track electrical, plumbing, and shutoffs room by room, ready before you need them.' },
-  { icon: UtensilsCrossed, title: 'Commissary', desc: 'Plan menus, manage inventory, and order food for sessions and retreats with less waste.' },
-  { icon: CalendarRange, title: 'Retreats', desc: 'Rent your facility to outside groups with a self-serve guest portal and full oversight.' },
+  { icon: Wrench, title: 'Issues & Repairs' },
+  { icon: ShieldCheck, title: 'Safety & Compliance' },
+  { icon: Waves, title: 'Pool Management' },
+  { icon: Building2, title: 'Building Systems' },
+  { icon: UtensilsCrossed, title: 'Commissary' },
+  { icon: CalendarRange, title: 'Retreats' },
 ];
 
 /* Realistic iPhone frame: thin uniform bezel, Dynamic Island, iOS status bar */
@@ -349,10 +349,10 @@ function PortalMock() {
 const FEATURES = [
   { icon: Smartphone, eyebrow: 'Mobile', title: 'Runs in your pocket, all over the property', clip: true,
     body: 'Your team logs issues, pool readings, and safety checks right where they happen from their phone. It syncs the second they hit save, so the office always sees the field in real time.',
-    points: ['Log from anywhere on the property', 'Photos attach in a tap', 'Assign work orders to your team'], Visual: MobileMock },
+    points: ['Log from anywhere on the property', 'Photos attach in a tap', 'No radios, no “tell me later”'], Visual: MobileMock },
   { icon: Camera, eyebrow: 'AI pool scan', title: 'Snap the test strip. We read the chemistry.', clip: false,
     body: 'Point your phone at a pool test strip and CampCommand reads pH, chlorine, and alkalinity for you — logged, timestamped, and flagged the moment anything drifts out of range.',
-    points: ['No squinting at color charts', 'Auto-logged to the pool record'], Visual: PoolScanMock },
+    points: ['No squinting at color charts', 'Auto-logged to the pool record', 'Out-of-range alerts before it’s a problem'], Visual: PoolScanMock },
   { icon: CalendarRange, eyebrow: 'Retreats', title: 'Turn your off-season into revenue', clip: false,
     body: 'Rent your facility to outside groups and let them self-serve through a guest portal — contracts, housing, menus, and payments — while your team keeps full oversight.',
     points: ['A private booking portal per group', 'Contracts and COIs collected for you', 'Housing and menus without the email chain'], Visual: PortalMock },
@@ -409,51 +409,19 @@ function FeatureSpotlights() {
         </div>
 
         {/* breadth strip */}
-        <ModuleBreadth />
+        <div className="mt-24 pt-14 border-t border-black/5 text-center">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-forest/40 mb-7">One login also covers</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 max-w-4xl mx-auto">
+            {MODULES.map((m) => (
+              <div key={m.title} className="flex flex-col items-center gap-2 rounded-card border border-border px-3 py-5 hover:border-sage transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-cream flex items-center justify-center"><m.icon className="w-5 h-5 text-forest" /></div>
+                <span className="text-[12.5px] font-medium text-forest text-center leading-tight">{m.title}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
-  );
-}
-
-// The six "also covers" tiles. Each reveals a one-line description on hover (desktop) and
-// on tap (touch) — a lightweight, modern reveal rather than a separate tooltip layer.
-function ModuleBreadth() {
-  const [active, setActive] = useState<string | null>(null);
-  return (
-    <div className="mt-24 pt-14 border-t border-black/5 text-center">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-forest/40 mb-7">One login also covers</p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 max-w-4xl mx-auto items-start">
-        {MODULES.map((m) => {
-          const open = active === m.title;
-          return (
-            <button
-              key={m.title}
-              type="button"
-              onMouseEnter={() => setActive(m.title)}
-              onMouseLeave={() => setActive((cur) => (cur === m.title ? null : cur))}
-              onFocus={() => setActive(m.title)}
-              onBlur={() => setActive((cur) => (cur === m.title ? null : cur))}
-              onClick={() => setActive((cur) => (cur === m.title ? null : m.title))}
-              aria-expanded={open}
-              className={`flex flex-col items-center gap-2 rounded-card border px-3 py-5 text-center transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-sage ${
-                open ? 'border-sage bg-sage-pale/25' : 'border-border hover:border-sage'
-              }`}
-            >
-              <div className="w-10 h-10 rounded-lg bg-cream flex items-center justify-center"><m.icon className="w-5 h-5 text-forest" /></div>
-              {/* Reserve two lines so a wrapping title (e.g. "Safety & Compliance") doesn't make its card taller than the rest. */}
-              <span className="text-[12.5px] font-medium text-forest leading-tight min-h-[2.5em] flex items-center justify-center text-center">{m.title}</span>
-              <span
-                className={`overflow-hidden text-[11.5px] leading-snug text-forest/55 transition-all duration-300 ${
-                  open ? 'max-h-24 opacity-100 mt-0.5' : 'max-h-0 opacity-0'
-                }`}
-              >
-                {m.desc}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 
@@ -511,18 +479,9 @@ function Footer({ onSignIn, onBookDemo }: { onSignIn: () => void; onBookDemo: ()
 
 // ─── Page ───────────────────────────────────────────────────────────────────────
 
-const MARKETING_HOSTS = ['campcommand.app', 'www.campcommand.app'];
-
 export function LandingPage() {
   const navigate = useNavigate();
-  // From the marketing host, sign-in jumps to the product subdomain; in dev/preview stay in-app.
-  const onSignIn = () => {
-    if (typeof window !== 'undefined' && MARKETING_HOSTS.includes(window.location.hostname)) {
-      window.location.href = 'https://app.campcommand.app/login';
-    } else {
-      navigate('/login');
-    }
-  };
+  const onSignIn = () => navigate('/login');
   // Open the booking page (Google Appointment Schedule) in a new tab — Google refuses to be
   // embedded in an iframe. Falls back to email if no scheduling URL is configured.
   const onBookDemo = () => {

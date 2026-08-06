@@ -4,7 +4,7 @@ import { Button } from '@/components/shared/Button';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { generateId } from '@/lib/utils';
 import type { MealEvent, MealEventKind, MealEventCountMode, MealPeriod } from '@/lib/types';
-import { MEAL_PERIODS, MEAL_PERIOD_LABELS } from '@/lib/commissaryUnits';
+import { MEAL_PERIODS, MEAL_PERIOD_LABELS, todayStr } from '@/lib/commissaryUnits';
 import { inputClass, labelClass } from './commissaryUi';
 
 const KIND_LABELS: Record<MealEventKind, string> = {
@@ -18,7 +18,7 @@ export function MealEventModal({ editId, date }: { editId?: string; date?: strin
   const existing = editId ? mealEvents.find((e) => e.id === editId) ?? null : null;
 
   const [kind, setKind] = useState<MealEventKind>(existing?.kind ?? 'override');
-  const [eventDate, setEventDate] = useState(existing?.date ?? date ?? new Date().toISOString().slice(0, 10));
+  const [eventDate, setEventDate] = useState(existing?.date ?? date ?? todayStr());
   const [mealPeriod, setMealPeriod] = useState<MealPeriod | ''>(existing?.mealPeriod ?? 'lunch');
   const [countMode, setCountMode] = useState<MealEventCountMode>(existing?.countMode ?? 'absolute');
   const [count, setCount] = useState(existing ? String(existing.count) : '');

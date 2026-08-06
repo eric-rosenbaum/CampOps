@@ -4,7 +4,7 @@ import { Button } from '@/components/shared/Button';
 import { useUIStore } from '@/store/uiStore';
 import { useSafetyStore } from '@/store/safetyStore';
 import { useAuth } from '@/lib/auth';
-import { generateId } from '@/lib/utils';
+import { generateId, toDateStr } from '@/lib/utils';
 import type { SafetyTempLog } from '@/lib/types';
 
 interface FormValues {
@@ -33,7 +33,7 @@ export function LogTempModal() {
   const { register, handleSubmit, watch, formState: { isSubmitting } } = useForm<FormValues>({
     defaultValues: {
       itemId: existingLog?.itemId ?? logTempForItemId ?? (refrigerationItems[0]?.id ?? ''),
-      logDate: existingLog?.logDate ?? now.toISOString().slice(0, 10),
+      logDate: existingLog?.logDate ?? toDateStr(now),
       session: existingLog?.session ?? defaultSession,
       temperature: existingLog?.temperature?.toString() ?? '',
       loggedBy: existingLog?.loggedBy ?? currentUser.name,

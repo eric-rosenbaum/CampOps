@@ -10,6 +10,7 @@ import {
   StatusBadge, Badge, PhaseTracker, statusAccent,
   GROUP_TYPE_LABELS, type BadgeTone,
 } from './retreatUi';
+import { todayStr } from '@/lib/utils';
 
 const ACTIVEISH: Retreat['status'][] = ['confirmed', 'ready', 'active'];
 const PIPELINE: { key: Retreat['status']; label: string }[] = [
@@ -251,7 +252,7 @@ function deriveBadge(r: Retreat, d: DerivedState): { tone: BadgeTone; label: str
 
 function dayOf(r: Retreat): number {
   const total = nights(r.arrivalDate, r.departureDate);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
   const elapsed = nights(r.arrivalDate, today);
   return Math.min(Math.max(1, elapsed + 1), Math.max(1, total));
 }

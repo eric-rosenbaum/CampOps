@@ -22,7 +22,7 @@ import {
   dbAddInvoice, dbUpdateInvoice, dbDeleteInvoice,
   dbRegeneratePortalToken,
 } from '@/lib/retreatsDb';
-import { generateId } from '@/lib/utils';
+import { generateId, todayStr } from '@/lib/utils';
 import { estimateRevenue } from '@/components/retreats/retreatUi';
 
 export type RetreatTab = 'overview' | 'active' | 'documents' | 'housing' | 'menu' | 'requests' | 'costs' | 'portal' | 'feedback';
@@ -204,7 +204,7 @@ interface RetreatState {
 }
 
 const now = () => new Date().toISOString();
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayStr();
 
 export const useRetreatStore = create<RetreatState>((set, get) => ({
   activeTab: 'overview',

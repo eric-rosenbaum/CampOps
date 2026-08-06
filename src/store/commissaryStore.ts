@@ -14,7 +14,7 @@ import {
   dbAddInventoryItem, dbUpdateInventoryItem, dbDeleteInventoryItem, dbAdjustInventory,
   dbReplaceItemVendors, dbUpsertItemVendor, dbUpdateOrderLinePack, dbUpdateOrderVendor, dbSetItemCounted,
   dbSetItemPrice, dbWipeCommissary,
-  dbAddRecipe, dbUpdateRecipe, dbDeleteRecipe, dbReplaceRecipeChildren,
+  dbAddRecipe, dbUpdateRecipe, dbUpdateRecipeScale, dbDeleteRecipe, dbReplaceRecipeChildren,
   dbAddMenuEntry, dbDeleteMenuEntry, dbAddMenuEntries, dbDeleteMenuWeek,
   dbAddRetreatMenuEntry, dbUpdateRetreatMenuEntry, dbDeleteRetreatMenuEntry,
   dbCreateOrder, dbUpdateOrderStatus, dbDeleteOrder, dbReceiveOrder,
@@ -35,7 +35,8 @@ import {
   demandForEntries, stockStatus, targetPortions, weekCount, recipeAllergens,
   buildDraftOrders, parRequirements, menuSignature, menuConflicts,
   scaledIngredientLabel, formatInStockUnit, tidy, mealHeadCount, peopleDays, perDiem,
-  menuForecastCost, dateForCell, ITEM_FLAGS, MEAL_PERIOD_LABELS, PREP_SLOT_ORDER,
+  menuForecastCost, dateForCell, dateStrForCell, toDateStr, todayStr,
+  ITEM_FLAGS, MEAL_PERIOD_LABELS, PREP_SLOT_ORDER,
   addDaysStr, makeProjectionInput, coverageNeedBase, projectedOnHandBase, WEEKDAYS, nextWeekdayOnOrAfter,
   type DemandRow, type StockStatus, type DraftOrder, type MenuConflict,
   type PerDiem, type PrepScheduleSlot, type PrepSlotKey,
@@ -95,8 +96,6 @@ interface CommissaryState {
   recipeFilter: string;      // meal period | 'all'
   recipeSearch: string;
   expandedRecipeId: string | null;
-  /** Per-recipe "scale to" portions on the Recipe guide — persisted so it survives tab switches. */
-  recipeScales: Record<string, number>;
   /** Production tab: which day of the active week is on screen. */
   activeDayIndex: number;
   /** Ordering tab: derive quantities from the week's menu, or top up to par. */
@@ -151,6 +150,7 @@ interface CommissaryState {
   setRecipeFilter: (f: string) => void;
   setRecipeSearch: (q: string) => void;
   toggleExpandedRecipe: (id: string) => void;
+  /** Set a recipe's "scale to" portions. Persisted on the recipe, so it survives a refresh. */
   setRecipeScale: (recipeId: string, portions: number) => void;
   setActiveDayIndex: (i: number) => void;
   setOrderSource: (s: OrderSource) => void;
@@ -424,7 +424,6 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   recipeFilter: 'all',
   recipeSearch: '',
   expandedRecipeId: null,
-  recipeScales: {},
   activeDayIndex: 0,
   orderSource: 'menu',
 
@@ -473,7 +472,11 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   setRecipeFilter: (f) => set({ recipeFilter: f }),
   setRecipeSearch: (q) => set({ recipeSearch: q }),
   toggleExpandedRecipe: (id) => set((s) => ({ expandedRecipeId: s.expandedRecipeId === id ? null : id })),
-  setRecipeScale: (recipeId, portions) => set((s) => ({ recipeScales: { ...s.recipeScales, [recipeId]: portions } })),
+  setRecipeScale: (recipeId, portions) => {
+    const scaleTo = Number.isFinite(portions) && portions > 0 ? Math.round(portions) : null;
+    set((s) => ({ recipes: s.recipes.map((r) => r.id === recipeId ? { ...r, scaleTo } : r) }));
+    dbUpdateRecipeScale(recipeId, scaleTo);
+  },
   setActiveDayIndex: (i) => set({ activeDayIndex: i }),
   setOrderSource: (s) => set({ orderSource: s }),
 
@@ -950,7 +953,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     const byId = state.itemsById();
     const now = new Date().toISOString();
     const planId = generateId();
-    const dateStr = dateForCell(session.startDate, weekNumber, dayIndex).toISOString().slice(0, 10);
+    const dateStr = dateStrForCell(session.startDate, weekNumber, dayIndex);
 
     const plan: ProductionPlan = {
       id: planId,
@@ -1053,7 +1056,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
         prep.setDate(prep.getDate() - (s.leadDays ?? 0));
         prepTasks.push({
           id: generateId(), planId, recipeId: recipe.id,
-          prepDate: prep.toISOString().slice(0, 10), timeSlot: s.timeSlot,
+          prepDate: toDateStr(prep), timeSlot: s.timeSlot,
           mealPeriod: entry.mealPeriod, serviceDate: dateStr,
           title: recipe.name, instruction: s.instruction, portions: mealPortions,
           isComplete: false, completedBy: null, completedAt: null,
@@ -1068,7 +1071,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       (e) => state.mealCount(dateStr, e.mealPeriod));
     const nightBefore = new Date(serviceDateObj);
     nightBefore.setDate(nightBefore.getDate() - 1);
-    const nightBeforeStr = nightBefore.toISOString().slice(0, 10);
+    const nightBeforeStr = toDateStr(nightBefore);
     for (const row of dayDemand.values()) {
       const item = byId.get(row.itemId);
       if (!item || item.storageLocation !== 'walk_in_freezer' || coveredFreezer.has(item.id)) continue;
@@ -1137,7 +1140,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     const { prepTasks, plans, activeSessionId } = get();
     const session = get().activeSession();
     if (!session) return [];
-    const dateStr = dateForCell(session.startDate, week, dayIndex).toISOString().slice(0, 10);
+    const dateStr = dateStrForCell(session.startDate, week, dayIndex);
     const sessionPlanIds = new Set(plans.filter((p) => p.sessionId === activeSessionId).map((p) => p.id));
     return prepTasks
       .filter((t) => sessionPlanIds.has(t.planId) && t.prepDate === dateStr)
@@ -1299,7 +1302,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     const session = state.activeSession();
     if (!session) return map;
     for (const e of state.menuEntries.filter((m) => m.sessionId === session.id)) {
-      const dateStr = dateForCell(session.startDate, e.weekNumber, e.dayIndex).toISOString().slice(0, 10);
+      const dateStr = dateStrForCell(session.startDate, e.weekNumber, e.dayIndex);
       const portions = state.mealCount(dateStr, e.mealPeriod);
       const demand = demandForEntries([e], recipesById, ingByRecipe, portions);
       for (const row of demand.values()) add(row.itemId, dateStr, row.neededBase);
@@ -1326,7 +1329,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   // How far the projection looks: through the session (menus stop there), min ~3 weeks out.
   projectionHorizon: () => {
     const s = get().activeSession();
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayStr();
     const min = addDaysStr(today, 21);
     if (!s) return min;
     return s.endDate > min ? s.endDate : min;
@@ -1381,7 +1384,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     // Scale each entry by its OWN meal's head count (per-meal session counts + events),
     // not the flat session total — otherwise ordering over-orders for smaller meals.
     const portionsFor = session
-      ? (e: MenuEntry) => state.mealCount(dateForCell(session.startDate, e.weekNumber, e.dayIndex).toISOString().slice(0, 10), e.mealPeriod)
+      ? (e: MenuEntry) => state.mealCount(dateStrForCell(session.startDate, e.weekNumber, e.dayIndex), e.mealPeriod)
       : state.portions();
     return demandForEntries(state.entriesForWeek(week), state.recipesById(), state.ingredientsByRecipe(), portionsFor);
   },
@@ -1438,7 +1441,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   // so cover [today → next delivery + one cycle]. Day defaults to the session start's weekday.
   orderingWindow: () => {
     const state = get();
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayStr();
     if (state.mode === 'retreats') {
       // Retreats: cover a user-picked window, defaulting to today → the last upcoming
       // retreat's departure (or +14 days if none), so one order spans every group in range.
@@ -1467,7 +1470,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     const state = get();
     const consMap = state.consumptionByItemDate();
     const incMap = state.incomingByItemDate();
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayStr();
     const vendorsById = new Map(state.vendors.map((v) => [v.id, v]));
     const byVendor = new Map<string, DraftOrder>();
     for (const item of state.items) {
@@ -1503,7 +1506,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     const state = get();
     const consMap = state.consumptionByItemDate();
     const incMap = state.incomingByItemDate();
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayStr();
     const inWindow = (m: Map<string, number> | undefined) => {
       let sum = 0;
       if (m) for (const [d, b] of m) if (d > today && d <= windowEndDate) sum += b;
@@ -1837,7 +1840,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   sessionPerDiem: () => {
     const session = get().activeSession();
     if (!session) return null;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayStr();
     const start = session.startDate;
     const endBound = today < session.endDate ? today : session.endDate;
     if (endBound < start) return perDiem(0, 0, session.budgetPerPersonPerDay);
@@ -1883,7 +1886,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     const session = state.activeSession();
     const entries = state.entriesForDay(week, dayIndex);
     const portionsFor = session
-      ? (e: MenuEntry) => state.mealCount(dateForCell(session.startDate, e.weekNumber, e.dayIndex).toISOString().slice(0, 10), e.mealPeriod)
+      ? (e: MenuEntry) => state.mealCount(dateStrForCell(session.startDate, e.weekNumber, e.dayIndex), e.mealPeriod)
       : state.portions();
     const demand = demandForEntries(entries, state.recipesById(), state.ingredientsByRecipe(), portionsFor);
     const byId = get().itemsById();
@@ -1972,7 +1975,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       const recipe = recipesById.get(e.recipeId);
       if (!recipe) continue;
       const serviceDate = dateForCell(session.startDate, e.weekNumber, e.dayIndex);
-      const serviceDateStr = serviceDate.toISOString().slice(0, 10);
+      const serviceDateStr = toDateStr(serviceDate);
 
       // Prefer frozen plan quantities when the service day has been generated (hybrid).
       let portions = state.mealCount(serviceDateStr, e.mealPeriod);
@@ -1985,7 +1988,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       for (const s of state.stepsFor(recipe.id)) {
         const prepDate = new Date(serviceDate);
         prepDate.setDate(prepDate.getDate() - (s.leadDays ?? 0));
-        const prepDateStr = prepDate.toISOString().slice(0, 10);
+        const prepDateStr = toDateStr(prepDate);
         const slot: PrepSlotKey = s.timeSlot ?? 'any';
         const key = `${prepDateStr}|${slot}`;
         let bucket = buckets.get(key);

@@ -14,6 +14,28 @@ export function relativeTime(isoString: string): string {
   return format(date, 'MMM d');
 }
 
+// ─── Calendar-day helpers ────────────────────────────────────────────────────
+// A YYYY-MM-DD in this app always means a CALENDAR day at the camp, never an instant.
+// Serialising a Date through toISOString() and slicing the first ten characters is
+// therefore wrong: it returns the UTC day, so from 8pm Eastern onwards it reports
+// tomorrow. That is what put inventory run-out dates, default form dates and the menu a
+// day out of step with each other. Use these helpers instead.
+
+/** The local calendar day of a Date, as YYYY-MM-DD. */
+export function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Today's local calendar day, as YYYY-MM-DD. */
+export function todayStr(): string {
+  return toDateStr(new Date());
+}
+
+/** Parse a YYYY-MM-DD as local midnight (not UTC midnight, which shifts the day). */
+export function parseDateStr(dateStr: string): Date {
+  return new Date(`${dateStr}T00:00:00`);
+}
+
 export function formatDate(isoString: string): string {
   // Date-only strings (YYYY-MM-DD) parse as UTC midnight, which shifts to the
   // previous day in negative-offset timezones. Append T00:00:00 to force local midnight.

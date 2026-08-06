@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { campLog, campError } from './campLog';
+import { noteWriteStart, noteWriteEnd } from './syncGuard';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -84,6 +85,41 @@ function xhrFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respons
 // With xhrFetch, the abort actually cancels the socket, so the retry opens a
 // genuinely fresh connection — total time on a stale connection is ~5 s.
 async function fetchWithRetry(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  // Every write in the app funnels through here, which makes this the one place that can
+  // tell the sync guard "a mutation is still on the wire". Reloads triggered by realtime
+  // or the periodic refetch wait for this count to hit zero, so they never read (and then
+  // apply) a half-applied save over the optimistic local state. See lib/syncGuard.ts.
+  const isWrite = isMutatingRequest(input, init);
+  if (isWrite) noteWriteStart();
+  try {
+    return await fetchWithRetryInner(input, init);
+  } finally {
+    if (isWrite) noteWriteEnd();
+  }
+}
+
+// RPCs that only read. Everything else that arrives by POST is assumed to mutate —
+// `adjust_inventory_item` and `receive_purchase_order` are the reason: they change stock
+// through a function rather than a table write, and missing them would let a reload
+// observe the pre-write state exactly as the direct table writes used to.
+const READ_ONLY_RPCS = new Set([
+  'get_portal_data', 'get_public_camp', 'get_restriction_summary', 'invitation_info',
+  'is_platform_admin', 'list_platform_admins', 'admin_list_camp_accounts', 'export_camp_data',
+]);
+
+/** A PostgREST/storage call that changes rows — anything but a plain read. */
+function isMutatingRequest(input: RequestInfo | URL, init?: RequestInit): boolean {
+  const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return false;
+  const url = input instanceof Request ? input.url : String(input);
+  // Auth traffic (token refresh, session) is not a data mutation.
+  if (url.includes('/auth/v1/')) return false;
+  const rpc = url.match(/\/rest\/v1\/rpc\/([^/?#]+)/);
+  if (rpc) return !READ_ONLY_RPCS.has(rpc[1]);
+  return true;
+}
+
+async function fetchWithRetryInner(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const ATTEMPT_TIMEOUT_MS = 4000;
   const delays = [1000, 5000];
   const url = input instanceof Request ? input.url : String(input);

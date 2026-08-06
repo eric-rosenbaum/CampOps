@@ -3,7 +3,7 @@ import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
-import { generateId } from '@/lib/utils';
+import { generateId, todayStr } from '@/lib/utils';
 import type { RetreatScheduleItem } from '@/lib/types';
 import { inputClass, labelClass } from './retreatUi';
 
@@ -15,7 +15,7 @@ export function ScheduleItemModal({ retreatId, itemId }: { retreatId: string; it
   const existing = itemId ? scheduleFor(retreatId).find((s) => s.id === itemId) ?? null : null;
   const editing = !!existing;
 
-  const [dayDate, setDayDate] = useState(existing?.dayDate ?? new Date().toISOString().slice(0, 10));
+  const [dayDate, setDayDate] = useState(existing?.dayDate ?? todayStr());
   const [timeLabel, setTimeLabel] = useState(existing?.timeLabel ?? '');
   const [title, setTitle] = useState(existing?.title ?? '');
   const [location, setLocation] = useState(existing?.location ?? '');

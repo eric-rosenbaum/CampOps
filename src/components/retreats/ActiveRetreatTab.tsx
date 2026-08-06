@@ -5,10 +5,11 @@ import type { Retreat, RetreatIssue } from '@/lib/types';
 import {
   money, fmtDate, fmtRange, nights, Badge, GROUP_TYPE_LABELS, rateSummary, pricingRate, type BadgeTone,
 } from './retreatUi';
+import { todayStr } from '@/lib/utils';
 
 function dayOf(r: Retreat): { day: number; total: number } {
   const total = Math.max(1, nights(r.arrivalDate, r.departureDate));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
   const elapsed = nights(r.arrivalDate, today);
   return { day: Math.min(Math.max(1, elapsed + 1), total), total };
 }
@@ -57,7 +58,7 @@ export function ActiveRetreatTab() {
   }
 
   const { day, total } = dayOf(r);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
   const schedule = scheduleFor(r.id).filter((s) => !s.dayDate || s.dayDate === today);
   const allSchedule = scheduleFor(r.id);
   const housing = housingFor(r.id);

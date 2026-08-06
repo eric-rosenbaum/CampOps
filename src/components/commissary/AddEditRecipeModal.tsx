@@ -133,6 +133,8 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
       name: name.trim(),
       mealPeriod,
       baseYield: yieldN,
+      // Not edited here — the scale lives on the recipe card, so preserve whatever it holds.
+      scaleTo: existing?.scaleTo ?? null,
       prepTime: prepTime.trim() || null,
       cookTime: cookTime.trim() || null,
       // The editor writes steps, not prose. Clearing `method` prevents a legacy

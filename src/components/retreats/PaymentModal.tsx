@@ -5,11 +5,11 @@ import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { RetreatPayment, RetreatPaymentKind } from '@/lib/types';
-import { generateId } from '@/lib/utils';
+import { generateId, todayStr } from '@/lib/utils';
 import { money, fmtDateFull, inputClass, labelClass } from './retreatUi';
 
 const now = () => new Date().toISOString();
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayStr();
 
 const KIND_LABELS: Record<RetreatPaymentKind, string> = {
   deposit: 'Deposit',

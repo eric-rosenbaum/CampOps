@@ -5,7 +5,7 @@ import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
-import { generateId } from '@/lib/utils';
+import { generateId, todayStr } from '@/lib/utils';
 import { printInvoice } from '@/lib/invoiceHtml';
 import { sendEmail } from '@/lib/email';
 import type { Retreat, RetreatInvoice, RetreatInvoiceKind, RetreatInvoiceLine } from '@/lib/types';
@@ -24,7 +24,7 @@ function invoiceEmailHtml(campName: string, inv: RetreatInvoice, portalUrl: stri
 }
 
 const now = () => new Date().toISOString();
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayStr();
 
 /** Generate a deposit or balance invoice, deliver it to the guest portal, and/or download a PDF. */
 export function InvoiceModal({ retreatId }: { retreatId: string }) {

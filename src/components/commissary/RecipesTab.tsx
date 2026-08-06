@@ -43,17 +43,18 @@ const FILTERS = [{ id: 'all', label: 'All' }, ...MEAL_PERIODS.map((m) => ({ id: 
 function RecipeCard({ recipeId }: { recipeId: string }) {
   const {
     recipes, expandedRecipeId, toggleExpandedRecipe, ingredientsFor, stepsFor,
-    allergensFor, itemsById, portions, openModal, recipeScales, setRecipeScale,
+    allergensFor, itemsById, portions, openModal, setRecipeScale,
   } = useCommissaryStore();
   const { can } = useAuth();
   const recipe = recipes.find((r) => r.id === recipeId)!;
   const expanded = expandedRecipeId === recipeId;
 
   // The scale defaults to the session head count, so a cook can ask "what if I make this
-  // for 80?" without touching the session. Committed value lives in the store (keyed by
-  // recipe) so it survives tab switches; edited via click-to-edit-then-save.
+  // for 80?" without touching the session. Once set it is saved on the recipe itself
+  // (recipe.scaleTo), so it survives tab switches AND a page refresh — it used to live
+  // only in memory and silently reverted on reload.
   const sessionPortions = portions();
-  const storeScale = recipeScales[recipeId] ?? (sessionPortions || recipe.baseYield);
+  const storeScale = recipe.scaleTo ?? (sessionPortions || recipe.baseYield);
   const effective = storeScale > 0 ? storeScale : recipe.baseYield;
 
   const ings = ingredientsFor(recipeId);

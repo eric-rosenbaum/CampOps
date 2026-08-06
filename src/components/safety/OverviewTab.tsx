@@ -3,6 +3,7 @@ import { useAssetStore, SERVICE_TYPE_LABELS } from '@/store/assetStore';
 import { useUIStore } from '@/store/uiStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import type { LicenseType } from '@/lib/types';
+import { todayStr, toDateStr } from '@/lib/utils';
 
 const LICENSE_TYPE_LABELS: Record<LicenseType, string> = {
   health_permit: 'Health permit',
@@ -150,7 +151,7 @@ export function OverviewTab() {
   });
 
   // Missing today's temp logs
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
   const refrigerationItems = items.filter((i) => i.type === 'refrigeration');
   refrigerationItems.forEach((item) => {
     const todayLogs = tempLogs.filter((l) => l.itemId === item.id && l.logDate === today);
@@ -377,10 +378,10 @@ function AssetComplianceSection({
   assets: import('@/lib/types').CampAsset[];
   serviceRecords: import('@/lib/types').AssetServiceRecord[];
 }) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayStr();
   const soonDate = new Date();
   soonDate.setDate(soonDate.getDate() + 30);
-  const soonStr = soonDate.toISOString().split('T')[0];
+  const soonStr = toDateStr(soonDate);
 
   const activeAssets = assets.filter((a) => a.isActive && a.status !== 'retired');
 

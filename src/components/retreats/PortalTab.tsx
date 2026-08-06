@@ -6,8 +6,9 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { Retreat } from '@/lib/types';
 import { fmtDateFull } from './retreatUi';
+import { todayStr } from '@/lib/utils';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayStr();
 
 export function PortalTab() {
   const {

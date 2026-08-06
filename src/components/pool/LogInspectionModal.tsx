@@ -4,7 +4,7 @@ import { Button } from '@/components/shared/Button';
 import { useUIStore } from '@/store/uiStore';
 import { usePoolStore } from '@/store/poolStore';
 import { useAuth } from '@/lib/auth';
-import { generateId } from '@/lib/utils';
+import { generateId, todayStr } from '@/lib/utils';
 import type { InspectionLogEntry, InspectionResult, PoolInspection } from '@/lib/types';
 
 interface FormValues {
@@ -32,7 +32,7 @@ export function LogInspectionModal() {
   const { register, handleSubmit, formState: { isSubmitting } } = useForm<FormValues>({
     defaultValues: {
       inspectionId: editing?.inspectionId ?? logInspectionForId ?? '',
-      inspectionDate: editing?.inspectionDate ?? new Date().toISOString().slice(0, 10),
+      inspectionDate: editing?.inspectionDate ?? todayStr(),
       conductedBy: editing?.conductedBy ?? currentUser.name,
       result: editing?.result ?? 'passed',
       notes: editing?.notes ?? '',

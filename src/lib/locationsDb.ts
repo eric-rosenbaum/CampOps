@@ -3,6 +3,7 @@
 import { supabase } from './supabase';
 import { campLog, campError } from './campLog';
 import { getCampId } from './db';
+import { loadAndApply, debounce, WAL_DEBOUNCE_MS } from './syncGuard';
 import type { CampLocation, LocationCategory, BuildingDetail } from './types';
 
 type Row = Record<string, unknown>;
@@ -55,17 +56,18 @@ export const loadLocations = loadInner;
 
 const LOCATION_TABLES = ['locations', 'location_categories', 'building_details'] as const;
 let locChannelCount = 0;
-export function subscribeToLocations(campId: string, onUpdate: (d: LocationData) => void, onEventStart?: () => void): () => void {
-  const reload = async () => { onEventStart?.(); onUpdate(await loadInner(campId)); };
+export function subscribeToLocations(campId: string, onUpdate: (d: LocationData) => void): () => void {
+  const reload = () => loadAndApply('locations', () => loadInner(campId), onUpdate);
+  const onWal = debounce(reload, WAL_DEBOUNCE_MS);
   let channel = supabase.channel(`locations-${++locChannelCount}`);
   for (const table of LOCATION_TABLES) {
-    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, reload);
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, onWal);
   }
   let everSubscribed = false;
   channel.subscribe((status) => {
     campLog(`[CampOps] locations status:`, status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) { onEventStart?.(); setTimeout(() => reload(), 10000); } else everSubscribed = true;
+      if (everSubscribed) { setTimeout(() => reload(), 10000); } else everSubscribed = true;
     }
   });
   return () => { supabase.removeChannel(channel); };

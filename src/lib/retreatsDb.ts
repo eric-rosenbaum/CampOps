@@ -5,6 +5,7 @@
 import { supabase } from './supabase';
 import { campLog, campError } from './campLog';
 import { getCampId } from './db';
+import { loadAndApply, debounce, WAL_DEBOUNCE_MS } from './syncGuard';
 import type {
   Retreat, RetreatSpace, RetreatHousing, RetreatHousingVersion, RetreatDocument, RetreatMeal,
   RetreatChangeRequest, RetreatCost, RetreatCharge, RetreatPayment, RetreatIssue,
@@ -155,17 +156,18 @@ export async function loadRetreats(campId: string): Promise<RetreatData | null> 
 }
 
 let retreatChannelCount = 0;
-export function subscribeToRetreats(campId: string, onUpdate: (d: RetreatData) => void, onEventStart?: () => void): () => void {
-  const reload = async () => { onEventStart?.(); onUpdate(await loadRetreatDataInner(campId)); };
+export function subscribeToRetreats(campId: string, onUpdate: (d: RetreatData) => void): () => void {
+  const reload = () => loadAndApply('retreats', () => loadRetreatDataInner(campId), onUpdate);
+  const onWal = debounce(reload, WAL_DEBOUNCE_MS);
   let channel = supabase.channel(`retreats-${++retreatChannelCount}`);
   for (const table of RETREAT_TABLES) {
-    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, reload);
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `camp_id=eq.${campId}` }, onWal);
   }
   let everSubscribed = false;
   channel.subscribe((status) => {
     campLog(`[CampOps] retreats status:`, status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) { onEventStart?.(); setTimeout(() => reload(), 10000); } else everSubscribed = true;
+      if (everSubscribed) { setTimeout(() => reload(), 10000); } else everSubscribed = true;
     }
   });
   return () => { supabase.removeChannel(channel); };

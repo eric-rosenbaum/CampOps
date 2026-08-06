@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useAssetStore, SERVICE_TYPE_LABELS, isInspectionType } from '@/store/assetStore';
 import { useUIStore } from '@/store/uiStore';
-import { generateId } from '@/lib/utils';
+import { generateId, todayStr } from '@/lib/utils';
 import type { AssetServiceType, AssetCategory } from '@/lib/types';
 
 const SERVICE_TYPES_BY_CATEGORY: Record<AssetCategory | 'other', AssetServiceType[]> = {
@@ -51,7 +51,7 @@ export function LogAssetServiceModal() {
   const serviceTypes = SERVICE_TYPES_BY_CATEGORY[asset?.category ?? 'other'];
 
   const [serviceType, setServiceType] = useState<AssetServiceType>(serviceTypes[0]);
-  const [datePerformed, setDatePerformed] = useState(new Date().toISOString().split('T')[0]);
+  const [datePerformed, setDatePerformed] = useState(todayStr());
   const [performedBy, setPerformedBy] = useState('');
   const [vendor, setVendor] = useState('');
   const [description, setDescription] = useState('');
@@ -82,7 +82,7 @@ export function LogAssetServiceModal() {
         setHours(asset.currentHours?.toString() ?? '');
       }
       setServiceType(types[0]);
-      setDatePerformed(new Date().toISOString().split('T')[0]);
+      setDatePerformed(todayStr());
       setPerformedBy('');
       setVendor('');
       setDescription('');

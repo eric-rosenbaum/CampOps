@@ -7,7 +7,7 @@ import { useUIStore } from '@/store/uiStore';
 import { useSafetyStore, FREQUENCY_DAYS } from '@/store/safetyStore';
 import { useLocationStore } from '@/store/locationStore';
 import { useAuth } from '@/lib/auth';
-import { generateId } from '@/lib/utils';
+import { generateId, toDateStr, parseDateStr } from '@/lib/utils';
 import type { SafetyItem, SafetyItemType } from '@/lib/types';
 import { addDays } from 'date-fns';
 
@@ -155,7 +155,7 @@ export function AddSafetyItemModal() {
   const frequency = watch('frequency');
 
   const suggestedNextDue = lastInspected && frequency
-    ? addDays(new Date(lastInspected + 'T00:00:00'), FREQUENCY_DAYS[frequency]).toISOString().slice(0, 10)
+    ? toDateStr(addDays(parseDateStr(lastInspected), FREQUENCY_DAYS[frequency]))
     : '';
 
   function onSubmit(data: FormValues) {
@@ -164,7 +164,7 @@ export function AddSafetyItemModal() {
     const now = new Date().toISOString();
     const freqDays = FREQUENCY_DAYS[data.frequency];
     const nextDue = data.lastInspected
-      ? addDays(new Date(data.lastInspected + 'T00:00:00'), freqDays).toISOString().slice(0, 10)
+      ? toDateStr(addDays(parseDateStr(data.lastInspected), freqDays))
       : null;
 
     const metadata: Record<string, unknown> = {};

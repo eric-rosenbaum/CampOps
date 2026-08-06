@@ -3,7 +3,7 @@ import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useUIStore } from '@/store/uiStore';
 import { usePoolStore } from '@/store/poolStore';
-import { generateId } from '@/lib/utils';
+import { generateId, todayStr } from '@/lib/utils';
 import type { ServiceLogEntry, ServiceType } from '@/lib/types';
 
 interface FormValues {
@@ -32,7 +32,7 @@ export function LogServiceModal() {
     defaultValues: {
       equipmentId: editing?.equipmentId ?? logServiceForEquipmentId ?? '',
       serviceType: editing?.serviceType ?? 'routine_maintenance',
-      datePerformed: editing?.datePerformed ?? new Date().toISOString().slice(0, 10),
+      datePerformed: editing?.datePerformed ?? todayStr(),
       performedBy: editing?.performedBy ?? '',
       notes: editing?.notes ?? '',
       cost: editing?.cost != null ? String(editing.cost) : '',

@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth';
 import {
   formatCurrency, formatQty, formatInStockUnit, ORDER_STATUS_LABELS, tidy, fromBase, pluralizeUnit,
   orderToCsv, orderToPrintHtml, type ExportOrderLine, type DraftOrder,
+  todayStr,
 } from '@/lib/commissaryUnits';
 import { AlertTriangle } from 'lucide-react';
 import { InlineNumberEdit } from './commissaryUi';
@@ -61,7 +62,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
     subtotal: order.subtotal, deliveryFee: order.deliveryFee, total: order.total,
     deliveryInstructions: order.deliveryInstructions,
   };
-  const dateStamp = new Date().toISOString().slice(0, 10);
+  const dateStamp = todayStr();
 
   function handlePrint() {
     const html = orderToPrintHtml(exportOrder, exportLines, new Date().toLocaleDateString());

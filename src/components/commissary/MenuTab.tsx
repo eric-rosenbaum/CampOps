@@ -5,8 +5,8 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
 import type { MealPeriod } from '@/lib/types';
 import {
-  MEAL_PERIODS, MEAL_PERIOD_LABELS, DAY_LABELS, dateForCell, restrictionLabel,
-  menuWeekToPrintHtml, type PrintMenuCell,
+  MEAL_PERIODS, MEAL_PERIOD_LABELS, dateForCell, dateStrForCell, dayLabelsForWeek,
+  restrictionLabel, sessionMealBase, menuWeekToPrintHtml, type PrintMenuCell,
 } from '@/lib/commissaryUnits';
 import { TemplatesView } from './TemplatesView';
 
@@ -144,7 +144,7 @@ export function MenuTab() {
   const {
     activeSession, activeWeek, setActiveWeek, weeksInSession, portions,
     openModal, copyWeek, clearWeek, unlinkedEntryCount, entriesForWeek,
-    menuView, setMenuView, eventsForSession, templates,
+    menuView, setMenuView, eventsForSession, templates, mealCount,
   } = useCommissaryStore();
   const { can } = useAuth();
   const canManage = can('manageCommissary');
@@ -185,6 +185,32 @@ export function MenuTab() {
 
   const weekStart = dateForCell(session.startDate, activeWeek, 0);
   const weekEnd = dateForCell(session.startDate, activeWeek, 6);
+  // Column headers come from the actual dates: a session that starts on a Tuesday has
+  // Tue in column 0, not Mon.
+  const dayLabels = dayLabelsForWeek(session.startDate, activeWeek);
+
+  // Head count is per MEAL, not per session: a session-level per-meal override or a
+  // visiting-day / off-site event makes breakfast and dinner genuinely different numbers,
+  // and that is what recipes and orders scale from. Showing one session total here was
+  // misleading whenever any of that was in play, so the card reports the real spread for
+  // the week on screen and only collapses to a single number when it truly is one.
+  const mealBreakdown = MEAL_PERIODS.map((meal) => {
+    const days = Array.from({ length: 7 }, (_, dayIndex) => ({
+      dayIndex,
+      count: mealCount(dateStrForCell(session.startDate, activeWeek, dayIndex), meal),
+    }));
+    const counts = days.map((d) => d.count);
+    return { meal, days, min: Math.min(...counts), max: Math.max(...counts) };
+  });
+  const distinctCounts = new Set(mealBreakdown.flatMap((m) => m.days.map((d) => d.count)));
+  const attendanceVaries = distinctCounts.size > 1 || !distinctCounts.has(total);
+  // Days that depart from that meal's own baseline. The baseline has to be the session's
+  // number, not the week's max — a single visiting day is the exception, and measuring
+  // against the max would flag the six ordinary days instead of the one unusual one.
+  const exceptions = mealBreakdown.flatMap((m) => {
+    const base = sessionMealBase(session, m.meal);
+    return m.days.filter((d) => d.count !== base).map((d) => ({ meal: m.meal, ...d }));
+  });
 
   // This week's meal-level events (visiting day, off-site trips, bag lunches).
   const weekEvents = eventsForSession().filter((e) => {
@@ -200,12 +226,12 @@ export function MenuTab() {
           .filter((e) => e.dayIndex === d && e.mealPeriod === meal)
           .sort((a, b) => a.sortOrder - b.sortOrder)
           .map((e) => e.label ?? '—');
-        cells.push({ meal: MEAL_PERIOD_LABELS[meal], day: DAY_LABELS[d], items });
+        cells.push({ meal: MEAL_PERIOD_LABELS[meal], day: dayLabels[d], items });
       }
     }
     const html = menuWeekToPrintHtml(
       `Week ${activeWeek} (${fmtDate(weekStart)} – ${fmtDate(weekEnd)})`,
-      DAY_LABELS, MEAL_PERIODS.map((m) => MEAL_PERIOD_LABELS[m]), cells,
+      dayLabels, MEAL_PERIODS.map((m) => MEAL_PERIOD_LABELS[m]), cells,
     );
     const w = window.open('', '_blank');
     if (!w) { alert('Enable pop-ups to print the menu.'); return; }
@@ -217,20 +243,59 @@ export function MenuTab() {
       <ViewToggle menuView={menuView} setMenuView={setMenuView} />
       <div className="px-7 pt-4">
       {/* Head count — the number everything downstream scales from. */}
-      <div className="flex items-center gap-3 bg-white rounded-card border border-border px-4 py-3 mb-4">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">Session head count</p>
-          <p className="font-mono text-[20px] text-forest leading-tight mt-0.5">{total.toLocaleString()}</p>
+      <div className="bg-white rounded-card border border-border px-4 py-3 mb-4">
+        <div className="flex items-start gap-3">
+          {attendanceVaries ? (
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">
+                Head count by meal — week {activeWeek}
+              </p>
+              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-1">
+                {mealBreakdown.map((m) => (
+                  <span key={m.meal} className="inline-flex items-baseline gap-1.5">
+                    <span className="text-[11px] text-forest/50">{MEAL_PERIOD_LABELS[m.meal]}</span>
+                    <span className="font-mono text-[17px] text-forest leading-none">
+                      {m.min === m.max
+                        ? m.min.toLocaleString()
+                        : `${m.min.toLocaleString()}–${m.max.toLocaleString()}`}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">Session head count</p>
+              <p className="font-mono text-[20px] text-forest leading-tight mt-0.5">{total.toLocaleString()}</p>
+            </div>
+          )}
+          <p className="text-[11px] text-forest/50 leading-relaxed max-w-md">
+            {session.camperCount.toLocaleString()} campers + {session.staffCount.toLocaleString()} staff.
+            {attendanceVaries
+              ? ' Each meal scales to its own count — per-meal overrides and day events are already applied.'
+              : ' All recipe yields and ordering quantities scale to this number.'}
+          </p>
+          <div className="flex-1" />
+          {canManage && (
+            <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'session', editId: session.id })}>
+              Edit session
+            </Button>
+          )}
         </div>
-        <p className="text-[11px] text-forest/50 leading-relaxed max-w-md">
-          {session.camperCount.toLocaleString()} campers + {session.staffCount.toLocaleString()} staff.
-          All recipe yields and ordering quantities scale to this number.
-        </p>
-        <div className="flex-1" />
-        {canManage && (
-          <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'session', editId: session.id })}>
-            Edit session
-          </Button>
+
+        {exceptions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pt-2.5 border-t border-border">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-forest/35">Exceptions</span>
+            {exceptions.map((x) => (
+              <span
+                key={`${x.meal}-${x.dayIndex}`}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill border border-border bg-cream-dark text-[11px] text-forest/70"
+              >
+                {dayLabels[x.dayIndex]} {MEAL_PERIOD_LABELS[x.meal].toLowerCase()}
+                <span className="font-mono font-semibold">{x.count.toLocaleString()}</span>
+              </span>
+            ))}
+          </div>
         )}
       </div>
 
@@ -329,10 +394,10 @@ export function MenuTab() {
       <div className="bg-white rounded-card border border-border overflow-hidden">
         <div className="grid grid-cols-[92px_repeat(7,minmax(0,1fr))]">
           <div className="border-r border-b border-border bg-cream-dark/50" />
-          {DAY_LABELS.map((day, i) => {
+          {dayLabels.map((day, i) => {
             const d = dateForCell(session.startDate, activeWeek, i);
             return (
-              <div key={day} className="border-r border-b border-border bg-cream-dark/50 px-2 py-2 text-center last:border-r-0">
+              <div key={i} className="border-r border-b border-border bg-cream-dark/50 px-2 py-2 text-center last:border-r-0">
                 <p className="text-[11px] font-semibold text-forest">{day}</p>
                 <p className="text-[10px] text-forest/40">{fmtDate(d)}</p>
               </div>
@@ -344,7 +409,7 @@ export function MenuTab() {
               <div className="border-r border-b border-border bg-cream-dark/50 px-2 py-2 flex items-start">
                 <p className="text-[11px] font-semibold text-forest">{MEAL_PERIOD_LABELS[meal]}</p>
               </div>
-              {DAY_LABELS.map((_, dayIndex) => (
+              {dayLabels.map((_, dayIndex) => (
                 <MenuCell key={`${meal}-${dayIndex}`} week={activeWeek} dayIndex={dayIndex} meal={meal} />
               ))}
             </div>
@@ -353,9 +418,11 @@ export function MenuTab() {
       </div>
 
       <p className="text-[11px] text-forest/40 mt-3 leading-relaxed">
-        Amber chips conflict with a camper's allergy; red chips conflict with an anaphylactic
-        camper. A recipe containing an allergen nobody in camp reacts to stays neutral.
-        Dashed chips have no recipe and are excluded from ordering and allergen checks.
+        Amber chips conflict with a camper's allergy or dietary restriction; red chips conflict
+        with an anaphylactic camper. A chip turns green once every restriction it conflicts with
+        has a replacement meal plated in the same cell. A recipe containing an allergen nobody in
+        camp reacts to stays neutral. Dashed chips have no recipe and are excluded from ordering
+        and allergen checks.
       </p>
       </div>
     </div>

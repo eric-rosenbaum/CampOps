@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth';
 import { PriorityBadge } from './PriorityBadge';
 import { ActivityFeed } from './ActivityFeed';
 import { Button } from './Button';
-import { formatDate, formatDateTime, generateId } from '@/lib/utils';
+import { formatDate, formatDateTime, generateId, toDateStr, parseDateStr } from '@/lib/utils';
 import { addDays } from 'date-fns';
 
 interface Props {
@@ -81,7 +81,7 @@ export function TaskDetail({ task }: Props) {
       dueDate = editCustomDate || null;
     } else if (daysRel !== null && season) {
       const base = editPhase === 'post' ? season.closingDate : season.openingDate;
-      dueDate = addDays(new Date(base), daysRel).toISOString().split('T')[0];
+      dueDate = toDateStr(addDays(parseDateStr(base), daysRel));
     }
     updateTask(task.id, {
       title: editTitle.trim(),
@@ -261,7 +261,7 @@ export function TaskDetail({ task }: Props) {
             const effective = task.dueDate
               ? task.dueDate
               : task.daysRelativeToOpening !== null && season
-                ? addDays(new Date((task.phase === 'post' ? season.closingDate : season.openingDate) + 'T00:00:00'), task.daysRelativeToOpening).toISOString().split('T')[0]
+                ? toDateStr(addDays(parseDateStr(task.phase === 'post' ? season.closingDate : season.openingDate), task.daysRelativeToOpening))
                 : null;
             const hasTiming = task.daysRelativeToOpening !== null;
             return (

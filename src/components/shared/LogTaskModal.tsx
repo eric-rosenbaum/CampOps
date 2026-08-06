@@ -9,7 +9,7 @@ import { useLocationStore } from '@/store/locationStore';
 import { LocationPicker } from '@/components/shared/LocationPicker';
 import { useAuth } from '@/lib/auth';
 import type { ChecklistTask, Priority } from '@/lib/types';
-import { generateId } from '@/lib/utils';
+import { generateId, toDateStr, parseDateStr } from '@/lib/utils';
 import { addDays } from 'date-fns';
 import { getBuckets, bucketValueToString, stringToBucketValue } from '@/lib/timingBuckets';
 
@@ -62,7 +62,7 @@ export function LogTaskModal() {
       dueDate = data.customDate || null;
     } else if (daysRel !== null && season) {
       const baseDate = data.phase === 'post' ? season.closingDate : season.openingDate;
-      dueDate = addDays(new Date(baseDate), daysRel).toISOString().split('T')[0];
+      dueDate = toDateStr(addDays(parseDateStr(baseDate), daysRel));
     }
 
     const task: ChecklistTask = {

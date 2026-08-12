@@ -25,7 +25,7 @@ struct SeasonalChecklistView: View {
             }
             .padding(Spacing.md)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.canvas)
         .sheet(item: $editingTask) { task in
             SeasonalTaskSheet(
                 poolId: task.poolId,
@@ -43,17 +43,17 @@ struct SeasonalChecklistView: View {
         let pct = p.total > 0 ? Double(p.done) / Double(p.total) : 0
         return VStack(alignment: .leading, spacing: Spacing.sm) {
             HStack {
-                Text("Season checklist").font(.headline).foregroundColor(.forest)
+                Text("Season checklist").font(.campSection).foregroundColor(.forest)
                 Spacer()
                 Text("\(p.done) of \(p.total) tasks")
-                    .font(.subheadline).foregroundColor(.secondary)
+                    .font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
             }
             ProgressView(value: pct)
                 .tint(.sage)
                 .scaleEffect(x: 1, y: 1.5, anchor: .center)
         }
         .padding(Spacing.md)
-        .background(Color(.systemBackground))
+        .background(Color.surface)
         .cornerRadius(Radius.md)
     }
 }
@@ -78,13 +78,13 @@ private struct PhaseSection: View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             // Header
             HStack {
-                Text(phase.displayName).font(.subheadline.weight(.semibold)).foregroundColor(.forest)
+                Text(phase.displayName).font(.campBodySemibold).foregroundColor(.forest)
                 Spacer()
                 phaseBadge
                 if canManage {
                     Button { onAdd(phase) } label: {
                         Image(systemName: "plus.circle")
-                            .font(.subheadline)
+                            .font(.campBody)
                             .foregroundColor(.sage)
                     }
                 }
@@ -96,7 +96,7 @@ private struct PhaseSection: View {
 
             if tasks.isEmpty {
                 Text(canManage ? "No tasks yet — tap + to add" : "No tasks added yet.")
-                    .font(.subheadline).foregroundColor(.secondary)
+                    .font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
                     .padding(.vertical, Spacing.xs)
             } else {
                 VStack(spacing: 0) {
@@ -121,7 +121,7 @@ private struct PhaseSection: View {
                         }
                     }
                 }
-                .background(Color(.systemBackground))
+                .background(Color.surface)
                 .cornerRadius(Radius.md)
             }
         }
@@ -142,7 +142,7 @@ private struct PhaseSection: View {
             text = "\(done) of \(total) done"; bg = .amberBg; fg = .amberText
         }
         return Text(text)
-            .font(.caption2.weight(.semibold))
+            .font(.campLabel)
             .padding(.horizontal, Spacing.sm)
             .padding(.vertical, 3)
             .background(bg)
@@ -174,12 +174,12 @@ private struct SeasonalTaskRow: View {
                 // Content
                 VStack(alignment: .leading, spacing: 3) {
                     Text(task.title)
-                        .font(.subheadline)
+                        .font(.campBody)
                         .foregroundColor(task.isComplete ? .secondary : .forest)
                         .strikethrough(task.isComplete)
 
                     if let detail = task.detail {
-                        Text(detail).font(.caption).foregroundColor(.secondary)
+                        Text(detail).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                     }
 
                     // Assignees + completion date
@@ -187,7 +187,7 @@ private struct SeasonalTaskRow: View {
                         HStack(spacing: Spacing.xs) {
                             ForEach(task.assignees, id: \.self) { name in
                                 Text(name)
-                                    .font(.caption2.weight(.semibold))
+                                    .font(.campLabel)
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
                                     .background(Color(hex: "e8f0fe"))
@@ -196,7 +196,7 @@ private struct SeasonalTaskRow: View {
                             }
                             if task.isComplete, let date = task.completedDate {
                                 Text("Done \(date.localDateDisplay)")
-                                    .font(.caption2.weight(.semibold))
+                                    .font(.campLabel)
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
                                     .background(Color.greenBg)
@@ -211,7 +211,7 @@ private struct SeasonalTaskRow: View {
 
                 if canManage {
                     Image(systemName: "chevron.right")
-                        .font(.caption2)
+                        .font(.campMicro)
                         .foregroundColor(Color(.systemGray3))
                 }
             }

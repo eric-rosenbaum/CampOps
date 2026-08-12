@@ -4,7 +4,7 @@
 // camp, so a single realtime channel + one loader covers the whole module.
 import { supabase } from './supabase';
 import { campLog, campError } from './campLog';
-import { getCampId } from './db';
+import { getCampId, assertLoaded } from './db';
 import { loadAndApply, debounce, WAL_DEBOUNCE_MS } from './syncGuard';
 import type {
   Retreat, RetreatSpace, RetreatHousing, RetreatHousingVersion, RetreatDocument, RetreatMeal,
@@ -130,6 +130,7 @@ async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
     q('retreat_reminders').order('sent_at', { ascending: false }),
     q('retreat_invoices').order('issued_at', { ascending: false }),
   ]);
+  assertLoaded('retreats', re, sp, ho, hv, docs, meals, cr, costs, charges, pays, iss, chk, sched, fb, rem, inv);
   return {
     retreats: (re.data ?? []).map((r) => rowToRetreat(r as Row)),
     spaces: (sp.data ?? []).map((r) => rowToSpace(r as Row)),

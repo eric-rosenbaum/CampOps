@@ -11,17 +11,17 @@ struct IssueRow: View {
                 PriorityBadge(priority: issue.priority)
                 StatusBadge(status: issue.status)
                 Spacer()
-                Text(issue.createdAt.relativeDisplay).font(.caption).foregroundColor(.secondary)
+                Text(issue.createdAt.relativeDisplay).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
             }
-            Text(issue.title).font(.subheadline.weight(.semibold)).lineLimit(2)
+            Text(issue.title).font(.campBodySemibold).lineLimit(2)
             HStack(spacing: Spacing.sm) {
                 Label(issue.locations.joined(separator: ", "), systemImage: "mappin.circle")
-                    .font(.caption).foregroundColor(.secondary)
+                    .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                 Spacer()
                 if let assignee = issue.assignedTo {
                     HStack(spacing: 4) {
                         AvatarCircle(initials: assignee.initials, size: 20)
-                        Text(assignee.firstName).font(.caption).foregroundColor(.secondary)
+                        Text(assignee.firstName).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                     }
                 }
             }
@@ -29,33 +29,21 @@ struct IssueRow: View {
                 HStack {
                     Spacer()
                     if let onTakeIt {
-                        Button(action: onTakeIt) {
-                            Text("Take it")
-                                .font(.caption.weight(.semibold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(Color.sage)
-                                .cornerRadius(6)
+                        Button("Take it") {
+                            Haptics.tap()
+                            onTakeIt()
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.campChip(filled: true))
                     } else if let onUntake {
-                        Button(action: onUntake) {
-                            Text("Untake")
-                                .font(.caption.weight(.semibold))
-                                .foregroundColor(.sage)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.sage, lineWidth: 1))
+                        Button("Untake") {
+                            Haptics.tap()
+                            onUntake()
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.campChip(filled: false))
                     }
                 }
             }
         }
-        .padding(Spacing.md)
-        .background(Color(.systemBackground))
-        .cornerRadius(Radius.md)
-        .shadow(color: Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
+        .cardSurface()
     }
 }

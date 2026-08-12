@@ -19,7 +19,7 @@ import type {
   CampAsset, AssetCheckout, AssetServiceRecord, AssetMaintenanceTask,
   Building, BuildingRoom, BuildingComponent, BuildingCircuit, BuildingSeasonalTask,
   CommissarySession, CommissaryVendor, InventoryItem, InventoryAdjustment, ItemVendorPack, CatalogProduct,
-  Recipe, RecipeIngredient, RecipeStep, MenuEntry, RetreatMenuEntry, AdjustmentReason,
+  Recipe, RecipeIngredient, RecipeStep, MenuEntry, RetreatMenuEntry, AdjustmentReason, WasteCategory,
   PurchaseOrder, PurchaseOrderLine, ProductionPlan, ProductionTask,
   ProductionIngredient, ProductionPrepTask, Camper, CamperRestriction, CamperSession, RestrictionSummaryRow,
   CommissaryExpense, MenuTemplate, MenuTemplateEntry, DietCount, MealEvent,
@@ -35,6 +35,30 @@ export function setCampId(id: string) { _campId = id; }
 export function getCampId() { return _campId; }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Throw if any response in a parallel snapshot read failed.
+ *
+ * This exists because of a data-loss bug that is easy to reintroduce. supabase-js does NOT
+ * throw on an HTTP error: a 401 mid-token-refresh, a 500, or a statement timeout all come
+ * back as `{ data: null, error }`. Every loader below then does `res.data ?? []`, so a
+ * failed read turned into a perfectly well-formed snapshot full of empty arrays — and
+ * `loadAndApply` has no way to tell that from a camp that genuinely has no rows, so it
+ * applied it and wiped the module's state in the UI while the database was fine.
+ *
+ * The `try/catch → return null` wrappers around each loader were already there, but only a
+ * *thrown* error ever reached them. Converting an errored response into a throw is what
+ * makes those wrappers actually do their job: loadAndApply sees null and skips the apply,
+ * leaving the last good state (and any optimistic write) untouched.
+ */
+export function assertLoaded(
+  label: string,
+  ...responses: { error: { message: string } | null }[]
+): void {
+  for (const r of responses) {
+    if (r.error) throw new Error(`${label} read failed: ${r.error.message}`);
+  }
+}
 
 function issueToRow(issue: Issue) {
   return {
@@ -581,6 +605,7 @@ async function loadPoolData(campId: string) {
     supabase.from('pool_inspection_log').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
     supabase.from('pool_seasonal_tasks').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
   ]);
+  assertLoaded('pool', poolRes, rRes, eRes, slRes, iRes, ilRes, stRes);
 
   const pools: CampPool[] = (poolRes.data ?? []).map((p) => ({
     id: p.id, name: p.name, type: p.type, isActive: p.is_active,
@@ -855,6 +880,7 @@ async function loadSafetyData(campId: string): Promise<SafetyData> {
     supabase.from('safety_temp_logs').select('*').eq('camp_id', campId).order('log_date', { ascending: false }),
     supabase.from('safety_licenses').select('*').eq('camp_id', campId).order('name', { ascending: true }),
   ]);
+  assertLoaded('safety', itemsRes, logRes, drillsRes, staffRes, certsRes, tempRes, licRes);
 
   return {
     items: (itemsRes.data ?? []).map((r) => rowToSafetyItem(r as Record<string, unknown>)),
@@ -1210,6 +1236,7 @@ async function loadAssetData(campId: string): Promise<AssetData> {
     supabase.from('asset_service_records').select('*').eq('camp_id', campId).order('date_performed', { ascending: false }),
     supabase.from('asset_maintenance_tasks').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
   ]);
+  assertLoaded('assets', aRes, cRes, sRes, mRes);
   return {
     assets: (aRes.data ?? []).map((r) => rowToAsset(r as Record<string, unknown>)),
     checkouts: (cRes.data ?? []).map((r) => rowToCheckout(r as Record<string, unknown>)),
@@ -1460,6 +1487,7 @@ async function loadBuildingData(campId: string): Promise<BuildingData> {
     supabase.from('building_circuits').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('building_seasonal_tasks').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
   ]);
+  assertLoaded('building systems', cRes, ciRes, sRes);
   return {
     buildings: [],
     rooms: [],
@@ -1716,6 +1744,7 @@ function rowToAdjustment(r: Record<string, unknown>): InventoryAdjustment {
     deltaBase: Number(r.delta_base ?? 0),
     resultingOnHandBase: Number(r.resulting_on_hand_base ?? 0),
     reason: (r.reason as AdjustmentReason) ?? 'other',
+    wasteCategory: (r.waste_category as WasteCategory) ?? null,
     notes: (r.notes as string) ?? null,
     adjustedBy: (r.adjusted_by as string) ?? null,
     createdAt: r.created_at as string,
@@ -1836,6 +1865,7 @@ async function loadInventoryData(campId: string): Promise<CommissaryInventoryDat
     supabase.from('commissary_count_sessions').select('*').eq('camp_id', campId).order('date', { ascending: false }).limit(50),
     supabase.from('commissary_storage_map').select('*').eq('camp_id', campId),
   ]);
+  assertLoaded('commissary inventory', iRes, aRes, vRes, ivRes, cRes, smRes);
   return {
     items: (iRes.data ?? []).map((r) => rowToInventoryItem(r as Record<string, unknown>)),
     adjustments: (aRes.data ?? []).map((r) => rowToAdjustment(r as Record<string, unknown>)),
@@ -1852,6 +1882,7 @@ async function loadCatalogData(campId: string): Promise<CommissaryCatalogData> {
     supabase.from('recipe_ingredients').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('recipe_steps').select('*').eq('camp_id', campId).order('step_number', { ascending: true }),
   ]);
+  assertLoaded('commissary catalog', rRes, iRes, sRes);
   return {
     recipes: (rRes.data ?? []).map((r) => rowToRecipe(r as Record<string, unknown>)),
     ingredients: (iRes.data ?? []).map((r) => rowToIngredient(r as Record<string, unknown>)),
@@ -1871,6 +1902,7 @@ async function loadMenuData(campId: string): Promise<CommissaryMenuData> {
     supabase.from('commissary_menu_courses').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('menu_substitutions').select('*').eq('camp_id', campId),
   ]);
+  assertLoaded('commissary menu', sRes, mRes, rmRes, tRes, teRes, dcRes, meRes, coRes, subRes);
   return {
     sessions: (sRes.data ?? []).map((r) => rowToSession(r as Record<string, unknown>)),
     menuEntries: (mRes.data ?? []).map((r) => rowToMenuEntry(r as Record<string, unknown>)),
@@ -2059,6 +2091,7 @@ export async function dbAdjustInventory(
   reason: AdjustmentReason,
   notes: string | null,
   adjustedBy: string | null,
+  wasteCategory: WasteCategory | null = null,
 ): Promise<number | null> {
   const { data, error } = await supabase.rpc('adjust_inventory_item', {
     p_item_id: itemId,
@@ -2066,6 +2099,9 @@ export async function dbAdjustInventory(
     p_reason: reason,
     p_notes: notes,
     p_adjusted_by: adjustedBy,
+    // The RPC nulls this itself unless the reason is 'waste', so a stale selection in
+    // the form can never violate the reason/category CHECK.
+    p_waste_category: wasteCategory,
   });
   if (error) { console.error('dbAdjustInventory error:', error.message); return null; }
   return data == null ? null : Number(data);
@@ -2404,6 +2440,7 @@ async function loadOrderData(campId: string): Promise<CommissaryOrderData> {
     supabase.from('purchase_order_lines').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('commissary_expenses').select('*').eq('camp_id', campId).order('date', { ascending: false }).limit(500),
   ]);
+  assertLoaded('commissary orders', oRes, lRes, eRes);
   return {
     orders: (oRes.data ?? []).map((r) => rowToOrder(r as Record<string, unknown>)),
     orderLines: (lRes.data ?? []).map((r) => rowToOrderLine(r as Record<string, unknown>)),
@@ -2417,6 +2454,7 @@ async function loadProductionData(campId: string): Promise<CommissaryProductionD
     supabase.from('production_tasks').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('production_prep_tasks').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
   ]);
+  assertLoaded('commissary production', pRes, tRes, ptRes);
   return {
     plans: (pRes.data ?? []).map((r) => rowToPlan(r as Record<string, unknown>)),
     productionTasks: (tRes.data ?? []).map((r) => rowToProductionTask(r as Record<string, unknown>)),
@@ -2438,6 +2476,7 @@ async function loadAllergyData(campId: string): Promise<CommissaryAllergyData> {
     supabase.rpc('get_restriction_summary', { p_camp_id: campId }),
     supabase.from('commissary_files').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
   ]);
+  assertLoaded('commissary allergy', cRes, rRes, csRes, sRes, fRes);
   return {
     files: (fRes.data ?? []).map((r) => rowToCommissaryFile(r as Record<string, unknown>)),
     campers: (cRes.data ?? []).map((r) => rowToCamper(r as Record<string, unknown>)),

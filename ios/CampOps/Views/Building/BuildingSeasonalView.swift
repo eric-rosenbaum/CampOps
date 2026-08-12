@@ -17,7 +17,7 @@ struct BuildingSeasonalView: View {
             Section {
                 let p = vm.seasonalProgress
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("\(p.done) of \(p.total) tasks complete").font(.subheadline).fontWeight(.medium)
+                    Text("\(p.done) of \(p.total) tasks complete").font(.campBodyMedium)
                     ProgressView(value: p.total > 0 ? Double(p.done) / Double(p.total) : 0).tint(.sage)
                 }
                 .padding(.vertical, 4)
@@ -27,13 +27,13 @@ struct BuildingSeasonalView: View {
                 Section {
                     let tasks = vm.tasksForPhase(phase)
                     if tasks.isEmpty {
-                        Text("No tasks yet").font(.caption).foregroundColor(.secondary)
+                        Text("No tasks yet").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                     }
                     ForEach(tasks) { task in
                         taskRow(task)
                     }
                     Button { sheet = .addSeasonal(phase: phase) } label: {
-                        Label("Add task", systemImage: "plus").font(.caption)
+                        Label("Add task", systemImage: "plus").font(.campMeta)
                     }
                 } header: {
                     Text(phaseTitle(phase))
@@ -61,10 +61,10 @@ struct BuildingSeasonalView: View {
                     .strikethrough(task.isComplete)
                     .foregroundColor(task.isComplete ? .secondary : .primary)
                 if let d = task.detail, !d.isEmpty {
-                    Text(d).font(.caption).foregroundColor(.secondary)
+                    Text(d).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                 }
                 Text(buildingName)
-                    .font(.caption2).fontWeight(.medium)
+                    .font(.campMicroMedium)
                     .padding(.horizontal, 6).padding(.vertical, 2)
                     .background(Color.creamDark).clipShape(Capsule())
             }

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type {
   CommissarySession, CommissaryVendor, InventoryItem, InventoryAdjustment,
-  Recipe, RecipeIngredient, RecipeStep, MenuEntry, RetreatMenuEntry, MealPeriod, AdjustmentReason,
+  Recipe, RecipeIngredient, RecipeStep, MenuEntry, RetreatMenuEntry, MealPeriod, AdjustmentReason, WasteCategory,
   PurchaseOrder, PurchaseOrderLine, ProductionPlan, ProductionTask, ProductionPrepTask,
   ProductionIngredient, Camper, CamperRestriction, CamperSession, RestrictionSummaryRow,
   OrderSource, CommissaryExpense, MenuTemplate, MenuTemplateEntry, DietCount,
@@ -52,7 +52,7 @@ export interface ReceivingLineInput {
   receivedNote: string | null;
 }
 
-export type CommissaryTab = 'inventory' | 'menu' | 'recipes' | 'production' | 'allergy' | 'ordering' | 'cost' | 'settings';
+export type CommissaryTab = 'inventory' | 'menu' | 'recipes' | 'production' | 'allergy' | 'ordering' | 'waste' | 'cost' | 'settings';
 
 /** The module plans either camp sessions (default) or retreats (all combined). */
 export type CommissaryMode = 'session' | 'retreats';
@@ -188,7 +188,7 @@ interface CommissaryState {
   addItem: (i: InventoryItem) => void;
   updateItem: (i: InventoryItem) => void;
   deleteItem: (id: string) => void;
-  adjustItem: (itemId: string, deltaBase: number, reason: AdjustmentReason, notes: string | null, by: string | null) => Promise<void>;
+  adjustItem: (itemId: string, deltaBase: number, reason: AdjustmentReason, notes: string | null, by: string | null, wasteCategory?: WasteCategory | null) => Promise<void>;
   /** Replace an item's whole set of vendor packs (called from the item editor). */
   saveItemVendors: (itemId: string, packs: ItemVendorPack[]) => void;
   /** Bulk-create items + their default vendor packs from a CSV import. */
@@ -543,8 +543,8 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   // Unlike the other writers, this awaits: the RPC returns the authoritative
   // on-hand after an atomic increment, which may differ from a naive local
   // `onHand + delta` if someone else adjusted concurrently or stock clamped at 0.
-  adjustItem: async (itemId, deltaBase, reason, notes, by) => {
-    const newOnHand = await dbAdjustInventory(itemId, deltaBase, reason, notes, by);
+  adjustItem: async (itemId, deltaBase, reason, notes, by, wasteCategory = null) => {
+    const newOnHand = await dbAdjustInventory(itemId, deltaBase, reason, notes, by, wasteCategory);
     if (newOnHand == null) return;
     // A recount sets an absolute known on-hand, so it counts as "counted"; deltas
     // (received/used/waste) build on whatever base was there and don't establish a count.

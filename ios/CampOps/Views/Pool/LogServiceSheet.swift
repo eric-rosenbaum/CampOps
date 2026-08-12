@@ -28,7 +28,7 @@ struct LogServiceSheet: View {
             Form {
                 Section("Equipment") {
                     if equipment.isEmpty {
-                        Text("No equipment added yet").foregroundColor(.secondary)
+                        Text("No equipment added yet").foregroundStyle(Color.forest.opacity(0.55))
                     } else {
                         Picker("Equipment", selection: $selectedEquipmentId) {
                             Text("None / general").tag("")

@@ -586,6 +586,17 @@ export type StorageLocation =
 export type AdjustmentReason =
   | 'received' | 'used' | 'waste' | 'count_correction' | 'other';
 
+/**
+ * Why something was thrown away. Only ever set on a `waste` adjustment (enforced by a
+ * CHECK constraint), and null on every row logged before categorisation existed.
+ *
+ * The split that matters is reducible vs not — see `REDUCIBLE_WASTE` in
+ * `commissaryUnits.ts`. Ordering and forecasting can move spoilage, overproduction and
+ * damage; they cannot move trim loss or what campers leave on the plate.
+ */
+export type WasteCategory =
+  | 'spoilage' | 'overproduction' | 'damage' | 'prep_loss' | 'plate_waste' | 'other';
+
 export interface CommissarySession {
   id: string;
   name: string;
@@ -714,6 +725,8 @@ export interface InventoryAdjustment {
   deltaBase: number;
   resultingOnHandBase: number;
   reason: AdjustmentReason;
+  /** Set only when `reason === 'waste'`. null on pre-categorisation rows — never assume a bucket. */
+  wasteCategory: WasteCategory | null;
   notes: string | null;
   adjustedBy: string | null;
   createdAt: string;
@@ -1090,6 +1103,30 @@ export interface CommissaryFile {
   sizeBytes: number | null;
   contentType: string | null;
   uploadedBy: string | null;
+  createdAt: string;
+}
+
+// ─── Implementation files (white-glove onboarding hand-off) ─────────────────────
+// Raw source files a camp sends us during setup so our team can load their data. Private,
+// camp-scoped bucket + metadata row. Never deleted from the app — see the migration.
+
+export const IMPLEMENTATION_CATEGORIES = [
+  'locations', 'staff', 'campers', 'sessions', 'inventory', 'vendors', 'retreats', 'other',
+] as const;
+export type ImplementationCategory = (typeof IMPLEMENTATION_CATEGORIES)[number];
+
+export interface ImplementationFile {
+  id: string;
+  campId: string;
+  category: ImplementationCategory;
+  name: string;
+  path: string;
+  sizeBytes: number | null;
+  contentType: string | null;
+  note: string | null;
+  uploadedBy: string | null;
+  uploaderName: string | null;
+  uploaderEmail: string | null;
   createdAt: string;
 }
 

@@ -20,9 +20,9 @@ struct FlagIssueSheet: View {
                 if hasExistingIssue {
                     Section {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Current issue").font(.caption).foregroundColor(.secondary)
+                            Text("Current issue").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                             Text(equipment.statusDetail.isEmpty ? "No detail recorded" : equipment.statusDetail)
-                                .font(.subheadline).foregroundColor(.primary)
+                                .font(.campBody).foregroundColor(.primary)
                         }
                         .padding(.vertical, 2)
                     }

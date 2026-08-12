@@ -62,7 +62,7 @@ struct LogAssetServiceSheet: View {
                                 Spacer()
                                 TextField("0", text: $odometerText)
                                     .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 100)
-                                Text("mi").foregroundStyle(.secondary)
+                                Text("mi").foregroundStyle(Color.forest.opacity(0.55))
                             }
                         }
                         if asset.tracksHours {
@@ -71,7 +71,7 @@ struct LogAssetServiceSheet: View {
                                 Spacer()
                                 TextField("0", text: $hoursText)
                                     .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 100)
-                                Text("hrs").foregroundStyle(.secondary)
+                                Text("hrs").foregroundStyle(Color.forest.opacity(0.55))
                             }
                         }
                     }

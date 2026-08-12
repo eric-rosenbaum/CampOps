@@ -79,7 +79,11 @@ Do this when a deal closes.
 2. Enter the **camp name**, optionally a **plan** label (free text, e.g. "Standard – founding") and an **organization** (see §7), and the **buyer's email** (they become the camp admin).
 3. Click **Provision + email invite** → creates a fresh **empty** `customer` camp and **emails the buyer their sign-in link automatically**. (The link is also shown on screen as a backup — if the email fails to send, you'll see a warning and can copy it to send manually.)
 4. The buyer opens the emailed link, sets a password, becomes admin, and invites their staff.
-5. **Get their data in.** Either they self-onboard, or use the white-glove path: Camp Info → Locations → **"Send us your list"** lets them drop a spreadsheet for you to load. (Billing is handled by you out-of-band — send the invoice separately.)
+5. **Get their data in.** Either they self-onboard, or use the white-glove path: **Camp Info → Setup Files** lets them drop any spreadsheet, list, or document — tagged by what it is — for your team to load. (Camp Info → Locations still has a "Send us your list" drop zone; it feeds the same place.) Retrieve the files from Supabase → Storage → `implementation-files`, under the camp's id.
+
+   **Never take customer data by email.** Files sent through the app stay inside that camp's RLS boundary, every upload is written to their audit log, and they can see a receipt of what they sent. An emailed attachment has none of that. If a camp emails you a file anyway, upload it through their account and delete the email thread.
+
+   **Uploads are permanent by design** — there is no delete path in the app for anyone, camp admins included. Purging one is a service-role operation from the dashboard.
 
 **Demos never become customer accounts.** A demo is entered through an anonymous no-login link, so there are no real, verified identities in it — upgrading it in place would leave the account wide open. When a deal closes you **always create a fresh, invite-only customer account** with **Provision customer** (above): the buyer gets a link to *their email*, sets a password, and signs in as a real named admin. (Demos are for exploring; the customer account is where real data lives.)
 

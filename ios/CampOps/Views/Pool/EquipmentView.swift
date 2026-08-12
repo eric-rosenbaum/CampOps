@@ -31,7 +31,7 @@ struct EquipmentView: View {
             }
             .padding(Spacing.md)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.canvas)
         .sheet(item: $detailEquipment) { equip in
             EquipmentDetailSheet(equipment: equip)
                 .environmentObject(vm)
@@ -62,8 +62,8 @@ struct EquipmentView: View {
     private var emptyState: some View {
         VStack(spacing: Spacing.md) {
             Image(systemName: "wrench.and.screwdriver").font(.system(size: 48)).foregroundColor(.sageLight)
-            Text("No equipment added").font(.headline).foregroundColor(.secondary)
-            Text("Tap + to add pool equipment").font(.subheadline).foregroundColor(.secondary)
+            Text("No equipment added").font(.campSection).foregroundStyle(Color.forest.opacity(0.55))
+            Text("Tap + to add pool equipment").font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
         }
         .frame(maxWidth: .infinity)
         .padding(.top, Spacing.xxl)
@@ -76,7 +76,7 @@ private struct StatChip: View {
     var body: some View {
         VStack(spacing: 2) {
             Text(value).font(.title2.weight(.bold).monospacedDigit()).foregroundColor(color)
-            Text(label).font(.caption.weight(.semibold)).foregroundColor(color)
+            Text(label).font(.campMetaSemibold).foregroundColor(color)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.sm)
@@ -108,31 +108,31 @@ private struct EquipmentCard: View {
                         .frame(width: 20)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(equip.name)
-                            .font(.headline)
+                            .font(.campSection)
                             .foregroundColor(.forest)
                         Text(equip.type.displayName)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(.campMeta)
+                            .foregroundStyle(Color.forest.opacity(0.55))
                     }
                     Spacer()
                     HStack(spacing: Spacing.xs) {
                         Text(equip.status.displayName)
-                            .font(.caption2.weight(.semibold))
+                            .font(.campLabel)
                             .padding(.horizontal, Spacing.sm)
                             .padding(.vertical, 3)
                             .background(equip.status.bgColor)
                             .foregroundColor(equip.status.color)
                             .clipShape(Capsule())
                         Image(systemName: "chevron.right")
-                            .font(.caption2)
+                            .font(.campMicro)
                             .foregroundColor(Color(.systemGray3))
                     }
                 }
 
                 if !equip.statusDetail.isEmpty {
                     Text(equip.statusDetail)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(.campBody)
+                        .foregroundStyle(Color.forest.opacity(0.55))
                 }
 
                 // Service info
@@ -148,16 +148,16 @@ private struct EquipmentCard: View {
                 // Recent service log
                 if let latest = serviceLog.first {
                     HStack(spacing: Spacing.xs) {
-                        Image(systemName: "clock").font(.caption2).foregroundColor(.secondary)
+                        Image(systemName: "clock").font(.campMicro).foregroundStyle(Color.forest.opacity(0.55))
                         Text("\(latest.serviceType.displayName) · \(latest.datePerformed.localDateDisplay)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(.campMeta)
+                            .foregroundStyle(Color.forest.opacity(0.55))
                     }
                 }
             }
             .padding(Spacing.md)
         }
-        .background(Color(.systemBackground))
+        .background(Color.surface)
         .cornerRadius(Radius.md)
         .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(Color.border, lineWidth: 1))
     }
@@ -167,8 +167,8 @@ private struct LabelValue: View {
     let label, value: String
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(label).font(.caption2).foregroundColor(.secondary)
-            Text(value).font(.caption.weight(.medium)).foregroundColor(.forest)
+            Text(label).font(.campMicro).foregroundStyle(Color.forest.opacity(0.55))
+            Text(value).font(.campMetaMedium).foregroundColor(.forest)
         }
     }
 }

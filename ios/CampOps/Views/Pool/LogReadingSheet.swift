@@ -51,7 +51,7 @@ struct LogReadingSheet: View {
                     }
                     LabeledContent("Logged by") {
                         Text(editing?.loggedByName ?? authManager.currentUser.name)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(Color.forest.opacity(0.55))
                     }
                 }
 
@@ -143,7 +143,7 @@ private struct ReadingField: View {
             }
             Stepper(value: $value, in: 0...999, step: step) { EmptyView() }
                 .labelsHidden()
-            Text(range).font(.caption2).foregroundColor(.secondary)
+            Text(range).font(.campMicro).foregroundStyle(Color.forest.opacity(0.55))
         }
         .padding(.vertical, 2)
     }

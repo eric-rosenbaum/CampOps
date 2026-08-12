@@ -17,7 +17,7 @@ struct LocationTreePicker: View {
         List {
             if store.activeLocations.isEmpty {
                 Text("No locations configured for this camp.")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(Color.forest.opacity(0.55))
             } else if isSearching {
                 searchResults
             } else {
@@ -51,7 +51,7 @@ struct LocationTreePicker: View {
             .sorted { $0.name < $1.name }
         return Group {
             if matches.isEmpty {
-                Text("No matches").foregroundColor(.secondary)
+                Text("No matches").foregroundStyle(Color.forest.opacity(0.55))
             } else {
                 ForEach(matches) { loc in
                     row(loc, indent: 0, showBreadcrumb: true)
@@ -149,12 +149,12 @@ struct LocationTreePicker: View {
                         Text(loc.name).foregroundColor(.primary)
                         if loc.isDorm {
                             Image(systemName: "bed.double.fill")
-                                .font(.caption2).foregroundColor(.secondary)
+                                .font(.campMicro).foregroundStyle(Color.forest.opacity(0.55))
                         }
                     }
                     if showBreadcrumb, let parentId = loc.parentId, store.location(parentId) != nil {
                         Text(store.path(of: parentId))
-                            .font(.caption2).foregroundColor(.secondary).lineLimit(1)
+                            .font(.campMicro).foregroundStyle(Color.forest.opacity(0.55)).lineLimit(1)
                     }
                 }
                 Spacer()

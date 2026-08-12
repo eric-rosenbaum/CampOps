@@ -31,7 +31,7 @@ struct ReturnAssetSheet: View {
                         Text(asset.name).foregroundStyle(Color.forest)
                         Spacer()
                         Text("Checked out by \(checkout.checkedOutBy)")
-                            .font(.system(size: 12)).foregroundStyle(Color.forest.opacity(0.5))
+                            .font(.campMeta).foregroundStyle(Color.forest.opacity(0.5))
                     }
                 }
 
@@ -43,13 +43,13 @@ struct ReturnAssetSheet: View {
                                 Spacer()
                                 if let start = checkout.startOdometer {
                                     Text("started at \(Int(start).formatted())")
-                                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                                        .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                                 }
                                 TextField("0", text: $endOdometerText)
                                     .keyboardType(.decimalPad)
                                     .multilineTextAlignment(.trailing)
                                     .frame(width: 80)
-                                Text("mi").foregroundStyle(.secondary)
+                                Text("mi").foregroundStyle(Color.forest.opacity(0.55))
                             }
                         }
                         if asset.tracksHours {
@@ -60,7 +60,7 @@ struct ReturnAssetSheet: View {
                                     .keyboardType(.decimalPad)
                                     .multilineTextAlignment(.trailing)
                                     .frame(width: 80)
-                                Text("hrs").foregroundStyle(.secondary)
+                                Text("hrs").foregroundStyle(Color.forest.opacity(0.55))
                             }
                         }
                     }
@@ -74,7 +74,7 @@ struct ReturnAssetSheet: View {
                                     fuelLevel = lvl
                                 } label: {
                                     Text(lvl.displayName)
-                                        .font(.system(size: 12)).fontWeight(.medium)
+                                        .font(.campMetaMedium)
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 8)
                                         .background(fuelLevel == lvl ? Color.sage : Color.clear)

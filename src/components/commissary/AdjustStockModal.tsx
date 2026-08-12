@@ -3,9 +3,10 @@ import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
-import type { AdjustmentReason } from '@/lib/types';
+import type { AdjustmentReason, WasteCategory } from '@/lib/types';
 import {
   ADJUSTMENT_REASON_LABELS, formatInStockUnit, onHandInStockUnit, tidy, pluralizeUnit,
+  WASTE_CATEGORIES, WASTE_CATEGORY_LABELS, WASTE_CATEGORY_SHORT, isReducibleWaste,
 } from '@/lib/commissaryUnits';
 import { inputClass, labelClass } from './commissaryUi';
 
@@ -27,6 +28,10 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
   const item = items.find((i) => i.id === itemId);
 
   const [reason, setReason] = useState<AdjustmentReason>('received');
+  // Deliberately starts empty rather than defaulting to a category. A default would be a
+  // guess recorded as a fact, and the Waste tab's reducible share is only worth quoting if
+  // every category on it was actually chosen by someone who saw what was thrown out.
+  const [wasteCategory, setWasteCategory] = useState<WasteCategory | ''>('');
   const [qty, setQty] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -41,6 +46,8 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
   const magnitude = Number(qty) || 0;
 
   const isRecount = reason === 'count_correction';
+  const isWaste = reason === 'waste';
+  const needsCategory = isWaste && wasteCategory === '';
   // Pack entry is only meaningful for a received delivery; a recount is always a stock count.
   const usePack = reason === 'received' && entryUnit !== STOCK ? packs.find((p) => p.id === entryUnit) ?? null : null;
   const entryUnitLabel = usePack ? usePack.purchaseUnit : item.stockUnit;
@@ -56,9 +63,12 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!item || qty === '' || (deltaBase === 0 && !isRecount)) return;
+    if (!item || qty === '' || needsCategory || (deltaBase === 0 && !isRecount)) return;
     setSaving(true);
-    await adjustItem(item.id, deltaBase, reason, notes.trim() || null, currentUser.name || null);
+    await adjustItem(
+      item.id, deltaBase, reason, notes.trim() || null, currentUser.name || null,
+      isWaste ? (wasteCategory as WasteCategory) : null,
+    );
     setSaving(false);
     closeModal();
   }
@@ -81,6 +91,31 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
             {Object.entries(ADJUSTMENT_REASON_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
+
+        {/* Required on waste. Without it the Waste tab can only report a lump sum, which
+            overstates what better ordering could actually have prevented. */}
+        {isWaste && (
+          <div>
+            <label className={labelClass}>What happened?</label>
+            <select
+              value={wasteCategory}
+              onChange={(e) => setWasteCategory(e.target.value as WasteCategory | '')}
+              className={inputClass}
+            >
+              <option value="">Choose one…</option>
+              {WASTE_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{WASTE_CATEGORY_LABELS[c]}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-forest/45 mt-1">
+              {wasteCategory === ''
+                ? 'Required — the waste report separates what ordering can prevent from what it cannot.'
+                : isReducibleWaste(wasteCategory)
+                  ? 'Counted as preventable — this shows in the reducible share of the waste report.'
+                  : 'Recorded, but not counted as preventable by better ordering.'}
+            </p>
+          </div>
+        )}
 
         {/* Delivery-in-packs: pick the vendor pack and log e.g. "2 cases". */}
         {reason === 'received' && packs.length > 0 && (
@@ -144,7 +179,9 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
               {history.map((a) => (
                 <div key={a.id} className="flex items-center justify-between text-[11px] text-forest/55">
                   <span>
-                    {ADJUSTMENT_REASON_LABELS[a.reason]}
+                    {a.wasteCategory
+                      ? `Waste — ${WASTE_CATEGORY_SHORT[a.wasteCategory].toLowerCase()}`
+                      : ADJUSTMENT_REASON_LABELS[a.reason]}
                     {a.adjustedBy ? ` · ${a.adjustedBy}` : ''}
                   </span>
                   <span className="font-mono">
@@ -157,7 +194,7 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
         )}
 
         <div className="flex gap-2 pt-1">
-          <Button type="submit" className="flex-1 justify-center" disabled={qty === '' || saving}>
+          <Button type="submit" className="flex-1 justify-center" disabled={qty === '' || needsCategory || saving}>
             {saving ? 'Saving…' : 'Record adjustment'}
           </Button>
           <Button type="button" variant="ghost" onClick={closeModal}>Cancel</Button>

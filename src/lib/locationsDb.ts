@@ -2,7 +2,7 @@
 // places). Realtime over locations + location_categories + building_details.
 import { supabase } from './supabase';
 import { campLog, campError } from './campLog';
-import { getCampId } from './db';
+import { getCampId, assertLoaded } from './db';
 import { loadAndApply, debounce, WAL_DEBOUNCE_MS } from './syncGuard';
 import type { CampLocation, LocationCategory, BuildingDetail } from './types';
 
@@ -46,13 +46,20 @@ async function loadInner(campId: string): Promise<LocationData> {
     supabase.from('location_categories').select('*').eq('camp_id', campId).order('sort_order'),
     supabase.from('building_details').select('*').eq('camp_id', campId),
   ]);
+  assertLoaded('locations', locs, cats, bds);
   return {
     locations: (locs.data ?? []).map((r) => rowToLocation(r as Row)),
     categories: (cats.data ?? []).map((r) => rowToCategory(r as Row)),
     buildingDetails: (bds.data ?? []).map((r) => rowToBuildingDetail(r as Row)),
   };
 }
-export const loadLocations = loadInner;
+
+// Wrapped like every other domain loader: a failed read must resolve to null so
+// loadAndApply skips the apply, rather than rejecting or blanking the locations tree.
+export async function loadLocations(campId: string): Promise<LocationData | null> {
+  try { return await loadInner(campId); }
+  catch (e) { campError('[Supabase] loadLocations threw:', e); return null; }
+}
 
 const LOCATION_TABLES = ['locations', 'location_categories', 'building_details'] as const;
 let locChannelCount = 0;
@@ -82,16 +89,8 @@ export async function dbBulkAddLocations(rows: CampLocation[]) { if (!rows.lengt
 export async function dbAddCategory(c: LocationCategory) { const { error } = await supabase.from('location_categories').insert({ id: c.id, camp_id: getCampId(), name: c.name, sort_order: c.sortOrder, is_preset: false }); if (error) campError('add category', error.message); }
 export async function dbDeleteCategory(id: string) { const { error } = await supabase.from('location_categories').delete().eq('id', id); if (error) campError('delete category', error.message); }
 
-// White-glove hand-off: a camp drops their raw location list and the CampCommand team
-// sets it up manually. File lands in the private `location-imports` bucket under the
-// camp's folder. Returns true on success.
-export async function dbUploadLocationImport(file: File): Promise<boolean> {
-  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const path = `${getCampId()}/${new Date().toISOString().replace(/[:.]/g, '-')}-${safe}`;
-  const { error } = await supabase.storage.from('location-imports').upload(path, file, { upsert: false });
-  if (error) { campError('upload location import', error.message); return false; }
-  return true;
-}
+// NOTE: the locations hand-off upload moved to implementationFilesDb.ts (category
+// 'locations') when the `location-imports` bucket was folded into `implementation-files`.
 
 export async function dbUpsertBuildingDetail(bd: BuildingDetail) {
   const { error } = await supabase.from('building_details').upsert({

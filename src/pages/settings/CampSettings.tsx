@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useLocationStore } from '@/store/locationStore';
-import { dbUploadLocationImport } from '@/lib/locationsDb';
+import { ImplementationDropzone, ImplementationFilesTab } from '@/components/settings/ImplementationFiles';
 import { usePoolStore, POOL_TYPE_LABELS } from '@/store/poolStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
@@ -17,13 +17,14 @@ import { Link } from 'react-router-dom';
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
-type TabId = 'profile' | 'season' | 'locations' | 'pools';
+type TabId = 'profile' | 'season' | 'locations' | 'pools' | 'files';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'profile',   label: 'Profile' },
   { id: 'season',    label: 'Season' },
   { id: 'locations', label: 'Locations' },
   { id: 'pools',     label: 'Pools & Waterfront' },
+  { id: 'files',     label: 'Setup Files' },
 ];
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
@@ -580,18 +581,7 @@ function LocationsTab() {
   const [summary, setSummary] = useState<string | null>(null);
 
   // Two import paths: (a) hand the raw file off to our team, (b) DIY spreadsheet import.
-  const handoffRef = useRef<HTMLInputElement>(null);
-  const [dragOver, setDragOver] = useState(false);
-  const [handoff, setHandoff] = useState<{ status: 'uploading' | 'done' | 'error'; fileName: string } | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
-
-  function sendToTeam(file: File | undefined) {
-    if (!file) return;
-    setHandoff({ status: 'uploading', fileName: file.name });
-    dbUploadLocationImport(file).then(ok =>
-      setHandoff({ status: ok ? 'done' : 'error', fileName: file.name })
-    );
-  }
 
   const sortedCats = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
   const tops = topLevel();
@@ -701,32 +691,12 @@ function LocationsTab() {
 
         {/* Two import paths: hand off to our team, or DIY spreadsheet import */}
         <div className="grid sm:grid-cols-2 gap-3 mb-4">
-          {/* (a) Drop a file for our team */}
-          <div
-            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={e => { e.preventDefault(); setDragOver(false); sendToTeam(e.dataTransfer.files?.[0]); }}
-            onClick={() => handoff?.status !== 'uploading' && handoffRef.current?.click()}
-            className={`cursor-pointer rounded-xl border border-dashed px-4 py-5 text-center transition-colors ${dragOver ? 'border-sage bg-sage-pale/40' : 'border-stone-300 hover:border-forest/40 bg-stone-50/60'}`}
-          >
-            <input ref={handoffRef} type="file" accept=".csv,.xlsx,.xls,.numbers,.pdf,.txt" className="hidden" onChange={e => { sendToTeam(e.target.files?.[0]); e.target.value = ''; }} />
-            {handoff?.status === 'done' ? (
-              <div className="flex flex-col items-center gap-1.5 text-sage">
-                <Check className="w-5 h-5" />
-                <p className="text-[12px] font-medium">Got it — {handoff.fileName}</p>
-                <p className="text-[11px] text-forest/45">Our team will set up your locations and follow up. <span className="underline">Send another</span></p>
-              </div>
-            ) : handoff?.status === 'uploading' ? (
-              <p className="text-[12px] text-forest/50 py-2">Uploading {handoff.fileName}…</p>
-            ) : (
-              <div className="flex flex-col items-center gap-1.5">
-                <Upload className={`w-5 h-5 ${dragOver ? 'text-sage' : 'text-forest/35'}`} />
-                <p className="text-[12px] font-semibold text-forest">Send us your list</p>
-                <p className="text-[11px] text-forest/45 leading-snug">Drop your spreadsheet (any format) and our team will set up your locations for you.</p>
-                {handoff?.status === 'error' && <p className="text-[11px] text-red">Upload failed — try again.</p>}
-              </div>
-            )}
-          </div>
+          {/* (a) Drop a file for our team — same hand-off channel as the Setup Files tab */}
+          <ImplementationDropzone
+            category="locations"
+            title="Send us your list"
+            blurb="Drop your spreadsheet (any format) and our team will set up your locations for you."
+          />
 
           {/* (b) DIY spreadsheet import */}
           <div className="rounded-xl border border-stone-200 px-4 py-5 text-center bg-white flex flex-col items-center gap-1.5">
@@ -989,6 +959,7 @@ export function CampSettings() {
         {activeTab === 'season'    && <SeasonTab />}
         {activeTab === 'locations' && <LocationsTab />}
         {activeTab === 'pools'     && <PoolsTab />}
+        {activeTab === 'files'     && <ImplementationFilesTab />}
       </div>
     </div>
   );

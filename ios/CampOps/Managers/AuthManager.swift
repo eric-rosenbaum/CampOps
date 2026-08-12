@@ -15,10 +15,18 @@ final class AuthManager: ObservableObject {
     @Published private(set) var currentStaffGroup: StaffGroup? = nil
     @Published private(set) var userFullName: String? = nil
     @Published private(set) var members: [CampUser] = []
+    /// Every camp this user belongs to, for the switcher in Profile. Excludes deleted camps.
+    @Published private(set) var camps: [Camp] = []
     @Published var authError: String? = nil
 
     var isAuthenticated: Bool { session != nil }
     var hasCamp: Bool { currentCamp != nil }
+    /// True when a camp is selected but suspended or trial-expired — the app shows a
+    /// blocking screen instead of the tabs, matching the web app's `CampRoute`.
+    var isCampBlocked: Bool {
+        guard let camp = currentCamp else { return false }
+        return !camp.isAccessible
+    }
 
     var currentUser: CampUser {
         let name = userFullName ?? session?.user.email ?? ""
@@ -32,11 +40,15 @@ final class AuthManager: ObservableObject {
         return CampUser(id: session?.user.id.uuidString.lowercased() ?? "", name: name, initials: initials)
     }
 
-    var can: Permissions { Permissions(role: currentMember?.role ?? .staff) }
+    // Defaults to `.viewer` (read-only) rather than `.staff`, so a missing membership can never
+    // hand out write permissions.
+    var can: Permissions { Permissions(role: currentMember?.role ?? .viewer) }
 
     func canAccessModule(_ module: String) -> Bool {
         guard let member = currentMember else { return false }
         if member.role == .admin { return true }
+        // Viewers get no module access at all — same rule as the web app's canAccessModule.
+        if member.role == .viewer { return false }
         guard let group = currentStaffGroup else { return true }
         switch module {
         case "issues_repairs": return group.modules.issuesRepairs
@@ -82,6 +94,8 @@ final class AuthManager: ObservableObject {
                     self.currentMember = nil
                     self.currentStaffGroup = nil
                     self.userFullName = nil
+                    self.camps = []
+                    self.members = []
                 default:
                     break
                 }
@@ -94,32 +108,73 @@ final class AuthManager: ObservableObject {
     func signIn(email: String, password: String) async {
         authError = nil
         do {
-            try await supabase.auth.signIn(email: email, password: password)
+            try await supabase.auth.signIn(
+                email: email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+                password: password
+            )
         } catch {
-            authError = error.localizedDescription
+            authError = friendlyAuthMessage(error)
         }
     }
 
-    func signUp(email: String, password: String, fullName: String) async {
+    // NOTE: there is deliberately no `signUp` here.
+    //
+    // Account creation is invite-only and sales-led: the web app hard-gates /signup behind an
+    // invitation token and there is no self-serve path. The iOS app used to expose an open
+    // `auth.signUp`, which was a way around that gate. Invited staff create their account from
+    // the invite link on the web, then sign in here.
+
+    /// Sends a password-reset email. The link opens the web app's /reset-password page —
+    /// the same flow as the web "Forgot your password?" link.
+    func requestPasswordReset(email: String) async -> Bool {
         authError = nil
         do {
-            let response = try await supabase.auth.signUp(
-                email: email,
-                password: password,
-                data: ["full_name": .string(fullName)]
+            try await supabase.auth.resetPasswordForEmail(
+                email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+                redirectTo: URL(string: "\(Constants.webAppBaseURL)/reset-password")
             )
-            // Upsert profile so it exists immediately
-            let userId = response.user.id.uuidString
-            try? await supabase.from("profiles")
-                .upsert(["id": userId, "full_name": fullName])
-                .execute()
+            return true
         } catch {
-            authError = error.localizedDescription
+            authError = friendlyAuthMessage(error)
+            return false
         }
     }
 
+    /// Signs out. Never hangs on the network, and always clears this device.
+    ///
+    /// `auth.signOut()` removes the stored session and emits `.signedOut` BEFORE it POSTs to
+    /// /auth/v1/logout (see AuthClient.signOut), so this device is signed out the moment it is
+    /// called. Only the server-side token revoke needs the network, and on a stale connection
+    /// that POST can sit for a long time — so it runs unawaited. If it never lands, the refresh
+    /// token expires on its own. The web client time-boxes the same call for the same reason.
     func signOut() async {
-        try? await supabase.auth.signOut()
+        Task { try? await supabase.auth.signOut() }
+
+        // Drop derived state immediately rather than waiting for the auth-state callback, so
+        // no screen can render a signed-out session against stale camp data.
+        session = nil
+        currentCamp = nil
+        currentMember = nil
+        currentStaffGroup = nil
+        userFullName = nil
+        camps = []
+        members = []
+        UserDefaults.standard.removeObject(forKey: selectedCampKey)
+    }
+
+    // Supabase surfaces raw API strings; a few are worth rewriting for humans.
+    private func friendlyAuthMessage(_ error: Error) -> String {
+        let raw = error.localizedDescription
+        if raw.localizedCaseInsensitiveContains("invalid login credentials") {
+            return "That email or password doesn't match an account."
+        }
+        if raw.localizedCaseInsensitiveContains("email not confirmed") {
+            return "Please confirm your email address first — check your inbox for the link."
+        }
+        if raw.localizedCaseInsensitiveContains("network") || raw.localizedCaseInsensitiveContains("offline") {
+            return "Can't reach CampCommand. Check your connection and try again."
+        }
+        return raw
     }
 
     // Refreshes the current member record and staff group without a full re-auth.
@@ -139,6 +194,9 @@ final class AuthManager: ObservableObject {
             .value as [CampMemberRow],
               let row = rows.first else { return }
 
+        // Refresh the camp too, so a suspension or trial expiry applied while the app was
+        // backgrounded takes effect on the next foreground resume rather than at next launch.
+        currentCamp = row.camps
         currentMember = CampMember(
             id: row.id, campId: row.campId, userId: row.userId,
             role: row.role, department: row.department,
@@ -192,31 +250,63 @@ final class AuthManager: ObservableObject {
         }
 
         // Fetch camp memberships with nested camp data
-        guard let rows = try? await supabase
+        guard let allRows = try? await supabase
             .from("camp_members")
             .select("*, camps(*)")
             .eq("user_id", value: userId)
             .eq("is_active", value: true)
             .execute()
-            .value as [CampMemberRow],
-              !rows.isEmpty else { return }
+            .value as [CampMemberRow] else { return }
+
+        // Camps in the 30-day trash are hidden from members entirely, as on web.
+        let rows = allRows.filter { $0.camps.deletedAt == nil }
+        camps = rows.map(\.camps)
+        guard !rows.isEmpty else {
+            currentCamp = nil
+            currentMember = nil
+            currentStaffGroup = nil
+            return
+        }
 
         // Prefer previously selected camp, otherwise first
         let savedId = UserDefaults.standard.string(forKey: selectedCampKey)
         let preferred = rows.first { $0.camps.id == savedId } ?? rows[0]
+        await apply(row: preferred)
+    }
 
-        currentCamp = preferred.camps
+    /// Switches the active camp for users who belong to more than one.
+    func selectCamp(_ campId: String) async {
+        guard campId != currentCamp?.id,
+              let userId = session?.user.id.uuidString else { return }
+
+        guard let rows = try? await supabase
+            .from("camp_members")
+            .select("*, camps(*)")
+            .eq("user_id", value: userId)
+            .eq("camp_id", value: campId)
+            .eq("is_active", value: true)
+            .limit(1)
+            .execute()
+            .value as [CampMemberRow],
+              let row = rows.first, row.camps.deletedAt == nil else { return }
+
+        await apply(row: row)
+    }
+
+    // Makes `row` the active camp: member, staff group, saved selection, roster.
+    private func apply(row: CampMemberRow) async {
+        currentCamp = row.camps
         currentMember = CampMember(
-            id: preferred.id,
-            campId: preferred.campId,
-            userId: preferred.userId,
-            role: preferred.role,
-            department: preferred.department,
-            displayName: preferred.displayName,
-            isActive: preferred.isActive,
-            staffGroupId: preferred.staffGroupId
+            id: row.id,
+            campId: row.campId,
+            userId: row.userId,
+            role: row.role,
+            department: row.department,
+            displayName: row.displayName,
+            isActive: row.isActive,
+            staffGroupId: row.staffGroupId
         )
-        if let groupId = preferred.staffGroupId {
+        if let groupId = row.staffGroupId {
             currentStaffGroup = try? await supabase
                 .from("staff_groups")
                 .select()
@@ -227,8 +317,8 @@ final class AuthManager: ObservableObject {
         } else {
             currentStaffGroup = nil
         }
-        UserDefaults.standard.set(preferred.camps.id, forKey: selectedCampKey)
-        await loadMembers(campId: preferred.camps.id)
+        UserDefaults.standard.set(row.camps.id, forKey: selectedCampKey)
+        await loadMembers(campId: row.camps.id)
     }
 
     private func loadMembers(campId: String) async {
@@ -278,15 +368,28 @@ final class AuthManager: ObservableObject {
 
 // MARK: - Permissions
 
+/// Mirrors the web app's ROLE_PERMISSIONS table (src/lib/auth.ts).
+///
+/// These used to be unconditional `true`, which was harmless only because the app couldn't
+/// represent a viewer at all. Now that it can, every write has to be gated the same way the
+/// web gates it, or a read-only account would get write access on iPhone.
 struct Permissions {
     let role: CampRole
-    var createIssue:       Bool { true }
-    var createTask:        Bool { true }
-    var assign:            Bool { true }
-    var updateStatus:      Bool { true }
-    var markResolved:      Bool { true }
-    var markComplete:      Bool { true }
+
+    private var isWriter: Bool { role == .admin || role == .staff }
+
+    var createIssue:         Bool { isWriter }
+    var createTask:          Bool { isWriter }
+    var assign:              Bool { isWriter }
+    var updateStatus:        Bool { isWriter }
+    var markResolved:        Bool { isWriter }
+    var markComplete:        Bool { isWriter }
+    var logChemicalReading:  Bool { isWriter }
+    var managePool:          Bool { isWriter }
+    var managePoolChecklist: Bool { isWriter }
+    var manageAssets:        Bool { isWriter }
+    var manageBuildingSystems: Bool { isWriter }
+
     var enterActualCost:   Bool { role == .admin }
     var activateNewSeason: Bool { role == .admin }
-    var managePoolChecklist: Bool { true }
 }

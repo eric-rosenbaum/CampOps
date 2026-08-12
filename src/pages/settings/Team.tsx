@@ -52,9 +52,11 @@ interface GroupFormProps {
   onSave: (name: string, modules: StaffGroupModules, issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean, canViewCamperHealth: boolean) => Promise<void>;
   onCancel: () => void;
   saving: boolean;
+  /** Surfaced from the save handler. Without this a rejected save is invisible. */
+  error?: string | null;
 }
 
-function GroupForm({ initial, onSave, onCancel, saving }: GroupFormProps) {
+function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps) {
   const [name, setName] = useState(initial?.name ?? '');
   const [modules, setModules] = useState<StaffGroupModules>(
     initial?.modules ? { ...EMPTY_MODULES, ...initial.modules } : EMPTY_MODULES,
@@ -158,6 +160,12 @@ function GroupForm({ initial, onSave, onCancel, saving }: GroupFormProps) {
         </div>
       )}
 
+      {error && (
+        <p className="text-[12px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      )}
+
       <div className="flex gap-2 pt-1">
         <button
           type="button"
@@ -244,6 +252,7 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
   const [expanded, setExpanded] = useState(true);
   const [editing, setEditing] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [showAddLink, setShowAddLink] = useState(false);
   const [savingLink, setSavingLink] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
@@ -277,9 +286,13 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
     issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean, canViewCamperHealth: boolean
   ) {
     setSavingEdit(true);
+    setEditError(null);
     try {
       await updateStaffGroup(group.id, { name, modules, issuesSeeUnassigned, prepostSeeUnassigned, canViewCamperHealth });
       setEditing(false);
+    } catch (err) {
+      console.error('[handleSaveEdit]', err);
+      setEditError(err instanceof Error ? err.message : 'Failed to save group');
     } finally {
       setSavingEdit(false);
     }
@@ -302,7 +315,13 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
 
   async function handleDeleteGroup() {
     if (!confirm(`Delete "${group.name}"? This will remove all join links for this group. Members already in it will keep full access until reassigned.`)) return;
-    await deleteStaffGroup(group.id);
+    try {
+      await deleteStaffGroup(group.id);
+    } catch (err) {
+      console.error('[handleDeleteGroup]', err);
+      setEditError(err instanceof Error ? err.message : 'Failed to delete group');
+      setEditing(true); // surface the message; the form is where errors are rendered
+    }
   }
 
   async function handleRevokeCode(codeId: string) {
@@ -364,8 +383,9 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
                 canViewCamperHealth: group.canViewCamperHealth,
               }}
               onSave={handleSaveEdit}
-              onCancel={() => setEditing(false)}
+              onCancel={() => { setEditing(false); setEditError(null); }}
               saving={savingEdit}
+              error={editError}
             />
           ) : (
             <>
@@ -487,6 +507,7 @@ export function Team() {
   // Create group form
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [savingGroup, setSavingGroup] = useState(false);
+  const [groupError, setGroupError] = useState<string | null>(null);
 
   // Invite by email
   const [showInviteForm, setShowInviteForm] = useState(false);
@@ -536,9 +557,15 @@ export function Team() {
     issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean, canViewCamperHealth: boolean
   ) {
     setSavingGroup(true);
+    setGroupError(null);
     try {
       await createStaffGroup(campId, name, modules, issuesSeeUnassigned, prepostSeeUnassigned, canViewCamperHealth);
       setShowCreateGroup(false);
+    } catch (err) {
+      // Previously this had no catch: createStaffGroup throws on error, the rejection went
+      // unhandled, and the button just flipped back to "Create group" with no explanation.
+      console.error('[handleCreateGroup]', err);
+      setGroupError(err instanceof Error ? err.message : 'Failed to create group');
     } finally {
       setSavingGroup(false);
     }
@@ -631,8 +658,9 @@ export function Team() {
             <h3 className="text-[13px] font-semibold text-forest mb-3">New staff group</h3>
             <GroupForm
               onSave={handleCreateGroup}
-              onCancel={() => setShowCreateGroup(false)}
+              onCancel={() => { setShowCreateGroup(false); setGroupError(null); }}
               saving={savingGroup}
+              error={groupError}
             />
           </div>
         )}

@@ -89,7 +89,7 @@ struct AddTaskView: View {
                             Text("Location")
                             Spacer()
                             Text(locationIds.isEmpty ? "None" : LocationStore.shared.names(for: locationIds).joined(separator: ", "))
-                                .foregroundColor(.secondary).lineLimit(1)
+                                .foregroundStyle(Color.forest.opacity(0.55)).lineLimit(1)
                         }
                     }
                     Picker("Priority", selection: $priority) {

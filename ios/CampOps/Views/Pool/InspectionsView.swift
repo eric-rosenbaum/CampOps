@@ -28,7 +28,7 @@ struct InspectionsView: View {
                 if !vm.inspections.isEmpty {
                     VStack(alignment: .leading, spacing: Spacing.sm) {
                         Text("Inspection schedule")
-                            .font(.headline).foregroundColor(.forest)
+                            .font(.campSection).foregroundColor(.forest)
                             .padding(.horizontal, Spacing.xs)
                         ForEach(vm.inspections) { insp in
                             InspectionCard(insp: insp) {
@@ -50,7 +50,7 @@ struct InspectionsView: View {
             }
             .padding(Spacing.md)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.canvas)
         .sheet(isPresented: $showingLog) {
             LogInspectionSheet(
                 poolId: vm.activePoolId ?? "",
@@ -82,15 +82,15 @@ struct InspectionsView: View {
             let due       = vm.inspections.filter { $0.status == .due }.count
             let overdue   = vm.inspections.filter { $0.status == .overdue }.count
             InspStatChip(value: "\(completed)", label: "Completed", color: .greenText, bg: .greenBg)
-            InspStatChip(value: "\(due)",       label: "Coming due", color: due > 0 ? .amberText : .secondary, bg: due > 0 ? .amberBg : Color(.systemBackground))
-            InspStatChip(value: "\(overdue)",   label: "Overdue",   color: overdue > 0 ? .priorityUrgent : .secondary, bg: overdue > 0 ? .urgentBg : Color(.systemBackground))
+            InspStatChip(value: "\(due)",       label: "Coming due", color: due > 0 ? .amberText : .secondary, bg: due > 0 ? .amberBg : Color.surface)
+            InspStatChip(value: "\(overdue)",   label: "Overdue",   color: overdue > 0 ? .priorityUrgent : .secondary, bg: overdue > 0 ? .urgentBg : Color.surface)
         }
     }
 
     private var logSection: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("Inspection log")
-                .font(.headline).foregroundColor(.forest)
+                .font(.campSection).foregroundColor(.forest)
                 .padding(.horizontal, Spacing.xs)
 
             VStack(spacing: 0) {
@@ -103,7 +103,7 @@ struct InspectionsView: View {
                     )
                 }
             }
-            .background(Color(.systemBackground))
+            .background(Color.surface)
             .cornerRadius(Radius.md)
         }
     }
@@ -111,8 +111,8 @@ struct InspectionsView: View {
     private var emptyState: some View {
         VStack(spacing: Spacing.md) {
             Image(systemName: "checklist.unchecked").font(.system(size: 48)).foregroundColor(.sageLight)
-            Text("No inspections logged").font(.headline).foregroundColor(.secondary)
-            Text("Tap + to record a completed inspection").font(.subheadline).foregroundColor(.secondary)
+            Text("No inspections logged").font(.campSection).foregroundStyle(Color.forest.opacity(0.55))
+            Text("Tap + to record a completed inspection").font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
         }
         .frame(maxWidth: .infinity)
         .padding(.top, Spacing.xxl)
@@ -127,7 +127,7 @@ private struct InspStatChip: View {
     var body: some View {
         VStack(spacing: 2) {
             Text(value).font(.title2.weight(.bold).monospacedDigit()).foregroundColor(color)
-            Text(label).font(.caption.weight(.semibold)).foregroundColor(color)
+            Text(label).font(.campMetaSemibold).foregroundColor(color)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.sm)
@@ -143,10 +143,10 @@ private struct AlertBannerView: View {
     var body: some View {
         HStack(alignment: .top, spacing: Spacing.sm) {
             Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.priorityUrgent)
-            Text(message).font(.subheadline).foregroundColor(.forest)
+            Text(message).font(.campBody).foregroundColor(.forest)
             Spacer()
             Button(actionLabel, action: onAction)
-                .font(.caption.weight(.semibold))
+                .font(.campMetaSemibold)
                 .foregroundColor(.priorityUrgent)
         }
         .padding(Spacing.md)
@@ -163,9 +163,9 @@ private struct InspectionCard: View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(insp.name).font(.headline).foregroundColor(.forest)
+                    Text(insp.name).font(.campSection).foregroundColor(.forest)
                     Text([insp.frequency, insp.authority].compactMap { $0 }.joined(separator: " · "))
-                        .font(.caption).foregroundColor(.secondary)
+                        .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                 }
                 Spacer()
                 InspStatusBadge(status: insp.status, nextDue: insp.nextDue)
@@ -173,16 +173,16 @@ private struct InspectionCard: View {
 
             if let last = insp.lastCompleted {
                 HStack(spacing: Spacing.xs) {
-                    Image(systemName: "checkmark.circle.fill").font(.caption).foregroundColor(.sage)
+                    Image(systemName: "checkmark.circle.fill").font(.campMeta).foregroundColor(.sage)
                     Text("Last completed \(last.localDateDisplay)")
-                        .font(.caption).foregroundColor(.secondary)
+                        .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                 }
             }
 
             if insp.status != .ok {
                 Button(action: onLog) {
                     Label("Log inspection", systemImage: "plus.circle")
-                        .font(.subheadline.weight(.medium))
+                        .font(.campBodyMedium)
                 }
                 .buttonStyle(.bordered)
                 .tint(.sage)
@@ -190,7 +190,7 @@ private struct InspectionCard: View {
             }
         }
         .padding(Spacing.md)
-        .background(Color(.systemBackground))
+        .background(Color.surface)
         .cornerRadius(Radius.md)
         .overlay(
             RoundedRectangle(cornerRadius: Radius.md)
@@ -205,7 +205,7 @@ private struct InspStatusBadge: View {
     let nextDue: String?
     var body: some View {
         Text(badgeText)
-            .font(.caption2.weight(.semibold))
+            .font(.campLabel)
             .padding(.horizontal, Spacing.sm)
             .padding(.vertical, 3)
             .background(bg)
@@ -246,18 +246,18 @@ private struct InspectionLogRow: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(entry.typeName(inspections: inspections))
-                        .font(.subheadline.weight(.medium))
+                        .font(.campBodyMedium)
                         .foregroundColor(.forest)
                     Text("\(entry.inspectionDate.localDateDisplay) · \(entry.conductedBy)")
-                        .font(.caption).foregroundColor(.secondary)
+                        .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                     if let notes = entry.notes {
-                        Text(notes).font(.caption).foregroundColor(.secondary)
+                        Text(notes).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                     }
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(entry.result.displayName)
-                        .font(.caption2.weight(.semibold))
+                        .font(.campLabel)
                         .padding(.horizontal, Spacing.sm)
                         .padding(.vertical, 3)
                         .background(entry.result.bgColor)
@@ -265,8 +265,8 @@ private struct InspectionLogRow: View {
                         .clipShape(Capsule())
                     Button { onEdit() } label: {
                         Image(systemName: "pencil")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(.campMeta)
+                            .foregroundStyle(Color.forest.opacity(0.55))
                     }
                 }
             }

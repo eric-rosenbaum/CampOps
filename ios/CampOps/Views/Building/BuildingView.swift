@@ -24,7 +24,10 @@ struct BuildingView: View {
                     .listStyle(.insetGrouped)
                 }
             }
+            .campCanvas()
+            .refreshable { await vm.refresh() }
             .navigationTitle("Building Systems")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {
@@ -44,15 +47,16 @@ struct BuildingView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "building.2")
-                .font(.system(size: 40)).foregroundColor(.secondary)
-            Text("No buildings yet").font(.headline)
+        ContentUnavailableView {
+            Label("No buildings yet", systemImage: "building.2")
+                .font(.campSection)
+        } description: {
             Text("Add your cabins, bathhouses and utility buildings, then map their electrical and plumbing room by room.")
-                .font(.subheadline).foregroundColor(.secondary)
-                .multilineTextAlignment(.center).padding(.horizontal, 32)
+                .font(.campBody)
+        } actions: {
             Button("Add your first building") { sheet = .addBuilding }
-                .buttonStyle(.borderedProminent).tint(.forest).padding(.top, 4)
+                .font(.campBodySemibold)
+                .foregroundStyle(Color.sage)
         }
     }
 }
@@ -71,20 +75,20 @@ struct BuildingRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Image(systemName: "building.2.fill").foregroundColor(.forest)
-                Text(building.name).font(.headline)
+                Text(building.name).font(.campSection)
                 Spacer()
                 if !comps.isEmpty { StatusDotLabel(status: vm.status(for: building.id)) }
             }
             HStack(spacing: 10) {
-                Text(building.type.displayName).font(.caption).foregroundColor(.secondary)
-                Label("\(elec)", systemImage: "bolt.fill").font(.caption2).foregroundColor(.secondary)
-                Label("\(plumb)", systemImage: "drop.fill").font(.caption2).foregroundColor(.secondary)
+                Text(building.type.displayName).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
+                Label("\(elec)", systemImage: "bolt.fill").font(.campMicro).foregroundStyle(Color.forest.opacity(0.55))
+                Label("\(plumb)", systemImage: "drop.fill").font(.campMicro).foregroundStyle(Color.forest.opacity(0.55))
                 if flagged > 0 {
-                    Text("\(flagged) flagged").font(.caption2).foregroundColor(.amberText)
+                    Text("\(flagged) flagged").font(.campMicro).foregroundColor(.amberText)
                 }
             }
             if let w = building.mainWaterShutoff, !w.isEmpty {
-                Label("Water: \(w)", systemImage: "drop").font(.caption2).foregroundColor(.secondary).lineLimit(1)
+                Label("Water: \(w)", systemImage: "drop").font(.campMicro).foregroundStyle(Color.forest.opacity(0.55)).lineLimit(1)
             }
         }
         .padding(.vertical, 2)
@@ -134,7 +138,7 @@ struct BuildingDetailView: View {
                 }
                 .sheet(item: $sheet) { route in buildingSheet(route) }
             } else {
-                Text("Building not found").foregroundColor(.secondary)
+                Text("Building not found").foregroundStyle(Color.forest.opacity(0.55))
             }
         }
     }
@@ -154,8 +158,8 @@ struct BuildingDetailView: View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: icon).foregroundColor(.amberText).frame(width: 20)
             VStack(alignment: .leading, spacing: 1) {
-                Text(label).font(.caption).foregroundColor(.secondary)
-                Text(value).font(.subheadline)
+                Text(label).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
+                Text(value).font(.campBody)
             }
         }
     }
@@ -167,7 +171,7 @@ struct BuildingDetailView: View {
         let plumb = comps.filter { $0.system == .plumbing }
         Section {
             if comps.isEmpty {
-                Text("No components yet").font(.caption).foregroundColor(.secondary)
+                Text("No components yet").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
             }
             ForEach(elec) { componentLink($0) }
             ForEach(plumb) { componentLink($0) }
@@ -179,15 +183,15 @@ struct BuildingDetailView: View {
                     Label("Plumbing", systemImage: "drop.fill")
                 }
             } label: {
-                Label("Add component", systemImage: "plus").font(.caption)
+                Label("Add component", systemImage: "plus").font(.campMeta)
             }
         } header: {
             HStack {
                 Text(name)
-                if let s = subtitle, !s.isEmpty { Text("· \(s)").foregroundColor(.secondary) }
+                if let s = subtitle, !s.isEmpty { Text("· \(s)").foregroundStyle(Color.forest.opacity(0.55)) }
                 Spacer()
                 if let roomId {
-                    Button { sheet = .editRoom(roomById(roomId)) } label: { Image(systemName: "pencil").font(.caption2) }
+                    Button { sheet = .editRoom(roomById(roomId)) } label: { Image(systemName: "pencil").font(.campMicro) }
                         .buttonStyle(.plain)
                 }
             }
@@ -210,13 +214,13 @@ struct ComponentRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: BuildingTaxonomy.icon(for: component.type))
-                .foregroundColor(.secondary).frame(width: 22)
+                .foregroundStyle(Color.forest.opacity(0.55)).frame(width: 22)
             Circle().fill(component.status.color).frame(width: 8, height: 8)
             VStack(alignment: .leading, spacing: 1) {
                 Text(component.label)
                 let sub = [BuildingTaxonomy.label(for: component.type), componentSummary(component), component.locationDetail ?? ""]
                     .filter { !$0.isEmpty }.joined(separator: " · ")
-                if !sub.isEmpty { Text(sub).font(.caption).foregroundColor(.secondary).lineLimit(1) }
+                if !sub.isEmpty { Text(sub).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55)).lineLimit(1) }
             }
         }
     }
@@ -226,7 +230,7 @@ struct StatusDotLabel: View {
     let status: ComponentStatus
     var body: some View {
         Text(status.displayName)
-            .font(.caption2).fontWeight(.medium)
+            .font(.campMicroMedium)
             .padding(.horizontal, 8).padding(.vertical, 2)
             .background(status.bgColor).foregroundColor(status.color)
             .clipShape(Capsule())
@@ -253,7 +257,7 @@ struct ComponentDetailView: View {
                         HStack {
                             StatusDotLabel(status: component.status)
                             if let d = component.statusDetail, !d.isEmpty {
-                                Text(d).font(.caption).foregroundColor(.secondary)
+                                Text(d).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                             }
                         }
                         detailRow("Type", BuildingTaxonomy.label(for: component.type))
@@ -271,7 +275,7 @@ struct ComponentDetailView: View {
                     }
 
                     if let notes = component.notes, !notes.isEmpty {
-                        Section("Notes") { Text(notes).font(.subheadline) }
+                        Section("Notes") { Text(notes).font(.campBody) }
                     }
 
                     if isPanel { panelScheduleSection(component) }
@@ -309,22 +313,22 @@ struct ComponentDetailView: View {
         let circuits = vm.circuits(panelId: panel.id)
         Section {
             if circuits.isEmpty {
-                Text("No breakers mapped yet").font(.caption).foregroundColor(.secondary)
+                Text("No breakers mapped yet").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
             }
             ForEach(circuits) { c in
                 Button { sheet = .editCircuit(c) } label: {
                     HStack(alignment: .top, spacing: 10) {
                         Text(c.breakerNumber ?? "–").font(.system(.subheadline, design: .monospaced))
-                            .fontWeight(.semibold).foregroundColor(.secondary).frame(width: 28, alignment: .trailing)
+                            .fontWeight(.semibold).foregroundStyle(Color.forest.opacity(0.55)).frame(width: 28, alignment: .trailing)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(c.label ?? c.controls ?? "Unlabeled").foregroundColor(.primary)
                             if let ctrl = c.controls, c.label != nil, !ctrl.isEmpty {
-                                Text(ctrl).font(.caption).foregroundColor(.secondary)
+                                Text(ctrl).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                             }
                         }
                         Spacer()
-                        if let a = c.amperage { Text("\(a)A").font(.caption).foregroundColor(.secondary) }
-                        if !c.isOn { Text("OFF").font(.caption2).foregroundColor(.priorityUrgent) }
+                        if let a = c.amperage { Text("\(a)A").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55)) }
+                        if !c.isOn { Text("OFF").font(.campMicro).foregroundColor(.priorityUrgent) }
                     }
                 }
                 .buttonStyle(.plain)
@@ -335,18 +339,18 @@ struct ComponentDetailView: View {
                 }
             }
             Button { sheet = .addCircuit(panelId: panel.id) } label: {
-                Label("Add breaker", systemImage: "plus").font(.caption)
+                Label("Add breaker", systemImage: "plus").font(.campMeta)
             }
         } header: { Text("Panel schedule") }
     }
 
     private func detailRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .top) {
-            Text(label).foregroundColor(.secondary)
+            Text(label).foregroundStyle(Color.forest.opacity(0.55))
             Spacer()
             Text(value).multilineTextAlignment(.trailing)
         }
-        .font(.subheadline)
+        .font(.campBody)
     }
 
     private func formatSpec(_ field: SpecField, _ v: JSONValue) -> String {
@@ -364,18 +368,18 @@ struct ElectricalListView: View {
         List {
             Section("Panels & breaker schedules") {
                 if vm.panels.isEmpty {
-                    Text("No panels mapped yet").font(.caption).foregroundColor(.secondary)
+                    Text("No panels mapped yet").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                 }
                 ForEach(vm.panels) { panel in
                     NavigationLink { ComponentDetailView(componentId: panel.id) } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack {
-                                Image(systemName: "powerplug.fill").foregroundColor(.secondary)
+                                Image(systemName: "powerplug.fill").foregroundStyle(Color.forest.opacity(0.55))
                                 Text(panel.label).fontWeight(.medium)
                             }
                             if let b = vm.buildings.first(where: { $0.id == panel.buildingId }) {
                                 Text("\(b.name) · \(vm.circuits(panelId: panel.id).count) breakers")
-                                    .font(.caption).foregroundColor(.secondary)
+                                    .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                             }
                         }
                     }
@@ -392,7 +396,7 @@ struct ElectricalListView: View {
     private func crossSection(system: BuildingSystem, title: String) -> some View {
         Section(title) {
             let comps = vm.components.filter { $0.system == system }
-            if comps.isEmpty { Text("None recorded").font(.caption).foregroundColor(.secondary) }
+            if comps.isEmpty { Text("None recorded").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55)) }
             ForEach(comps) { c in
                 NavigationLink { ComponentDetailView(componentId: c.id) } label: {
                     crossRow(c)
@@ -407,7 +411,7 @@ struct ElectricalListView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(c.label)
                 if let b = vm.buildings.first(where: { $0.id == c.buildingId }) {
-                    Text(b.name).font(.caption).foregroundColor(.secondary)
+                    Text(b.name).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                 }
             }
         }
@@ -423,20 +427,20 @@ struct PlumbingListView: View {
         List {
             Section {
                 if vm.shutoffValves.isEmpty {
-                    Text("No shutoff valves recorded yet").font(.caption).foregroundColor(.secondary)
+                    Text("No shutoff valves recorded yet").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                 }
                 ForEach(vm.shutoffValves) { v in
                     NavigationLink { ComponentDetailView(componentId: v.id) } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack {
-                                Image(systemName: "gauge.with.dots.needle.bottom.50percent").foregroundColor(.secondary)
+                                Image(systemName: "gauge.with.dots.needle.bottom.50percent").foregroundStyle(Color.forest.opacity(0.55))
                                 Text(v.label).fontWeight(.medium)
                             }
                             if let b = vm.buildings.first(where: { $0.id == v.buildingId }) {
-                                Text(b.name).font(.caption).foregroundColor(.secondary)
+                                Text(b.name).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                             }
                             if let loc = v.locationDetail, !loc.isEmpty {
-                                Text(loc).font(.subheadline)
+                                Text(loc).font(.campBody)
                             }
                         }
                     }
@@ -449,7 +453,7 @@ struct PlumbingListView: View {
 
             Section("All plumbing") {
                 let comps = vm.components.filter { $0.system == .plumbing }
-                if comps.isEmpty { Text("None recorded").font(.caption).foregroundColor(.secondary) }
+                if comps.isEmpty { Text("None recorded").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55)) }
                 ForEach(comps) { c in
                     NavigationLink { ComponentDetailView(componentId: c.id) } label: {
                         HStack(spacing: 10) {
@@ -457,7 +461,7 @@ struct PlumbingListView: View {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(c.label)
                                 if let b = vm.buildings.first(where: { $0.id == c.buildingId }) {
-                                    Text(b.name).font(.caption).foregroundColor(.secondary)
+                                    Text(b.name).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                                 }
                             }
                         }

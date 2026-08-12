@@ -126,11 +126,11 @@ struct AssetDetailSheet: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(subtypeDisplayNames[asset.subtype] ?? asset.subtype)
-                    .font(.system(size: 12))
+                    .font(.campMeta)
                     .foregroundStyle(Color.forest.opacity(0.5))
                 if let make = asset.make, let model = asset.model {
                     Text("\(make) \(model)\(asset.year.map { " \($0)" } ?? "")")
-                        .font(.system(size: 14))
+                        .font(.campSmall)
                         .foregroundStyle(Color.forest.opacity(0.7))
                 }
             }
@@ -139,7 +139,7 @@ struct AssetDetailSheet: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color.cream)
+        .background(Color.canvas)
         Divider()
     }
 
@@ -153,7 +153,7 @@ struct AssetDetailSheet: View {
                         activeTab = tab
                     } label: {
                         Text(tabTitle(tab))
-                            .font(.system(size: 14))
+                            .font(.campSmall)
                             .fontWeight(activeTab == tab ? .semibold : .regular)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 10)
@@ -238,12 +238,12 @@ private struct OverviewTab: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Label("Currently Checked Out", systemImage: "arrow.up.right")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(.campSecondarySemibold)
                                 .foregroundStyle(Color.blue)
                             Spacer()
                             if co.expectedReturnAt < Date() {
                                 Label("Overdue", systemImage: "exclamationmark.triangle.fill")
-                                    .font(.system(size: 12))
+                                    .font(.campMeta)
                                     .foregroundStyle(Color.priorityUrgent)
                             }
                         }
@@ -258,7 +258,7 @@ private struct OverviewTab: View {
                             onReturn?(co)
                         } label: {
                             Label("Return Asset", systemImage: "arrow.down.left")
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.campBodySemibold)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
                                 .foregroundStyle(.white)
@@ -268,7 +268,7 @@ private struct OverviewTab: View {
                         .buttonStyle(.plain)
                     }
                     .padding(14)
-                    .background(Color.white)
+                    .background(Color.surface)
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
                             .stroke(co.expectedReturnAt < Date() ? Color.priorityUrgent.opacity(0.4) : Color.blue.opacity(0.3), lineWidth: 1)
@@ -277,7 +277,7 @@ private struct OverviewTab: View {
                 } else if let onCheckout {
                     Button(action: onCheckout) {
                         Label("Check Out", systemImage: "arrow.up.right")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.campBodySemibold)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .foregroundStyle(.white)
@@ -328,7 +328,7 @@ private struct OverviewTab: View {
                 if let notes = asset.notes, !notes.isEmpty {
                     DetailSection(title: "Notes") {
                         Text(notes)
-                            .font(.system(size: 14))
+                            .font(.campSmall)
                             .foregroundStyle(Color.forest.opacity(0.7))
                     }
                 }
@@ -360,7 +360,7 @@ private struct CheckoutsTab: View {
                 } else if asset.status == .available {
                     Button { onNewCheckout() } label: {
                         Label("Check out this asset", systemImage: "arrow.up.right")
-                            .font(.system(size: 14))
+                            .font(.campSmall)
                             .fontWeight(.medium)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
@@ -373,7 +373,7 @@ private struct CheckoutsTab: View {
                 let history = checkouts.filter { $0.returnedAt != nil }
                 if !history.isEmpty {
                     Text("History")
-                        .font(.system(size: 14))
+                        .font(.campSmall)
                         .fontWeight(.semibold)
                         .foregroundStyle(Color.forest)
                         .padding(.top, 4)
@@ -404,13 +404,13 @@ private struct ActiveCheckoutCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Label("Currently checked out", systemImage: "arrow.up.right")
-                    .font(.system(size: 12))
+                    .font(.campMeta)
                     .fontWeight(.semibold)
                     .foregroundStyle(Color.blue)
                 Spacer()
                 if isOverdue {
                     Label("Overdue", systemImage: "exclamationmark.triangle.fill")
-                        .font(.system(size: 12))
+                        .font(.campMeta)
                         .foregroundStyle(Color.priorityUrgent)
                 }
             }
@@ -425,7 +425,7 @@ private struct ActiveCheckoutCard: View {
             HStack(spacing: 8) {
                 Button { onReturn() } label: {
                     Label("Return", systemImage: "arrow.down.left")
-                        .font(.system(size: 12))
+                        .font(.campMeta)
                         .fontWeight(.medium)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
@@ -442,7 +442,7 @@ private struct ActiveCheckoutCard: View {
             }
         }
         .padding(14)
-        .background(Color.white)
+        .background(Color.surface)
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .stroke(isOverdue ? Color.priorityUrgent.opacity(0.4) : Color.blue.opacity(0.3), lineWidth: 1)
@@ -460,32 +460,32 @@ private struct HistoricalCheckoutRow: View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(checkout.checkedOutBy)
-                    .font(.system(size: 14)).fontWeight(.medium).foregroundStyle(Color.forest)
+                    .font(.campSmallMedium).foregroundStyle(Color.forest)
                 Text(checkout.purpose)
-                    .font(.system(size: 12)).foregroundStyle(Color.forest.opacity(0.5))
+                    .font(.campMeta).foregroundStyle(Color.forest.opacity(0.5))
                 if let returned = checkout.returnedAt {
                     Text("Returned \(returned.readingTimeDisplay)")
-                        .font(.system(size: 12)).foregroundStyle(Color.forest.opacity(0.4))
+                        .font(.campMeta).foregroundStyle(Color.forest.opacity(0.4))
                 }
                 if let cond = checkout.returnCondition, cond != .noIssues {
                     Text(cond.displayName)
-                        .font(.system(size: 12)).foregroundStyle(Color.priorityHigh)
+                        .font(.campMeta).foregroundStyle(Color.priorityHigh)
                 }
             }
             Spacer()
             HStack(spacing: 4) {
                 Button { onEdit() } label: {
-                    Image(systemName: "pencil").font(.system(size: 14))
+                    Image(systemName: "pencil").font(.campSmall)
                         .foregroundStyle(Color.forest.opacity(0.3))
                 }
                 Button { onDelete() } label: {
-                    Image(systemName: "trash").font(.system(size: 14))
+                    Image(systemName: "trash").font(.campSmall)
                         .foregroundStyle(Color.forest.opacity(0.3))
                 }
             }
         }
         .padding(12)
-        .background(Color.white)
+        .background(Color.surface)
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.border, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
@@ -505,7 +505,7 @@ private struct ServiceTab: View {
             VStack(alignment: .leading, spacing: 10) {
                 Button { onAdd() } label: {
                     Label("Log service record", systemImage: "plus")
-                        .font(.system(size: 14)).fontWeight(.medium)
+                        .font(.campSmallMedium)
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
                         .background(Color.sage).foregroundStyle(Color.white)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -536,39 +536,39 @@ private struct ServiceRecordRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(record.serviceType.displayName)
-                        .font(.system(size: 14)).fontWeight(.medium).foregroundStyle(Color.forest)
+                        .font(.campSmallMedium).foregroundStyle(Color.forest)
                     if record.isInspection {
                         Text("Inspection")
-                            .font(.system(size: 12)).padding(.horizontal, 6).padding(.vertical, 2)
+                            .font(.campMeta).padding(.horizontal, 6).padding(.vertical, 2)
                             .background(Color.greenBg).foregroundStyle(Color.greenText)
                             .clipShape(Capsule())
                     }
                 }
                 Text(record.datePerformed + " · " + record.performedBy)
-                    .font(.system(size: 12)).foregroundStyle(Color.forest.opacity(0.5))
+                    .font(.campMeta).foregroundStyle(Color.forest.opacity(0.5))
                 if let cost = record.cost {
                     Text("$\(String(format: "%.2f", cost))")
-                        .font(.system(size: 12)).foregroundStyle(Color.forest.opacity(0.4))
+                        .font(.campMeta).foregroundStyle(Color.forest.opacity(0.4))
                 }
                 if let desc = record.description, !desc.isEmpty {
                     Text(desc)
-                        .font(.system(size: 12)).foregroundStyle(Color.forest.opacity(0.4)).lineLimit(2)
+                        .font(.campMeta).foregroundStyle(Color.forest.opacity(0.4)).lineLimit(2)
                 }
             }
             Spacer()
             HStack(spacing: 4) {
                 Button { onEdit() } label: {
-                    Image(systemName: "pencil").font(.system(size: 14))
+                    Image(systemName: "pencil").font(.campSmall)
                         .foregroundStyle(Color.forest.opacity(0.3))
                 }
                 Button { onDelete() } label: {
-                    Image(systemName: "trash").font(.system(size: 14))
+                    Image(systemName: "trash").font(.campSmall)
                         .foregroundStyle(Color.forest.opacity(0.3))
                 }
             }
         }
         .padding(12)
-        .background(Color.white)
+        .background(Color.surface)
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.border, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
@@ -592,7 +592,7 @@ private struct MaintenanceTab: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Text(phase.displayName)
-                                .font(.system(size: 14)).fontWeight(.semibold).foregroundStyle(Color.forest)
+                                .font(.campSmallSemibold).foregroundStyle(Color.forest)
                             Spacer()
                             Button { onAdd(phase) } label: {
                                 Image(systemName: "plus.circle").foregroundStyle(Color.sage)
@@ -600,7 +600,7 @@ private struct MaintenanceTab: View {
                         }
                         if phaseTasks.isEmpty {
                             Text("No tasks")
-                                .font(.system(size: 12)).foregroundStyle(Color.forest.opacity(0.3)).padding(.leading, 4)
+                                .font(.campMeta).foregroundStyle(Color.forest.opacity(0.3)).padding(.leading, 4)
                         } else {
                             ForEach(phaseTasks) { task in
                                 MaintenanceTaskRow(task: task,
@@ -632,25 +632,25 @@ private struct MaintenanceTaskRow: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.title)
-                    .font(.system(size: 14))
+                    .font(.campSmall)
                     .foregroundStyle(task.isComplete ? Color.forest.opacity(0.4) : Color.forest)
                     .strikethrough(task.isComplete)
                 if let detail = task.detail, !detail.isEmpty {
-                    Text(detail).font(.system(size: 12)).foregroundStyle(Color.forest.opacity(0.4))
+                    Text(detail).font(.campMeta).foregroundStyle(Color.forest.opacity(0.4))
                 }
                 if task.isComplete, let by = task.completedBy {
                     Text("Done by \(by)\(task.completedDate.map { " · \($0)" } ?? "")")
-                        .font(.system(size: 12)).foregroundStyle(Color.sage.opacity(0.8))
+                        .font(.campMeta).foregroundStyle(Color.sage.opacity(0.8))
                 }
             }
             Spacer()
             HStack(spacing: 4) {
                 Button { onEdit() } label: {
-                    Image(systemName: "pencil").font(.system(size: 13))
+                    Image(systemName: "pencil").font(.campSecondary)
                         .foregroundStyle(Color.forest.opacity(0.3))
                 }
                 Button { onDelete() } label: {
-                    Image(systemName: "trash").font(.system(size: 13))
+                    Image(systemName: "trash").font(.campSecondary)
                         .foregroundStyle(Color.forest.opacity(0.3))
                 }
             }
@@ -671,14 +671,14 @@ private struct DetailSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.system(size: 12)).fontWeight(.semibold)
+                .font(.campMetaSemibold)
                 .foregroundStyle(Color.forest.opacity(0.4))
                 .textCase(.uppercase).kerning(0.5)
             VStack(alignment: .leading, spacing: 6) {
                 content()
             }
             .padding(12)
-            .background(Color.white)
+            .background(Color.surface)
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.border, lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
@@ -692,9 +692,9 @@ private struct InfoRow: View {
     var body: some View {
         HStack(alignment: .top) {
             Text(label)
-                .font(.system(size: 14)).foregroundStyle(Color.forest.opacity(0.5))
+                .font(.campSmall).foregroundStyle(Color.forest.opacity(0.5))
                 .frame(width: 130, alignment: .leading)
-            Text(value).font(.system(size: 14)).foregroundStyle(Color.forest)
+            Text(value).font(.campSmall).foregroundStyle(Color.forest)
             Spacer()
         }
     }
@@ -708,7 +708,7 @@ private struct EmptyStateView: View {
         VStack(spacing: 8) {
             Image(systemName: icon).font(.system(size: 32))
                 .foregroundStyle(Color.forest.opacity(0.15))
-            Text(message).font(.system(size: 14)).foregroundStyle(Color.forest.opacity(0.3))
+            Text(message).font(.campSmall).foregroundStyle(Color.forest.opacity(0.3))
         }
         .frame(maxWidth: .infinity).padding(.vertical, 40)
     }

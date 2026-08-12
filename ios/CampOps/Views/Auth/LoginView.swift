@@ -6,114 +6,110 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var isLoading = false
-    @State private var showingSignUp = false
+    @State private var showingForgotPassword = false
+    @FocusState private var focused: Field?
 
-    var canSubmit: Bool {
-        !email.trimmingCharacters(in: .whitespaces).isEmpty && password.count >= 6
+    private enum Field { case email, password }
+
+    private var canSubmit: Bool {
+        !email.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
+        ScrollView {
+            VStack(spacing: 0) {
+                CampWordmark()
+                    .padding(.top, 56)
 
-            VStack(spacing: 8) {
-                Image(systemName: "megaphone.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(.sage)
-                Text("CampCommand")
-                    .font(.title2).fontWeight(.bold)
-                    .foregroundColor(.forest)
-            }
-            .padding(.bottom, 36)
+                Text("Camp operations, simplified.")
+                    .font(.campSecondary)
+                    .foregroundStyle(Color.forest.opacity(0.5))
+                    .padding(.top, Spacing.sm)
+                    .padding(.bottom, Spacing.xxl)
 
-            VStack(spacing: 20) {
-                Text("Sign in")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                LabeledField(label: "Email") {
-                    TextField("", text: $email)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                        .autocorrectionDisabled()
-                }
-
-                LabeledField(label: "Password") {
-                    SecureField("", text: $password)
-                }
-
-                if let err = authManager.authError {
-                    Text(err)
-                        .font(.caption)
-                        .foregroundColor(.red)
+                VStack(spacing: Spacing.lg) {
+                    Text("Sign in")
+                        .font(.campSection)
+                        .foregroundStyle(Color.forest)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                }
 
-                Button {
-                    Task {
-                        isLoading = true
-                        await authManager.signIn(email: email, password: password)
-                        isLoading = false
+                    CampField(label: "Email address") {
+                        TextField("", text: $email)
+                            .textInputAutocapitalization(.never)
+                            .keyboardType(.emailAddress)
+                            .autocorrectionDisabled()
+                            // Without these the Keychain never offers a saved login here.
+                            .textContentType(.username)
+                            .submitLabel(.next)
+                            .focused($focused, equals: .email)
+                            .onSubmit { focused = .password }
                     }
-                } label: {
-                    Group {
+
+                    CampField(label: "Password") {
+                        SecureField("", text: $password)
+                            .textContentType(.password)
+                            .submitLabel(.go)
+                            .focused($focused, equals: .password)
+                            .onSubmit { if canSubmit { submit() } }
+                    }
+
+                    if let err = authManager.authError {
+                        CampErrorBanner(message: err)
+                    }
+
+                    Button(action: submit) {
                         if isLoading {
-                            ProgressView().tint(.white)
+                            ProgressView().tint(Color.cream)
                         } else {
-                            Text("Sign In")
+                            Text("Sign in")
                         }
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(canSubmit ? Color.forest : Color.forest.opacity(0.4))
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
+                    .buttonStyle(.campPrimary(enabled: canSubmit))
+                    .disabled(!canSubmit || isLoading)
+
+                    Button("Forgot your password?") {
+                        authManager.authError = nil
+                        showingForgotPassword = true
+                    }
+                    .font(.campMeta)
+                    .foregroundStyle(Color.forest.opacity(0.5))
                 }
-                .disabled(!canSubmit || isLoading)
-            }
-            .padding(24)
-            .background(Color(.systemBackground))
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 4)
-            .padding(.horizontal, 24)
+                .cardSurface(padding: Spacing.xl, radius: Radius.lg)
+                .padding(.horizontal, Spacing.xl)
 
-            Button {
-                authManager.authError = nil
-                showingSignUp = true
-            } label: {
-                Text("Don't have an account? **Create one**")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            .padding(.top, 20)
+                // Account creation is invite-only and handled on the web — there is no
+                // self-serve signup to link to here.
+                VStack(spacing: Spacing.xs) {
+                    Text("Don't have an account?")
+                        .font(.campMeta)
+                        .foregroundStyle(Color.forest.opacity(0.45))
+                    Text("Your camp administrator sends an invitation by email.")
+                        .font(.campMeta)
+                        .foregroundStyle(Color.forest.opacity(0.45))
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, Spacing.xl)
+                .padding(.horizontal, Spacing.xl)
 
-            Spacer()
-            Spacer()
+                Spacer(minLength: Spacing.xxl)
+            }
+            .frame(maxWidth: .infinity)
         }
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .scrollDismissesKeyboard(.interactively)
+        .campCanvas()
         .onAppear { authManager.authError = nil }
-        .sheet(isPresented: $showingSignUp) {
-            SignUpView()
+        .sheet(isPresented: $showingForgotPassword) {
+            ForgotPasswordView(prefilledEmail: email)
                 .environmentObject(authManager)
         }
     }
-}
 
-private struct LabeledField<Content: View>: View {
-    let label: String
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label)
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundColor(.secondary)
-            content()
-                .padding(.horizontal, 12)
-                .frame(height: 44)
-                .background(Color(.secondarySystemBackground))
-                .cornerRadius(8)
+    private func submit() {
+        focused = nil
+        Task {
+            isLoading = true
+            await authManager.signIn(email: email, password: password)
+            isLoading = false
         }
     }
 }

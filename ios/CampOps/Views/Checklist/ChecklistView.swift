@@ -16,7 +16,10 @@ struct ChecklistView: View {
                     taskList
                 }
             }
+            .campCanvas()
+            .refreshable { await vm.refresh() }
             .navigationTitle("Pre/Post Camp")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) { UserMenuButton() }
                 if authManager.can.createTask {
@@ -46,14 +49,14 @@ struct ChecklistView: View {
             if let season = vm.season {
                 HStack {
                     Image(systemName: "sun.max.fill").foregroundColor(.sage)
-                    Text(season.name).font(.subheadline.weight(.semibold))
-                    Text("·").foregroundColor(.secondary)
+                    Text(season.name).font(.campBodySemibold)
+                    Text("·").foregroundStyle(Color.forest.opacity(0.55))
                     Text("\(season.openingDate.localDateDisplay) – \(season.closingDate.localDateDisplay)")
-                        .font(.caption).foregroundColor(.secondary)
+                        .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                     Spacer()
                 }
                 .padding(.horizontal, Spacing.lg).padding(.vertical, Spacing.sm)
-                .background(Color(.systemGroupedBackground))
+                .background(Color.canvas)
             }
             Picker("Phase", selection: $selectedPhase) {
                 Text("Pre-camp").tag(ChecklistPhase.pre)
@@ -65,8 +68,17 @@ struct ChecklistView: View {
                 LazyVStack(spacing: Spacing.sm) {
                     let tasks = staffFiltered(selectedPhase == .pre ? vm.preTasks : vm.postTasks)
                     if tasks.isEmpty {
-                        Text("No \(selectedPhase == .pre ? "pre" : "post")-camp tasks")
-                            .font(.subheadline).foregroundColor(.secondary).padding(.top, Spacing.xl)
+                        ContentUnavailableView {
+                            Label("No \(selectedPhase == .pre ? "pre" : "post")-camp tasks",
+                                  systemImage: "checklist")
+                                .font(.campSection)
+                        } description: {
+                            Text(selectedPhase == .pre
+                                 ? "Opening tasks appear here once the season is set up."
+                                 : "Closing tasks appear here once the season is set up.")
+                                .font(.campBody)
+                        }
+                        .padding(.top, Spacing.xl)
                     } else {
                         ForEach(tasks) { task in
                             let canTake = authManager.prepostSeeUnassigned &&
@@ -140,16 +152,16 @@ struct PoolSeasonalSection: View {
                 } label: {
                     HStack {
                         Image(systemName: "water.waves")
-                            .font(.subheadline)
+                            .font(.campBody)
                             .foregroundColor(.sage)
                         Text("Pool & Waterfront")
-                            .font(.subheadline.weight(.semibold))
+                            .font(.campBodySemibold)
                             .foregroundColor(.forest)
                         Spacer()
                         progressBadge(done: totalDone, total: totalAll)
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(.campMeta)
+                            .foregroundStyle(Color.forest.opacity(0.55))
                     }
                 }
                 .buttonStyle(.plain)
@@ -175,7 +187,7 @@ struct PoolSeasonalSection: View {
         let isComplete = done == total && total > 0
         let text = "\(done)/\(total)"
         return Text(text)
-            .font(.caption2.weight(.semibold))
+            .font(.campLabel)
             .padding(.horizontal, Spacing.sm)
             .padding(.vertical, 3)
             .background(isComplete ? Color.greenBg : Color(.systemGray5))
@@ -204,22 +216,22 @@ private struct PoolSeasonalPoolGroup: View {
             } label: {
                 HStack(spacing: Spacing.xs) {
                     Image(systemName: pool.type.icon)
-                        .font(.caption)
+                        .font(.campMeta)
                         .foregroundColor(.sage)
                     Text(pool.name)
-                        .font(.caption.weight(.semibold))
+                        .font(.campMetaSemibold)
                         .foregroundColor(.forest)
                     Spacer()
                     Text("\(doneTasks)/\(tasks.count)")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .font(.campMicro)
+                        .foregroundStyle(Color.forest.opacity(0.55))
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption2)
+                        .font(.campMicro)
                         .foregroundColor(Color(.systemGray3))
                 }
                 .padding(.horizontal, Spacing.sm)
                 .padding(.vertical, 6)
-                .background(Color(.systemGray6))
+                .background(Color.surfaceRaised)
                 .cornerRadius(Radius.sm)
             }
             .buttonStyle(.plain)
@@ -234,7 +246,7 @@ private struct PoolSeasonalPoolGroup: View {
                         )
                     }
                 }
-                .background(Color(.systemBackground))
+                .background(Color.surface)
                 .cornerRadius(Radius.sm)
                 .overlay(
                     RoundedRectangle(cornerRadius: Radius.sm)
@@ -264,18 +276,18 @@ private struct PoolChecklistTaskRow: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(task.title)
-                        .font(.subheadline)
+                        .font(.campBody)
                         .foregroundColor(task.isComplete ? .secondary : .forest)
                         .strikethrough(task.isComplete)
                         .fixedSize(horizontal: false, vertical: true)
 
                     if let detail = task.detail {
-                        Text(detail).font(.caption).foregroundColor(.secondary)
+                        Text(detail).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                     }
 
                     if task.isComplete, let date = task.completedDate, let by = task.completedBy {
                         Text("Done \(date.localDateDisplay) by \(by)")
-                            .font(.caption2)
+                            .font(.campMicro)
                             .foregroundColor(.greenText)
                     }
                 }

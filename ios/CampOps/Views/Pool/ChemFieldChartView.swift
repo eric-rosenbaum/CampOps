@@ -28,7 +28,7 @@ struct ChemFieldChartView: View {
                 }
                 .padding(Spacing.md)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.canvas)
             .navigationTitle(field.displayName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -44,19 +44,19 @@ struct ChemFieldChartView: View {
         let status = chemStatus(field: field, value: value)
         return HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Current").font(.caption.weight(.semibold)).foregroundColor(.secondary)
+                Text("Current").font(.campMetaSemibold).foregroundStyle(Color.forest.opacity(0.55))
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(formatted(value))
                         .font(.largeTitle.weight(.bold).monospacedDigit())
                         .foregroundColor(.forest)
-                    Text(field.unit).font(.subheadline).foregroundColor(.secondary)
+                    Text(field.unit).font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
                 }
                 Text(r.readingTime.readingTimeDisplay)
-                    .font(.caption).foregroundColor(.secondary)
+                    .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
             }
             Spacer()
             Text(status.label)
-                .font(.caption2.weight(.semibold))
+                .font(.campLabel)
                 .padding(.horizontal, Spacing.sm)
                 .padding(.vertical, 4)
                 .background(status.bgColor)
@@ -64,16 +64,16 @@ struct ChemFieldChartView: View {
                 .clipShape(Capsule())
         }
         .padding(Spacing.md)
-        .background(Color(.systemBackground))
+        .background(Color.surface)
         .cornerRadius(Radius.md)
     }
 
     private var chartSection: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            Text("History").font(.headline).foregroundColor(.forest)
+            Text("History").font(.campSection).foregroundColor(.forest)
 
             if sorted.isEmpty {
-                Text("No data to display").font(.subheadline).foregroundColor(.secondary)
+                Text("No data to display").font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
                     .frame(maxWidth: .infinity)
                     .padding(Spacing.xl)
             } else {
@@ -117,13 +117,13 @@ struct ChemFieldChartView: View {
                         AxisGridLine()
                         AxisValueLabel {
                             if let v = value.as(Double.self) {
-                                Text(formatted(v)).font(.caption2)
+                                Text(formatted(v)).font(.campMicro)
                             }
                         }
                     }
                 }
                 .padding(Spacing.md)
-                .background(Color(.systemBackground))
+                .background(Color.surface)
                 .cornerRadius(Radius.md)
             }
         }
@@ -132,17 +132,17 @@ struct ChemFieldChartView: View {
     private var rangeCard: some View {
         HStack(spacing: Spacing.lg) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Target range").font(.caption2.weight(.semibold)).foregroundColor(.secondary)
-                Text(field.rangeDisplay).font(.subheadline.weight(.medium)).foregroundColor(.forest)
+                Text("Target range").font(.campLabel).foregroundStyle(Color.forest.opacity(0.55))
+                Text(field.rangeDisplay).font(.campBodyMedium).foregroundColor(.forest)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
-                Text("Unit").font(.caption2.weight(.semibold)).foregroundColor(.secondary)
-                Text(field.unit).font(.subheadline.weight(.medium)).foregroundColor(.forest)
+                Text("Unit").font(.campLabel).foregroundStyle(Color.forest.opacity(0.55))
+                Text(field.unit).font(.campBodyMedium).foregroundColor(.forest)
             }
         }
         .padding(Spacing.md)
-        .background(Color(.systemBackground))
+        .background(Color.surface)
         .cornerRadius(Radius.md)
     }
 

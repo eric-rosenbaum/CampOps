@@ -116,8 +116,8 @@ struct ScanStripSheet: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, Spacing.sm)
                     Text("Take or upload a photo of your test strip and results will be filled in automatically.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(.campBody)
+                        .foregroundStyle(Color.forest.opacity(0.55))
                         .multilineTextAlignment(.center)
                 }
                 .listRowBackground(Color.clear)
@@ -186,13 +186,13 @@ struct ScanStripSheet: View {
                 .scaleEffect(1.4)
                 .padding(.top, Spacing.md)
             Text("Analyzing test strip…")
-                .font(.headline).foregroundColor(.forest)
+                .font(.campSection).foregroundColor(.forest)
             Text("Reading the color blocks…")
-                .font(.subheadline).foregroundColor(.secondary)
+                .font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
             Spacer()
         }
         .frame(maxWidth: .infinity)
-        .background(Color(.systemGroupedBackground))
+        .background(Color.canvas)
     }
 
     // MARK: - Review
@@ -243,7 +243,7 @@ struct ScanStripSheet: View {
                     }
                 }
                 LabeledContent("Logged by") {
-                    Text(authManager.currentUser.name).foregroundColor(.secondary)
+                    Text(authManager.currentUser.name).foregroundStyle(Color.forest.opacity(0.55))
                 }
             }
 
@@ -377,7 +377,7 @@ private struct ScanReadingField: View {
                 Text(label).foregroundColor(.primary)
                 if isLowConfidence {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.caption).foregroundColor(.priorityHigh)
+                        .font(.campMeta).foregroundColor(.priorityHigh)
                 }
                 Spacer()
                 Circle().fill(status.color).frame(width: 8, height: 8)
@@ -387,7 +387,7 @@ private struct ScanReadingField: View {
                     .frame(width: 50, alignment: .trailing)
             }
             Stepper(value: $value, in: 0...999, step: step) { EmptyView() }.labelsHidden()
-            Text(range).font(.caption2).foregroundColor(.secondary)
+            Text(range).font(.campMicro).foregroundStyle(Color.forest.opacity(0.55))
         }
         .padding(.vertical, 2)
     }

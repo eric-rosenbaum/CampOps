@@ -16,6 +16,7 @@
 import type {
   InventoryItem, MealPeriod, Recipe, RecipeIngredient, MenuEntry,
   CommissarySession, MealEvent, ProductionIngredient, RecipeStep, PrepTimeSlot,
+  WasteCategory,
 } from './types';
 import { toDateStr, todayStr, parseDateStr } from './utils';
 
@@ -444,6 +445,45 @@ export const ADJUSTMENT_REASON_LABELS: Record<string, string> = {
   count_correction: 'Inventory count correction',
   other: 'Other',
 };
+
+export const WASTE_CATEGORIES: WasteCategory[] = [
+  'spoilage', 'overproduction', 'prep_loss', 'plate_waste', 'damage', 'other',
+];
+
+export const WASTE_CATEGORY_LABELS: Record<WasteCategory, string> = {
+  spoilage: 'Spoiled / expired before use',
+  overproduction: 'Cooked more than was needed',
+  prep_loss: 'Trim, peel, bone loss',
+  plate_waste: 'Served but not eaten',
+  damage: 'Dropped, contaminated, equipment failure',
+  other: 'Other',
+};
+
+/** Short form for chart legends and table cells, where the full sentence is too long. */
+export const WASTE_CATEGORY_SHORT: Record<WasteCategory, string> = {
+  spoilage: 'Spoilage',
+  overproduction: 'Overproduction',
+  prep_loss: 'Prep loss',
+  plate_waste: 'Plate waste',
+  damage: 'Damage',
+  other: 'Other',
+};
+
+/**
+ * Categories that better ordering, rotation and forecasting can actually move.
+ *
+ * `prep_loss` and `plate_waste` are deliberately excluded: trim loss is a property of the
+ * ingredient, and ReFED puts roughly 70% of foodservice waste at the plate, which does not
+ * respond to how you buy. `other` is excluded too — it is unknown, and counting unknowns
+ * as reducible would inflate the only number on this tab anyone will quote.
+ */
+export const REDUCIBLE_WASTE: ReadonlySet<WasteCategory> = new Set<WasteCategory>([
+  'spoilage', 'overproduction', 'damage',
+]);
+
+export function isReducibleWaste(c: WasteCategory | null): boolean {
+  return c != null && REDUCIBLE_WASTE.has(c);
+}
 
 export const MEAL_PERIODS: MealPeriod[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 

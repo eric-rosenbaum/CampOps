@@ -28,8 +28,8 @@ struct AddPoolSheet: View {
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(typeDescription)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .font(.campBody)
+                            .foregroundStyle(Color.forest.opacity(0.55))
                     }
                 } header: {
                     Text("About this type")

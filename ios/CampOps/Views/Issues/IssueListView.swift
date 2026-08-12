@@ -26,7 +26,10 @@ struct IssueListView: View {
                     issueList
                 }
             }
+            .campCanvas()
+            .refreshable { await vm.refresh() }
             .navigationTitle("Issues & Repairs")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) { UserMenuButton() }
                 if authManager.can.createIssue {
@@ -76,11 +79,26 @@ struct IssueListView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: Spacing.md) {
-            Image(systemName: "wrench.adjustable").font(.system(size: 48)).foregroundColor(.sageLight)
-            Text(vm.searchText.isEmpty ? "No issues logged" : "No results")
-                .font(.headline).foregroundColor(.secondary)
-        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+        Group {
+            if vm.searchText.isEmpty {
+                ContentUnavailableView {
+                    Label("No issues logged", systemImage: "wrench.adjustable")
+                        .font(.campSection)
+                } description: {
+                    Text("When something breaks, log it here so the right person picks it up.")
+                        .font(.campBody)
+                } actions: {
+                    if authManager.can.createIssue {
+                        Button("Log an issue") { showingLogIssue = true }
+                            .font(.campBodySemibold)
+                            .foregroundStyle(Color.sage)
+                    }
+                }
+            } else {
+                ContentUnavailableView.search(text: vm.searchText)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var filterMenu: some View {

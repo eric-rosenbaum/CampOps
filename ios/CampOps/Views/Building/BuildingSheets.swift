@@ -437,7 +437,7 @@ struct FlagComponentSheet: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Create a ticket in Issues & Repairs")
                             if let b = building {
-                                Text("Location: \(b.locationLabel ?? b.name)").font(.caption).foregroundColor(.secondary)
+                                Text("Location: \(b.locationLabel ?? b.name)").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                             }
                         }
                     }

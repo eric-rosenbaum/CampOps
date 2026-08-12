@@ -5,23 +5,23 @@ struct ActivityFeed: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Activity")
-                .font(.subheadline.weight(.semibold))
+                .font(.campBodySemibold)
                 .foregroundColor(.forest)
                 .padding(.bottom, Spacing.sm)
             if activity.isEmpty {
                 Text("No activity yet.")
-                    .font(.caption).foregroundColor(.secondary)
+                    .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
             } else {
                 ForEach(activity.reversed()) { entry in
                     HStack(alignment: .top, spacing: Spacing.sm) {
                         AvatarCircle(initials: initials(for: entry.userName), size: 20)
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 4) {
-                                Text(entry.userName).font(.caption.weight(.semibold))
+                                Text(entry.userName).font(.campMetaSemibold)
                                 Text(entry.createdAt.relativeDisplay)
-                                    .font(.caption).foregroundColor(.secondary)
+                                    .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                             }
-                            Text(entry.action).font(.caption).foregroundColor(.secondary)
+                            Text(entry.action).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                         }
                     }
                     .padding(.vertical, Spacing.xs)

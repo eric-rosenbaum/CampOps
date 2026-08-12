@@ -22,7 +22,7 @@ struct AllPoolsOverview: View {
                 .padding(Spacing.md)
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.canvas)
     }
 
     // MARK: - Summary row
@@ -45,9 +45,9 @@ struct AllPoolsOverview: View {
                 .font(.system(size: 52))
                 .foregroundColor(.sageLight)
             Text("No pools added yet")
-                .font(.headline).foregroundColor(.secondary)
+                .font(.campSection).foregroundStyle(Color.forest.opacity(0.55))
             Text("Use the menu to add your first pool or waterfront.")
-                .font(.subheadline).foregroundColor(.secondary)
+                .font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -73,12 +73,12 @@ private struct SummaryTile: View {
                 .font(.title2.weight(.bold).monospacedDigit())
                 .foregroundColor(.forest)
             Text(label)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.campMeta)
+                .foregroundStyle(Color.forest.opacity(0.55))
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.sm)
-        .background(Color(.systemBackground))
+        .background(Color.surface)
         .cornerRadius(Radius.md)
     }
 }
@@ -112,18 +112,18 @@ private struct PoolStatusCard: View {
                     Image(systemName: pool.type.icon)
                         .foregroundColor(.sage)
                     Text(pool.name)
-                        .font(.headline)
+                        .font(.campSection)
                         .foregroundColor(.forest)
                     Spacer()
                     Text(pool.type.displayName)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundColor(.secondary)
+                        .font(.campLabel)
+                        .foregroundStyle(Color.forest.opacity(0.55))
                         .padding(.horizontal, Spacing.sm)
                         .padding(.vertical, 3)
-                        .background(Color(.systemGray6))
+                        .background(Color.surfaceRaised)
                         .clipShape(Capsule())
                     Image(systemName: "chevron.right")
-                        .font(.caption)
+                        .font(.campMeta)
                         .foregroundColor(Color(.systemGray3))
                 }
 
@@ -137,13 +137,13 @@ private struct PoolStatusCard: View {
 
                 if let notes = pool.notes, !notes.isEmpty {
                     Text(notes)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.campMeta)
+                        .foregroundStyle(Color.forest.opacity(0.55))
                         .lineLimit(2)
                 }
             }
             .padding(Spacing.md)
-            .background(Color(.systemBackground))
+            .background(Color.surface)
             .cornerRadius(Radius.md)
         }
         .buttonStyle(.plain)
@@ -161,13 +161,13 @@ private struct PoolStatusCard: View {
                     Spacer()
                 }
                 Text("Last reading: \(r.readingTime.readingTimeDisplay)")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(.campMicro)
+                    .foregroundStyle(Color.forest.opacity(0.55))
             }
         } else {
             Text("No readings logged")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(.campBody)
+                .foregroundStyle(Color.forest.opacity(0.55))
         }
     }
 
@@ -175,15 +175,15 @@ private struct PoolStatusCard: View {
     private var waterfrontSummary: some View {
         HStack(spacing: Spacing.md) {
             Label("\(poolEquipment.count) equipment", systemImage: "wrench.adjustable")
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.campMeta)
+                .foregroundStyle(Color.forest.opacity(0.55))
             if issueCount > 0 {
                 Label("\(issueCount) issue\(issueCount == 1 ? "" : "s")", systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption.weight(.semibold))
+                    .font(.campMetaSemibold)
                     .foregroundColor(.priorityUrgent)
             } else if !poolEquipment.isEmpty {
                 Label("All operational", systemImage: "checkmark.circle.fill")
-                    .font(.caption.weight(.semibold))
+                    .font(.campMetaSemibold)
                     .foregroundColor(.sage)
             }
             Spacer()
@@ -202,7 +202,7 @@ private struct MiniChemCell: View {
 
     var body: some View {
         VStack(spacing: 1) {
-            Text(label).font(.caption2).foregroundColor(.secondary)
+            Text(label).font(.campMicro).foregroundStyle(Color.forest.opacity(0.55))
             Text(String(format: "%.\(decimals)f", value))
                 .font(.subheadline.weight(.semibold).monospacedDigit())
                 .foregroundColor(status == .ok ? .forest : status.color)

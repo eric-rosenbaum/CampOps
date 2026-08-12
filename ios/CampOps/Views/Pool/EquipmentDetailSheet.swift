@@ -35,7 +35,7 @@ struct EquipmentDetailSheet: View {
                 }
                 .padding(Spacing.md)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.canvas)
             .navigationTitle(live.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -113,19 +113,19 @@ struct EquipmentDetailSheet: View {
                 HStack {
                     Image(systemName: live.type.icon).foregroundColor(.sage).frame(width: 20)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(live.name).font(.headline).foregroundColor(.forest)
-                        Text(live.type.displayName).font(.caption).foregroundColor(.secondary)
+                        Text(live.name).font(.campSection).foregroundColor(.forest)
+                        Text(live.type.displayName).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                     }
                     Spacer()
                     Text(live.status.displayName)
-                        .font(.caption2.weight(.semibold))
+                        .font(.campLabel)
                         .padding(.horizontal, Spacing.sm).padding(.vertical, 3)
                         .background(live.status.bgColor).foregroundColor(live.status.color)
                         .clipShape(Capsule())
                 }
 
                 if !live.statusDetail.isEmpty && live.statusDetail != "Normal" {
-                    Text(live.statusDetail).font(.subheadline).foregroundColor(.secondary)
+                    Text(live.statusDetail).font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
                 }
 
                 HStack(spacing: Spacing.lg) {
@@ -140,7 +140,7 @@ struct EquipmentDetailSheet: View {
                 HStack(spacing: Spacing.sm) {
                     Button { showingLogService = true } label: {
                         Label("Log service", systemImage: "wrench.adjustable")
-                            .font(.subheadline.weight(.medium))
+                            .font(.campBodyMedium)
                     }
                     .buttonStyle(.bordered)
                     .tint(.sage)
@@ -149,7 +149,7 @@ struct EquipmentDetailSheet: View {
                     Button { showingFlagIssue = true } label: {
                         Label(live.status == .ok ? "Flag issue" : "Edit issue",
                               systemImage: live.status == .ok ? "exclamationmark.triangle" : "pencil.circle")
-                            .font(.subheadline.weight(.medium))
+                            .font(.campBodyMedium)
                     }
                     .buttonStyle(.bordered)
                     .tint(live.status == .ok ? .red : .orange)
@@ -158,7 +158,7 @@ struct EquipmentDetailSheet: View {
             }
             .padding(Spacing.md)
         }
-        .background(Color(.systemBackground))
+        .background(Color.surface)
         .cornerRadius(Radius.md)
         .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(Color.border, lineWidth: 1))
     }
@@ -166,7 +166,7 @@ struct EquipmentDetailSheet: View {
     private var serviceHistorySection: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("Service history")
-                .font(.headline).foregroundColor(.forest)
+                .font(.campSection).foregroundColor(.forest)
                 .padding(.horizontal, Spacing.xs)
 
             VStack(spacing: 0) {
@@ -178,19 +178,19 @@ struct EquipmentDetailSheet: View {
                     }
                 }
             }
-            .background(Color(.systemBackground))
+            .background(Color.surface)
             .cornerRadius(Radius.md)
         }
     }
 
     private func infoRow(label: String, value: String) -> some View {
         HStack {
-            Text(label).font(.subheadline).foregroundColor(.secondary)
+            Text(label).font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
             Spacer()
-            Text(value).font(.subheadline).foregroundColor(.forest)
+            Text(value).font(.campBody).foregroundColor(.forest)
         }
         .padding(Spacing.md)
-        .background(Color(.systemBackground))
+        .background(Color.surface)
         .cornerRadius(Radius.md)
     }
 }
@@ -208,17 +208,17 @@ private struct ServiceLogRow: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(entry.serviceType.displayName)
-                        .font(.subheadline.weight(.medium)).foregroundColor(.forest)
+                        .font(.campBodyMedium).foregroundColor(.forest)
                     Text("\(entry.datePerformed.localDateDisplay) · \(entry.performedBy)")
-                        .font(.caption).foregroundColor(.secondary)
+                        .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                     if let notes = entry.notes {
-                        Text(notes).font(.caption).foregroundColor(.secondary)
+                        Text(notes).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                     }
                 }
                 Spacer()
                 if let cost = entry.cost {
                     Text(String(format: "$%.0f", cost))
-                        .font(.caption.weight(.semibold)).foregroundColor(.secondary)
+                        .font(.campMetaSemibold).foregroundStyle(Color.forest.opacity(0.55))
                 }
             }
             .padding(.horizontal, Spacing.md)
@@ -244,8 +244,8 @@ private struct LabelValuePair: View {
     let label, value: String
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(label).font(.caption2).foregroundColor(.secondary)
-            Text(value).font(.caption.weight(.medium)).foregroundColor(.forest)
+            Text(label).font(.campMicro).foregroundStyle(Color.forest.opacity(0.55))
+            Text(value).font(.campMetaMedium).foregroundColor(.forest)
         }
     }
 }

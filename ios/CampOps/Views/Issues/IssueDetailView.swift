@@ -18,14 +18,14 @@ struct IssueDetailView: View {
                 // Header
                 VStack(alignment: .leading, spacing: Spacing.sm) {
                     HStack { PriorityBadge(priority: vm.issue.priority); Spacer() }
-                    Text(vm.issue.title).font(.title2.weight(.bold)).foregroundColor(.forest)
+                    Text(vm.issue.title).font(.campTitle).foregroundColor(.forest)
                     HStack(spacing: Spacing.sm) {
                         StatusBadge(status: vm.issue.status)
                         Label(vm.issue.locations.joined(separator: ", "), systemImage: "mappin.circle")
-                            .font(.caption).foregroundColor(.secondary)
+                            .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                     }
                     Text("Reported by \(vm.issue.reportedBy?.name ?? "Unknown") · \(vm.issue.createdAt.dateTimeDisplay)")
-                        .font(.caption).foregroundColor(.secondary)
+                        .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                 }
                 // Photo
                 if let url = vm.issue.photoUrl, let imageUrl = URL(string: url) {
@@ -42,43 +42,43 @@ struct IssueDetailView: View {
                 // Description
                 if let desc = vm.issue.description {
                     VStack(alignment: .leading, spacing: Spacing.xs) {
-                        Text("Description").font(.subheadline.weight(.semibold))
-                        Text(desc).font(.body).foregroundColor(.secondary)
+                        Text("Description").font(.campBodySemibold)
+                        Text(desc).font(.campBodyLarge).foregroundStyle(Color.forest.opacity(0.55))
                     }
                 }
                 // Assignment
                 VStack(alignment: .leading, spacing: Spacing.xs) {
-                    Text("Assigned to").font(.subheadline.weight(.semibold))
+                    Text("Assigned to").font(.campBodySemibold)
                     if authManager.can.assign {
                         Button { showingAssignPicker = true } label: {
                             HStack {
                                 if let a = vm.issue.assignedTo {
                                     AvatarCircle(initials: a.initials, size: 28)
-                                    Text(a.name).font(.subheadline)
+                                    Text(a.name).font(.campBody)
                                 } else {
                                     Image(systemName: "person.badge.plus")
-                                    Text("Unassigned").font(.subheadline).foregroundColor(.secondary)
+                                    Text("Unassigned").font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
                                 }
                                 Spacer()
-                                Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary)
+                                Image(systemName: "chevron.right").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                             }
                         }.buttonStyle(.plain)
                     } else {
-                        Text(vm.issue.assignedTo?.name ?? "Unassigned").font(.subheadline).foregroundColor(.secondary)
+                        Text(vm.issue.assignedTo?.name ?? "Unassigned").font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
                     }
                 }
                 // Costs
                 if let est = vm.issue.estimatedCost {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Estimated cost").font(.caption).foregroundColor(.secondary)
-                            Text("$\(String(format: "%.2f", est))").font(.subheadline.weight(.medium))
+                            Text("Estimated cost").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
+                            Text("$\(String(format: "%.2f", est))").font(.campBodyMedium)
                         }
                         if let actual = vm.issue.actualCost {
                             Spacer()
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Actual cost").font(.caption).foregroundColor(.secondary)
-                                Text("$\(String(format: "%.2f", actual))").font(.subheadline.weight(.medium))
+                                Text("Actual cost").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
+                                Text("$\(String(format: "%.2f", actual))").font(.campBodyMedium)
                             }
                         }
                     }

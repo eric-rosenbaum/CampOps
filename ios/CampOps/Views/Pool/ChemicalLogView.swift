@@ -29,7 +29,7 @@ struct ChemicalLogView: View {
             }
             .padding(Spacing.md)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.canvas)
         .sheet(item: $chartField) { field in
             ChemFieldChartView(field: field, readings: vm.readings)
         }
@@ -66,22 +66,22 @@ struct ChemicalLogView: View {
     private func poolStatusRow(_ r: ChemicalReading) -> some View {
         HStack {
             Image(systemName: "drop.fill").foregroundColor(.sage)
-            Text("Pool status").font(.subheadline).foregroundColor(.secondary)
+            Text("Pool status").font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
             Spacer()
             Text(r.poolStatus.displayName)
-                .font(.subheadline.weight(.medium))
+                .font(.campBodyMedium)
                 .foregroundColor(.forest)
         }
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, Spacing.sm)
-        .background(Color(.systemBackground))
+        .background(Color.surface)
         .cornerRadius(Radius.md)
     }
 
     private var readingsSection: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("Readings log")
-                .font(.headline)
+                .font(.campSection)
                 .foregroundColor(.forest)
                 .padding(.horizontal, Spacing.xs)
 
@@ -95,11 +95,11 @@ struct ChemicalLogView: View {
                     Text("CYA").frame(width: 42, alignment: .trailing)
                     Text("Temp").frame(width: 46, alignment: .trailing)
                 }
-                .font(.caption.weight(.semibold))
-                .foregroundColor(.secondary)
+                .font(.campMetaSemibold)
+                .foregroundStyle(Color.forest.opacity(0.55))
                 .padding(.horizontal, Spacing.md)
                 .padding(.vertical, Spacing.sm)
-                .background(Color(.systemGroupedBackground))
+                .background(Color.canvas)
 
                 Divider()
 
@@ -113,7 +113,7 @@ struct ChemicalLogView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .background(Color(.systemBackground))
+            .background(Color.surface)
             .cornerRadius(Radius.md)
         }
     }
@@ -121,8 +121,8 @@ struct ChemicalLogView: View {
     private var emptyChemState: some View {
         VStack(spacing: Spacing.md) {
             Image(systemName: "drop.circle").font(.system(size: 48)).foregroundColor(.sageLight)
-            Text("No readings logged").font(.headline).foregroundColor(.secondary)
-            Text("Tap + to log a chemical reading").font(.subheadline).foregroundColor(.secondary)
+            Text("No readings logged").font(.campSection).foregroundStyle(Color.forest.opacity(0.55))
+            Text("Tap + to log a chemical reading").font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
         }
         .frame(maxWidth: .infinity)
         .padding(.top, Spacing.xxl)
@@ -138,7 +138,7 @@ private struct AlertBannerRow: View {
         HStack(alignment: .top, spacing: Spacing.sm) {
             Image(systemName: level == .alert ? "exclamationmark.triangle.fill" : "exclamationmark.circle.fill")
                 .foregroundColor(level.color)
-            Text(message).font(.subheadline).foregroundColor(.forest)
+            Text(message).font(.campBody).foregroundColor(.forest)
             Spacer()
         }
         .padding(Spacing.md)
@@ -159,19 +159,19 @@ private struct ChemStatusCard: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(field.displayName)
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(.secondary)
+                    .font(.campMetaSemibold)
+                    .foregroundStyle(Color.forest.opacity(0.55))
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text(formattedValue)
                         .font(.title2.weight(.bold).monospacedDigit())
                         .foregroundColor(.forest)
                     Text(field.unit)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.campMeta)
+                        .foregroundStyle(Color.forest.opacity(0.55))
                 }
                 Text(field.rangeDisplay)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(.campMicro)
+                    .foregroundStyle(Color.forest.opacity(0.55))
             }
             Spacer()
             VStack(spacing: 4) {
@@ -179,13 +179,13 @@ private struct ChemStatusCard: View {
                     .fill(status.color)
                     .frame(width: 10, height: 10)
                 Image(systemName: "chart.line.uptrend.xyaxis")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(.campMicro)
+                    .foregroundStyle(Color.forest.opacity(0.55))
             }
         }
         .padding(Spacing.md)
-        .background(status.bgColor.opacity(status == .ok ? 0 : 1).overlay(Color(.systemBackground)))
-        .background(Color(.systemBackground))
+        .background(status.bgColor.opacity(status == .ok ? 0 : 1).overlay(Color.surface))
+        .background(Color.surface)
         .cornerRadius(Radius.md)
         .overlay(
             RoundedRectangle(cornerRadius: Radius.md)
@@ -213,11 +213,11 @@ private struct ReadingRow: View {
             HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(reading.readingTime.readingTimeDisplay)
-                        .font(.subheadline)
+                        .font(.campBody)
                         .foregroundColor(.forest)
                     Text(reading.loggedByName)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.campMeta)
+                        .foregroundStyle(Color.forest.opacity(0.55))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -233,7 +233,7 @@ private struct ReadingRow: View {
                     .frame(width: 46, alignment: .trailing)
 
                 Image(systemName: "chevron.right")
-                    .font(.caption2)
+                    .font(.campMicro)
                     .foregroundColor(Color(.systemGray3))
                     .padding(.leading, 4)
             }
@@ -251,7 +251,7 @@ private struct ChemCell: View {
     var decimals: Int = 0
     var body: some View {
         Text(String(format: "%.\(decimals)f", value))
-            .font(.subheadline.monospacedDigit())
+            .font(.campBody.monospacedDigit())
             .foregroundColor(status == .ok ? .forest : status.color)
             .fontWeight(status == .ok ? .regular : .semibold)
     }

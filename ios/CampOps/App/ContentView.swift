@@ -18,6 +18,9 @@ struct ContentView: View {
                 LoginView()
             } else if !authManager.hasCamp {
                 JoinCampView()
+            } else if let camp = authManager.currentCamp, !camp.isAccessible {
+                // Suspended or trial-expired camps are blocked before any data loads.
+                CampBlockedView(status: camp.status)
             } else {
                 mainTabView
                     .task(id: authManager.currentCamp?.id) {
@@ -63,6 +66,9 @@ struct ContentView: View {
                     .tabItem { Label("Building", systemImage: "building.2.fill") }
             }
         }
+        // An admin with every module sees six tabs, which iPhone collapses into "More".
+        // On iPad the same set becomes a proper sidebar instead of a cramped tab strip.
+        .tabViewStyle(.sidebarAdaptable)
     }
 
     private func loadCampData() async {
@@ -103,8 +109,8 @@ private struct AppLoadingView: View {
             ProgressView()
                 .scaleEffect(1.2)
             Text("Loading…")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(.campBody)
+                .foregroundStyle(Color.forest.opacity(0.55))
         }
     }
 }

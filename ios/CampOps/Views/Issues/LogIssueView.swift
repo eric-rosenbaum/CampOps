@@ -27,7 +27,7 @@ struct LogIssueView: View {
                             Text("Location")
                             Spacer()
                             Text(vm.locationIds.isEmpty ? "None" : vm.locationNames.joined(separator: ", "))
-                                .foregroundColor(.secondary).lineLimit(1)
+                                .foregroundStyle(Color.forest.opacity(0.55)).lineLimit(1)
                         }
                     }
                     Picker("Priority", selection: $vm.priority) {

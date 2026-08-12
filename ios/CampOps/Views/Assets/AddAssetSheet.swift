@@ -105,7 +105,7 @@ struct AddAssetSheet: View {
                                     .keyboardType(.decimalPad)
                                     .multilineTextAlignment(.trailing)
                                     .frame(width: 100)
-                                Text("mi").foregroundStyle(.secondary)
+                                Text("mi").foregroundStyle(Color.forest.opacity(0.55))
                             }
                         }
                     }
@@ -119,7 +119,7 @@ struct AddAssetSheet: View {
                                     .keyboardType(.decimalPad)
                                     .multilineTextAlignment(.trailing)
                                     .frame(width: 100)
-                                Text("hrs").foregroundStyle(.secondary)
+                                Text("hrs").foregroundStyle(Color.forest.opacity(0.55))
                             }
                         }
                     }

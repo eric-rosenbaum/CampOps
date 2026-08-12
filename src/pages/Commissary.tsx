@@ -30,6 +30,7 @@ import { DietCountsModal } from '@/components/commissary/DietCountsModal';
 import { CountModal } from '@/components/commissary/CountModal';
 import { CoursesModal } from '@/components/commissary/CoursesModal';
 import { SubstitutionModal } from '@/components/commissary/SubstitutionModal';
+import { WasteTab } from '@/components/commissary/WasteTab';
 import { SettingsTab } from '@/components/commissary/SettingsTab';
 
 // Production guide and Cost tabs are archived (out of scope for v1). Their components,
@@ -41,6 +42,7 @@ const TABS: { id: CommissaryTab; label: string }[] = [
   { id: 'menu', label: 'Menu builder' },
   { id: 'allergy', label: 'Allergy program' },
   { id: 'ordering', label: 'Ordering' },
+  { id: 'waste', label: 'Waste' },
   { id: 'settings', label: 'Settings' },
 ];
 
@@ -91,7 +93,7 @@ export function Commissary() {
       if (!canViewCamperHealth) return undefined;
       return <Button size="sm" onClick={() => openModal({ kind: 'camper' })}>+ Add camper</Button>;
     }
-    if (activeTab === 'ordering' || activeTab === 'settings') return undefined;
+    if (activeTab === 'ordering' || activeTab === 'settings' || activeTab === 'waste') return undefined;
     // Menu tab: session mode offers "+ New session"; retreats mode manages menus per retreat inside the builder.
     if (retreatsMode) return undefined;
     return <Button size="sm" onClick={() => openModal({ kind: 'session' })}>+ New session</Button>;
@@ -139,6 +141,7 @@ export function Commissary() {
         {activeTab === 'recipes' && <RecipesTab />}
         {activeTab === 'allergy' && !retreatsMode && <AllergyTab />}
         {activeTab === 'ordering' && <OrderingTab />}
+        {activeTab === 'waste' && <WasteTab />}
         {activeTab === 'settings' && <SettingsTab />}
       </div>
 

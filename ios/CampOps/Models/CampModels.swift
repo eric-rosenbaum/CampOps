@@ -50,16 +50,51 @@ struct StaffGroup: Codable, Identifiable {
 enum CampRole: String, Codable {
     case admin = "admin"
     case staff = "staff"
+    case viewer = "viewer"
+
+    // Decodes leniently, failing CLOSED to the least-privileged role.
+    //
+    // This used to be a plain synthesized decode, which meant a role the app didn't know about
+    // threw — and because memberships are decoded as an array, ONE unknown role failed the whole
+    // `[CampMemberRow]` decode. The user then looked camp-less and was parked on the join screen
+    // forever. Any role the web adds in future must degrade to read-only here, never to a lockout.
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = CampRole(rawValue: raw) ?? .viewer
+    }
 
     var displayName: String {
         switch self {
-        case .admin: return "Administrator"
-        case .staff: return "Staff"
+        case .admin:  return "Administrator"
+        case .staff:  return "Staff"
+        case .viewer: return "Viewer"
         }
     }
 }
 
-struct Camp: Codable, Identifiable {
+/// Mirrors the web app's `CampStatus`. Anything other than `.active` blocks access.
+enum CampStatus: String, Codable {
+    case active
+    case suspended
+    case trialExpired = "trial_expired"
+
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = CampStatus(rawValue: raw) ?? .active
+    }
+}
+
+/// Mirrors the web app's `CampAccountType`.
+enum CampAccountType: String, Codable {
+    case customer, trial, demo, internalAccount = "internal"
+
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = CampAccountType(rawValue: raw) ?? .customer
+    }
+}
+
+struct Camp: Codable, Identifiable, Equatable {
     let id: String
     let name: String
     let slug: String
@@ -68,25 +103,41 @@ struct Camp: Codable, Identifiable {
     let state: String?
     let modules: [String: Bool]
     let locations: [String]
+    /// Suspended / trial-expired camps are blocked, exactly as on web.
+    let status: CampStatus
+    let accountType: CampAccountType
+    let trialEndsAt: String?
+    /// Set while the camp sits in the 30-day trash. Hidden from members entirely.
+    let deletedAt: String?
+
+    var isAccessible: Bool { status == .active && deletedAt == nil }
 
     enum CodingKeys: String, CodingKey {
-        case id, name, slug, modules, locations
-        case logoUrl  = "logo_url"
-        case campType = "camp_type"
-        case state
+        case id, name, slug, modules, locations, status, state
+        case logoUrl     = "logo_url"
+        case campType    = "camp_type"
+        case accountType = "account_type"
+        case trialEndsAt = "trial_ends_at"
+        case deletedAt   = "deleted_at"
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        id        = try c.decode(String.self, forKey: .id)
-        name      = try c.decode(String.self, forKey: .name)
-        slug      = try c.decode(String.self, forKey: .slug)
-        logoUrl   = try c.decodeIfPresent(String.self, forKey: .logoUrl)
-        campType  = try c.decodeIfPresent(String.self, forKey: .campType)
-        state     = try c.decodeIfPresent(String.self, forKey: .state)
-        modules   = (try? c.decode([String: Bool].self, forKey: .modules)) ?? [:]
-        locations = (try? c.decode([String].self, forKey: .locations)) ?? []
+        id          = try c.decode(String.self, forKey: .id)
+        name        = try c.decode(String.self, forKey: .name)
+        slug        = try c.decode(String.self, forKey: .slug)
+        logoUrl     = try c.decodeIfPresent(String.self, forKey: .logoUrl)
+        campType    = try c.decodeIfPresent(String.self, forKey: .campType)
+        state       = try c.decodeIfPresent(String.self, forKey: .state)
+        modules     = (try? c.decode([String: Bool].self, forKey: .modules)) ?? [:]
+        locations   = (try? c.decode([String].self, forKey: .locations)) ?? []
+        status      = (try? c.decode(CampStatus.self, forKey: .status)) ?? .active
+        accountType = (try? c.decode(CampAccountType.self, forKey: .accountType)) ?? .customer
+        trialEndsAt = try? c.decodeIfPresent(String.self, forKey: .trialEndsAt)
+        deletedAt   = try? c.decodeIfPresent(String.self, forKey: .deletedAt)
     }
+
+    static func == (lhs: Camp, rhs: Camp) -> Bool { lhs.id == rhs.id }
 }
 
 struct CampMember: Codable, Identifiable {

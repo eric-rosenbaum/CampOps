@@ -38,7 +38,7 @@ struct SeasonalTaskSheet: View {
 
                 Section("Assignees") {
                     if assignees.isEmpty {
-                        Text("No assignees added").foregroundColor(.secondary).font(.subheadline)
+                        Text("No assignees added").foregroundStyle(Color.forest.opacity(0.55)).font(.campBody)
                     } else {
                         ForEach(assignees, id: \.self) { name in
                             HStack {
@@ -72,7 +72,7 @@ struct SeasonalTaskSheet: View {
                         } label: {
                             Label("Add assignee", systemImage: "plus.circle")
                                 .foregroundColor(.sage)
-                                .font(.subheadline)
+                                .font(.campBody)
                         }
                     }
                 }

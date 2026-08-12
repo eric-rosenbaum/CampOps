@@ -6,11 +6,18 @@
 	<string></string>
 	<key>UILaunchScreen</key>
 	<dict>
-		<key>UIImageName</key>
-		<string></string>
-		<key>UILaunchScreen</key>
-		<dict/>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
 	</dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>DMSans-Regular.ttf</string>
+		<string>DMSans-Medium.ttf</string>
+		<string>DMSans-SemiBold.ttf</string>
+		<string>DMSans-Bold.ttf</string>
+		<string>Fraunces-SemiBold.ttf</string>
+		<string>Fraunces-Bold.ttf</string>
+	</array>
 	<key>SUPABASE_URL</key>
 	<string>https://fbfxeupqguzxrbyqojyg.supabase.co</string>
 	<key>SUPABASE_ANON_KEY</key>

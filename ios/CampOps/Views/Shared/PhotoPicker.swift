@@ -12,7 +12,7 @@ struct PhotoPicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            Text("Photo").font(.subheadline.weight(.medium))
+            Text("Photo").font(.campBodyMedium)
             if let img = selectedImage {
                 ZStack(alignment: .topTrailing) {
                     Image(uiImage: img).resizable().scaledToFill()
@@ -20,7 +20,7 @@ struct PhotoPicker: View {
                         .clipped().cornerRadius(Radius.md)
                     Button { selectedImage = nil; pickerItem = nil } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.title3).foregroundColor(.white).shadow(radius: 2).padding(Spacing.sm)
+                            .font(.campPageTitle).foregroundColor(.white).shadow(radius: 2).padding(Spacing.sm)
                     }
                 }
             } else if let url = existingUrl, let imageUrl = URL(string: url) {
@@ -34,18 +34,18 @@ struct PhotoPicker: View {
                     .frame(maxWidth: .infinity).frame(height: 180)
                     .clipped().cornerRadius(Radius.md)
                     Button { showingSourcePicker = true } label: {
-                        Text("Replace").font(.caption.weight(.medium))
+                        Text("Replace").font(.campMetaMedium)
                             .padding(.horizontal, Spacing.sm).padding(.vertical, 4)
-                            .background(Color(.systemBackground).opacity(0.85))
+                            .background(Color.surface.opacity(0.85))
                             .cornerRadius(Radius.sm).padding(Spacing.sm)
                     }
                 }
             } else {
                 Button { showingSourcePicker = true } label: {
                     Label("Add photo", systemImage: "camera")
-                        .font(.subheadline).foregroundColor(.sage)
+                        .font(.campBody).foregroundColor(.sage)
                         .frame(maxWidth: .infinity).frame(height: 100)
-                        .background(Color(.systemGray6)).cornerRadius(Radius.md)
+                        .background(Color.surfaceRaised).cornerRadius(Radius.md)
                         .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(Color.border, lineWidth: 1))
                 }
             }

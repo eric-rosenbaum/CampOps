@@ -25,17 +25,46 @@ struct HomeView: View {
                         .environmentObject(checklistVM)
                 }
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Camp Command")
+            .campCanvas()
+            .refreshable {
+                async let i: Void = issueVM.refresh()
+                async let c: Void = checklistVM.refresh()
+                _ = await (i, c)
+            }
+            .navigationTitle("CampCommand")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    UserMenuButton()
-                }
+                ToolbarItem(placement: .principal) { campHeader }
+                ToolbarItem(placement: .primaryAction) { UserMenuButton() }
             }
         }
         .task(id: authManager.currentUser.id) {
             if issueVM.issues.isEmpty { await issueVM.load() }
             await checklistVM.load()
+        }
+    }
+
+    // The camp's own identity in the title bar — its logo when it has one, otherwise a
+    // wordmark. `logoUrl` was fetched but never shown anywhere in the app before.
+    private var campHeader: some View {
+        HStack(spacing: Spacing.sm) {
+            if let logo = authManager.currentCamp?.logoUrl, let url = URL(string: logo) {
+                AsyncImage(url: url) { image in
+                    image.resizable().scaledToFill()
+                } placeholder: {
+                    Color.sagePale
+                }
+                .frame(width: 22, height: 22)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            } else {
+                Image(systemName: "tree.fill")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.sage)
+            }
+            Text(authManager.currentCamp?.name ?? "CampCommand")
+                .font(.campBodySemibold)
+                .foregroundStyle(Color.forest)
+                .lineLimit(1)
         }
     }
 
@@ -56,10 +85,20 @@ struct HomeView: View {
     private var greetingHeader: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Good \(greeting), \(authManager.currentUser.firstName)")
-                .font(.title2.weight(.bold)).foregroundColor(.forest)
-            Text(authManager.currentMember?.role.displayName ?? "")
-                .font(.subheadline).foregroundColor(.secondary)
+                .font(.campDisplay)
+                .foregroundStyle(Color.forest)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+            Text(todayLabel)
+                .font(.campSecondary)
+                .foregroundStyle(Color.forest.opacity(0.5))
         }
+    }
+
+    private var todayLabel: String {
+        let f = DateFormatter()
+        f.dateFormat = "EEEE, MMMM d"
+        return f.string(from: Date())
     }
 
     private var statsGrid: some View {
@@ -71,10 +110,10 @@ struct HomeView: View {
         let overdue = myTasks.filter { $0.dueDateRelative?.overdue == true }
         let myWorkCount = myIssues.count + myTasks.count
         return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Spacing.md) {
-            StatCard(label: "Open Issues",  value: "\(openIssues.count)", icon: "wrench.adjustable",           color: .forestMid)
+            StatCard(label: "Open issues",  value: "\(openIssues.count)", icon: "wrench.adjustable",           color: .forestMid)
             StatCard(label: "Urgent",       value: "\(urgent.count)",     icon: "exclamationmark.circle",      color: .priorityUrgent)
-            StatCard(label: "My Work",      value: "\(myWorkCount)",      icon: "checkmark.circle",            color: .sage)
-            StatCard(label: "Overdue",      value: "\(overdue.count)",    icon: "clock.badge.exclamationmark", color: overdue.isEmpty ? .secondary : .priorityUrgent)
+            StatCard(label: "My work",      value: "\(myWorkCount)",      icon: "checkmark.circle",            color: .sage)
+            StatCard(label: "Overdue",      value: "\(overdue.count)",    icon: "clock.badge.exclamationmark", color: overdue.isEmpty ? .forestLight : .priorityUrgent)
         }
     }
 
@@ -94,19 +133,18 @@ struct HomeView: View {
         let bothPresent = !myIssues.isEmpty && !myTasks.isEmpty
 
         return VStack(alignment: .leading, spacing: Spacing.sm) {
-            Text("My Work").font(.headline.weight(.semibold)).foregroundColor(.forest)
+            Text("My work").font(.campSection).foregroundStyle(Color.forest)
 
             if myIssues.isEmpty && myTasks.isEmpty {
-                Text("Nothing assigned to you")
-                    .font(.subheadline).foregroundColor(.secondary)
-                    .padding(.vertical, Spacing.sm)
+                HomeEmptyState(
+                    icon: "checkmark.circle",
+                    title: "You're all clear",
+                    message: "Nothing is assigned to you right now."
+                )
             } else {
                 if !myIssues.isEmpty {
                     if bothPresent {
-                        Text("ISSUES")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundColor(.secondary)
-                            .padding(.top, 2)
+                        SectionEyebrow(text: "Issues").padding(.top, 2)
                     }
                     ForEach(myIssues) { issue in
                         let isStaff = authManager.currentMember?.role == .staff
@@ -121,10 +159,7 @@ struct HomeView: View {
 
                 if !myTasks.isEmpty {
                     if bothPresent {
-                        Text("TASKS")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundColor(.secondary)
-                            .padding(.top, 4)
+                        SectionEyebrow(text: "Tasks").padding(.top, 4)
                     }
                     ForEach(myTasks) { task in
                         NavigationLink(value: task.id) {
@@ -139,11 +174,13 @@ struct HomeView: View {
     private var recentIssues: some View {
         let recent = Array(visibleIssues.filter { $0.status != .resolved }.prefix(3))
         return VStack(alignment: .leading, spacing: Spacing.sm) {
-            Text("Recent Issues").font(.headline.weight(.semibold)).foregroundColor(.forest)
+            Text("Recent issues").font(.campSection).foregroundStyle(Color.forest)
             if recent.isEmpty {
-                Text("No open issues")
-                    .font(.subheadline).foregroundColor(.secondary)
-                    .padding(.vertical, Spacing.sm)
+                HomeEmptyState(
+                    icon: "wrench.adjustable",
+                    title: "No open issues",
+                    message: "Everything reported has been resolved."
+                )
             } else {
                 ForEach(recent) { issue in
                     NavigationLink(value: issue) { IssueRow(issue: issue) }.buttonStyle(.plain)
@@ -162,17 +199,61 @@ struct HomeView: View {
     }
 }
 
+/// Quiet in-card empty state. `ContentUnavailableView` is the right tool for a whole screen,
+/// but it centres itself in the available space, which is wrong for a section inside a scroll.
+private struct HomeEmptyState: View {
+    let icon: String
+    let title: String
+    let message: String
+
+    var body: some View {
+        HStack(spacing: Spacing.md) {
+            Image(systemName: icon)
+                .font(.system(size: 17))
+                .foregroundStyle(Color.sage)
+                .frame(width: 36, height: 36)
+                .background(Color.sagePale, in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.campBodySemibold)
+                    .foregroundStyle(Color.forest)
+                Text(message)
+                    .font(.campMeta)
+                    .foregroundStyle(Color.forest.opacity(0.5))
+            }
+            Spacer(minLength: 0)
+        }
+        .cardSurface()
+    }
+}
+
 private struct StatCard: View {
     let label: String; let value: String; let icon: String; let color: Color
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
-            HStack { Image(systemName: icon).font(.subheadline).foregroundColor(color); Spacer() }
-            Text(value).font(.title.weight(.bold)).foregroundColor(color)
-            Text(label).font(.caption).foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            // Icon sits in a tinted disc rather than floating, which gives the tiles a
+            // consistent optical weight regardless of glyph shape.
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 32, height: 32)
+                .background(color.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.campStat)
+                    .monospacedDigit()
+                    // Counts change on every refresh; roll them rather than snapping.
+                    .contentTransition(.numericText())
+                    .animation(.snappy(duration: 0.28), value: value)
+                    .foregroundStyle(color)
+                Text(label)
+                    .font(.campMeta)
+                    .foregroundStyle(Color.forest.opacity(0.55))
+            }
         }
-        .padding(Spacing.md)
-        .background(Color(.systemBackground))
-        .cornerRadius(Radius.md)
-        .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface()
     }
 }

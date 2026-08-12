@@ -24,7 +24,7 @@ struct ChecklistDetailView: View {
     var body: some View {
         Group {
             if let task { content(task: task) }
-            else { Text("Task not found").foregroundColor(.secondary) }
+            else { Text("Task not found").foregroundStyle(Color.forest.opacity(0.55)) }
         }
         .navigationTitle("Task").navigationBarTitleDisplayMode(.inline)
     }
@@ -39,43 +39,43 @@ struct ChecklistDetailView: View {
                         ChecklistStatusBadge(status: task.status)
                         PriorityBadge(priority: task.priority)
                         Label(task.phase == .pre ? "Pre-camp" : "Post-camp", systemImage: "flag")
-                            .font(.caption).foregroundColor(.secondary)
+                            .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                         Spacer()
                     }
-                    Text(task.title).font(.title2.weight(.bold)).foregroundColor(.forest)
+                    Text(task.title).font(.campTitle).foregroundColor(.forest)
                     Label(task.locations.joined(separator: ", "), systemImage: "mappin.circle")
-                        .font(.caption).foregroundColor(.secondary)
+                        .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                     if let (label, overdue) = effectiveDueDateLabel(for: task) {
-                        Text(label).font(.caption.weight(.medium))
+                        Text(label).font(.campMetaMedium)
                             .foregroundColor(overdue ? .priorityUrgent : .secondary)
                     }
                 }
 
                 if !task.description.isEmpty {
                     VStack(alignment: .leading, spacing: Spacing.xs) {
-                        Text("Description").font(.subheadline.weight(.semibold))
-                        Text(task.description).font(.body).foregroundColor(.secondary)
+                        Text("Description").font(.campBodySemibold)
+                        Text(task.description).font(.campBodyLarge).foregroundStyle(Color.forest.opacity(0.55))
                     }
                 }
 
                 // Assignment
                 VStack(alignment: .leading, spacing: Spacing.xs) {
-                    Text("Assigned to").font(.subheadline.weight(.semibold))
+                    Text("Assigned to").font(.campBodySemibold)
                     if authManager.can.assign {
                         Button { showingAssignPicker = true } label: {
                             HStack {
                                 if let a = task.assignedTo {
-                                    AvatarCircle(initials: a.initials, size: 28); Text(a.name).font(.subheadline)
+                                    AvatarCircle(initials: a.initials, size: 28); Text(a.name).font(.campBody)
                                 } else {
                                     Image(systemName: "person.badge.plus")
-                                    Text("Unassigned").font(.subheadline).foregroundColor(.secondary)
+                                    Text("Unassigned").font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
                                 }
                                 Spacer()
-                                Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary)
+                                Image(systemName: "chevron.right").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                             }
                         }.buttonStyle(.plain)
                     } else {
-                        Text(task.assignedTo?.name ?? "Unassigned").font(.subheadline).foregroundColor(.secondary)
+                        Text(task.assignedTo?.name ?? "Unassigned").font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
                     }
                 }
 

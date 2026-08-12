@@ -57,7 +57,7 @@ struct CheckoutAssetSheet: View {
                                     .keyboardType(.decimalPad)
                                     .multilineTextAlignment(.trailing)
                                     .frame(width: 100)
-                                Text("mi").foregroundStyle(.secondary)
+                                Text("mi").foregroundStyle(Color.forest.opacity(0.55))
                             }
                         }
                         if asset.tracksHours {
@@ -68,7 +68,7 @@ struct CheckoutAssetSheet: View {
                                     .keyboardType(.decimalPad)
                                     .multilineTextAlignment(.trailing)
                                     .frame(width: 100)
-                                Text("hrs").foregroundStyle(.secondary)
+                                Text("hrs").foregroundStyle(Color.forest.opacity(0.55))
                             }
                         }
                     }
@@ -82,7 +82,7 @@ struct CheckoutAssetSheet: View {
                                     fuelLevel = lvl
                                 } label: {
                                     Text(lvl.displayName)
-                                        .font(.system(size: 12)).fontWeight(.medium)
+                                        .font(.campMetaMedium)
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 8)
                                         .background(fuelLevel == lvl ? Color.sage : Color.clear)

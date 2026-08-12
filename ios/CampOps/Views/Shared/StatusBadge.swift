@@ -4,7 +4,7 @@ struct StatusBadge: View {
     let status: IssueStatus
     var body: some View {
         Text(status.displayName)
-            .font(.caption2.weight(.medium))
+            .font(.campMicroMedium)
             .padding(.horizontal, Spacing.sm)
             .padding(.vertical, 3)
             .background(background)
@@ -33,7 +33,7 @@ struct ChecklistStatusBadge: View {
     let status: ChecklistStatus
     var body: some View {
         Text(status.displayName)
-            .font(.caption2.weight(.medium))
+            .font(.campMicroMedium)
             .padding(.horizontal, Spacing.sm)
             .padding(.vertical, 3)
             .background(background)

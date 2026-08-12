@@ -96,7 +96,7 @@ struct PoolView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
         }
-        .background(Color(.systemBackground))
+        .background(Color.surface)
         .overlay(alignment: .bottom) {
             Divider()
         }
@@ -126,7 +126,7 @@ struct PoolView: View {
             .pickerStyle(.segmented)
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, Spacing.sm)
-            .background(Color(.systemGroupedBackground))
+            .background(Color.canvas)
 
             Divider()
 
@@ -214,15 +214,15 @@ struct PoolSelectorTab: View {
             HStack(spacing: 5) {
                 if let icon {
                     Image(systemName: icon)
-                        .font(.system(size: 12))
+                        .font(.campMeta)
                 }
                 Text(title)
-                    .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
+                    .font(isSelected ? .campSmallSemibold : .campSmallMedium)
             }
             .foregroundColor(isSelected ? .white : Color.forest.opacity(0.6))
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
-            .background(isSelected ? Color.sage : Color(.systemGray6))
+            .background(isSelected ? Color.sage : Color.surfaceRaised)
             .clipShape(Capsule())
         }
     }

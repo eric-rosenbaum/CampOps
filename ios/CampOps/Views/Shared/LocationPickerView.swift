@@ -8,7 +8,7 @@ struct LocationPickerView: View {
         List {
             if options.isEmpty {
                 Text("No locations configured for this camp.")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(Color.forest.opacity(0.55))
             } else {
                 ForEach(options, id: \.self) { loc in
                     Button {

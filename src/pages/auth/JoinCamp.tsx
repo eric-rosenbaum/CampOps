@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { TreePine } from 'lucide-react';
+import { TreePine, Mail } from 'lucide-react';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
 
@@ -16,6 +16,8 @@ export function JoinCamp() {
   const [mode, setMode] = useState<AuthMode>('choose');
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set when the account was created but can't sign in until the inbox link is clicked.
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   // Form fields
   const [name, setName] = useState('');
@@ -37,16 +39,26 @@ export function JoinCamp() {
     const result = await joinWithCode(code);
     setJoining(false);
     if ('error' in result) { setError(result.error); return; }
-    navigate('/', { replace: true });
+    // Offer the iOS app to phone joiners; the screen redirects to /home on anything else.
+    navigate('/welcome', { replace: true });
   }
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
-    const err = await signUp(email, password, name);
+    // Send the confirmation link back to THIS join URL, code and all. When the user clicks it
+    // — very possibly in a different browser — they land here already signed in, and the effect
+    // above joins them. Without this the code would be lost between the two devices.
+    const redirect = `${window.location.origin}/join?code=${encodeURIComponent(code)}`;
+    const { error: err, needsEmailConfirmation } = await signUp(email, password, name, redirect);
     if (err) { setError(err); setSubmitting(false); return; }
-    // Auth state change triggers the useEffect above to call attemptJoin.
+    if (needsEmailConfirmation) {
+      setAwaitingConfirmation(true);
+      setSubmitting(false);
+      return;
+    }
+    // Otherwise the auth state change triggers the useEffect above to call attemptJoin.
   }
 
   async function handleSignIn(e: React.FormEvent) {
@@ -79,8 +91,25 @@ export function JoinCamp() {
             </div>
           )}
 
+          {/* Account created, but it can't be used until the address is confirmed. */}
+          {!joining && awaitingConfirmation && (
+            <div className="text-center py-2">
+              <div className="w-11 h-11 rounded-full bg-sage-pale flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-5 h-5 text-forest/70" />
+              </div>
+              <h1 className="text-[17px] font-semibold text-forest mb-2">Confirm your email</h1>
+              <p className="text-[13px] text-forest/60 leading-relaxed">
+                We've sent a link to <span className="font-medium text-forest">{email}</span>.
+                Open it to finish setting up — you'll join the camp automatically.
+              </p>
+              <p className="text-[12px] text-forest/40 leading-relaxed mt-4">
+                You can close this page. The link works on any device.
+              </p>
+            </div>
+          )}
+
           {/* Not joining yet — show auth options */}
-          {!joining && (
+          {!joining && !awaitingConfirmation && (
             <>
               <h1 className="text-[17px] font-semibold text-forest mb-1">
                 {mode === 'signin' ? 'Sign in to join' : 'Join your camp'}

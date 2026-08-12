@@ -20,6 +20,7 @@ export function Signup() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,9 +30,15 @@ export function Signup() {
       return;
     }
     setLoading(true);
-    const err = await signUp(email, password, fullName);
+    // This page is only reachable with an invite token (gated below), so send the confirmation
+    // link back to that invitation — it survives the user opening their mail on another device.
+    const confirmRedirect = inviteToken
+      ? `${window.location.origin}/invite/${inviteToken}`
+      : undefined;
+    const { error: err, needsEmailConfirmation } = await signUp(email, password, fullName, confirmRedirect);
     setLoading(false);
     if (err) { setError(err); return; }
+    if (needsEmailConfirmation) { setAwaitingConfirmation(true); return; }
 
     // Pending invite token takes top priority
     const pendingToken = sessionStorage.getItem('pendingInviteToken');
@@ -51,6 +58,30 @@ export function Signup() {
 
     // No invite context shouldn't reach here (gated below), but never drop into self-serve setup.
     navigate('/no-access', { replace: true });
+  }
+
+  // Account created, pending the confirmation click.
+  if (awaitingConfirmation) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-stone-50 p-6">
+        <div className="w-full max-w-sm text-center">
+          <div className="flex items-center gap-2 mb-8 justify-center">
+            <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-cream" /></div>
+            <span className="text-lg font-semibold text-forest">CampCommand</span>
+          </div>
+          <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-8">
+            <h1 className="text-[18px] font-semibold text-forest mb-2">Confirm your email</h1>
+            <p className="text-[13px] text-forest/60 leading-relaxed">
+              We’ve sent a link to <span className="font-medium text-forest">{email}</span>.
+              Open it to finish setting up your account.
+            </p>
+            <p className="text-[12px] text-forest/40 leading-relaxed mt-4">
+              You can close this page. The link works on any device.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Invite-only gate: without an invitation, there's nothing to sign up for.

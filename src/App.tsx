@@ -17,6 +17,7 @@ import { ResetPassword } from '@/pages/auth/ResetPassword';
 import { CampSetup } from '@/pages/auth/CampSetup';
 import { JoinCamp } from '@/pages/auth/JoinCamp';
 import { AcceptInvite } from '@/pages/auth/AcceptInvite';
+import { AppHandoff } from '@/pages/auth/AppHandoff';
 import { TryDemo } from '@/pages/auth/TryDemo';
 import { Onboarding } from '@/pages/onboarding/Onboarding';
 
@@ -473,6 +474,8 @@ export default function App() {
           {/* Authenticated — no camp required */}
           <Route element={<ProtectedRoute />}>
             <Route path="/no-access" element={<NoCampAccess />} />
+            {/* Post-join iOS app handoff. Redirects to /home when it doesn't apply. */}
+            <Route path="/welcome" element={<AppHandoff />} />
 
             {/* Founder super-admin only: the admin console + direct camp setup */}
             <Route element={<PlatformAdminRoute />}>

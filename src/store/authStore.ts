@@ -9,6 +9,12 @@ export interface Profile {
   avatarUrl: string | null;
 }
 
+export interface SignUpResult {
+  error: string | null;
+  /** True when the project requires a confirmation click before the account can sign in. */
+  needsEmailConfirmation: boolean;
+}
+
 interface AuthState {
   session: Session | null;
   user: User | null;
@@ -16,7 +22,12 @@ interface AuthState {
   isLoading: boolean;
   initialize: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<string | null>;
-  signUp: (email: string, password: string, fullName: string) => Promise<string | null>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string,
+    emailRedirectTo?: string,
+  ) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<string | null>;
   updatePassword: (password: string) => Promise<string | null>;
@@ -68,13 +79,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return error?.message ?? null;
   },
 
-  signUp: async (email, password, fullName) => {
-    const { error } = await supabase.auth.signUp({
+  /**
+   * Create an account.
+   *
+   * `emailRedirectTo` is where the confirmation link lands the user. It matters more than it
+   * looks: when "Confirm email" is on, signUp returns NO session, so the caller cannot finish
+   * joining a camp inline — the join has to resume after the user clicks the link in their
+   * inbox. That inbox is very often a different browser (Gmail's in-app view on a phone), so
+   * sessionStorage cannot carry the invite token or join code across. Putting the destination
+   * in the confirmation URL is what makes the round trip survive a device switch.
+   *
+   * Returns `needsEmailConfirmation` so callers can show "check your email" instead of
+   * silently doing nothing.
+   */
+  signUp: async (email, password, fullName, emailRedirectTo) => {
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: {
+        data: { full_name: fullName },
+        ...(emailRedirectTo ? { emailRedirectTo } : {}),
+      },
     });
-    return error?.message ?? null;
+    if (error) return { error: error.message, needsEmailConfirmation: false };
+    // A user with no session means the project requires confirmation before sign-in.
+    return { error: null, needsEmailConfirmation: !data.session && !!data.user };
   },
 
   /**

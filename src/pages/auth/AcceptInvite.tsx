@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { TreePine, Lock } from 'lucide-react';
+import { TreePine, Lock, Mail } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
 
 type Info = { email: string; campName: string; role: string };
-type Phase = 'loading' | 'invalid' | 'ready' | 'joining' | 'done';
+type Phase = 'loading' | 'invalid' | 'ready' | 'joining' | 'confirm-email' | 'done';
 
 function reasonText(reason: string): string {
   if (reason === 'used') return 'This invitation has already been used. If that wasn’t you, ask for a new one.';
@@ -41,7 +41,7 @@ export function AcceptInvite() {
     if (r.error) throw new Error(r.error);
     await useCampStore.getState().loadMyCamps();
     setPhase('done');
-    setTimeout(() => navigate('/home', { replace: true }), 1200);
+    setTimeout(() => navigate('/welcome', { replace: true }), 1200);
   }
 
   // Load the invite's details and lock the email. If already signed in AS the invited person,
@@ -78,7 +78,13 @@ export function AcceptInvite() {
       }
 
       if (mode === 'create') {
-        const err = await useAuthStore.getState().signUp(info.email, password, fullName.trim() || info.email.split('@')[0]);
+        // The confirmation link comes back to this same invite URL, so clicking it in any
+        // browser resumes the acceptance (the effect above accepts as soon as the session
+        // belongs to the invited address).
+        const redirect = `${window.location.origin}/invite/${token}`;
+        const { error: err, needsEmailConfirmation } = await useAuthStore
+          .getState()
+          .signUp(info.email, password, fullName.trim() || info.email.split('@')[0], redirect);
         if (err) {
           if (/already|registered|exists/i.test(err)) {
             setMode('signin');
@@ -87,6 +93,11 @@ export function AcceptInvite() {
             return;
           }
           setError(err); setBusy(false); return;
+        }
+        if (needsEmailConfirmation) {
+          setPhase('confirm-email');
+          setBusy(false);
+          return;
         }
       } else {
         const err = await useAuthStore.getState().signIn(info.email, password);
@@ -130,6 +141,22 @@ export function AcceptInvite() {
               <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4"><span className="text-green-600 text-lg">✓</span></div>
               <p className="text-[15px] font-semibold text-forest mb-1">You’re in</p>
               <p className="text-[12px] text-forest/50">Taking you to {info?.campName}…</p>
+            </div>
+          )}
+
+          {phase === 'confirm-email' && info && (
+            <div className="text-center">
+              <div className="w-11 h-11 rounded-full bg-sage-pale flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-5 h-5 text-forest/70" />
+              </div>
+              <h1 className="text-[17px] font-semibold text-forest mb-2">Confirm your email</h1>
+              <p className="text-[13px] text-forest/60 leading-relaxed">
+                We’ve sent a link to <span className="font-medium text-forest">{info.email}</span>.
+                Open it to finish joining {info.campName}.
+              </p>
+              <p className="text-[12px] text-forest/40 leading-relaxed mt-4">
+                You can close this page. The link works on any device.
+              </p>
             </div>
           )}
 

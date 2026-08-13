@@ -29,6 +29,8 @@ interface AuthState {
     emailRedirectTo?: string,
   ) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
+  sendEmailOtp: (email: string, fullName?: string) => Promise<string | null>;
+  verifyEmailOtp: (email: string, token: string) => Promise<string | null>;
   requestPasswordReset: (email: string) => Promise<string | null>;
   updatePassword: (password: string) => Promise<string | null>;
   refreshProfile: () => Promise<void>;
@@ -139,6 +141,47 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.removeItem('campcommand_selected_camp_id');
     set({ session: null, user: null, profile: null });
     useCampStore.setState({ currentCamp: null, currentMember: null, members: [], camps: [], isLoading: true });
+  },
+
+  /**
+   * Email a 6-digit sign-in code, creating the account if this address is new.
+   *
+   * This is the staff lane. One code does the work of three separate steps — create the
+   * account, prove the address is real, and sign in — because you cannot read the code
+   * without controlling the inbox. That's why the staff flow has no "confirm your email"
+   * hop and no password to forget.
+   *
+   * Creating a bare account grants nothing: camp access still comes only from
+   * join_camp_with_code(), which validates the code server-side.
+   *
+   * Requires `{{ .Token }}` in the Magic Link email template, otherwise Supabase sends a
+   * clickable link instead of a code.
+   */
+  sendEmailOtp: async (email, fullName) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim().toLowerCase(),
+      options: {
+        shouldCreateUser: true,
+        // Read by the handle_new_user trigger to populate profiles.full_name.
+        ...(fullName ? { data: { full_name: fullName.trim() } } : {}),
+      },
+    });
+    return error?.message ?? null;
+  },
+
+  verifyEmailOtp: async (email, token) => {
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token: token.trim(),
+      type: 'email',
+    });
+    if (error) {
+      if (/expired/i.test(error.message)) return 'That code has expired — request a new one.';
+      if (/invalid/i.test(error.message)) return 'That code isn’t right. Check it and try again.';
+      return error.message;
+    }
+    sessionStorage.removeItem('campcommand_admin_camp_id');
+    return null;
   },
 
   requestPasswordReset: async (email) => {

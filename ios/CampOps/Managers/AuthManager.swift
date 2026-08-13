@@ -117,7 +117,72 @@ final class AuthManager: ObservableObject {
         }
     }
 
-    // NOTE: there is deliberately no `signUp` here.
+    // MARK: - Passwordless (staff lane)
+
+    /// Emails a 6-digit sign-in code, creating the account if the address is new.
+    ///
+    /// This is how seasonal staff get in: one code creates the account, proves the address is
+    /// real, and signs them in. No password to invent on a phone, and nothing to forget between
+    /// visits. Creating a bare account grants no access — camp membership still comes only from
+    /// `join_camp_with_code`, which validates the code server-side.
+    ///
+    /// `shouldCreateUser` is true only when joining with a verified code; plain sign-in passes
+    /// false so a typo'd address can't silently mint an empty account.
+    func sendEmailCode(email: String, fullName: String? = nil, createIfNew: Bool) async -> Bool {
+        authError = nil
+        do {
+            try await supabase.auth.signInWithOTP(
+                email: email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+                shouldCreateUser: createIfNew,
+                data: fullName.map { ["full_name": .string($0)] }
+            )
+            return true
+        } catch {
+            authError = friendlyAuthMessage(error)
+            return false
+        }
+    }
+
+    /// Exchanges the emailed code for a session.
+    func verifyEmailCode(email: String, code: String) async -> Bool {
+        authError = nil
+        do {
+            _ = try await supabase.auth.verifyOTP(
+                email: email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+                token: code.trimmingCharacters(in: .whitespaces),
+                type: .email
+            )
+            return true
+        } catch {
+            let raw = error.localizedDescription
+            if raw.localizedCaseInsensitiveContains("expired") {
+                authError = "That code has expired — request a new one."
+            } else if raw.localizedCaseInsensitiveContains("invalid") {
+                authError = "That code isn't right. Check it and try again."
+            } else {
+                authError = friendlyAuthMessage(error)
+            }
+            return false
+        }
+    }
+
+    /// Checks a join code before we ask for an email, so the sheet can name the camp and a bad
+    /// code is rejected without creating an account.
+    func lookUpJoinCode(_ code: String) async -> JoinCodeInfo? {
+        authError = nil
+        do {
+            let info: JoinCodeInfo = try await supabase
+                .rpc("join_code_info", params: ["p_code": code.uppercased()])
+                .execute()
+                .value
+            return info
+        } catch {
+            authError = "Could not check that code. Please try again."
+            return nil
+        }
+    }
+
+    // NOTE: there is deliberately no password `signUp` here.
     //
     // Account creation is invite-only and sales-led: the web app hard-gates /signup behind an
     // invitation token and there is no self-serve path. The iOS app used to expose an open

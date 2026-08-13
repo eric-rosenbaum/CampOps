@@ -182,6 +182,30 @@ struct CampMemberRow: Decodable {
     }
 }
 
+/// Preview of a join code from the `join_code_info` RPC — camp name and group, no membership data.
+struct JoinCodeInfo: Decodable {
+    let valid: Bool
+    let reason: String?
+    let campName: String?
+    let role: String?
+    let groupName: String?
+
+    enum CodingKeys: String, CodingKey {
+        case valid, reason, role
+        case campName  = "camp_name"
+        case groupName = "group_name"
+    }
+
+    var problemText: String {
+        switch reason {
+        case "expired":           return "This join code has expired. Ask your camp administrator for a new one."
+        case "used_up":           return "This join code has been used the maximum number of times."
+        case "camp_unavailable":  return "This camp isn't accepting new staff right now."
+        default:                  return "That join code isn't valid. Check it and try again."
+        }
+    }
+}
+
 struct JoinCodeResult: Decodable {
     let campId: String?
     let campName: String?

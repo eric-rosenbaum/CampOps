@@ -97,9 +97,25 @@ export function IssuesRepairs() {
   const filtered = useMemo(() => {
     if (role !== 'staff') return storeFiltered;
     return storeFiltered.filter(
-      (i) => i.assigneeId === currentUser.id || (issuesSeeUnassigned && !i.assigneeId)
+      (i) =>
+        i.assigneeId === currentUser.id ||
+        // You always keep sight of what you reported, even when the group can't see
+        // unassigned work — otherwise logging an issue makes it disappear.
+        i.reportedById === currentUser.id ||
+        (issuesSeeUnassigned && !i.assigneeId)
     );
   }, [storeFiltered, role, currentUser.id, issuesSeeUnassigned]);
+
+  // Split the list only when the group can't see everything; otherwise flat is right.
+  const showsSplitSections = role === 'staff' && !issuesSeeUnassigned;
+  const assignedToMe = useMemo(
+    () => filtered.filter((i) => i.assigneeId === currentUser.id),
+    [filtered, currentUser.id],
+  );
+  const reportedByMe = useMemo(
+    () => filtered.filter((i) => i.reportedById === currentUser.id && i.assigneeId !== currentUser.id),
+    [filtered, currentUser.id],
+  );
 
   const selectedIssue = issues.find((i) => i.id === selectedIssueId);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
@@ -135,6 +151,20 @@ export function IssuesRepairs() {
       if (filtered.length > 0) selectIssue(filtered[0].id);
     }
   }, [filter, searchQuery]);
+
+  function renderIssueCard(issue: Issue) {
+    return (
+      <IssueCard
+        key={issue.id}
+        issue={issue}
+        selected={issue.id === selectedIssueId}
+        onClick={() => { selectIssue(issue.id); setMobileDetailOpen(true); }}
+        onTakeIt={issuesSeeUnassigned && role === 'staff' && !issue.assigneeId
+          ? () => handleTakeIssue(issue.id)
+          : undefined}
+      />
+    );
+  }
 
   const subtitle = season
     ? `${season.name} · ${format(new Date(season.openingDate + 'T00:00:00'), 'MMM d')} – ${format(new Date(season.closingDate + 'T00:00:00'), 'MMM d')} · ${openCount()} open issue${openCount() !== 1 ? 's' : ''}`
@@ -235,19 +265,33 @@ export function IssuesRepairs() {
                   {searchQuery ? 'Try a different search term' : 'All clear for now'}
                 </p>
               </div>
+            ) : showsSplitSections ? (
+              // Being assigned an issue and having reported one are different
+              // responsibilities, so they don't belong in one undifferentiated list.
+              <div className="space-y-5">
+                {assignedToMe.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40">
+                      Assigned to you
+                    </p>
+                    {assignedToMe.map((issue) => renderIssueCard(issue))}
+                  </div>
+                )}
+                {reportedByMe.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40">
+                      You reported
+                    </p>
+                    <p className="text-[12px] text-forest/40 -mt-1">
+                      Someone else will pick these up — you'll see status changes here.
+                    </p>
+                    {reportedByMe.map((issue) => renderIssueCard(issue))}
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="space-y-2">
-                {filtered.map((issue) => (
-                  <IssueCard
-                    key={issue.id}
-                    issue={issue}
-                    selected={issue.id === selectedIssueId}
-                    onClick={() => { selectIssue(issue.id); setMobileDetailOpen(true); }}
-                    onTakeIt={issuesSeeUnassigned && role === 'staff' && !issue.assigneeId
-                      ? () => handleTakeIssue(issue.id)
-                      : undefined}
-                  />
-                ))}
+                {filtered.map((issue) => renderIssueCard(issue))}
               </div>
             )}
           </div>

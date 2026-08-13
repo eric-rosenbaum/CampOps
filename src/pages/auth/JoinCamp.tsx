@@ -8,6 +8,15 @@ import { useAuthStore, OTP_MIN_LENGTH, OTP_MAX_LENGTH } from '@/store/authStore'
 type CodeInfo = { valid: boolean; reason?: string; campName?: string; role?: string; groupName?: string };
 type Step = 'code' | 'identity' | 'otp' | 'joining';
 
+// Join codes are word-shaped (CEDAR-4821); older camps still hold 6-character hex ones.
+// The server normalises case and punctuation before matching, so the client only needs a
+// loose length check — and must NOT truncate, which is what broke word codes.
+const MIN_JOIN_CODE_LENGTH = 6;
+
+function normaliseCode(raw: string): string {
+  return raw.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 24);
+}
+
 function codeProblem(reason?: string): string {
   if (reason === 'expired') return 'This join link has expired. Ask your camp administrator for a new one.';
   if (reason === 'used_up') return 'This join link has been used the maximum number of times.';
@@ -143,26 +152,26 @@ export function JoinCamp() {
             <>
               <h1 className="text-[17px] font-semibold text-forest mb-1">Join your camp</h1>
               <p className="text-[12px] text-forest/50 mb-6">
-                Enter the 6-character code from your camp administrator.
+                Enter the code from your camp administrator, like CEDAR-4821.
               </p>
               {error && <ErrorNote>{error}</ErrorNote>}
               <form
-                onSubmit={(e) => { e.preventDefault(); void checkCode(code.toUpperCase().trim()); }}
+                onSubmit={(e) => { e.preventDefault(); void checkCode(normaliseCode(code)); }}
                 className="space-y-3"
               >
                 <input
                   value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 6))}
+                  onChange={(e) => setCode(normaliseCode(e.target.value))}
                   autoFocus
                   autoCapitalize="characters"
                   autoCorrect="off"
                   spellCheck={false}
-                  placeholder="ABC123"
-                  className="w-full px-3 py-3 rounded-lg border border-stone-200 text-center text-[20px] font-mono font-semibold tracking-[0.3em] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
+                  placeholder="CEDAR-4821"
+                  className="w-full px-3 py-3 rounded-lg border border-stone-200 text-center text-[19px] font-mono font-semibold tracking-[0.12em] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
                 />
                 <button
                   type="submit"
-                  disabled={code.trim().length !== 6 || checkingCode}
+                  disabled={code.trim().length < MIN_JOIN_CODE_LENGTH || checkingCode}
                   className="w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50"
                 >
                   {checkingCode ? 'Checking…' : 'Continue'}

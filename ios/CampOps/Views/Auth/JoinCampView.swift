@@ -13,8 +13,13 @@ struct JoinCampView: View {
     @State private var isLoading = false
     @FocusState private var codeFocused: Bool
 
-    private var formattedCode: String { code.uppercased() }
-    private var canJoin: Bool { formattedCode.count == 6 }
+    // Codes are now word-shaped (CEDAR-4821) and older camps still hold 6-character hex
+    // ones. The server normalises punctuation and case, so the only client-side rule is
+    // "long enough to be a code at all".
+    private var formattedCode: String {
+        code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    }
+    private var canJoin: Bool { formattedCode.count >= Constants.joinCodeMinLength }
 
     var body: some View {
         ScrollView {
@@ -28,14 +33,14 @@ struct JoinCampView: View {
                         Text("Join your camp")
                             .font(.campSection)
                             .foregroundStyle(Color.forest)
-                        Text("Enter the 6-character join code from your camp administrator.")
+                        Text("Enter the join code from your camp administrator, like CEDAR-4821.")
                             .font(.campSecondary)
                             .foregroundStyle(Color.forest.opacity(0.55))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    TextField("ABC123", text: $code)
+                    TextField("CEDAR-4821", text: $code)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                         .font(.system(.title2, design: .monospaced).weight(.semibold))
@@ -51,7 +56,10 @@ struct JoinCampView: View {
                                 .strokeBorder(canJoin ? Color.sage : Color.border, lineWidth: 1)
                         )
                         .onChange(of: code) { _, new in
-                            code = String(new.uppercased().prefix(6))
+                            // Keep letters, digits and the separator; a word code is longer
+                            // than six characters, so the old hard cap ate half of it.
+                            let cleaned = new.uppercased().filter { $0.isLetter || $0.isNumber || $0 == "-" }
+                            if cleaned != code { code = String(cleaned.prefix(24)) }
                         }
                         .onSubmit { if canJoin { join() } }
 

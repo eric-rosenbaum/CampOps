@@ -22,7 +22,6 @@
 		CC1A2B3C4D5E6F7A8B9C0D1E /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1A2B3C4D5E6F7A8B9C0D1E /* AuthManager.swift */; };
 		CC2B3C4D5E6F7A8B9C0D1E2F /* CampModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD2B3C4D5E6F7A8B9C0D1E2F /* CampModels.swift */; };
 		FE9388992182BBBBBBBBBBBB /* ForgotPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9388992182FFFFFFFFFFFF /* ForgotPasswordView.swift */; };
-		FE3229083625BBBBBBBBBBBB /* JoinWithCodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE3229083625FFFFFFFFFFFF /* JoinWithCodeView.swift */; };
 		CC3C4D5E6F7A8B9C0D1E2F3A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD3C4D5E6F7A8B9C0D1E2F3A /* LoginView.swift */; };
 		FE9407152289BBBBBBBBBBBB /* AccessGateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9407152289FFFFFFFFFFFF /* AccessGateViews.swift */; };
 		CC4D5E6F7A8B9C0D1E2F3A4B /* JoinCampView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD4D5E6F7A8B9C0D1E2F3A4B /* JoinCampView.swift */; };
@@ -107,7 +106,6 @@
 		DD1A2B3C4D5E6F7A8B9C0D1E /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		DD2B3C4D5E6F7A8B9C0D1E2F /* CampModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampModels.swift; sourceTree = "<group>"; };
 		FE9388992182FFFFFFFFFFFF /* ForgotPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordView.swift; sourceTree = "<group>"; };
-		FE3229083625FFFFFFFFFFFF /* JoinWithCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinWithCodeView.swift; sourceTree = "<group>"; };
 		DD3C4D5E6F7A8B9C0D1E2F3A /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		FE9407152289FFFFFFFFFFFF /* AccessGateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessGateViews.swift; sourceTree = "<group>"; };
 		DD4D5E6F7A8B9C0D1E2F3A4B /* JoinCampView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinCampView.swift; sourceTree = "<group>"; };
@@ -414,7 +412,6 @@
 			isa = PBXGroup;
 			children = (
 				FE9388992182FFFFFFFFFFFF /* ForgotPasswordView.swift */,
-				FE3229083625FFFFFFFFFFFF /* JoinWithCodeView.swift */,
 				DD3C4D5E6F7A8B9C0D1E2F3A /* LoginView.swift */,
 				FE9407152289FFFFFFFFFFFF /* AccessGateViews.swift */,
 				DD4D5E6F7A8B9C0D1E2F3A4B /* JoinCampView.swift */,
@@ -553,7 +550,6 @@
 				CC1A2B3C4D5E6F7A8B9C0D1E /* AuthManager.swift in Sources */,
 				CC2B3C4D5E6F7A8B9C0D1E2F /* CampModels.swift in Sources */,
 				FE9388992182BBBBBBBBBBBB /* ForgotPasswordView.swift in Sources */,
-				FE3229083625BBBBBBBBBBBB /* JoinWithCodeView.swift in Sources */,
 				CC3C4D5E6F7A8B9C0D1E2F3A /* LoginView.swift in Sources */,
 				FE9407152289BBBBBBBBBBBB /* AccessGateViews.swift in Sources */,
 				CC4D5E6F7A8B9C0D1E2F3A4B /* JoinCampView.swift in Sources */,

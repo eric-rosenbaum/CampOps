@@ -13,9 +13,13 @@ struct ContentView: View {
     var body: some View {
         Group {
             if authManager.isLoading {
-                AppLoadingView()
+                AppLoadingView(message: "Loading…")
             } else if !authManager.isAuthenticated {
                 LoginView()
+            } else if authManager.isLoadingCamp {
+                // Signed in, camp still arriving. Covering this window is what stops a
+                // successful sign-in flashing the "you don't belong to a camp" screen.
+                AppLoadingView(message: "Setting up your camp…")
             } else if !authManager.hasCamp {
                 JoinCampView()
             } else if let camp = authManager.currentCamp, !camp.isAccessible {
@@ -103,14 +107,30 @@ struct ContentView: View {
     }
 }
 
+/// Branded full-screen loading state.
+///
+/// This is the first thing a new staff member sees after their code is accepted, so it carries
+/// the wordmark and says what's happening — an unadorned spinner on a white field reads as a
+/// hang, which is precisely the impression we're trying to avoid here.
 private struct AppLoadingView: View {
+    var message: String = "Loading…"
+
     var body: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.2)
-            Text("Loading…")
-                .font(.campBody)
-                .foregroundStyle(Color.forest.opacity(0.55))
+        VStack(spacing: Spacing.xl) {
+            Spacer()
+            CampWordmark()
+            VStack(spacing: Spacing.md) {
+                ProgressView()
+                    .tint(Color.sage)
+                    .scaleEffect(1.1)
+                Text(message)
+                    .font(.campBody)
+                    .foregroundStyle(Color.forest.opacity(0.5))
+            }
+            Spacer()
+            Spacer()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .campCanvas()
     }
 }

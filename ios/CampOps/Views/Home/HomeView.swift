@@ -76,6 +76,7 @@ struct HomeView: View {
         let uid = authManager.currentUser.id
         return issueVM.issues.filter { issue in
             issue.assigneeId == uid ||
+            issue.reportedById == uid ||
             (authManager.issuesSeeUnassigned && issue.assigneeId == nil)
         }
     }
@@ -103,17 +104,21 @@ struct HomeView: View {
 
     private var statsGrid: some View {
         let uid = authManager.currentUser.id
-        let openIssues = visibleIssues.filter { $0.status != .resolved }
+        // The two left-hand tiles report the CAMP's state, not the viewer's slice of it.
+        // A counselor who can't open every issue should still know whether the camp has 3
+        // open or 30 — that's situational awareness, not access to the detail. The list
+        // itself stays filtered; only these counts are camp-wide.
+        let openIssues = issueVM.issues.filter { $0.status != .resolved }
         let urgent = openIssues.filter { $0.priority == .urgent }
-        let myIssues = openIssues.filter { $0.assigneeId == uid }
+        let myIssues = visibleIssues.filter { $0.status != .resolved && $0.assigneeId == uid }
         let myTasks = checklistVM.tasks.filter { $0.assigneeId == uid && $0.status != .complete }
         let overdue = myTasks.filter { $0.dueDateRelative?.overdue == true }
         let myWorkCount = myIssues.count + myTasks.count
         return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Spacing.md) {
-            StatCard(label: "Open issues",  value: "\(openIssues.count)", icon: "wrench.adjustable",           color: .forestMid)
-            StatCard(label: "Urgent",       value: "\(urgent.count)",     icon: "exclamationmark.circle",      color: .priorityUrgent)
-            StatCard(label: "My work",      value: "\(myWorkCount)",      icon: "checkmark.circle",            color: .sage)
-            StatCard(label: "Overdue",      value: "\(overdue.count)",    icon: "clock.badge.exclamationmark", color: overdue.isEmpty ? .forestLight : .priorityUrgent)
+            StatCard(label: "Open issues", hint: "Across the camp", value: "\(openIssues.count)", icon: "wrench.adjustable",           color: .forestMid)
+            StatCard(label: "Urgent",      hint: "Across the camp", value: "\(urgent.count)",     icon: "exclamationmark.circle",      color: .priorityUrgent)
+            StatCard(label: "My work",     hint: "Assigned to you", value: "\(myWorkCount)",      icon: "checkmark.circle",            color: .sage)
+            StatCard(label: "Overdue",     hint: "Assigned to you", value: "\(overdue.count)",    icon: "clock.badge.exclamationmark", color: overdue.isEmpty ? .forestLight : .priorityUrgent)
         }
     }
 
@@ -228,7 +233,11 @@ private struct HomeEmptyState: View {
 }
 
 private struct StatCard: View {
-    let label: String; let value: String; let icon: String; let color: Color
+    let label: String
+    /// Says whose number this is. Without it, a camp-wide count sitting next to a personal
+    /// one is just misleading — the viewer can't tell which is which.
+    var hint: String? = nil
+    let value: String; let icon: String; let color: Color
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
@@ -251,6 +260,11 @@ private struct StatCard: View {
                 Text(label)
                     .font(.campMeta)
                     .foregroundStyle(Color.forest.opacity(0.55))
+                if let hint {
+                    Text(hint)
+                        .font(.campMicro)
+                        .foregroundStyle(Color.forest.opacity(0.35))
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

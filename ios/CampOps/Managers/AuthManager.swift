@@ -17,6 +17,13 @@ final class AuthManager: ObservableObject {
     @Published private(set) var members: [CampUser] = []
     /// Every camp this user belongs to, for the switcher in Profile. Excludes deleted camps.
     @Published private(set) var camps: [Camp] = []
+    /// True while membership is being fetched after sign-in.
+    ///
+    /// `session` publishes the moment auth succeeds, but the camp arrives a network round trip
+    /// later. Without this flag those few hundred milliseconds render as "signed in with no
+    /// camp" — i.e. the join screen, complete with a support email address — which reads as a
+    /// failed login right at the moment the user succeeded.
+    @Published private(set) var isLoadingCamp = false
     @Published var authError: String? = nil
 
     var isAuthenticated: Bool { session != nil }
@@ -233,6 +240,13 @@ final class AuthManager: ObservableObject {
         if raw.localizedCaseInsensitiveContains("invalid login credentials") {
             return "That email or password doesn't match an account."
         }
+        // Raised when an emailed sign-in code is requested for an address that has no account
+        // (shouldCreateUser: false). Verbatim it reads "Signups not allowed for otp", which
+        // tells a counselor with a typo'd address precisely nothing.
+        if raw.localizedCaseInsensitiveContains("signups not allowed")
+            || raw.localizedCaseInsensitiveContains("user not found") {
+            return "We couldn't find an account for that email. Check the spelling, or use the invite link your camp administrator sent you."
+        }
         if raw.localizedCaseInsensitiveContains("email not confirmed") {
             return "Please confirm your email address first — check your inbox for the link."
         }
@@ -301,6 +315,9 @@ final class AuthManager: ObservableObject {
     // MARK: - Camp data loading
 
     func loadCampData() async {
+        isLoadingCamp = true
+        defer { isLoadingCamp = false }
+
         guard let userId = session?.user.id.uuidString else { return }
 
         // Fetch profile

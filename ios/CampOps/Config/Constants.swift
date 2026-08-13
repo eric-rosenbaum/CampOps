@@ -14,8 +14,9 @@ enum Constants {
     static let otpMinLength = 6
     static let otpMaxLength = 10
 
-    /// The join code minted by `generate_join_code` — always 6 characters.
-    static let joinCodeLength = 6
+    /// Join codes are word-shaped (`CEDAR-4821`); legacy camps still hold 6-character hex
+    /// ones. The server normalises case and punctuation, so clients only sanity-check length.
+    static let joinCodeMinLength = 6
 }
 
 enum Spacing {

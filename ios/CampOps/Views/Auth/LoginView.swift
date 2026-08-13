@@ -7,10 +7,10 @@ struct LoginView: View {
     @State private var password = ""
     @State private var isLoading = false
     @State private var showingForgotPassword = false
-    @State private var showingJoin = false
-    // Staff who joined with a code have no password, so the code lane is a peer of the
-    // password lane on this screen — not something buried behind "trouble signing in".
-    @State private var mode: Mode = .password
+    // Staff who joined with a group code have no password, and they are the majority of
+    // phone users — so the emailed code is the DEFAULT here and the password is the
+    // alternative, which is the reverse of the web app's desktop-leaning login.
+    @State private var mode: Mode = .emailCode
     @State private var codeSent = false
     @State private var otp = ""
     @FocusState private var focused: Field?
@@ -90,20 +90,19 @@ struct LoginView: View {
                 .cardSurface(padding: Spacing.xl, radius: Radius.lg)
                 .padding(.horizontal, Spacing.xl)
 
-                // Staff join with a code from their administrator; leaders are invited by email
-                // on the web. Either way there is no self-serve signup.
-                VStack(spacing: Spacing.sm) {
-                    Button("Have a join code?") {
-                        authManager.authError = nil
-                        showingJoin = true
-                    }
-                    .font(.campBodyMedium)
-                    .foregroundStyle(Color.sage)
-
-                    Text("Your camp administrator can send you one.")
+                // No join-code entry here by design. New staff join once from the invite
+                // link their administrator sends; after that this screen only needs to let
+                // them back in. Keeping the join code off the front door is what stops it
+                // being confused with the sign-in code we email.
+                VStack(spacing: Spacing.xs) {
+                    Text("Don't have an account?")
+                        .font(.campMeta)
+                        .foregroundStyle(Color.forest.opacity(0.45))
+                    Text("Your camp administrator sends you an invite link to get started.")
                         .font(.campMeta)
                         .foregroundStyle(Color.forest.opacity(0.45))
                         .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.top, Spacing.xl)
                 .padding(.horizontal, Spacing.xl)
@@ -117,10 +116,6 @@ struct LoginView: View {
         .onAppear { authManager.authError = nil }
         .sheet(isPresented: $showingForgotPassword) {
             ForgotPasswordView(prefilledEmail: email)
-                .environmentObject(authManager)
-        }
-        .sheet(isPresented: $showingJoin) {
-            JoinWithCodeView()
                 .environmentObject(authManager)
         }
     }
@@ -182,8 +177,8 @@ struct LoginView: View {
         focused = nil
         Task {
             isLoading = true
-            // Sign-in only: never mint an account from a mistyped address here. New staff
-            // come through "Have a join code?", which validates the code first.
+            // Never mint an account from a mistyped address: a person signing in must
+            // already exist. Accounts are created only by accepting an invite on the web.
             let ok = await authManager.sendEmailCode(email: email, createIfNew: false)
             isLoading = false
             if ok {

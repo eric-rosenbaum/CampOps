@@ -45,7 +45,7 @@ function ComplianceStrip() {
         <p className="text-[13px] font-semibold text-forest">Kitchen compliance</p>
         <span className="text-[11px] text-forest/40">from Safety &amp; Compliance</span>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <p className="text-[11px] uppercase tracking-widest text-forest/40 font-semibold mb-1.5">Permits</p>
           {foodLicenses.length === 0 ? (
@@ -136,7 +136,7 @@ export function CostTab() {
 
   if (!session) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <ComplianceStrip />
         <div className="flex flex-col items-center justify-center text-center max-w-sm mx-auto py-16">
           <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
@@ -155,7 +155,7 @@ export function CostTab() {
   const perDiemVariant = pd?.variance == null ? 'default' : pd.variance > 0 ? 'red' : 'default';
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       <ComplianceStrip />
 
       <p className="text-[12px] text-forest/55 leading-relaxed mb-4">
@@ -164,7 +164,7 @@ export function CostTab() {
         and improves as receiving records what you actually paid.
       </p>
 
-      <div className="grid grid-cols-4 gap-4 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
         <StatCard
           label="Per-diem (actual)"
           value={pd?.perDiemActual != null ? formatCurrency(pd.perDiemActual) : '—'}
@@ -218,7 +218,7 @@ export function CostTab() {
         {canManage && <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'expense' })}>+ Add expense</Button>}
       </div>
       {expenses.length === 0 ? (
-        <p className="text-[13px] text-forest/45 bg-white rounded-card border border-border px-4 py-6 text-center">
+        <p className="text-[13px] text-forest/45 bg-white rounded-card border border-border px-4 py-4 sm:py-6 text-center">
           Received purchase orders count automatically. Add cash runs, Costco trips, or standing
           contracts here so per-diem reflects everything.
         </p>

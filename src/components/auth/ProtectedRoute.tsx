@@ -84,7 +84,7 @@ export function PlatformAdminRoute() {
 function CampBlockedScreen({ status }: { status: string }) {
   const trial = status === 'trial_expired';
   return (
-    <div className="fixed inset-0 bg-cream flex items-center justify-center p-6 z-50">
+    <div className="fixed inset-0 bg-cream flex items-center justify-center p-4 sm:p-6 z-50">
       <div className="max-w-md text-center">
         <h1 className="text-[22px] font-bold text-forest mb-3">
           {trial ? 'Your demo has ended' : 'Your account is paused'}
@@ -105,7 +105,7 @@ function CampBlockedScreen({ status }: { status: string }) {
 
 export function NoCampAccess() {
   return (
-    <div className="fixed inset-0 bg-cream flex items-center justify-center p-6 z-50">
+    <div className="fixed inset-0 bg-cream flex items-center justify-center p-4 sm:p-6 z-50">
       <div className="max-w-md text-center">
         <h1 className="text-[22px] font-bold text-forest mb-3">Your account isn’t set up yet</h1>
         <p className="text-[14px] text-forest/60 leading-relaxed mb-6">

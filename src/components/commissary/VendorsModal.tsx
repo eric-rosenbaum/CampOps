@@ -111,7 +111,7 @@ function VendorForm({
   return (
     <Modal title={existing ? 'Edit vendor' : 'Add vendor'} onClose={onClose} width="560px">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Vendor name *</label>
             <input autoFocus value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="e.g. US Foods" />
@@ -122,7 +122,7 @@ function VendorForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className={labelClass}>Account number</label>
             <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className={inputClass} placeholder="USF-44821" />
@@ -142,7 +142,7 @@ function VendorForm({
           <input type="email" value={repEmail} onChange={(e) => setRepEmail(e.target.value)} className={inputClass} placeholder="optional" />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Order cutoff</label>
             <input value={orderCutoff} onChange={(e) => setOrderCutoff(e.target.value)} className={inputClass} placeholder="2pm for Wed delivery" />
@@ -153,7 +153,7 @@ function VendorForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Minimum order ($)</label>
             <input type="number" step="0.01" min="0" value={minOrder} onChange={(e) => setMinOrder(e.target.value)} className={inputClass} placeholder="500.00" />

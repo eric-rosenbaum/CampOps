@@ -26,7 +26,7 @@ export function CoursesModal() {
         </p>
 
         {courses.length === 0 ? (
-          <div className="rounded-card border border-dashed border-border px-4 py-6 text-center">
+          <div className="rounded-card border border-dashed border-border px-4 py-4 sm:py-6 text-center">
             <p className="text-[13px] text-forest/50 mb-3">No courses yet.</p>
             <Button size="sm" variant="ghost" onClick={seedDefaultCourses}>
               <Sparkles className="w-3.5 h-3.5" /> Add the common ones

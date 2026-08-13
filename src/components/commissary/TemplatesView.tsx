@@ -44,7 +44,7 @@ export function TemplatesView() {
 
   if (templates.length === 0) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
           <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
             <CalendarRange className="w-7 h-7 text-stone-400" />
@@ -61,7 +61,7 @@ export function TemplatesView() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <select
           value={activeTemplateId ?? ''}
@@ -79,7 +79,7 @@ export function TemplatesView() {
       </div>
 
       {!template ? (
-        <p className="text-[13px] text-forest/45 bg-white rounded-card border border-border px-4 py-6 text-center">
+        <p className="text-[13px] text-forest/45 bg-white rounded-card border border-border px-4 py-4 sm:py-6 text-center">
           Pick a template to edit its cycle.
         </p>
       ) : (

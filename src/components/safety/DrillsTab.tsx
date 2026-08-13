@@ -60,7 +60,7 @@ function DrillCard({ drill }: { drill: EmergencyDrill }) {
       </div>
 
       {isCompleted && (
-        <div className="grid grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
           <div>
             <p className="text-[10px] text-forest/40 font-medium mb-0.5">Date</p>
             <p className="text-[12px] font-semibold font-mono text-forest">
@@ -120,7 +120,7 @@ export function DrillsTab() {
   return (
     <div>
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-3.5 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
         <div className="bg-white border border-border rounded-card px-4 py-4">
           <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Fire drills</p>
           <p className="font-mono font-semibold text-stat mt-1 text-green-muted-text">{fireDrillsDone}</p>

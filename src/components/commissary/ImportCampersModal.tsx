@@ -162,7 +162,7 @@ Emma T.,Cabin 2,,anaphylactic,yes,yes`}
           </>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Name column *</label>
                 <select value={nameKey} onChange={(e) => setNameKey(e.target.value)} className={inputClass}>

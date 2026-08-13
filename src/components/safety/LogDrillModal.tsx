@@ -158,7 +158,7 @@ export function LogDrillModal() {
           </>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={lc}>{isScheduleMode ? 'Scheduled date & time *' : 'Date & time *'}</label>
             <input {...register('scheduledDate', { required: true })} type="datetime-local" className={ic} />
@@ -171,7 +171,7 @@ export function LogDrillModal() {
 
         {showCompletionFields && (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={lc}>Total participants</label>
                 <input {...register('participantCount')} type="number" min={0} className={ic} placeholder="0" />

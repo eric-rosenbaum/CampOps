@@ -64,7 +64,7 @@ export function Retreats() {
         ) : undefined}
       />
 
-      <div className="bg-white border-b border-border px-7 flex-shrink-0 overflow-x-auto">
+      <div className="bg-white border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto">
         <div className="flex">
           {TABS.map((tab) => (
             <button

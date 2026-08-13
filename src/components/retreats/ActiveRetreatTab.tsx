@@ -45,7 +45,7 @@ export function ActiveRetreatTab() {
 
   if (!r) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="max-w-md mx-auto text-center mt-24">
           <p className="text-[15px] font-semibold text-forest">No active retreat</p>
           <p className="text-[13px] text-forest/55 mt-2 leading-relaxed">
@@ -73,7 +73,7 @@ export function ActiveRetreatTab() {
   const spaces = housing.filter((h) => h.spaceName).map((h) => h.spaceName).join(', ');
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       {/* Dark header */}
       <div className="bg-forest text-white rounded-card px-6 py-5 mb-5 flex items-center justify-between gap-4">
         <div className="min-w-0">

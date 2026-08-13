@@ -134,7 +134,7 @@ export function LogAssetServiceModal() {
         </div>
 
         <div className="px-6 py-5 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-body font-medium text-forest mb-1 block">Service type</label>
               <select value={serviceType} onChange={(e) => setServiceType(e.target.value as AssetServiceType)} className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage bg-white">
@@ -147,7 +147,7 @@ export function LogAssetServiceModal() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-body font-medium text-forest mb-1 block">Performed by <span className="text-red">*</span></label>
               <input value={performedBy} onChange={(e) => setPerformedBy(e.target.value)} placeholder="Tom H., AquaPro…" className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />
@@ -159,7 +159,7 @@ export function LogAssetServiceModal() {
           </div>
 
           {(asset.tracksOdometer || asset.tracksHours) && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {asset.tracksOdometer && (
                 <div>
                   <label className="text-body font-medium text-forest mb-1 block">Odometer at service</label>
@@ -175,7 +175,7 @@ export function LogAssetServiceModal() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-body font-medium text-forest mb-1 block">Cost (optional)</label>
               <div className="relative">
@@ -192,7 +192,7 @@ export function LogAssetServiceModal() {
 
           <div>
             <p className="text-body font-medium text-forest mb-2">Next service due (optional)</p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="text-meta text-forest/50 mb-1 block">Date</label>
                 <input type="date" value={nextServiceDate} onChange={(e) => setNextServiceDate(e.target.value)} className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />

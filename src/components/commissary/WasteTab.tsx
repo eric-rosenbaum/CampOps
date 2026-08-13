@@ -51,7 +51,7 @@ export function WasteTab() {
 
   if (!wasteEver) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center text-center max-w-sm mx-auto py-16">
           <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
             <Trash2 className="w-7 h-7 text-stone-400" />
@@ -72,7 +72,7 @@ export function WasteTab() {
   const topItems = summary.byItem.slice(0, 10);
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       <div className="flex items-center gap-2 mb-5">
         {PERIODS.map((p) => (
           <FilterPill

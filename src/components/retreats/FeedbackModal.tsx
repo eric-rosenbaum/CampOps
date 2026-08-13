@@ -67,7 +67,7 @@ export function FeedbackModal({ retreatId }: { retreatId: string }) {
             Enter a 0–5 rating for each dimension — leave blank to skip.
           </p>
         )}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {SCORE_FIELDS.map((f) => {
             const val = num(scores[f.key]);
             return (

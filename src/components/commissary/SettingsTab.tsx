@@ -44,7 +44,7 @@ export function SettingsTab() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       <div className="max-w-2xl space-y-8">
         {/* ── Sessions ─────────────────────────────────────────────────────── */}
         <section>
@@ -60,7 +60,7 @@ export function SettingsTab() {
 
           <div className="bg-white rounded-card border border-border overflow-hidden">
             {sessions.length === 0 && (
-              <p className="px-4 py-6 text-center text-[13px] text-forest/45">
+              <p className="px-4 py-4 sm:py-6 text-center text-[13px] text-forest/45">
                 No sessions yet. Create one to start planning menus and orders.
               </p>
             )}

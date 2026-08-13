@@ -103,7 +103,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
   return (
     <Modal title={existing ? 'Edit person' : 'Add person'} onClose={closeModal} width="600px">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Name *</label>
             <input autoFocus value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="e.g. Sarah M." />

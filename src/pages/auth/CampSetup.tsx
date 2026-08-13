@@ -98,7 +98,7 @@ export function CampSetup() {
       </div>
 
       {/* Right panel */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-stone-50 p-6 sm:p-10">
+      <div className="flex-1 flex flex-col items-center justify-center bg-stone-50 p-4 sm:p-6 sm:p-10">
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2 mb-8">
           <div className="w-7 h-7 bg-forest rounded-lg flex items-center justify-center">

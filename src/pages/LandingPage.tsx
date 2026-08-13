@@ -422,7 +422,7 @@ function ModuleBreadth() {
   return (
     <div className="mt-24 pt-14 border-t border-black/5 text-center">
       <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-forest/40 mb-7">One login also covers</p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 max-w-4xl mx-auto items-start">
+      <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 max-w-4xl mx-auto items-start">
         {MODULES.map((m) => {
           const open = active === m.title;
           return (

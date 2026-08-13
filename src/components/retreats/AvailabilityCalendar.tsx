@@ -69,10 +69,10 @@ export function AvailabilityCalendar({ retreats }: { retreats: Retreat[] }) {
           return (
             <div key={`${y}-${m}`}>
               <p className="text-[13px] font-semibold text-forest text-center mb-2">{MONTHS[m]} {y}</p>
-              <div className="grid grid-cols-7 gap-0.5 mb-1">
+              <div className="grid grid-cols-2 sm:grid-cols-7 gap-0.5 mb-1">
                 {WEEKDAYS.map((w, i) => <div key={i} className="text-[10px] font-semibold text-forest/35 text-center">{w}</div>)}
               </div>
-              <div className="grid grid-cols-7 gap-0.5">
+              <div className="grid grid-cols-2 sm:grid-cols-7 gap-0.5">
                 {cells.map((d, i) => {
                   if (d == null) return <div key={i} />;
                   const date = iso(y, m, d);

@@ -72,7 +72,7 @@ export function AddEditBuildingModal({ editId }: { editId?: string }) {
   return (
     <Modal title={existing ? 'Edit building' : 'Add building'} onClose={closeModal} width="480px">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {!existing && (
             <div className="col-span-2">
               <label className={labelClass}>Location *</label>
@@ -122,7 +122,7 @@ export function AddEditBuildingModal({ editId }: { editId?: string }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Year built</label>
             <input value={yearBuilt} onChange={(e) => setYearBuilt(e.target.value)} className={inputClass} inputMode="numeric" placeholder="optional" />

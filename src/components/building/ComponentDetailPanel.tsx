@@ -1,4 +1,4 @@
-import { X, Pencil, Trash2, Flag, Plus, Zap } from 'lucide-react';
+import { X, Pencil, Trash2, Flag, Plus, Zap, ChevronLeft } from 'lucide-react';
 import {
   useBuildingStore, COMPONENT_TYPE_LABELS, COMPONENT_SPECS, type SpecField,
 } from '@/store/buildingStore';
@@ -38,7 +38,16 @@ export function ComponentDetailPanel({ component }: { component: BuildingCompone
   }
 
   return (
-    <aside className="w-detail min-w-detail border-l border-border bg-white h-full overflow-y-auto flex-shrink-0">
+    <aside className="border-l border-border bg-white overflow-y-auto flex-shrink-0
+      fixed inset-0 z-40 w-full
+      lg:static lg:z-auto lg:w-detail lg:min-w-detail lg:h-full">
+      <button
+        onClick={() => setActiveComponent(null)}
+        className="lg:hidden flex items-center gap-1.5 px-4 py-3 border-b border-border text-[13px] font-medium text-forest/70 hover:text-forest w-full"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        Back
+      </button>
       <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-9 h-9 rounded-btn bg-cream-dark flex items-center justify-center flex-shrink-0">

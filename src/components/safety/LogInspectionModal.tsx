@@ -163,7 +163,7 @@ export function LogInspectionModal() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={lc}>Date *</label>
             <input {...register('inspectionDate', { required: true })} type="date" className={ic} />
@@ -193,7 +193,7 @@ export function LogInspectionModal() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={lc}>Cost (if any)</label>
             <input {...register('cost')} type="number" step="0.01" className={ic} placeholder="$0.00" />

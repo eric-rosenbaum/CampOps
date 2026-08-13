@@ -108,7 +108,7 @@ function ProfileTab() {
                 className={inputCls}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>Camp type</label>
                 <select value={campType} onChange={e => setCampType(e.target.value)} className={inputCls}>
@@ -280,7 +280,7 @@ function SeasonTab() {
               {errors.name && <p className="text-[11px] text-red mt-0.5">{errors.name.message}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>Opening date *</label>
                 <input type="date" {...register('openingDate', { required: 'Required' })} className={inputCls} />
@@ -367,7 +367,7 @@ function SeasonTab() {
             </div>
           </>
         ) : (
-          <div className="text-center py-6">
+          <div className="text-center py-4 sm:py-6">
             <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-3">
               <Calendar className="w-6 h-6 text-forest/25" />
             </div>
@@ -931,7 +931,7 @@ export function CampSettings() {
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Page header + tab bar */}
-      <div className="px-7 pt-7 pb-0 border-b border-border bg-white flex-shrink-0">
+      <div className="px-4 sm:px-7 pt-7 pb-0 border-b border-border bg-white flex-shrink-0 overflow-x-auto">
         <h1 className="text-[20px] font-bold text-forest">Camp Info</h1>
         <p className="text-[12px] text-forest/40 mt-0.5">
           Manage your camp's profile, season, locations, and pools

@@ -95,7 +95,7 @@ export function Members() {
         <div className="bg-white border border-stone-200 rounded-xl p-5 mb-6">
           <h2 className="text-[14px] font-semibold text-forest mb-4">Send invitation</h2>
           <form onSubmit={handleInvite} className="space-y-3">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="col-span-2">
                 <label className="block text-[11px] font-medium text-forest/60 mb-1">Email address</label>
                 <input

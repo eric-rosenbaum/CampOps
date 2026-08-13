@@ -131,7 +131,7 @@ export function BuildingDetail() {
   return (
     <div className="flex-1 min-h-0 flex">
       {/* Left: rooms + components */}
-      <div className="flex-1 min-w-0 overflow-y-auto px-7 py-5">
+      <div className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-7 py-5">
         <button
           onClick={() => setActiveBuilding(null)}
           className="flex items-center gap-1 text-meta text-forest/40 hover:text-forest mb-3 transition-colors"

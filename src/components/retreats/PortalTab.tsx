@@ -24,7 +24,7 @@ export function PortalTab() {
 
   if (retreats.length === 0 || !retreat) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="max-w-md mx-auto text-center mt-24">
           <p className="text-[15px] font-semibold text-forest">No retreats yet</p>
           <p className="text-[13px] text-forest/55 mt-2 leading-relaxed">
@@ -103,7 +103,7 @@ export function PortalTab() {
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       {/* Pill bar */}
       <div className="flex gap-2 flex-wrap mb-4">
         {retreats.map((r) => (
@@ -147,7 +147,7 @@ export function PortalTab() {
             )}
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
           {steps.map((s) => (
             <div
               key={s.num}

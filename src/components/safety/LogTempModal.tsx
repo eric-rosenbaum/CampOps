@@ -124,7 +124,7 @@ export function LogTempModal() {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={lc}>Date *</label>
             <input {...register('logDate', { required: true })} type="date" className={ic} />

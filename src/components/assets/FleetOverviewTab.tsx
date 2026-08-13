@@ -22,7 +22,7 @@ export function FleetOverviewTab() {
   return (
     <div className="space-y-4">
       {/* Stat strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Total assets" value={stats.total} />
         <StatCard label="Available" value={stats.available} color="text-sage" />
         <StatCard label="Checked out" value={stats.checkedOut} color="text-blue-600" />

@@ -41,7 +41,7 @@ export function TryDemo() {
   }, [token, navigate]);
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-stone-50 p-6">
+    <div className="min-h-screen w-full flex items-center justify-center bg-stone-50 p-4 sm:p-6">
       <div className="w-full max-w-sm text-center">
         <div className="flex items-center gap-2 mb-8 justify-center">
           <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-cream" /></div>

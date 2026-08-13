@@ -83,7 +83,7 @@ function LifeguardCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
         {LIFEGUARD_CERT_TYPES.map((type) => {
           const cert = certs.find((c) => c.certType === type);
           return (
@@ -129,7 +129,7 @@ export function WaterSafetyTab() {
   return (
     <div>
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-3.5 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
         <div className="bg-white border border-border rounded-card px-4 py-4">
           <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Lifeguards</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${lifeguards.length > 0 ? 'text-green-muted-text' : 'text-forest/30'}`}>{lifeguards.length}</p>

@@ -130,7 +130,7 @@ export function StaffTab() {
   return (
     <div>
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-3.5 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
         <div className="bg-white border border-border rounded-card px-4 py-4">
           <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Active staff</p>
           <p className="font-mono font-semibold text-stat mt-1 text-forest">{activeStaff.length}</p>

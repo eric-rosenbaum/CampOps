@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Wrench, ClipboardList,
   TreePine, Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
@@ -44,7 +44,13 @@ const settingsItems: NavItem[] = [
   { path: '/settings/security', label: 'Security & Privacy', icon: ShieldCheck, end: false },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  /** Drawer state below `lg`. Ignored at desktop widths, where the sidebar is always shown. */
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ open = false, onClose }: SidebarProps) {
   const { currentUser, role, roleLabel, canAccessModule } = useAuth();
   const { currentCamp } = useCampStore();
   const signOut = useAuthStore((s) => s.signOut);
@@ -66,6 +72,9 @@ export function Sidebar() {
     }
   }
 
+  const location = useLocation();
+  useEffect(() => { onClose?.(); }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const visibleFacilities = facilityItems.filter(
     (item) => !item.module || canAccessModule(item.module)
   );
@@ -84,7 +93,21 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="w-sidebar min-w-sidebar h-screen bg-forest flex flex-col flex-shrink-0 sticky top-0">
+    <>
+      {/* Tap-to-dismiss scrim. Only exists while the drawer is open below `lg`. */}
+      {open && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 z-40 bg-forest/40 backdrop-blur-[1px] lg:hidden"
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`w-sidebar min-w-sidebar h-screen bg-forest flex flex-col flex-shrink-0
+          fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out
+          ${open ? 'translate-x-0' : '-translate-x-full'}
+          lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 lg:transition-none`}
+      >
       <div className="px-5 pt-6 pb-5">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 bg-sage rounded-btn flex items-center justify-center flex-shrink-0">
@@ -170,6 +193,7 @@ export function Sidebar() {
           </button>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

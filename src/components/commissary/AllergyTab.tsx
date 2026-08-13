@@ -79,7 +79,7 @@ export function AllergyTab() {
 
   if (!hasAnyData && !canViewCamperHealth) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
           <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
             <HeartPulse className="w-7 h-7 text-stone-400" />
@@ -97,7 +97,7 @@ export function AllergyTab() {
 
   if (!hasAnyData && canViewCamperHealth) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <CommissaryFilesPanel />
         <div className="flex flex-col items-center justify-center text-center max-w-sm mx-auto py-12">
           <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
@@ -122,9 +122,9 @@ export function AllergyTab() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       {canViewCamperHealth && <CommissaryFilesPanel />}
-      <div className="grid grid-cols-4 gap-4 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
         <StatCard
           label="People with restrictions"
           value={canViewCamperHealth ? totalCampersWithRestrictions() : '—'}

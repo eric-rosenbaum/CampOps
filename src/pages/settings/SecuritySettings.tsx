@@ -64,7 +64,7 @@ function MfaSection() {
   const verified = factors.filter((f) => f.status === 'verified');
 
   return (
-    <section className="bg-white rounded-card border border-border p-6">
+    <section className="bg-white rounded-card border border-border p-4 sm:p-6">
       <div className="flex items-start gap-3 mb-4">
         <div className="w-9 h-9 rounded-lg bg-sage-pale flex items-center justify-center flex-shrink-0">
           <Smartphone className="w-4.5 h-4.5 text-forest" />
@@ -151,7 +151,7 @@ function DataExportSection({ campId, campName }: { campId: string; campName: str
   }
 
   return (
-    <section className="bg-white rounded-card border border-border p-6">
+    <section className="bg-white rounded-card border border-border p-4 sm:p-6">
       <div className="flex items-start gap-3 mb-4">
         <div className="w-9 h-9 rounded-lg bg-sage-pale flex items-center justify-center flex-shrink-0">
           <Download className="w-4.5 h-4.5 text-forest" />
@@ -196,7 +196,7 @@ function ActivitySection({ campId, memberNames }: { campId: string; memberNames:
   }, [campId]);
 
   return (
-    <section className="bg-white rounded-card border border-border p-6">
+    <section className="bg-white rounded-card border border-border p-4 sm:p-6">
       <div className="flex items-start gap-3 mb-4">
         <div className="w-9 h-9 rounded-lg bg-sage-pale flex items-center justify-center flex-shrink-0">
           <ScrollText className="w-4.5 h-4.5 text-forest" />
@@ -256,7 +256,7 @@ function PolicyLink({ href, title, desc }: { href: string; title: string; desc: 
 
 function PrivacySection() {
   return (
-    <section className="bg-white rounded-card border border-border p-6">
+    <section className="bg-white rounded-card border border-border p-4 sm:p-6">
       <h2 className="text-[15px] font-semibold text-forest mb-1">Privacy &amp; security</h2>
       <p className="text-[13px] text-forest/55 mb-4">Your camp's information — including camper health details — is kept private to your camp and protected with industry-standard safeguards. The full details are here:</p>
       <div className="grid sm:grid-cols-2 gap-2.5">
@@ -283,7 +283,7 @@ export function SecuritySettings() {
   return (
     <div className="flex flex-col h-full min-h-0">
       <Topbar title="Security & privacy" subtitle="Protect your account and manage your camp's information" />
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="max-w-2xl mx-auto space-y-4">
           {MFA_ENABLED && (
             <>

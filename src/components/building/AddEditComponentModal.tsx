@@ -94,7 +94,7 @@ export function AddEditComponentModal({ buildingId, editId, defaultLocationId, d
     <Modal title={existing ? 'Edit component' : 'Add component'} onClose={closeModal} width="480px">
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* System toggle */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {(['electrical', 'plumbing'] as BuildingSystem[]).map((s) => (
             <button
               key={s}
@@ -109,7 +109,7 @@ export function AddEditComponentModal({ buildingId, editId, defaultLocationId, d
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Type</label>
             <select value={type} onChange={(e) => changeType(e.target.value as BuildingComponentType)} className={inputClass}>
@@ -137,7 +137,7 @@ export function AddEditComponentModal({ buildingId, editId, defaultLocationId, d
 
         {/* Dynamic specs */}
         {specs.length > 0 && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {specs.map((f) => (
               <div key={f.key} className={f.kind === 'bool' ? 'col-span-2' : ''}>
                 {f.kind === 'bool' ? (
@@ -169,7 +169,7 @@ export function AddEditComponentModal({ buildingId, editId, defaultLocationId, d
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Status</label>
             <select value={status} onChange={(e) => setStatus(e.target.value as ComponentStatus)} className={inputClass}>
@@ -184,7 +184,7 @@ export function AddEditComponentModal({ buildingId, editId, defaultLocationId, d
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Last serviced</label>
             <input type="date" value={lastServiced} onChange={(e) => setLastServiced(e.target.value)} className={inputClass} />

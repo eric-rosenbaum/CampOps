@@ -35,7 +35,7 @@ export function RetreatCostsTab() {
 
   if (retreats.length === 0) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="max-w-md mx-auto text-center mt-24">
           <p className="text-[15px] font-semibold text-forest">No retreats yet</p>
           <p className="text-[13px] text-forest/55 mt-2 leading-relaxed">
@@ -60,7 +60,7 @@ export function RetreatCostsTab() {
   const outstanding = Math.max(0, billed - collected);
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       {/* Header + year selector */}
       <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <h2 className="text-[15px] font-semibold text-forest">Retreat financials · {year}</h2>
@@ -80,7 +80,7 @@ export function RetreatCostsTab() {
       </div>
 
       {/* Year aggregate */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
         <StatCard label="Total billed" value={money(billed)} hint={`${yearRetreats.length} group${yearRetreats.length === 1 ? '' : 's'} this year`} />
         <StatCard label="Collected" value={money(collected)} variant={collected > 0 ? 'green' : 'default'} hint="Payments received" />
         <StatCard label="Outstanding" value={money(outstanding)} variant={outstanding > 0 ? 'amber' : 'default'} hint={outstanding > 0 ? 'Across all groups' : 'All settled'} />
@@ -143,7 +143,7 @@ function GroupFinanceCard({
       </div>
 
       {/* Numbers */}
-      <div className="grid grid-cols-3 divide-x divide-cream-dark border-b border-cream-dark">
+      <div className="grid grid-cols-1 sm:grid-cols-3 divide-x divide-cream-dark border-b border-cream-dark">
         <Fig label={fin.source === 'estimate' ? 'Expected' : 'Billed'} value={money(fin.expected)} />
         <Fig label="Paid" value={money(fin.collected)} tone="green" />
         <Fig label="Balance" value={money(fin.outstanding)} tone={fin.outstanding > 0 ? 'amber' : 'default'} />

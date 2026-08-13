@@ -73,7 +73,7 @@ export function ChargeModal({ retreatId, chargeId }: { retreatId: string; charge
           <label className={labelClass}>Description</label>
           <input autoFocus value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} placeholder="e.g. Lodging — 3 nights per person" />
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className={labelClass}>Qty</label>
             <input type="number" step="1" min="0" value={qty} onChange={(e) => setQty(e.target.value)} className={inputClass} placeholder="0" />

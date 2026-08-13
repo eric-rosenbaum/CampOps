@@ -208,7 +208,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Prep time</label>
             <input value={prepTime} onChange={(e) => setPrepTime(e.target.value)} className={inputClass} placeholder="e.g. 20 min" />
@@ -233,7 +233,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
               const units = item ? MEASURE_UNITS[item.dimension] : [];
               const base = draftQtyInBase(d);
               return (
-                <div key={d.key} className="grid grid-cols-[2fr_1fr_1.1fr_auto] gap-2 items-start">
+                <div key={d.key} className="grid grid-cols-[2fr_1fr_1.1fr_auto] min-w-[640px] sm:min-w-0 gap-2 items-start">
                   <select
                     value={d.itemId}
                     onChange={(e) => pickItem(d.key, e.target.value)}
@@ -321,7 +321,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
           </p>
           <div className="space-y-2">
             {stepDrafts.map((s, idx) => (
-              <div key={s.key} className="grid grid-cols-[auto_1fr_auto_auto] gap-2 items-start">
+              <div key={s.key} className="grid grid-cols-[auto_1fr_auto_auto] min-w-[640px] sm:min-w-0 gap-2 items-start">
                 <span className="font-mono text-[12px] text-forest/35 pt-2.5">{idx + 1}.</span>
                 <textarea
                   value={s.instruction}

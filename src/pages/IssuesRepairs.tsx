@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { StatCard } from '@/components/shared/StatCard';
 import { FilterPill } from '@/components/shared/FilterPill';
@@ -15,7 +15,7 @@ import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import { formatCost } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Download, Plus } from 'lucide-react';
+import { Download, Plus, ChevronLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Issue } from '@/lib/types';
 
@@ -102,6 +102,7 @@ export function IssuesRepairs() {
   }, [storeFiltered, role, currentUser.id, issuesSeeUnassigned]);
 
   const selectedIssue = issues.find((i) => i.id === selectedIssueId);
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
   // Exports exactly what the user is looking at — current filter + search, in list order.
   function handleExport() {
@@ -123,8 +124,13 @@ export function IssuesRepairs() {
     });
   }
 
-  // Auto-select first on filter change
+  // Auto-select first on filter change.
+  //
+  // Desktop only: there the detail sits beside the list, so preselecting fills an otherwise
+  // empty panel. On a phone the detail is a full-screen layer, and preselecting would drop
+  // the user straight into a record they never chose, hiding the list entirely.
   useEffect(() => {
+    if (!window.matchMedia('(min-width: 1024px)').matches) return;
     if (!selectedIssueId || !filtered.find((i) => i.id === selectedIssueId)) {
       if (filtered.length > 0) selectIssue(filtered[0].id);
     }
@@ -166,9 +172,9 @@ export function IssuesRepairs() {
       <div className="flex flex-1 min-h-0">
         {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-7 py-6">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
             {/* Stats row */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               <StatCard label="Urgent" value={urgentCount()} hint="Needs action today" variant="red" />
               <StatCard label="Open" value={openCount()} hint="Assigned or pending" />
               <StatCard label="Resolved" value={resolvedCount()} hint="This session" />
@@ -195,8 +201,8 @@ export function IssuesRepairs() {
             )}
 
             {/* Filter bar */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2 overflow-x-auto -mx-1 px-1 pb-1 sm:pb-0">
                 {filterLabels.map(({ key, label }) => (
                   <FilterPill
                     key={key}
@@ -236,7 +242,7 @@ export function IssuesRepairs() {
                     key={issue.id}
                     issue={issue}
                     selected={issue.id === selectedIssueId}
-                    onClick={() => selectIssue(issue.id)}
+                    onClick={() => { selectIssue(issue.id); setMobileDetailOpen(true); }}
                     onTakeIt={issuesSeeUnassigned && role === 'staff' && !issue.assigneeId
                       ? () => handleTakeIssue(issue.id)
                       : undefined}
@@ -247,10 +253,25 @@ export function IssuesRepairs() {
           </div>
         </div>
 
-        {/* Detail panel */}
-        <div className="w-detail min-w-detail border-l border-border bg-white flex flex-col overflow-hidden">
+        {/* Detail panel. A fixed column beside the list on desktop; on a phone there isn't
+            room for both, so it becomes a full-screen layer over the list once something is
+            selected, and is absent otherwise. */}
+        <div
+          className={`border-l border-border bg-white flex-col overflow-hidden
+            lg:w-detail lg:min-w-detail lg:static lg:z-auto lg:flex
+            ${selectedIssue && mobileDetailOpen ? 'fixed inset-0 z-40 flex w-full' : 'hidden'}`}
+        >
           {selectedIssue ? (
-            <IssueDetail issue={selectedIssue} />
+            <>
+              <button
+                onClick={() => setMobileDetailOpen(false)}
+                className="lg:hidden flex items-center gap-1.5 px-4 py-3 border-b border-border text-[13px] font-medium text-forest/70 hover:text-forest flex-shrink-0"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                All issues
+              </button>
+              <IssueDetail issue={selectedIssue} />
+            </>
           ) : (
             <div className="flex items-center justify-center h-full text-forest/30 text-[13px]">
               Select an issue to view details

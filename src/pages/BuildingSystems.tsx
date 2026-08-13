@@ -44,13 +44,13 @@ export function BuildingSystems() {
       />
 
       {/* Tab strip */}
-      <div className="bg-white border-b border-border px-7 flex-shrink-0">
+      <div className="bg-white border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto">
         <div className="flex">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); if (tab.id !== 'buildings') setActiveBuilding(null); }}
-              className={`px-5 py-3 text-body border-b-2 transition-colors ${
+              className={`px-5 py-3 text-body border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'text-forest font-semibold border-sage'
                   : 'text-forest/40 font-medium border-transparent hover:text-forest/70'
@@ -65,7 +65,7 @@ export function BuildingSystems() {
       {/* Content */}
       <div className="flex-1 min-h-0 flex flex-col">
         {buildings.length === 0 && activeTab === 'buildings' && !activeBuildingId ? (
-          <div className="flex-1 overflow-y-auto px-7 py-6">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
             <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
               <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
                 <Building2 className="w-7 h-7 text-stone-400" />

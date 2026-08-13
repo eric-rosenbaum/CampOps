@@ -39,7 +39,7 @@ export function FeedbackTab() {
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex-1" />
         {canManage && recordTarget && (
@@ -63,7 +63,7 @@ export function FeedbackTab() {
       ) : (
         <>
           {/* Summary tiles */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
             {summary.map((s) => (
               <div key={s.label} className="bg-white rounded-card border border-border px-5 py-4 text-center">
                 <p className="font-mono text-[32px] font-semibold text-forest leading-none">{fmtScore(s.value)}</p>
@@ -122,7 +122,7 @@ function FeedbackCard({ f, groupName, canManage, onDelete }: {
           )}
         </div>
       </div>
-      <div className="grid grid-cols-4 gap-2.5 mb-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-3">
         {tiles.map((t) => (
           <div key={t.label} className="bg-cream rounded-btn px-2.5 py-2 text-center">
             <p className="font-mono text-[16px] font-semibold text-forest">{t.value == null ? '—' : t.value.toFixed(1)}</p>

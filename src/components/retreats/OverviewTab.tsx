@@ -93,7 +93,7 @@ export function OverviewTab() {
   // ─── Empty state ──────────────────────────────────────────────────────────
   if (retreats.length === 0) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="max-w-md mx-auto text-center mt-24">
           <p className="text-[15px] font-semibold text-forest">No retreats yet</p>
           <p className="text-[13px] text-forest/55 mt-2 leading-relaxed">
@@ -115,9 +115,9 @@ export function OverviewTab() {
     .sort((a, b) => a.arrivalDate.localeCompare(b.arrivalDate));
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       {/* Stat row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
         <StatCard label="Active now" value={activeNow} hint={activeNow ? 'On property' : 'None on property'} />
         <StatCard label="Upcoming" value={upcoming} hint="Confirmed this season" />
         <StatCard label="Docs pending" value={docsPending} variant={docsPending ? 'amber' : 'default'} hint="COI / contract outstanding" />
@@ -146,7 +146,7 @@ export function OverviewTab() {
       <div className="flex items-center justify-between mt-1 mb-3.5">
         <h2 className="text-[14px] font-semibold text-forest">Retreat pipeline</h2>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-7">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-7">
         {PIPELINE.map((col) => {
           const items = byStatus[col.key];
           return (

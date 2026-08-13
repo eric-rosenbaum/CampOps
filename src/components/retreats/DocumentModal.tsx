@@ -160,7 +160,7 @@ export function DocumentModal({ retreatId, docType, docId }: { retreatId: string
         {type === 'coi' && (
           <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-3 space-y-3">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/50">Policy details</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Policy number</label>
                 <input value={policyNumber} onChange={(e) => setPolicyNumber(e.target.value)} className={inputClass} placeholder="Policy #" />
@@ -170,7 +170,7 @@ export function DocumentModal({ retreatId, docType, docId }: { retreatId: string
                 <input value={coverage} onChange={(e) => setCoverage(e.target.value)} className={inputClass} placeholder="$1M general liability" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Expiration</label>
                 <input type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} className={inputClass} />

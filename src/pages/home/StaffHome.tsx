@@ -80,7 +80,7 @@ export function StaffHome() {
           </Link>
         </div>
         {myIssues.length === 0 ? (
-          <p className="px-5 py-6 text-[13px] text-forest/40 text-center">No issues assigned.</p>
+          <p className="px-5 py-4 sm:py-6 text-[13px] text-forest/40 text-center">No issues assigned.</p>
         ) : (
           <div className="divide-y divide-stone-100">
             {myIssues.slice(0, 6).map((issue) => (

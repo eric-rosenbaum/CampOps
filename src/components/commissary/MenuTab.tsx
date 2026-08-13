@@ -133,7 +133,7 @@ function MenuCell({ week, dayIndex, meal }: { week: number; dayIndex: number; me
 
 function ViewToggle({ menuView, setMenuView }: { menuView: string; setMenuView: (v: 'session' | 'templates') => void }) {
   return (
-    <div className="flex items-center gap-2 px-7 pt-5">
+    <div className="flex items-center gap-2 px-4 sm:px-7 pt-5">
       <FilterPill label="Session menu" active={menuView === 'session'} onClick={() => setMenuView('session')} />
       <FilterPill label="Templates" active={menuView === 'templates'} onClick={() => setMenuView('templates')} />
     </div>
@@ -162,7 +162,7 @@ export function MenuTab() {
 
   if (!session) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
           <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
             <CalendarDays className="w-7 h-7 text-stone-400" />
@@ -241,7 +241,7 @@ export function MenuTab() {
   return (
     <div className="flex-1 overflow-y-auto pb-6">
       <ViewToggle menuView={menuView} setMenuView={setMenuView} />
-      <div className="px-7 pt-4">
+      <div className="px-4 sm:px-7 pt-4">
       {/* Head count — the number everything downstream scales from. */}
       <div className="bg-white rounded-card border border-border px-4 py-3 mb-4">
         <div className="flex items-start gap-3">

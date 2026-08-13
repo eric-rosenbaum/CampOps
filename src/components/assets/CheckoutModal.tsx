@@ -150,7 +150,7 @@ export function CheckoutModal() {
           </div>
 
           {(asset.tracksOdometer || asset.tracksHours) && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {asset.tracksOdometer && (
                 <div>
                   <label className="text-body font-medium text-forest mb-1 block">Starting odometer</label>

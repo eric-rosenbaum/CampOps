@@ -126,7 +126,7 @@ export function InspectionsTab() {
   return (
     <div>
       {/* Summary stats */}
-      <div className="grid grid-cols-4 gap-3.5 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
         {[
           { label: 'Completed', value: completed, hint: 'This session', cls: 'text-green-muted-text' },
           { label: 'Coming due', value: comingDue, hint: 'Within 14 days', cls: comingDue > 0 ? 'text-amber' : 'text-forest' },

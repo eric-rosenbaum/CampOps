@@ -62,7 +62,7 @@ export function PaymentModal({ retreatId, defaultKind }: { retreatId: string; de
   return (
     <Modal title="Payments" onClose={closeModal} width="500px">
       <div className="space-y-5">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="rounded-card border border-border bg-cream px-3 py-2.5">
             <p className="text-[10px] uppercase tracking-widest text-forest/45 font-semibold">Charged</p>
             <p className="font-mono text-[15px] text-forest mt-0.5">{money(bal.totalCharges)}</p>
@@ -83,7 +83,7 @@ export function PaymentModal({ retreatId, defaultKind }: { retreatId: string; de
               <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40">{editingId ? 'Edit payment' : 'Record a payment'}</p>
               {editingId && <button type="button" onClick={resetForm} className="text-[11px] text-forest/50 hover:text-forest">Cancel edit</button>}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Paid on</label>
                 <input type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} className={inputClass} />
@@ -93,7 +93,7 @@ export function PaymentModal({ retreatId, defaultKind }: { retreatId: string; de
                 <input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} placeholder="0.00" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Kind</label>
                 <select value={kind} onChange={(e) => setKind(e.target.value as RetreatPaymentKind)} className={inputClass}>

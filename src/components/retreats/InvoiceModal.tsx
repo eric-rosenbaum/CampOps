@@ -180,7 +180,7 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
           <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40">Create an invoice</p>
           <div>
             <label className={labelClass}>Invoice type</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {(['deposit', 'balance'] as RetreatInvoiceKind[]).map((k) => (
                 <button
                   key={k} type="button" onClick={() => setKind(k)}
@@ -246,7 +246,7 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Due date</label>
               <input type="date" value={effectiveDue} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />

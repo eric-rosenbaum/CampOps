@@ -115,7 +115,7 @@ export function ChemicalLogTab() {
     <div>
       {/* Status cards */}
       {latest && (
-        <div className="grid grid-cols-4 gap-3.5 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
           {statusCards.map(({ field, displayVal, hint }) => {
             const fieldMap: Record<ChemicalField, number> = {
               freeChlorine: latest.freeChlorine,
@@ -166,7 +166,7 @@ export function ChemicalLogTab() {
         <p className="text-meta font-semibold uppercase tracking-wide text-blue-700 mb-2.5">
           Acceptable ranges — health dept. & ACA standards
         </p>
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           {(Object.keys(CHEMICAL_RANGES) as ChemicalField[]).map((field) => (
             <div key={field}>
               <p className="text-meta text-blue-600 font-medium mb-0.5">

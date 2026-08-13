@@ -33,9 +33,9 @@ export function ChangeRequestsTab() {
   const groupName = (r: RetreatChangeRequest) => retreatById(r.retreatId)?.groupName ?? 'Unknown group';
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       {/* Stat row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
         <StatCard label="Pending review" value={pending.length} hint="Awaiting your response" variant={pending.length > 0 ? 'amber' : 'default'} />
         <StatCard label="Approved" value={approvedCount} hint="Across all retreats" />
         <StatCard label="Declined" value={declinedCount} hint="With explanation" variant={declinedCount > 0 ? 'red' : 'default'} />
@@ -48,7 +48,7 @@ export function ChangeRequestsTab() {
       </div>
 
       {pending.length === 0 ? (
-        <div className="bg-white rounded-card border border-border px-5 py-6 text-center text-[13px] text-forest/45 italic mb-8">
+        <div className="bg-white rounded-card border border-border px-5 py-4 sm:py-6 text-center text-[13px] text-forest/45 italic mb-8">
           No pending change requests. You're all caught up.
         </div>
       ) : (
@@ -89,7 +89,7 @@ export function ChangeRequestsTab() {
       <h3 className="text-[14px] font-semibold text-forest mb-3">Resolved requests</h3>
 
       {resolved.length === 0 ? (
-        <div className="bg-white rounded-card border border-border px-5 py-6 text-center text-[13px] text-forest/45 italic">
+        <div className="bg-white rounded-card border border-border px-5 py-4 sm:py-6 text-center text-[13px] text-forest/45 italic">
           No resolved requests yet.
         </div>
       ) : (

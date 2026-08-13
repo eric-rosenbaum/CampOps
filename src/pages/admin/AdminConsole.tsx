@@ -87,7 +87,7 @@ export function AdminConsole() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-6">
+      <div className="max-w-6xl mx-auto px-6 py-4 sm:py-6">
         <PlatformAdmins />
         <OrgQuickAdd />
         {loading ? (

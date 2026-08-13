@@ -173,7 +173,7 @@ export function OverviewTab() {
   return (
     <div>
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-3.5 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
         <div className={`bg-white border border-border rounded-card px-4 py-4 ${overdue > 0 ? 'border-l-[3px] border-l-red' : ''}`}>
           <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Overdue items</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${overdue > 0 ? 'text-red' : 'text-green-muted-text'}`}>{overdue}</p>
@@ -274,7 +274,7 @@ export function OverviewTab() {
       </div>
 
       {licenses.length === 0 ? (
-        <div className="bg-white border border-border rounded-card px-5 py-6 text-center mb-6">
+        <div className="bg-white border border-border rounded-card px-5 py-4 sm:py-6 text-center mb-6">
           <p className="text-[13px] text-forest/40">No permits or licenses on file.</p>
           <button onClick={() => openAddLicenseModal()} className="text-[12px] text-sage font-medium mt-1 cursor-pointer hover:underline">
             + Add health permit, state camping license, or other permit

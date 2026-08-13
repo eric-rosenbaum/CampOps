@@ -278,7 +278,7 @@ export function CSVImportModal() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Vendor for this import</label>
                 <select value={vendorId} onChange={(e) => setVendorId(e.target.value)} className={inputClass}>
@@ -302,15 +302,15 @@ export function CSVImportModal() {
                 Map one column to <strong>Item name</strong> to continue.
               </p>
             ) : (
-              <div className="rounded-card border border-border overflow-hidden">
-                <div className="grid grid-cols-[2fr_0.7fr_1fr_1.3fr_1fr] gap-2 px-3 py-2 bg-cream-dark/40 border-b border-border">
+              <div className="rounded-card border border-border overflow-x-auto">
+                <div className="grid grid-cols-[2fr_0.7fr_1fr_1.3fr_1fr] min-w-[640px] sm:min-w-0 gap-2 px-3 py-2 bg-cream-dark/40 border-b border-border">
                   {['Item', '', 'Stocked by', 'Pack', 'Price'].map((h, i) => (
                     <span key={i} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>
                   ))}
                 </div>
                 <div className="max-h-52 overflow-y-auto">
                   {built.slice(0, 60).map((r, i) => (
-                    <div key={i} className={`grid grid-cols-[2fr_0.7fr_1fr_1.3fr_1fr] gap-2 px-3 py-1.5 border-b border-border last:border-0 items-center text-[12px] ${r.mode === 'skip' ? 'opacity-40' : ''}`}>
+                    <div key={i} className={`grid grid-cols-[2fr_0.7fr_1fr_1.3fr_1fr] min-w-[640px] sm:min-w-0 gap-2 px-3 py-1.5 border-b border-border last:border-0 items-center text-[12px] ${r.mode === 'skip' ? 'opacity-40' : ''}`}>
                       <span className="text-forest truncate">{r.name}</span>
                       <span>{modeBadge(r.mode)}</span>
                       <span className="text-forest/55">{r.stockUnit}</span>

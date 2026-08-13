@@ -286,7 +286,7 @@ export function ProductionTab() {
 
   if (!session) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
           <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
             <ChefHat className="w-7 h-7 text-stone-400" />
@@ -303,7 +303,7 @@ export function ProductionTab() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       {/* Day plan vs forward-looking prep calendar */}
       <div className="flex items-center gap-2 mb-5">
         <FilterPill label="Day plan" active={prodView === 'day'} onClick={() => setProdView('day')} />
@@ -372,7 +372,7 @@ export function ProductionTab() {
         )}
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
         <StatCard label="Head count" value={portions()} hint="Campers + staff" />
         <StatCard label="Portions today" value={plan ? plan.portions * MEAL_PERIODS.length : 0} hint="Across all meal periods" />
         <StatCard label="Tasks complete" value={`${done} of ${tasks.length}`} hint={tasks.length ? `${Math.round((done / tasks.length) * 100)}% done` : 'No plan generated'} />

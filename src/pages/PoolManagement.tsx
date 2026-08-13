@@ -80,7 +80,7 @@ export function PoolManagement() {
       />
 
       {/* Pool selector tab strip */}
-      <div className="bg-white border-b border-border px-7 flex-shrink-0 overflow-x-auto">
+      <div className="bg-white border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto">
         <div className="flex min-w-max">
           {/* All pools tab */}
           <button
@@ -119,7 +119,7 @@ export function PoolManagement() {
 
       {/* Sub-tab bar — only visible when a pool is selected */}
       {activePoolId && (
-        <div className="bg-white border-b border-border px-7 flex-shrink-0">
+        <div className="bg-white border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto">
           <div className="flex items-center gap-1">
             <button
               onClick={() => setActivePool(null)}
@@ -132,7 +132,7 @@ export function PoolManagement() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-5 py-3 text-body border-b-2 transition-colors ${
+                className={`px-5 py-3 text-body border-b-2 transition-colors whitespace-nowrap ${
                   effectiveTab === tab.id
                     ? 'text-forest font-semibold border-sage'
                     : 'text-forest/40 font-medium border-transparent hover:text-forest/70'
@@ -146,7 +146,7 @@ export function PoolManagement() {
       )}
 
       {/* Tab content */}
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         {pools.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
             <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">

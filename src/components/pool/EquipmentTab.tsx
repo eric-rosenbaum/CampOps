@@ -80,7 +80,7 @@ export function EquipmentTab() {
   return (
     <div>
       {/* Summary stats */}
-      <div className="grid grid-cols-4 gap-3.5 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
         {[
           { label: 'Total equipment', value: total, hint: 'Items tracked', cls: 'text-forest' },
           { label: 'Operational', value: operational, hint: 'Running normally', cls: 'text-green-muted-text' },
@@ -136,7 +136,7 @@ export function EquipmentTab() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {fields.map((f) => (
                   <FieldBlock key={f.label} {...f} />
                 ))}

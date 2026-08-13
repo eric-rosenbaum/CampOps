@@ -28,13 +28,13 @@ export function MyTasks() {
         subtitle={`${currentUser.name} · ${totalCount} task${totalCount !== 1 ? 's' : ''} assigned`}
       />
 
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="mb-8">
           <h2 className="text-[13px] font-semibold uppercase tracking-wide text-forest/50 mb-3">
             My open issues
           </h2>
           {myIssues.length === 0 ? (
-            <div className="bg-white rounded-card border border-border p-6 text-center">
+            <div className="bg-white rounded-card border border-border p-4 sm:p-6 text-center">
               <p className="text-[13px] text-forest/50">No issues assigned to you</p>
             </div>
           ) : (
@@ -58,7 +58,7 @@ export function MyTasks() {
             My checklist tasks
           </h2>
           {myTasks.length === 0 ? (
-            <div className="bg-white rounded-card border border-border p-6 text-center">
+            <div className="bg-white rounded-card border border-border p-4 sm:p-6 text-center">
               <p className="text-[13px] text-forest/50">No checklist tasks assigned to you</p>
             </div>
           ) : (

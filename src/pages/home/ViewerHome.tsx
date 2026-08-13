@@ -29,7 +29,7 @@ export function ViewerHome() {
         <p className="text-[13px] text-forest/50 mt-0.5">Read-only view</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <div className={`rounded-xl border p-5 ${urgentIssues.length > 0 ? 'border-red-200 bg-red-50' : 'border-stone-200 bg-white'}`}>
           <p className="text-[11px] font-medium uppercase tracking-wider text-forest/40 mb-2">Open Issues</p>
           <p className={`text-2xl font-bold ${urgentIssues.length > 0 ? 'text-red-600' : 'text-forest'}`}>

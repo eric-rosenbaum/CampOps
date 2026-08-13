@@ -136,7 +136,7 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
           <input value={groupName} onChange={(e) => setGroupName(e.target.value)} className={inputClass} placeholder="e.g. Congregation Beth Shalom Shabbaton" autoFocus />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Group type</label>
             <select value={groupType} onChange={(e) => setGroupType(e.target.value)} className={inputClass}>
@@ -150,7 +150,7 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Arrival</label>
             <input type="date" value={arrivalDate} onChange={(e) => setArrivalDate(e.target.value)} className={inputClass} />
@@ -168,7 +168,7 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>{rateLabel}</label>
             <input type="number" min="0" step="0.01" value={rateValue} onChange={(e) => setRateValue(e.target.value)} className={inputClass} placeholder="0.00" />
@@ -179,7 +179,7 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Deposit due</label>
             <input type="date" value={depositDue} onChange={(e) => setDepositDue(e.target.value)} className={inputClass} />
@@ -191,7 +191,7 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
           <label className={labelClass}>Coordinator name</label>
           <input value={coordName} onChange={(e) => setCoordName(e.target.value)} className={inputClass} placeholder="e.g. Rachel Green" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Coordinator email</label>
             <input type="email" value={coordEmail} onChange={(e) => setCoordEmail(e.target.value)} className={inputClass} placeholder="name@org.com" />
@@ -202,7 +202,7 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Housing deadline</label>
             <input type="date" value={housingDeadline} onChange={(e) => setHousingDeadline(e.target.value)} className={inputClass} />

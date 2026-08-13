@@ -112,7 +112,7 @@ export function RetreatMenuTab() {
 
   if (retreats.length === 0) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
           <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mb-4">
             <Utensils className="w-7 h-7 text-forest/30" />
@@ -127,7 +127,7 @@ export function RetreatMenuTab() {
   const retreat = selectedRetreat();
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       <div className="flex flex-wrap gap-2 mb-5">
         {retreats.map((r) => (
           <FilterPill key={r.id} label={r.groupName} active={(activeRetreatId ?? retreat?.id) === r.id} onClick={() => setActiveRetreat(r.id)} />

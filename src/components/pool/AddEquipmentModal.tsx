@@ -53,7 +53,7 @@ export function AddEquipmentModal() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <p className="text-secondary text-forest/50 -mt-1">Add a piece of pool equipment to track</p>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Equipment name *</label>
             <input
@@ -76,7 +76,7 @@ export function AddEquipmentModal() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Manufacturer / specs</label>
             <input
@@ -91,7 +91,7 @@ export function AddEquipmentModal() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Service vendor</label>
             <input {...register('vendor')} className={inputClass} placeholder="Vendor name" />

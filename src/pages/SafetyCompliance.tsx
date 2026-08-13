@@ -208,13 +208,13 @@ export function SafetyCompliance() {
       />
 
       {/* Tab bar */}
-      <div className="bg-white border-b border-border px-7 flex-shrink-0">
+      <div className="bg-white border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto">
         <div className="flex">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-5 py-3 text-body border-b-2 transition-colors ${
+              className={`px-5 py-3 text-body border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'text-forest font-semibold border-sage'
                   : 'text-forest/40 font-medium border-transparent hover:text-forest/70'
@@ -227,7 +227,7 @@ export function SafetyCompliance() {
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'fire'     && <FireSafetyTab />}
         {activeTab === 'kitchen'  && <KitchenTab />}

@@ -204,7 +204,7 @@ function OverviewTab({ asset, checkout, isOverdue, onCheckout, onReturn, onServi
       )}
 
       {/* Asset details grid */}
-      <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-body">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-body">
         {asset.make && <Field label="Make / Model" value={`${asset.make}${asset.model ? ` ${asset.model}` : ''}${asset.year ? ` (${asset.year})` : ''}`} />}
         {asset.serialNumber && <Field label="Serial #" value={asset.serialNumber} />}
         {asset.licensePlate && <Field label="Plate" value={asset.licensePlate} />}
@@ -438,7 +438,7 @@ function MaintenanceTab({ assetId, activeMaintPhase, setActiveMaintPhase, tasks,
       </div>
 
       {tasks.length === 0 && (
-        <p className="text-body text-forest/40 text-center py-6">No tasks for this phase.</p>
+        <p className="text-body text-forest/40 text-center py-4 sm:py-6">No tasks for this phase.</p>
       )}
 
       <div className="space-y-2">

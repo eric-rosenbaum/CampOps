@@ -98,7 +98,7 @@ export function LogServiceModal() {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Service type *</label>
             <select {...register('serviceType', { required: true })} className={inputClass}>
@@ -135,7 +135,7 @@ export function LogServiceModal() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Cost</label>
             <input {...register('cost')} className={inputClass} placeholder="$0" />

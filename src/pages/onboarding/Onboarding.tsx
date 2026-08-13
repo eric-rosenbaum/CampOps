@@ -96,7 +96,7 @@ function SheetPicker({ columns, nameCol, sizeCol, onNameCol, onSizeCol, onConfir
   return (
     <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-3">
       <p className="text-[12px] font-medium text-forest">Match spreadsheet columns</p>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-[11px] text-forest/50 mb-1">Cabin / location name <span className="text-red-500">*</span></label>
           <select value={nameCol} onChange={e => onNameCol(e.target.value)} className={selectCls}>
@@ -252,7 +252,7 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
 
       <div>
         <SectionLabel>Common areas</SectionLabel>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
           {COMMON_LOCATIONS.map(loc => (
             <button
               key={loc}
@@ -495,7 +495,7 @@ function PoolStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }
         )}
 
         <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <input
               value={newPoolName}
               onChange={e => setNewPoolName(e.target.value)}
@@ -519,7 +519,7 @@ function PoolStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }
       <div>
         <SectionLabel>Rescue equipment on hand</SectionLabel>
         <p className="text-[12px] text-forest/50 mb-2">Check off what's available at your waterfront.</p>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
           {[...RESCUE_EQUIPMENT, ...extraEquip].map(e => (
             <button key={e} onClick={() => toggleEquip(e)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-left text-[12px] transition-colors ${
@@ -543,7 +543,7 @@ function PoolStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }
       <div>
         <SectionLabel>Lifeguards & certifications</SectionLabel>
         {/* Column headers */}
-        <div className="grid grid-cols-[1fr_160px_160px_32px] gap-2 mb-1 px-0.5">
+        <div className="grid grid-cols-[1fr_160px_160px_32px] min-w-[640px] sm:min-w-0 gap-2 mb-1 px-0.5">
           <span className="text-[10px] font-semibold uppercase tracking-wide text-forest/40">Name</span>
           <span className="text-[10px] font-semibold uppercase tracking-wide text-forest/40">Certification</span>
           <span className="text-[10px] font-semibold uppercase tracking-wide text-forest/40">Cert expires</span>
@@ -551,7 +551,7 @@ function PoolStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }
         </div>
         <div className="space-y-2">
           {guards.map((g, i) => (
-            <div key={i} className="grid grid-cols-[1fr_160px_160px_32px] gap-2 items-center">
+            <div key={i} className="grid grid-cols-[1fr_160px_160px_32px] min-w-[640px] sm:min-w-0 gap-2 items-center">
               <input value={g.name} onChange={e => updateGuard(i, 'name', e.target.value)} className={inputCls} placeholder="Full name" />
               <select value={g.cert} onChange={e => updateGuard(i, 'cert', e.target.value)} className={selectCls}>
                 <option value="lifeguard">Lifeguard</option>
@@ -603,7 +603,7 @@ function ChecklistsStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => 
       <InputRow label={<>Season name <span className="text-forest/30 font-normal">(optional)</span></>}>
         <input value={name} onChange={e => setName(e.target.value)} className={inputCls} placeholder="e.g. Summer 2026" />
       </InputRow>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <InputRow label="Opening date"><input type="date" value={opening} onChange={e => setOpening(e.target.value)} className={inputCls} /></InputRow>
         <InputRow label="Closing date"><input type="date" value={closing} onChange={e => setClosing(e.target.value)} className={inputCls} /></InputRow>
       </div>
@@ -698,7 +698,7 @@ function SafetyStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void
         <SectionLabel>Fire extinguishers & CO₂ alarms</SectionLabel>
         <div className="space-y-2">
           {fireEquip.map((e, i) => (
-            <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-end">
+            <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto] min-w-[640px] sm:min-w-0 gap-2 items-end">
               <select value={e.type} onChange={ev => updateFireEquip(i, 'type', ev.target.value)} className={selectCls}>
                 <option value="extinguisher">Extinguisher</option>
                 <option value="co_alarm">CO₂ Alarm</option>
@@ -740,7 +740,7 @@ function SafetyStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void
         <SectionLabel>Drills & training</SectionLabel>
         <div className="space-y-2">
           {drills.map((d, i) => (
-            <div key={i} className="grid grid-cols-[auto_auto_1fr_auto] gap-2 items-end">
+            <div key={i} className="grid grid-cols-[auto_auto_1fr_auto] min-w-[640px] sm:min-w-0 gap-2 items-end">
               <select value={d.type} onChange={e => updateDrill(i, 'type', e.target.value)} className={selectCls + ' w-44'}>
                 {DRILL_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
@@ -823,7 +823,7 @@ function AssetsStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void
                 <button onClick={() => setAssets(prev => prev.filter((_, idx) => idx !== i))} className="text-stone-400 hover:text-red-500"><X className="w-4 h-4" /></button>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <InputRow label="Name / description">
                 <input value={a.name} onChange={e => updateAsset(i, 'name', e.target.value)} className={inputCls} placeholder="e.g. Camp Van, Kubota Mower" />
               </InputRow>
@@ -1018,7 +1018,7 @@ export function Onboarding() {
       </div>
 
       {/* Right content */}
-      <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start bg-stone-50 p-6 sm:p-10">
+      <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start bg-stone-50 p-4 sm:p-6 sm:p-10">
         <div className="lg:hidden flex items-center justify-between w-full max-w-2xl mb-6">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-3.5 h-3.5 text-cream" /></div>

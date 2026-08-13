@@ -76,7 +76,7 @@ export function MealEventModal({ editId, date }: { editId?: string; date?: strin
                  placeholder={isBag ? 'e.g. Hiking trip bag lunches' : 'e.g. Visiting day lunch'} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Date</label>
             <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className={inputClass} />
@@ -90,7 +90,7 @@ export function MealEventModal({ editId, date }: { editId?: string; date?: strin
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {!isBag && (
             <div>
               <label className={labelClass}>Count is…</label>

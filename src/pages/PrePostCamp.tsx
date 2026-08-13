@@ -12,7 +12,7 @@ import { useAssetStore } from '@/store/assetStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { format } from 'date-fns';
-import { Plus, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
 
 // ─── Pool seasonal tasks section ─────────────────────────────────────────────
 
@@ -230,6 +230,9 @@ export function PrePostCamp() {
   }, [storeFiltered, role, currentUser.id, prepostSeeUnassigned]);
 
   const selectedTask = tasks.find((t) => t.id === selectedTaskId);
+  // The store preselects a task so the desktop panel is never empty; on a phone the
+  // detail is a full-screen layer, so it opens only on a deliberate tap.
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
   function handleTakeTask(taskId: string) {
     const now = new Date().toISOString();
@@ -244,6 +247,7 @@ export function PrePostCamp() {
   }
 
   useEffect(() => {
+    if (!window.matchMedia('(min-width: 1024px)').matches) return;
     if (!selectedTaskId || !filtered.find((t) => t.id === selectedTaskId)) {
       if (filtered.length > 0) selectTask(filtered[0].id);
     }
@@ -278,7 +282,7 @@ export function PrePostCamp() {
       <div className="flex flex-1 min-h-0">
         {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-7 py-6">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
             {/* Phase toggle */}
             <div className="flex rounded-btn border border-border overflow-hidden mb-6 w-fit">
               {(['pre', 'post'] as const).map((phase) => (
@@ -316,7 +320,7 @@ export function PrePostCamp() {
 
               {/* By-location breakdown */}
               {Object.keys(locationBreakdown).length > 0 && (
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mt-4">
                   {Object.entries(locationBreakdown).map(([loc, data]) => {
                     const pct = data.total > 0 ? Math.round((data.complete / data.total) * 100) : 0;
                     return (
@@ -346,8 +350,8 @@ export function PrePostCamp() {
             <AssetMaintenanceSection activePhase={activePhase} />
 
             {/* Filter bar */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2 overflow-x-auto -mx-1 px-1 pb-1 sm:pb-0">
                 {filterLabels.map(({ key, label }) => (
                   <FilterPill
                     key={key}
@@ -385,7 +389,7 @@ export function PrePostCamp() {
                     key={task.id}
                     task={task}
                     selected={task.id === selectedTaskId}
-                    onClick={() => selectTask(task.id)}
+                    onClick={() => { selectTask(task.id); setMobileDetailOpen(true); }}
                     onTakeIt={prepostSeeUnassigned && role === 'staff' && !task.assigneeId
                       ? () => handleTakeTask(task.id)
                       : undefined}
@@ -396,10 +400,23 @@ export function PrePostCamp() {
           </div>
         </div>
 
-        {/* Detail panel */}
-        <div className="w-detail min-w-detail border-l border-border bg-white flex flex-col overflow-hidden">
+        {/* Detail panel. Beside the list on desktop; a full-screen layer over it on a phone. */}
+        <div
+          className={`border-l border-border bg-white flex-col overflow-hidden
+            lg:w-detail lg:min-w-detail lg:static lg:z-auto lg:flex
+            ${selectedTask && mobileDetailOpen ? 'fixed inset-0 z-40 flex w-full' : 'hidden'}`}
+        >
           {selectedTask ? (
-            <TaskDetail task={selectedTask} />
+            <>
+              <button
+                onClick={() => setMobileDetailOpen(false)}
+                className="lg:hidden flex items-center gap-1.5 px-4 py-3 border-b border-border text-[13px] font-medium text-forest/70 hover:text-forest flex-shrink-0"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                All tasks
+              </button>
+              <TaskDetail task={selectedTask} />
+            </>
           ) : (
             <div className="flex items-center justify-center h-full text-forest/30 text-[13px]">
               Select a task to view details

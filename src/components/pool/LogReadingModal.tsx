@@ -127,7 +127,7 @@ export function LogReadingModal() {
         </p>
 
         {/* Reading fields grid */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {fields.map((f, i) => {
             const status = getFieldStatus(f.key, fieldValues[i]);
             return (
@@ -169,7 +169,7 @@ export function LogReadingModal() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Reading time *</label>
             <input {...register('readingTime', { required: true })} type="datetime-local" className={inputClass} />

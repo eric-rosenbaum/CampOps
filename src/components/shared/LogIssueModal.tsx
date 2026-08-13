@@ -245,7 +245,7 @@ export function LogIssueModal() {
           <LocationPicker value={locationIds} onChange={setLocationIds} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Priority *</label>
             <select {...register('priority', { required: true })} className={inputClass}>
@@ -266,7 +266,7 @@ export function LogIssueModal() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {can('assign') && (
             <div>
               <label className={labelClass}>Assign to</label>

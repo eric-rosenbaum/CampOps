@@ -154,7 +154,7 @@ export function AddEditAssetModal() {
                 <label className="text-body font-medium text-forest mb-1 block">Name <span className="text-red">*</span></label>
                 <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Golf Cart 1, Camp Bus, John Deere…" className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-body font-medium text-forest mb-1 block">Category</label>
                   <select value={category} onChange={(e) => setCategory(e.target.value as AssetCategory)} className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage bg-white">
@@ -175,7 +175,7 @@ export function AddEditAssetModal() {
           <section>
             <p className="text-meta font-semibold uppercase tracking-wide text-forest/40 mb-3">Details</p>
             <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-body font-medium text-forest mb-1 block">Make</label>
                   <input value={make} onChange={(e) => setMake(e.target.value)} placeholder="Ford, John Deere…" className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />
@@ -189,7 +189,7 @@ export function AddEditAssetModal() {
                   <input value={year} onChange={(e) => setYear(e.target.value)} placeholder="2022" type="number" className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-body font-medium text-forest mb-1 block">Serial / VIN / Hull ID</label>
                   <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />
@@ -199,7 +199,7 @@ export function AddEditAssetModal() {
                   <input value={licensePlate} onChange={(e) => setLicensePlate(e.target.value)} className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-body font-medium text-forest mb-1 block">Registration expiry</label>
                   <input type="date" value={registrationExpiry} onChange={(e) => setRegistrationExpiry(e.target.value)} className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />
@@ -235,7 +235,7 @@ export function AddEditAssetModal() {
                 </label>
               </div>
               {(tracksOdometer || tracksHours) && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {tracksOdometer && (
                     <div>
                       <label className="text-body font-medium text-forest mb-1 block">Current odometer</label>
@@ -258,7 +258,7 @@ export function AddEditAssetModal() {
             <section>
               <p className="text-meta font-semibold uppercase tracking-wide text-forest/40 mb-3">Watercraft</p>
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-body font-medium text-forest mb-1 block">Hull ID</label>
                     <input value={hullId} onChange={(e) => setHullId(e.target.value)} className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />
@@ -268,7 +268,7 @@ export function AddEditAssetModal() {
                     <input value={uscgRegistration} onChange={(e) => setUscgRegistration(e.target.value)} className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="text-body font-medium text-forest mb-1 block">USCG expiry</label>
                     <input type="date" value={uscgRegistrationExpiry} onChange={(e) => setUscgRegistrationExpiry(e.target.value)} className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />

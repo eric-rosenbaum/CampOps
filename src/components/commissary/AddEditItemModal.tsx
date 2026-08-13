@@ -277,7 +277,7 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
                  placeholder="e.g. White bread, Canned tomato soup, Chicken breast" />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Category</label>
             <select value={category} onChange={(e) => setCategory(e.target.value as InventoryCategory)} className={inputClass}>
@@ -293,7 +293,7 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
         </div>
 
         {/* ── How it's counted ───────────────────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className={labelClass}>Stocked by</label>
             <select value={stockUnitValue} onChange={(e) => { setUnitTouched(true); setStockUnitValue(e.target.value); }} className={inputClass}>

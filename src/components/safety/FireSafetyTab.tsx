@@ -71,7 +71,7 @@ function ItemCard({ item, onLog }: { item: SafetyItem; onLog: () => void }) {
       </div>
 
       {/* Details grid */}
-      <div className="grid grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
         <div>
           <p className="text-[10px] text-forest/40 font-medium mb-0.5">Units</p>
           <p className={`text-[12px] font-semibold font-mono ${status === 'ok' ? 'text-green-muted-text' : status === 'warn' ? 'text-amber' : 'text-red'}`}>
@@ -173,7 +173,7 @@ export function FireSafetyTab() {
   return (
     <div>
       {/* Stat cards */}
-      <div className="grid grid-cols-5 gap-3.5 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5 mb-6">
         <div className="bg-white border border-border rounded-card px-4 py-4">
           <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Extinguishers</p>
           <p className="font-mono font-semibold text-stat mt-1 text-forest">{extinguishers.reduce((s, i) => s + i.unitCount, 0)}</p>

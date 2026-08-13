@@ -108,7 +108,7 @@ export function DocumentsTab() {
 
   if (retreats.length === 0) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
           <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mb-4">
             <FileText className="w-7 h-7 text-forest/30" />
@@ -129,7 +129,7 @@ export function DocumentsTab() {
   const agreementMissing = retreat && !agreement;
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       <div className="flex flex-wrap gap-2 mb-5">
         {retreats.map((r) => (
           <FilterPill
@@ -231,7 +231,7 @@ export function DocumentsTab() {
               <button
                 type="button"
                 onClick={() => openModal({ kind: 'uploadDoc', retreatId: retreat.id, docType: 'agreement' })}
-                className="w-full rounded-btn border-2 border-dashed border-border hover:border-sage hover:bg-sage-pale/40 transition-colors px-4 py-6 text-center cursor-pointer"
+                className="w-full rounded-btn border-2 border-dashed border-border hover:border-sage hover:bg-sage-pale/40 transition-colors px-4 py-4 sm:py-6 text-center cursor-pointer"
               >
                 <Paperclip className="w-6 h-6 text-forest/40 mx-auto mb-2" />
                 <p className="text-[13px] font-medium text-forest">Click to upload retreat agreement</p>
@@ -249,7 +249,7 @@ export function DocumentsTab() {
               <button
                 type="button"
                 onClick={() => openModal({ kind: 'uploadDoc', retreatId: retreat.id, docType: 'coi' })}
-                className="w-full rounded-btn border-2 border-dashed border-border hover:border-sage hover:bg-sage-pale/40 transition-colors px-4 py-6 text-center cursor-pointer"
+                className="w-full rounded-btn border-2 border-dashed border-border hover:border-sage hover:bg-sage-pale/40 transition-colors px-4 py-4 sm:py-6 text-center cursor-pointer"
               >
                 <Paperclip className="w-6 h-6 text-forest/40 mx-auto mb-2" />
                 <p className="text-[13px] font-medium text-forest">Click to upload COI document</p>

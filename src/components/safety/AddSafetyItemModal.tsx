@@ -255,7 +255,7 @@ export function AddSafetyItemModal() {
           {errors.name && <p className="text-[11px] text-red mt-1">Name is required.</p>}
         </div>
 
-        <div className={showUnitCount(itemType) ? 'grid grid-cols-2 gap-3' : ''}>
+        <div className={showUnitCount(itemType) ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : ''}>
           <div>
             <label className={lc}>Location *</label>
             <LocationPicker
@@ -277,7 +277,7 @@ export function AddSafetyItemModal() {
 
         {/* Extinguisher-specific */}
         {itemType === 'extinguisher' && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={lc}>Extinguisher class</label>
               <select {...register('extinguisherClass')} className={ic}>
@@ -298,7 +298,7 @@ export function AddSafetyItemModal() {
 
         {/* Refrigeration-specific */}
         {itemType === 'refrigeration' && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={lc}>Min safe temp (°F)</label>
               <input {...register('tempMin')} type="number" step="0.1" className={ic} placeholder="e.g. 35" />
@@ -324,7 +324,7 @@ export function AddSafetyItemModal() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={lc}>{frequencyLabel} *</label>
             <select {...register('frequency', { required: true })} className={ic}>

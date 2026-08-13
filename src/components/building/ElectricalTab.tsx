@@ -10,7 +10,7 @@ export function ElectricalTab() {
   const allPanels = panels();
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6 space-y-7">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6 space-y-7">
       {/* Panels & breaker schedules */}
       <section>
         <h3 className="text-card-title font-semibold text-forest mb-3">Panels &amp; breaker schedules</h3>

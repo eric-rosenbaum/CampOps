@@ -126,7 +126,7 @@ function PhaseDot({ state }: { state: PhaseState }) {
 
 export function PhaseTracker({ progress }: { progress: Record<(typeof PHASE_KEYS)[number], PhaseState> }) {
   return (
-    <div className="grid grid-cols-5 gap-2 pt-3 mt-3 border-t border-cream-dark">
+    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-3 mt-3 border-t border-cream-dark">
       {PHASE_KEYS.map((k) => (
         <div key={k} className="text-center">
           <p className="text-[9px] font-semibold uppercase tracking-wide text-forest/45 mb-1">{PHASE_LABELS[k]}</p>

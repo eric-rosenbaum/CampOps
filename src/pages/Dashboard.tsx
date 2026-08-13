@@ -583,7 +583,7 @@ export function Dashboard() {
     <div className="flex flex-col h-full min-h-0">
       <Topbar title="Operations Dashboard" subtitle={subtitle} />
 
-      <div className="flex-1 overflow-y-auto px-7 py-6 space-y-7">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6 space-y-7">
 
         {/* ── Critical alert strip ─────────────────────────────────────── */}
         {alertPills.length > 0 && (
@@ -604,7 +604,7 @@ export function Dashboard() {
         )}
 
         {/* ── Stat strip ───────────────────────────────────────────────── */}
-        <div className="grid grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
           <StatTile
             label="Urgent issues"
             value={urgCount}
@@ -718,7 +718,7 @@ export function Dashboard() {
               to="/pool"
               linkLabel="Manage"
             />
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-4">
               {activePools.map(pool => (
                 <ExpandedPoolCard
                   key={pool.id}
@@ -740,7 +740,7 @@ export function Dashboard() {
             badgeRed
             to="/safety"
           />
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
             {/* Compliance overview */}
             <div className="bg-white rounded-card border border-border p-4">
@@ -817,7 +817,7 @@ export function Dashboard() {
             <div className="bg-white rounded-card border border-border p-4">
               <p className="text-[10px] font-semibold text-forest/40 uppercase tracking-wide mb-3">Items needing attention</p>
               {failedDevices.length === 0 && overdueItems_.length === 0 ? (
-                <div className="flex flex-col items-center py-6">
+                <div className="flex flex-col items-center py-4 sm:py-6">
                   <CheckCircle2 className="w-6 h-6 text-sage mb-1.5" />
                   <p className="text-[12px] text-green-muted-text font-medium">All items current</p>
                   <p className="text-[10px] text-forest/35 mt-0.5">No failed or overdue inspections</p>
@@ -908,12 +908,12 @@ export function Dashboard() {
             badgeRed={overdueOuts.length > 0}
             to="/assets"
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
             {/* Fleet status + maintenance overdue */}
             <div className="bg-white rounded-card border border-border p-4">
               <p className="text-[10px] font-semibold text-forest/40 uppercase tracking-wide mb-3">Fleet status</p>
-              <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
                 {[
                   { label: 'Available', val: fleet.available, cls: 'text-green-muted-text' },
                   { label: 'Checked out', val: fleet.checkedOut, cls: fleet.checkedOut > 0 ? 'text-amber' : 'text-forest' },
@@ -961,7 +961,7 @@ export function Dashboard() {
                 )}
               </p>
               {checkedOutNow.length === 0 ? (
-                <div className="flex flex-col items-center py-6">
+                <div className="flex flex-col items-center py-4 sm:py-6">
                   <CheckCircle2 className="w-6 h-6 text-sage mb-1.5" />
                   <p className="text-[12px] text-forest/40">All assets returned</p>
                 </div>
@@ -1023,7 +1023,7 @@ export function Dashboard() {
               View all <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {[
               { label: 'Pre-camp opening', pct: preTotal > 0 ? Math.round((preComplete / preTotal) * 100) : 0, done: preComplete, total: preTotal },
               { label: 'Post-camp closing', pct: postTotal > 0 ? Math.round((postComplete / postTotal) * 100) : 0, done: postComplete, total: postTotal },

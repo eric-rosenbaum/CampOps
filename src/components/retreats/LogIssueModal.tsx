@@ -84,7 +84,7 @@ export function LogIssueModal({ retreatId, issueId }: { retreatId: string; issue
           <label className={labelClass}>Issue</label>
           <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} placeholder="e.g. Main lodge projector not connecting" autoFocus />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Reported by</label>
             <input value={reportedBy} onChange={(e) => setReportedBy(e.target.value)} className={inputClass} placeholder="Name" />
@@ -96,7 +96,7 @@ export function LogIssueModal({ retreatId, issueId }: { retreatId: string; issue
             </select>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Assigned to</label>
             <input value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className={inputClass} placeholder="Staff member" />

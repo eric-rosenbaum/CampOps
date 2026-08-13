@@ -86,8 +86,8 @@ export function ReceiveOrderModal({ orderId }: { orderId: string }) {
           </Button>
         </div>
 
-        <div className="rounded-card border border-border overflow-hidden">
-          <div className="grid grid-cols-[1.8fr_0.9fr_0.7fr_1fr_1fr_1.3fr] gap-2 px-3 py-2 bg-cream-dark/40 border-b border-border">
+        <div className="rounded-card border border-border overflow-x-auto">
+          <div className="grid grid-cols-[1.8fr_0.9fr_0.7fr_1fr_1fr_1.3fr] min-w-[760px] sm:min-w-0 gap-2 px-3 py-2 bg-cream-dark/40 border-b border-border">
             {['Item', 'Ordered', 'Arrived', 'Received', 'Unit price', 'Note (sub / short)'].map((h) => (
               <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>
             ))}
@@ -96,7 +96,7 @@ export function ReceiveOrderModal({ orderId }: { orderId: string }) {
             const short = Number(d.receivedQty) < d.orderedQty;
             const asOrdered = Number(d.receivedQty) === d.orderedQty;
             return (
-              <div key={d.lineId} className="grid grid-cols-[1.8fr_0.9fr_0.7fr_1fr_1fr_1.3fr] gap-2 px-3 py-2 border-b border-border last:border-0 items-center">
+              <div key={d.lineId} className="grid grid-cols-[1.8fr_0.9fr_0.7fr_1fr_1fr_1.3fr] min-w-[760px] sm:min-w-0 gap-2 px-3 py-2 border-b border-border last:border-0 items-center">
                 <span className="text-[12px] text-forest truncate">{d.itemName}</span>
                 <span className="font-mono text-[12px] text-forest/50">{d.orderedQty} {d.purchaseUnit}</span>
                 <input
@@ -123,7 +123,7 @@ export function ReceiveOrderModal({ orderId }: { orderId: string }) {
           })}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Invoice number</label>
             <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className={inputClass} placeholder="optional" />

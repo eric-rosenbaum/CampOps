@@ -105,7 +105,7 @@ function RecipeCard({ recipeId }: { recipeId: string }) {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40 mb-2">Ingredients</p>
               <div className="space-y-1.5">
@@ -188,7 +188,7 @@ export function RecipesTab() {
 
   if (recipes.length === 0) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
           <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
             <ChefHat className="w-7 h-7 text-stone-400" />
@@ -205,7 +205,7 @@ export function RecipesTab() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       <div className="flex items-center gap-2 mb-4">
         {FILTERS.map((f) => (
           <FilterPill key={f.id} label={f.label} active={recipeFilter === f.id} onClick={() => setRecipeFilter(f.id)} />

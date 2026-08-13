@@ -103,13 +103,13 @@ export function Commissary() {
     <div className="flex flex-col h-full min-h-0">
       <Topbar title="Commissary" subtitle={subtitle} actions={topAction()} />
 
-      <div className="bg-white border-b border-border px-7 flex-shrink-0 flex items-center justify-between">
+      <div className="bg-white border-b border-border px-4 sm:px-7 flex-shrink-0 flex items-center justify-between gap-3 overflow-x-auto">
         <div className="flex">
           {visibleTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-5 py-3 text-body border-b-2 transition-colors ${
+              className={`px-5 py-3 text-body border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'text-forest font-semibold border-sage'
                   : 'text-forest/40 font-medium border-transparent hover:text-forest/70'

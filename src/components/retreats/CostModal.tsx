@@ -71,7 +71,7 @@ export function CostModal({ retreatId, costId }: { retreatId: string; costId?: s
             placeholder="e.g. Food & beverage"
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Budgeted ($)</label>
             <input type="number" step="1" min="0" value={budgeted} onChange={(e) => setBudgeted(e.target.value)} className={inputClass} placeholder="0" />

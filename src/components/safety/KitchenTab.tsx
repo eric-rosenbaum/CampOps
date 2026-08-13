@@ -123,7 +123,7 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
       </div>
 
       {item.type === 'hood_fan' && (
-        <div className="grid grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
           <div>
             <p className="text-[10px] text-forest/40 font-medium mb-0.5">Fan units</p>
             <p className="text-[12px] font-medium text-forest">{item.unitCount}</p>
@@ -146,7 +146,7 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
       )}
 
       {item.type === 'health_inspection' && (
-        <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-cream-dark">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t border-cream-dark">
           <div>
             <p className="text-[10px] text-forest/40 font-medium mb-0.5">Inspecting authority</p>
             <p className="text-[12px] font-medium text-forest">{item.vendor ?? '—'}</p>
@@ -279,7 +279,7 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
         <div>
           <p className="text-[10px] text-forest/40 font-medium mb-0.5">AM reading</p>
           <p className={`text-[13px] font-semibold font-mono ${amStatus === 'ok' ? 'text-green-muted-text' : amStatus === 'alert' ? 'text-red' : 'text-forest/30'}`}>
@@ -330,7 +330,7 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
             <p className="text-[11px] text-forest/30 italic">No temperature logs yet.</p>
           ) : (
             <div className="space-y-0">
-              <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 mb-1">
+              <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] min-w-[640px] sm:min-w-0 gap-3 mb-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-forest/30">Date</span>
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-forest/30">AM</span>
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-forest/30">PM</span>
@@ -340,7 +340,7 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
               {historyDates.map(([date, { am: amLog, pm: pmLog }]) => {
                 const anyOutOfRange = (amLog && !amLog.inRange) || (pmLog && !pmLog.inRange);
                 return (
-                  <div key={date} className={`grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 py-1.5 border-t border-cream-dark text-[11px] ${anyOutOfRange ? 'bg-red-bg/30 -mx-1 px-1 rounded' : ''}`}>
+                  <div key={date} className={`grid grid-cols-[1fr_1fr_1fr_1fr_auto] min-w-[640px] sm:min-w-0 gap-3 py-1.5 border-t border-cream-dark text-[11px] ${anyOutOfRange ? 'bg-red-bg/30 -mx-1 px-1 rounded' : ''}`}>
                     <span className="font-mono text-forest/60">
                       {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       {date === today ? <span className="text-sage ml-1 font-semibold">today</span> : ''}
@@ -401,7 +401,7 @@ export function KitchenTab() {
   return (
     <div>
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-3.5 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
         <div className={`bg-white border border-border rounded-card px-4 py-4 ${stats.alert > 0 ? 'border-l-[3px] border-l-red' : ''}`}>
           <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Hood fan cleaning</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${hoodFans.some(i => safetyItemStatus(i) === 'alert') ? 'text-red' : hoodFans.some(i => safetyItemStatus(i) === 'warn') ? 'text-amber' : 'text-green-muted-text'}`}>

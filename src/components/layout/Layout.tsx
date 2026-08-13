@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { LogOut, Clock } from 'lucide-react';
+import { LogOut, Clock, Menu, TreePine } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useCampStore } from '@/store/campStore';
@@ -43,12 +44,43 @@ function SyncIndicator() {
   );
 }
 
+/**
+ * The phone-only header. The sidebar is off-canvas below `lg`, so this is what gives a
+ * thumb a way back to navigation — and it keeps the camp's name on screen, which the
+ * sidebar footer would otherwise be the only place to see.
+ */
+function MobileHeader({ onMenu }: { onMenu: () => void }) {
+  const { currentCamp } = useCampStore();
+  return (
+    <div className="lg:hidden flex items-center gap-3 bg-forest px-3 py-2.5 flex-shrink-0">
+      <button
+        onClick={onMenu}
+        aria-label="Open navigation"
+        className="p-2 -m-1 rounded-btn text-cream/80 hover:text-cream hover:bg-white/10 transition-colors"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+      <div className="flex items-center gap-2 min-w-0">
+        <div className="w-6 h-6 bg-sage rounded-btn flex items-center justify-center flex-shrink-0">
+          <TreePine className="w-3.5 h-3.5 text-forest" />
+        </div>
+        <span className="text-[14px] font-semibold text-cream truncate">
+          {currentCamp?.name ?? 'CampCommand'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function Layout() {
+  const [navOpen, setNavOpen] = useState(false);
+
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <Sidebar />
+      <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <StatusBanners />
+        <MobileHeader onMenu={() => setNavOpen(true)} />
         <Outlet />
       </div>
       <SyncIndicator />

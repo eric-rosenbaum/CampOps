@@ -99,7 +99,7 @@ export function JoinCodes() {
         <div className="bg-white border border-stone-200 rounded-xl p-5 mb-6">
           <h2 className="text-[14px] font-semibold text-forest mb-4">Generate join code</h2>
           <form onSubmit={handleGenerate} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-medium text-forest/60 mb-1">Role</label>
                 <select

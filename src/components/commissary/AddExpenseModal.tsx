@@ -32,7 +32,7 @@ export function AddExpenseModal() {
           For food spending that didn't go through a purchase order — a cash produce run, a
           Costco trip, a standing contract. Counts toward the session's per-diem.
         </p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Date</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />

@@ -100,7 +100,7 @@ export function SpacesModal() {
 
       <div className="flex flex-col gap-2 mb-5">
         {dorms.length === 0 && (
-          <p className="bg-cream rounded-card border border-border px-4 py-6 text-center text-[13px] text-forest/45">
+          <p className="bg-cream rounded-card border border-border px-4 py-4 sm:py-6 text-center text-[13px] text-forest/45">
             No dorms yet. Mark locations as dorms in Camp Info → Locations, then toggle their retreat availability here.
           </p>
         )}

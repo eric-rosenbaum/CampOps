@@ -311,7 +311,7 @@ export function RetreatPortal() {
 
   if (pageState === 'not_found' || !data) {
     return (
-      <div className="min-h-screen bg-cream w-full flex items-center justify-center p-6">
+      <div className="min-h-screen bg-cream w-full flex items-center justify-center p-4 sm:p-6">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-7 h-7 text-forest/40" />
@@ -814,7 +814,7 @@ function HeadcountBlock({ retreat, token, refetch }: { retreat: PortalRetreat; t
             </button>
           ) : (
             <div className="mt-3 space-y-2.5">
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className={labelClass}>Final guests</label>
                   <input type="number" inputMode="numeric" min={0} value={count} onChange={(e) => setCount(e.target.value)} className={inputClass} placeholder="0" disabled={busy} />
@@ -1173,7 +1173,7 @@ function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePass
                 </button>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Building</label>
                 <select
@@ -1233,7 +1233,7 @@ function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePass
                 <Accessibility className="w-3.5 h-3.5" /> Accessible room
               </p>
             )}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Subgroup name</label>
                 <input
@@ -1498,7 +1498,7 @@ function FeedbackBlock({ retreat, submitted, token, refetch, today }: {
 
   if (submitted || thanks) {
     return (
-      <div className={`${cardClass} p-6 text-center`}>
+      <div className={`${cardClass} p-4 sm:p-6 text-center`}>
         <div className="w-14 h-14 bg-sage-pale rounded-2xl flex items-center justify-center mx-auto mb-3">
           <CheckCircle2 className="w-7 h-7 text-sage" />
         </div>
@@ -1561,7 +1561,7 @@ function FeedbackBlock({ retreat, submitted, token, refetch, today }: {
 
       <div className="pt-3">
         <label className={labelClass}>Would you return?</label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => setReturning(true)}
@@ -1596,7 +1596,7 @@ function FeedbackBlock({ retreat, submitted, token, refetch, today }: {
 // ─── Empty card ───────────────────────────────────────────────────────────────
 function EmptyCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`${cardClass} p-6 text-center text-[13px] text-forest/50 leading-relaxed`}>
+    <div className={`${cardClass} p-4 sm:p-6 text-center text-[13px] text-forest/50 leading-relaxed`}>
       {children}
     </div>
   );

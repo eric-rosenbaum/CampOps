@@ -79,7 +79,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
   const addable = items.filter((i) => !onOrderIds.has(i.id));
 
   return (
-    <div className="bg-white rounded-card border border-border overflow-hidden">
+    <div className="bg-white rounded-card border border-border overflow-x-auto">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
         <Truck className="w-4 h-4 text-forest/40 flex-shrink-0" />
         <div className="min-w-0">
@@ -94,7 +94,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
         <StatusBadge status={order.status} />
       </div>
 
-      <div className={`grid ${editable ? 'grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]' : 'grid-cols-[2fr_1fr_1fr_1fr_1fr]'} gap-3 px-4 py-2 bg-cream-dark/40 border-b border-border`}>
+      <div className={`grid ${editable ? 'grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] min-w-[760px] sm:min-w-0' : 'grid-cols-[2fr_1fr_1fr_1fr_1fr] min-w-[640px] sm:min-w-0'} gap-3 px-4 py-2 bg-cream-dark/40 border-b border-border`}>
         {['Item', 'On hand', 'Needed', 'Order', 'Total'].map((h) => (
           <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>
         ))}
@@ -102,7 +102,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
       </div>
 
       {lines.map((l) => (
-        <div key={l.id} className={`grid ${editable ? 'grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]' : 'grid-cols-[2fr_1fr_1fr_1fr_1fr]'} gap-3 px-4 py-2.5 border-b border-border items-center`}>
+        <div key={l.id} className={`grid ${editable ? 'grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] min-w-[760px] sm:min-w-0' : 'grid-cols-[2fr_1fr_1fr_1fr_1fr] min-w-[640px] sm:min-w-0'} gap-3 px-4 py-2.5 border-b border-border items-center`}>
           {(() => {
             const itemPacks = editable && l.itemId ? packsForItem(l.itemId) : [];
             // Offer a vendor switch only when the item is carried by more than one vendor.
@@ -260,7 +260,7 @@ function LiveOrderCard({ draft }: { draft: DraftOrder }) {
   }
 
   return (
-    <div className="bg-white rounded-card border border-border overflow-hidden">
+    <div className="bg-white rounded-card border border-border overflow-x-auto">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
         <Truck className="w-4 h-4 text-forest/40 flex-shrink-0" />
         <div className="min-w-0">
@@ -278,13 +278,13 @@ function LiveOrderCard({ draft }: { draft: DraftOrder }) {
         </span>
       </div>
 
-      <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-3 px-4 py-2 bg-cream-dark/40 border-b border-border">
+      <div className="grid grid-cols-[2fr_1fr_1fr_1fr] min-w-[640px] sm:min-w-0 gap-3 px-4 py-2 bg-cream-dark/40 border-b border-border">
         {['Item', 'On hand', 'Order', 'Total'].map((h) => <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>)}
       </div>
       {draft.lines.map((l) => {
         const q = qtyOf(l);
         return (
-          <div key={l.itemId} className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-3 px-4 py-2 border-b border-border last:border-0 items-center">
+          <div key={l.itemId} className="grid grid-cols-[2fr_1fr_1fr_1fr] min-w-[640px] sm:min-w-0 gap-3 px-4 py-2 border-b border-border last:border-0 items-center">
             <span className="text-[13px] text-forest truncate">{l.itemName}</span>
             <span className="font-mono text-[12px] text-forest/50">{formatQty(l.onHandBase / l.purchaseUnitInBase, l.purchaseUnit)}</span>
             {canManage ? (
@@ -343,7 +343,7 @@ export function OrderingTab() {
 
   if (items.length === 0) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
           <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
             <ShoppingCart className="w-7 h-7 text-stone-400" />
@@ -361,8 +361,8 @@ export function OrderingTab() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
-      <div className="grid grid-cols-4 gap-4 mb-5">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
         <StatCard label="Orders to place" value={drafts.length} hint={`Covers through ${windowLabel}`} />
         <StatCard label="Estimated total" value={formatCurrency(suggestedTotal)} hint="Before tax" />
         <StatCard label="Open orders" value={open.length} hint="Draft or sent" variant={open.length > 0 ? 'amber' : 'default'} />
@@ -470,8 +470,8 @@ export function OrderingTab() {
           {showMath && (() => {
             const rows = orderMath(windowEnd);
             return (
-              <div className="mt-2 bg-white rounded-card border border-border overflow-hidden">
-                <div className="grid grid-cols-[1.6fr_1fr_1.1fr_0.8fr_1fr_1fr] gap-2 px-4 py-2 bg-cream-dark/40 border-b border-border">
+              <div className="mt-2 bg-white rounded-card border border-border overflow-x-auto">
+                <div className="grid grid-cols-[1.6fr_1fr_1.1fr_0.8fr_1fr_1fr] min-w-[760px] sm:min-w-0 gap-2 px-4 py-2 bg-cream-dark/40 border-b border-border">
                   {['Item', 'On hand now', `Used by ${windowLabel}`, 'Floor', 'In transit', '→ Order'].map((h) => (
                     <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>
                   ))}
@@ -482,7 +482,7 @@ export function OrderingTab() {
                   const packs = `${tidy(r.orderQty).toLocaleString()} ${pluralizeUnit(r.item.purchaseUnit, r.orderQty)}`;
                   return (
                     <div key={r.item.id} className="px-4 py-2 border-b border-border last:border-0">
-                      <div className="grid grid-cols-[1.6fr_1fr_1.1fr_0.8fr_1fr_1fr] gap-2 items-center">
+                      <div className="grid grid-cols-[1.6fr_1fr_1.1fr_0.8fr_1fr_1fr] min-w-[760px] sm:min-w-0 gap-2 items-center">
                         <span className="text-[13px] text-forest truncate">{r.item.name}</span>
                         <span className="font-mono text-[12px] text-forest/70">{f(r.onHandNow)}</span>
                         <span className="font-mono text-[12px] text-forest/70">{f(r.draw)}</span>
@@ -505,7 +505,7 @@ export function OrderingTab() {
       )}
 
       {drafts.length === 0 && (
-        <p className="text-[13px] text-forest/45 mb-6 bg-white rounded-card border border-border px-4 py-6 text-center">
+        <p className="text-[13px] text-forest/45 mb-6 bg-white rounded-card border border-border px-4 py-4 sm:py-6 text-center">
           You're covered through {windowLabel} — projected stock stays above every item's minimum. Build an order
           by hand above if you want to stock up anyway.
         </p>
@@ -521,7 +521,7 @@ export function OrderingTab() {
       {history.length > 0 && (
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40 mb-2">History</p>
-          <div className="bg-white rounded-card border border-border overflow-hidden">
+          <div className="bg-white rounded-card border border-border overflow-x-auto">
             {history.map((o) => (
               <div key={o.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0">
                 <span className="text-[12px] text-forest/45 w-24 flex-shrink-0">{new Date(o.receivedAt ?? o.updatedAt).toLocaleDateString()}</span>

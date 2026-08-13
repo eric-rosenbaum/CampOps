@@ -85,7 +85,7 @@ function PoolStatusCard({ pool }: { pool: CampPool }) {
       </div>
 
       {!isWaterfront && (
-        <div className="grid grid-cols-3 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
           {latest ? (
             <>
               <div>
@@ -116,7 +116,7 @@ function PoolStatusCard({ pool }: { pool: CampPool }) {
       )}
 
       {isWaterfront && (
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
             <p className="text-meta text-forest/40 mb-0.5">Equipment</p>
             <p className="text-body font-mono font-semibold text-forest">
@@ -153,7 +153,7 @@ export function AllPoolsDashboard() {
   return (
     <div>
       {/* Summary bar */}
-      <div className="grid grid-cols-3 gap-3.5 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-6">
         <div className="bg-white border border-border rounded-card px-4 py-4">
           <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Total locations</p>
           <p className="font-mono text-stat font-semibold text-forest mt-1">{activePools.length}</p>
@@ -185,7 +185,7 @@ export function AllPoolsDashboard() {
           <Button size="sm" onClick={() => openAddEditPoolModal()}>Add pool</Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {activePools.map((pool) => (
             <PoolStatusCard key={pool.id} pool={pool} />
           ))}

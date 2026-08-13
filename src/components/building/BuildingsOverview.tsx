@@ -70,7 +70,7 @@ export function BuildingsOverview() {
   const buildings = useBuildings();
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {buildings.map((b) => <BuildingCard key={b.id} building={b} />)}
       </div>

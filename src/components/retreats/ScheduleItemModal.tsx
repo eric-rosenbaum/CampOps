@@ -61,7 +61,7 @@ export function ScheduleItemModal({ retreatId, itemId }: { retreatId: string; it
   return (
     <Modal title={editing ? 'Edit schedule item' : 'Add schedule item'} onClose={closeModal} width="460px">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Day</label>
             <input type="date" value={dayDate} onChange={(e) => setDayDate(e.target.value)} className={inputClass} />

@@ -102,7 +102,7 @@ export function InventoryTab() {
 
   if (items.length === 0) {
     return (
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
           <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
             <Package className="w-7 h-7 text-stone-400" />
@@ -122,7 +122,7 @@ export function InventoryTab() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-7 py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       {/* Unmissable, non-dismissible until resolved: freshly imported items land with no
           reorder level (can't flag low) and uncounted on-hand. Never let that be silent. */}
       {setup.either > 0 && (
@@ -145,7 +145,7 @@ export function InventoryTab() {
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-4 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
         <StatCard label="Total items" value={items.length} hint="Across all categories" />
         <StatCard label="Critically low" value={counts.critical} hint="Under half the reorder level" variant={counts.critical > 0 ? 'red' : 'default'} />
         <StatCard label="Low stock" value={counts.low} hint="At or below reorder level" variant={counts.low > 0 ? 'amber' : 'default'} />
@@ -216,8 +216,8 @@ export function InventoryTab() {
         <SearchInput value={inventorySearch} onChange={setInventorySearch} placeholder="Search inventory…" />
       </div>
 
-      <div className="bg-white rounded-card border border-border overflow-hidden">
-        <div className="grid grid-cols-[2.2fr_1fr_1fr_1.2fr_1fr_150px] gap-3 px-4 py-2.5 bg-cream-dark/50 border-b border-border">
+      <div className="bg-white rounded-card border border-border overflow-x-auto">
+        <div className="grid grid-cols-[2.2fr_1fr_1fr_1.2fr_1fr_150px] min-w-[760px] sm:min-w-0 gap-3 px-4 py-2.5 bg-cream-dark/50 border-b border-border">
           {['Item', 'On hand (counted)', 'Projected now', 'Runs out', 'Min on hand', ''].map((h) => (
             <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>
           ))}
@@ -229,7 +229,7 @@ export function InventoryTab() {
           const soon = p.cover != null && p.cover <= 3;
           const near = p.cover != null && p.cover <= 7;
           return (
-            <div key={item.id} className="grid grid-cols-[2.2fr_1fr_1fr_1.2fr_1fr_150px] gap-3 px-4 py-3 border-b border-border last:border-0 items-center hover:bg-cream-dark/30">
+            <div key={item.id} className="grid grid-cols-[2.2fr_1fr_1fr_1.2fr_1fr_150px] min-w-[760px] sm:min-w-0 gap-3 px-4 py-3 border-b border-border last:border-0 items-center hover:bg-cream-dark/30">
               <div className="flex items-center gap-2.5 min-w-0">
                 <CategoryIcon category={item.category} className="w-4 h-4 text-forest/40 flex-shrink-0" />
                 <div className="min-w-0">

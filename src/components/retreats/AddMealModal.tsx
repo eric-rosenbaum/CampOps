@@ -77,7 +77,7 @@ export function AddMealModal({
   return (
     <Modal title={existing ? 'Edit meal' : 'Add meal'} onClose={closeModal} width="520px">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Day</label>
             <select value={day} onChange={(e) => setDay(e.target.value)} className={inputClass}>
@@ -112,7 +112,7 @@ export function AddMealModal({
 
         <div>
           <label className={labelClass}>Allergens</label>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
             {ALLERGENS.map((a) => {
               const on = allergens.includes(a);
               return (

@@ -116,7 +116,7 @@ export function LogInspectionModal() {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Inspection date *</label>
             <input {...register('inspectionDate', { required: true })} type="date" className={inputClass} />

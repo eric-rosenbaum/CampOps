@@ -40,7 +40,7 @@ export function AddEditCircuitModal({ panelId, editId }: { panelId: string; edit
   return (
     <Modal title={existing ? 'Edit breaker' : 'Add breaker'} onClose={closeModal} width="420px">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className={labelClass}>Breaker #</label>
             <input autoFocus value={breakerNumber} onChange={(e) => setBreakerNumber(e.target.value)} className={inputClass} placeholder="7" />

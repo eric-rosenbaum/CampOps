@@ -75,7 +75,7 @@ export function HousingAssignModal({ retreatId, housingId }: { retreatId: string
   return (
     <Modal title={existing ? 'Edit assignment' : 'Assign housing'} onClose={closeModal} width="480px">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Building *</label>
             <select value={buildingId} onChange={(e) => { setBuildingId(e.target.value); setRoomId(''); }} className={inputClass}>
@@ -102,7 +102,7 @@ export function HousingAssignModal({ retreatId, housingId }: { retreatId: string
           <p className="text-[11px] text-forest/45">This building has no rooms. Add rooms as sub-locations in Camp Info → Locations to assign by room.</p>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Subgroup</label>
             <input value={subgroupName} onChange={(e) => setSubgroupName(e.target.value)} className={inputClass} placeholder="e.g. Leadership team" />

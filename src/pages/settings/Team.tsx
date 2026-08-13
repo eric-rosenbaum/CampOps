@@ -667,7 +667,7 @@ export function Team() {
 
         <div className="space-y-3">
           {staffGroups.length === 0 && !showCreateGroup && (
-            <div className="bg-white border border-dashed border-stone-200 rounded-xl px-5 py-6 text-center">
+            <div className="bg-white border border-dashed border-stone-200 rounded-xl px-5 py-4 sm:py-6 text-center">
               <p className="text-[13px] font-medium text-forest/50">No staff groups yet</p>
               <p className="text-[11px] text-forest/35 mt-1">Create a group to start inviting staff with specific module access.</p>
             </div>
@@ -752,7 +752,7 @@ export function Team() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label className="block text-[11px] font-medium text-forest/60 mb-1">Role</label>
                 <select

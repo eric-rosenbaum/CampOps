@@ -89,7 +89,7 @@ export function SessionModal({ editId }: { editId?: string }) {
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="e.g. Session 2" />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Start date *</label>
             <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
@@ -103,7 +103,7 @@ export function SessionModal({ editId }: { editId?: string }) {
           <p className="text-[11px] text-red">End date must fall on or after the start date.</p>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Campers</label>
             <input type="number" min="0" value={camperCount} onChange={(e) => setCamperCount(e.target.value)} className={inputClass} placeholder="0" />
@@ -125,7 +125,7 @@ export function SessionModal({ editId }: { editId?: string }) {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Budget per person / day</label>
             <input type="number" step="0.01" min="0" value={budget} onChange={(e) => setBudget(e.target.value)} className={inputClass} placeholder="e.g. 8.50" />
@@ -149,7 +149,7 @@ export function SessionModal({ editId }: { editId?: string }) {
               : `Every meal is cooked for the ${total.toLocaleString()} total. Turn this on if some meals have fewer or more people.`}
           </p>
           {perMeal && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-4 gap-2">
               {MEAL_PERIODS.map((m) => (
                 <div key={m}>
                   <label className="block text-[11px] font-medium text-forest/60 mb-1">{MEAL_PERIOD_LABELS[m]}</label>
@@ -171,7 +171,7 @@ export function SessionModal({ editId }: { editId?: string }) {
             When you take inventory, place orders, and receive them. The ordering view covers you until the
             delivery after the next one — no "generate" needed. Days are optional; blank uses the start date's weekday.
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {([['Count day', countDay, setCountDay], ['Order day', orderDay, setOrderDay], ['Delivery day', deliveryDay, setDeliveryDay]] as const).map(([lbl, val, set]) => (
               <div key={lbl}>
                 <label className="block text-[11px] font-medium text-forest/60 mb-1">{lbl}</label>

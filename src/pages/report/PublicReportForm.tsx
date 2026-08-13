@@ -148,7 +148,7 @@ export function PublicReportForm() {
 
   if (pageState === 'not_found') {
     return (
-      <div className="min-h-screen bg-stone-50 w-full flex items-center justify-center p-6">
+      <div className="min-h-screen bg-stone-50 w-full flex items-center justify-center p-4 sm:p-6">
           <div className="text-center max-w-sm">
             <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-7 h-7 text-stone-400" />
@@ -174,7 +174,7 @@ export function PublicReportForm() {
       setPageState('form');
     }
     return (
-      <div className="min-h-screen bg-stone-50 w-full flex items-center justify-center p-6">
+      <div className="min-h-screen bg-stone-50 w-full flex items-center justify-center p-4 sm:p-6">
           <div className="text-center max-w-sm">
             <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
               <CheckCircle className="w-8 h-8 text-emerald-500" />

@@ -138,7 +138,7 @@ export function StaffCertModal() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={lc}>Issued date</label>
             <input {...register('issuedDate')} type="date" className={ic} />

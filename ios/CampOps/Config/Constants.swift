@@ -6,6 +6,16 @@ enum Constants {
     static let webAppBaseURL = "https://app.campcommand.app"
     /// Shown wherever a member is blocked and needs a human — matches the web app's screens.
     static let supportEmail = "prakash@campcommand.app"
+
+    /// Emailed sign-in codes are NOT always 6 digits — the length is a Supabase project
+    /// setting (Auth → Sign In / Providers → Email → "Email OTP Length") and can be 6–10.
+    /// Accept the range and let the server reject a wrong code; hardcoding 6 silently
+    /// truncated longer codes so they could never be submitted.
+    static let otpMinLength = 6
+    static let otpMaxLength = 10
+
+    /// The join code minted by `generate_join_code` — always 6 characters.
+    static let joinCodeLength = 6
 }
 
 enum Spacing {

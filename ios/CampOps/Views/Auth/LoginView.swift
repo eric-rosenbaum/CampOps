@@ -22,6 +22,7 @@ struct LoginView: View {
         !email.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
     }
     private var canSendCode: Bool { email.contains("@") }
+    private var otpReady: Bool { otp.count >= Constants.otpMinLength }
 
     var body: some View {
         ScrollView {
@@ -75,8 +76,8 @@ struct LoginView: View {
                                 Text(codeSent ? "Sign in" : "Email me a code")
                             }
                         }
-                        .buttonStyle(.campPrimary(enabled: codeSent ? otp.count == 6 : canSendCode))
-                        .disabled(isLoading || (codeSent ? otp.count != 6 : !canSendCode))
+                        .buttonStyle(.campPrimary(enabled: codeSent ? otpReady : canSendCode))
+                        .disabled(isLoading || (codeSent ? !otpReady : !canSendCode))
 
                         Button("Use a password instead") {
                             authManager.authError = nil
@@ -163,14 +164,14 @@ struct LoginView: View {
             }
 
             if codeSent {
-                CampField(label: "6-digit code") {
-                    TextField("000000", text: $otp)
+                CampField(label: "Sign-in code") {
+                    TextField("", text: $otp)
                         .keyboardType(.numberPad)
                         .textContentType(.oneTimeCode)
                         .multilineTextAlignment(.center)
                         .focused($focused, equals: .otp)
                         .onChange(of: otp) { _, new in
-                            otp = String(new.filter(\.isNumber).prefix(6))
+                            otp = String(new.filter(\.isNumber).prefix(Constants.otpMaxLength))
                         }
                 }
             }

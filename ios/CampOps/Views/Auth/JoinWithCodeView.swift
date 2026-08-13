@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The staff lane, entirely on the phone: join code → name + email → 6-digit code → in.
+/// The staff lane, entirely on the phone: join code → name + email → emailed code → in.
 ///
 /// Seasonal staff shouldn't have to create an account in a browser and then sign in again here.
 /// One emailed code creates the account, proves the address, and signs them in, so there is no
@@ -70,9 +70,9 @@ struct JoinWithCodeView: View {
                 .background(Color.surfaceRaised, in: .rect(cornerRadius: Radius.sm))
                 .overlay(
                     RoundedRectangle(cornerRadius: Radius.sm)
-                        .strokeBorder(code.count == 6 ? Color.sage : Color.border, lineWidth: 1)
+                        .strokeBorder(code.count == Constants.joinCodeLength ? Color.sage : Color.border, lineWidth: 1)
                 )
-                .onChange(of: code) { _, new in code = String(new.uppercased().prefix(6)) }
+                .onChange(of: code) { _, new in code = String(new.uppercased().prefix(Constants.joinCodeLength)) }
 
             errorBanner
 
@@ -94,8 +94,8 @@ struct JoinWithCodeView: View {
             } label: {
                 if busy { ProgressView().tint(Color.cream) } else { Text("Continue") }
             }
-            .buttonStyle(.campPrimary(enabled: code.count == 6))
-            .disabled(code.count != 6 || busy)
+            .buttonStyle(.campPrimary(enabled: code.count == Constants.joinCodeLength))
+            .disabled(code.count != Constants.joinCodeLength || busy)
         }
         .cardSurface(padding: Spacing.xl, radius: Radius.lg)
     }
@@ -148,10 +148,10 @@ struct JoinWithCodeView: View {
         VStack(spacing: Spacing.lg) {
             stepHeader(
                 title: "Enter your code",
-                subtitle: "We sent a 6-digit code to \(email)."
+                subtitle: "We sent a sign-in code to \(email)."
             )
 
-            TextField("000000", text: $otp)
+            TextField("", text: $otp)
                 .keyboardType(.numberPad)
                 // Lets iOS offer the code straight from the mail notification.
                 .textContentType(.oneTimeCode)
@@ -163,10 +163,10 @@ struct JoinWithCodeView: View {
                 .background(Color.surfaceRaised, in: .rect(cornerRadius: Radius.sm))
                 .overlay(
                     RoundedRectangle(cornerRadius: Radius.sm)
-                        .strokeBorder(otp.count == 6 ? Color.sage : Color.border, lineWidth: 1)
+                        .strokeBorder(otpReady ? Color.sage : Color.border, lineWidth: 1)
                 )
                 .onChange(of: otp) { _, new in
-                    otp = String(new.filter(\.isNumber).prefix(6))
+                    otp = String(new.filter(\.isNumber).prefix(Constants.otpMaxLength))
                 }
 
             errorBanner
@@ -188,8 +188,8 @@ struct JoinWithCodeView: View {
             } label: {
                 if busy { ProgressView().tint(Color.cream) } else { Text("Join camp") }
             }
-            .buttonStyle(.campPrimary(enabled: otp.count == 6))
-            .disabled(otp.count != 6 || busy)
+            .buttonStyle(.campPrimary(enabled: otpReady))
+            .disabled(!otpReady || busy)
 
             Button("Send a new code") {
                 Task {
@@ -203,6 +203,8 @@ struct JoinWithCodeView: View {
     }
 
     // MARK: - Bits
+
+    private var otpReady: Bool { otp.count >= Constants.otpMinLength }
 
     private var canSendCode: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty && email.contains("@")

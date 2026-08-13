@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { TreePine } from 'lucide-react';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore, OTP_MIN_LENGTH, OTP_MAX_LENGTH } from '@/store/authStore';
 
 interface CodeSignInProps {
   email: string;
@@ -42,17 +42,17 @@ function CodeSignIn(p: CodeSignInProps) {
       ) : (
         <form onSubmit={p.onVerify} className="space-y-4">
           <p className="text-[12px] text-forest/55 leading-relaxed">
-            We sent a 6-digit code to <span className="font-medium text-forest">{p.email}</span>.
+            We sent a sign-in code to <span className="font-medium text-forest">{p.email}</span>.
           </p>
           <input
             value={p.otp}
-            onChange={(e) => p.setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            autoFocus inputMode="numeric" autoComplete="one-time-code" placeholder="000000"
+            onChange={(e) => p.setOtp(e.target.value.replace(/\D/g, '').slice(0, OTP_MAX_LENGTH))}
+            autoFocus inputMode="numeric" autoComplete="one-time-code"
             className="w-full px-3 py-3 rounded-lg border border-stone-200 text-center text-[22px] font-mono font-semibold tracking-[0.35em] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
           />
           {p.error && <ErrorBox>{p.error}</ErrorBox>}
           <button
-            type="submit" disabled={p.loading || p.otp.length !== 6}
+            type="submit" disabled={p.loading || p.otp.length < OTP_MIN_LENGTH}
             className="w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50"
           >
             {p.loading ? 'Verifying…' : 'Sign in'}

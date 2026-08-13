@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TreePine, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCampStore } from '@/store/campStore';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore, OTP_MIN_LENGTH, OTP_MAX_LENGTH } from '@/store/authStore';
 
 type CodeInfo = { valid: boolean; reason?: string; campName?: string; role?: string; groupName?: string };
 type Step = 'code' | 'identity' | 'otp' | 'joining';
@@ -18,7 +18,7 @@ function codeProblem(reason?: string): string {
 /**
  * The staff lane: join a camp with a code and an emailed sign-in code. No password.
  *
- * One 6-digit code creates the account, proves the email is real, and signs the person in —
+ * One emailed code creates the account, proves the email is real, and signs the person in —
  * which is why this flow has no separate "confirm your email" step. Leaders who are invited
  * individually still set a password over in AcceptInvite; this is deliberately the simpler
  * path for seasonal staff who will mostly live in the phone app.
@@ -220,23 +220,22 @@ export function JoinCamp() {
               </button>
               <h1 className="text-[17px] font-semibold text-forest mb-1">Enter your code</h1>
               <p className="text-[12px] text-forest/50 mb-6">
-                We sent a 6-digit code to <span className="font-medium text-forest">{email}</span>.
+                We sent a sign-in code to <span className="font-medium text-forest">{email}</span>.
               </p>
               {error && <ErrorNote>{error}</ErrorNote>}
               <form onSubmit={handleVerify} className="space-y-3">
                 <input
                   value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, OTP_MAX_LENGTH))}
                   autoFocus
                   inputMode="numeric"
                   // Lets iOS/Android offer the code straight from the notification.
                   autoComplete="one-time-code"
-                  placeholder="000000"
                   className="w-full px-3 py-3 rounded-lg border border-stone-200 text-center text-[22px] font-mono font-semibold tracking-[0.35em] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
                 />
                 <button
                   type="submit"
-                  disabled={busy || otp.length !== 6}
+                  disabled={busy || otp.length < OTP_MIN_LENGTH}
                   className="w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50"
                 >
                   {busy ? 'Verifying…' : 'Join camp'}

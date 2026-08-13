@@ -9,6 +9,15 @@ export interface Profile {
   avatarUrl: string | null;
 }
 
+/**
+ * Emailed sign-in codes are NOT always 6 digits. The length is a project setting
+ * (Authentication → Sign In / Providers → Email → "Email OTP Length") and can be 6–10, so the
+ * UI accepts a range and lets the server be the judge. Hardcoding 6 here silently truncated
+ * longer codes and made them impossible to submit.
+ */
+export const OTP_MIN_LENGTH = 6;
+export const OTP_MAX_LENGTH = 10;
+
 export interface SignUpResult {
   error: string | null;
   /** True when the project requires a confirmation click before the account can sign in. */

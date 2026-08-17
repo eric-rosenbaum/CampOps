@@ -94,6 +94,8 @@ final class AuthManager: ObservableObject {
                     self.isLoading = false
                 case .signedIn:
                     self.session = session
+                    // A successful redemption loads the camp itself, so don't fetch twice.
+                    if await redeemPendingJoinCodeIfNeeded() { break }
                     await loadCampData()
                 case .signedOut:
                     self.session = nil
@@ -175,6 +177,29 @@ final class AuthManager: ObservableObject {
 
     /// Checks a join code before we ask for an email, so the sheet can name the camp and a bad
     /// code is rejected without creating an account.
+    /// A join code that has been validated but not yet redeemed, because the account it belongs
+    /// to did not exist when it was entered.
+    ///
+    /// Held on the manager rather than in the view because the view goes away at exactly the
+    /// wrong moment: verifying the emailed code flips `isAuthenticated`, which swaps the whole
+    /// root view out, and any redemption still running inside that view's Task can be cancelled
+    /// mid-flight. Landing on the "you belong to no camp" screen holding a code they already
+    /// typed correctly is the one outcome this whole flow exists to prevent, so the manager —
+    /// which outlives every view — owns the last step.
+    private var pendingJoinCode: String? = nil
+
+    func setPendingJoinCode(_ code: String) { pendingJoinCode = code }
+
+    /// - Returns: true when a code was redeemed and the camp is already loaded.
+    private func redeemPendingJoinCodeIfNeeded() async -> Bool {
+        guard let code = pendingJoinCode else { return false }
+        pendingJoinCode = nil
+        await joinWithCode(code)
+        // Failure leaves the user signed in with no camp, which routes to JoinCampView where
+        // they can enter the code again.
+        return hasCamp
+    }
+
     func lookUpJoinCode(_ code: String) async -> JoinCodeInfo? {
         authError = nil
         do {

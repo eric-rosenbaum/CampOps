@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TreePine, Camera, WifiOff, Bell } from 'lucide-react';
+// No offline claim here: the iOS app has no offline layer, so any copy implying it works
+// without a signal would be false advertising in the one place a new user reads carefully.
+import { TreePine, Camera, ClipboardCheck, Bell } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
 import {
@@ -72,7 +74,7 @@ export function AppHandoff() {
           <ul className="text-left space-y-2.5 mb-7">
             <Benefit icon={Camera} text="Photograph problems on the spot" />
             <Benefit icon={Bell} text="Pick up jobs assigned to you" />
-            <Benefit icon={WifiOff} text="Built for patchy camp signal" />
+            <Benefit icon={ClipboardCheck} text="Work through opening and closing lists" />
           </ul>
 
           <button

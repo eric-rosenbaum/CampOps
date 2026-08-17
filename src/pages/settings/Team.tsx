@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   UserPlus, Copy, Check, Trash2, Plus, Link2, Mail,
-  Pencil, ChevronDown, ChevronUp, Shield,
+  Pencil, ChevronDown, ChevronUp, Shield, Users,
 } from 'lucide-react';
 import { useCampStore } from '@/store/campStore';
 import type { CampRole, StaffGroup, StaffGroupModules, Invitation, JoinCode } from '@/store/campStore';
 import { sendEmail, buildInviteEmail } from '@/lib/email';
+import { BulkInviteForm } from '@/components/settings/BulkInviteForm';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -510,6 +511,7 @@ export function Team() {
   const [groupError, setGroupError] = useState<string | null>(null);
 
   // Invite by email
+  const [showBulkInvite, setShowBulkInvite] = useState(false);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<CampRole>('staff');
@@ -728,17 +730,38 @@ export function Team() {
       <div className="bg-white border border-stone-200 rounded-xl p-5 mb-6">
         <h2 className="text-[13px] font-semibold text-forest mb-0.5">Invite by email</h2>
         <p className="text-[11px] text-forest/40 leading-relaxed mb-4">
-          We email the person a link. They set a password on the account for that address and sign in.
+          The simplest way to bring staff on. We email each person their own link, and they set
+          up an account without needing a join code.
         </p>
 
-        {!showInviteForm && !inviteLink && (
-          <button
-            onClick={() => setShowInviteForm(true)}
-            className="flex items-center gap-2 bg-forest text-cream text-[12px] font-medium px-3 py-1.5 rounded-lg hover:bg-forest/90 transition-colors"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            Invite someone
-          </button>
+        {!showInviteForm && !showBulkInvite && !inviteLink && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setShowBulkInvite(true)}
+              className="flex items-center gap-2 bg-forest text-cream text-[12px] font-medium px-3 py-1.5 rounded-lg hover:bg-forest/90 transition-colors"
+            >
+              <Users className="w-3.5 h-3.5" />
+              Invite your team
+            </button>
+            <button
+              onClick={() => setShowInviteForm(true)}
+              className="flex items-center gap-2 text-[12px] font-medium text-forest px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 transition-colors"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Invite one person
+            </button>
+          </div>
+        )}
+
+        {showBulkInvite && (
+          <BulkInviteForm
+            campId={campId}
+            campName={currentCamp?.name ?? 'your camp'}
+            staffGroups={staffGroups}
+            pendingEmails={invitations.map((i) => i.email)}
+            onSent={reload}
+            onCancel={() => setShowBulkInvite(false)}
+          />
         )}
 
         {showInviteForm && !inviteLink && (

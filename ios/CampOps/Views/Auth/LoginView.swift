@@ -7,6 +7,7 @@ struct LoginView: View {
     @State private var password = ""
     @State private var isLoading = false
     @State private var showingForgotPassword = false
+    @State private var showingJoinWithCode = false
     // Staff who joined with a group code have no password, and they are the majority of
     // phone users — so the emailed code is the DEFAULT here and the password is the
     // alternative, which is the reverse of the web app's desktop-leaning login.
@@ -90,19 +91,27 @@ struct LoginView: View {
                 .cardSurface(padding: Spacing.xl, radius: Radius.lg)
                 .padding(.horizontal, Spacing.xl)
 
-                // No join-code entry here by design. New staff join once from the invite
-                // link their administrator sends; after that this screen only needs to let
-                // them back in. Keeping the join code off the front door is what stops it
-                // being confused with the sign-in code we email.
-                VStack(spacing: Spacing.xs) {
-                    Text("Don't have an account?")
+                // The join code is deliberately not a field on this screen: sitting beside the
+                // emailed sign-in code, two codes on one form is precisely the confusion we
+                // removed. It lives one tap away instead, behind wording that marks it as a
+                // first-time-only path, so returning staff never meet it.
+                VStack(spacing: Spacing.sm) {
+                    Text("Setting up for the first time?")
                         .font(.campMeta)
                         .foregroundStyle(Color.forest.opacity(0.45))
-                    Text("Your camp administrator sends you an invite link to get started.")
+                    Text("Open the invite link your camp administrator emailed you, or use a join code if you were given one.")
                         .font(.campMeta)
                         .foregroundStyle(Color.forest.opacity(0.45))
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    Button("I have a join code") {
+                        authManager.authError = nil
+                        showingJoinWithCode = true
+                    }
+                    .font(.campMetaMedium)
+                    .foregroundStyle(Color.sage)
+                    .padding(.top, Spacing.xs)
                 }
                 .padding(.top, Spacing.xl)
                 .padding(.horizontal, Spacing.xl)
@@ -117,6 +126,15 @@ struct LoginView: View {
         .sheet(isPresented: $showingForgotPassword) {
             ForgotPasswordView(prefilledEmail: email)
                 .environmentObject(authManager)
+        }
+        .sheet(isPresented: $showingJoinWithCode) {
+            CreateAccountWithCodeView()
+                .environmentObject(authManager)
+        }
+        .onChange(of: showingJoinWithCode) { _, showing in
+            // Both screens write to the same authError, so a message left over from one
+            // shouldn't greet the user on the other.
+            if !showing { authManager.authError = nil }
         }
     }
 

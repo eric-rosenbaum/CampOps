@@ -18,6 +18,7 @@ import { CampSetup } from '@/pages/auth/CampSetup';
 import { JoinCamp } from '@/pages/auth/JoinCamp';
 import { AcceptInvite } from '@/pages/auth/AcceptInvite';
 import { AppHandoff } from '@/pages/auth/AppHandoff';
+import { GetStarted } from '@/pages/auth/GetStarted';
 import { TryDemo } from '@/pages/auth/TryDemo';
 import { Onboarding } from '@/pages/onboarding/Onboarding';
 
@@ -458,6 +459,8 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/signup" element={<Signup />} />
+          {/* The link to hand someone who asks how to get in, on any platform. */}
+          <Route path="/get-started" element={<GetStarted />} />
           <Route path="/invite/:token" element={<AcceptInvite />} />
           <Route path="/try/:token" element={<TryDemo />} />
 

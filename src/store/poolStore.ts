@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { formatChemValue } from '@/lib/utils';
 import type {
   CampPool,
   ChemicalReading,
@@ -376,11 +377,11 @@ export const usePoolStore = create<PoolStore>((set, get) => ({
     if (!reading) return [];
     const alerts: string[] = [];
     if (getChemicalStatus('freeChlorine', reading.freeChlorine) === 'alert')
-      alerts.push(`Free chlorine reading of ${reading.freeChlorine} ppm is below the required minimum of 1.0 ppm. Pool should not be opened for campers until chlorine is adjusted and re-tested.`);
+      alerts.push(`Free chlorine reading of ${formatChemValue(reading.freeChlorine)} ppm is below the required minimum of 1.0 ppm. Pool should not be opened for campers until chlorine is adjusted and re-tested.`);
     if (getChemicalStatus('ph', reading.ph) === 'alert')
-      alerts.push(`pH reading of ${reading.ph} is outside safe range (7.2–7.8). Corrective action required.`);
+      alerts.push(`pH reading of ${formatChemValue(reading.ph)} is outside safe range (7.2–7.8). Corrective action required.`);
     if (getChemicalStatus('alkalinity', reading.alkalinity) === 'alert')
-      alerts.push(`Total alkalinity of ${reading.alkalinity} ppm is outside acceptable range. Test and adjust.`);
+      alerts.push(`Total alkalinity of ${formatChemValue(reading.alkalinity, 0)} ppm is outside acceptable range. Test and adjust.`);
     return alerts;
   },
 

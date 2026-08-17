@@ -4,7 +4,7 @@ import { Button } from '@/components/shared/Button';
 import { useUIStore } from '@/store/uiStore';
 import { usePoolStore, CHEMICAL_RANGES, getChemicalStatus } from '@/store/poolStore';
 import { useAuth } from '@/lib/auth';
-import { generateId } from '@/lib/utils';
+import { generateId, roundChemValue } from '@/lib/utils';
 import type { ChemicalReading } from '@/lib/types';
 
 interface FormValues {
@@ -68,12 +68,12 @@ export function LogReadingModal() {
     if (!activePoolId) return;
     if (editing) {
       updateChemicalReading(editing.id, {
-        freeChlorine: parseFloat(data.freeChlorine),
-        ph: parseFloat(data.ph),
-        alkalinity: parseFloat(data.alkalinity),
-        cyanuricAcid: parseFloat(data.cyanuricAcid),
-        waterTemp: parseFloat(data.waterTemp),
-        calciumHardness: data.calciumHardness ? parseFloat(data.calciumHardness) : null,
+        freeChlorine: roundChemValue(parseFloat(data.freeChlorine)),
+        ph: roundChemValue(parseFloat(data.ph)),
+        alkalinity: roundChemValue(parseFloat(data.alkalinity)),
+        cyanuricAcid: roundChemValue(parseFloat(data.cyanuricAcid)),
+        waterTemp: roundChemValue(parseFloat(data.waterTemp)),
+        calciumHardness: data.calciumHardness ? roundChemValue(parseFloat(data.calciumHardness), 0) : null,
         readingTime: new Date(data.readingTime).toISOString(),
         correctiveAction: data.correctiveAction || null,
         poolStatus: data.poolStatus,
@@ -83,12 +83,12 @@ export function LogReadingModal() {
       const reading: ChemicalReading = {
         id: generateId(),
         poolId: activePoolId,
-        freeChlorine: parseFloat(data.freeChlorine),
-        ph: parseFloat(data.ph),
-        alkalinity: parseFloat(data.alkalinity),
-        cyanuricAcid: parseFloat(data.cyanuricAcid),
-        waterTemp: parseFloat(data.waterTemp),
-        calciumHardness: data.calciumHardness ? parseFloat(data.calciumHardness) : null,
+        freeChlorine: roundChemValue(parseFloat(data.freeChlorine)),
+        ph: roundChemValue(parseFloat(data.ph)),
+        alkalinity: roundChemValue(parseFloat(data.alkalinity)),
+        cyanuricAcid: roundChemValue(parseFloat(data.cyanuricAcid)),
+        waterTemp: roundChemValue(parseFloat(data.waterTemp)),
+        calciumHardness: data.calciumHardness ? roundChemValue(parseFloat(data.calciumHardness), 0) : null,
         readingTime: new Date(data.readingTime).toISOString(),
         loggedById: currentUser.id,
         loggedByName: currentUser.name,

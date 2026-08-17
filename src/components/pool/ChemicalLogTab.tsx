@@ -1,3 +1,4 @@
+import { formatChemValue } from '@/lib/utils';
 import { usePoolStore, getChemicalStatus, CHEMICAL_RANGES, type ChemicalField } from '@/store/poolStore';
 import { useUIStore } from '@/store/uiStore';
 import { AlertBanner } from '@/components/shared/AlertBanner';
@@ -83,12 +84,12 @@ export function ChemicalLogTab() {
         },
         {
           field: 'ph',
-          displayVal: `${latest.ph}`,
+          displayVal: formatChemValue(latest.ph),
           hint: getChemicalStatus('ph', latest.ph) === 'ok' ? 'Within range' : 'Out of range — adjust',
         },
         {
           field: 'alkalinity',
-          displayVal: `${latest.alkalinity} ppm`,
+          displayVal: `${formatChemValue(latest.alkalinity, 0)} ppm`,
           hint: getChemicalStatus('alkalinity', latest.alkalinity) === 'warn'
             ? 'Slightly low — monitor'
             : getChemicalStatus('alkalinity', latest.alkalinity) === 'alert'
@@ -97,7 +98,7 @@ export function ChemicalLogTab() {
         },
         {
           field: 'waterTemp',
-          displayVal: `${latest.waterTemp}°F`,
+          displayVal: `${formatChemValue(latest.waterTemp)}°F`,
           hint: getChemicalStatus('waterTemp', latest.waterTemp) === 'ok' ? 'Normal range' : 'Outside range',
         },
       ]

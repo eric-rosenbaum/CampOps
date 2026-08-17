@@ -143,6 +143,14 @@ private struct ReadingField: View {
             }
             Stepper(value: $value, in: 0...999, step: step) { EmptyView() }
                 .labelsHidden()
+                // Stepper does repeated binary float addition, so stepping down from 7.0
+                // stores 6.900000000000002. Snap to the step's own precision so the value
+                // saved is the value shown.
+                .onChange(of: value) { _, new in
+                    let places = step < 1 ? 1 : 0
+                    let snapped = (new * pow(10, Double(places))).rounded() / pow(10, Double(places))
+                    if snapped != value { value = snapped }
+                }
             Text(range).font(.campMicro).foregroundStyle(Color.forest.opacity(0.55))
         }
         .padding(.vertical, 2)

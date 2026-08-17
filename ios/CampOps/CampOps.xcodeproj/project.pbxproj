@@ -52,6 +52,7 @@
 		49E5A7A52F81A74E007122C8 /* IssueListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A76A2F81A74E007122C8 /* IssueListViewModel.swift */; };
 		49E5A7A62F81A74E007122C8 /* ChecklistTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A75E2F81A74E007122C8 /* ChecklistTask.swift */; };
 		49E5A7A72F81A74E007122C8 /* Season.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A7602F81A74E007122C8 /* Season.swift */; };
+		FE3436681011BBBBBBBBBBBB /* NetworkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE3436681011FFFFFFFFFFFF /* NetworkService.swift */; };
 		49E5A7A82F81A74E007122C8 /* SupabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A7652F81A74E007122C8 /* SupabaseService.swift */; };
 		49E5A7A92F81A74E007122C8 /* CampOpsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A7542F81A74E007122C8 /* CampOpsApp.swift */; };
 		EAE0E17CC036495ABEA01CB9 /* PoolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42C2CB70B347BC90227634 /* PoolModels.swift */; };
@@ -119,6 +120,7 @@
 		49E5A7642F81A74E007122C8 /* PhotoService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoService.swift; sourceTree = "<group>"; };
 		FB1C2D3E4F5A0B1C2D3E4F5A /* TestStripService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestStripService.swift; sourceTree = "<group>"; };
 		FD1E2F3A4B5C0D1E2F3A4B5C /* ScanStripSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanStripSheet.swift; sourceTree = "<group>"; };
+		FE3436681011FFFFFFFFFFFF /* NetworkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkService.swift; sourceTree = "<group>"; };
 		49E5A7652F81A74E007122C8 /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
 		49E5A7662F81A74E007122C8 /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
 		49E5A7682F81A74E007122C8 /* ChecklistViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistViewModel.swift; sourceTree = "<group>"; };
@@ -294,6 +296,7 @@
 			children = (
 				49E5A7632F81A74E007122C8 /* DataService.swift */,
 				49E5A7642F81A74E007122C8 /* PhotoService.swift */,
+				FE3436681011FFFFFFFFFFFF /* NetworkService.swift */,
 				49E5A7652F81A74E007122C8 /* SupabaseService.swift */,
 				49E5A7662F81A74E007122C8 /* SyncService.swift */,
 				FB1C2D3E4F5A0B1C2D3E4F5A /* TestStripService.swift */,
@@ -579,6 +582,7 @@
 				49E5A7A52F81A74E007122C8 /* IssueListViewModel.swift in Sources */,
 				49E5A7A62F81A74E007122C8 /* ChecklistTask.swift in Sources */,
 				49E5A7A72F81A74E007122C8 /* Season.swift in Sources */,
+				FE3436681011BBBBBBBBBBBB /* NetworkService.swift in Sources */,
 				49E5A7A82F81A74E007122C8 /* SupabaseService.swift in Sources */,
 				49E5A7A92F81A74E007122C8 /* CampOpsApp.swift in Sources */,
 				EAE0E17CC036495ABEA01CB9 /* PoolModels.swift in Sources */,

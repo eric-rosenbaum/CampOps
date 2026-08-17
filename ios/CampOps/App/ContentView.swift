@@ -55,7 +55,7 @@ struct ContentView: View {
             }
             if authManager.canAccessModule("pre_post") {
                 ChecklistView()
-                    .tabItem { Label("Checklist", systemImage: "checklist") }
+                    .tabItem { Label("Pre/Post", systemImage: "checklist") }
             }
             if authManager.canAccessModule("pool") {
                 PoolView()

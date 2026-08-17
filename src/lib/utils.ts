@@ -72,3 +72,23 @@ export function generateId(): string {
     return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
   });
 }
+
+/**
+ * Format a pool chemistry reading for display.
+ *
+ * Values are entered through `<input type="number" step="0.1">` on web and a `Stepper` with
+ * a 0.1 step on iOS. Both do repeated binary float addition, so a perfectly ordinary reading
+ * arrives as 6.900000000000002. Rounding to the field's real precision is the difference
+ * between "pH 6.9" and a number that makes the app look broken.
+ *
+ * `Number()` drops trailing zeros, so 7.0 renders as "7" and 7.25 as "7.3" at 1 decimal.
+ */
+export function formatChemValue(value: number | null | undefined, decimals = 1): string {
+  if (value == null || Number.isNaN(value)) return '—';
+  return String(Number(value.toFixed(decimals)));
+}
+
+/** Round a chemistry reading to its real precision before storing it. */
+export function roundChemValue(value: number, decimals = 1): number {
+  return Number(value.toFixed(decimals));
+}

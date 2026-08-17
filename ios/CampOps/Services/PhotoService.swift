@@ -11,9 +11,15 @@ final class PhotoService {
             throw PhotoError.compressionFailed
         }
         let campId = AuthManager.shared.currentCamp?.id ?? ""
-        let path = "\(campId)/\(issueId)"
+        // Unique path, no upsert — matching the web client (`dbUploadPhoto`).
+        //
+        // `upsert: true` makes Storage look for an existing object first, and the
+        // `issue-photos` bucket has INSERT/UPDATE/DELETE policies but no SELECT policy, so
+        // that lookup is refused and the whole upload fails with "new row violates row-level
+        // security policy". A timestamped path never collides, so there is nothing to upsert.
+        let path = "\(campId)/\(issueId)-\(Int(Date().timeIntervalSince1970 * 1000))"
         try await storage.upload(path, data: data,
-            options: FileOptions(contentType: "image/jpeg", upsert: true))
+            options: FileOptions(contentType: "image/jpeg"))
         return try storage.getPublicURL(path: path).absoluteString
     }
 

@@ -64,15 +64,15 @@ final class PoolViewModel: ObservableObject {
         var result: [(ChemStatus, String)] = []
         let fc = chemStatus(field: .freeChlorine, value: r.freeChlorine)
         if fc == .alert {
-            result.append((.alert, "Free chlorine \(r.freeChlorine) ppm is below required minimum (1.0 ppm). Do not open pool until corrected."))
+            result.append((.alert, "Free chlorine \(chemText(r.freeChlorine)) ppm is below required minimum (1.0 ppm). Do not open pool until corrected."))
         }
         let ph = chemStatus(field: .ph, value: r.ph)
         if ph == .alert {
-            result.append((.alert, "pH \(r.ph) is outside safe range (7.2–7.8). Corrective action required."))
+            result.append((.alert, "pH \(chemText(r.ph)) is outside safe range (7.2–7.8). Corrective action required."))
         }
         let alk = chemStatus(field: .alkalinity, value: r.alkalinity)
         if alk != .ok {
-            result.append((alk, "Alkalinity \(r.alkalinity) ppm is outside \(alk == .alert ? "acceptable" : "target") range. Test and adjust."))
+            result.append((alk, "Alkalinity \(chemText(r.alkalinity, decimals: 0)) ppm is outside \(alk == .alert ? "acceptable" : "target") range. Test and adjust."))
         }
         return result
     }

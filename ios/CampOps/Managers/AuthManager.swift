@@ -250,8 +250,13 @@ final class AuthManager: ObservableObject {
         if raw.localizedCaseInsensitiveContains("email not confirmed") {
             return "Please confirm your email address first — check your inbox for the link."
         }
-        if raw.localizedCaseInsensitiveContains("network") || raw.localizedCaseInsensitiveContains("offline") {
-            return "Can't reach CampCommand. Check your connection and try again."
+        if raw.localizedCaseInsensitiveContains("network")
+            || raw.localizedCaseInsensitiveContains("offline")
+            || raw.localizedCaseInsensitiveContains("timed out")
+            || raw.localizedCaseInsensitiveContains("connection") {
+            // Reached after the retry ladder in NetworkService has already given the
+            // connection three chances, so this really is "the network is not working".
+            return "Can't reach CampCommand — check your signal and try again."
         }
         return raw
     }

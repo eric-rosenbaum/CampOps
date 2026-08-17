@@ -469,3 +469,15 @@ extension Date {
         return f.string(from: self)
     }
 }
+
+/// Formats a pool chemistry reading for display.
+///
+/// Readings are entered with a 0.1-step `Stepper`, which does binary float addition — a pH of
+/// 6.9 can arrive as 6.900000000000002. Rounding to the field's real precision is the
+/// difference between "pH 6.9" and a number that makes the app look broken. Trailing zeros
+/// are dropped so 7.0 reads as "7".
+func chemText(_ value: Double, decimals: Int = 1) -> String {
+    let rounded = (value * pow(10, Double(decimals))).rounded() / pow(10, Double(decimals))
+    if rounded == rounded.rounded() { return String(format: "%.0f", rounded) }
+    return String(format: "%.\(decimals)f", rounded)
+}

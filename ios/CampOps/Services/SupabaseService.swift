@@ -14,6 +14,15 @@ final class SupabaseService {
         else {
             fatalError("Missing SUPABASE_URL / SUPABASE_ANON_KEY in Info.plist")
         }
-        client = SupabaseClient(supabaseURL: supabaseURL, supabaseKey: key)
+        // The custom session is what stops a half-dead camp wifi socket from stalling a save
+        // for a full minute. See NetworkService for the reasoning; without it the SDK uses
+        // URLSession.shared, which allows 60s per request and never retries.
+        client = SupabaseClient(
+            supabaseURL: supabaseURL,
+            supabaseKey: key,
+            options: SupabaseClientOptions(
+                global: SupabaseClientOptions.GlobalOptions(session: NetworkService.session)
+            )
+        )
     }
 }

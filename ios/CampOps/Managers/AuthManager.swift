@@ -175,8 +175,6 @@ final class AuthManager: ObservableObject {
         }
     }
 
-    /// Checks a join code before we ask for an email, so the sheet can name the camp and a bad
-    /// code is rejected without creating an account.
     /// A join code that has been validated but not yet redeemed, because the account it belongs
     /// to did not exist when it was entered.
     ///
@@ -200,6 +198,8 @@ final class AuthManager: ObservableObject {
         return hasCamp
     }
 
+    /// Checks a join code before we ask for an email, so the sheet can name the camp and a bad
+    /// code is rejected without creating an account.
     func lookUpJoinCode(_ code: String) async -> JoinCodeInfo? {
         authError = nil
         do {
@@ -257,6 +257,36 @@ final class AuthManager: ObservableObject {
         camps = []
         members = []
         UserDefaults.standard.removeObject(forKey: selectedCampKey)
+    }
+
+    /// Deletes the signed-in account, then signs out.
+    ///
+    /// Required by App Store Guideline 5.1.1(v): an app that creates accounts must let a user
+    /// delete one without leaving the app. The server does the deciding — it refuses when the
+    /// caller is the last administrator of a camp, because a camp left with no admin cannot
+    /// invite anyone or recover itself — so a refusal arrives as a message rather than an
+    /// error, and is shown to the user as written.
+    ///
+    /// - Returns: nil on success, or the reason it was refused.
+    func deleteAccount() async -> String? {
+        authError = nil
+        do {
+            let result: DeleteAccountResult = try await supabase
+                .rpc("delete_my_account")
+                .execute()
+                .value
+
+            guard result.ok else {
+                return result.error ?? "Your account could not be deleted."
+            }
+
+            // The session now points at a user that no longer exists, so clearing local state
+            // matters more than the sign-out call succeeding.
+            await signOut()
+            return nil
+        } catch {
+            return "Could not delete your account. Check your connection and try again."
+        }
     }
 
     // Supabase surfaces raw API strings; a few are worth rewriting for humans.

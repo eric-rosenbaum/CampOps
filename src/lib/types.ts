@@ -139,6 +139,8 @@ export interface ChemicalReading {
   correctiveAction: string | null;
   poolStatus: 'open_all_clear' | 'open_monitoring' | 'closed_corrective' | 'closed_retest';
   createdAt: string;
+  /** Photo of the strip the numbers were read from. Only the iOS scanner sets one. */
+  stripPhotoUrl?: string | null;
 }
 
 export type EquipmentStatus = 'ok' | 'warn' | 'alert';

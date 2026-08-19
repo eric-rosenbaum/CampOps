@@ -621,6 +621,7 @@ async function loadPoolData(campId: string) {
     loggedById: r.logged_by_id, loggedByName: r.logged_by_name,
     correctiveAction: r.corrective_action ?? null, poolStatus: r.pool_status,
     createdAt: r.created_at,
+    stripPhotoUrl: r.strip_photo_url ?? null,
   }));
 
   const equipment: PoolEquipment[] = (eRes.data ?? []).map((e) => ({

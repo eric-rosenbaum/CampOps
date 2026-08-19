@@ -287,6 +287,9 @@ struct ChemicalReading: Codable, Identifiable {
     let correctiveAction: String?
     let poolStatus: PoolStatusValue
     let createdAt: Date
+    /// Set only for readings captured with the strip scanner, so the web can show the photo
+    /// the numbers were read from.
+    var stripPhotoUrl: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -302,6 +305,7 @@ struct ChemicalReading: Codable, Identifiable {
         case correctiveAction = "corrective_action"
         case poolStatus       = "pool_status"
         case createdAt        = "created_at"
+        case stripPhotoUrl    = "strip_photo_url"
     }
 }
 

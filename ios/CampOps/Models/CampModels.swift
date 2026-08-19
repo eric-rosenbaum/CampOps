@@ -206,6 +206,15 @@ struct JoinCodeInfo: Decodable {
     }
 }
 
+/// The result of `delete_my_account`.
+///
+/// The server refuses rather than throws when deletion would strand a camp without an
+/// administrator, so a `false` here carries a sentence worth showing verbatim.
+struct DeleteAccountResult: Decodable {
+    let ok: Bool
+    let error: String?
+}
+
 struct JoinCodeResult: Decodable {
     let campId: String?
     let campName: String?

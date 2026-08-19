@@ -144,10 +144,22 @@ notes must tell the reviewer to tap "Use a password instead".
 
 Three items to resolve. The first two are rejection risks, the third is a factual accuracy point.
 
-### a. In-app account deletion is missing
-Guideline 5.1.1(v) requires any app with accounts to offer account deletion inside the app.
-Neither the iOS app nor the web app has one today. The cheapest fix is a "Delete my account" row
-in Profile calling a `SECURITY DEFINER` RPC that removes the membership and the auth user.
+### a. In-app account deletion — done
+Guideline 5.1.1(v) requires any app with accounts to offer account deletion inside the app. This
+shipped on 2026-08-17: Profile has a "Delete my account" row behind a two-button confirmation
+alert, calling the `delete_my_account()` `SECURITY DEFINER` RPC
+(`supabase/migrations/20260817120000_delete_my_account.sql`).
+
+What it removes: the auth user, the profile, and every camp membership. What it keeps: the work
+the person logged, because that is the camp's operating record rather than personal data — an
+inspector asking for a year of pool readings should not find a hole where someone's summer was.
+Kept rows are detached from the user id and attributed by the name snapshot each row already
+carries.
+
+It refuses in two cases, returning a message naming the obstacle: the caller is the last
+administrator of a camp, or the last platform admin. Both would leave something
+unadministerable. The web app still has no equivalent; Apple only requires it in the app, but
+it is worth adding for parity.
 
 ### b. Demo account with a password
 See above. Create it before submitting and verify it works from a clean install.
@@ -220,7 +232,7 @@ The demo camp was tidied so the screenshots show realistic content. All of it is
 - [ ] App icon present at all required sizes (source: `Assets.xcassets/AppIcon.appiconset`)
 - [ ] Archive built against the Release configuration
 - [ ] Signing team and provisioning profile configured
-- [ ] Account deletion shipped (section 5a)
+- [x] Account deletion shipped (section 5a)
 - [ ] Demo account created and tested (section 5b)
 - [ ] Support URL live
 - [ ] Screenshots uploaded for 6.9" and 6.7"

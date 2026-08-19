@@ -328,26 +328,54 @@ struct ScanStripSheet: View {
 
     // MARK: - Save
 
+    /// Uploads the strip photo first, then saves the reading carrying its URL.
+    ///
+    /// The old order saved the reading and then fired the upload with `try?`, discarding both
+    /// the returned URL and any error. That combination is why the photo never reached the
+    /// web: the upload was being refused by storage RLS, the refusal was swallowed, and even a
+    /// success had nowhere to be recorded. Uploading first means the URL is on the row from
+    /// the moment it is written, so a reader never sees a reading whose photo is still pending.
+    ///
+    /// A failed photo must not cost the numbers. On failure the reading is saved anyway and the
+    /// person is told the photo did not attach, rather than the whole save being lost or —
+    /// worse — the failure passing unnoticed.
     private func saveReading() {
         isSaving = true
         let readingId = UUID().uuidString
-        let reading = ChemicalReading(
-            id: readingId, poolId: poolId,
-            freeChlorine: freeChlorine, ph: ph, alkalinity: alkalinity,
-            cyanuricAcid: cyanuricAcid, waterTemp: waterTemp,
-            calciumHardness: Double(calcHardnessText),
-            readingTime: readingTime,
-            loggedById: authManager.currentUser.id,
-            loggedByName: authManager.currentUser.name,
-            correctiveAction: correctiveAction.isEmpty ? nil : correctiveAction,
-            poolStatus: poolStatus, createdAt: Date()
-        )
+
         Task {
-            await onSave(reading)
+            var photoUrl: String? = nil
+            var photoFailed = false
+
             if let img = capturedImage {
-                try? await TestStripService.shared.uploadStripPhoto(img, readingId: readingId)
+                do {
+                    photoUrl = try await TestStripService.shared.uploadStripPhoto(
+                        img, readingId: readingId, campId: authManager.currentCamp?.id ?? "")
+                } catch {
+                    photoFailed = true
+                }
             }
-            dismiss()
+
+            let reading = ChemicalReading(
+                id: readingId, poolId: poolId,
+                freeChlorine: freeChlorine, ph: ph, alkalinity: alkalinity,
+                cyanuricAcid: cyanuricAcid, waterTemp: waterTemp,
+                calciumHardness: Double(calcHardnessText),
+                readingTime: readingTime,
+                loggedById: authManager.currentUser.id,
+                loggedByName: authManager.currentUser.name,
+                correctiveAction: correctiveAction.isEmpty ? nil : correctiveAction,
+                poolStatus: poolStatus, createdAt: Date(),
+                stripPhotoUrl: photoUrl
+            )
+            await onSave(reading)
+
+            isSaving = false
+            if photoFailed {
+                errorMessage = "The reading was saved, but the strip photo could not be uploaded."
+            } else {
+                dismiss()
+            }
         }
     }
 

@@ -1,3 +1,4 @@
+import { Camera } from 'lucide-react';
 import { formatChemValue } from '@/lib/utils';
 import { usePoolStore, getChemicalStatus, CHEMICAL_RANGES, type ChemicalField } from '@/store/poolStore';
 import { useUIStore } from '@/store/uiStore';
@@ -222,7 +223,26 @@ export function ChemicalLogTab() {
               <ValCell field="alkalinity" value={row.alkalinity} />
               <ValCell field="cyanuricAcid" value={row.cyanuricAcid} />
               <ValCell field="waterTemp" value={row.waterTemp} />
-              <span className="text-secondary text-forest/50">{row.loggedByName}</span>
+              <span className="text-secondary text-forest/50 flex items-center gap-1.5 min-w-0">
+                <span className="truncate">{row.loggedByName}</span>
+                {/*
+                  Readings taken with the phone's strip scanner carry a photo of the strip
+                  itself. It is the evidence behind the numbers — the thing an inspector or a
+                  second pair of eyes would want when a value looks wrong — so the web surfaces
+                  it rather than leaving it stranded in storage.
+                */}
+                {row.stripPhotoUrl && (
+                  <a
+                    href={row.stripPhotoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="View the test strip photo"
+                    className="flex-shrink-0 text-sage hover:text-forest transition-colors"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </span>
               <div className="flex gap-3 justify-end">
                 <button
                   type="button"

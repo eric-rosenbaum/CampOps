@@ -601,6 +601,7 @@ private struct ChemReadingInsert: Encodable {
     let calciumHardness: Double?
     let correctiveAction: String?
     let createdAt: Date
+    let stripPhotoUrl: String?
     enum CodingKeys: String, CodingKey {
         case id
         case campId           = "camp_id"
@@ -612,6 +613,7 @@ private struct ChemReadingInsert: Encodable {
         case loggedById       = "logged_by_id"; case loggedByName = "logged_by_name"
         case correctiveAction = "corrective_action"; case poolStatus = "pool_status"
         case createdAt        = "created_at"
+        case stripPhotoUrl    = "strip_photo_url"
     }
     init(_ r: ChemicalReading) {
         id = r.id; campId = DataService.shared.campId; poolId = r.poolId
@@ -620,7 +622,7 @@ private struct ChemReadingInsert: Encodable {
         freeChlorine = r.freeChlorine; ph = r.ph; alkalinity = r.alkalinity
         cyanuricAcid = r.cyanuricAcid; waterTemp = r.waterTemp
         calciumHardness = r.calciumHardness; correctiveAction = r.correctiveAction
-        createdAt = r.createdAt
+        createdAt = r.createdAt; stripPhotoUrl = r.stripPhotoUrl
     }
 }
 

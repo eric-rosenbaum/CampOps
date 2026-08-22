@@ -40,7 +40,7 @@ function Nav({ onSignIn, onBookDemo }: { onSignIn: () => void; onBookDemo: () =>
         <nav className="flex items-center gap-1 sm:gap-2">
           <button
             onClick={() => scrollToId('how-it-works')}
-            className={`hidden sm:inline-flex items-center gap-1 px-3 py-2 text-[14px] font-medium rounded-btn transition-colors ${scrolled ? 'text-forest/70 hover:text-forest' : 'text-cream/80 hover:text-cream'}`}
+            className={`hidden sm:inline-flex items-center gap-1 px-3 py-2 text-[14px] font-medium rounded-btn transition-colors ${scrolled ? 'text-ink hover:text-forest' : 'text-cream/80 hover:text-cream'}`}
           >
             How it works <ChevronDown className="w-3.5 h-3.5" />
           </button>
@@ -83,7 +83,7 @@ function HeroCard() {
         <div className="flex items-center justify-between px-5 pt-4 pb-3">
           <div>
             <p className="text-[15px] font-semibold text-forest">Today at Pinecrest</p>
-            <p className="text-[11px] text-forest/45 mt-0.5">Day 12 of 54 · 142 campers on site</p>
+            <p className="text-[11px] text-ink-faint mt-0.5">Day 12 of 54 · 142 campers on site</p>
           </div>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-muted-bg text-green-muted-text text-[11px] font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-green-muted-text" /> On track
@@ -94,7 +94,7 @@ function HeroCard() {
           {SNAPSHOT.map((r) => (
             <div key={r.label} className="flex items-center gap-3 px-2.5 py-2 rounded-xl">
               <div className="w-8 h-8 rounded-lg bg-cream flex items-center justify-center flex-shrink-0">
-                <r.icon className="w-4 h-4 text-forest/70" />
+                <r.icon className="w-4 h-4 text-ink" />
               </div>
               <span className="flex-1 text-[13px] font-medium text-forest">{r.label}</span>
               {r.attention ? (
@@ -111,7 +111,7 @@ function HeroCard() {
         </div>
         {/* footer */}
         <div className="px-5 py-2.5 bg-cream/60 border-t border-cream-dark flex items-center justify-between">
-          <span className="inline-flex items-center gap-1.5 text-[11px] text-forest/50">
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-ink-soft">
             <span className="w-1.5 h-1.5 rounded-full bg-sage animate-pulse" /> Updated just now
           </span>
         </div>
@@ -196,7 +196,7 @@ function HowItWorks() {
                 <span className="font-mono text-[13px] text-forest/25 font-semibold">{s.n}</span>
               </div>
               <h3 className="text-[18px] font-semibold text-forest mb-2">{s.title}</h3>
-              <p className="text-[14px] leading-relaxed text-forest/60">{s.body}</p>
+              <p className="text-[14px] leading-relaxed text-ink-soft">{s.body}</p>
             </div>
           ))}
         </div>
@@ -255,11 +255,11 @@ function MobileMock() {
           <span className="w-6 h-6 rounded-full bg-sage/30" />
         </div>
         <div className="w-full rounded-xl bg-sage text-forest text-[12px] font-semibold py-2.5 text-center mb-3">+ Log an issue</div>
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-forest/40 mb-2">Just logged</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint mb-2">Just logged</p>
         <div className="space-y-2">
           {rows.map((r) => (
             <div key={r.t} className="flex items-center gap-2.5 bg-white rounded-lg p-2 border border-black/5">
-              <div className="w-7 h-7 rounded-md bg-cream flex items-center justify-center flex-shrink-0"><r.icon className="w-3.5 h-3.5 text-forest/70" /></div>
+              <div className="w-7 h-7 rounded-md bg-cream flex items-center justify-center flex-shrink-0"><r.icon className="w-3.5 h-3.5 text-ink" /></div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold text-forest leading-tight truncate">{r.t}</p>
                 <p className={`text-[10px] ${r.c}`}>{r.s}</p>
@@ -294,10 +294,10 @@ function PoolScanMock() {
         <div className="absolute inset-x-6 top-[52%] h-[2px] bg-sage-light rounded" style={{ boxShadow: '0 0 10px 1px rgba(168,201,159,0.85)' }} />
       </div>
       <div className="px-5 py-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/40 mb-2.5">Read automatically</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint mb-2.5">Read automatically</p>
         {reads.map((r) => (
           <div key={r.k} className="flex items-center justify-between py-1.5 text-[12.5px]">
-            <span className="text-forest/60">{r.k}</span>
+            <span className="text-ink-soft">{r.k}</span>
             <span className="inline-flex items-center gap-2">
               <span className="font-mono font-semibold text-forest">{r.v}</span>
               <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-muted-text"><Check className="w-3 h-3" />{r.s}</span>
@@ -305,7 +305,7 @@ function PoolScanMock() {
           </div>
         ))}
         <div className="mt-2 pt-2.5 border-t border-cream-dark flex items-center justify-between text-[11px]">
-          <span className="text-forest/45">Confidence 94%</span>
+          <span className="text-ink-faint">Confidence 94%</span>
           <span className="text-green-muted-text font-medium inline-flex items-center gap-1"><Check className="w-3 h-3" /> Logged to Pool</span>
         </div>
       </div>
@@ -329,16 +329,16 @@ function PortalMock() {
         <p className="text-[11px] text-cream/60 mt-0.5">Aug 12–15 · 48 guests</p>
       </div>
       <div className="px-4 py-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/40 mb-2">Your checklist</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint mb-2">Your checklist</p>
         {rows.map((r) => (
           <div key={r.t} className="flex items-center gap-2.5 py-1.5">
             <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${r.done ? 'bg-sage text-white' : 'border border-border'}`}>{r.done && <Check className="w-2.5 h-2.5" />}</span>
-            <span className={`flex-1 text-[12.5px] ${r.done ? 'text-forest/40 line-through' : 'text-forest'}`}>{r.t}</span>
+            <span className={`flex-1 text-[12.5px] ${r.done ? 'text-ink-faint line-through' : 'text-forest'}`}>{r.t}</span>
             {r.note && <span className="text-[10px] text-amber-text font-medium">{r.note}</span>}
           </div>
         ))}
         <div className="mt-2 pt-2.5 border-t border-cream-dark flex items-center justify-between text-[12px]">
-          <span className="text-forest/50">Balance due</span>
+          <span className="text-ink-soft">Balance due</span>
           <span className="font-mono font-semibold text-forest">$2,400</span>
         </div>
       </div>
@@ -380,7 +380,7 @@ function FeatureSpotlights() {
                     <span className="text-[12px] font-semibold uppercase tracking-[0.15em]">{f.eyebrow}</span>
                   </div>
                   <h3 className="font-display text-forest font-semibold text-[clamp(1.6rem,3vw,2.1rem)] leading-[1.15] tracking-[-0.01em]">{f.title}</h3>
-                  <p className="mt-4 text-[15.5px] leading-relaxed text-forest/65 max-w-md">{f.body}</p>
+                  <p className="mt-4 text-[15.5px] leading-relaxed text-ink-soft max-w-md">{f.body}</p>
                   <ul className="mt-5 space-y-2.5">
                     {f.points.map((p) => (
                       <li key={p} className="flex items-start gap-2.5 text-[14px] text-forest/75">
@@ -421,7 +421,7 @@ function ModuleBreadth() {
   const [active, setActive] = useState<string | null>(null);
   return (
     <div className="mt-24 pt-14 border-t border-black/5 text-center">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-forest/40 mb-7">One login also covers</p>
+      <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-ink-faint mb-7">One login also covers</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 max-w-4xl mx-auto items-start">
         {MODULES.map((m) => {
           const open = active === m.title;
@@ -443,7 +443,7 @@ function ModuleBreadth() {
               {/* Reserve two lines so a wrapping title (e.g. "Safety & Compliance") doesn't make its card taller than the rest. */}
               <span className="text-[12.5px] font-medium text-forest leading-tight min-h-[2.5em] flex items-center justify-center text-center">{m.title}</span>
               <span
-                className={`overflow-hidden text-[11.5px] leading-snug text-forest/55 transition-all duration-300 ${
+                className={`overflow-hidden text-[11.5px] leading-snug text-ink-soft transition-all duration-300 ${
                   open ? 'max-h-24 opacity-100 mt-0.5' : 'max-h-0 opacity-0'
                 }`}
               >

@@ -15,7 +15,7 @@ export function CrossBuildingList({ system }: { system: BuildingSystem }) {
     .filter((g) => g.comps.length > 0);
 
   if (withItems.length === 0) {
-    return <p className="text-body text-forest/40">No {system} components recorded yet.</p>;
+    return <p className="text-body text-ink-faint">No {system} components recorded yet.</p>;
   }
 
   return (
@@ -23,7 +23,7 @@ export function CrossBuildingList({ system }: { system: BuildingSystem }) {
       {withItems.map(({ building, comps }) => (
         <div key={building.id}>
           <div className="flex items-center gap-1.5 mb-1.5">
-            <Building2 className="w-3.5 h-3.5 text-forest/40" />
+            <Building2 className="w-3.5 h-3.5 text-ink-faint" />
             <span className="text-body font-semibold text-forest">{building.name}</span>
             <span className="text-meta text-forest/30">{comps.length}</span>
           </div>
@@ -38,11 +38,11 @@ export function CrossBuildingList({ system }: { system: BuildingSystem }) {
                     i > 0 ? 'border-t border-border/60' : ''
                   }`}
                 >
-                  <ComponentIcon type={c.type} className="w-4 h-4 text-forest/50 flex-shrink-0" />
+                  <ComponentIcon type={c.type} className="w-4 h-4 text-ink-soft flex-shrink-0" />
                   <StatusDot status={c.status} />
                   <div className="min-w-0 flex-1">
                     <p className="text-body text-forest truncate">{c.label}</p>
-                    <p className="text-meta text-forest/40 truncate">
+                    <p className="text-meta text-ink-faint truncate">
                       {[COMPONENT_TYPE_LABELS[c.type], summary, c.locationDetail].filter(Boolean).join(' · ')}
                     </p>
                   </div>

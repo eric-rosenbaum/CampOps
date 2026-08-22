@@ -1,225 +1,205 @@
 #!/usr/bin/env python3
 """
-Compose App Store screenshots for CampCommand.
+App Store / marketing screenshot composer — CampCommand.
 
-Written for this project rather than using the ASO skill's compose.py because the stock
-device frame is a flat dark rectangle. This renders a far more convincing iPhone: a brushed
-titanium band with lit edges, a true-to-life corner radius, the side buttons, a screen sheen,
-and a contact shadow under the device.
+Vendored from the aso-appstore-screenshots skill and changed in three ways:
 
-Usage:
-  compose.py --bg "#2d4a2d" --verb TRACK --desc "EVERY JOB ON CAMP" \
-             --screenshot raw/01-home.png --output out/01.png
+1. LINE SPACING IS METRIC-BASED, NOT INK-BASED.
+   The original advanced y by each line's ink height (`bbox[3]-bbox[1]`), which changes with
+   the glyphs on that line — "EVERY JOB ON" carries a descending J, "CAMP" doesn't — so
+   consecutive lines of the same font ended up unevenly spaced. Here every line is placed on a
+   baseline and the baseline advances by a constant derived from the font's cap height, which
+   is what makes stacked all-caps display type look even.
+
+2. TEXT COLOUR IS AN OPTION.
+   The original hardcoded white, which is unreadable the moment the background is light.
+
+3. THE GAPS ARE FLAGS, so the headline can be tuned per screenshot without editing code.
 """
 
 import argparse
 import os
+from PIL import Image, ImageDraw, ImageFont
 
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+# ── Canvas ──────────────────────────────────────────────────────────
+CANVAS_W = 1290
+CANVAS_H = 2796
 
-# ── Canvas (iPhone 6.7"; the 6.9" size is a clean resample of this) ──────────
-CANVAS_W, CANVAS_H = 1290, 2796
-
-# ── Device geometry ─────────────────────────────────────────────────────────
-# Proportions taken from a real iPhone 15/16 Pro: the corner radius is ~11.5% of body
-# width, and the black border around the display is a little over 2%. The stock template
-# used a 7.5% radius and a 15px border, which is what made it read as a flat slab.
-DEVICE_W = 1015
-DEVICE_H = 2300
-CORNER_R = int(DEVICE_W * 0.115)          # ≈ 117
-BAND = 13                                  # titanium rail thickness
-BEZEL = 26                                 # band + black border before the screen starts
+# ── Device template constants (must match generate_frame.py) ───────
+DEVICE_W = 1030
+BEZEL = 15
 SCREEN_W = DEVICE_W - 2 * BEZEL
-SCREEN_CORNER_R = CORNER_R - BEZEL
-DEVICE_X = (CANVAS_W - DEVICE_W) // 2
-DEVICE_Y = 760                             # bottom bleeds off canvas by design
+SCREEN_CORNER_R = 62
 
-DI_W, DI_H, DI_TOP = 128, 37, 15           # Dynamic Island
+# ── Layout ──────────────────────────────────────────────────────────
+DEVICE_Y = 720
+TEXT_TOP = 200
 
-# ── Typography ──────────────────────────────────────────────────────────────
-VERB_SIZE_MAX, VERB_SIZE_MIN = 252, 150
-DESC_SIZE = 120
-VERB_DESC_GAP, DESC_LINE_GAP = 18, 22
-TEXT_TOP = 120
-MAX_TEXT_W = int(CANVAS_W * 0.86)          # generous side margins; nothing near the edge
+# ── Typography ──────────────────────────────────────────────────────
+VERB_SIZE_MAX = 256
+VERB_SIZE_MIN = 150
+DESC_SIZE = 124
+MAX_TEXT_W = int(CANVAS_W * 0.92)
+MAX_VERB_W = int(CANVAS_W * 0.92)
 
-FONT_CANDIDATES = [
-    "/Library/Fonts/SF-Pro-Display-Black.otf",
-    "/System/Library/Fonts/HelveticaNeue.ttc",
+SKILL_DIR = os.path.expanduser("~/.claude/skills/aso-appstore-screenshots")
+SF_PRO_PATH = "/Library/Fonts/SF-Pro-Display-Black.otf"
+FRAME_PATH = os.path.join(SKILL_DIR, "assets", "device_frame.png")
+
+INTER_VAR_SEARCH = [
+    "Inter-VariableFont_opsz,wght.ttf",
+    os.path.expanduser("~/Library/Fonts/Inter-VariableFont_opsz,wght.ttf"),
 ]
 
 
-def load_font(size):
-    for path in FONT_CANDIDATES:
-        if os.path.exists(path):
-            try:
-                return ImageFont.truetype(path, size)
-            except OSError:
-                continue
-    return ImageFont.load_default()
+def _find_inter_var():
+    for rel in INTER_VAR_SEARCH:
+        if os.path.exists(rel):
+            return os.path.abspath(rel)
+    return None
 
 
-def text_size(draw, text, font):
-    box = draw.textbbox((0, 0), text, font=font)
-    return box[2] - box[0], box[3] - box[1]
+def load_heavy_font(size):
+    if os.path.exists(SF_PRO_PATH):
+        return ImageFont.truetype(SF_PRO_PATH, size)
+    inter = _find_inter_var()
+    if inter:
+        f = ImageFont.truetype(inter, size)
+        try:
+            f.set_variation_by_name(b"Black")
+        except Exception:
+            pass
+        return f
+    arial_black = "/System/Library/Fonts/Supplemental/Arial Black.ttf"
+    if os.path.exists(arial_black):
+        return ImageFont.truetype(arial_black, size)
+    raise RuntimeError("No heavy sans-serif font found.")
 
 
-def wrap(draw, text, font, max_w):
+def hex_to_rgb(h):
+    h = h.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def cap_height(font):
+    """Height of a capital H — the visual height of all-caps type.
+
+    This is the unit stacked caps should be spaced by. Unlike a per-line ink bbox it does not
+    move when a line happens to contain a J or a Q.
+    """
+    dummy = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    bbox = dummy.textbbox((0, 0), "H", font=font)
+    return bbox[3] - bbox[1]
+
+
+def word_wrap(draw, text, font, max_w):
     words, lines, cur = text.split(), [], ""
     for w in words:
         trial = f"{cur} {w}".strip()
-        if text_size(draw, trial, font)[0] <= max_w or not cur:
+        if draw.textlength(trial, font=font) <= max_w:
             cur = trial
         else:
-            lines.append(cur)
+            if cur:
+                lines.append(cur)
             cur = w
     if cur:
         lines.append(cur)
     return lines
 
 
-def titanium_band(w, h, radius):
-    """A rounded rect filled with a horizontal gradient that reads as brushed metal.
+def fit_font(text, max_w, size_max, size_min):
+    dummy = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    for size in range(size_max, size_min - 1, -4):
+        font = load_heavy_font(size)
+        if dummy.textlength(text, font=font) <= max_w:
+            return font
+    return load_heavy_font(size_min)
 
-    Real titanium rails catch light at the very edges and fall off toward the middle of
-    the curve. A flat grey is the single biggest reason a mockup looks fake, so this
-    builds a proper multi-stop ramp instead.
+
+def draw_block(draw, baseline_y, text, font, fill, max_w=None, line_gap=0):
+    """Draw centred lines on successive baselines. Returns the last baseline used.
+
+    anchor="ms" is middle-horizontal / baseline-vertical, so lines sit on a true baseline grid
+    instead of being top-aligned by their ink.
     """
-    stops = [
-        (0.00, (176, 173, 168)),
-        (0.05, (232, 230, 226)),   # bright specular edge
-        (0.16, (138, 135, 130)),
-        (0.50, (104, 102, 99)),    # body of the rail, in shadow
-        (0.84, (138, 135, 130)),
-        (0.95, (232, 230, 226)),   # bright specular edge
-        (1.00, (176, 173, 168)),
-    ]
-    grad = Image.new("RGB", (w, 1))
-    px = grad.load()
-    for x in range(w):
-        t = x / max(w - 1, 1)
-        for i in range(len(stops) - 1):
-            t0, c0 = stops[i]
-            t1, c1 = stops[i + 1]
-            if t0 <= t <= t1:
-                f = (t - t0) / max(t1 - t0, 1e-6)
-                px[x, 0] = tuple(int(c0[j] + (c1[j] - c0[j]) * f) for j in range(3))
-                break
-    grad = grad.resize((w, h))
-
-    mask = Image.new("L", (w, h), 0)
-    ImageDraw.Draw(mask).rounded_rectangle([0, 0, w - 1, h - 1], radius=radius, fill=255)
-    out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    out.paste(grad, (0, 0), mask)
-    return out
+    lines = word_wrap(draw, text, font, max_w) if max_w else [text]
+    cap = cap_height(font)
+    for i, line in enumerate(lines):
+        y = baseline_y + i * (cap + line_gap)
+        draw.text((CANVAS_W // 2, y), line, fill=fill, font=font, anchor="ms")
+    return baseline_y + (len(lines) - 1) * (cap + line_gap)
 
 
-def build_device(screenshot):
-    """The device, rendered on its own transparent layer."""
-    dev = Image.new("RGBA", (DEVICE_W, DEVICE_H), (0, 0, 0, 0))
+def compose(bg_hex, fg_hex, verb, desc, screenshot_path, output_path,
+            verb_desc_gap, desc_line_gap):
+    bg = hex_to_rgb(bg_hex)
+    fg = hex_to_rgb(fg_hex)
 
-    # Titanium rail.
-    dev.alpha_composite(titanium_band(DEVICE_W, DEVICE_H, CORNER_R))
-
-    # Black glass border inside the rail.
-    inner = Image.new("RGBA", (DEVICE_W, DEVICE_H), (0, 0, 0, 0))
-    ImageDraw.Draw(inner).rounded_rectangle(
-        [BAND, BAND, DEVICE_W - BAND - 1, DEVICE_H - BAND - 1],
-        radius=CORNER_R - BAND, fill=(11, 11, 12, 255),
-    )
-    dev.alpha_composite(inner)
-
-    # Screen.
-    shot = screenshot.convert("RGB")
-    target_h = int(shot.height * (SCREEN_W / shot.width))
-    shot = shot.resize((SCREEN_W, target_h), Image.LANCZOS)
-    visible_h = DEVICE_H - 2 * BEZEL
-    if target_h > visible_h:
-        shot = shot.crop((0, 0, SCREEN_W, visible_h))
-
-    screen = Image.new("RGBA", (SCREEN_W, shot.height), (0, 0, 0, 0))
-    smask = Image.new("L", (SCREEN_W, shot.height), 0)
-    ImageDraw.Draw(smask).rounded_rectangle(
-        [0, 0, SCREEN_W - 1, shot.height - 1], radius=SCREEN_CORNER_R, fill=255)
-    screen.paste(shot, (0, 0), smask)
-    dev.alpha_composite(screen, (BEZEL, BEZEL))
-
-    # No Dynamic Island is drawn here: the simulator capture already includes it, and
-    # painting a second one on top produces a doubled, misshapen pill.
-
-    # A soft diagonal sheen across the glass sells it as a screen rather than a pasted image.
-    sheen = Image.new("RGBA", (DEVICE_W, DEVICE_H), (0, 0, 0, 0))
-    ImageDraw.Draw(sheen).polygon(
-        [(0, 250), (DEVICE_W, -260), (DEVICE_W, 210), (0, 720)],
-        fill=(255, 255, 255, 13),
-    )
-    sheen_mask = Image.new("L", (DEVICE_W, DEVICE_H), 0)
-    ImageDraw.Draw(sheen_mask).rounded_rectangle(
-        [BEZEL, BEZEL, DEVICE_W - BEZEL - 1, DEVICE_H - BEZEL - 1],
-        radius=SCREEN_CORNER_R, fill=255)
-    dev.alpha_composite(Image.composite(sheen, Image.new("RGBA", dev.size, (0, 0, 0, 0)), sheen_mask))
-
-    # Side buttons, drawn proud of the rail.
-    d = ImageDraw.Draw(dev)
-    btn = (150, 147, 142, 255)
-    for y0, y1 in [(430, 555)]:                      # action button (left)
-        d.rounded_rectangle([-3, y0, 5, y1], radius=4, fill=btn)
-    for y0, y1 in [(620, 740), (770, 890)]:          # volume up / down (left)
-        d.rounded_rectangle([-3, y0, 5, y1], radius=4, fill=btn)
-    d.rounded_rectangle([DEVICE_W - 6, 660, DEVICE_W + 2, 860], radius=4, fill=btn)  # power (right)
-
-    return dev
-
-
-def compose(bg, verb, desc, screenshot_path, output_path):
-    canvas = Image.new("RGBA", (CANVAS_W, CANVAS_H), bg)
+    canvas = Image.new("RGBA", (CANVAS_W, CANVAS_H), (*bg, 255))
     draw = ImageDraw.Draw(canvas)
 
-    # ── Headline ────────────────────────────────────────────────────────────
-    size = VERB_SIZE_MAX
-    while size > VERB_SIZE_MIN:
-        f = load_font(size)
-        if text_size(draw, verb, f)[0] <= MAX_TEXT_W:
-            break
-        size -= 4
-    verb_font = load_font(size)
-    desc_font = load_font(DESC_SIZE)
+    verb_font = fit_font(verb.upper(), MAX_VERB_W, VERB_SIZE_MAX, VERB_SIZE_MIN)
+    desc_font = load_heavy_font(DESC_SIZE)
 
-    y = TEXT_TOP
-    vw, vh = text_size(draw, verb, verb_font)
-    draw.text(((CANVAS_W - vw) // 2, y), verb, font=verb_font, fill="white")
-    y += vh + VERB_DESC_GAP + 30
+    verb_cap = cap_height(verb_font)
+    desc_cap = cap_height(desc_font)
 
-    for line in wrap(draw, desc, desc_font, MAX_TEXT_W):
-        lw, lh = text_size(draw, line, desc_font)
-        draw.text(((CANVAS_W - lw) // 2, y), line, font=desc_font, fill="white")
-        y += lh + DESC_LINE_GAP + 26
+    # First baseline sits one cap-height below the intended text top.
+    verb_baseline = TEXT_TOP + verb_cap
+    last_verb_baseline = draw_block(draw, verb_baseline, verb.upper(), verb_font, fg,
+                                    line_gap=desc_line_gap)
 
-    # ── Device with contact shadow ──────────────────────────────────────────
-    device = build_device(Image.open(screenshot_path))
+    # The gap is measured baseline-to-cap-top, so it reads the same as the gaps between the
+    # description's own lines rather than being inflated by the verb's larger ink box.
+    desc_baseline = last_verb_baseline + verb_desc_gap + desc_cap
+    draw_block(draw, desc_baseline, desc.upper(), desc_font, fg,
+               max_w=MAX_TEXT_W, line_gap=desc_line_gap)
 
-    shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    ImageDraw.Draw(shadow).rounded_rectangle(
-        [DEVICE_X + 16, DEVICE_Y + 30, DEVICE_X + DEVICE_W - 16, DEVICE_Y + DEVICE_H],
-        radius=CORNER_R, fill=(0, 0, 0, 115),
-    )
-    canvas = Image.alpha_composite(canvas, shadow.filter(ImageFilter.GaussianBlur(38)))
+    device_x = (CANVAS_W - DEVICE_W) // 2
+    screen_x = device_x + BEZEL
+    screen_y = DEVICE_Y + BEZEL
 
-    layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    layer.alpha_composite(device, (DEVICE_X, DEVICE_Y))
-    canvas = Image.alpha_composite(canvas, layer)
+    shot = Image.open(screenshot_path).convert("RGBA")
+    scale = SCREEN_W / shot.width
+    shot = shot.resize((SCREEN_W, int(shot.height * scale)), Image.LANCZOS)
 
-    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    canvas.convert("RGB").save(output_path, quality=97)
-    print(f"✓ {output_path} ({CANVAS_W}×{CANVAS_H})")
+    screen_h = CANVAS_H - screen_y + 500
+    scr_mask = Image.new("L", canvas.size, 0)
+    ImageDraw.Draw(scr_mask).rounded_rectangle(
+        [screen_x, screen_y, screen_x + SCREEN_W, screen_y + screen_h],
+        radius=SCREEN_CORNER_R, fill=255)
+
+    scr_layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    ImageDraw.Draw(scr_layer).rounded_rectangle(
+        [screen_x, screen_y, screen_x + SCREEN_W, screen_y + screen_h],
+        radius=SCREEN_CORNER_R, fill=(0, 0, 0, 255))
+    scr_layer.paste(shot, (screen_x, screen_y))
+    scr_layer.putalpha(scr_mask)
+    canvas = Image.alpha_composite(canvas, scr_layer)
+
+    frame_layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    frame_layer.paste(Image.open(FRAME_PATH).convert("RGBA"), (device_x, DEVICE_Y))
+    canvas = Image.alpha_composite(canvas, frame_layer)
+
+    canvas.convert("RGB").save(output_path, "PNG")
+    print(f"✓ {output_path} ({CANVAS_W}×{CANVAS_H})  bg={bg_hex} fg={fg_hex}")
 
 
-if __name__ == "__main__":
+def main():
     p = argparse.ArgumentParser()
     p.add_argument("--bg", required=True)
+    p.add_argument("--fg", default="#0b3d6b", help="Headline colour (default navy for light backgrounds)")
     p.add_argument("--verb", required=True)
     p.add_argument("--desc", required=True)
     p.add_argument("--screenshot", required=True)
     p.add_argument("--output", required=True)
+    p.add_argument("--verb-desc-gap", type=int, default=50)
+    p.add_argument("--desc-line-gap", type=int, default=32)
     a = p.parse_args()
-    compose(a.bg, a.verb, a.desc, a.screenshot, a.output)
+    os.makedirs(os.path.dirname(a.output) or ".", exist_ok=True)
+    compose(a.bg, a.fg, a.verb, a.desc, a.screenshot, a.output,
+            a.verb_desc_gap, a.desc_line_gap)
+
+
+if __name__ == "__main__":
+    main()

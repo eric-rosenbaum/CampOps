@@ -115,11 +115,11 @@ export function SessionModal({ editId }: { editId?: string }) {
         </div>
 
         <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-3">
-          <p className="text-[12px] text-forest/60">
+          <p className="text-[12px] text-ink-soft">
             Head count <span className="font-mono font-medium text-forest">{total.toLocaleString()}</span>
             {datesValid && <> · <span className="font-mono font-medium text-forest">{weeks}</span> menu week{weeks === 1 ? '' : 's'}</>}
           </p>
-          <p className="text-[11px] text-forest/45 mt-1 leading-relaxed">
+          <p className="text-[11px] text-ink-faint mt-1 leading-relaxed">
             Staff are counted separately from campers because seasonal counselors eat but do
             not have app accounts. Recipe yields and ordering quantities scale to the total.
           </p>
@@ -129,7 +129,7 @@ export function SessionModal({ editId }: { editId?: string }) {
           <div>
             <label className={labelClass}>Budget per person / day</label>
             <input type="number" step="0.01" min="0" value={budget} onChange={(e) => setBudget(e.target.value)} className={inputClass} placeholder="e.g. 8.50" />
-            <p className="text-[11px] text-forest/40 mt-1">The per-diem the Cost tab measures against.</p>
+            <p className="text-[11px] text-ink-faint mt-1">The per-diem the Cost tab measures against.</p>
           </div>
           <div>
             <label className={labelClass}>Meals per day</label>
@@ -141,9 +141,9 @@ export function SessionModal({ editId }: { editId?: string }) {
         <div className="rounded-card border border-border px-4 py-3 space-y-3">
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input type="checkbox" checked={perMeal} onChange={(e) => setPerMeal(e.target.checked)} className="accent-sage" />
-            <span className="text-[13px] text-forest/80">Attendance differs by meal</span>
+            <span className="text-[13px] text-ink">Attendance differs by meal</span>
           </label>
-          <p className="text-[11px] text-forest/45 leading-relaxed">
+          <p className="text-[11px] text-ink-faint leading-relaxed">
             {perMeal
               ? `Set the head count for each meal — some campers go home for dinner, or arrive early for breakfast. Leave a meal blank to use the ${total.toLocaleString()} total. Recipe and ordering quantities scale per meal. One-off changes for a single date are handled on the menu with meal events.`
               : `Every meal is cooked for the ${total.toLocaleString()} total. Turn this on if some meals have fewer or more people.`}
@@ -152,7 +152,7 @@ export function SessionModal({ editId }: { editId?: string }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-4 gap-2">
               {MEAL_PERIODS.map((m) => (
                 <div key={m}>
-                  <label className="block text-[11px] font-medium text-forest/60 mb-1">{MEAL_PERIOD_LABELS[m]}</label>
+                  <label className="block text-[11px] font-medium text-ink-soft mb-1">{MEAL_PERIOD_LABELS[m]}</label>
                   <input
                     type="number" min="0" value={mealCounts[m] ?? ''}
                     onChange={(e) => setMealCounts((prev) => ({ ...prev, [m]: e.target.value }))}
@@ -166,15 +166,15 @@ export function SessionModal({ editId }: { editId?: string }) {
 
         {/* Ordering cadence — the weekly rhythm the order coverage window is built from. */}
         <div className="rounded-card border border-border px-4 py-3 space-y-3">
-          <p className="text-[13px] font-medium text-forest/80">Ordering cadence</p>
-          <p className="text-[11px] text-forest/45 leading-relaxed">
+          <p className="text-[13px] font-medium text-ink">Ordering cadence</p>
+          <p className="text-[11px] text-ink-faint leading-relaxed">
             When you take inventory, place orders, and receive them. The ordering view covers you until the
             delivery after the next one — no "generate" needed. Days are optional; blank uses the start date's weekday.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {([['Count day', countDay, setCountDay], ['Order day', orderDay, setOrderDay], ['Delivery day', deliveryDay, setDeliveryDay]] as const).map(([lbl, val, set]) => (
               <div key={lbl}>
-                <label className="block text-[11px] font-medium text-forest/60 mb-1">{lbl}</label>
+                <label className="block text-[11px] font-medium text-ink-soft mb-1">{lbl}</label>
                 <select value={val} onChange={(e) => set(e.target.value)} className={inputClass}>
                   <option value="">—</option>
                   {WEEKDAYS.map((d) => <option key={d} value={d}>{d[0].toUpperCase() + d.slice(1)}</option>)}
@@ -182,7 +182,7 @@ export function SessionModal({ editId }: { editId?: string }) {
               </div>
             ))}
             <div>
-              <label className="block text-[11px] font-medium text-forest/60 mb-1">Repeat every (days)</label>
+              <label className="block text-[11px] font-medium text-ink-soft mb-1">Repeat every (days)</label>
               <input type="number" min="1" value={orderFrequencyDays} onChange={(e) => setOrderFrequencyDays(e.target.value)} className={inputClass} />
             </div>
           </div>
@@ -190,7 +190,7 @@ export function SessionModal({ editId }: { editId?: string }) {
 
         <label className="flex items-center gap-2.5 cursor-pointer">
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="accent-sage" />
-          <span className="text-[13px] text-forest/70">Active session (the one the module opens to)</span>
+          <span className="text-[13px] text-ink">Active session (the one the module opens to)</span>
         </label>
 
         <div>

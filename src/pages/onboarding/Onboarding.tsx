@@ -34,7 +34,7 @@ function SkipButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="px-4 border border-stone-200 text-forest/50 font-medium text-[13px] py-2.5 rounded-lg hover:bg-stone-50 hover:text-forest/70 transition-colors"
+      className="px-4 border border-border text-ink-soft font-medium text-[13px] py-2.5 rounded-lg hover:bg-paper hover:text-ink transition-colors"
     >
       Skip for now
     </button>
@@ -56,20 +56,20 @@ function PrimaryButton({ onClick, disabled, children }: {
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/40 mb-2">{children}</p>;
+  return <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint mb-2">{children}</p>;
 }
 
 function InputRow({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[12px] font-medium text-forest/70 mb-1.5">{label}</label>
+      <label className="block text-[12px] font-medium text-ink mb-1.5">{label}</label>
       {children}
     </div>
   );
 }
 
-const inputCls = 'w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20';
-const selectCls = 'w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20';
+const inputCls = 'w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20';
+const selectCls = 'w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20';
 
 // ─── STEP: Locations ─────────────────────────────────────────────────────────
 
@@ -94,18 +94,18 @@ interface SheetPickerProps {
 
 function SheetPicker({ columns, nameCol, sizeCol, onNameCol, onSizeCol, onConfirm, onCancel }: SheetPickerProps) {
   return (
-    <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-3">
+    <div className="p-4 bg-paper border border-border rounded-xl space-y-3">
       <p className="text-[12px] font-medium text-forest">Match spreadsheet columns</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-[11px] text-forest/50 mb-1">Cabin / location name <span className="text-red-500">*</span></label>
+          <label className="block text-[11px] text-ink-soft mb-1">Cabin / location name <span className="text-red-500">*</span></label>
           <select value={nameCol} onChange={e => onNameCol(e.target.value)} className={selectCls}>
             <option value="">— select —</option>
             {columns.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-[11px] text-forest/50 mb-1">Size / capacity <span className="text-forest/30">(optional)</span></label>
+          <label className="block text-[11px] text-ink-soft mb-1">Size / capacity <span className="text-forest/30">(optional)</span></label>
           <select value={sizeCol} onChange={e => onSizeCol(e.target.value)} className={selectCls}>
             <option value="">— none —</option>
             {columns.map(c => <option key={c} value={c}>{c}</option>)}
@@ -114,7 +114,7 @@ function SheetPicker({ columns, nameCol, sizeCol, onNameCol, onSizeCol, onConfir
       </div>
       <div className="flex gap-2">
         <button onClick={onConfirm} disabled={!nameCol} className="bg-forest text-cream text-[12px] font-medium px-3 py-1.5 rounded-lg disabled:opacity-40">Import</button>
-        <button onClick={onCancel} className="text-[12px] text-forest/50 hover:text-forest px-3 py-1.5">Cancel</button>
+        <button onClick={onCancel} className="text-[12px] text-ink-soft hover:text-forest px-3 py-1.5">Cancel</button>
       </div>
     </div>
   );
@@ -246,8 +246,8 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
 
   return (
     <div className="space-y-6">
-      <p className="text-[13px] text-forest/70 leading-relaxed">
-        Choose the areas at your camp. These will appear when staff log issues or create tasks — use names your whole team will recognize. <span className="text-forest/50">Major areas work better than specific rooms.</span>
+      <p className="text-[13px] text-ink leading-relaxed">
+        Choose the areas at your camp. These will appear when staff log issues or create tasks — use names your whole team will recognize. <span className="text-ink-soft">Major areas work better than specific rooms.</span>
       </p>
 
       <div>
@@ -260,11 +260,11 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
               className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-left text-[13px] transition-colors ${
                 selected.has(loc)
                   ? 'border-forest/40 bg-forest/5 text-forest font-medium'
-                  : 'border-stone-200 text-forest/60 hover:border-stone-300'
+                  : 'border-border text-ink-soft hover:border-border'
               }`}
             >
               <div className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center border transition-colors ${
-                selected.has(loc) ? 'bg-forest border-forest' : 'border-stone-300'
+                selected.has(loc) ? 'bg-forest border-forest' : 'border-border'
               }`}>
                 {selected.has(loc) && <Check className="w-2.5 h-2.5 text-cream" />}
               </div>
@@ -281,7 +281,7 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
             {campType === 'Overnight Camp' ? 'Cabins / Bunks' : 'Cabins / Group Areas'}
           </SectionLabel>
           {!showCabinSection && (
-            <button onClick={() => setShowCabinSection(true)} className="text-[12px] text-forest/50 hover:text-forest transition-colors">
+            <button onClick={() => setShowCabinSection(true)} className="text-[12px] text-ink-soft hover:text-forest transition-colors">
               + Add cabins
             </button>
           )}
@@ -309,7 +309,7 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
               <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileChange} />
               <button
                 onClick={() => fileRef.current?.click()}
-                className="inline-flex items-center gap-1.5 text-[12px] text-forest/50 border border-dashed border-stone-300 px-3 py-2 rounded-lg hover:border-forest/40 hover:text-forest transition-colors"
+                className="inline-flex items-center gap-1.5 text-[12px] text-ink-soft border border-dashed border-border px-3 py-2 rounded-lg hover:border-forest/40 hover:text-forest transition-colors"
               >
                 <Upload className="w-3.5 h-3.5" /> Import from spreadsheet (.csv or .xlsx)
               </button>
@@ -333,8 +333,8 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
         {cabins.length > 0 && (
           <div className="mt-3 space-y-1.5">
             {cabins.map(c => (
-              <div key={c.name} className="flex items-center justify-between text-[13px] text-forest bg-stone-50 border border-stone-200 rounded-lg px-3 py-2">
-                <span>{c.name}{c.beds ? <span className="text-forest/40"> · {c.beds} beds</span> : null}</span>
+              <div key={c.name} className="flex items-center justify-between text-[13px] text-forest bg-paper border border-border rounded-lg px-3 py-2">
+                <span>{c.name}{c.beds ? <span className="text-ink-faint"> · {c.beds} beds</span> : null}</span>
                 <button onClick={() => removeCabin(c.name)} className="text-forest/30 hover:text-red-500 transition-colors">
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -362,7 +362,7 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
             {extras.map(loc => (
               <span key={loc} className="inline-flex items-center gap-1 text-[12px] bg-forest/10 text-forest px-2.5 py-1 rounded-full">
                 {loc}
-                <button onClick={() => removeExtra(loc)} className="text-forest/40 hover:text-forest"><X className="w-3 h-3" /></button>
+                <button onClick={() => removeExtra(loc)} className="text-ink-faint hover:text-forest"><X className="w-3 h-3" /></button>
               </span>
             ))}
           </div>
@@ -476,14 +476,14 @@ function PoolStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }
       {/* Pools list */}
       <div>
         <SectionLabel>Pool / waterfront locations</SectionLabel>
-        <p className="text-[12px] text-forest/50 mb-3">Add each pool, lake, or waterfront area your camp uses.</p>
+        <p className="text-[12px] text-ink-soft mb-3">Add each pool, lake, or waterfront area your camp uses.</p>
 
         {pools.length > 0 && (
           <div className="space-y-1.5 mb-3">
             {pools.map(p => (
-              <div key={p.id} className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-lg px-3 py-2">
+              <div key={p.id} className="flex items-center gap-2 bg-paper border border-border rounded-lg px-3 py-2">
                 <span className="text-[13px] font-medium text-forest flex-1">{p.name}</span>
-                <span className="text-[11px] text-forest/40 capitalize">
+                <span className="text-[11px] text-ink-faint capitalize">
                   {p.type === 'pool' ? 'Swimming pool' : p.type === 'waterfront' ? 'Waterfront / lake' : 'Other'}
                 </span>
                 <button onClick={() => removePool(p.id)} className="text-stone-300 hover:text-red-500 transition-colors ml-1">
@@ -518,15 +518,15 @@ function PoolStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }
       {/* Equipment */}
       <div>
         <SectionLabel>Rescue equipment on hand</SectionLabel>
-        <p className="text-[12px] text-forest/50 mb-2">Check off what's available at your waterfront.</p>
+        <p className="text-[12px] text-ink-soft mb-2">Check off what's available at your waterfront.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
           {[...RESCUE_EQUIPMENT, ...extraEquip].map(e => (
             <button key={e} onClick={() => toggleEquip(e)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-left text-[12px] transition-colors ${
-                checkedEquip.has(e) ? 'border-forest/40 bg-forest/5 text-forest' : 'border-stone-200 text-forest/60 hover:border-stone-300'
+                checkedEquip.has(e) ? 'border-forest/40 bg-forest/5 text-forest' : 'border-border text-ink-soft hover:border-border'
               }`}
             >
-              <div className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center border ${checkedEquip.has(e) ? 'bg-forest border-forest' : 'border-stone-300'}`}>
+              <div className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center border ${checkedEquip.has(e) ? 'bg-forest border-forest' : 'border-border'}`}>
                 {checkedEquip.has(e) && <Check className="w-2 h-2 text-cream" />}
               </div>
               {e}
@@ -544,9 +544,9 @@ function PoolStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }
         <SectionLabel>Lifeguards & certifications</SectionLabel>
         {/* Column headers */}
         <div className="grid grid-cols-[1fr_160px_160px_32px] min-w-[640px] sm:min-w-0 gap-2 mb-1 px-0.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-forest/40">Name</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-forest/40">Certification</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-forest/40">Cert expires</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">Name</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">Certification</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">Cert expires</span>
           <span />
         </div>
         <div className="space-y-2">
@@ -566,7 +566,7 @@ function PoolStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }
             </div>
           ))}
           <button onClick={() => setGuards(prev => [...prev, { name: '', cert: 'lifeguard', certExpiry: '' }])}
-            className="inline-flex items-center gap-1.5 text-[12px] text-forest/50 hover:text-forest border border-dashed border-stone-300 px-3 py-2 rounded-lg hover:border-forest/40 transition-colors">
+            className="inline-flex items-center gap-1.5 text-[12px] text-ink-soft hover:text-forest border border-dashed border-border px-3 py-2 rounded-lg hover:border-forest/40 transition-colors">
             <Plus className="w-3.5 h-3.5" /> Add lifeguard
           </button>
         </div>
@@ -597,7 +597,7 @@ function ChecklistsStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => 
 
   return (
     <div className="space-y-5">
-      <p className="text-[13px] text-forest/70 leading-relaxed">
+      <p className="text-[13px] text-ink leading-relaxed">
         Your opening and closing dates are used to calculate task due dates on pre/post-camp checklists.
       </p>
       <InputRow label={<>Season name <span className="text-forest/30 font-normal">(optional)</span></>}>
@@ -714,14 +714,14 @@ function SafetyStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void
                 emptyHint="No locations yet — add them in the Locations step."
               />
               <div>
-                <label className="block text-[10px] text-forest/40 mb-0.5">Expiry / next service</label>
+                <label className="block text-[10px] text-ink-faint mb-0.5">Expiry / next service</label>
                 <input type="date" value={e.expiry} onChange={ev => updateFireEquip(i, 'expiry', ev.target.value)} className={inputCls + ' w-36'} />
               </div>
-              <button onClick={() => setFireEquip(prev => prev.filter((_, idx) => idx !== i))} className="text-stone-400 hover:text-red-500 px-1 self-end pb-2"><X className="w-4 h-4" /></button>
+              <button onClick={() => setFireEquip(prev => prev.filter((_, idx) => idx !== i))} className="text-ink-faint hover:text-red-500 px-1 self-end pb-2"><X className="w-4 h-4" /></button>
             </div>
           ))}
           <button onClick={() => setFireEquip(prev => [...prev, { type: 'extinguisher', locationId: '', location: '', expiry: '' }])}
-            className="inline-flex items-center gap-1.5 text-[12px] text-forest/50 hover:text-forest border border-dashed border-stone-300 px-3 py-2 rounded-lg hover:border-forest/40 transition-colors">
+            className="inline-flex items-center gap-1.5 text-[12px] text-ink-soft hover:text-forest border border-dashed border-border px-3 py-2 rounded-lg hover:border-forest/40 transition-colors">
             <Plus className="w-3.5 h-3.5" /> Add item
           </button>
         </div>
@@ -746,11 +746,11 @@ function SafetyStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void
               </select>
               <input type="date" value={d.scheduledDate} onChange={e => updateDrill(i, 'scheduledDate', e.target.value)} className={inputCls + ' w-36'} />
               <input value={d.lead} onChange={e => updateDrill(i, 'lead', e.target.value)} className={inputCls} placeholder="Lead / responsible person" />
-              <button onClick={() => setDrills(prev => prev.filter((_, idx) => idx !== i))} className="text-stone-400 hover:text-red-500 px-1 pb-0.5"><X className="w-4 h-4" /></button>
+              <button onClick={() => setDrills(prev => prev.filter((_, idx) => idx !== i))} className="text-ink-faint hover:text-red-500 px-1 pb-0.5"><X className="w-4 h-4" /></button>
             </div>
           ))}
           <button onClick={() => setDrills(prev => [...prev, { type: 'fire_evacuation', scheduledDate: '', lead: '', notes: '' }])}
-            className="inline-flex items-center gap-1.5 text-[12px] text-forest/50 hover:text-forest border border-dashed border-stone-300 px-3 py-2 rounded-lg hover:border-forest/40 transition-colors">
+            className="inline-flex items-center gap-1.5 text-[12px] text-ink-soft hover:text-forest border border-dashed border-border px-3 py-2 rounded-lg hover:border-forest/40 transition-colors">
             <Plus className="w-3.5 h-3.5" /> Add drill
           </button>
         </div>
@@ -810,17 +810,17 @@ function AssetsStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void
 
   return (
     <div className="space-y-5">
-      <p className="text-[13px] text-forest/70 leading-relaxed">
+      <p className="text-[13px] text-ink leading-relaxed">
         Add your camp's vehicles and major equipment. You can add maintenance schedules and track checkouts after setup.
       </p>
 
       <div className="space-y-3">
         {assets.map((a, i) => (
-          <div key={i} className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
+          <div key={i} className="p-3 bg-paper rounded-xl border border-border space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-forest/50">Asset {i + 1}</span>
+              <span className="text-[11px] font-semibold text-ink-soft">Asset {i + 1}</span>
               {assets.length > 1 && (
-                <button onClick={() => setAssets(prev => prev.filter((_, idx) => idx !== i))} className="text-stone-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                <button onClick={() => setAssets(prev => prev.filter((_, idx) => idx !== i))} className="text-ink-faint hover:text-red-500"><X className="w-4 h-4" /></button>
               )}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -845,7 +845,7 @@ function AssetsStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void
           </div>
         ))}
         <button onClick={() => setAssets(prev => [...prev, { name: '', category: 'vehicle', make: '', year: '', notes: '' }])}
-          className="inline-flex items-center gap-1.5 text-[13px] text-forest/50 hover:text-forest border border-dashed border-stone-300 px-4 py-2.5 rounded-lg hover:border-forest/40 transition-colors">
+          className="inline-flex items-center gap-1.5 text-[13px] text-ink-soft hover:text-forest border border-dashed border-border px-4 py-2.5 rounded-lg hover:border-forest/40 transition-colors">
           <Plus className="w-3.5 h-3.5" /> Add another asset
         </button>
       </div>
@@ -887,10 +887,10 @@ function TeamStep({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="space-y-5">
-      <p className="text-[13px] text-forest/70 leading-relaxed">
+      <p className="text-[13px] text-ink leading-relaxed">
         Invite your key operators — directors, maintenance leads, waterfront staff. They'll get a link to create their account and join your camp.
       </p>
-      <p className="text-[12px] text-forest/50 bg-stone-50 border border-stone-200 rounded-lg px-3 py-2.5">
+      <p className="text-[12px] text-ink-soft bg-paper border border-border rounded-lg px-3 py-2.5">
         💡 <strong>Tip:</strong> For staff who only need to appear in certification records (lifeguards, counselors), add them later in the Safety or other modules — they don't need app accounts.
       </p>
 
@@ -917,7 +917,7 @@ function TeamStep({ onDone }: { onDone: () => void }) {
       {invites.length > 0 && (
         <div className="space-y-1.5">
           {invites.map((inv, i) => (
-            <div key={i} className="flex items-center gap-2 text-[13px] text-forest/70">
+            <div key={i} className="flex items-center gap-2 text-[13px] text-ink">
               <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
               <span>{inv.email}</span>
               <span className="text-forest/30 capitalize">· {inv.role}</span>
@@ -1018,13 +1018,13 @@ export function Onboarding() {
       </div>
 
       {/* Right content */}
-      <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start bg-stone-50 p-4 sm:p-6 sm:p-10">
+      <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start bg-paper p-4 sm:p-6 sm:p-10">
         <div className="lg:hidden flex items-center justify-between w-full max-w-2xl mb-6">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-3.5 h-3.5 text-cream" /></div>
             <span className="text-sm font-semibold text-forest">CampCommand</span>
           </div>
-          <button onClick={() => navigate('/', { replace: true })} className="text-[12px] text-forest/40 hover:text-forest">Skip →</button>
+          <button onClick={() => navigate('/', { replace: true })} className="text-[12px] text-ink-faint hover:text-forest">Skip →</button>
         </div>
 
         <div className="w-full max-w-2xl">
@@ -1034,7 +1034,7 @@ export function Onboarding() {
               <button
                 key={i}
                 onClick={() => goTo(i)}
-                className={`h-1 flex-1 rounded-full transition-colors ${i < currentIdx ? 'bg-forest' : i === currentIdx ? 'bg-forest/50' : 'bg-stone-200'}`}
+                className={`h-1 flex-1 rounded-full transition-colors ${i < currentIdx ? 'bg-forest' : i === currentIdx ? 'bg-forest/50' : 'bg-cream-dark'}`}
               />
             ))}
           </div>
@@ -1045,13 +1045,13 @@ export function Onboarding() {
             const Icon = STEP_META[key].icon;
             return (
               <div key={key} className={active ? '' : 'hidden'}>
-                <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-8">
+                <div className="bg-white rounded-xl border border-border shadow-sm p-8">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 bg-forest/8 rounded-xl flex items-center justify-center">
-                      <Icon className="w-5 h-5 text-forest/60" />
+                      <Icon className="w-5 h-5 text-ink-soft" />
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/40">Step {idx + 1} of {steps.length}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Step {idx + 1} of {steps.length}</p>
                       <h2 className="text-[17px] font-semibold text-forest">{STEP_META[key].label}</h2>
                     </div>
                   </div>
@@ -1065,7 +1065,7 @@ export function Onboarding() {
                 </div>
 
                 {active && idx + 1 < steps.length && (
-                  <p className="text-center text-[12px] text-forest/35 mt-4 flex items-center justify-center gap-1">
+                  <p className="text-center text-[12px] text-ink-faint mt-4 flex items-center justify-center gap-1">
                     Next: {STEP_META[steps[idx + 1]].label}
                     <ChevronRight className="w-3.5 h-3.5" />
                   </p>

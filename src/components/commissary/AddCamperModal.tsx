@@ -117,26 +117,26 @@ export function AddCamperModal({ editId }: { editId?: string }) {
         <div>
           <label className={labelClass}>Sessions attending</label>
           {sessions.length === 0 ? (
-            <p className="text-[11px] text-forest/45">No sessions yet — create one first. Unassigned people count toward every session's allergy totals.</p>
+            <p className="text-[11px] text-ink-faint">No sessions yet — create one first. Unassigned people count toward every session's allergy totals.</p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {sessions.map((s) => (
                 <button key={s.id} type="button" onClick={() => toggleSession(s.id)}
                   className={`px-2.5 py-1 rounded-pill text-[11px] font-medium border transition-colors ${
-                    sessionIds.includes(s.id) ? 'bg-forest text-cream border-forest' : 'bg-white text-forest/50 border-border hover:border-forest/30'
+                    sessionIds.includes(s.id) ? 'bg-forest text-cream border-forest' : 'bg-white text-ink-soft border-border hover:border-forest/30'
                   }`}>
                   {s.name}
                 </button>
               ))}
             </div>
           )}
-          <p className="text-[11px] text-forest/45 mt-1">Pick every session this person attends — their allergies count only toward those sessions' menus.</p>
+          <p className="text-[11px] text-ink-faint mt-1">Pick every session this person attends — their allergies count only toward those sessions' menus.</p>
         </div>
 
         <div>
           <label className={labelClass}>Allergens / Dietary preferences</label>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-forest/40 mb-1.5">Allergens <span className="normal-case font-normal text-forest/35">— safety</span></p>
-          <p className="text-[11px] text-forest/45 mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint mb-1.5">Allergens <span className="normal-case font-normal text-ink-faint">— safety</span></p>
+          <p className="text-[11px] text-ink-faint mb-2">
             Select an allergen, then set how severe it is. Anaphylactic flags appear in red
             on every affected recipe and prep task.
           </p>
@@ -152,7 +152,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
                         ? allergens[a] === 'anaphylactic'
                           ? 'bg-red-bg text-red border-red/30'
                           : 'bg-amber-bg text-amber-text border-amber/30'
-                        : 'bg-white text-forest/50 border-border hover:border-forest/30'
+                        : 'bg-white text-ink-soft border-border hover:border-forest/30'
                     }`}
                   >
                     {ALLERGEN_LABELS[a]}
@@ -168,7 +168,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
                               ? sev === 'anaphylactic'
                                 ? 'bg-red text-white border-red'
                                 : 'bg-forest text-cream border-forest'
-                              : 'bg-white text-forest/50 border-border hover:border-forest/30'
+                              : 'bg-white text-ink-soft border-border hover:border-forest/30'
                           }`}
                         >
                           {SEVERITY_LABELS[sev].split(' —')[0]}
@@ -181,7 +181,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
             })}
           </div>
 
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-forest/40 mt-3 mb-1.5">Dietary <span className="normal-case font-normal text-forest/35">— accommodation, not a safety hazard</span></p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint mt-3 mb-1.5">Dietary <span className="normal-case font-normal text-ink-faint">— accommodation, not a safety hazard</span></p>
           <div className="flex flex-wrap gap-1.5">
             {DIETARY_RESTRICTIONS.map((d) => (
               <button
@@ -189,7 +189,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
                 className={`px-2.5 py-1 rounded-pill text-[11px] font-medium border transition-colors ${
                   diets.includes(d)
                     ? 'bg-forest text-cream border-forest'
-                    : 'bg-white text-forest/50 border-border hover:border-forest/30'
+                    : 'bg-white text-ink-soft border-border hover:border-forest/30'
                 }`}
               >
                 {DIETARY_LABELS[d]}

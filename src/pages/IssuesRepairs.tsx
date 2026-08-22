@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
+import { GroupHeader } from '@/components/shared/GroupHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { FilterPill } from '@/components/shared/FilterPill';
 import { SearchInput } from '@/components/shared/SearchInput';
@@ -117,6 +118,22 @@ export function IssuesRepairs() {
     [filtered, currentUser.id],
   );
 
+  // Counts beside each tab, so a filter announces its size before you switch to it.
+  const filterCounts = useMemo(() => {
+    const base = role === 'staff'
+      ? issues.filter((i) => i.assigneeId === currentUser.id || i.reportedById === currentUser.id
+          || (issuesSeeUnassigned && !i.assigneeId))
+      : issues;
+    return {
+      all: base.length,
+      urgent: base.filter((i) => i.priority === 'urgent' && i.status !== 'resolved').length,
+      unassigned: base.filter((i) => !i.assigneeId && i.status !== 'resolved').length,
+      in_progress: base.filter((i) => i.status === 'in_progress').length,
+      resolved: base.filter((i) => i.status === 'resolved').length,
+      public: base.filter((i) => i.isPublicReport).length,
+    } as Record<FilterType, number>;
+  }, [issues, role, currentUser.id, issuesSeeUnassigned]);
+
   const selectedIssue = issues.find((i) => i.id === selectedIssueId);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
@@ -173,6 +190,7 @@ export function IssuesRepairs() {
   return (
     <div className="flex flex-col h-full min-h-0">
       <Topbar
+        flush
         title="Issues & repairs"
         subtitle={subtitle}
         actions={
@@ -202,15 +220,37 @@ export function IssuesRepairs() {
       <div className="flex flex-1 min-h-0">
         {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
+          <div className="flex-shrink-0 bg-paper-raised px-4 sm:px-7">
             {/* Stats row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:flex sm:items-stretch border-t border-border">
               <StatCard label="Urgent" value={urgentCount()} hint="Needs action today" variant="red" />
               <StatCard label="Open" value={openCount()} hint="Assigned or pending" />
               <StatCard label="Resolved" value={resolvedCount()} hint="This session" />
               <StatCard label="Repair costs" value={formatCost(totalCosts())} hint="This session so far" variant="amber" />
             </div>
+          </div>
 
+          {/* Toolbar: the tabs sit on the header's own bottom rule. */}
+          <div className="flex-shrink-0 border-b border-border bg-paper-raised px-4 sm:px-7">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="-mx-1 flex items-center gap-1 overflow-x-auto overflow-y-hidden no-scrollbar px-1">
+                {filterLabels.map(({ key, label }) => (
+                  <FilterPill
+                    key={key}
+                    label={label}
+                    active={filter === key}
+                    count={filterCounts[key]}
+                    onClick={() => setFilter(key)}
+                  />
+                ))}
+              </div>
+              <div className="pb-2 sm:pb-0">
+                <SearchInput value={searchQuery} onChange={setSearch} placeholder="Search issues…" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 sm:px-7 pb-10">
             {/* Failed safety devices callout */}
             {failedDevices.length > 0 && (
               <div className="bg-red-bg border border-red/20 rounded-card px-4 py-3.5 mb-4">
@@ -230,30 +270,11 @@ export function IssuesRepairs() {
               </div>
             )}
 
-            {/* Filter bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2 overflow-x-auto -mx-1 px-1 pb-1 sm:pb-0">
-                {filterLabels.map(({ key, label }) => (
-                  <FilterPill
-                    key={key}
-                    label={label}
-                    active={filter === key}
-                    onClick={() => setFilter(key)}
-                  />
-                ))}
-              </div>
-              <SearchInput
-                value={searchQuery}
-                onChange={setSearch}
-                placeholder="Search issues…"
-              />
-            </div>
-
             {/* Issue list */}
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <p className="text-[32px] mb-3">🌲</p>
-                <p className="text-[15px] font-semibold text-forest/60">
+                <p className="text-[15px] font-semibold text-ink-soft">
                   {filter === 'urgent' ? 'No urgent issues right now' :
                    filter === 'unassigned' ? 'No unassigned issues' :
                    filter === 'in_progress' ? 'Nothing in progress' :
@@ -261,7 +282,7 @@ export function IssuesRepairs() {
                    filter === 'public' ? 'No public reports yet' :
                    'No issues found'}
                 </p>
-                <p className="text-[13px] text-forest/40 mt-1">
+                <p className="text-[13px] text-ink-faint mt-1">
                   {searchQuery ? 'Try a different search term' : 'All clear for now'}
                 </p>
               </div>
@@ -270,19 +291,15 @@ export function IssuesRepairs() {
               // responsibilities, so they don't belong in one undifferentiated list.
               <div className="space-y-5">
                 {assignedToMe.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40">
-                      Assigned to you
-                    </p>
+                  <div>
+                    <GroupHeader label="Assigned to you" count={assignedToMe.length} />
                     {assignedToMe.map((issue) => renderIssueCard(issue))}
                   </div>
                 )}
                 {reportedByMe.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40">
-                      You reported
-                    </p>
-                    <p className="text-[12px] text-forest/40 -mt-1">
+                  <div>
+                    <GroupHeader label="You reported" count={reportedByMe.length} />
+                    <p className="-mt-1 mb-2 text-[12px] text-ink-soft">
                       Someone else will pick these up — you'll see status changes here.
                     </p>
                     {reportedByMe.map((issue) => renderIssueCard(issue))}
@@ -290,7 +307,7 @@ export function IssuesRepairs() {
                 )}
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="pt-4">
                 {filtered.map((issue) => renderIssueCard(issue))}
               </div>
             )}
@@ -309,7 +326,7 @@ export function IssuesRepairs() {
             <>
               <button
                 onClick={() => setMobileDetailOpen(false)}
-                className="lg:hidden flex items-center gap-1.5 px-4 py-3 border-b border-border text-[13px] font-medium text-forest/70 hover:text-forest flex-shrink-0"
+                className="lg:hidden flex items-center gap-1.5 px-4 py-3 border-b border-border text-[13px] font-medium text-ink hover:text-forest flex-shrink-0"
               >
                 <ChevronLeft className="w-4 h-4" />
                 All issues

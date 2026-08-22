@@ -65,7 +65,7 @@ export function ChargeModal({ retreatId, chargeId }: { retreatId: string; charge
   return (
     <Modal title={existing ? 'Edit charge' : 'Add charge'} onClose={closeModal} width="460px">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <p className="text-[12px] text-forest/55 leading-relaxed">
+        <p className="text-[12px] text-ink-soft leading-relaxed">
           Charges become line items on the invoice. Amount is calculated from quantity × rate,
           but you can override it directly.
         </p>
@@ -94,9 +94,9 @@ export function ChargeModal({ retreatId, chargeId }: { retreatId: string; charge
             />
           </div>
         </div>
-        <p className="text-[11px] text-forest/45">
-          Line total: <span className="font-mono text-forest/70">{money(effectiveAmount || 0)}</span>
-          {!amountTouched && Number.isFinite(computed) && <span className="text-forest/35"> · auto from {q || 0} × {money(rate || 0)}</span>}
+        <p className="text-[11px] text-ink-faint">
+          Line total: <span className="font-mono text-ink">{money(effectiveAmount || 0)}</span>
+          {!amountTouched && Number.isFinite(computed) && <span className="text-ink-faint"> · auto from {q || 0} × {money(rate || 0)}</span>}
         </p>
         <div className="flex gap-2 pt-1">
           <Button type="submit" className="flex-1 justify-center" disabled={!canManage || !description.trim()}>

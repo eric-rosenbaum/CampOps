@@ -15,7 +15,7 @@ export function ElectricalTab() {
       <section>
         <h3 className="text-card-title font-semibold text-forest mb-3">Panels &amp; breaker schedules</h3>
         {allPanels.length === 0 ? (
-          <p className="text-body text-forest/40">
+          <p className="text-body text-ink-faint">
             No panels mapped yet. Add a breaker panel to a building, then map its breakers.
           </p>
         ) : (
@@ -26,10 +26,10 @@ export function ElectricalTab() {
               return (
                 <div key={panel.id} className="bg-white border border-border rounded-card p-4">
                   <button onClick={() => jump(panel)} className="flex items-center gap-2 mb-2 text-left group">
-                    <Power className="w-4 h-4 text-forest/50" />
+                    <Power className="w-4 h-4 text-ink-soft" />
                     <span className="text-body font-semibold text-forest group-hover:text-sage transition-colors">{panel.label}</span>
                     {building && (
-                      <span className="inline-flex items-center gap-1 text-meta text-forest/40">
+                      <span className="inline-flex items-center gap-1 text-meta text-ink-faint">
                         <Building2 className="w-3 h-3" /> {building.name}
                       </span>
                     )}
@@ -40,12 +40,12 @@ export function ElectricalTab() {
                     <div className="border border-border rounded-btn overflow-hidden">
                       {circuits.map((c, i) => (
                         <div key={c.id} className={`flex items-start gap-2 px-2.5 py-1.5 ${i > 0 ? 'border-t border-border/60' : ''} ${c.isOn ? '' : 'opacity-50'}`}>
-                          <span className="text-meta font-mono font-semibold text-forest/60 w-7 flex-shrink-0 text-right">{c.breakerNumber ?? '–'}</span>
+                          <span className="text-meta font-mono font-semibold text-ink-soft w-7 flex-shrink-0 text-right">{c.breakerNumber ?? '–'}</span>
                           <div className="min-w-0 flex-1">
                             <p className="text-body text-forest truncate">{c.label ?? c.controls ?? 'Unlabeled'}</p>
-                            {c.controls && c.label && <p className="text-meta text-forest/40 truncate">{c.controls}</p>}
+                            {c.controls && c.label && <p className="text-meta text-ink-faint truncate">{c.controls}</p>}
                           </div>
-                          {c.amperage ? <span className="text-meta text-forest/40 flex-shrink-0">{c.amperage}A</span> : null}
+                          {c.amperage ? <span className="text-meta text-ink-faint flex-shrink-0">{c.amperage}A</span> : null}
                         </div>
                       ))}
                     </div>

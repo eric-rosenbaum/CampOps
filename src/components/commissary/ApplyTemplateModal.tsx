@@ -29,22 +29,22 @@ export function ApplyTemplateModal() {
     <Modal title="Apply menu template" onClose={closeModal} width="460px">
       <div className="space-y-4">
         {templates.length === 0 ? (
-          <p className="text-[13px] text-forest/55">No templates yet. Build one in the Templates view first.</p>
+          <p className="text-[13px] text-ink-soft">No templates yet. Build one in the Templates view first.</p>
         ) : (
           <>
             <div>
-              <label className="block text-secondary font-medium text-forest/70 mb-1">Template</label>
+              <label className="block text-secondary font-medium text-ink mb-1">Template</label>
               <select value={templateId} onChange={(e) => setTemplateId(e.target.value)}
                       className="w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage">
                 {templates.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.lengthWeeks}-week cycle)</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-secondary font-medium text-forest/70 mb-1">Start at week</label>
+              <label className="block text-secondary font-medium text-ink mb-1">Start at week</label>
               <input type="number" min="1" max={weeks} value={startWeek} onChange={(e) => setStartWeek(e.target.value)}
                      className="w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage" />
             </div>
-            <p className="text-[12px] text-forest/55 leading-relaxed">
+            <p className="text-[12px] text-ink-soft leading-relaxed">
               The {template?.lengthWeeks}-week cycle repeats across weeks {start}–{weeks} ({affected} week{affected === 1 ? '' : 's'}).
               Meals already in those weeks are replaced; earlier weeks are untouched. You can tweak
               any meal afterward without changing the template.

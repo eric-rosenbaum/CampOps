@@ -104,11 +104,11 @@ export function InventoryTab() {
     return (
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
-          <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-            <Package className="w-7 h-7 text-stone-400" />
+          <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mb-4">
+            <Package className="w-7 h-7 text-ink-faint" />
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No inventory yet</h3>
-          <p className="text-[13px] text-forest/50 leading-relaxed mb-4">
+          <p className="text-[13px] text-ink-soft leading-relaxed mb-4">
             Add what you keep on hand — proteins, dairy, produce, dry goods — with a
             reorder level for each. Recipes draw from these items, and the menu tells you
             what you are short.
@@ -219,7 +219,7 @@ export function InventoryTab() {
       <div className="bg-white rounded-card border border-border overflow-x-auto">
         <div className="grid grid-cols-[2.2fr_1fr_1fr_1.2fr_1fr_150px] min-w-[760px] sm:min-w-0 gap-3 px-4 py-2.5 bg-cream-dark/50 border-b border-border">
           {['Item', 'On hand (counted)', 'Projected now', 'Runs out', 'Min on hand', ''].map((h) => (
-            <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>
+            <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>
           ))}
         </div>
 
@@ -231,25 +231,25 @@ export function InventoryTab() {
           return (
             <div key={item.id} className="grid grid-cols-[2.2fr_1fr_1fr_1.2fr_1fr_150px] min-w-[760px] sm:min-w-0 gap-3 px-4 py-3 border-b border-border last:border-0 items-center hover:bg-cream-dark/30">
               <div className="flex items-center gap-2.5 min-w-0">
-                <CategoryIcon category={item.category} className="w-4 h-4 text-forest/40 flex-shrink-0" />
+                <CategoryIcon category={item.category} className="w-4 h-4 text-ink-faint flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="text-[13px] font-medium text-forest truncate">{item.name}</p>
-                  <p className="text-[11px] text-forest/45 truncate">
+                  <p className="text-[11px] text-ink-faint truncate">
                     {CATEGORY_LABELS[item.category]} · {STORAGE_LABELS[item.storageLocation]}
                   </p>
                 </div>
               </div>
               <OnHandValue item={item} />
-              <span className={`font-mono text-[13px] ${p.now <= 0 ? 'text-red font-medium' : 'text-forest/70'}`}>
+              <span className={`font-mono text-[13px] ${p.now <= 0 ? 'text-red font-medium' : 'text-ink'}`}>
                 {formatQty(fromBase(projNow, item.stockUnitInBase), item.stockUnit)}
               </span>
               <span className="text-[12px]">
                 {item.lastCountedAt == null ? (
                   <span className="text-forest/25">—</span>
                 ) : p.runOut ? (
-                  <span className={soon ? 'text-red font-medium' : near ? 'text-amber-text' : 'text-forest/60'}>
+                  <span className={soon ? 'text-red font-medium' : near ? 'text-amber-text' : 'text-ink-soft'}>
                     {new Date(`${p.runOut}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                    {p.cover != null && <span className="text-forest/40"> · {p.cover}d</span>}
+                    {p.cover != null && <span className="text-ink-faint"> · {p.cover}d</span>}
                   </span>
                 ) : (
                   <span className="text-green-muted-text">Covered</span>
@@ -269,7 +269,7 @@ export function InventoryTab() {
         })}
 
         {sorted.length === 0 && (
-          <p className="px-4 py-8 text-center text-[13px] text-forest/45">No items match this filter.</p>
+          <p className="px-4 py-8 text-center text-[13px] text-ink-faint">No items match this filter.</p>
         )}
       </div>
     </div>

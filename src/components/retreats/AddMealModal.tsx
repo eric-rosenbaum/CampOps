@@ -121,7 +121,7 @@ export function AddMealModal({
                   type="button"
                   onClick={() => toggleAllergen(a)}
                   className={`px-2 py-1.5 rounded-btn text-[11px] font-medium border text-center transition-colors ${
-                    on ? 'bg-amber-bg border-amber text-amber-text' : 'bg-white border-border text-forest/50 hover:border-forest/30'
+                    on ? 'bg-amber-bg border-amber text-amber-text' : 'bg-white border-border text-ink-soft hover:border-forest/30'
                   }`}
                 >
                   {a}
@@ -135,7 +135,7 @@ export function AddMealModal({
           <label className={labelClass}>Alternatives</label>
           <input value={alternatives} onChange={(e) => setAlternatives(e.target.value)} className={inputClass}
                  placeholder="e.g. GF bagels available · Vegetarian: stuffed portobello" />
-          <p className="text-[11px] text-forest/45 mt-1">Shown in green under the meal — GF / vegetarian / vegan swaps.</p>
+          <p className="text-[11px] text-ink-faint mt-1">Shown in green under the meal — GF / vegetarian / vegan swaps.</p>
         </div>
 
         <div className="flex gap-2 pt-1">

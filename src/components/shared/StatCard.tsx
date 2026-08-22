@@ -12,12 +12,22 @@ const valueColors = {
   green: 'text-green-muted-text',
 };
 
+/**
+ * A figure in the header band, not a card.
+ *
+ * The Field Guide treats the top-of-page numbers as one continuous strip divided by hairlines,
+ * the way a printed field report rules its columns — so this renders as a flat cell and lets
+ * the parent supply the rule. Boxing each number made four small containers compete with the
+ * list below them for attention.
+ */
 export function StatCard({ label, value, hint, variant = 'default' }: Props) {
   return (
-    <div className="bg-white rounded-card border border-border px-5 py-4 flex flex-col gap-1">
-      <p className="text-[12px] font-medium text-forest/60 uppercase tracking-wide">{label}</p>
-      <p className={`font-mono text-stat font-medium leading-none ${valueColors[variant]}`}>{value}</p>
-      {hint && <p className="text-[11px] text-forest/45">{hint}</p>}
+    <div className="flex flex-col gap-1 px-6 py-4 border-r border-border last:border-r-0 first:pl-0">
+      <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-ink-soft">{label}</p>
+      <p className={`font-display text-[31px] font-bold leading-[1.05] tabular-nums ${valueColors[variant]}`}>
+        {value}
+      </p>
+      {hint && <p className="text-[11.5px] text-ink-soft">{hint}</p>}
     </div>
   );
 }

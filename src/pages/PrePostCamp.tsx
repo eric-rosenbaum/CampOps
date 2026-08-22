@@ -52,18 +52,18 @@ function PoolSeasonalSection({ activePhase }: { activePhase: 'pre' | 'post' }) {
         </span>
         <span className={`text-label font-semibold px-2 py-0.5 rounded-tag uppercase tracking-wide ${
           allDone ? 'bg-green-muted-bg text-green-muted-text' :
-          totalDone > 0 ? 'bg-amber-bg text-amber-text' : 'bg-cream-dark text-forest/40'
+          totalDone > 0 ? 'bg-amber-bg text-amber-text' : 'bg-cream-dark text-ink-faint'
         }`}>
           {totalDone}/{totalCount}
         </span>
-        {collapsed ? <ChevronRight className="w-4 h-4 text-forest/40" /> : <ChevronDown className="w-4 h-4 text-forest/40" />}
+        {collapsed ? <ChevronRight className="w-4 h-4 text-ink-faint" /> : <ChevronDown className="w-4 h-4 text-ink-faint" />}
       </button>
 
       {!collapsed && (
         <div className="border-t border-border px-4 pb-3">
           {Object.entries(byPool).map(([poolId, { poolName, tasks }]) => (
             <div key={poolId} className="mt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/40 mb-1.5">{poolName}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint mb-1.5">{poolName}</p>
               <div className="flex flex-col gap-0.5">
                 {tasks.sort((a, b) => a.sortOrder - b.sortOrder).map((task) => (
                   <div
@@ -80,11 +80,11 @@ function PoolSeasonalSection({ activePhase }: { activePhase: 'pre' | 'post' }) {
                       {task.isComplete && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
                     </button>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-[13px] ${task.isComplete ? 'line-through text-forest/40' : 'text-forest'}`}>
+                      <p className={`text-[13px] ${task.isComplete ? 'line-through text-ink-faint' : 'text-forest'}`}>
                         {task.title}
                       </p>
                       {task.detail && (
-                        <p className="text-[11px] text-forest/40 mt-0.5">{task.detail}</p>
+                        <p className="text-[11px] text-ink-faint mt-0.5">{task.detail}</p>
                       )}
                       {task.isComplete && task.completedDate && (
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-tag bg-green-muted-bg text-green-muted-text uppercase tracking-wide mt-1 inline-block">
@@ -143,11 +143,11 @@ function AssetMaintenanceSection({ activePhase }: { activePhase: 'pre' | 'post' 
         </span>
         <span className={`text-label font-semibold px-2 py-0.5 rounded-tag uppercase tracking-wide ${
           allDone ? 'bg-green-muted-bg text-green-muted-text' :
-          totalDone > 0 ? 'bg-amber-bg text-amber-text' : 'bg-cream-dark text-forest/40'
+          totalDone > 0 ? 'bg-amber-bg text-amber-text' : 'bg-cream-dark text-ink-faint'
         }`}>
           {totalDone}/{totalCount}
         </span>
-        {collapsed ? <ChevronRight className="w-4 h-4 text-forest/40" /> : <ChevronDown className="w-4 h-4 text-forest/40" />}
+        {collapsed ? <ChevronRight className="w-4 h-4 text-ink-faint" /> : <ChevronDown className="w-4 h-4 text-ink-faint" />}
       </button>
 
       {!collapsed && (
@@ -158,7 +158,7 @@ function AssetMaintenanceSection({ activePhase }: { activePhase: 'pre' | 'post' 
             return (
               <div key={assetId} className="mt-3">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/40">{assetName}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{assetName}</p>
                   <span className="text-[10px] text-forest/30">{progress.done}/{progress.total}</span>
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -177,11 +177,11 @@ function AssetMaintenanceSection({ activePhase }: { activePhase: 'pre' | 'post' 
                         {task.isComplete && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-[13px] ${task.isComplete ? 'line-through text-forest/40' : 'text-forest'}`}>
+                        <p className={`text-[13px] ${task.isComplete ? 'line-through text-ink-faint' : 'text-forest'}`}>
                           {task.title}
                         </p>
                         {task.detail && (
-                          <p className="text-[11px] text-forest/40 mt-0.5">{task.detail}</p>
+                          <p className="text-[11px] text-ink-faint mt-0.5">{task.detail}</p>
                         )}
                         {task.isComplete && task.completedDate && (
                           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-tag bg-green-muted-bg text-green-muted-text uppercase tracking-wide mt-1 inline-block">
@@ -292,7 +292,7 @@ export function PrePostCamp() {
                   className={`px-5 py-2 text-[13px] font-medium transition-colors cursor-pointer ${
                     activePhase === phase
                       ? 'bg-forest text-cream'
-                      : 'bg-white text-forest/60 hover:text-forest hover:bg-cream'
+                      : 'bg-white text-ink-soft hover:text-forest hover:bg-cream'
                   }`}
                 >
                   {phase === 'pre' ? 'Pre-camp' : 'Post-camp'}
@@ -314,7 +314,7 @@ export function PrePostCamp() {
                   style={{ width: `${completePct}%` }}
                 />
               </div>
-              <p className="text-[11px] text-forest/50">
+              <p className="text-[11px] text-ink-soft">
                 {completeCount} of {phaseTasksAll.length} tasks complete
               </p>
 
@@ -325,14 +325,14 @@ export function PrePostCamp() {
                     const pct = data.total > 0 ? Math.round((data.complete / data.total) * 100) : 0;
                     return (
                       <div key={loc} className="flex items-center gap-2">
-                        <p className="text-[12px] text-forest/60 w-28 flex-shrink-0 truncate">{loc}</p>
+                        <p className="text-[12px] text-ink-soft w-28 flex-shrink-0 truncate">{loc}</p>
                         <div className="flex-1 h-1.5 bg-cream-dark rounded-full overflow-hidden">
                           <div
                             className="h-full bg-sage rounded-full"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        <p className="text-[11px] text-forest/50 w-8 text-right flex-shrink-0">
+                        <p className="text-[11px] text-ink-soft w-8 text-right flex-shrink-0">
                           {data.complete}/{data.total}
                           {data.complete === data.total && ' ✓'}
                         </p>
@@ -372,13 +372,13 @@ export function PrePostCamp() {
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <p className="text-[32px] mb-3">🌲</p>
-                <p className="text-[15px] font-semibold text-forest/60">
+                <p className="text-[15px] font-semibold text-ink-soft">
                   {filter === 'complete' ? 'No completed tasks yet' :
                    filter === 'pending' ? 'No pending tasks' :
                    filter === 'in_progress' ? 'Nothing in progress' :
                    `No ${activePhase}-camp tasks`}
                 </p>
-                <p className="text-[13px] text-forest/40 mt-1">
+                <p className="text-[13px] text-ink-faint mt-1">
                   {searchQuery ? 'Try a different search term' : 'Add a task to get started'}
                 </p>
               </div>
@@ -410,7 +410,7 @@ export function PrePostCamp() {
             <>
               <button
                 onClick={() => setMobileDetailOpen(false)}
-                className="lg:hidden flex items-center gap-1.5 px-4 py-3 border-b border-border text-[13px] font-medium text-forest/70 hover:text-forest flex-shrink-0"
+                className="lg:hidden flex items-center gap-1.5 px-4 py-3 border-b border-border text-[13px] font-medium text-ink hover:text-forest flex-shrink-0"
               >
                 <ChevronLeft className="w-4 h-4" />
                 All tasks

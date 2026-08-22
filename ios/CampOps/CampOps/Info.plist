@@ -17,6 +17,10 @@
 		<string>DMSans-Bold.ttf</string>
 		<string>Fraunces-SemiBold.ttf</string>
 		<string>Fraunces-Bold.ttf</string>
+		<string>Bitter.ttf</string>
+		<string>Bitter-Italic.ttf</string>
+		<string>Karla.ttf</string>
+		<string>Karla-Italic.ttf</string>
 	</array>
 	<key>SUPABASE_URL</key>
 	<string>https://fbfxeupqguzxrbyqojyg.supabase.co</string>

@@ -142,13 +142,13 @@ export function AddEditAssetModal() {
       <div className="bg-white rounded-modal shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-white z-10">
           <h2 className="text-panel-title font-semibold text-forest">{editing ? 'Edit asset' : 'Add asset'}</h2>
-          <button onClick={closeAllModals} className="text-forest/40 hover:text-forest transition-colors"><X className="w-5 h-5" /></button>
+          <button onClick={closeAllModals} className="text-ink-faint hover:text-forest transition-colors"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="px-6 py-5 space-y-5">
           {/* Identity */}
           <section>
-            <p className="text-meta font-semibold uppercase tracking-wide text-forest/40 mb-3">Identity</p>
+            <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint mb-3">Identity</p>
             <div className="space-y-3">
               <div>
                 <label className="text-body font-medium text-forest mb-1 block">Name <span className="text-red">*</span></label>
@@ -173,7 +173,7 @@ export function AddEditAssetModal() {
 
           {/* Details */}
           <section>
-            <p className="text-meta font-semibold uppercase tracking-wide text-forest/40 mb-3">Details</p>
+            <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint mb-3">Details</p>
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
@@ -222,7 +222,7 @@ export function AddEditAssetModal() {
 
           {/* Tracking */}
           <section>
-            <p className="text-meta font-semibold uppercase tracking-wide text-forest/40 mb-3">Tracking</p>
+            <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint mb-3">Tracking</p>
             <div className="space-y-3">
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -256,7 +256,7 @@ export function AddEditAssetModal() {
           {/* Watercraft */}
           {category === 'watercraft' && (
             <section>
-              <p className="text-meta font-semibold uppercase tracking-wide text-forest/40 mb-3">Watercraft</p>
+              <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint mb-3">Watercraft</p>
               <div className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -300,7 +300,7 @@ export function AddEditAssetModal() {
 
           {/* Other */}
           <section>
-            <p className="text-meta font-semibold uppercase tracking-wide text-forest/40 mb-3">Other</p>
+            <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint mb-3">Other</p>
             <div className="space-y-3">
               {editing && (
                 <div>

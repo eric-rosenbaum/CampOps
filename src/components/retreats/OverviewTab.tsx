@@ -96,7 +96,7 @@ export function OverviewTab() {
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="max-w-md mx-auto text-center mt-24">
           <p className="text-[15px] font-semibold text-forest">No retreats yet</p>
-          <p className="text-[13px] text-forest/55 mt-2 leading-relaxed">
+          <p className="text-[13px] text-ink-soft mt-2 leading-relaxed">
             Track external group rentals from first inquiry through checkout — contracts, COIs,
             housing, menus, and billing all in one place.
           </p>
@@ -151,8 +151,8 @@ export function OverviewTab() {
           const items = byStatus[col.key];
           return (
             <div key={col.key} className="bg-cream-dark rounded-card p-3.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 mb-2.5">{col.label}</p>
-              {items.length === 0 && <p className="text-[12px] text-forest/35 italic">None</p>}
+              <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-2.5">{col.label}</p>
+              {items.length === 0 && <p className="text-[12px] text-ink-faint italic">None</p>}
               {items.map((r) => {
                 const d = derive(r);
                 return (
@@ -162,7 +162,7 @@ export function OverviewTab() {
                     className={`w-full text-left bg-white border rounded-btn px-3.5 py-3 mb-2 last:mb-0 hover:shadow-sm transition-shadow ${r.status === 'active' ? 'border-sage bg-sage-pale' : 'border-border'}`}
                   >
                     <p className="text-[13px] font-semibold text-forest">{r.groupName}</p>
-                    <p className="text-[11px] text-forest/50 font-mono mt-0.5">{fmtRange(r.arrivalDate, r.departureDate)} · {r.headcount} people</p>
+                    <p className="text-[11px] text-ink-soft font-mono mt-0.5">{fmtRange(r.arrivalDate, r.departureDate)} · {r.headcount} people</p>
                     <p className={`text-[11px] mt-1 ${NOTE_TEXT[d.noteTone]}`}>{d.note}</p>
                   </button>
                 );
@@ -189,12 +189,12 @@ export function OverviewTab() {
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-[15px] font-semibold text-forest">{r.groupName}</p>
-                  <p className="text-[11px] text-forest/50 mt-0.5">
+                  <p className="text-[11px] text-ink-soft mt-0.5">
                     {GROUP_TYPE_LABELS[r.groupType] ?? r.groupType} · {fmtRange(r.arrivalDate, r.departureDate)} · {r.headcount} people · {nights(r.arrivalDate, r.departureDate)} nights
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-[12px] font-mono text-forest/50">{fmtRange(r.arrivalDate, r.departureDate)}</p>
+                  <p className="text-[12px] font-mono text-ink-soft">{fmtRange(r.arrivalDate, r.departureDate)}</p>
                   <div className="flex gap-1.5 flex-wrap justify-end mt-1.5">
                     <StatusBadge status={r.status} />
                     {r.status !== 'active' && r.status !== 'complete' && away != null && away >= 0 && (
@@ -238,7 +238,7 @@ const NOTE_TEXT: Record<DerivedState['noteTone'], string> = {
   green: 'text-green-muted-text',
   amber: 'text-amber-text',
   red: 'text-red',
-  muted: 'text-forest/50',
+  muted: 'text-ink-soft',
 };
 
 function deriveBadge(r: Retreat, d: DerivedState): { tone: BadgeTone; label: string } | null {

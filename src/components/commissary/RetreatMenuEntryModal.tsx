@@ -97,14 +97,14 @@ export function RetreatMenuEntryModal({ retreatId, dayDate, mealPeriod, editId }
     <Modal title={existing ? 'Edit dish' : `Add to ${MEAL_PERIOD_LABELS[mealPeriod].toLowerCase()}`} onClose={closeModal} width="480px">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-2.5">
-          <p className="text-[12px] text-forest/60">{retreat?.groupName ?? 'Retreat'} · {dateLabel}</p>
+          <p className="text-[12px] text-ink-soft">{retreat?.groupName ?? 'Retreat'} · {dateLabel}</p>
         </div>
 
         <div className="flex gap-1.5">
           {TYPE_TABS.map((t) => (
             <button key={t.id} type="button" onClick={() => setEntryType(t.id)}
               className={`flex-1 px-3 py-1.5 rounded-btn text-[12px] font-medium border transition-colors ${
-                entryType === t.id ? 'bg-forest text-cream border-forest' : 'bg-white text-forest/60 border-border hover:border-forest/30'
+                entryType === t.id ? 'bg-forest text-cream border-forest' : 'bg-white text-ink-soft border-border hover:border-forest/30'
               }`}>
               {t.label}
             </button>
@@ -127,7 +127,7 @@ export function RetreatMenuEntryModal({ retreatId, dayDate, mealPeriod, editId }
                 </optgroup>
               )}
             </select>
-            {recipes.length === 0 && <p className="text-[11px] text-forest/45 mt-1.5">No recipes yet — add one on the Recipe guide tab.</p>}
+            {recipes.length === 0 && <p className="text-[11px] text-ink-faint mt-1.5">No recipes yet — add one on the Recipe guide tab.</p>}
           </div>
         )}
 
@@ -153,7 +153,7 @@ export function RetreatMenuEntryModal({ retreatId, dayDate, mealPeriod, editId }
                   </select>
                 </div>
                 {qtyBase != null && (
-                  <p className="col-span-2 -mt-1 text-[11px] text-forest/40 font-mono">
+                  <p className="col-span-2 -mt-1 text-[11px] text-ink-faint font-mono">
                     = {formatQty(fromBase(qtyBase, selectedItem.stockUnitInBase), selectedItem.stockUnit)} per portion
                   </p>
                 )}
@@ -166,7 +166,7 @@ export function RetreatMenuEntryModal({ retreatId, dayDate, mealPeriod, editId }
           <div>
             <label className={labelClass}>Dish name *</label>
             <input autoFocus value={customLabel} onChange={(e) => setCustomLabel(e.target.value)} className={inputClass} placeholder="e.g. Salad bar, Fresh fruit" />
-            <p className="text-[11px] text-forest/45 mt-1.5">Free-text dishes show on the menu but don't count toward ordering.</p>
+            <p className="text-[11px] text-ink-faint mt-1.5">Free-text dishes show on the menu but don't count toward ordering.</p>
           </div>
         )}
 
@@ -177,7 +177,7 @@ export function RetreatMenuEntryModal({ retreatId, dayDate, mealPeriod, editId }
             {ALLERGENS.map((a) => (
               <button key={a} type="button" onClick={() => toggleAllergen(a)}
                 className={`px-2 py-1 rounded-tag text-[11px] font-medium border capitalize transition-colors ${
-                  allergens.includes(a) ? 'bg-amber-bg text-amber-text border-amber/30' : 'bg-white text-forest/50 border-border hover:border-forest/30'
+                  allergens.includes(a) ? 'bg-amber-bg text-amber-text border-amber/30' : 'bg-white text-ink-soft border-border hover:border-forest/30'
                 }`}>
                 {a.replace(/_/g, ' ')}
               </button>
@@ -191,7 +191,7 @@ export function RetreatMenuEntryModal({ retreatId, dayDate, mealPeriod, editId }
         <div>
           <label className={labelClass}>Portions override (optional)</label>
           <input type="number" min="0" step="1" value={portionsOverride} onChange={(e) => setPortionsOverride(e.target.value)} className={inputClass} placeholder={`Default: ${retreat?.headcount ?? 0} (group headcount)`} />
-          <p className="text-[11px] text-forest/45 mt-1.5">How many servings to make/order for. Leave blank to use the group's headcount.</p>
+          <p className="text-[11px] text-ink-faint mt-1.5">How many servings to make/order for. Leave blank to use the group's headcount.</p>
         </div>
 
         <div className="flex gap-2 pt-1">

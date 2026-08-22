@@ -17,7 +17,7 @@ function statusColor(status: 'ok' | 'warn' | 'alert') {
 function statusHintColor(status: 'ok' | 'warn' | 'alert') {
   if (status === 'alert') return 'text-red/70';
   if (status === 'warn') return 'text-amber-text';
-  return 'text-forest/40';
+  return 'text-ink-faint';
 }
 
 function statusCardBorder(status: 'ok' | 'warn' | 'alert') {
@@ -132,7 +132,7 @@ export function ChemicalLogTab() {
                 key={field}
                 className={`bg-white border rounded-card px-4 py-4 ${statusCardBorder(status)}`}
               >
-                <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">
+                <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">
                   {CHEMICAL_RANGES[field].label}
                 </p>
                 <p className={`font-mono text-[26px] font-semibold mt-1 ${statusColor(status)}`}>
@@ -198,14 +198,14 @@ export function ChemicalLogTab() {
           style={colStyle}
         >
           {['Date / time', 'Free Cl (ppm)', 'pH', 'Alkalinity', 'Cyanuric', 'Temp (°F)', 'Logged by', ''].map((h) => (
-            <span key={h} className="text-meta font-semibold uppercase tracking-wide text-forest/40">
+            <span key={h} className="text-meta font-semibold uppercase tracking-wide text-ink-faint">
               {h}
             </span>
           ))}
         </div>
 
         {sorted.length === 0 ? (
-          <p className="text-body text-forest/40 text-center py-10">No readings logged yet.</p>
+          <p className="text-body text-ink-faint text-center py-10">No readings logged yet.</p>
         ) : (
           sorted.map((row, idx) => (
             <div
@@ -215,7 +215,7 @@ export function ChemicalLogTab() {
               }`}
               style={colStyle}
             >
-              <span className="font-mono text-secondary text-forest/50">
+              <span className="font-mono text-secondary text-ink-soft">
                 {formatReadingDate(row)}
               </span>
               <ValCell field="freeChlorine" value={row.freeChlorine} />
@@ -223,7 +223,7 @@ export function ChemicalLogTab() {
               <ValCell field="alkalinity" value={row.alkalinity} />
               <ValCell field="cyanuricAcid" value={row.cyanuricAcid} />
               <ValCell field="waterTemp" value={row.waterTemp} />
-              <span className="text-secondary text-forest/50 flex items-center gap-1.5 min-w-0">
+              <span className="text-secondary text-ink-soft flex items-center gap-1.5 min-w-0">
                 <span className="truncate">{row.loggedByName}</span>
                 {/*
                   Readings taken with the phone's strip scanner carry a photo of the strip

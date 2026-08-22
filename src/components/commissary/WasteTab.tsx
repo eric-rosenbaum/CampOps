@@ -53,11 +53,11 @@ export function WasteTab() {
     return (
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center text-center max-w-sm mx-auto py-16">
-          <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-            <Trash2 className="w-7 h-7 text-stone-400" />
+          <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mb-4">
+            <Trash2 className="w-7 h-7 text-ink-faint" />
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No waste logged yet</h3>
-          <p className="text-[13px] text-forest/50 leading-relaxed">
+          <p className="text-[13px] text-ink-soft leading-relaxed">
             Log waste from any item on the Inventory tab — adjust stock, choose
             “Waste / spoilage”, and say what happened. Once there are a few weeks of
             entries this tab shows what it cost you, and how much of it better ordering
@@ -112,7 +112,7 @@ export function WasteTab() {
       <div className="bg-white rounded-card border border-border px-5 py-5 mb-6">
         <div className="flex items-baseline justify-between mb-4">
           <h3 className="text-[14px] font-semibold text-forest">Waste by month</h3>
-          <span className="text-[11px] text-forest/45">value of what was thrown out</span>
+          <span className="text-[11px] text-ink-faint">value of what was thrown out</span>
         </div>
         <ColumnChart
           data={columns}
@@ -173,10 +173,10 @@ export function WasteTab() {
                       </span>
                     </span>
                     {c.category && (
-                      <p className="text-[11px] text-forest/40 pl-[18px]">{WASTE_CATEGORY_LABELS[c.category]}</p>
+                      <p className="text-[11px] text-ink-faint pl-[18px]">{WASTE_CATEGORY_LABELS[c.category]}</p>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-right text-[11px] text-forest/45 whitespace-nowrap">
+                  <td className="px-3 py-2.5 text-right text-[11px] text-ink-faint whitespace-nowrap">
                     {c.events} entr{c.events === 1 ? 'y' : 'ies'}
                   </td>
                   <td className="px-5 py-2.5 text-right font-mono text-[13px] text-forest whitespace-nowrap">
@@ -192,7 +192,7 @@ export function WasteTab() {
           <div className="px-5 py-3.5 border-b border-border flex items-baseline justify-between">
             <h3 className="text-[14px] font-semibold text-forest">Costliest items</h3>
             {summary.byItem.length > topItems.length && (
-              <span className="text-[11px] text-forest/45">
+              <span className="text-[11px] text-ink-faint">
                 top {topItems.length} of {summary.byItem.length}
               </span>
             )}
@@ -202,7 +202,7 @@ export function WasteTab() {
               {topItems.map((it) => (
                 <tr key={it.itemId} className="border-b border-border last:border-0">
                   <td className="px-5 py-2.5 text-[13px] text-forest">{it.itemName}</td>
-                  <td className="px-3 py-2.5 text-right text-[11px] text-forest/45 whitespace-nowrap">
+                  <td className="px-3 py-2.5 text-right text-[11px] text-ink-faint whitespace-nowrap">
                     {it.reducibleValue > 0 ? `${formatCurrency(it.reducibleValue)} preventable` : '—'}
                   </td>
                   <td className="px-5 py-2.5 text-right font-mono text-[13px] text-forest whitespace-nowrap">
@@ -222,11 +222,11 @@ export function WasteTab() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-border bg-cream-dark/30">
-              <th className="px-5 py-2 text-left text-[11px] uppercase tracking-wide font-semibold text-forest/45">Date</th>
-              <th className="px-3 py-2 text-left text-[11px] uppercase tracking-wide font-semibold text-forest/45">Item</th>
-              <th className="px-3 py-2 text-left text-[11px] uppercase tracking-wide font-semibold text-forest/45">Cause</th>
-              <th className="px-3 py-2 text-right text-[11px] uppercase tracking-wide font-semibold text-forest/45">Quantity</th>
-              <th className="px-5 py-2 text-right text-[11px] uppercase tracking-wide font-semibold text-forest/45">Value</th>
+              <th className="px-5 py-2 text-left text-[11px] uppercase tracking-wide font-semibold text-ink-faint">Date</th>
+              <th className="px-3 py-2 text-left text-[11px] uppercase tracking-wide font-semibold text-ink-faint">Item</th>
+              <th className="px-3 py-2 text-left text-[11px] uppercase tracking-wide font-semibold text-ink-faint">Cause</th>
+              <th className="px-3 py-2 text-right text-[11px] uppercase tracking-wide font-semibold text-ink-faint">Quantity</th>
+              <th className="px-5 py-2 text-right text-[11px] uppercase tracking-wide font-semibold text-ink-faint">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -234,19 +234,19 @@ export function WasteTab() {
               const item = items.find((i) => i.id === r.itemId);
               return (
                 <tr key={r.adjustmentId} className="border-b border-border last:border-0">
-                  <td className="px-5 py-2.5 text-[12px] text-forest/60 whitespace-nowrap">{formatDate(r.date)}</td>
+                  <td className="px-5 py-2.5 text-[12px] text-ink-soft whitespace-nowrap">{formatDate(r.date)}</td>
                   <td className="px-3 py-2.5 text-[13px] text-forest">{r.itemName}</td>
                   <td className="px-3 py-2.5 text-[12px]">
-                    <span className={r.reducible ? 'text-amber-text' : 'text-forest/55'}>
+                    <span className={r.reducible ? 'text-amber-text' : 'text-ink-soft'}>
                       {r.category ? WASTE_CATEGORY_SHORT[r.category] : 'Uncategorised'}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-[12px] text-forest/70 whitespace-nowrap">
+                  <td className="px-3 py-2.5 text-right font-mono text-[12px] text-ink whitespace-nowrap">
                     {item ? formatInStockUnit(item, r.qtyBase) : '—'}
                   </td>
                   <td className="px-5 py-2.5 text-right font-mono text-[13px] whitespace-nowrap">
                     {r.value == null
-                      ? <span className="text-forest/35" title="No unit price set for this item">no price</span>
+                      ? <span className="text-ink-faint" title="No unit price set for this item">no price</span>
                       : <span className="text-forest">{formatCurrency(r.value)}</span>}
                   </td>
                 </tr>
@@ -255,12 +255,12 @@ export function WasteTab() {
           </tbody>
         </table>
         {summary.rows.length > 100 && (
-          <div className="px-5 py-2.5 border-t border-border text-[11px] text-forest/45">
+          <div className="px-5 py-2.5 border-t border-border text-[11px] text-ink-faint">
             Showing the 100 most recent of {summary.rows.length} entries in this period.
           </div>
         )}
         {summary.rows.length === 0 && (
-          <div className="px-5 py-8 text-center text-[13px] text-forest/45">
+          <div className="px-5 py-8 text-center text-[13px] text-ink-faint">
             No waste logged in this period.
           </div>
         )}

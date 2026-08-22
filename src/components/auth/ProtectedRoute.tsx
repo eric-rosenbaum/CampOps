@@ -19,7 +19,7 @@ async function signOutToMarketing() {
 
 function SignOutRetry({ label = 'Sign out and try a different account' }: { label?: string }) {
   return (
-    <button onClick={signOutToMarketing} className="mt-4 text-[13px] font-medium text-forest/50 hover:text-forest underline transition-colors">
+    <button onClick={signOutToMarketing} className="mt-4 text-[13px] font-medium text-ink-soft hover:text-forest underline transition-colors">
       {label}
     </button>
   );
@@ -89,7 +89,7 @@ function CampBlockedScreen({ status }: { status: string }) {
         <h1 className="text-[22px] font-bold text-forest mb-3">
           {trial ? 'Your demo has ended' : 'Your account is paused'}
         </h1>
-        <p className="text-[14px] text-forest/60 leading-relaxed mb-6">
+        <p className="text-[14px] text-ink-soft leading-relaxed mb-6">
           {trial
             ? 'Your 30-day CampCommand demo is over. To set up a real account and pick up where you left off, get in touch and we’ll get you started.'
             : 'This account is currently paused. Please reach out and we’ll get you back up and running.'}
@@ -108,7 +108,7 @@ export function NoCampAccess() {
     <div className="fixed inset-0 bg-cream flex items-center justify-center p-4 sm:p-6 z-50">
       <div className="max-w-md text-center">
         <h1 className="text-[22px] font-bold text-forest mb-3">Your account isn’t set up yet</h1>
-        <p className="text-[14px] text-forest/60 leading-relaxed mb-6">
+        <p className="text-[14px] text-ink-soft leading-relaxed mb-6">
           You’re signed in, but you don’t have access to a camp yet. If you signed in with the wrong
           email, sign out and try again with the address your invite was sent to.
         </p>
@@ -123,10 +123,10 @@ export function NoCampAccess() {
 
 function AppLoadingScreen() {
   return (
-    <div className="fixed inset-0 bg-stone-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-paper flex items-center justify-center z-50">
       <div className="flex flex-col items-center gap-3">
         <div className="w-8 h-8 border-2 border-forest border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-forest/50 font-medium">Loading…</p>
+        <p className="text-sm text-ink-soft font-medium">Loading…</p>
       </div>
     </div>
   );

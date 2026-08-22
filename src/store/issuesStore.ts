@@ -355,6 +355,7 @@ export function startIssueWriteQueue(): () => void {
       isPublicReport: false,
       reporterName: null,
       reporterContact: null,
+      source: 'web',
       createdAt: now,
       updatedAt: now,
       activityLog: [],

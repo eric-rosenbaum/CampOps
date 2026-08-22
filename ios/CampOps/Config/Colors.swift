@@ -1,7 +1,10 @@
 import SwiftUI
 import UIKit
 
-// The brand palette, mirrored from the web app's tailwind.config.js.
+// The brand palette, mirrored from the web app's tailwind.config.js (Field Guide).
+//
+// `forest` is body ink (warm near-black), NOT the pine green — pine lives on `forestFill` and
+// is what buttons, the nav and headings use. The two were one token before the redesign.
 //
 // Every token here is DYNAMIC: it resolves differently in light and dark mode. This matters
 // because the app previously mixed hard-coded brand hexes (near-black `forest` text) with
@@ -31,44 +34,44 @@ extension Color {
     // Primary text. Light: near-black forest green. Dark: warm cream.
     // Call sites use `.forest.opacity(0.4)` etc. for secondary text, so the opacity ladder
     // has to read correctly against BOTH canvases — hence a genuinely light dark-mode value.
-    static let forest      = adaptive("1a2e1a", "eef2e7")
-    static let forestMid   = adaptive("2d4a2d", "c3d4bb")
-    static let forestLight = adaptive("3d6b3d", "9cb794")
+    static let forest      = adaptive("23201B", "F1ECDF")
+    static let forestMid   = adaptive("6B6357", "C6BFAE")
+    static let forestLight = adaptive("9AA98F", "8B9B82")
 
     // MARK: - Brand accents
-    static let sage      = adaptive("7aab6e", "8cc17e")
-    static let sageLight = adaptive("a8c99f", "44603c")
-    static let sagePale  = adaptive("e1f0dc", "22301e")
+    static let sage      = adaptive("5E7A61", "8FB894")
+    static let sageLight = adaptive("9AA98F", "3D5142")
+    static let sagePale  = adaptive("E6E9D8", "232B23")
 
     // Cream is an on-dark brand constant (e.g. label on a forest button), so it stays put.
-    static let cream     = Color(hex: "f5f2eb")
-    static let creamDark = adaptive("ede9df", "232a20")
+    static let cream     = Color(hex: "F6F1E4")
+    static let creamDark = adaptive("EFE9D9", "232A20")
 
     // MARK: - Surfaces
     /// The screen background. Warm cream instead of iOS's neutral grey.
-    static let canvas        = adaptive("f5f2eb", "10140e")
+    static let canvas        = adaptive("F6F1E4", "14170F")
     /// Card / sheet background.
-    static let surface       = adaptive("ffffff", "1a1f17")
+    static let surface       = adaptive("FFFDF7", "1C211A")
     /// Inset fills: text fields, segmented pills, secondary rows.
-    static let surfaceRaised = adaptive("ede9df", "242c20")
+    static let surfaceRaised = adaptive("FCF9F1", "262E22")
     /// Hairline dividers and card borders — used instead of drop shadows.
-    static let border        = adaptive("d4cfc4", "313a2c")
+    static let border        = adaptive("DED3BB", "353D2E")
 
     /// A solid forest fill for primary buttons. Unlike `.forest` this does NOT invert,
     /// because `.cream` sits on top of it in both appearances.
-    static let forestFill = adaptive("1a2e1a", "2b4429")
+    static let forestFill = adaptive("1D3A2E", "2C5342")
 
     // MARK: - Status
-    static let priorityUrgent = adaptive("c0392b", "ff7a68")
-    static let priorityHigh   = adaptive("c47d08", "e5a94a")
-    static let priorityNormal = adaptive("7aab6e", "8cc17e")
+    static let priorityUrgent = adaptive("B4552F", "E5865C")
+    static let priorityHigh   = adaptive("D08C1B", "E5B45C")
+    static let priorityNormal = adaptive("5E7A61", "8FB894")
 
-    static let urgentBg  = adaptive("fdecea", "3a1d18")
-    static let urgentText = adaptive("7a1a1a", "ffa596")
-    static let amberBg   = adaptive("fef5e4", "3a2e16")
-    static let amberText = adaptive("7d4e00", "eec27c")
-    static let greenBg   = adaptive("eaf3e8", "1d2c1b")
-    static let greenText = adaptive("1e6b1e", "8ed388")
+    static let urgentBg  = adaptive("F8E9E2", "35201A")
+    static let urgentText = adaptive("8A3D1E", "E9A184")
+    static let amberBg   = adaptive("FBF1DC", "352C16")
+    static let amberText = adaptive("8A5A0C", "E6C07A")
+    static let greenBg   = adaptive("E6ECE2", "1F291F")
+    static let greenText = adaptive("3F5D45", "93BE99")
     static let blue      = adaptive("185fa5", "5aa6ee")
     static let blueBg    = adaptive("e6f1fb", "16273a")
     static let blueText  = adaptive("0c447c", "9cc9f2")

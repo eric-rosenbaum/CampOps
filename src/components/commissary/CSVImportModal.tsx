@@ -213,9 +213,9 @@ export function CSVImportModal() {
           <ul className="text-body text-forest space-y-1">
             <li><strong>{result.created}</strong> new item{result.created === 1 ? '' : 's'} added.</li>
             {result.merged > 0 && <li><strong>{result.merged}</strong> existing item{result.merged === 1 ? '' : 's'} got this vendor's pack.</li>}
-            {result.skipped > 0 && <li className="text-forest/50">{result.skipped} skipped (already stocked, no vendor to add).</li>}
+            {result.skipped > 0 && <li className="text-ink-soft">{result.skipped} skipped (already stocked, no vendor to add).</li>}
           </ul>
-          <p className="text-[12px] text-forest/50">
+          <p className="text-[12px] text-ink-soft">
             Allergens weren't in the file — tag them on each item when you get a chance. Double-check the guessed
             "stocked by" unit and pack sizes on a few too.
           </p>
@@ -228,12 +228,12 @@ export function CSVImportModal() {
   const modeBadge = (m: Mode) =>
     m === 'new' ? <span className="text-[10px] text-sage-text">new</span>
       : m === 'merge' ? <span className="text-[10px] text-amber-text">+ pack</span>
-        : <span className="text-[10px] text-forest/35">skip</span>;
+        : <span className="text-[10px] text-ink-faint">skip</span>;
 
   return (
     <Modal title="Import items from CSV" onClose={closeModal} width="720px">
       <div className="space-y-4">
-        <p className="text-[12px] text-forest/55 leading-relaxed">
+        <p className="text-[12px] text-ink-soft leading-relaxed">
           Paste or upload your vendor's order guide (export it as CSV from US Foods MOXē, Sysco Shop, GFS, etc.).
           Map the columns, pick the vendor it's from, and review. Names you already stock get this vendor's pack
           added; new names become new items. Allergens and storage aren't imported — set those afterward.
@@ -245,7 +245,7 @@ export function CSVImportModal() {
             <input type="file" accept=".csv,text/csv" className="hidden"
                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
           </label>
-          <span className="text-[11px] text-forest/40">or paste below</span>
+          <span className="text-[11px] text-ink-faint">or paste below</span>
         </div>
 
         <textarea
@@ -269,7 +269,7 @@ export function CSVImportModal() {
                             className="w-full text-[11px] bg-white border border-border rounded-btn px-1.5 py-1 focus:outline-none focus:border-sage">
                       {CSV_FIELDS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
                     </select>
-                    <p className="text-[10px] text-forest/40 mt-1 truncate" title={hasHeader ? h : `Column ${i + 1}`}>
+                    <p className="text-[10px] text-ink-faint mt-1 truncate" title={hasHeader ? h : `Column ${i + 1}`}>
                       {hasHeader ? (h || `Column ${i + 1}`) : `Column ${i + 1}`}
                     </p>
                     <p className="text-[10px] text-forest/30 truncate">{dataRows[0]?.[i] ?? ''}</p>
@@ -291,7 +291,7 @@ export function CSVImportModal() {
                          className={`${inputClass} mt-2`} placeholder="Vendor name" />
                 )}
               </div>
-              <p className="text-[11px] text-forest/45 self-end pb-2">
+              <p className="text-[11px] text-ink-faint self-end pb-2">
                 Pick a vendor to attach pack + price — and to add packs to items you already stock. Without one,
                 only brand-new names import, at their stock unit.
               </p>
@@ -305,7 +305,7 @@ export function CSVImportModal() {
               <div className="rounded-card border border-border overflow-x-auto">
                 <div className="grid grid-cols-[2fr_0.7fr_1fr_1.3fr_1fr] min-w-[640px] sm:min-w-0 gap-2 px-3 py-2 bg-cream-dark/40 border-b border-border">
                   {['Item', '', 'Stocked by', 'Pack', 'Price'].map((h, i) => (
-                    <span key={i} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>
+                    <span key={i} className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>
                   ))}
                 </div>
                 <div className="max-h-52 overflow-y-auto">
@@ -313,9 +313,9 @@ export function CSVImportModal() {
                     <div key={i} className={`grid grid-cols-[2fr_0.7fr_1fr_1.3fr_1fr] min-w-[640px] sm:min-w-0 gap-2 px-3 py-1.5 border-b border-border last:border-0 items-center text-[12px] ${r.mode === 'skip' ? 'opacity-40' : ''}`}>
                       <span className="text-forest truncate">{r.name}</span>
                       <span>{modeBadge(r.mode)}</span>
-                      <span className="text-forest/55">{r.stockUnit}</span>
-                      <span className="font-mono text-forest/55 truncate">{`${r.packUnitRaw} = ${formatQty(r.packSizeRaw, r.stockUnit)}`}</span>
-                      <span className="font-mono text-forest/55">{r.priceRaw ? `$${tidy(Number(r.priceRaw))}` : '—'}</span>
+                      <span className="text-ink-soft">{r.stockUnit}</span>
+                      <span className="font-mono text-ink-soft truncate">{`${r.packUnitRaw} = ${formatQty(r.packSizeRaw, r.stockUnit)}`}</span>
+                      <span className="font-mono text-ink-soft">{r.priceRaw ? `$${tidy(Number(r.priceRaw))}` : '—'}</span>
                     </div>
                   ))}
                 </div>
@@ -325,7 +325,7 @@ export function CSVImportModal() {
         )}
 
         <div className="flex items-center gap-3 pt-1">
-          <span className="text-[12px] text-forest/50">
+          <span className="text-[12px] text-ink-soft">
             {hasNameColumn ? [
               created ? `${created} new` : '',
               merged ? `${merged} to update` : '',

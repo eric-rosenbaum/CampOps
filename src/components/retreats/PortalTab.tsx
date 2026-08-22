@@ -27,7 +27,7 @@ export function PortalTab() {
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="max-w-md mx-auto text-center mt-24">
           <p className="text-[15px] font-semibold text-forest">No retreats yet</p>
-          <p className="text-[13px] text-forest/55 mt-2 leading-relaxed">
+          <p className="text-[13px] text-ink-soft mt-2 leading-relaxed">
             Each retreat gets a private guest portal link once it's created.
           </p>
         </div>
@@ -169,17 +169,17 @@ export function PortalTab() {
         <SettingRow
           title="Deposit due date"
           desc="Shown in the guest portal — paying the deposit holds their dates"
-          right={<span className="font-mono text-[13px] font-semibold text-forest/70">{deadlineLabel(retreat.depositDue)}</span>}
+          right={<span className="font-mono text-[13px] font-semibold text-ink">{deadlineLabel(retreat.depositDue)}</span>}
         />
         <SettingRow
           title="Housing submission deadline"
           desc="After this date the group cannot submit housing — ops must contact them directly (portal defaults to 1 week before arrival)"
-          right={<span className="font-mono text-[13px] font-semibold text-forest/70">{deadlineLabel(retreat.housingDeadline)}</span>}
+          right={<span className="font-mono text-[13px] font-semibold text-ink">{deadlineLabel(retreat.housingDeadline)}</span>}
         />
         <SettingRow
           title="Final headcount cutoff"
           desc="Portal asks the group to confirm by this date (defaults to 2 weeks before arrival)"
-          right={<span className="font-mono text-[13px] font-semibold text-forest/70">{deadlineLabel(retreat.headcountCutoff)}</span>}
+          right={<span className="font-mono text-[13px] font-semibold text-ink">{deadlineLabel(retreat.headcountCutoff)}</span>}
         />
         <SettingRow
           title="Final headcount confirmed"
@@ -273,7 +273,7 @@ function SettingRow({ title, desc, right, last }: { title: string; desc: string;
     <div className={`flex items-center justify-between gap-4 px-4 py-3.5 ${last ? '' : 'border-b border-cream-dark'}`}>
       <div className="min-w-0">
         <p className="text-[13px] font-semibold text-forest">{title}</p>
-        <p className="text-[11px] text-forest/50 mt-0.5">{desc}</p>
+        <p className="text-[11px] text-ink-soft mt-0.5">{desc}</p>
       </div>
       <div className="flex-shrink-0">{right}</div>
     </div>
@@ -288,7 +288,7 @@ function ToggleBadge({ on, onLabel, offLabel, disabled, onToggle }: {
       disabled={disabled}
       onClick={onToggle}
       className={`inline-flex items-center px-2.5 py-1 rounded-tag text-[10px] font-semibold uppercase tracking-wide transition-colors ${
-        on ? 'bg-green-muted-bg text-green-muted-text' : 'bg-cream-dark text-forest/60'
+        on ? 'bg-green-muted-bg text-green-muted-text' : 'bg-cream-dark text-ink-soft'
       } ${disabled ? 'cursor-default' : 'cursor-pointer hover:opacity-80'}`}
     >
       {on ? onLabel : offLabel}

@@ -25,10 +25,10 @@ struct CampCommandApp: App {
         nav.configureWithOpaqueBackground()
         nav.backgroundColor = UIColor(Color.canvas)
         nav.shadowColor = UIColor(Color.border)
-        if let large = UIFont(name: "Fraunces-SemiBold", size: 30) {
+        if let large = UIFont(name: "Bitter-SemiBold", size: 30) {
             nav.largeTitleTextAttributes = [.font: large, .foregroundColor: ink]
         }
-        if let inline = UIFont(name: "DMSans-SemiBold", size: 17) {
+        if let inline = UIFont(name: "Karla-Regular_SemiBold", size: 17) {
             nav.titleTextAttributes = [.font: inline, .foregroundColor: ink]
         }
         UINavigationBar.appearance().standardAppearance = nav
@@ -38,7 +38,7 @@ struct CampCommandApp: App {
         let tab = UITabBarAppearance()
         tab.configureWithOpaqueBackground()
         tab.backgroundColor = UIColor(Color.canvas)
-        if let item = UIFont(name: "DMSans-Medium", size: 10) {
+        if let item = UIFont(name: "Karla-Regular_Medium", size: 10) {
             for layout in [tab.stackedLayoutAppearance, tab.inlineLayoutAppearance, tab.compactInlineLayoutAppearance] {
                 layout.normal.titleTextAttributes = [.font: item]
                 layout.selected.titleTextAttributes = [.font: item]

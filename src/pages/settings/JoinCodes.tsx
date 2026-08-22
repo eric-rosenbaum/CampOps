@@ -76,7 +76,7 @@ export function JoinCodes() {
   }
 
   if (loading) {
-    return <div className="p-7 text-[13px] text-forest/40">Loading…</div>;
+    return <div className="p-7 text-[13px] text-ink-faint">Loading…</div>;
   }
 
   return (
@@ -84,7 +84,7 @@ export function JoinCodes() {
       <div className="flex items-center justify-between mb-7">
         <div>
           <h1 className="text-[20px] font-bold text-forest">Join Codes</h1>
-          <p className="text-[12px] text-forest/50 mt-0.5">Share a code so staff can join without a direct invite</p>
+          <p className="text-[12px] text-ink-soft mt-0.5">Share a code so staff can join without a direct invite</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
@@ -96,36 +96,36 @@ export function JoinCodes() {
       </div>
 
       {showForm && (
-        <div className="bg-white border border-stone-200 rounded-xl p-5 mb-6">
+        <div className="bg-white border border-border rounded-xl p-5 mb-6">
           <h2 className="text-[14px] font-semibold text-forest mb-4">Generate join code</h2>
           <form onSubmit={handleGenerate} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-medium text-forest/60 mb-1">Role</label>
+                <label className="block text-[11px] font-medium text-ink-soft mb-1">Role</label>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value as CampRole)}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
                 >
                   {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-forest/60 mb-1">Expires after (days)</label>
+                <label className="block text-[11px] font-medium text-ink-soft mb-1">Expires after (days)</label>
                 <input
                   type="number" min="1" max="365" required value={days}
                   onChange={(e) => setDays(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
                 />
               </div>
             </div>
             {role === 'staff' && (
               <div>
-                <label className="block text-[11px] font-medium text-forest/60 mb-1">Department (optional)</label>
+                <label className="block text-[11px] font-medium text-ink-soft mb-1">Department (optional)</label>
                 <select
                   value={dept}
                   onChange={(e) => setDept(e.target.value as Department)}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
                 >
                   <option value="">None</option>
                   {Object.entries(DEPT_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -133,12 +133,12 @@ export function JoinCodes() {
               </div>
             )}
             <div>
-              <label className="block text-[11px] font-medium text-forest/60 mb-1">Max uses (leave blank for unlimited)</label>
+              <label className="block text-[11px] font-medium text-ink-soft mb-1">Max uses (leave blank for unlimited)</label>
               <input
                 type="number" min="1" value={maxUses}
                 onChange={(e) => setMaxUses(e.target.value)}
                 placeholder="Unlimited"
-                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
+                className="w-full px-3 py-2 border border-border rounded-lg text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
               />
             </div>
             <button
@@ -153,12 +153,12 @@ export function JoinCodes() {
       )}
 
       {codes.length === 0 ? (
-        <div className="bg-white border border-stone-200 rounded-xl p-10 text-center">
-          <p className="text-[13px] text-forest/40">No active join codes.</p>
+        <div className="bg-white border border-border rounded-xl p-10 text-center">
+          <p className="text-[13px] text-ink-faint">No active join codes.</p>
         </div>
       ) : (
-        <div className="bg-white border border-stone-200 rounded-xl">
-          <div className="px-5 py-4 border-b border-stone-100">
+        <div className="bg-white border border-border rounded-xl">
+          <div className="px-5 py-4 border-b border-border">
             <h2 className="text-[13px] font-semibold text-forest">Active codes</h2>
           </div>
           <div className="divide-y divide-stone-100">
@@ -169,14 +169,14 @@ export function JoinCodes() {
                     <code className="text-[15px] font-mono font-semibold text-forest tracking-widest">{jc.code}</code>
                     <button
                       onClick={() => handleCopy(jc.code, jc.id)}
-                      className="p-1 rounded hover:bg-stone-100 transition-colors"
+                      className="p-1 rounded hover:bg-cream-dark transition-colors"
                     >
                       {copiedId === jc.id
                         ? <Check className="w-3.5 h-3.5 text-green-600" />
-                        : <Copy className="w-3.5 h-3.5 text-forest/40" />}
+                        : <Copy className="w-3.5 h-3.5 text-ink-faint" />}
                     </button>
                   </div>
-                  <p className="text-[11px] text-forest/40">
+                  <p className="text-[11px] text-ink-faint">
                     {ROLE_LABELS[jc.role]}
                     {jc.department ? ` · ${DEPT_LABELS[jc.department] ?? jc.department}` : ''}
                     {' · '}
@@ -187,7 +187,7 @@ export function JoinCodes() {
                 </div>
                 <button
                   onClick={() => handleRevoke(jc.id)}
-                  className="p-1.5 rounded hover:bg-red-50 text-stone-400 hover:text-red-500 transition-colors"
+                  className="p-1.5 rounded hover:bg-red-50 text-ink-faint hover:text-red-500 transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

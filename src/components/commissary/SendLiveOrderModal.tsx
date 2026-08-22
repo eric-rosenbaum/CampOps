@@ -53,7 +53,7 @@ export function SendLiveOrderModal() {
       <form onSubmit={handleSend} className="space-y-4">
         <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-3">
           <p className="text-[13px] font-medium text-forest">{draft.vendorName}</p>
-          <p className="text-[11px] text-forest/50 mt-0.5">
+          <p className="text-[11px] text-ink-soft mt-0.5">
             {draft.lines.length} line{draft.lines.length === 1 ? '' : 's'} · {formatCurrency(draft.total)}
             {vendor?.orderCutoff && ` · cutoff ${vendor.orderCutoff}`}
           </p>
@@ -73,7 +73,7 @@ export function SendLiveOrderModal() {
         <div>
           <label className={labelClass}>Expected delivery</label>
           <input type="date" value={expectedDelivery} onChange={(e) => setExpectedDelivery(e.target.value)} className={inputClass} />
-          <p className="text-[11px] text-forest/45 mt-1">
+          <p className="text-[11px] text-ink-faint mt-1">
             Defaults to the session's next delivery date. Counts as in-transit stock so it isn't re-ordered.
           </p>
         </div>
@@ -86,10 +86,10 @@ export function SendLiveOrderModal() {
 
         <div>
           <label className={labelClass}>Order summary</label>
-          <pre className="text-[11px] font-mono text-forest/70 bg-white border border-border rounded-btn px-3 py-2 max-h-40 overflow-y-auto whitespace-pre-wrap">
+          <pre className="text-[11px] font-mono text-ink bg-white border border-border rounded-btn px-3 py-2 max-h-40 overflow-y-auto whitespace-pre-wrap">
             {summary}
           </pre>
-          <p className="text-[11px] text-forest/45 mt-1.5">
+          <p className="text-[11px] text-ink-faint mt-1.5">
             Marking sent records it here — it does not email the vendor. Copy this into your own email or read it to your rep.
           </p>
         </div>

@@ -15,12 +15,14 @@ struct Issue: Codable, Identifiable, Hashable {
     var estimatedCost: Double?
     var actualCost: Double?
     var photoUrl: String?
+    /// Which client logged this: "ios", "web", "public". Nil on rows predating the column.
+    var source: String?
     let createdAt: Date
     var updatedAt: Date
     var activity: [ActivityEntry]
 
     enum CodingKeys: String, CodingKey {
-        case id, title, description, locations, priority, status
+        case id, title, description, locations, priority, status, source
         case locationIds   = "location_ids"
         case assigneeId  = "assignee_id"
         case reportedById  = "reported_by_id"
@@ -45,6 +47,7 @@ struct Issue: Codable, Identifiable, Hashable {
         estimatedCost: Double? = nil,
         actualCost: Double? = nil,
         photoUrl: String? = nil,
+        source: String? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
         activity: [ActivityEntry] = []
@@ -54,7 +57,7 @@ struct Issue: Codable, Identifiable, Hashable {
         self.priority = priority; self.status = status
         self.assigneeId = assigneeId; self.reportedById = reportedById
         self.estimatedCost = estimatedCost; self.actualCost = actualCost
-        self.photoUrl = photoUrl; self.createdAt = createdAt
+        self.photoUrl = photoUrl; self.source = source; self.createdAt = createdAt
         self.updatedAt = updatedAt; self.activity = activity
     }
 
@@ -78,11 +81,12 @@ struct IssueDBRow: Codable {
     var estimatedCost: Double?
     var actualCost: Double?
     var photoUrl: String?
+    var source: String?
     let createdAt: Date
     var updatedAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case id, title, description, locations, priority, status
+        case id, title, description, locations, priority, status, source
         case locationIds   = "location_ids"
         case assigneeId  = "assignee_id"
         case reportedById  = "reported_by_id"
@@ -107,6 +111,7 @@ struct IssueDBRow: Codable {
         estimatedCost = try c.decodeIfPresent(Double.self, forKey: .estimatedCost)
         actualCost    = try c.decodeIfPresent(Double.self, forKey: .actualCost)
         photoUrl      = try c.decodeIfPresent(String.self, forKey: .photoUrl)
+        source        = try c.decodeIfPresent(String.self, forKey: .source)
         createdAt     = try c.decode(Date.self, forKey: .createdAt)
         updatedAt     = try c.decode(Date.self, forKey: .updatedAt)
     }
@@ -116,7 +121,7 @@ struct IssueDBRow: Codable {
               locationIds: locationIds, locations: locations,
               priority: priority, status: status, assigneeId: assigneeId,
               reportedById: reportedById, estimatedCost: estimatedCost,
-              actualCost: actualCost, photoUrl: photoUrl,
+              actualCost: actualCost, photoUrl: photoUrl, source: source,
               createdAt: createdAt, updatedAt: updatedAt, activity: activity)
     }
 }

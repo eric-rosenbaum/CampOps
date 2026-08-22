@@ -4,18 +4,18 @@ interface Props {
 }
 
 const variants = {
-  default: 'bg-cream-dark text-forest/70 border-border',
-  location: 'bg-forest/8 text-forest border-forest/10',
-  cost: 'bg-amber-bg text-amber-text border-amber/20',
-  recurring: 'bg-green-muted-bg text-green-muted-text border-sage/20',
-  public: 'bg-violet-50 text-violet-700 border-violet-200',
+  default: 'bg-cream-dark text-ink-soft border-border',
+  location: 'bg-paper text-ink-soft border-border',
+  cost: 'bg-amber-bg text-amber-text border-amber/30',
+  recurring: 'bg-green-muted-bg text-green-muted-text border-sage/30',
+  // Was violet, which is off-palette here. A called-in report is stamped in ember instead.
+  public: 'bg-transparent text-red border-red',
 };
 
 export function TagPill({ label, variant = 'default' }: Props) {
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-tag text-[11px] font-medium border ${variants[variant]}`}
-      style={variant === 'location' ? { backgroundColor: 'rgba(26,46,26,0.06)' } : undefined}
+      className={`inline-flex items-center rounded-tag border px-2 py-0.5 text-[11px] font-medium ${variants[variant]}`}
     >
       {label}
     </span>

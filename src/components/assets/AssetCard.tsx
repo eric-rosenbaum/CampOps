@@ -8,7 +8,7 @@ function statusStyle(status: CampAsset['status']) {
   if (status === 'available') return { bg: 'bg-green-muted-bg', text: 'text-green-muted-text', border: 'border-l-sage' };
   if (status === 'checked_out') return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-l-blue-400' };
   if (status === 'in_service') return { bg: 'bg-amber-bg', text: 'text-amber-text', border: 'border-l-amber' };
-  return { bg: 'bg-cream-dark', text: 'text-forest/40', border: 'border-l-border' };
+  return { bg: 'bg-cream-dark', text: 'text-ink-faint', border: 'border-l-border' };
 }
 
 function nextServiceStatus(date: string | null): 'ok' | 'warn' | 'alert' | null {
@@ -27,7 +27,7 @@ function nextServiceStatus(date: string | null): 'ok' | 'warn' | 'alert' | null 
 function serviceStatusColor(s: 'ok' | 'warn' | 'alert') {
   if (s === 'alert') return 'text-red';
   if (s === 'warn') return 'text-amber-text';
-  return 'text-forest/40';
+  return 'text-ink-faint';
 }
 
 export function AssetCard({ asset, onClick }: { asset: CampAsset; onClick: () => void }) {
@@ -48,7 +48,7 @@ export function AssetCard({ asset, onClick }: { asset: CampAsset; onClick: () =>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-card-title font-semibold text-forest">{asset.name}</span>
-            <span className="text-label font-medium px-2 py-0.5 rounded-tag bg-cream-dark text-forest/50 uppercase tracking-wide">
+            <span className="text-label font-medium px-2 py-0.5 rounded-tag bg-cream-dark text-ink-soft uppercase tracking-wide">
               {SUBTYPE_LABELS[asset.subtype] ?? asset.subtype}
             </span>
           </div>
@@ -59,7 +59,7 @@ export function AssetCard({ asset, onClick }: { asset: CampAsset; onClick: () =>
             </span>
 
             {checkout && (
-              <span className={`text-meta ${isOverdue ? 'text-red font-semibold' : 'text-forest/50'}`}>
+              <span className={`text-meta ${isOverdue ? 'text-red font-semibold' : 'text-ink-soft'}`}>
                 {isOverdue ? '⚠ ' : ''}
                 {checkout.checkedOutBy} · {isOverdue ? 'overdue since' : 'return by'} {new Date(checkout.expectedReturnAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
               </span>
@@ -72,7 +72,7 @@ export function AssetCard({ asset, onClick }: { asset: CampAsset; onClick: () =>
             )}
           </div>
 
-          <div className="flex items-center gap-3 mt-1.5 text-meta text-forest/40 flex-wrap">
+          <div className="flex items-center gap-3 mt-1.5 text-meta text-ink-faint flex-wrap">
             <span>{asset.storageLocation}</span>
             {asset.tracksOdometer && asset.currentOdometer !== null && (
               <span>{asset.currentOdometer.toLocaleString()} mi</span>
@@ -87,7 +87,7 @@ export function AssetCard({ asset, onClick }: { asset: CampAsset; onClick: () =>
           {effectiveStatus === 'available' && (
             <button
               onClick={() => openCheckoutModal(asset.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-forest/60 hover:text-forest transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-ink-soft hover:text-forest transition-colors"
             >
               <LogIn className="w-3.5 h-3.5" /> Check out
             </button>
@@ -95,14 +95,14 @@ export function AssetCard({ asset, onClick }: { asset: CampAsset; onClick: () =>
           {effectiveStatus === 'checked_out' && checkout && (
             <button
               onClick={() => openReturnModal(checkout.id, asset.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-forest/60 hover:text-forest transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-ink-soft hover:text-forest transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" /> Return
             </button>
           )}
           <button
             onClick={() => openLogAssetServiceModal(asset.id)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-forest/60 hover:text-forest transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-ink-soft hover:text-forest transition-colors"
           >
             <Wrench className="w-3.5 h-3.5" /> Service
           </button>

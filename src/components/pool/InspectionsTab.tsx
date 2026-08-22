@@ -82,7 +82,7 @@ function InspectionLogRow({
     >
       <div className="flex-1 min-w-0 pr-4">
         <p className="text-body font-medium text-forest">{typeName}</p>
-        <p className="text-meta text-forest/40 mt-0.5">
+        <p className="text-meta text-ink-faint mt-0.5">
           {new Date(entry.inspectionDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           {' · '}Conducted by {entry.conductedBy}
           {entry.notes ? ` · ${entry.notes}` : ''}
@@ -93,14 +93,14 @@ function InspectionLogRow({
           {result.label}
         </span>
         {entry.nextDue && (
-          <span className="text-meta text-forest/40 font-mono">
+          <span className="text-meta text-ink-faint font-mono">
             Next: {new Date(entry.nextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </span>
         )}
         <button
           type="button"
           onClick={onEdit}
-          className={`p-1.5 rounded text-forest/40 hover:text-forest hover:bg-cream transition-all ${hovered ? 'opacity-100' : 'opacity-0'}`}
+          className={`p-1.5 rounded text-ink-faint hover:text-forest hover:bg-cream transition-all ${hovered ? 'opacity-100' : 'opacity-0'}`}
           title="Edit record"
         >
           <Pencil className="w-3.5 h-3.5" />
@@ -139,11 +139,11 @@ export function InspectionsTab() {
           },
         ].map(({ label, value, hint, cls }) => (
           <div key={label} className="bg-white border border-border rounded-card px-4 py-4">
-            <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">{label}</p>
+            <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">{label}</p>
             <p className={`font-mono font-semibold mt-1 ${cls.includes('text-[18px]') ? 'text-[18px]' : 'text-stat'} ${cls}`}>
               {value}
             </p>
-            <p className="text-meta text-forest/40 mt-0.5">{hint}</p>
+            <p className="text-meta text-ink-faint mt-0.5">{hint}</p>
           </div>
         ))}
       </div>
@@ -165,7 +165,7 @@ export function InspectionsTab() {
       </div>
 
       {inspections.length === 0 && inspectionLog.length === 0 && (
-        <p className="text-body text-forest/40 text-center py-12">No inspection schedule set up yet. Use "+ Log inspection" to record a completed inspection.</p>
+        <p className="text-body text-ink-faint text-center py-12">No inspection schedule set up yet. Use "+ Log inspection" to record a completed inspection.</p>
       )}
 
       <div className="flex flex-col gap-2.5">
@@ -177,7 +177,7 @@ export function InspectionsTab() {
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0 pr-4">
                 <h4 className="text-card-title font-semibold text-forest">{insp.name}</h4>
-                <p className="text-meta text-forest/40 mt-0.5 leading-relaxed">
+                <p className="text-meta text-ink-faint mt-0.5 leading-relaxed">
                   {insp.frequency} · {insp.authority}
                   {insp.standard ? ` · ${insp.standard}` : ''}
                 </p>
@@ -185,13 +185,13 @@ export function InspectionsTab() {
               <div className="text-right flex-shrink-0">
                 <StatusBadge status={insp.status} nextDue={insp.nextDue} />
                 {insp.nextDue && (
-                  <p className="font-mono text-secondary text-forest/50 mt-1.5">
+                  <p className="font-mono text-secondary text-ink-soft mt-1.5">
                     {insp.status === 'ok' ? 'Valid through:' : 'Due:'}{' '}
                     {new Date(insp.nextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </p>
                 )}
                 {insp.lastCompleted && (
-                  <p className="text-meta text-forest/40 mt-0.5">
+                  <p className="text-meta text-ink-faint mt-0.5">
                     {insp.status === 'ok' ? 'Completed:' : 'Frequency:'}{' '}
                     {insp.status === 'ok'
                       ? new Date(insp.lastCompleted + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -204,13 +204,13 @@ export function InspectionsTab() {
             {/* History chips */}
             {insp.history.length > 0 && (
               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-cream-dark flex-wrap">
-                <span className="text-meta text-forest/40 mr-1">
+                <span className="text-meta text-ink-faint mr-1">
                   {insp.status === 'ok' && insp.id === 'pi4' ? 'Lifeguards verified:' : insp.status === 'ok' ? 'Items checked:' : 'Past inspections:'}
                 </span>
                 {insp.history.map((item) => (
                   <span
                     key={item}
-                    className="text-meta bg-cream-dark text-forest/60 px-2 py-0.5 rounded-tag font-mono"
+                    className="text-meta bg-cream-dark text-ink-soft px-2 py-0.5 rounded-tag font-mono"
                   >
                     {item}
                   </span>

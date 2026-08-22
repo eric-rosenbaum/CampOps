@@ -72,7 +72,7 @@ export function HousingTab() {
             <Home className="w-7 h-7 text-forest/30" />
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No retreats yet</h3>
-          <p className="text-[13px] text-forest/50 leading-relaxed">
+          <p className="text-[13px] text-ink-soft leading-relaxed">
             Add a retreat, then assign its subgroups to cabins and lock the housing plan here.
           </p>
         </div>
@@ -155,7 +155,7 @@ export function HousingTab() {
           <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
             <h3 className="text-[14px] font-semibold text-forest">
               Housing assignments — {retreat.groupName} · {assigned || retreat.headcount} people ·{' '}
-              <span className="font-mono text-forest/60">{fmtDate(retreat.arrivalDate)}–{fmtDate(retreat.departureDate)}</span>
+              <span className="font-mono text-ink-soft">{fmtDate(retreat.arrivalDate)}–{fmtDate(retreat.departureDate)}</span>
             </h3>
             <div className="flex gap-2 flex-wrap">
               <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'housingHistory', retreatId: retreat.id })}>
@@ -198,8 +198,8 @@ export function HousingTab() {
                   <div className="flex items-start justify-between mb-2 gap-2">
                     <div className="min-w-0">
                       <p className="text-[13px] font-semibold text-forest truncate">{loc?.name ?? h.spaceName ?? 'Unassigned space'}</p>
-                      {building && <p className="text-[11px] text-forest/45 mt-0.5">{building}</p>}
-                      <p className="text-[11px] text-forest/45 mt-0.5">
+                      {building && <p className="text-[11px] text-ink-faint mt-0.5">{building}</p>}
+                      <p className="text-[11px] text-ink-faint mt-0.5">
                         {capacity} bed{capacity === 1 ? '' : 's'}{loc?.accessible ? ' · Accessible' : ''}
                       </p>
                     </div>
@@ -210,9 +210,9 @@ export function HousingTab() {
                   <p className="text-[12px] font-medium text-forest mb-1">
                     {h.subgroupName ?? 'Group'} · {h.peopleCount} {h.peopleCount === 1 ? 'person' : 'people'}
                   </p>
-                  {h.notes && <p className="text-[11px] text-forest/50 italic leading-relaxed">{h.notes}</p>}
+                  {h.notes && <p className="text-[11px] text-ink-soft italic leading-relaxed">{h.notes}</p>}
                   <BedDots taken={h.peopleCount} capacity={capacity} />
-                  <p className="text-[10px] text-forest/45 mt-1.5">
+                  <p className="text-[10px] text-ink-faint mt-1.5">
                     {Math.min(h.peopleCount, capacity)} of {capacity} beds occupied
                     {h.peopleCount > capacity && <span className="text-red font-medium"> · {h.peopleCount - capacity} over</span>}
                   </p>
@@ -225,11 +225,11 @@ export function HousingTab() {
                 <div className="flex items-start justify-between mb-2 gap-2">
                   <div className="min-w-0">
                     <p className="text-[13px] font-semibold text-forest truncate">{s.name}</p>
-                    {s.building && <p className="text-[11px] text-forest/45 mt-0.5">{s.building}</p>}
+                    {s.building && <p className="text-[11px] text-ink-faint mt-0.5">{s.building}</p>}
                   </div>
                   <Badge tone="neutral">Unassigned</Badge>
                 </div>
-                <p className="text-[11px] text-forest/50 italic">
+                <p className="text-[11px] text-ink-soft italic">
                   {s.beds ?? 0} beds{s.accessible ? ' · Accessible' : ''}. Assign a subgroup to put them here.
                 </p>
               </div>
@@ -237,7 +237,7 @@ export function HousingTab() {
 
             {rows.length === 0 && unassignedSpaces.length === 0 && (
               <div className="col-span-full bg-white rounded-card border border-border px-4 py-8 text-center">
-                <p className="text-[13px] text-forest/50 mb-3">
+                <p className="text-[13px] text-ink-soft mb-3">
                   No cabins defined yet. Add your camp's spaces first, then assign this group.
                 </p>
                 {canManage && (

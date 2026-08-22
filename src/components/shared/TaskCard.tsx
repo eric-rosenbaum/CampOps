@@ -40,13 +40,13 @@ export function TaskCard({ task, selected, onClick, compact = false, onTakeIt }:
           <div className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${priorityDotColor[task.priority]}`} />
           <div className="flex-1 min-w-0">
             <p className="text-[14px] font-semibold text-forest leading-snug truncate">{task.title}</p>
-            <p className="text-[11px] text-forest/50 mt-0.5">
+            <p className="text-[11px] text-ink-soft mt-0.5">
               {task.locations.join(' · ')} · Updated {relativeTime(task.updatedAt)}
             </p>
             <div className="flex flex-wrap gap-1.5 mt-2">
               {task.locations.map((l) => <TagPill key={l} label={l} variant="location" />)}
               {dueInfo && (
-                <span className={`text-[11px] font-medium ${dueInfo.overdue ? 'text-red' : 'text-forest/60'}`}>
+                <span className={`text-[11px] font-medium ${dueInfo.overdue ? 'text-red' : 'text-ink-soft'}`}>
                   {dueInfo.label}
                 </span>
               )}
@@ -56,21 +56,21 @@ export function TaskCard({ task, selected, onClick, compact = false, onTakeIt }:
         </div>
         <div className="text-right flex-shrink-0">
           {assigneeName ? (
-            <p className="text-[12px] font-medium text-forest/70">{assigneeName}</p>
+            <p className="text-[12px] font-medium text-ink">{assigneeName}</p>
           ) : (
             <p className="text-[12px] font-medium text-red">Unassigned</p>
           )}
           <div className={`mt-1 inline-flex px-2 py-0.5 rounded-pill text-[10px] font-semibold ${
             task.status === 'complete' ? 'bg-green-muted-bg text-green-muted-text' :
             task.status === 'in_progress' ? 'bg-amber-bg text-amber-text' :
-            'bg-cream-dark text-forest/50'
+            'bg-cream-dark text-ink-soft'
           }`}>
             {task.status === 'complete' ? 'Complete' : task.status === 'in_progress' ? 'In progress' : 'Pending'}
           </div>
           {onTakeIt && !task.assigneeId && (
             <button
               onClick={(e) => { e.stopPropagation(); onTakeIt(); }}
-              className="mt-1.5 block text-[11px] font-medium text-forest px-2 py-0.5 rounded border border-stone-200 bg-cream hover:bg-stone-100 transition-colors"
+              className="mt-1.5 block text-[11px] font-medium text-forest px-2 py-0.5 rounded border border-border bg-cream hover:bg-cream-dark transition-colors"
             >
               Take it
             </button>

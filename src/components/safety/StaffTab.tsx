@@ -42,14 +42,14 @@ function CertSummaryCard({ certType }: { certType: CertType }) {
               style={{ width: `${pct}%` }}
             />
           </div>
-          <p className="text-[10px] text-forest/40 mt-1">
+          <p className="text-[10px] text-ink-faint mt-1">
             {summary.current} current
             {summary.expiring > 0 ? ` · ${summary.expiring} expiring soon` : ''}
             {summary.expired > 0 ? ` · ${summary.expired} expired` : ''}
             {summary.uncertified > 0 ? ` · ${summary.uncertified} not on file` : ''}
           </p>
         </div>
-        <span className="text-[11px] text-forest/40 ml-4">{expanded ? '▲' : '▼'}</span>
+        <span className="text-[11px] text-ink-faint ml-4">{expanded ? '▲' : '▼'}</span>
       </div>
 
       {expanded && (
@@ -63,11 +63,11 @@ function CertSummaryCard({ certType }: { certType: CertType }) {
               <div key={staff.id} className="flex items-center justify-between py-1.5">
                 <div>
                   <span className="text-[12px] font-medium text-forest">{staff.name}</span>
-                  <span className="text-[11px] text-forest/40 ml-1.5">— {staff.title}</span>
+                  <span className="text-[11px] text-ink-faint ml-1.5">— {staff.title}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {cert?.expiryDate && (
-                    <span className="text-[11px] font-mono text-forest/40">
+                    <span className="text-[11px] font-mono text-ink-faint">
                       Exp: {new Date(cert.expiryDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
                   )}
@@ -75,7 +75,7 @@ function CertSummaryCard({ certType }: { certType: CertType }) {
                     certStatus === 'expired' ? 'bg-red-bg text-red' :
                     certStatus === 'expiring' ? 'bg-amber-bg text-amber-text' :
                     certStatus === 'ok' ? 'bg-green-muted-bg text-green-muted-text' :
-                    'bg-cream-dark text-forest/40'
+                    'bg-cream-dark text-ink-faint'
                   }`}>
                     {certStatus === 'none' ? 'Not on file' : certStatus === 'ok' ? 'Current' : certStatus === 'expiring' ? 'Expiring' : 'Expired'}
                   </span>
@@ -132,26 +132,26 @@ export function StaffTab() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
         <div className="bg-white border border-border rounded-card px-4 py-4">
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Active staff</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Active staff</p>
           <p className="font-mono font-semibold text-stat mt-1 text-forest">{activeStaff.length}</p>
-          <p className="text-meta text-forest/40 mt-0.5">Staff members tracked</p>
+          <p className="text-meta text-ink-faint mt-0.5">Staff members tracked</p>
         </div>
         <div className={`bg-white border border-border rounded-card px-4 py-4 ${expiredCerts > 0 ? 'border-l-[3px] border-l-red' : expiringCerts > 0 ? 'border-l-[3px] border-l-amber' : ''}`}>
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Cert compliance</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Cert compliance</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${certPct === 100 ? 'text-green-muted-text' : certPct !== null ? (expiredCerts > 0 ? 'text-red' : 'text-amber') : 'text-forest/30'}`}>
             {certPct !== null ? `${certPct}%` : '—'}
           </p>
-          <p className="text-meta text-forest/40 mt-0.5">{totalCerts > 0 ? `${currentCerts} of ${totalCerts} certs current` : 'No certs on file'}</p>
+          <p className="text-meta text-ink-faint mt-0.5">{totalCerts > 0 ? `${currentCerts} of ${totalCerts} certs current` : 'No certs on file'}</p>
         </div>
         <div className={`bg-white border border-border rounded-card px-4 py-4 ${expiredCerts > 0 ? 'border-l-[3px] border-l-red' : ''}`}>
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Expired</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Expired</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${expiredCerts > 0 ? 'text-red' : 'text-forest/30'}`}>{expiredCerts}</p>
-          <p className={`text-meta mt-0.5 ${expiredCerts > 0 ? 'text-red' : 'text-forest/40'}`}>{expiredCerts > 0 ? 'Need immediate renewal' : 'None expired'}</p>
+          <p className={`text-meta mt-0.5 ${expiredCerts > 0 ? 'text-red' : 'text-ink-faint'}`}>{expiredCerts > 0 ? 'Need immediate renewal' : 'None expired'}</p>
         </div>
         <div className={`bg-white border border-border rounded-card px-4 py-4 ${expiringCerts > 0 ? 'border-l-[3px] border-l-amber' : ''}`}>
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Expiring soon</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Expiring soon</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${expiringCerts > 0 ? 'text-amber' : 'text-forest/30'}`}>{expiringCerts}</p>
-          <p className="text-meta text-forest/40 mt-0.5">Within 30 days</p>
+          <p className="text-meta text-ink-faint mt-0.5">Within 30 days</p>
         </div>
       </div>
 
@@ -170,7 +170,7 @@ export function StaffTab() {
 
       {activeStaff.length === 0 ? (
         <div className="bg-white border border-border rounded-card px-5 py-10 text-center mb-6">
-          <p className="text-[13px] text-forest/40">No staff added yet.</p>
+          <p className="text-[13px] text-ink-faint">No staff added yet.</p>
           {can('manageSafetyStaff') && (
             <button onClick={() => openSafetyAddStaffModal()} className="text-[12px] text-sage font-medium mt-1 cursor-pointer hover:underline">
               + Add staff to track certifications
@@ -180,7 +180,7 @@ export function StaffTab() {
       ) : (
         <div className="bg-white border border-border rounded-card mb-6 overflow-hidden">
           <div className="px-4 py-2.5 border-b border-cream-dark bg-cream">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/50">Active staff — {activeStaff.length} members</p>
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Active staff — {activeStaff.length} members</p>
           </div>
           {activeStaff.map((s, i, arr) => (
             <div
@@ -189,7 +189,7 @@ export function StaffTab() {
             >
               <div>
                 <span className="text-[13px] font-medium text-forest">{s.name}</span>
-                <span className="text-[11px] text-forest/40 ml-2">{s.title}</span>
+                <span className="text-[11px] text-ink-faint ml-2">{s.title}</span>
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -201,7 +201,7 @@ export function StaffTab() {
                 {can('manageSafetyStaff') && (
                   <button
                     onClick={() => openSafetyAddStaffModal(s.id)}
-                    className="text-[11px] text-forest/40 hover:text-forest cursor-pointer"
+                    className="text-[11px] text-ink-faint hover:text-forest cursor-pointer"
                   >
                     Edit
                   </button>
@@ -215,7 +215,7 @@ export function StaffTab() {
                 onClick={() => setShowInactive(v => !v)}
                 className="w-full flex items-center justify-between px-4 py-2 border-t border-cream-dark bg-cream hover:bg-cream-dark transition-colors"
               >
-                <p className="text-[11px] text-forest/40">
+                <p className="text-[11px] text-ink-faint">
                   {inactiveStaff.length} inactive staff member{inactiveStaff.length === 1 ? '' : 's'}
                 </p>
                 {showInactive
@@ -228,7 +228,7 @@ export function StaffTab() {
                   className={`flex items-center justify-between px-4 py-2.5 bg-cream/50 ${i < arr.length - 1 ? 'border-b border-cream-dark' : ''}`}
                 >
                   <div>
-                    <span className="text-[13px] font-medium text-forest/40">{s.name}</span>
+                    <span className="text-[13px] font-medium text-ink-faint">{s.name}</span>
                     <span className="text-[11px] text-forest/30 ml-2">{s.title}</span>
                   </div>
                   <div className="flex items-center gap-3">
@@ -267,7 +267,7 @@ export function StaffTab() {
           ))}
           {ALL_CERT_TYPES.every((t) => certSummary(t).total === 0) && (
             <div className="bg-white border border-border rounded-card px-5 py-8 text-center">
-              <p className="text-[13px] text-forest/40">No certifications on file yet.</p>
+              <p className="text-[13px] text-ink-faint">No certifications on file yet.</p>
               <button
                 onClick={() => openStaffCertModal()}
                 className="text-[12px] text-sage font-medium mt-1 cursor-pointer hover:underline"

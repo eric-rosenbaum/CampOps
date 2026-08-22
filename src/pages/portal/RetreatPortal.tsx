@@ -177,7 +177,7 @@ function Section({ id, icon, title, subtitle, children }: {
         </div>
         <div className="min-w-0">
           <h2 className="text-[16px] font-bold text-forest leading-tight">{title}</h2>
-          {subtitle && <p className="text-[12px] text-forest/50 leading-tight">{subtitle}</p>}
+          {subtitle && <p className="text-[12px] text-ink-soft leading-tight">{subtitle}</p>}
         </div>
       </div>
       {children}
@@ -189,7 +189,7 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   return (
     <div className="flex items-center gap-3 py-3 px-4">
       <div className="text-sage flex-shrink-0">{icon}</div>
-      <div className="text-[12px] font-semibold uppercase tracking-wide text-forest/45 flex-1">{label}</div>
+      <div className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint flex-1">{label}</div>
       <div className="text-[14px] font-semibold text-forest text-right">{value}</div>
     </div>
   );
@@ -208,7 +208,7 @@ function StatusPill({ status }: { status: string }) {
   const cls = s === 'active' ? 'bg-sage-pale text-forest'
     : s === 'ready' ? 'bg-green-muted-bg text-green-muted-text'
     : s === 'confirmed' || s === 'inquiry' ? 'bg-blue-bg text-blue-text'
-    : s === 'cancelled' ? 'bg-red-bg text-red' : 'bg-cream-dark text-forest/70';
+    : s === 'cancelled' ? 'bg-red-bg text-red' : 'bg-cream-dark text-ink';
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide ${cls}`}>
       {STATUS_LABELS[s] ?? s}
@@ -257,7 +257,7 @@ function BedDots({ taken, capacity }: { taken: number; capacity: number }) {
 
 const cardClass = 'bg-white border border-border rounded-2xl';
 const inputClass = 'w-full text-[15px] bg-white border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-sage focus:ring-2 focus:ring-sage-pale transition-all placeholder:text-forest/30';
-const labelClass = 'block text-[12px] font-semibold uppercase tracking-wide text-forest/45 mb-1.5';
+const labelClass = 'block text-[12px] font-semibold uppercase tracking-wide text-ink-faint mb-1.5';
 const btnPrimary = 'inline-flex items-center justify-center gap-2 bg-forest text-white text-[14px] font-semibold rounded-xl px-5 py-3 hover:bg-forest-mid active:bg-forest disabled:opacity-40 disabled:cursor-not-allowed transition-colors';
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -314,10 +314,10 @@ export function RetreatPortal() {
       <div className="min-h-screen bg-cream w-full flex items-center justify-center p-4 sm:p-6">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-7 h-7 text-forest/40" />
+            <AlertCircle className="w-7 h-7 text-ink-faint" />
           </div>
           <h1 className="text-[20px] font-bold text-forest mb-2">Portal link not valid</h1>
-          <p className="text-[14px] text-forest/50 leading-relaxed">
+          <p className="text-[14px] text-ink-soft leading-relaxed">
             This retreat portal link is not valid or is no longer active. Please check the link
             from your coordinator, or reach out to the camp directly.
           </p>
@@ -503,7 +503,7 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
               <button
                 key={n.id}
                 onClick={() => scrollTo(n.id)}
-                className="flex-shrink-0 text-[13px] font-semibold text-forest/70 hover:text-forest px-3.5 py-1.5 rounded-full hover:bg-sage-pale transition-colors"
+                className="flex-shrink-0 text-[13px] font-semibold text-ink hover:text-forest px-3.5 py-1.5 rounded-full hover:bg-sage-pale transition-colors"
               >
                 {n.label}
               </button>
@@ -520,7 +520,7 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
             This is your private hub for {retreat.group_name}'s stay. The checklist below shows
             everything the camp needs from you before you arrive — tap any item to jump to it. Your changes save automatically.
           </p>
-          <p className="text-[12px] text-forest/50 mt-2.5">
+          <p className="text-[12px] text-ink-soft mt-2.5">
             🔖 Bookmark this page — it's your private link, so there's no password to remember.
           </p>
         </div>
@@ -534,7 +534,7 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
         <Section id="info" icon={<ClipboardList className="w-4.5 h-4.5" />} title="Booking overview" subtitle="Your reservation at a glance">
           <div className={`${cardClass} divide-y divide-cream-dark overflow-hidden`}>
             <div className="flex items-center justify-between py-3 px-4">
-              <span className="text-[12px] font-semibold uppercase tracking-wide text-forest/45">Status</span>
+              <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">Status</span>
               <StatusPill status={retreat.status} />
             </div>
             <InfoRow icon={<Users className="w-4 h-4" />} label="Group" value={retreat.group_name} />
@@ -567,14 +567,14 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
               <p className={labelClass}>Account balance</p>
               <div className="space-y-1.5 text-[14px]">
                 {retreat.pricing_model === 'per_person_night' && retreat.rate_per_person_night != null && (
-                  <div className="flex justify-between text-forest/50 text-[12px]">
+                  <div className="flex justify-between text-ink-soft text-[12px]">
                     <span>{money(retreat.rate_per_person_night)}/person/night × {retreat.headcount ?? 0} × {retreat.nights ?? 0} night{(retreat.nights ?? 0) === 1 ? '' : 's'}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-forest/70">
+                <div className="flex justify-between text-ink">
                   <span>Total charges</span><span className="font-mono">{money(retreat.total_charges)}</span>
                 </div>
-                <div className="flex justify-between text-forest/70">
+                <div className="flex justify-between text-ink">
                   <span>Paid</span><span className="font-mono">{money(retreat.total_paid)}</span>
                 </div>
                 <div className="flex justify-between font-semibold text-forest pt-1.5 border-t border-cream-dark">
@@ -584,7 +584,7 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
                   </span>
                 </div>
               </div>
-              <p className="text-[11px] text-forest/40 mt-2.5">Payments are handled directly with the camp — contact your coordinator to pay.</p>
+              <p className="text-[11px] text-ink-faint mt-2.5">Payments are handled directly with the camp — contact your coordinator to pay.</p>
             </div>
           )}
         </Section>
@@ -638,7 +638,7 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
         </Section>
 
         <div className="pt-2 pb-6 text-center">
-          <p className="text-[11px] text-forest/35">Powered by CampCommand · This is a private link — please don't share it publicly.</p>
+          <p className="text-[11px] text-ink-faint">Powered by CampCommand · This is a private link — please don't share it publicly.</p>
         </div>
       </div>
     </div>
@@ -656,8 +656,8 @@ function ChecklistBlock({ steps, onJump }: { steps: Step[]; onJump: (id: string)
       case 'done': return { icon: <CheckCircle2 className="w-5 h-5 text-sage" />, chip: 'bg-green-muted-bg text-green-muted-text', chipText: 'Done' };
       case 'overdue': return { icon: <AlertTriangle className="w-5 h-5 text-red" />, chip: 'bg-red-bg text-red', chipText: 'Overdue' };
       case 'due_soon': return { icon: <Circle className="w-5 h-5 text-amber-text" />, chip: 'bg-amber-bg text-amber-text', chipText: 'Due soon' };
-      case 'locked': return { icon: <Lock className="w-5 h-5 text-forest/35" />, chip: 'bg-cream-dark text-forest/55', chipText: 'Locked' };
-      default: return { icon: <Circle className="w-5 h-5 text-forest/30" />, chip: 'bg-cream-dark text-forest/55', chipText: 'To do' };
+      case 'locked': return { icon: <Lock className="w-5 h-5 text-ink-faint" />, chip: 'bg-cream-dark text-ink-soft', chipText: 'Locked' };
+      default: return { icon: <Circle className="w-5 h-5 text-forest/30" />, chip: 'bg-cream-dark text-ink-soft', chipText: 'To do' };
     }
   };
 
@@ -673,8 +673,8 @@ function ChecklistBlock({ steps, onJump }: { steps: Step[]; onJump: (id: string)
           >
             <span className="flex-shrink-0">{st.icon}</span>
             <span className="min-w-0 flex-1">
-              <span className={`block text-[14px] font-semibold leading-tight ${step.state === 'done' ? 'text-forest/55' : 'text-forest'}`}>{step.label}</span>
-              <span className="block text-[12px] text-forest/50 mt-0.5">{step.hint}</span>
+              <span className={`block text-[14px] font-semibold leading-tight ${step.state === 'done' ? 'text-ink-soft' : 'text-forest'}`}>{step.label}</span>
+              <span className="block text-[12px] text-ink-soft mt-0.5">{step.hint}</span>
             </span>
             <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${st.chip}`}>{st.chipText}</span>
             <ChevronRight className="w-4 h-4 text-forest/25 flex-shrink-0" />
@@ -700,23 +700,23 @@ function DepositCard({ retreat }: { retreat: PortalRetreat }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <p className="text-[14px] font-semibold text-forest leading-tight">Deposit — holds your dates</p>
-            <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${paid ? 'bg-green-muted-bg text-green-muted-text' : partial ? 'bg-amber-bg text-amber-text' : 'bg-cream-dark text-forest/60'}`}>
+            <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${paid ? 'bg-green-muted-bg text-green-muted-text' : partial ? 'bg-amber-bg text-amber-text' : 'bg-cream-dark text-ink-soft'}`}>
               {paid ? 'Paid' : partial ? 'Partial' : 'Due'}
             </span>
           </div>
-          <p className="text-[12px] text-forest/50 mt-0.5">
+          <p className="text-[12px] text-ink-soft mt-0.5">
             {paid ? 'Your dates are secured — thank you!'
               : retreat.deposit_due ? `Please pay by ${fmtDateFull(retreat.deposit_due)} to lock in your dates.`
               : 'Paying your deposit locks in your dates.'}
           </p>
           <div className="mt-3 bg-cream rounded-xl p-3 flex items-center justify-between text-[14px]">
-            <span className="inline-flex items-center gap-1.5 text-forest/60"><DollarSign className="w-4 h-4" /> Deposit</span>
+            <span className="inline-flex items-center gap-1.5 text-ink-soft"><DollarSign className="w-4 h-4" /> Deposit</span>
             <span className="font-semibold text-forest">
-              {partial && <span className="text-forest/45 font-normal">{money(retreat.deposit_received)} of </span>}
+              {partial && <span className="text-ink-faint font-normal">{money(retreat.deposit_received)} of </span>}
               {money(retreat.deposit_required)}
             </span>
           </div>
-          {!paid && <p className="text-[11px] text-forest/40 mt-2.5">Payment is handled directly with the camp — contact your coordinator to pay.</p>}
+          {!paid && <p className="text-[11px] text-ink-faint mt-2.5">Payment is handled directly with the camp — contact your coordinator to pay.</p>}
         </div>
       </div>
     </div>
@@ -741,7 +741,7 @@ function InvoicesBlock({ retreat, invoices }: { retreat: PortalRetreat; invoices
         return (
           <div key={inv.id} className={`${cardClass} p-4`}>
             <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-cream-dark text-forest/50 flex items-center justify-center flex-shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-cream-dark text-ink-soft flex items-center justify-center flex-shrink-0">
                 <FileText className="w-4.5 h-4.5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -753,10 +753,10 @@ function InvoicesBlock({ retreat, invoices }: { retreat: PortalRetreat; invoices
                     {paid ? 'Paid' : 'Due'}
                   </span>
                 </div>
-                <p className="text-[12px] text-forest/45 mt-0.5">
+                <p className="text-[12px] text-ink-faint mt-0.5">
                   {inv.number}{inv.due_date ? ` · due ${fmtDateFull(inv.due_date)}` : ''}
                 </p>
-                {inv.note && <p className="text-[12px] text-forest/55 mt-1.5 leading-relaxed">{inv.note}</p>}
+                {inv.note && <p className="text-[12px] text-ink-soft mt-1.5 leading-relaxed">{inv.note}</p>}
                 <button onClick={() => download(inv)} className="mt-2.5 text-[13px] font-semibold text-forest inline-flex items-center gap-1.5 hover:text-forest-mid">
                   <FileText className="w-3.5 h-3.5" /> Download PDF
                 </button>
@@ -765,7 +765,7 @@ function InvoicesBlock({ retreat, invoices }: { retreat: PortalRetreat; invoices
           </div>
         );
       })}
-      <p className="text-[11px] text-forest/40 px-1">Payment is handled directly with the camp — contact your coordinator to pay.</p>
+      <p className="text-[11px] text-ink-faint px-1">Payment is handled directly with the camp — contact your coordinator to pay.</p>
     </div>
   );
 }
@@ -797,12 +797,12 @@ function HeadcountBlock({ retreat, token, refetch }: { retreat: PortalRetreat; t
   return (
     <div className={`${cardClass} p-4`}>
       <div className="flex items-start gap-3">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${confirmed && !editing ? 'bg-green-muted-bg text-green-muted-text' : 'bg-cream-dark text-forest/50'}`}>
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${confirmed && !editing ? 'bg-green-muted-bg text-green-muted-text' : 'bg-cream-dark text-ink-soft'}`}>
           <Users className="w-4.5 h-4.5" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-semibold text-forest leading-tight">Confirm final headcount</p>
-          <p className="text-[12px] text-forest/50 mt-0.5">
+          <p className="text-[12px] text-ink-soft mt-0.5">
             {confirmed && !editing
               ? `Confirmed: ${retreat.final_headcount} guests${retreat.final_headcount_by ? ` · by ${retreat.final_headcount_by}` : ''}`
               : `Your final number of guests. Due ${fmtDateFull(due)} — about two weeks before arrival.`}
@@ -870,17 +870,17 @@ function CoiBlock({ retreat, documents, token, refetch }: { retreat: PortalRetre
   return (
     <div className={`${cardClass} p-4 ${received ? 'border-sage' : ''}`}>
       <div className="flex items-start gap-3">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${received ? 'bg-green-muted-bg text-green-muted-text' : 'bg-cream-dark text-forest/50'}`}>
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${received ? 'bg-green-muted-bg text-green-muted-text' : 'bg-cream-dark text-ink-soft'}`}>
           <ShieldCheck className="w-4.5 h-4.5" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <p className="text-[14px] font-semibold text-forest leading-tight">Certificate of insurance (COI)</p>
-            <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${received ? 'bg-green-muted-bg text-green-muted-text' : 'bg-cream-dark text-forest/60'}`}>
+            <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${received ? 'bg-green-muted-bg text-green-muted-text' : 'bg-cream-dark text-ink-soft'}`}>
               {received ? 'Received' : 'Required'}
             </span>
           </div>
-          <p className="text-[12px] text-forest/50 mt-0.5">
+          <p className="text-[12px] text-ink-soft mt-0.5">
             {received ? 'Thanks — we have your COI on file.' : `Required before your group enters camp — due ${dueLabel}.`}
           </p>
 
@@ -891,7 +891,7 @@ function CoiBlock({ retreat, documents, token, refetch }: { retreat: PortalRetre
                 .filter(([k]) => !['uploaded_by', 'uploaded_via', 'original_name'].includes(k))
                 .map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-3 text-[12px]">
-                    <span className="text-forest/50 capitalize">{k.replace(/_/g, ' ')}</span>
+                    <span className="text-ink-soft capitalize">{k.replace(/_/g, ' ')}</span>
                     <span className="text-forest font-medium text-right">{String(v)}</span>
                   </div>
                 ))}
@@ -947,7 +947,7 @@ function DocumentCard({ doc, token, refetch }: { doc: PortalDocument; token: str
   return (
     <div className={`${cardClass} p-4`}>
       <div className="flex items-start gap-3">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isSigned ? 'bg-green-muted-bg text-green-muted-text' : 'bg-cream-dark text-forest/50'}`}>
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isSigned ? 'bg-green-muted-bg text-green-muted-text' : 'bg-cream-dark text-ink-soft'}`}>
           {isCOI ? <ShieldCheck className="w-4.5 h-4.5" /> : isSigned ? <CheckCircle2 className="w-4.5 h-4.5" /> : <FileText className="w-4.5 h-4.5" />}
         </div>
         <div className="min-w-0 flex-1">
@@ -955,11 +955,11 @@ function DocumentCard({ doc, token, refetch }: { doc: PortalDocument; token: str
             <p className="text-[14px] font-semibold text-forest leading-tight">{doc.name}</p>
             <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${
               statusTone === 'ok' ? 'bg-green-muted-bg text-green-muted-text'
-              : statusTone === 'alert' ? 'bg-red-bg text-red' : 'bg-cream-dark text-forest/60'}`}>
+              : statusTone === 'alert' ? 'bg-red-bg text-red' : 'bg-cream-dark text-ink-soft'}`}>
               {statusText}
             </span>
           </div>
-          <p className="text-[12px] text-forest/45 mt-0.5">
+          <p className="text-[12px] text-ink-faint mt-0.5">
             {isSigned && doc.signed_by
               ? `Signed by ${doc.signed_by}${doc.signed_at ? ' · ' + fmtDateTime(doc.signed_at) : ''}`
               : doc.due_date ? `Due ${fmtDateFull(doc.due_date)}` : 'No due date'}
@@ -970,7 +970,7 @@ function DocumentCard({ doc, token, refetch }: { doc: PortalDocument; token: str
             <div className="mt-3 bg-cream rounded-xl p-3 space-y-1">
               {Object.entries(doc.meta).map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-3 text-[12px]">
-                  <span className="text-forest/50 capitalize">{k.replace(/_/g, ' ')}</span>
+                  <span className="text-ink-soft capitalize">{k.replace(/_/g, ' ')}</span>
                   <span className="text-forest font-medium text-right">{String(v)}</span>
                 </div>
               ))}
@@ -1030,14 +1030,14 @@ function HousingBlock({ retreat, spaces, housing, token, refetch, today }: {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-[15px] font-bold text-forest">{label}</p>
-                    {h.subgroup_name && <p className="text-[13px] text-forest/60">{h.subgroup_name}</p>}
+                    {h.subgroup_name && <p className="text-[13px] text-ink-soft">{h.subgroup_name}</p>}
                   </div>
                   <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-forest">
                     <Users className="w-4 h-4 text-sage" />{h.people_count ?? 0}{cap ? `/${cap}` : ''}
                   </span>
                 </div>
                 <BedDots taken={h.people_count ?? 0} capacity={cap} />
-                {h.notes && <p className="text-[12px] text-forest/55 mt-2.5 leading-relaxed">{h.notes}</p>}
+                {h.notes && <p className="text-[12px] text-ink-soft mt-2.5 leading-relaxed">{h.notes}</p>}
               </div>
             );
           })}
@@ -1166,9 +1166,9 @@ function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePass
         return (
           <div key={i} className={`${cardClass} p-4 space-y-3`}>
             <div className="flex items-center justify-between">
-              <span className="text-[12px] font-semibold uppercase tracking-wide text-forest/45">Assignment {i + 1}</span>
+              <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">Assignment {i + 1}</span>
               {rows.length > 1 && (
-                <button onClick={() => removeRow(i)} className="text-forest/40 hover:text-red p-1" aria-label="Remove">
+                <button onClick={() => removeRow(i)} className="text-ink-faint hover:text-red p-1" aria-label="Remove">
                   <Trash2 className="w-4 h-4" />
                 </button>
               )}
@@ -1221,7 +1221,7 @@ function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePass
                 {row.building_id && (() => {
                   const b = buildings.find((x) => x.id === row.building_id);
                   return b ? (
-                    <p className="text-[11px] text-forest/45 mt-1">
+                    <p className="text-[11px] text-ink-faint mt-1">
                       {b.freeRooms} of {b.totalRooms} room{b.totalRooms === 1 ? '' : 's'} free in {b.name} · {b.freeBeds} beds
                     </p>
                   ) : null;
@@ -1342,7 +1342,7 @@ function MenuBlock({ published, meals }: { published: boolean; meals: PortalMeal
                     </div>
                     {m.name && <p className="text-[14px] font-semibold text-forest">{m.name}</p>}
                     {items.length > 0 && (
-                      <ul className="text-[13px] text-forest/70 mt-1 space-y-0.5">
+                      <ul className="text-[13px] text-ink mt-1 space-y-0.5">
                         {items.map((it, j) => <li key={j}>· {it}</li>)}
                       </ul>
                     )}
@@ -1356,7 +1356,7 @@ function MenuBlock({ published, meals }: { published: boolean; meals: PortalMeal
                       </div>
                     )}
                     {alternatives.length > 0 && (
-                      <p className="text-[12px] text-forest/50 mt-2">
+                      <p className="text-[12px] text-ink-soft mt-2">
                         <span className="font-semibold">Alternatives:</span> {alternatives.join(', ')}
                       </p>
                     )}
@@ -1435,13 +1435,13 @@ function ChangeRequestsBlock({ requests, defaultName, token, refetch }: {
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquarePlus className="w-4 h-4" />}
           {busy ? 'Submitting…' : 'Submit request'}
         </button>
-        <p className="text-[11px] text-forest/40 text-center">The camp reviews and approves all changes. You'll see the status below.</p>
+        <p className="text-[11px] text-ink-faint text-center">The camp reviews and approves all changes. You'll see the status below.</p>
       </div>
 
       {/* Existing requests */}
       {requests.length > 0 && (
         <div className="space-y-3">
-          <p className="text-[12px] font-semibold uppercase tracking-wide text-forest/45">Your requests</p>
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">Your requests</p>
           {requests
             .slice()
             .sort((a, b) => (b.submitted_at ?? '').localeCompare(a.submitted_at ?? ''))
@@ -1453,21 +1453,21 @@ function ChangeRequestsBlock({ requests, defaultName, token, refetch }: {
               return (
                 <div key={r.id} className={`${cardClass} border-l-4 ${accent} p-4`}>
                   <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className="text-[12px] font-semibold uppercase tracking-wide text-forest/50">{KIND_LABELS[r.kind] ?? r.kind}</span>
+                    <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-soft">{KIND_LABELS[r.kind] ?? r.kind}</span>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${tone}`}>
                       {r.status}
                     </span>
                   </div>
-                  <p className="text-[13px] text-forest/80 leading-relaxed">{r.body}</p>
-                  <p className="text-[11px] text-forest/40 mt-1.5 inline-flex items-center gap-1">
+                  <p className="text-[13px] text-ink leading-relaxed">{r.body}</p>
+                  <p className="text-[11px] text-ink-faint mt-1.5 inline-flex items-center gap-1">
                     <Clock className="w-3 h-3" /> Submitted {fmtDateTime(r.submitted_at)}
                   </p>
                   {r.response_message && (
                     <div className="mt-2.5 pt-2.5 border-t border-cream-dark">
-                      <p className="text-[12px] text-forest/70 leading-relaxed italic">
+                      <p className="text-[12px] text-ink leading-relaxed italic">
                         <span className="font-semibold not-italic text-forest">Camp response:</span> {r.response_message}
                       </p>
-                      {r.responded_at && <p className="text-[11px] text-forest/35 mt-1">{fmtDateTime(r.responded_at)}</p>}
+                      {r.responded_at && <p className="text-[11px] text-ink-faint mt-1">{fmtDateTime(r.responded_at)}</p>}
                     </div>
                   )}
                 </div>
@@ -1503,7 +1503,7 @@ function FeedbackBlock({ retreat, submitted, token, refetch, today }: {
           <CheckCircle2 className="w-7 h-7 text-sage" />
         </div>
         <p className="text-[16px] font-bold text-forest mb-1">Thank you!</p>
-        <p className="text-[13px] text-forest/55 leading-relaxed">
+        <p className="text-[13px] text-ink-soft leading-relaxed">
           Your feedback has been received. We appreciate you helping us make the next retreat even better.
         </p>
       </div>
@@ -1566,7 +1566,7 @@ function FeedbackBlock({ retreat, submitted, token, refetch, today }: {
             type="button"
             onClick={() => setReturning(true)}
             className={`text-[14px] font-semibold rounded-xl py-3 border-2 transition-colors ${
-              returning === true ? 'border-sage bg-sage-pale text-forest' : 'border-border text-forest/60 hover:border-sage'}`}
+              returning === true ? 'border-sage bg-sage-pale text-forest' : 'border-border text-ink-soft hover:border-sage'}`}
           >
             Yes, we'd return
           </button>
@@ -1574,7 +1574,7 @@ function FeedbackBlock({ retreat, submitted, token, refetch, today }: {
             type="button"
             onClick={() => setReturning(false)}
             className={`text-[14px] font-semibold rounded-xl py-3 border-2 transition-colors ${
-              returning === false ? 'border-amber bg-amber-bg text-amber-text' : 'border-border text-forest/60 hover:border-amber'}`}
+              returning === false ? 'border-amber bg-amber-bg text-amber-text' : 'border-border text-ink-soft hover:border-amber'}`}
           >
             Not sure
           </button>
@@ -1596,7 +1596,7 @@ function FeedbackBlock({ retreat, submitted, token, refetch, today }: {
 // ─── Empty card ───────────────────────────────────────────────────────────────
 function EmptyCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`${cardClass} p-4 sm:p-6 text-center text-[13px] text-forest/50 leading-relaxed`}>
+    <div className={`${cardClass} p-4 sm:p-6 text-center text-[13px] text-ink-soft leading-relaxed`}>
       {children}
     </div>
   );

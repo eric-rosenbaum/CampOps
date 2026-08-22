@@ -30,12 +30,12 @@ export function MyTasks() {
 
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="mb-8">
-          <h2 className="text-[13px] font-semibold uppercase tracking-wide text-forest/50 mb-3">
+          <h2 className="text-[13px] font-semibold uppercase tracking-wide text-ink-soft mb-3">
             My open issues
           </h2>
           {myIssues.length === 0 ? (
             <div className="bg-white rounded-card border border-border p-4 sm:p-6 text-center">
-              <p className="text-[13px] text-forest/50">No issues assigned to you</p>
+              <p className="text-[13px] text-ink-soft">No issues assigned to you</p>
             </div>
           ) : (
             <div className="space-y-2 max-w-2xl">
@@ -54,12 +54,12 @@ export function MyTasks() {
         </div>
 
         <div>
-          <h2 className="text-[13px] font-semibold uppercase tracking-wide text-forest/50 mb-3">
+          <h2 className="text-[13px] font-semibold uppercase tracking-wide text-ink-soft mb-3">
             My checklist tasks
           </h2>
           {myTasks.length === 0 ? (
             <div className="bg-white rounded-card border border-border p-4 sm:p-6 text-center">
-              <p className="text-[13px] text-forest/50">No checklist tasks assigned to you</p>
+              <p className="text-[13px] text-ink-soft">No checklist tasks assigned to you</p>
             </div>
           ) : (
             <div className="space-y-2 max-w-2xl">

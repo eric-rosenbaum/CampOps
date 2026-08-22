@@ -13,7 +13,7 @@ interface FormValues {
 }
 
 const ic = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-const lc = 'block text-[12px] font-medium text-forest/70 mb-1';
+const lc = 'block text-[12px] font-medium text-ink mb-1';
 
 export function AddStaffModal() {
   const { closeAllModals, editingSafetyStaffId } = useUIStore();
@@ -64,7 +64,7 @@ export function AddStaffModal() {
   return (
     <Modal title={editing ? 'Edit staff member' : 'Add staff member'} onClose={closeAllModals} width="420px">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <p className="text-[13px] text-forest/50 -mt-1">
+        <p className="text-[13px] text-ink-soft -mt-1">
           Staff members added here can be tracked for certifications and training compliance.
         </p>
 
@@ -96,7 +96,7 @@ export function AddStaffModal() {
               {...register('isActive')}
               className="w-4 h-4 accent-sage cursor-pointer"
             />
-            <label htmlFor="isActive" className="text-[13px] text-forest/70 cursor-pointer">
+            <label htmlFor="isActive" className="text-[13px] text-ink cursor-pointer">
               Active staff member
             </label>
           </div>

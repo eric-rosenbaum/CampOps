@@ -128,9 +128,9 @@ export function LogAssetServiceModal() {
         <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-panel-title font-semibold text-forest">{editing ? 'Edit service record' : 'Log service'}</h2>
-            <p className="text-meta text-forest/50 mt-0.5">{asset.name}</p>
+            <p className="text-meta text-ink-soft mt-0.5">{asset.name}</p>
           </div>
-          <button onClick={closeAllModals} className="text-forest/40 hover:text-forest transition-colors"><X className="w-5 h-5" /></button>
+          <button onClick={closeAllModals} className="text-ink-faint hover:text-forest transition-colors"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="px-6 py-5 space-y-4">
@@ -179,7 +179,7 @@ export function LogAssetServiceModal() {
             <div>
               <label className="text-body font-medium text-forest mb-1 block">Cost (optional)</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-forest/40 text-body">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint text-body">$</span>
                 <input type="number" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="0.00" className="w-full border border-border rounded-btn pl-6 pr-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />
               </div>
             </div>
@@ -194,18 +194,18 @@ export function LogAssetServiceModal() {
             <p className="text-body font-medium text-forest mb-2">Next service due (optional)</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="text-meta text-forest/50 mb-1 block">Date</label>
+                <label className="text-meta text-ink-soft mb-1 block">Date</label>
                 <input type="date" value={nextServiceDate} onChange={(e) => setNextServiceDate(e.target.value)} className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />
               </div>
               {asset.tracksOdometer && (
                 <div>
-                  <label className="text-meta text-forest/50 mb-1 block">Odometer</label>
+                  <label className="text-meta text-ink-soft mb-1 block">Odometer</label>
                   <input type="number" value={nextOdometer} onChange={(e) => setNextOdometer(e.target.value)} placeholder="miles" className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />
                 </div>
               )}
               {asset.tracksHours && (
                 <div>
-                  <label className="text-meta text-forest/50 mb-1 block">Hours</label>
+                  <label className="text-meta text-ink-soft mb-1 block">Hours</label>
                   <input type="number" value={nextHours} onChange={(e) => setNextHours(e.target.value)} placeholder="hrs" className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage" />
                 </div>
               )}

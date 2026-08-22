@@ -10,9 +10,9 @@ const components: Components = {
   h1: ({ children }) => <h1 className="text-[26px] font-bold text-forest tracking-tight mt-0 mb-3">{children}</h1>,
   h2: ({ children }) => <h2 className="text-[18px] font-semibold text-forest mt-9 mb-2.5 pb-1.5 border-b border-border">{children}</h2>,
   h3: ({ children }) => <h3 className="text-[15px] font-semibold text-forest mt-6 mb-2">{children}</h3>,
-  p:  ({ children }) => <p className="text-[14px] leading-relaxed text-forest/80 my-3">{children}</p>,
-  ul: ({ children }) => <ul className="list-disc pl-5 my-3 space-y-1.5 text-[14px] text-forest/80">{children}</ul>,
-  ol: ({ children }) => <ol className="list-decimal pl-5 my-3 space-y-1.5 text-[14px] text-forest/80">{children}</ol>,
+  p:  ({ children }) => <p className="text-[14px] leading-relaxed text-ink my-3">{children}</p>,
+  ul: ({ children }) => <ul className="list-disc pl-5 my-3 space-y-1.5 text-[14px] text-ink">{children}</ul>,
+  ol: ({ children }) => <ol className="list-decimal pl-5 my-3 space-y-1.5 text-[14px] text-ink">{children}</ol>,
   li: ({ children }) => <li className="leading-relaxed">{children}</li>,
   a:  ({ href, children }) => <a href={href} className="text-sage underline underline-offset-2 hover:text-forest">{children}</a>,
   strong: ({ children }) => <strong className="font-semibold text-forest">{children}</strong>,
@@ -31,7 +31,7 @@ const components: Components = {
   ),
   thead: ({ children }) => <thead className="bg-cream-dark">{children}</thead>,
   th: ({ children }) => <th className="text-left font-semibold text-forest px-3 py-2 border-b border-border">{children}</th>,
-  td: ({ children }) => <td className="align-top px-3 py-2 border-b border-border text-forest/80">{children}</td>,
+  td: ({ children }) => <td className="align-top px-3 py-2 border-b border-border text-ink">{children}</td>,
 };
 
 export function MarkdownDoc({ content }: { content: string }) {
@@ -46,7 +46,7 @@ export function MarkdownDoc({ content }: { content: string }) {
             </div>
             <span className="text-[14px] font-semibold text-forest">CampCommand</span>
           </div>
-          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-[13px] text-forest/60 hover:text-forest transition-colors">
+          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-[13px] text-ink-soft hover:text-forest transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
         </div>

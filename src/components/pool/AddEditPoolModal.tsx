@@ -13,7 +13,7 @@ interface FormValues {
 }
 
 const inputClass = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-const labelClass = 'block text-[12px] font-medium text-forest/70 mb-1';
+const labelClass = 'block text-[12px] font-medium text-ink mb-1';
 
 export function AddEditPoolModal({ fromSettings = false }: { fromSettings?: boolean }) {
   const { closeAllModals, editingPoolId } = useUIStore();
@@ -66,7 +66,7 @@ export function AddEditPoolModal({ fromSettings = false }: { fromSettings?: bool
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {!editing && (
-          <p className="text-[13px] text-forest/50 -mt-1">
+          <p className="text-[13px] text-ink-soft -mt-1">
             Add a swimming pool, waterfront, or other aquatic location.
           </p>
         )}
@@ -89,7 +89,7 @@ export function AddEditPoolModal({ fromSettings = false }: { fromSettings?: bool
               <option key={v} value={v}>{l}</option>
             ))}
           </select>
-          <p className="text-[11px] text-forest/40 mt-1">
+          <p className="text-[11px] text-ink-faint mt-1">
             Swimming pools and "other" types include the chemical log. Waterfront locations use equipment + inspection tracking only.
           </p>
         </div>

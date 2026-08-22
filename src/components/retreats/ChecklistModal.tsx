@@ -54,7 +54,7 @@ export function ChecklistModal({ retreatId, phase }: { retreatId: string; phase?
               className={`px-3.5 py-1.5 rounded-pill text-[12px] font-medium border transition-colors ${
                 curPhase === p.value
                   ? 'bg-forest text-cream border-forest'
-                  : 'bg-white text-forest/60 border-border hover:bg-cream-dark'
+                  : 'bg-white text-ink-soft border-border hover:bg-cream-dark'
               }`}
             >
               {p.label}
@@ -65,7 +65,7 @@ export function ChecklistModal({ retreatId, phase }: { retreatId: string; phase?
         {/* Items */}
         <div className="bg-white rounded-card border border-border overflow-hidden">
           {items.length === 0 && (
-            <p className="text-[12px] text-forest/40 italic px-4 py-3">No {curPhase} tasks yet.</p>
+            <p className="text-[12px] text-ink-faint italic px-4 py-3">No {curPhase} tasks yet.</p>
           )}
           {items.map((c) => (
             <div key={c.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-cream-dark last:border-b-0">
@@ -78,7 +78,7 @@ export function ChecklistModal({ retreatId, phase }: { retreatId: string; phase?
               >
                 {c.isDone ? '✓' : ''}
               </button>
-              <span className={`flex-1 text-[13px] ${c.isDone ? 'text-forest/40 line-through' : 'text-forest'}`}>{c.title}</span>
+              <span className={`flex-1 text-[13px] ${c.isDone ? 'text-ink-faint line-through' : 'text-forest'}`}>{c.title}</span>
               {canManage && (
                 <button
                   onClick={() => deleteChecklistItem(c.id)}

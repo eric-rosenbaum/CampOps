@@ -8,7 +8,7 @@ import type { PhaseState } from '@/store/retreatStore';
 
 export const inputClass =
   'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-export const labelClass = 'block text-[11px] font-semibold uppercase tracking-widest text-forest/50 mb-1';
+export const labelClass = 'block text-[11px] font-semibold uppercase tracking-widest text-ink-soft mb-1';
 
 // ─── Money & dates ────────────────────────────────────────────────────────────
 export function money(n: number | null | undefined): string {
@@ -82,7 +82,7 @@ const BADGE_CLASS: Record<BadgeTone, string> = {
   ok: 'bg-green-muted-bg text-green-muted-text',
   warn: 'bg-amber-bg text-amber-text',
   alert: 'bg-red-bg text-red',
-  neutral: 'bg-cream-dark text-forest/70',
+  neutral: 'bg-cream-dark text-ink',
   blue: 'bg-blue-bg text-blue-text',
   purple: 'bg-purple-bg text-purple-text',
   sage: 'bg-sage-pale text-forest',
@@ -116,7 +116,7 @@ export const PHASE_LABELS: Record<(typeof PHASE_KEYS)[number], string> = {
 
 function PhaseDot({ state }: { state: PhaseState }) {
   const cls = state === 'done' ? 'bg-sage text-white'
-    : state === 'active' ? 'bg-amber text-white' : 'bg-cream-dark text-forest/40';
+    : state === 'active' ? 'bg-amber text-white' : 'bg-cream-dark text-ink-faint';
   return (
     <div className={`w-6 h-6 rounded-full mx-auto flex items-center justify-center text-[11px] font-bold ${cls}`}>
       {state === 'done' ? '✓' : state === 'active' ? '→' : '○'}
@@ -129,7 +129,7 @@ export function PhaseTracker({ progress }: { progress: Record<(typeof PHASE_KEYS
     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-3 mt-3 border-t border-cream-dark">
       {PHASE_KEYS.map((k) => (
         <div key={k} className="text-center">
-          <p className="text-[9px] font-semibold uppercase tracking-wide text-forest/45 mb-1">{PHASE_LABELS[k]}</p>
+          <p className="text-[9px] font-semibold uppercase tracking-wide text-ink-faint mb-1">{PHASE_LABELS[k]}</p>
           <PhaseDot state={progress[k]} />
         </div>
       ))}

@@ -51,7 +51,7 @@ export function SettingsTab() {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-[15px] font-semibold text-forest">Sessions</h2>
-              <p className="text-[12px] text-forest/50">Head counts and dates that everything else scales from.</p>
+              <p className="text-[12px] text-ink-soft">Head counts and dates that everything else scales from.</p>
             </div>
             {canManage && (
               <Button size="sm" onClick={() => openModal({ kind: 'session' })}>+ New session</Button>
@@ -60,13 +60,13 @@ export function SettingsTab() {
 
           <div className="bg-white rounded-card border border-border overflow-hidden">
             {sessions.length === 0 && (
-              <p className="px-4 py-4 sm:py-6 text-center text-[13px] text-forest/45">
+              <p className="px-4 py-4 sm:py-6 text-center text-[13px] text-ink-faint">
                 No sessions yet. Create one to start planning menus and orders.
               </p>
             )}
             {sessions.map((s) => (
               <div key={s.id} className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-0">
-                <CalendarDays className="w-4 h-4 text-forest/40 flex-shrink-0" />
+                <CalendarDays className="w-4 h-4 text-ink-faint flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-[13px] font-medium text-forest truncate">{s.name}</p>
@@ -74,10 +74,10 @@ export function SettingsTab() {
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded-pill text-[10px] font-medium bg-green-muted-bg text-green-muted-text border border-sage/25">Active</span>
                     )}
                   </div>
-                  <p className="text-[11px] text-forest/45 truncate">
+                  <p className="text-[11px] text-ink-faint truncate">
                     {fmtDate(s.startDate)} – {fmtDate(s.endDate)} · {s.camperCount + s.staffCount} people ({s.camperCount} campers + {s.staffCount} staff)
                   </p>
-                  <p className="text-[11px] text-forest/40 truncate">{cadenceSummary(s)}</p>
+                  <p className="text-[11px] text-ink-faint truncate">{cadenceSummary(s)}</p>
                 </div>
                 {s.id !== activeSessionId && (
                   <Button size="sm" variant="ghost" onClick={() => setActiveSession(s.id)}>Set active</Button>
@@ -105,7 +105,7 @@ export function SettingsTab() {
                 <AlertTriangle className="w-5 h-5 text-red flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-body font-semibold text-forest">Delete all commissary data</p>
-                  <p className="text-[12px] text-forest/60 mt-0.5 leading-relaxed">
+                  <p className="text-[12px] text-ink-soft mt-0.5 leading-relaxed">
                     Permanently removes this camp's inventory, vendors, recipes, menus, orders, production plans,
                     campers, and allergy records. The shared product catalog is <strong>not</strong> affected.
                     Great for clearing sample data before uploading a fresh inventory. This cannot be undone.

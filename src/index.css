@@ -8,9 +8,9 @@
 
 body {
   margin: 0;
-  font-family: 'DM Sans', sans-serif;
-  background-color: #f5f2eb;
-  color: #1a2e1a;
+  font-family: 'Karla', ui-sans-serif, system-ui, sans-serif;
+  background-color: #F6F1E4;
+  color: #23201B;
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
 }
@@ -30,9 +30,21 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d4cfc4;
+  background: #DED3BB;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #b5b0a4;
+  background: #C4B896;
+}
+
+/* A horizontally scrollable strip (module tabs, filter rows) should scroll by drag or wheel
+   without drawing a bar across the design. Note `overflow-x: auto` also promotes overflow-y
+   to auto per spec, which is what produced a stray vertical scrollbar beside the tabs — the
+   call sites pair this with `overflow-y-hidden`. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

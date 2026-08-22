@@ -17,7 +17,7 @@ interface FormValues {
 }
 
 const ic = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-const lc = 'block text-[12px] font-medium text-forest/70 mb-1';
+const lc = 'block text-[12px] font-medium text-ink mb-1';
 
 export function LogTempModal() {
   const { closeAllModals, logTempForItemId, editingTempLogId } = useUIStore();
@@ -104,7 +104,7 @@ export function LogTempModal() {
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {!existingLog && (
-          <p className="text-[13px] text-forest/50 -mt-1">Record an AM or PM refrigeration temperature reading.</p>
+          <p className="text-[13px] text-ink-soft -mt-1">Record an AM or PM refrigeration temperature reading.</p>
         )}
 
         <div>
@@ -118,7 +118,7 @@ export function LogTempModal() {
             ))}
           </select>
           {selectedItem && tempMin !== undefined && tempMax !== undefined && (
-            <p className="text-[10px] text-forest/40 mt-0.5">
+            <p className="text-[10px] text-ink-faint mt-0.5">
               Required range: {tempMin}–{tempMax}°F
             </p>
           )}

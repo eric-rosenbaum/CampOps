@@ -27,7 +27,7 @@ function DrillCard({ drill }: { drill: EmergencyDrill }) {
       <div className="flex items-start justify-between">
         <div className="flex-1 pr-4">
           <h4 className="text-[13px] font-semibold text-forest">{displayName}</h4>
-          <p className="text-[11px] text-forest/40 mt-0.5 leading-relaxed">
+          <p className="text-[11px] text-ink-faint mt-0.5 leading-relaxed">
             {drill.lead ? `Lead: ${drill.lead}` : ''}
             {drill.lead && drill.participantCount ? ' · ' : ''}
             {drill.participantCount ? `${drill.participantCount} participants` : ''}
@@ -45,13 +45,13 @@ function DrillCard({ drill }: { drill: EmergencyDrill }) {
             </span>
           )}
           {drill.status === 'cancelled' && (
-            <span className="text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide bg-cream-dark text-forest/40">
+            <span className="text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide bg-cream-dark text-ink-faint">
               Cancelled
             </span>
           )}
           <button
             onClick={() => openLogDrillModal(drill.id)}
-            className={`p-1.5 rounded text-forest/40 hover:text-forest hover:bg-cream transition-all ${hovered ? 'opacity-100' : 'opacity-0'}`}
+            className={`p-1.5 rounded text-ink-faint hover:text-forest hover:bg-cream transition-all ${hovered ? 'opacity-100' : 'opacity-0'}`}
             title="Edit"
           >
             <Pencil className="w-3.5 h-3.5" />
@@ -62,32 +62,32 @@ function DrillCard({ drill }: { drill: EmergencyDrill }) {
       {isCompleted && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
           <div>
-            <p className="text-[10px] text-forest/40 font-medium mb-0.5">Date</p>
+            <p className="text-[10px] text-ink-faint font-medium mb-0.5">Date</p>
             <p className="text-[12px] font-semibold font-mono text-forest">
               {new Date(drillDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-forest/40 font-medium mb-0.5">Response time</p>
+            <p className="text-[10px] text-ink-faint font-medium mb-0.5">Response time</p>
             <p className={`text-[12px] font-semibold font-mono ${drill.responseTime ? 'text-green-muted-text' : 'text-forest/30'}`}>
               {drill.responseTime ?? '—'}
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-forest/40 font-medium mb-0.5">All accounted</p>
+            <p className="text-[10px] text-ink-faint font-medium mb-0.5">All accounted</p>
             <p className={`text-[12px] font-semibold ${drill.allAccounted === null ? 'text-forest/30' : drill.allAccounted ? 'text-green-muted-text' : 'text-red'}`}>
               {drill.allAccounted === null ? '—' : drill.allAccounted ? 'Yes' : 'No — see notes'}
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-forest/40 font-medium mb-0.5">Participants</p>
+            <p className="text-[10px] text-ink-faint font-medium mb-0.5">Participants</p>
             <p className="text-[12px] font-medium text-forest">{drill.participantCount ?? '—'}</p>
           </div>
         </div>
       )}
 
       {drill.notes && (
-        <p className="text-[11px] text-forest/50 mt-3 pt-3 border-t border-cream-dark leading-relaxed">{drill.notes}</p>
+        <p className="text-[11px] text-ink-soft mt-3 pt-3 border-t border-cream-dark leading-relaxed">{drill.notes}</p>
       )}
 
       {isScheduled && (
@@ -122,41 +122,41 @@ export function DrillsTab() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
         <div className="bg-white border border-border rounded-card px-4 py-4">
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Fire drills</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Fire drills</p>
           <p className="font-mono font-semibold text-stat mt-1 text-green-muted-text">{fireDrillsDone}</p>
-          <p className="text-meta text-forest/40 mt-0.5">Completed this season</p>
+          <p className="text-meta text-ink-faint mt-0.5">Completed this season</p>
         </div>
         <div className="bg-white border border-border rounded-card px-4 py-4">
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Staff CPR certified</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Staff CPR certified</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${cprPct === 100 ? 'text-green-muted-text' : cprPct !== null ? 'text-amber' : 'text-forest/30'}`}>
             {cprPct !== null ? `${cprPct}%` : '—'}
           </p>
-          <p className="text-meta text-forest/40 mt-0.5">
+          <p className="text-meta text-ink-faint mt-0.5">
             {cprSummary.total > 0 ? `${cprSummary.current} of ${cprSummary.total} staff` : 'No staff added'}
           </p>
         </div>
         <div className="bg-white border border-border rounded-card px-4 py-4">
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Next drill</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Next drill</p>
           {nextDrill ? (
             <>
               <p className="font-semibold text-[18px] mt-2 text-forest">
                 {new Date(nextDrill.scheduledDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </p>
-              <p className="text-meta text-forest/40 mt-0.5 truncate">{DRILL_TYPE_LABELS[nextDrill.drillType]}</p>
+              <p className="text-meta text-ink-faint mt-0.5 truncate">{DRILL_TYPE_LABELS[nextDrill.drillType]}</p>
             </>
           ) : (
             <>
               <p className="font-semibold text-[18px] mt-2 text-forest/30">—</p>
-              <p className="text-meta text-forest/40 mt-0.5">None scheduled</p>
+              <p className="text-meta text-ink-faint mt-0.5">None scheduled</p>
             </>
           )}
         </div>
         <div className={`bg-white border border-border rounded-card px-4 py-4 ${drills.length > 0 && !acaMet ? 'border-l-[3px] border-l-amber' : ''}`}>
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">ACA requirement</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">ACA requirement</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${drills.length === 0 ? 'text-forest/30' : acaMet ? 'text-green-muted-text' : 'text-amber'}`}>
             {drills.length === 0 ? '—' : acaMet ? 'Met' : 'In progress'}
           </p>
-          <p className="text-meta text-forest/40 mt-0.5">All mandatory drill types</p>
+          <p className="text-meta text-ink-faint mt-0.5">All mandatory drill types</p>
         </div>
       </div>
 
@@ -183,7 +183,7 @@ export function DrillsTab() {
 
       {drills.length === 0 ? (
         <div className="bg-white border border-border rounded-card px-5 py-10 text-center">
-          <p className="text-[13px] text-forest/40">No drills logged yet.</p>
+          <p className="text-[13px] text-ink-faint">No drills logged yet.</p>
           <div className="flex justify-center gap-3 mt-2">
             <button onClick={openScheduleDrillModal} className="text-[12px] text-sage font-medium cursor-pointer hover:underline">+ Schedule upcoming drill</button>
             <span className="text-forest/20">·</span>

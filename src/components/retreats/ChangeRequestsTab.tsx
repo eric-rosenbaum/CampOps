@@ -48,7 +48,7 @@ export function ChangeRequestsTab() {
       </div>
 
       {pending.length === 0 ? (
-        <div className="bg-white rounded-card border border-border px-5 py-4 sm:py-6 text-center text-[13px] text-forest/45 italic mb-8">
+        <div className="bg-white rounded-card border border-border px-5 py-4 sm:py-6 text-center text-[13px] text-ink-faint italic mb-8">
           No pending change requests. You're all caught up.
         </div>
       ) : (
@@ -60,13 +60,13 @@ export function ChangeRequestsTab() {
                   <p className="text-[13px] font-semibold text-forest">
                     {groupName(r)} — {KIND_LABELS[r.kind]} change request
                   </p>
-                  <p className="text-[11px] text-forest/45 mt-0.5">
+                  <p className="text-[11px] text-ink-faint mt-0.5">
                     Submitted by {r.submittedBy ?? 'group'} · {fmtWhen(r.submittedAt)}
                   </p>
                 </div>
                 <Badge tone="warn">Pending</Badge>
               </div>
-              <p className="text-[13px] text-forest/70 mt-2.5 leading-relaxed">{r.body}</p>
+              <p className="text-[13px] text-ink mt-2.5 leading-relaxed">{r.body}</p>
               {canManage && (
                 <div className="flex flex-wrap gap-2 mt-3">
                   <Button size="sm" onClick={() => openModal({ kind: 'respondRequest', requestId: r.id })}>
@@ -89,7 +89,7 @@ export function ChangeRequestsTab() {
       <h3 className="text-[14px] font-semibold text-forest mb-3">Resolved requests</h3>
 
       {resolved.length === 0 ? (
-        <div className="bg-white rounded-card border border-border px-5 py-4 sm:py-6 text-center text-[13px] text-forest/45 italic">
+        <div className="bg-white rounded-card border border-border px-5 py-4 sm:py-6 text-center text-[13px] text-ink-faint italic">
           No resolved requests yet.
         </div>
       ) : (
@@ -108,15 +108,15 @@ export function ChangeRequestsTab() {
                     <p className="text-[13px] font-semibold text-forest">
                       {groupName(r)} — {KIND_LABELS[r.kind]} change
                     </p>
-                    <p className="text-[11px] text-forest/45 mt-0.5">
+                    <p className="text-[11px] text-ink-faint mt-0.5">
                       Submitted {fmtWhen(r.submittedAt)} · {statusLabel} {fmtWhen(r.respondedAt)}
                     </p>
                   </div>
                   <Badge tone={tone}>{statusLabel}</Badge>
                 </div>
-                <p className="text-[13px] text-forest/70 mt-2.5 leading-relaxed">{r.body}</p>
+                <p className="text-[13px] text-ink mt-2.5 leading-relaxed">{r.body}</p>
                 {r.responseMessage && (
-                  <p className="text-[12px] text-forest/55 mt-2.5 pt-2.5 border-t border-cream-dark italic leading-relaxed">
+                  <p className="text-[12px] text-ink-soft mt-2.5 pt-2.5 border-t border-cream-dark italic leading-relaxed">
                     Ops response: {r.responseMessage}
                     {(r.respondedBy || r.respondedAt) && (
                       <span className="not-italic"> · {r.respondedBy ?? 'Ops'} · {fmtWhen(r.respondedAt)}</span>

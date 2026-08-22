@@ -39,7 +39,7 @@ export function CommissaryFilesPanel() {
 
   return (
     <div className="mb-6">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40 mb-2">Allergy documents</p>
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint mb-2">Allergy documents</p>
 
       {canManage && (
         <div
@@ -53,12 +53,12 @@ export function CommissaryFilesPanel() {
         >
           <input ref={inputRef} type="file" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
           {busy ? (
-            <Loader2 className="w-6 h-6 text-forest/40 mx-auto mb-2 animate-spin" />
+            <Loader2 className="w-6 h-6 text-ink-faint mx-auto mb-2 animate-spin" />
           ) : (
-            <Upload className="w-6 h-6 text-forest/40 mx-auto mb-2" />
+            <Upload className="w-6 h-6 text-ink-faint mx-auto mb-2" />
           )}
           <p className="text-[13px] font-medium text-forest">Drop an allergy roster or document here</p>
-          <p className="text-[12px] text-forest/45 mt-1">
+          <p className="text-[12px] text-ink-faint mt-1">
             or click to choose a file. Stored securely — visible only to admins and health staff.
           </p>
         </div>
@@ -68,15 +68,15 @@ export function CommissaryFilesPanel() {
         <div className="bg-white rounded-card border border-border overflow-hidden mt-3">
           {files.map((f) => (
             <div key={f.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0">
-              <FileText className="w-4 h-4 text-forest/40 flex-shrink-0" />
+              <FileText className="w-4 h-4 text-ink-faint flex-shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] text-forest truncate">{f.name}</p>
-                <p className="text-[11px] text-forest/40">
+                <p className="text-[11px] text-ink-faint">
                   {fmtSize(f.sizeBytes)}{f.sizeBytes != null ? ' · ' : ''}
                   {new Date(f.createdAt).toLocaleDateString()}{f.uploadedBy ? ` · ${f.uploadedBy}` : ''}
                 </p>
               </div>
-              <button onClick={() => download(f)} className="p-1.5 text-forest/40 hover:text-forest" title="Download" aria-label="Download">
+              <button onClick={() => download(f)} className="p-1.5 text-ink-faint hover:text-forest" title="Download" aria-label="Download">
                 <Download className="w-4 h-4" />
               </button>
               {canManage && (
@@ -91,7 +91,7 @@ export function CommissaryFilesPanel() {
           ))}
         </div>
       ) : (
-        !canManage && <p className="text-[13px] text-forest/45 mt-2">No documents uploaded.</p>
+        !canManage && <p className="text-[13px] text-ink-faint mt-2">No documents uploaded.</p>
       )}
     </div>
   );

@@ -82,6 +82,7 @@ function issueToRow(issue: Issue) {
     is_public_report: issue.isPublicReport,
     reporter_name: issue.reporterName,
     reporter_contact: issue.reporterContact,
+    source: issue.source,
     created_at: issue.createdAt,
     updated_at: issue.updatedAt,
   };
@@ -108,6 +109,7 @@ function rowToIssue(row: Record<string, unknown>, activityLog: ActivityEntry[]):
     isPublicReport: (row.is_public_report as boolean) ?? false,
     reporterName: (row.reporter_name as string) ?? null,
     reporterContact: (row.reporter_contact as string) ?? null,
+    source: (row.source as Issue['source']) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
     activityLog,

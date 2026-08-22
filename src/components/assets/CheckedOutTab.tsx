@@ -12,7 +12,7 @@ export function CheckedOutTab() {
   if (checkedOut.length === 0) {
     return (
       <div className="text-center py-16">
-        <p className="text-body text-forest/40">No assets are currently checked out.</p>
+        <p className="text-body text-ink-faint">No assets are currently checked out.</p>
       </div>
     );
   }
@@ -34,7 +34,7 @@ export function CheckedOutTab() {
               <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setActiveAsset(asset.id)}>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-card-title font-semibold text-forest">{asset.name}</span>
-                  <span className="text-label font-medium px-2 py-0.5 rounded-tag bg-cream-dark text-forest/50 uppercase tracking-wide">
+                  <span className="text-label font-medium px-2 py-0.5 rounded-tag bg-cream-dark text-ink-soft uppercase tracking-wide">
                     {SUBTYPE_LABELS[asset.subtype] ?? asset.subtype}
                   </span>
                   {isOverdue && (
@@ -47,20 +47,20 @@ export function CheckedOutTab() {
                 <div className="mt-1.5 space-y-0.5">
                   <p className="text-body text-forest">
                     <span className="font-medium">{checkout.checkedOutBy}</span>
-                    <span className="text-forest/50"> · {checkout.purpose}</span>
+                    <span className="text-ink-soft"> · {checkout.purpose}</span>
                   </p>
-                  <p className={`text-meta ${isOverdue ? 'text-red font-medium' : 'text-forest/50'}`}>
+                  <p className={`text-meta ${isOverdue ? 'text-red font-medium' : 'text-ink-soft'}`}>
                     {isOverdue ? 'Was due ' : 'Due by '}
                     {new Date(checkout.expectedReturnAt).toLocaleString('en-US', {
                       month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
                     })}
                   </p>
                   {checkout.checkoutNotes && (
-                    <p className="text-meta text-forest/40 italic">{checkout.checkoutNotes}</p>
+                    <p className="text-meta text-ink-faint italic">{checkout.checkoutNotes}</p>
                   )}
                 </div>
 
-                <div className="flex items-center gap-3 mt-1.5 text-meta text-forest/40 flex-wrap">
+                <div className="flex items-center gap-3 mt-1.5 text-meta text-ink-faint flex-wrap">
                   <span>{asset.storageLocation}</span>
                   {asset.tracksOdometer && checkout.startOdometer !== null && (
                     <span>Start: {checkout.startOdometer.toLocaleString()} mi</span>
@@ -74,20 +74,20 @@ export function CheckedOutTab() {
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={() => openReturnModal(checkout.id, asset.id)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-forest/60 hover:text-forest transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-ink-soft hover:text-forest transition-colors"
                 >
                   <RotateCcw className="w-3.5 h-3.5" /> Return
                 </button>
                 <button
                   onClick={() => openEditCheckoutModal(checkout.id, asset.id)}
-                  className="p-1.5 text-forest/40 hover:text-forest transition-colors rounded"
+                  className="p-1.5 text-ink-faint hover:text-forest transition-colors rounded"
                   title="Edit checkout"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => deleteCheckout(checkout.id, asset.id)}
-                  className="p-1.5 text-forest/40 hover:text-red transition-colors rounded"
+                  className="p-1.5 text-ink-faint hover:text-red transition-colors rounded"
                   title="Delete checkout"
                 >
                   <Trash2 className="w-4 h-4" />

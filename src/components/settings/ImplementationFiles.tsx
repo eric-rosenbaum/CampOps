@@ -11,7 +11,7 @@ import { formatDateTime } from '@/lib/utils';
 import { IMPLEMENTATION_CATEGORIES } from '@/lib/types';
 import type { ImplementationFile, ImplementationCategory } from '@/lib/types';
 
-const cardCls = 'bg-white border border-stone-200 rounded-xl p-5';
+const cardCls = 'bg-white border border-border rounded-xl p-5';
 
 const CATEGORY_LABELS: Record<ImplementationCategory, string> = {
   locations: 'Locations & buildings',
@@ -66,7 +66,7 @@ export function ImplementationDropzone({
       onDrop={e => { e.preventDefault(); setDragOver(false); send(e.dataTransfer.files?.[0]); }}
       onClick={() => status?.state !== 'uploading' && inputRef.current?.click()}
       className={`cursor-pointer rounded-xl border border-dashed px-4 py-5 text-center transition-colors ${
-        dragOver ? 'border-sage bg-sage-pale/40' : 'border-stone-300 hover:border-forest/40 bg-stone-50/60'
+        dragOver ? 'border-sage bg-sage-pale/40' : 'border-border hover:border-forest/40 bg-paper/60'
       }`}
     >
       <input
@@ -77,17 +77,17 @@ export function ImplementationDropzone({
         <div className="flex flex-col items-center gap-1.5 text-sage">
           <Check className="w-5 h-5" />
           <p className="text-[12px] font-medium">Got it — {status.fileName}</p>
-          <p className="text-[11px] text-forest/45">
+          <p className="text-[11px] text-ink-faint">
             Our team will load it and follow up. <span className="underline">Send another</span>
           </p>
         </div>
       ) : status?.state === 'uploading' ? (
-        <p className="text-[12px] text-forest/50 py-2">Uploading {status.fileName}…</p>
+        <p className="text-[12px] text-ink-soft py-2">Uploading {status.fileName}…</p>
       ) : (
         <div className="flex flex-col items-center gap-1.5">
-          <Upload className={`w-5 h-5 ${dragOver ? 'text-sage' : 'text-forest/35'}`} />
+          <Upload className={`w-5 h-5 ${dragOver ? 'text-sage' : 'text-ink-faint'}`} />
           <p className="text-[12px] font-semibold text-forest">{title}</p>
-          <p className="text-[11px] text-forest/45 leading-snug">{blurb}</p>
+          <p className="text-[11px] text-ink-faint leading-snug">{blurb}</p>
           {status?.state === 'error' && <p className="text-[11px] text-red">Upload failed — try again.</p>}
         </div>
       )}
@@ -118,14 +118,14 @@ export function ImplementationFilesTab() {
       {/* Send something */}
       <div className={cardCls}>
         <h2 className="text-[13px] font-semibold text-forest mb-1">Send us your setup files</h2>
-        <p className="text-[12px] text-forest/40 mb-4">
+        <p className="text-[12px] text-ink-faint mb-4">
           Getting your camp set up? Send your existing spreadsheets and lists here and our team will
           load them for you. This is the only place to send data — please don't email it.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-2.5 mb-3">
           <label className="flex-1">
-            <span className="block text-[12px] font-medium text-forest/60 mb-1">What is it?</span>
+            <span className="block text-[12px] font-medium text-ink-soft mb-1">What is it?</span>
             <select
               value={category}
               onChange={e => setCategory(e.target.value as ImplementationCategory)}
@@ -137,7 +137,7 @@ export function ImplementationFilesTab() {
             </select>
           </label>
           <label className="flex-1">
-            <span className="block text-[12px] font-medium text-forest/60 mb-1">
+            <span className="block text-[12px] font-medium text-ink-soft mb-1">
               Anything we should know? <span className="text-forest/30 font-normal">(optional)</span>
             </span>
             <input
@@ -157,7 +157,7 @@ export function ImplementationFilesTab() {
           onUploaded={() => { setNote(''); reload(); }}
         />
 
-        <div className="mt-3 flex gap-2 text-[11px] text-forest/50 bg-cream/60 border border-border rounded-btn px-3 py-2.5 leading-relaxed">
+        <div className="mt-3 flex gap-2 text-[11px] text-ink-soft bg-cream/60 border border-border rounded-btn px-3 py-2.5 leading-relaxed">
           <ShieldCheck className="w-3.5 h-3.5 text-sage flex-shrink-0 mt-px" />
           <p>
             Files land in your camp's own private storage — no other camp can reach them, and every
@@ -170,12 +170,12 @@ export function ImplementationFilesTab() {
       {/* Receipts */}
       <div className={cardCls}>
         <h2 className="text-[13px] font-semibold text-forest mb-1">What you've sent us</h2>
-        <p className="text-[12px] text-forest/40 mb-4">A permanent record of every file handed off during setup.</p>
+        <p className="text-[12px] text-ink-faint mb-4">A permanent record of every file handed off during setup.</p>
 
         {loading ? (
-          <p className="text-[12px] text-forest/40 py-3">Loading…</p>
+          <p className="text-[12px] text-ink-faint py-3">Loading…</p>
         ) : files.length === 0 ? (
-          <div className="text-center py-7 text-forest/35">
+          <div className="text-center py-7 text-ink-faint">
             <FileText className="w-7 h-7 mx-auto mb-2 opacity-40" />
             <p className="text-[12px]">Nothing sent yet.</p>
           </div>
@@ -186,17 +186,17 @@ export function ImplementationFilesTab() {
                 <FileText className="w-4 h-4 text-forest/25 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] text-forest truncate">{f.name}</p>
-                  <p className="text-[11px] text-forest/40">
+                  <p className="text-[11px] text-ink-faint">
                     {CATEGORY_LABELS[f.category] ?? f.category}
                     {f.sizeBytes != null && ` · ${formatSize(f.sizeBytes)}`}
                     {' · '}{formatDateTime(f.createdAt)}
                     {f.uploaderName && ` · ${f.uploaderName}`}
                   </p>
-                  {f.note && <p className="text-[11px] text-forest/45 italic mt-0.5 truncate">“{f.note}”</p>}
+                  {f.note && <p className="text-[11px] text-ink-faint italic mt-0.5 truncate">“{f.note}”</p>}
                 </div>
                 <button
                   onClick={() => download(f)}
-                  className="flex items-center gap-1 text-[12px] text-forest/40 hover:text-forest px-2 py-1 rounded hover:bg-cream transition-colors flex-shrink-0"
+                  className="flex items-center gap-1 text-[12px] text-ink-faint hover:text-forest px-2 py-1 rounded hover:bg-cream transition-colors flex-shrink-0"
                 >
                   <Download className="w-3 h-3" />
                   Download

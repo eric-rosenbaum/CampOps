@@ -2,14 +2,47 @@ import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Wrench, ClipboardList,
-  TreePine, Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
+  Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
 } from 'lucide-react';
+import { FirepitMark, SidebarContours } from '@/components/shared/FirepitMark';
 import { useAuth } from '@/lib/auth';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
 import type { StaffGroupModules } from '@/store/campStore';
 
 type LucideIcon = React.ComponentType<{ className?: string }>;
+
+/**
+ * The active item is a paper cut-out of the sidebar with an ember edge, rather than a tinted
+ * block — it reads as the page you are standing in continuing under the nav.
+ */
+function navClass(isActive: boolean, collapsed: boolean): string {
+  const base = collapsed
+    ? 'group relative flex items-center justify-center mx-2 mb-0.5 py-2.5 rounded-btn transition-colors'
+    : 'group relative flex items-center gap-2.5 py-[9px] pr-2 mb-[3px] text-[14px] transition-colors border-l-[3px]';
+  if (isActive) {
+    return collapsed
+      ? `${base} bg-cream text-forest`
+      : `${base} bg-cream text-forest border-red font-bold pl-[15px]`;
+  }
+  return collapsed
+    ? `${base} text-side hover:bg-white/[0.07] hover:text-side-strong`
+    : `${base} text-side border-transparent pl-[15px] hover:bg-white/[0.07] hover:text-side-strong`;
+}
+
+/** Tooltip shown only in rail mode, where the label is hidden. */
+function RailTip({ label }: { label: string }) {
+  return (
+    <span
+      className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-20 hidden -translate-y-1/2
+                 whitespace-nowrap rounded-md border border-white/15 bg-[#14211B] px-2.5 py-1.5
+                 text-[12px] font-semibold text-cream opacity-0 shadow-lg transition-opacity
+                 group-hover:opacity-100 lg:block"
+    >
+      {label}
+    </span>
+  );
+}
 
 interface NavItem {
   path: string;
@@ -48,9 +81,11 @@ interface SidebarProps {
   /** Drawer state below `lg`. Ignored at desktop widths, where the sidebar is always shown. */
   open?: boolean;
   onClose?: () => void;
+  /** Rail mode: icons only. Desktop-only — the drawer is always full width on a phone. */
+  collapsed?: boolean;
 }
 
-export function Sidebar({ open = false, onClose }: SidebarProps) {
+export function Sidebar({ open = false, onClose, collapsed = false }: SidebarProps) {
   const { currentUser, role, roleLabel, canAccessModule } = useAuth();
   const { currentCamp } = useCampStore();
   const signOut = useAuthStore((s) => s.signOut);
@@ -98,29 +133,38 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       {open && (
         <div
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-forest/40 backdrop-blur-[1px] lg:hidden"
+          className="fixed inset-0 z-40 bg-ink/50 backdrop-blur-[1px] lg:hidden"
           aria-hidden="true"
         />
       )}
       <aside
-        className={`w-sidebar min-w-sidebar h-screen bg-forest flex flex-col flex-shrink-0
+        className={`relative h-screen bg-forest flex flex-col flex-shrink-0 overflow-hidden
           fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out
+          w-sidebar min-w-sidebar
           ${open ? 'translate-x-0' : '-translate-x-full'}
-          lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 lg:transition-none`}
+          lg:sticky lg:top-0 lg:z-auto lg:translate-x-0
+          lg:transition-[width,min-width] lg:duration-300 lg:ease-out
+          ${collapsed ? 'lg:w-rail lg:min-w-rail' : ''}`}
       >
-      <div className="px-5 pt-6 pb-5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-sage rounded-btn flex items-center justify-center flex-shrink-0">
-            <TreePine className="w-4 h-4 text-forest" />
-          </div>
-          <span className="text-[15px] font-semibold text-cream">CampCommand</span>
+      <SidebarContours />
+      <div className={`relative pt-6 pb-5 ${collapsed ? 'lg:px-0 lg:justify-center px-5' : 'px-5'}`}>
+        <div className={`flex items-center gap-2.5 ${collapsed ? 'lg:justify-center' : ''}`}>
+          <FirepitMark size={30} className="flex-shrink-0" />
+          <span className={`font-display text-[17px] font-bold tracking-tight text-side-strong whitespace-nowrap
+                            ${collapsed ? 'lg:hidden' : ''}`}>
+            CampCommand
+          </span>
         </div>
       </div>
 
-      <div className="px-3 flex-1 overflow-y-auto">
+      <div className="relative flex-1 overflow-y-auto overflow-x-hidden">
         {navSections.map((section) => (
-          <div key={section.section} className="mb-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 px-2 mb-1.5">
+          <div key={section.section} className="mb-4">
+            {collapsed ? (
+              <div className="mx-auto my-2 h-px w-6 bg-white/15 lg:block hidden" />
+            ) : null}
+            <p className={`text-[9.5px] font-bold uppercase tracking-[0.16em] text-side-dim px-[18px] pt-3 pb-1.5
+                           ${collapsed ? 'lg:hidden' : ''}`}>
               {section.section}
             </p>
             {section.items.map((item) => (
@@ -129,23 +173,24 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 to={item.path}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-2 py-2 rounded-btn text-[13px] font-medium transition-colors mb-0.5 ${
-                    isActive
-                      ? 'border-l-2 border-sage bg-sage/[0.14] text-sage-light pl-[6px]'
-                      : 'text-white/60 hover:text-white/90 hover:bg-white/5 border-l-2 border-transparent'
-                  }`
+                  navClass(isActive, collapsed)
                 }
               >
-                <item.icon className="w-4 h-4 flex-shrink-0" />
-                {item.label}
+                <item.icon className={`flex-shrink-0 ${collapsed ? 'w-[18px] h-[18px]' : 'w-4 h-4'}`} />
+                <span className={collapsed ? 'lg:hidden' : ''}>{item.label}</span>
+                {collapsed && <RailTip label={item.label} />}
               </NavLink>
             ))}
           </div>
         ))}
 
         {role === 'admin' && (
-          <div className="mb-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 px-2 mb-1.5">
+          <div className="mb-4">
+            {collapsed ? (
+              <div className="mx-auto my-2 h-px w-6 bg-white/15 lg:block hidden" />
+            ) : null}
+            <p className={`text-[9.5px] font-bold uppercase tracking-[0.16em] text-side-dim px-[18px] pt-3 pb-1.5
+                           ${collapsed ? 'lg:hidden' : ''}`}>
               Settings
             </p>
             {settingsItems.map((item) => (
@@ -154,15 +199,12 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 to={item.path}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-2 py-2 rounded-btn text-[13px] font-medium transition-colors mb-0.5 ${
-                    isActive
-                      ? 'border-l-2 border-sage bg-sage/[0.14] text-sage-light pl-[6px]'
-                      : 'text-white/60 hover:text-white/90 hover:bg-white/5 border-l-2 border-transparent'
-                  }`
+                  navClass(isActive, collapsed)
                 }
               >
-                <Settings className="w-4 h-4 flex-shrink-0" />
-                {item.label}
+                <Settings className={`flex-shrink-0 ${collapsed ? 'w-[18px] h-[18px]' : 'w-4 h-4'}`} />
+                <span className={collapsed ? 'lg:hidden' : ''}>{item.label}</span>
+                {collapsed && <RailTip label={item.label} />}
               </NavLink>
             ))}
           </div>
@@ -170,14 +212,25 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
 
       </div>
 
-      <div className="px-5 py-4 border-t border-white/10">
-        <p className="text-[12px] font-medium text-white/80 truncate">{currentCamp?.name ?? ''}</p>
-        <p className="text-[11px] text-white/40 mt-0.5 truncate">{currentUser.name} — {roleLabel}</p>
-        <div className="flex items-center gap-3 mt-3">
+      <div className={`relative border-t border-white/[0.13] py-4 ${collapsed ? 'lg:px-0 px-5' : 'px-5'}`}>
+        <div className={`group relative flex items-center gap-2.5 ${collapsed ? 'lg:justify-center' : ''}`}>
+          <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-forest-mid
+                           text-[10.5px] font-bold text-side-strong">
+            {currentUser.initials}
+          </span>
+          <span className={`min-w-0 ${collapsed ? 'lg:hidden' : ''}`}>
+            <b className="block truncate font-display text-[13px] font-semibold text-side-strong">
+              {currentCamp?.name ?? ''}
+            </b>
+            <span className="block truncate text-[11px] text-side-dim">{currentUser.name} — {roleLabel}</span>
+          </span>
+          {collapsed && <RailTip label={`${currentCamp?.name ?? ''} · ${currentUser.name}`} />}
+        </div>
+        <div className={`flex items-center gap-3 mt-3 ${collapsed ? 'lg:hidden' : ''}`}>
           {role !== 'admin' && (
             <NavLink
               to="/settings/security"
-              className="flex items-center gap-1.5 text-[11px] text-white/30 hover:text-white/60 transition-colors"
+              className="flex items-center gap-1.5 text-[11px] text-side-dim hover:text-side-strong transition-colors"
             >
               <Lock className="w-3 h-3" />
               Security
@@ -186,7 +239,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           <button
             onClick={handleSignOut}
             disabled={signingOut}
-            className="flex items-center gap-1.5 text-[11px] text-white/30 hover:text-white/60 transition-colors disabled:cursor-wait"
+            className="flex items-center gap-1.5 text-[11px] text-side-dim hover:text-side-strong transition-colors disabled:cursor-wait"
           >
             <LogOut className="w-3 h-3" />
             {signingOut ? 'Signing out…' : 'Sign out'}

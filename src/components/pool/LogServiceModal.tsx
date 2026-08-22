@@ -17,7 +17,7 @@ interface FormValues {
 }
 
 const inputClass = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
+const labelClass = 'block text-secondary font-medium text-ink mb-1';
 
 export function LogServiceModal() {
   const { closeAllModals, logServiceForEquipmentId, editingServiceLogId } = useUIStore();
@@ -85,7 +85,7 @@ export function LogServiceModal() {
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {!editing && (
-          <p className="text-secondary text-forest/50 -mt-1">Record a service, maintenance, or repair event</p>
+          <p className="text-secondary text-ink-soft -mt-1">Record a service, maintenance, or repair event</p>
         )}
 
         <div>

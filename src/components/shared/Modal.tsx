@@ -30,7 +30,7 @@ export function Modal({ title, onClose, children, width = '440px' }: Props) {
           <h2 className="text-[15px] font-semibold text-forest">{title}</h2>
           <button
             onClick={onClose}
-            className="text-forest/40 hover:text-forest transition-colors cursor-pointer"
+            className="text-ink-faint hover:text-forest transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>

@@ -109,7 +109,7 @@ const NOTES_PLACEHOLDERS: Partial<Record<SafetyItemType, string>> = {
 
 const ic = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
 const icErr = 'w-full text-body bg-white border border-red rounded-btn px-3 py-2 focus:outline-none focus:border-red';
-const lc = 'block text-[12px] font-medium text-forest/70 mb-1';
+const lc = 'block text-[12px] font-medium text-ink mb-1';
 
 function isWaterfrontEquip(type: SafetyItemType) {
   return ['life_ring', 'rescue_tube', 'rescue_board'].includes(type);
@@ -342,7 +342,7 @@ export function AddSafetyItemModal() {
         </div>
 
         {suggestedNextDue && (
-          <p className="text-[11px] text-forest/50 -mt-2">
+          <p className="text-[11px] text-ink-soft -mt-2">
             Next due: <span className="font-medium">{new Date(suggestedNextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
           </p>
         )}

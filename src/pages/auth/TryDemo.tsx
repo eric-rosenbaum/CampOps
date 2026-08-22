@@ -41,23 +41,23 @@ export function TryDemo() {
   }, [token, navigate]);
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-stone-50 p-4 sm:p-6">
+    <div className="min-h-screen w-full flex items-center justify-center bg-paper p-4 sm:p-6">
       <div className="w-full max-w-sm text-center">
         <div className="flex items-center gap-2 mb-8 justify-center">
           <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-cream" /></div>
           <span className="text-lg font-semibold text-forest">CampCommand</span>
         </div>
-        <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-8">
+        <div className="bg-white rounded-xl border border-border shadow-sm p-8">
           {error ? (
             <>
               <h1 className="text-[18px] font-semibold text-forest mb-2">Can’t open this demo</h1>
-              <p className="text-[13px] text-forest/60 leading-relaxed">{error}</p>
+              <p className="text-[13px] text-ink-soft leading-relaxed">{error}</p>
             </>
           ) : (
             <>
               <div className="w-8 h-8 border-2 border-forest border-t-transparent rounded-full animate-spin mx-auto mb-4" />
               <p className="text-[14px] font-medium text-forest">Opening your demo…</p>
-              <p className="text-[12px] text-forest/45 mt-1">No sign-in needed.</p>
+              <p className="text-[12px] text-ink-faint mt-1">No sign-in needed.</p>
             </>
           )}
         </div>

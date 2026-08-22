@@ -45,7 +45,7 @@ function MenuTable({ retreat }: { retreat: Retreat }) {
 
   if (days.length === 0) {
     return (
-      <div className="bg-white rounded-card border border-border px-5 py-8 text-center text-[13px] text-forest/45">
+      <div className="bg-white rounded-card border border-border px-5 py-8 text-center text-[13px] text-ink-faint">
         This retreat's arrival and departure dates don't form a valid range.
       </div>
     );
@@ -61,15 +61,15 @@ function MenuTable({ retreat }: { retreat: Retreat }) {
       <div className="min-w-max">
         {/* Header: days across the top */}
         <div className="grid bg-cream-dark/60 border-b border-border" style={gridCols}>
-          <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-forest/50">Meal</div>
+          <div className="px-4 py-2.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Meal</div>
           {days.map((d) => (
-            <div key={d} className="px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-forest/50 border-l border-border">{dayLabel(d)}</div>
+            <div key={d} className="px-3 py-2.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft border-l border-border">{dayLabel(d)}</div>
           ))}
         </div>
         {/* One row per meal period */}
         {mealsToShow.map((meal) => (
           <div key={meal} className="grid border-b border-cream-dark last:border-b-0" style={gridCols}>
-            <div className="px-4 py-3 text-[12px] font-semibold text-forest/60">{MEAL_LABELS[meal]}</div>
+            <div className="px-4 py-3 text-[12px] font-semibold text-ink-soft">{MEAL_LABELS[meal]}</div>
             {days.map((d) => {
               const cell = retreatEntriesFor(retreat.id, d, meal);
               return (
@@ -118,7 +118,7 @@ export function RetreatMenuTab() {
             <Utensils className="w-7 h-7 text-forest/30" />
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No retreats yet</h3>
-          <p className="text-[13px] text-forest/50 leading-relaxed">Create a retreat first, then plan its menu in Commissary.</p>
+          <p className="text-[13px] text-ink-soft leading-relaxed">Create a retreat first, then plan its menu in Commissary.</p>
         </div>
       </div>
     );
@@ -135,7 +135,7 @@ export function RetreatMenuTab() {
       </div>
 
       {!retreat ? (
-        <div className="bg-white rounded-card border border-border px-5 py-8 text-center text-[13px] text-forest/45">Select a retreat to view its menu.</div>
+        <div className="bg-white rounded-card border border-border px-5 py-8 text-center text-[13px] text-ink-faint">Select a retreat to view its menu.</div>
       ) : (
         <>
           <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
@@ -158,7 +158,7 @@ export function RetreatMenuTab() {
             )}
           </div>
 
-          <div className="bg-cream-dark/40 border border-border rounded-card px-4 py-2.5 mb-4 text-[12px] text-forest/55">
+          <div className="bg-cream-dark/40 border border-border rounded-card px-4 py-2.5 mb-4 text-[12px] text-ink-soft">
             This menu is planned in <span className="font-medium text-forest">Commissary → Retreats → Menu builder</span>, where it also drives food ordering. This tab is a preview of what the group sees.
           </div>
 
@@ -172,7 +172,7 @@ export function RetreatMenuTab() {
           <MenuTable retreat={retreat} />
 
           {!retreat.menuPublished && (
-            <p className="text-[11px] text-forest/40 mt-3">This menu is a draft — not yet visible to the group. Use “Publish to portal” to share it.</p>
+            <p className="text-[11px] text-ink-faint mt-3">This menu is a draft — not yet visible to the group. Use “Publish to portal” to share it.</p>
           )}
         </>
       )}

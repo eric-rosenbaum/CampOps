@@ -70,7 +70,7 @@ export function FleetOverviewTab() {
       {assets.length === 0 ? (
         <div className="text-center py-16">
           <Truck className="w-10 h-10 text-forest/20 mx-auto mb-3" />
-          <p className="text-body text-forest/40">No assets found</p>
+          <p className="text-body text-ink-faint">No assets found</p>
           <button onClick={openAddAssetModal} className="mt-3 text-body text-sage hover:text-forest transition-colors underline">Add your first asset</button>
         </div>
       ) : (
@@ -87,7 +87,7 @@ export function FleetOverviewTab() {
 function StatCard({ label, value, color = 'text-forest' }: { label: string; value: number; color?: string }) {
   return (
     <div className="bg-white border border-border rounded-card px-4 py-3">
-      <p className="text-meta text-forest/50 mb-1">{label}</p>
+      <p className="text-meta text-ink-soft mb-1">{label}</p>
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
     </div>
   );
@@ -97,7 +97,7 @@ function FilterChip({ label, active, onClick }: { label: string; active: boolean
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 text-label font-medium rounded-btn border transition-colors ${active ? 'bg-forest border-forest text-cream' : 'border-border text-forest/60 hover:border-forest/40 bg-white'}`}
+      className={`px-3 py-1.5 text-label font-medium rounded-btn border transition-colors ${active ? 'bg-forest border-forest text-cream' : 'border-border text-ink-soft hover:border-forest/40 bg-white'}`}
     >
       {label}
     </button>

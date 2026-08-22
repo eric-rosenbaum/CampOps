@@ -77,7 +77,7 @@ export function ReceiveOrderModal({ orderId }: { orderId: string }) {
     <Modal title={`Receive — ${order.vendorName}`} onClose={closeModal} width="720px">
       <div className="space-y-4">
         <div className="flex items-start gap-3">
-          <p className="flex-1 text-[12px] text-forest/55 leading-relaxed">
+          <p className="flex-1 text-[12px] text-ink-soft leading-relaxed">
             Check off each line as it comes off the truck: tick <strong>Arrived</strong> if it came in as ordered,
             or type the actual amount. What's received — not what was ordered — is booked into stock.
           </p>
@@ -89,7 +89,7 @@ export function ReceiveOrderModal({ orderId }: { orderId: string }) {
         <div className="rounded-card border border-border overflow-x-auto">
           <div className="grid grid-cols-[1.8fr_0.9fr_0.7fr_1fr_1fr_1.3fr] min-w-[760px] sm:min-w-0 gap-2 px-3 py-2 bg-cream-dark/40 border-b border-border">
             {['Item', 'Ordered', 'Arrived', 'Received', 'Unit price', 'Note (sub / short)'].map((h) => (
-              <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>
+              <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>
             ))}
           </div>
           {drafts.map((d) => {
@@ -98,7 +98,7 @@ export function ReceiveOrderModal({ orderId }: { orderId: string }) {
             return (
               <div key={d.lineId} className="grid grid-cols-[1.8fr_0.9fr_0.7fr_1fr_1fr_1.3fr] min-w-[760px] sm:min-w-0 gap-2 px-3 py-2 border-b border-border last:border-0 items-center">
                 <span className="text-[12px] text-forest truncate">{d.itemName}</span>
-                <span className="font-mono text-[12px] text-forest/50">{d.orderedQty} {d.purchaseUnit}</span>
+                <span className="font-mono text-[12px] text-ink-soft">{d.orderedQty} {d.purchaseUnit}</span>
                 <input
                   type="checkbox" checked={asOrdered} title="Arrived as ordered"
                   onChange={(e) => patch(d.lineId, { receivedQty: e.target.checked ? String(d.orderedQty) : '0' })}

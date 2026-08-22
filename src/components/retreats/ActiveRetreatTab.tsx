@@ -23,14 +23,14 @@ const ISSUE_STATUS: Record<RetreatIssue['status'], { tone: BadgeTone; label: str
 function Row({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div className="flex justify-between items-center gap-3 py-1.5 border-b border-cream-dark last:border-b-0 text-[13px]">
-      <span className="text-forest/50 flex-shrink-0">{k}</span>
+      <span className="text-ink-soft flex-shrink-0">{k}</span>
       <span className="font-medium text-forest text-right">{v}</span>
     </div>
   );
 }
 
 function CardLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 mb-3">{children}</p>;
+  return <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-3">{children}</p>;
 }
 
 export function ActiveRetreatTab() {
@@ -48,7 +48,7 @@ export function ActiveRetreatTab() {
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="max-w-md mx-auto text-center mt-24">
           <p className="text-[15px] font-semibold text-forest">No active retreat</p>
-          <p className="text-[13px] text-forest/55 mt-2 leading-relaxed">
+          <p className="text-[13px] text-ink-soft mt-2 leading-relaxed">
             When a group is on property, their live details, schedule, issues, and checkout
             checklist appear here. Select a retreat from the overview to preview it.
           </p>
@@ -106,7 +106,7 @@ export function ActiveRetreatTab() {
             {canManage && (
               <button
                 onClick={() => openModal({ kind: 'editRetreat', retreatId: r.id })}
-                className="text-[12px] font-medium text-forest/60 hover:text-forest -mt-2"
+                className="text-[12px] font-medium text-ink-soft hover:text-forest -mt-2"
               >
                 Edit
               </button>
@@ -126,17 +126,17 @@ export function ActiveRetreatTab() {
             {canManage && (
               <button
                 onClick={() => openModal({ kind: 'scheduleItem', retreatId: r.id })}
-                className="text-[12px] font-medium text-forest/60 hover:text-forest -mt-2"
+                className="text-[12px] font-medium text-ink-soft hover:text-forest -mt-2"
               >
                 + add
               </button>
             )}
           </div>
           {schedule.length === 0 && allSchedule.length === 0 && (
-            <p className="text-[12px] text-forest/40 italic py-1">No schedule items yet.</p>
+            <p className="text-[12px] text-ink-faint italic py-1">No schedule items yet.</p>
           )}
           {schedule.length === 0 && allSchedule.length > 0 && (
-            <p className="text-[12px] text-forest/40 italic py-1">Nothing scheduled for today.</p>
+            <p className="text-[12px] text-ink-faint italic py-1">Nothing scheduled for today.</p>
           )}
           {schedule.map((s) => (
             <button
@@ -144,7 +144,7 @@ export function ActiveRetreatTab() {
               onClick={canManage ? () => openModal({ kind: 'scheduleItem', retreatId: r.id, itemId: s.id }) : undefined}
               className={`w-full flex justify-between items-center gap-3 py-1.5 border-b border-cream-dark last:border-b-0 text-[13px] text-left ${canManage ? 'hover:bg-cream/40 cursor-pointer' : ''}`}
             >
-              <span className="text-forest/50 flex-shrink-0">{s.timeLabel || '—'}</span>
+              <span className="text-ink-soft flex-shrink-0">{s.timeLabel || '—'}</span>
               <span className="font-medium text-forest text-right">
                 {s.title}{s.location ? ` · ${s.location}` : ''}
               </span>
@@ -155,7 +155,7 @@ export function ActiveRetreatTab() {
         {/* Housing summary */}
         <div className="bg-white rounded-card border border-border px-5 py-4">
           <CardLabel>Housing summary</CardLabel>
-          {housing.length === 0 && <p className="text-[12px] text-forest/40 italic py-1">No housing assigned yet.</p>}
+          {housing.length === 0 && <p className="text-[12px] text-ink-faint italic py-1">No housing assigned yet.</p>}
           {housing.map((h) => (
             <Row
               key={h.id}
@@ -176,7 +176,7 @@ export function ActiveRetreatTab() {
               <CardLabel>Financial</CardLabel>
               <Row k="Rate charged" v={rateSummary(r)} />
               {perPerson && rate != null && (
-                <Row k="Billed" v={<span className="font-mono text-forest/60">{money(rate)} × {r.headcount} × {nightCount} night{nightCount === 1 ? '' : 's'}</span>} />
+                <Row k="Billed" v={<span className="font-mono text-ink-soft">{money(rate)} × {r.headcount} × {nightCount} night{nightCount === 1 ? '' : 's'}</span>} />
               )}
               <Row k={fin.source === 'estimate' ? 'Estimated total' : 'Total billed'} v={<span className="font-mono text-green-muted-text">{money(fin.expected)}</span>} />
               <Row k="Deposit received" v={<span className="font-mono text-green-muted-text">{money(fin.depositReceived)}</span>} />
@@ -195,7 +195,7 @@ export function ActiveRetreatTab() {
       </div>
       <div className="bg-white rounded-card border border-border overflow-hidden mb-6">
         {issues.length === 0 && (
-          <p className="text-[12px] text-forest/40 italic px-5 py-4">No issues logged. Nice and quiet.</p>
+          <p className="text-[12px] text-ink-faint italic px-5 py-4">No issues logged. Nice and quiet.</p>
         )}
         {issues.map((i) => {
           const meta = ISSUE_STATUS[i.status];
@@ -204,7 +204,7 @@ export function ActiveRetreatTab() {
               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.dot}`} />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold text-forest">{i.title}</p>
-                <p className="text-[11px] text-forest/50 mt-0.5">
+                <p className="text-[11px] text-ink-soft mt-0.5">
                   {i.reportedBy ? `Reported by ${i.reportedBy}` : 'Reported'}
                   {i.assignedTo ? ` · ${i.assignedTo}` : ''}
                   {i.status === 'resolved' && i.resolvedAt ? ` · Resolved` : ''}
@@ -229,7 +229,7 @@ export function ActiveRetreatTab() {
       </div>
       <div className="bg-white rounded-card border border-border overflow-hidden">
         {checkout.length === 0 && (
-          <p className="text-[12px] text-forest/40 italic px-5 py-4">
+          <p className="text-[12px] text-ink-faint italic px-5 py-4">
             No checkout tasks yet.{canManage ? ' Use “Manage” to add them.' : ''}
           </p>
         )}
@@ -243,7 +243,7 @@ export function ActiveRetreatTab() {
             <span className={`w-[18px] h-[18px] rounded border flex items-center justify-center flex-shrink-0 text-[11px] font-bold ${c.isDone ? 'bg-sage border-sage text-white' : 'bg-white border-border'}`}>
               {c.isDone ? '✓' : ''}
             </span>
-            <span className={`text-[13px] ${c.isDone ? 'text-forest/40 line-through' : 'text-forest'}`}>{c.title}</span>
+            <span className={`text-[13px] ${c.isDone ? 'text-ink-faint line-through' : 'text-forest'}`}>{c.title}</span>
           </button>
         ))}
       </div>

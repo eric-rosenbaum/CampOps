@@ -27,7 +27,7 @@ function ProgressBar({ label, ok, warn, alert, total }: { label: string; ok: num
             style={{ width: `${pct}%` }}
           />
         </div>
-        <p className="text-[11px] text-forest/40 mt-1.5">
+        <p className="text-[11px] text-ink-faint mt-1.5">
           {ok} of {total} items current
           {alert > 0 ? ` · ${alert} overdue` : ''}
           {warn > 0 ? ` · ${warn} due this week` : ''}
@@ -41,7 +41,7 @@ function ProgressBar({ label, ok, warn, alert, total }: { label: string; ok: num
         ].map(({ val, label, cls }) => (
           <div key={label} className="text-center">
             <p className={`text-[20px] font-semibold font-mono ${cls}`}>{val}</p>
-            <p className="text-[10px] text-forest/40 uppercase tracking-wide mt-0.5">{label}</p>
+            <p className="text-[10px] text-ink-faint uppercase tracking-wide mt-0.5">{label}</p>
           </div>
         ))}
       </div>
@@ -175,35 +175,35 @@ export function OverviewTab() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
         <div className={`bg-white border border-border rounded-card px-4 py-4 ${overdue > 0 ? 'border-l-[3px] border-l-red' : ''}`}>
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Overdue items</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Overdue items</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${overdue > 0 ? 'text-red' : 'text-green-muted-text'}`}>{overdue}</p>
-          <p className="text-meta text-forest/40 mt-0.5">{overdue > 0 ? 'Require immediate action' : 'Nothing overdue'}</p>
+          <p className="text-meta text-ink-faint mt-0.5">{overdue > 0 ? 'Require immediate action' : 'Nothing overdue'}</p>
         </div>
         <div className={`bg-white border border-border rounded-card px-4 py-4 ${dueSoon > 0 ? 'border-l-[3px] border-l-amber' : ''}`}>
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Due this week</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Due this week</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${dueSoon > 0 ? 'text-amber' : 'text-forest'}`}>{dueSoon}</p>
-          <p className="text-meta text-forest/40 mt-0.5">{dueSoon > 0 ? 'Coming up soon' : 'Nothing due soon'}</p>
+          <p className="text-meta text-ink-faint mt-0.5">{dueSoon > 0 ? 'Coming up soon' : 'Nothing due soon'}</p>
         </div>
         <div className="bg-white border border-border rounded-card px-4 py-4">
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Compliant items</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Compliant items</p>
           <p className="font-mono font-semibold text-stat mt-1 text-green-muted-text">{compliant}</p>
-          <p className="text-meta text-forest/40 mt-0.5">Up to date</p>
+          <p className="text-meta text-ink-faint mt-0.5">Up to date</p>
         </div>
         <div className="bg-white border border-border rounded-card px-4 py-4">
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">ACA inspection</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">ACA inspection</p>
           {acaDate && acaDaysAway !== null ? (
             <>
               <p className="font-semibold text-[18px] mt-2 text-forest">
                 {new Date(acaDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </p>
-              <p className={`text-meta mt-0.5 ${acaDaysAway <= 14 ? 'text-amber' : 'text-forest/40'}`}>
+              <p className={`text-meta mt-0.5 ${acaDaysAway <= 14 ? 'text-amber' : 'text-ink-faint'}`}>
                 {acaDaysAway > 0 ? `${acaDaysAway} days away` : acaDaysAway === 0 ? 'Today' : 'Past'}
               </p>
             </>
           ) : (
             <>
               <p className="font-semibold text-[18px] mt-2 text-forest/30">—</p>
-              <p className="text-meta text-forest/40 mt-0.5">Not set in season</p>
+              <p className="text-meta text-ink-faint mt-0.5">Not set in season</p>
             </>
           )}
         </div>
@@ -275,7 +275,7 @@ export function OverviewTab() {
 
       {licenses.length === 0 ? (
         <div className="bg-white border border-border rounded-card px-5 py-4 sm:py-6 text-center mb-6">
-          <p className="text-[13px] text-forest/40">No permits or licenses on file.</p>
+          <p className="text-[13px] text-ink-faint">No permits or licenses on file.</p>
           <button onClick={() => openAddLicenseModal()} className="text-[12px] text-sage font-medium mt-1 cursor-pointer hover:underline">
             + Add health permit, state camping license, or other permit
           </button>
@@ -288,7 +288,7 @@ export function OverviewTab() {
               status === 'expired' ? { text: 'Expired', cls: 'bg-red-bg text-red' } :
               status === 'expiring' ? { text: 'Expiring soon', cls: 'bg-amber-bg text-amber-text' } :
               lic.expiryDate ? { text: 'Valid', cls: 'bg-green-muted-bg text-green-muted-text' } :
-              { text: 'No expiry on file', cls: 'bg-cream-dark text-forest/40' };
+              { text: 'No expiry on file', cls: 'bg-cream-dark text-ink-faint' };
             return (
               <div
                 key={lic.id}
@@ -296,7 +296,7 @@ export function OverviewTab() {
               >
                 <div className="flex-1 min-w-0 pr-4">
                   <p className="text-[13px] font-medium text-forest">{lic.name}</p>
-                  <p className="text-[11px] text-forest/40 mt-0.5">
+                  <p className="text-[11px] text-ink-faint mt-0.5">
                     {LICENSE_TYPE_LABELS[lic.licenseType]}
                     {lic.issuingAuthority ? ` · ${lic.issuingAuthority}` : ''}
                     {lic.expiryDate ? ` · Expires ${new Date(lic.expiryDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
@@ -308,7 +308,7 @@ export function OverviewTab() {
                   </span>
                   <button
                     onClick={() => openAddLicenseModal(lic.id)}
-                    className="text-[11px] text-forest/40 hover:text-forest cursor-pointer"
+                    className="text-[11px] text-ink-faint hover:text-forest cursor-pointer"
                   >
                     Edit
                   </button>
@@ -335,7 +335,7 @@ export function OverviewTab() {
       )}
 
       {(fireSt.total + waterSt.total + kitchenSt.total) === 0 && (
-        <p className="text-[13px] text-forest/40 text-center py-8">
+        <p className="text-[13px] text-ink-faint text-center py-8">
           No safety items set up yet. Use the Fire Safety, Water Safety, and Kitchen tabs to add items to track.
         </p>
       )}
@@ -352,7 +352,7 @@ export function OverviewTab() {
               <div key={d.id} className="bg-white border border-border border-l-[3px] border-l-amber rounded-card px-5 py-3.5 mb-2 flex items-center justify-between">
                 <div>
                   <p className="text-[13px] font-semibold text-forest">{DRILL_TYPE_LABELS[d.drillType]}</p>
-                  <p className="text-[11px] text-forest/40 mt-0.5">
+                  <p className="text-[11px] text-ink-faint mt-0.5">
                     {new Date(d.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     {d.lead ? ` · Lead: ${d.lead}` : ''}
                   </p>
@@ -420,7 +420,7 @@ function AssetComplianceSection({
           <div key={`reg-${i}`} className={`flex items-center justify-between px-4 py-3 ${i < regRows.length + inspRows.length - 1 ? 'border-b border-cream-dark' : ''}`}>
             <div>
               <p className="text-[13px] font-medium text-forest">{row.assetName} — Registration</p>
-              <p className="text-[11px] text-forest/40 mt-0.5">
+              <p className="text-[11px] text-ink-faint mt-0.5">
                 {row.status === 'expired' ? 'Expired ' : 'Expires '}
                 {new Date(row.expiry + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </p>
@@ -434,7 +434,7 @@ function AssetComplianceSection({
           <div key={`insp-${i}`} className={`flex items-center justify-between px-4 py-3 ${i < inspRows.length - 1 ? 'border-b border-cream-dark' : ''}`}>
             <div>
               <p className="text-[13px] font-medium text-forest">{row.assetName} — {SERVICE_TYPE_LABELS[row.serviceType] ?? row.serviceType}</p>
-              <p className="text-[11px] text-forest/40 mt-0.5">
+              <p className="text-[11px] text-ink-faint mt-0.5">
                 {row.status === 'overdue' ? 'Was due ' : 'Due '}
                 {new Date(row.nextDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </p>

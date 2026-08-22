@@ -44,16 +44,16 @@ export function BuildingSystems() {
       />
 
       {/* Tab strip */}
-      <div className="bg-white border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto">
+      <div className="bg-paper-raised border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto overflow-y-hidden no-scrollbar">
         <div className="flex">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); if (tab.id !== 'buildings') setActiveBuilding(null); }}
-              className={`px-5 py-3 text-body border-b-2 transition-colors whitespace-nowrap ${
+              className={`-mb-px whitespace-nowrap border-b-[3px] px-4 pb-2.5 pt-3 text-[13px] font-semibold transition-colors ${
                 activeTab === tab.id
-                  ? 'text-forest font-semibold border-sage'
-                  : 'text-forest/40 font-medium border-transparent hover:text-forest/70'
+                  ? 'border-red text-forest'
+                  : 'border-transparent text-ink-soft hover:text-forest'
               }`}
             >
               {tab.label}
@@ -67,11 +67,11 @@ export function BuildingSystems() {
         {buildings.length === 0 && activeTab === 'buildings' && !activeBuildingId ? (
           <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
             <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
-              <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-                <Building2 className="w-7 h-7 text-stone-400" />
+              <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mb-4">
+                <Building2 className="w-7 h-7 text-ink-faint" />
               </div>
               <h3 className="text-[15px] font-semibold text-forest mb-1.5">No buildings yet</h3>
-              <p className="text-[13px] text-forest/50 leading-relaxed mb-4">
+              <p className="text-[13px] text-ink-soft leading-relaxed mb-4">
                 Add your cabins, bathhouses, dining hall and utility buildings, then map their
                 electrical and plumbing — outlets, panels, shutoffs and more — room by room.
               </p>

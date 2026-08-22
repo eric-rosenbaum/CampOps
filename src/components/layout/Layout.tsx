@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { LogOut, Clock, Menu, TreePine } from 'lucide-react';
+import { LogOut, Clock, Menu } from 'lucide-react';
+import { FirepitMark } from '@/components/shared/FirepitMark';
 import { Sidebar } from './Sidebar';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useCampStore } from '@/store/campStore';
+import { useUIStore } from '@/store/uiStore';
 
 // Shown when a founder is viewing a camp they don't belong to, or when a trial is counting down.
 function StatusBanners() {
@@ -61,10 +63,8 @@ function MobileHeader({ onMenu }: { onMenu: () => void }) {
         <Menu className="w-5 h-5" />
       </button>
       <div className="flex items-center gap-2 min-w-0">
-        <div className="w-6 h-6 bg-sage rounded-btn flex items-center justify-center flex-shrink-0">
-          <TreePine className="w-3.5 h-3.5 text-forest" />
-        </div>
-        <span className="text-[14px] font-semibold text-cream truncate">
+        <FirepitMark size={24} className="flex-shrink-0" />
+        <span className="font-display text-[14px] font-bold text-side-strong truncate">
           {currentCamp?.name ?? 'CampCommand'}
         </span>
       </div>
@@ -74,10 +74,26 @@ function MobileHeader({ onMenu }: { onMenu: () => void }) {
 
 export function Layout() {
   const [navOpen, setNavOpen] = useState(false);
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+
+  // `[` toggles the rail, matching the reference. Ignored while typing so it can't fire from
+  // inside a search box or a note field.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== '[' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+      e.preventDefault();
+      toggleSidebar();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleSidebar]);
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
+      <Sidebar open={navOpen} onClose={() => setNavOpen(false)} collapsed={sidebarCollapsed} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <StatusBanners />
         <MobileHeader onMenu={() => setNavOpen(true)} />

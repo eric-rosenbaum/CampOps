@@ -222,7 +222,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
         {/* ── Ingredients ────────────────────────────────────────────────────── */}
         <div>
           <label className={labelClass}>Ingredients</label>
-          <p className="text-[11px] text-forest/45 mb-2">
+          <p className="text-[11px] text-ink-faint mb-2">
             Quantities are for <strong>{baseYield || '—'} portions</strong> and scale from there.
             Link an ingredient to inventory to include it in ordering demand and allergen totals.
           </p>
@@ -277,7 +277,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
                   </button>
 
                   {item && base != null && d.qty !== '' && (
-                    <p className="col-span-4 -mt-1 text-[11px] text-forest/40 font-mono">
+                    <p className="col-span-4 -mt-1 text-[11px] text-ink-faint font-mono">
                       = {formatQty(fromBase(base, item.stockUnitInBase), item.stockUnit)} for {baseYield || '—'} portions
                     </p>
                   )}
@@ -289,13 +289,13 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
           <button
             type="button"
             onClick={() => setDrafts((d) => [...d, newDraft()])}
-            className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-forest/60 hover:text-forest"
+            className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-soft hover:text-forest"
           >
             <Plus className="w-3.5 h-3.5" /> Add ingredient
           </button>
 
           {drafts.some((d) => !d.itemId && (d.label.trim() || d.freeTextQty.trim())) && (
-            <p className="text-[11px] text-forest/40 mt-2 leading-relaxed">
+            <p className="text-[11px] text-ink-faint mt-2 leading-relaxed">
               <Link2Off className="w-3 h-3 inline mr-1" />
               Unlinked ingredients appear on the recipe card but are not scaled and contribute
               nothing to ordering demand or allergen totals.
@@ -307,7 +307,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
           <label className={labelClass}>Allergens</label>
           <div className="rounded-card border border-border bg-cream-dark/30 px-3 py-2.5">
             <AllergenChips allergens={previewAllergens} />
-            <p className="text-[11px] text-forest/45 mt-1.5">
+            <p className="text-[11px] text-ink-faint mt-1.5">
               Derived from the linked ingredients — tag allergens on the inventory item, not here.
             </p>
           </div>
@@ -315,14 +315,14 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
 
         <div>
           <label className={labelClass}>Method</label>
-          <p className="text-[11px] text-forest/45 mb-2">
+          <p className="text-[11px] text-ink-faint mb-2">
             Tag any step that must be done ahead ("night before", "2 days before") so it
             appears on the production prep calendar at the right time.
           </p>
           <div className="space-y-2">
             {stepDrafts.map((s, idx) => (
               <div key={s.key} className="grid grid-cols-[auto_1fr_auto_auto] min-w-[640px] sm:min-w-0 gap-2 items-start">
-                <span className="font-mono text-[12px] text-forest/35 pt-2.5">{idx + 1}.</span>
+                <span className="font-mono text-[12px] text-ink-faint pt-2.5">{idx + 1}.</span>
                 <textarea
                   value={s.instruction}
                   onChange={(e) => patchStep(s.key, { instruction: e.target.value })}
@@ -351,7 +351,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
           <button
             type="button"
             onClick={() => setStepDrafts((d) => [...d, { key: generateId(), instruction: '', preset: 'day_of' }])}
-            className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-forest/60 hover:text-forest"
+            className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-soft hover:text-forest"
           >
             <Plus className="w-3.5 h-3.5" /> Add step
           </button>

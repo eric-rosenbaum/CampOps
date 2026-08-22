@@ -20,14 +20,14 @@ export function CoursesModal() {
   return (
     <Modal title="Menu courses" onClose={closeModal} width="440px">
       <div className="space-y-4">
-        <p className="text-[12px] text-forest/55 leading-relaxed">
+        <p className="text-[12px] text-ink-soft leading-relaxed">
           Buckets you can assign a menu item to, so a meal can be built as a balanced plate
           (protein + carb + vegetable…). Customize these for how your camp plans meals.
         </p>
 
         {courses.length === 0 ? (
           <div className="rounded-card border border-dashed border-border px-4 py-4 sm:py-6 text-center">
-            <p className="text-[13px] text-forest/50 mb-3">No courses yet.</p>
+            <p className="text-[13px] text-ink-soft mb-3">No courses yet.</p>
             <Button size="sm" variant="ghost" onClick={seedDefaultCourses}>
               <Sparkles className="w-3.5 h-3.5" /> Add the common ones
             </Button>

@@ -41,18 +41,18 @@ export function AvailabilityCalendar({ retreats }: { retreats: Retreat[] }) {
   return (
     <div className="bg-white rounded-card border border-border p-4">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4 text-[12px] text-forest/55">
+        <div className="flex items-center gap-4 text-[12px] text-ink-soft">
           <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-cream-dark border border-border" /> Available</span>
           <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-sage" /> Booked</span>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setAnchor((a) => addMonths(a.y, a.m, -1))} className="p-1.5 rounded-btn text-forest/50 hover:bg-cream hover:text-forest" aria-label="Previous months">
+          <button onClick={() => setAnchor((a) => addMonths(a.y, a.m, -1))} className="p-1.5 rounded-btn text-ink-soft hover:bg-cream hover:text-forest" aria-label="Previous months">
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <button onClick={() => { const n = new Date(); setAnchor({ y: n.getFullYear(), m: n.getMonth() }); }} className="text-[12px] font-medium text-forest/60 hover:text-forest px-2 py-1 rounded-btn hover:bg-cream">
+          <button onClick={() => { const n = new Date(); setAnchor({ y: n.getFullYear(), m: n.getMonth() }); }} className="text-[12px] font-medium text-ink-soft hover:text-forest px-2 py-1 rounded-btn hover:bg-cream">
             Today
           </button>
-          <button onClick={() => setAnchor((a) => addMonths(a.y, a.m, 1))} className="p-1.5 rounded-btn text-forest/50 hover:bg-cream hover:text-forest" aria-label="Next months">
+          <button onClick={() => setAnchor((a) => addMonths(a.y, a.m, 1))} className="p-1.5 rounded-btn text-ink-soft hover:bg-cream hover:text-forest" aria-label="Next months">
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -70,7 +70,7 @@ export function AvailabilityCalendar({ retreats }: { retreats: Retreat[] }) {
             <div key={`${y}-${m}`}>
               <p className="text-[13px] font-semibold text-forest text-center mb-2">{MONTHS[m]} {y}</p>
               <div className="grid grid-cols-2 sm:grid-cols-7 gap-0.5 mb-1">
-                {WEEKDAYS.map((w, i) => <div key={i} className="text-[10px] font-semibold text-forest/35 text-center">{w}</div>)}
+                {WEEKDAYS.map((w, i) => <div key={i} className="text-[10px] font-semibold text-ink-faint text-center">{w}</div>)}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-7 gap-0.5">
                 {cells.map((d, i) => {
@@ -83,7 +83,7 @@ export function AvailabilityCalendar({ retreats }: { retreats: Retreat[] }) {
                       key={i}
                       title={r ? `${r.groupName} · ${fmtRange(r.arrivalDate, r.departureDate)}` : `Available · ${date}`}
                       className={`aspect-square flex items-center justify-center text-[11px] rounded transition-colors ${
-                        r ? 'bg-sage text-white font-semibold' : 'text-forest/60 hover:bg-cream'
+                        r ? 'bg-sage text-white font-semibold' : 'text-ink-soft hover:bg-cream'
                       } ${isToday ? 'ring-2 ring-forest ring-offset-1' : ''}`}
                     >
                       {d}

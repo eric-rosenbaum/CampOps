@@ -43,7 +43,7 @@ export function OnHandValue({ item }: { item: InventoryItem }) {
   // Never counted: don't colour 0 as if it were a real reading — mark it plainly.
   if (item.lastCountedAt == null) {
     return (
-      <span className="font-mono text-[13px] text-forest/40" title="On-hand not counted yet">
+      <span className="font-mono text-[13px] text-ink-faint" title="On-hand not counted yet">
         {onHandInStockUnit(item).toLocaleString()} {item.stockUnit}
         <span className="ml-1.5 text-[10px] font-sans text-amber-text">not counted</span>
       </span>
@@ -66,7 +66,7 @@ export function ParValue({ item }: { item: InventoryItem }) {
     );
   }
   return (
-    <span className="font-mono text-[13px] text-forest/60">
+    <span className="font-mono text-[13px] text-ink-soft">
       {parInStockUnit(item).toLocaleString()} {item.stockUnit}
     </span>
   );
@@ -74,7 +74,7 @@ export function ParValue({ item }: { item: InventoryItem }) {
 
 export function AllergenChips({ allergens, size = 'sm' }: { allergens: readonly string[]; size?: 'sm' | 'xs' }) {
   if (!allergens.length) {
-    return <span className="text-[11px] text-forest/40">No major allergens</span>;
+    return <span className="text-[11px] text-ink-faint">No major allergens</span>;
   }
   const pad = size === 'xs' ? 'px-1.5 py-0 text-[10px]' : 'px-2 py-0.5 text-[11px]';
   return (
@@ -130,7 +130,7 @@ export function InlineNumberEdit({
     return (
       <button type="button" onClick={() => { setDraft(String(value)); setEditing(true); }} title="Click to edit"
         className="group inline-flex items-center gap-1.5 font-mono text-[13px] text-forest bg-white border border-border rounded-btn px-2.5 py-1.5 hover:border-sage transition-colors">
-        {value.toLocaleString()}{suffix ? <span className="text-forest/45 text-[11px] font-sans">{suffix}</span> : null}
+        {value.toLocaleString()}{suffix ? <span className="text-ink-faint text-[11px] font-sans">{suffix}</span> : null}
         <Pencil className="w-3 h-3 text-forest/25 group-hover:text-sage" />
       </button>
     );
@@ -151,4 +151,4 @@ export function InlineNumberEdit({
 
 export const inputClass =
   'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-export const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
+export const labelClass = 'block text-secondary font-medium text-ink mb-1';

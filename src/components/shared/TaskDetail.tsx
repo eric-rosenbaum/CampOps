@@ -114,31 +114,31 @@ export function TaskDetail({ task }: Props) {
       <div className="flex flex-col h-full overflow-y-auto">
         <div className="px-5 pt-5 pb-4 border-b border-border flex items-center justify-between">
           <h2 className="text-[15px] font-semibold text-forest">Edit Task</h2>
-          <button onClick={() => setIsEditing(false)} className="text-[13px] text-forest/50 hover:text-forest">Cancel</button>
+          <button onClick={() => setIsEditing(false)} className="text-[13px] text-ink-soft hover:text-forest">Cancel</button>
         </div>
         <div className="px-5 py-4 space-y-4 flex-1">
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Title</label>
+            <label className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft block mb-1">Title</label>
             <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Description</label>
+            <label className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft block mb-1">Description</label>
             <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)}
               rows={3} className={`${inputClass} resize-none`} />
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Phase</label>
+            <label className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft block mb-1">Phase</label>
             <select value={editPhase} onChange={(e) => handleEditPhaseChange(e.target.value as 'pre' | 'post')} className={selectClass}>
               <option value="pre">Pre-camp</option>
               <option value="post">Post-camp</option>
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Locations</label>
+            <label className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft block mb-1">Locations</label>
             <LocationPicker value={editLocationIds} onChange={setEditLocationIds} />
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Priority</label>
+            <label className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft block mb-1">Priority</label>
             <select value={editPriority} onChange={(e) => setEditPriority(e.target.value as Priority)} className={selectClass}>
               <option value="urgent">Urgent</option>
               <option value="high">High</option>
@@ -146,7 +146,7 @@ export function TaskDetail({ task }: Props) {
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 block mb-1">Timing</label>
+            <label className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft block mb-1">Timing</label>
             <select value={editTimingBucket} onChange={(e) => setEditTimingBucket(e.target.value)} className={selectClass}>
               {getBuckets(editPhase).map((b) => (
                 <option key={bucketValueToString(b.value)} value={bucketValueToString(b.value)}>{b.label}</option>
@@ -181,7 +181,7 @@ export function TaskDetail({ task }: Props) {
           {can('createTask') && (
             <div className="flex gap-1 shrink-0">
               <button onClick={() => setIsEditing(true)}
-                className="text-[12px] text-forest/50 hover:text-forest px-2 py-1 rounded border border-border hover:border-forest/30">
+                className="text-[12px] text-ink-soft hover:text-forest px-2 py-1 rounded border border-border hover:border-forest/30">
                 Edit
               </button>
               <button onClick={() => setShowDeleteConfirm(true)}
@@ -191,7 +191,7 @@ export function TaskDetail({ task }: Props) {
             </div>
           )}
         </div>
-        <p className="text-[11px] text-forest/50 mt-1">
+        <p className="text-[11px] text-ink-soft mt-1">
           {task.locations.join(' · ')} · {task.phase === 'pre' ? 'Pre-camp' : 'Post-camp'} · Logged {formatDate(task.createdAt)}
         </p>
       </div>
@@ -206,7 +206,7 @@ export function TaskDetail({ task }: Props) {
               Delete
             </button>
             <button onClick={() => setShowDeleteConfirm(false)}
-              className="text-[12px] text-forest/60 px-3 py-1.5 rounded border border-border hover:border-forest/30">
+              className="text-[12px] text-ink-soft px-3 py-1.5 rounded border border-border hover:border-forest/30">
               Cancel
             </button>
           </div>
@@ -216,19 +216,19 @@ export function TaskDetail({ task }: Props) {
       <div className="px-5 py-4 space-y-5 flex-1">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-forest/50">Priority</span>
+            <span className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Priority</span>
             <PriorityBadge priority={task.priority} />
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-forest/50">Phase</span>
+            <span className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Phase</span>
             <span className="text-[13px] font-medium text-forest">{task.phase === 'pre' ? 'Pre-camp' : 'Post-camp'}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-forest/50">Recurs</span>
+            <span className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Recurs</span>
             <span className="text-[13px] font-medium text-forest">Annually</span>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-forest/50">Status</span>
+            <span className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Status</span>
             <select value={task.status} onChange={(e) => handleStatusChange(e.target.value as ChecklistStatus)}
               className={`${selectClass} w-36`} disabled={task.status === 'complete'}>
               <option value="pending">Pending</option>
@@ -237,7 +237,7 @@ export function TaskDetail({ task }: Props) {
             </select>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-forest/50">Assigned to</span>
+            <span className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Assigned to</span>
             {can('assign') ? (
               <select value={task.assigneeId ?? ''} onChange={(e) => handleAssigneeChange(e.target.value)}
                 className={`${selectClass} w-36`}>
@@ -252,11 +252,11 @@ export function TaskDetail({ task }: Props) {
           </div>
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 mb-1.5">Description</p>
-          <p className="text-[13px] text-forest/80 leading-relaxed">{task.description}</p>
+          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">Description</p>
+          <p className="text-[13px] text-ink leading-relaxed">{task.description}</p>
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 mb-1.5">Due date</p>
+          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">Due date</p>
           {(() => {
             const effective = task.dueDate
               ? task.dueDate
@@ -267,23 +267,23 @@ export function TaskDetail({ task }: Props) {
             return (
               <>
                 {effective ? (
-                  <p className="text-[13px] text-forest/80">{formatDate(effective)}</p>
+                  <p className="text-[13px] text-ink">{formatDate(effective)}</p>
                 ) : !hasTiming ? (
-                  <p className="text-[13px] text-forest/80">No due date set</p>
+                  <p className="text-[13px] text-ink">No due date set</p>
                 ) : null}
                 {hasTiming && (
-                  <p className="text-[11px] text-forest/45 mt-0.5">{getBucketLabel(task.phase, task.daysRelativeToOpening)}</p>
+                  <p className="text-[11px] text-ink-faint mt-0.5">{getBucketLabel(task.phase, task.daysRelativeToOpening)}</p>
                 )}
               </>
             );
           })()}
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 mb-1.5">Logged</p>
-          <p className="text-[13px] text-forest/80">{formatDateTime(task.createdAt)}</p>
+          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">Logged</p>
+          <p className="text-[13px] text-ink">{formatDateTime(task.createdAt)}</p>
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/50 mb-2">Activity</p>
+          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-2">Activity</p>
           <ActivityFeed entries={task.activityLog} />
         </div>
       </div>

@@ -120,7 +120,7 @@ export function SubstitutionModal({ weekNumber, dayIndex, mealPeriod, editId }: 
     <Modal title={existing ? 'Edit replacement meal' : 'Replacement meal'} onClose={closeModal} width="500px">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-2.5">
-          <p className="text-[12px] text-forest/60">
+          <p className="text-[12px] text-ink-soft">
             {MEAL_PERIOD_LABELS[mealPeriod]} · {dateLabel} · week {weekNumber}
           </p>
         </div>

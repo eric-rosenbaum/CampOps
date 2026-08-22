@@ -61,7 +61,7 @@ export function MealEventModal({ editId, date }: { editId?: string; date?: strin
               <button
                 key={k} type="button" onClick={() => setKind(k)}
                 className={`flex-1 px-2 py-1.5 rounded-btn text-[11px] font-medium border transition-colors ${
-                  kind === k ? 'bg-forest text-cream border-forest' : 'bg-white text-forest/50 border-border hover:border-forest/30'
+                  kind === k ? 'bg-forest text-cream border-forest' : 'bg-white text-ink-soft border-border hover:border-forest/30'
                 }`}
               >
                 {KIND_LABELS[k]}
@@ -107,7 +107,7 @@ export function MealEventModal({ editId, date }: { editId?: string; date?: strin
           </div>
         </div>
 
-        <p className="text-[11px] text-forest/45 leading-relaxed">
+        <p className="text-[11px] text-ink-faint leading-relaxed">
           {isBag
             ? 'Bag lunches are prepped as their own item. Kids leaving a regular meal for a trip should also get a −N head-count change on that meal.'
             : countMode === 'delta'

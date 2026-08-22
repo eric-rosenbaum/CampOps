@@ -67,9 +67,9 @@ export function AddMaintenanceTaskModal() {
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
             <h2 className="text-panel-title font-semibold text-forest">{editing ? 'Edit task' : 'Add maintenance task'}</h2>
-            <p className="text-meta text-forest/50 mt-0.5">{asset.name}</p>
+            <p className="text-meta text-ink-soft mt-0.5">{asset.name}</p>
           </div>
-          <button onClick={closeAllModals} className="text-forest/40 hover:text-forest transition-colors"><X className="w-5 h-5" /></button>
+          <button onClick={closeAllModals} className="text-ink-faint hover:text-forest transition-colors"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="px-6 py-5 space-y-4">
@@ -78,7 +78,7 @@ export function AddMaintenanceTaskModal() {
             <div className="flex gap-2">
               {PHASES.map(({ value, label }) => (
                 <button key={value} onClick={() => setPhase(value)}
-                  className={`flex-1 py-2 text-body font-medium rounded-btn border transition-colors ${phase === value ? 'bg-forest border-forest text-cream' : 'border-border text-forest/60 hover:border-forest/40'}`}>
+                  className={`flex-1 py-2 text-body font-medium rounded-btn border transition-colors ${phase === value ? 'bg-forest border-forest text-cream' : 'border-border text-ink-soft hover:border-forest/40'}`}>
                   {label}
                 </button>
               ))}

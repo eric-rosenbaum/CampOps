@@ -108,9 +108,9 @@ export function CheckoutModal() {
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
             <h2 className="text-panel-title font-semibold text-forest">{editing ? 'Edit checkout' : 'Check out'}</h2>
-            <p className="text-meta text-forest/50 mt-0.5">{asset.name}</p>
+            <p className="text-meta text-ink-soft mt-0.5">{asset.name}</p>
           </div>
-          <button onClick={closeAllModals} className="text-forest/40 hover:text-forest transition-colors"><X className="w-5 h-5" /></button>
+          <button onClick={closeAllModals} className="text-ink-faint hover:text-forest transition-colors"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="px-6 py-5 space-y-4">
@@ -172,7 +172,7 @@ export function CheckoutModal() {
               <div className="flex gap-1">
                 {FUEL_LEVELS.map((lvl) => (
                   <button key={lvl} onClick={() => setFuelLevel(lvl)}
-                    className={`flex-1 py-2 text-label font-medium rounded-btn border transition-colors ${fuelLevel === lvl ? 'bg-sage border-sage text-white' : 'border-border text-forest/60 hover:border-sage/60'}`}>
+                    className={`flex-1 py-2 text-label font-medium rounded-btn border transition-colors ${fuelLevel === lvl ? 'bg-sage border-sage text-white' : 'border-border text-ink-soft hover:border-sage/60'}`}>
                     {FUEL_LEVEL_LABELS[lvl]}
                   </button>
                 ))}

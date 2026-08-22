@@ -33,10 +33,10 @@ export function VendorsModal({ editId }: { editId?: string }) {
                 onClick={() => setEditing(v.id)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-card border border-border hover:bg-cream-dark/40 text-left"
               >
-                <Truck className="w-4 h-4 text-forest/40 flex-shrink-0" />
+                <Truck className="w-4 h-4 text-ink-faint flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-forest truncate">{v.name}</p>
-                  <p className="text-[11px] text-forest/45 truncate">
+                  <p className="text-[11px] text-ink-faint truncate">
                     {v.specialty ?? 'No specialty'} · {itemCount} item{itemCount === 1 ? '' : 's'}
                   </p>
                 </div>
@@ -45,7 +45,7 @@ export function VendorsModal({ editId }: { editId?: string }) {
           })}
           <button
             onClick={() => { setEditing(null); setCreating(true); }}
-            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-card border border-dashed border-border text-[12px] font-medium text-forest/60 hover:text-forest hover:border-forest/30"
+            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-card border border-dashed border-border text-[12px] font-medium text-ink-soft hover:text-forest hover:border-forest/30"
           >
             <Plus className="w-3.5 h-3.5" /> Add vendor
           </button>

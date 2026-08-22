@@ -6,7 +6,7 @@ import { useLocationStore } from '@/store/locationStore';
 import type { BuildingType, CampLocation } from '@/lib/types';
 
 const inputClass = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
+const labelClass = 'block text-secondary font-medium text-ink mb-1';
 
 // A building is a top-level `locations` node that also carries a building_details
 // row. Create = addLocation (parent null) + upsertBuildingDetail; edit updates both.
@@ -81,10 +81,10 @@ export function AddEditBuildingModal({ editId }: { editId?: string }) {
                   <select value={locationChoice} onChange={(e) => setLocationChoice(e.target.value)} className={inputClass}>
                     {candidates.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
-                  <p className="text-[11px] text-forest/40 mt-1">Pick a location to track its electrical/plumbing here. Add new locations in <span className="font-medium">Camp Info → Locations</span>.</p>
+                  <p className="text-[11px] text-ink-faint mt-1">Pick a location to track its electrical/plumbing here. Add new locations in <span className="font-medium">Camp Info → Locations</span>.</p>
                 </>
               ) : (
-                <p className="text-[12px] text-forest/55 bg-cream rounded-btn px-3 py-2.5">No available locations yet. Add one in <span className="font-medium">Camp Info → Locations</span> first, then come back to attach its building systems.</p>
+                <p className="text-[12px] text-ink-soft bg-cream rounded-btn px-3 py-2.5">No available locations yet. Add one in <span className="font-medium">Camp Info → Locations</span> first, then come back to attach its building systems.</p>
               )}
             </div>
           )}
@@ -105,7 +105,7 @@ export function AddEditBuildingModal({ editId }: { editId?: string }) {
         </div>
 
         <div className="border-t border-border pt-3">
-          <p className="text-label font-semibold uppercase tracking-widest text-forest/40 mb-2">Emergency reference</p>
+          <p className="text-label font-semibold uppercase tracking-widest text-ink-faint mb-2">Emergency reference</p>
           <div className="space-y-3">
             <div>
               <label className={labelClass}>Main water shutoff</label>

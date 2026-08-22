@@ -47,7 +47,7 @@ export function AppHandoff() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-stone-50 flex flex-col items-center justify-center p-4 sm:p-6">
+    <div className="min-h-screen w-full bg-paper flex flex-col items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2 mb-8 justify-center">
           <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center">
@@ -56,17 +56,17 @@ export function AppHandoff() {
           <span className="text-lg font-semibold text-forest">CampCommand</span>
         </div>
 
-        <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-8 text-center">
+        <div className="bg-white rounded-xl border border-border shadow-sm p-8 text-center">
           <h1 className="text-[20px] font-bold text-forest mb-1.5">
             {firstName ? `You're in, ${firstName}!` : "You're in!"}
           </h1>
           {currentCamp && (
-            <p className="text-[13px] text-forest/60 mb-6">
+            <p className="text-[13px] text-ink-soft mb-6">
               You've joined {currentCamp.name}.
             </p>
           )}
 
-          <p className="text-[13px] text-forest/70 leading-relaxed mb-5">
+          <p className="text-[13px] text-ink leading-relaxed mb-5">
             Most camp work happens away from a desk. Get the iPhone app so you can log issues
             where you find them.
           </p>
@@ -86,7 +86,7 @@ export function AppHandoff() {
 
           <button
             onClick={continueInBrowser}
-            className="mt-3 text-[12px] text-forest/50 hover:text-forest transition-colors"
+            className="mt-3 text-[12px] text-ink-soft hover:text-forest transition-colors"
           >
             Continue in browser
           </button>
@@ -100,7 +100,7 @@ function Benefit({ icon: Icon, text }: { icon: React.ComponentType<{ className?:
   return (
     <li className="flex items-center gap-2.5">
       <div className="w-6 h-6 rounded-md bg-sage-pale flex items-center justify-center flex-shrink-0">
-        <Icon className="w-3.5 h-3.5 text-forest/70" />
+        <Icon className="w-3.5 h-3.5 text-ink" />
       </div>
       <span className="text-[12.5px] text-forest/75">{text}</span>
     </li>

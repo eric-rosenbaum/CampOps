@@ -62,7 +62,7 @@ export function FeedbackModal({ retreatId }: { retreatId: string }) {
     <Modal title="Record feedback" onClose={closeModal} width="500px">
       <form onSubmit={handleSubmit} className="space-y-4">
         {retreat && (
-          <p className="text-[12px] text-forest/55 leading-relaxed">
+          <p className="text-[12px] text-ink-soft leading-relaxed">
             Post-retreat scores for <span className="font-semibold text-forest/75">{retreat.groupName}</span>.
             Enter a 0–5 rating for each dimension — leave blank to skip.
           </p>

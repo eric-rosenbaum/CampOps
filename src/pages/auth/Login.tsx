@@ -19,13 +19,13 @@ interface CodeSignInProps {
 /** Passwordless sign-in for staff who joined with a code and never set a password. */
 function CodeSignIn(p: CodeSignInProps) {
   const input =
-    'w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20';
+    'w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20';
   return (
     <>
       {!p.otpSent ? (
         <form onSubmit={p.onSend} className="space-y-4">
           <div>
-            <label className="block text-[12px] font-medium text-forest/70 mb-1.5">Email address</label>
+            <label className="block text-[12px] font-medium text-ink mb-1.5">Email address</label>
             <input
               type="email" required autoFocus autoComplete="email" inputMode="email"
               value={p.email} onChange={(e) => p.setEmail(e.target.value)} className={input}
@@ -41,14 +41,14 @@ function CodeSignIn(p: CodeSignInProps) {
         </form>
       ) : (
         <form onSubmit={p.onVerify} className="space-y-4">
-          <p className="text-[12px] text-forest/55 leading-relaxed">
+          <p className="text-[12px] text-ink-soft leading-relaxed">
             We sent a sign-in code to <span className="font-medium text-forest">{p.email}</span>.
           </p>
           <input
             value={p.otp}
             onChange={(e) => p.setOtp(e.target.value.replace(/\D/g, '').slice(0, OTP_MAX_LENGTH))}
             autoFocus inputMode="numeric" autoComplete="one-time-code"
-            className="w-full px-3 py-3 rounded-lg border border-stone-200 text-center text-[22px] font-mono font-semibold tracking-[0.35em] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
+            className="w-full px-3 py-3 rounded-lg border border-border text-center text-[22px] font-mono font-semibold tracking-[0.35em] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
           />
           {p.error && <ErrorBox>{p.error}</ErrorBox>}
           <button
@@ -59,7 +59,7 @@ function CodeSignIn(p: CodeSignInProps) {
           </button>
         </form>
       )}
-      <button onClick={p.onBack} className="w-full text-[12px] text-forest/40 hover:text-forest transition-colors pt-4">
+      <button onClick={p.onBack} className="w-full text-[12px] text-ink-faint hover:text-forest transition-colors pt-4">
         Use a password instead
       </button>
     </>
@@ -152,7 +152,7 @@ export function Login() {
       </div>
 
       {/* Right form panel */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-stone-50 p-4 sm:p-6 sm:p-10">
+      <div className="flex-1 flex flex-col items-center justify-center bg-paper p-4 sm:p-6 sm:p-10">
         <div className="lg:hidden flex items-center gap-2 mb-8">
           <div className="w-7 h-7 bg-forest rounded-lg flex items-center justify-center">
             <TreePine className="w-4 h-4 text-cream" />
@@ -161,7 +161,7 @@ export function Login() {
         </div>
 
         <div className="w-full max-w-sm">
-          <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-8">
+          <div className="bg-white rounded-xl border border-border shadow-sm p-8">
             <h1 className="text-[18px] font-semibold text-forest mb-6">Sign in</h1>
 
             {mode === 'code' ? (
@@ -181,7 +181,7 @@ export function Login() {
             <>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-[12px] font-medium text-forest/70 mb-1.5">
+                <label className="block text-[12px] font-medium text-ink mb-1.5">
                   Email address
                 </label>
                 <input
@@ -191,12 +191,12 @@ export function Login() {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
+                  className="w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
                 />
               </div>
 
               <div>
-                <label className="block text-[12px] font-medium text-forest/70 mb-1.5">
+                <label className="block text-[12px] font-medium text-ink mb-1.5">
                   Password
                 </label>
                 <input
@@ -205,7 +205,7 @@ export function Login() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
+                  className="w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
                 />
               </div>
 
@@ -231,7 +231,7 @@ export function Login() {
               >
                 Email me a sign-in code instead
               </button>
-              <Link to="/forgot-password" className="text-[12px] text-forest/50 hover:text-forest transition-colors">
+              <Link to="/forgot-password" className="text-[12px] text-ink-soft hover:text-forest transition-colors">
                 Forgot your password?
               </Link>
             </div>

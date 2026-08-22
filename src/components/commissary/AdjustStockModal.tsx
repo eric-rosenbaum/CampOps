@@ -79,9 +79,9 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
     <Modal title={`Adjust — ${item.name}`} onClose={closeModal} width="480px">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-3">
-          <p className="text-[11px] uppercase tracking-widest text-forest/40 font-semibold">On hand</p>
+          <p className="text-[11px] uppercase tracking-widest text-ink-faint font-semibold">On hand</p>
           <p className="font-mono text-[20px] text-forest mt-0.5">
-            {current.toLocaleString()} <span className="text-[13px] text-forest/50">{item.stockUnit}</span>
+            {current.toLocaleString()} <span className="text-[13px] text-ink-soft">{item.stockUnit}</span>
           </p>
         </div>
 
@@ -107,7 +107,7 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
                 <option key={c} value={c}>{WASTE_CATEGORY_LABELS[c]}</option>
               ))}
             </select>
-            <p className="text-[11px] text-forest/45 mt-1">
+            <p className="text-[11px] text-ink-faint mt-1">
               {wasteCategory === ''
                 ? 'Required — the waste report separates what ordering can prevent from what it cannot.'
                 : isReducibleWaste(wasteCategory)
@@ -140,7 +140,7 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
             autoFocus type="number" step="any" min="0" value={qty}
             onChange={(e) => setQty(e.target.value)} className={inputClass} placeholder="0"
           />
-          <p className="text-[11px] text-forest/45 mt-1">
+          <p className="text-[11px] text-ink-faint mt-1">
             {isRecount
               ? 'Enter what you actually counted. The difference is recorded as the adjustment.'
               : usePack
@@ -153,7 +153,7 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
 
         {qty !== '' && (
           <div className="flex items-center justify-between rounded-card border border-border px-4 py-2.5">
-            <span className="text-[12px] text-forest/60">
+            <span className="text-[12px] text-ink-soft">
               {deltaStock >= 0 ? 'Adding' : 'Removing'}{' '}
               <span className="font-mono">
                 {isRecount || !usePack
@@ -161,7 +161,7 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
                   : `${magnitude.toLocaleString()} ${pluralizeUnit(entryUnitLabel, magnitude)} = ${Math.abs(tidy(deltaStock)).toLocaleString()} ${item.stockUnit}`}
               </span>
             </span>
-            <span className="text-[12px] text-forest/60">
+            <span className="text-[12px] text-ink-soft">
               New on hand <span className="font-mono font-medium text-forest">{projected.toLocaleString()} {item.stockUnit}</span>
             </span>
           </div>
@@ -174,10 +174,10 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
 
         {history.length > 0 && (
           <div>
-            <p className="text-[11px] uppercase tracking-widest text-forest/40 font-semibold mb-1.5">Recent activity</p>
+            <p className="text-[11px] uppercase tracking-widest text-ink-faint font-semibold mb-1.5">Recent activity</p>
             <div className="space-y-1">
               {history.map((a) => (
-                <div key={a.id} className="flex items-center justify-between text-[11px] text-forest/55">
+                <div key={a.id} className="flex items-center justify-between text-[11px] text-ink-soft">
                   <span>
                     {a.wasteCategory
                       ? `Waste — ${WASTE_CATEGORY_SHORT[a.wasteCategory].toLowerCase()}`

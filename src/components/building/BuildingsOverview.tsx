@@ -31,17 +31,17 @@ function BuildingCard({ building }: { building: CampLocation }) {
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-9 h-9 rounded-btn bg-cream-dark flex items-center justify-center flex-shrink-0">
-            <Building2 className="w-5 h-5 text-forest/60" />
+            <Building2 className="w-5 h-5 text-ink-soft" />
           </div>
           <div className="min-w-0">
             <p className="text-card-title font-semibold text-forest truncate">{building.name}</p>
-            <p className="text-meta text-forest/40">{typeLabel}</p>
+            <p className="text-meta text-ink-faint">{typeLabel}</p>
           </div>
         </div>
         {components.length > 0 && <ComponentStatusBadge status={status} />}
       </div>
 
-      <div className="flex items-center gap-3 text-meta text-forest/50 mb-3">
+      <div className="flex items-center gap-3 text-meta text-ink-soft mb-3">
         <span className="inline-flex items-center gap-1"><Zap className="w-3 h-3" /> {electrical}</span>
         <span className="inline-flex items-center gap-1"><Droplet className="w-3 h-3" /> {plumbing}</span>
         <span className="text-forest/30">·</span>
@@ -53,9 +53,9 @@ function BuildingCard({ building }: { building: CampLocation }) {
         <div className="mt-auto pt-2 border-t border-border/60 space-y-1">
           {refs.map((r) => (
             <div key={r.label} className="flex items-start gap-1.5 text-meta">
-              <r.icon className="w-3 h-3 text-forest/40 mt-0.5 flex-shrink-0" />
-              <span className="text-forest/40">{r.label}:</span>
-              <span className="text-forest/70 font-medium">{r.value}</span>
+              <r.icon className="w-3 h-3 text-ink-faint mt-0.5 flex-shrink-0" />
+              <span className="text-ink-faint">{r.label}:</span>
+              <span className="text-ink font-medium">{r.value}</span>
             </div>
           ))}
         </div>

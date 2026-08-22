@@ -1,7 +1,7 @@
 import type { Issue } from '@/lib/types';
 import { useCampStore } from '@/store/campStore';
-import { TagPill } from './TagPill';
-import { relativeTime, formatDate } from '@/lib/utils';
+import { LocationIcon } from './LocationIcon';
+import { relativeDueDate, formatDate } from '@/lib/utils';
 
 interface Props {
   issue: Issue;
@@ -11,83 +11,91 @@ interface Props {
   onTakeIt?: () => void;
 }
 
-const priorityBorderColor = {
+/** The left edge carries priority, so urgency is readable down the gutter of the whole list. */
+const priorityEdge: Record<string, string> = {
   urgent: 'border-l-red',
   high: 'border-l-amber',
   normal: 'border-l-sage',
 };
 
-const priorityDotColor = {
-  urgent: 'bg-red',
-  high: 'bg-amber',
-  normal: 'bg-sage',
+const priorityWord: Record<string, string> = {
+  urgent: 'text-red font-bold',
+  high: 'text-amber-text font-semibold',
+  normal: 'text-ink-soft',
 };
 
-const statusLabel: Record<string, string> = {
-  unassigned: 'Unassigned',
-  assigned: 'Assigned',
-  in_progress: 'In progress',
-  resolved: 'Resolved',
+const priorityLabel: Record<string, string> = {
+  urgent: 'Urgent',
+  high: 'High',
+  normal: 'Normal',
 };
 
 export function IssueCard({ issue, selected, onClick, compact = false, onTakeIt }: Props) {
   const members = useCampStore((s) => s.members);
-  const memberName = (userId: string | null) => userId ? (members.find((m) => m.userId === userId)?.fullName ?? null) : null;
-  const assigneeName = memberName(issue.assigneeId);
+  const memberName = (userId: string | null) =>
+    userId ? (members.find((m) => m.userId === userId)?.fullName ?? null) : null;
 
-  const reportedByLabel = issue.isPublicReport
-    ? (issue.reporterName ? `Public · ${issue.reporterName}` : 'Public report')
-    : (memberName(issue.reportedById) ? `Reported by ${memberName(issue.reportedById)}` : null);
+  const assigneeName = memberName(issue.assigneeId);
+  const location = issue.locations[0];
+  const due = issue.dueDate ? relativeDueDate(issue.dueDate) : null;
 
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-card border border-l-[3px] ${priorityBorderColor[issue.priority]} cursor-pointer transition-all hover:shadow-sm ${
-        selected ? 'border-border' : 'border-border'
-      } ${compact ? 'p-3' : 'p-4'}`}
-      style={selected ? { boxShadow: '0 0 0 2px #1a2e1a' } : undefined}
+      aria-current={selected || undefined}
+      className={`mb-2 flex w-full items-center gap-4 rounded-card border border-l-4 bg-white text-left
+                  transition-[box-shadow,transform,border-color] duration-150 cursor-pointer
+                  hover:-translate-y-px hover:shadow-[0_3px_0_rgba(35,32,27,0.07)]
+                  ${priorityEdge[issue.priority]}
+                  ${selected ? 'border-forest shadow-[0_0_0_1px_#1D3A2E]' : 'border-border'}
+                  ${compact ? 'px-3.5 py-3' : 'px-4 py-4'}`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2.5 flex-1 min-w-0">
-          <div className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${priorityDotColor[issue.priority]}`} />
-          <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-semibold text-forest leading-snug truncate">{issue.title}</p>
-            {reportedByLabel && (
-              <p className="text-[11px] text-forest/50 mt-0.5">
-                {reportedByLabel} · {relativeTime(issue.createdAt)}
-              </p>
-            )}
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {issue.locations.map((l) => <TagPill key={l} label={l} variant="location" />)}
-              {issue.isPublicReport && <TagPill label="Public" variant="public" />}
-              <TagPill label={statusLabel[issue.status] ?? issue.status} />
-              {issue.estimatedCostDisplay && issue.status !== 'resolved' && (
-                <TagPill label={`Est. ${issue.estimatedCostDisplay}`} variant="cost" />
-              )}
-              {issue.status === 'resolved' && issue.actualCost != null && (
-                <TagPill label={`$${issue.actualCost.toLocaleString()}`} variant="cost" />
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="text-right flex-shrink-0">
-          {assigneeName ? (
-            <p className="text-[12px] font-medium text-forest/70">{assigneeName}</p>
-          ) : (
-            <p className="text-[12px] font-medium text-red">Unassigned</p>
+      <LocationIcon location={location} />
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-display text-[16.5px] font-semibold leading-snug text-ink">{issue.title}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[12.5px] text-ink-soft">
+          {location && <span className="truncate">{location}</span>}
+          {location && <span className="text-border">·</span>}
+          <span className={priorityWord[issue.priority]}>{priorityLabel[issue.priority]}</span>
+          {issue.isPublicReport && (
+            <span className="rounded-tag border border-red px-[5px] py-px text-[9.5px] font-bold uppercase tracking-[0.1em] text-red">
+              Public
+            </span>
           )}
-          {issue.dueDate && (
-            <p className="text-[11px] text-forest/45 mt-0.5">{formatDate(issue.dueDate)}</p>
-          )}
-          {onTakeIt && !issue.assigneeId && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onTakeIt(); }}
-              className="mt-1.5 text-[11px] font-medium text-forest px-2 py-0.5 rounded border border-stone-200 bg-cream hover:bg-stone-100 transition-colors"
-            >
-              Take it
-            </button>
+          {issue.status === 'resolved' && issue.actualCost != null && (
+            <>
+              <span className="text-border">·</span>
+              <span className="tabular-nums">${issue.actualCost.toLocaleString()}</span>
+            </>
           )}
         </div>
+      </div>
+
+      <div className="flex-none text-right">
+        {assigneeName ? (
+          <p className="text-[12.5px] font-bold text-forest">{assigneeName.trim().split(/\s+/)[0]}</p>
+        ) : (
+          <p className="text-[12.5px] font-bold text-red">Unassigned</p>
+        )}
+        {due ? (
+          <p className={`mt-0.5 text-[11.5px] tabular-nums ${due.overdue ? 'text-red' : 'text-ink-soft'}`}>
+            {due.label}
+          </p>
+        ) : (
+          <p className="mt-0.5 text-[11.5px] text-ink-faint">
+            {issue.status === 'resolved' ? formatDate(issue.updatedAt) : 'No due date'}
+          </p>
+        )}
+        {onTakeIt && !issue.assigneeId && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onTakeIt(); }}
+            className="mt-1.5 rounded-tag border border-border bg-paper px-2 py-0.5 text-[11px] font-semibold
+                       text-forest transition-colors hover:border-sage"
+          >
+            Take it
+          </button>
+        )}
       </div>
     </div>
   );

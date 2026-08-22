@@ -129,7 +129,7 @@ export function JoinCamp() {
   }, [user, info, step]);
 
   return (
-    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-paper flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2.5 mb-8 justify-center">
           <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center">
@@ -138,12 +138,12 @@ export function JoinCamp() {
           <span className="text-xl font-semibold text-forest">CampCommand</span>
         </div>
 
-        <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-8">
+        <div className="bg-white rounded-xl border border-border shadow-sm p-8">
           {step === 'joining' && (
             <div className="text-center py-4">
               <div className="w-8 h-8 border-2 border-forest border-t-transparent rounded-full animate-spin mx-auto mb-4" />
               <p className="text-[14px] font-medium text-forest mb-1">Joining {info?.campName ?? 'camp'}…</p>
-              <p className="text-[12px] text-forest/40">Just a moment</p>
+              <p className="text-[12px] text-ink-faint">Just a moment</p>
             </div>
           )}
 
@@ -151,7 +151,7 @@ export function JoinCamp() {
           {step === 'code' && (
             <>
               <h1 className="text-[17px] font-semibold text-forest mb-1">Join your camp</h1>
-              <p className="text-[12px] text-forest/50 mb-6">
+              <p className="text-[12px] text-ink-soft mb-6">
                 Enter the code from your camp administrator, like CEDAR-4821.
               </p>
               {error && <ErrorNote>{error}</ErrorNote>}
@@ -167,7 +167,7 @@ export function JoinCamp() {
                   autoCorrect="off"
                   spellCheck={false}
                   placeholder="CEDAR-4821"
-                  className="w-full px-3 py-3 rounded-lg border border-stone-200 text-center text-[19px] font-mono font-semibold tracking-[0.12em] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
+                  className="w-full px-3 py-3 rounded-lg border border-border text-center text-[19px] font-mono font-semibold tracking-[0.12em] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
                 />
                 <button
                   type="submit"
@@ -184,7 +184,7 @@ export function JoinCamp() {
           {step === 'identity' && info?.valid && (
             <>
               <h1 className="text-[17px] font-semibold text-forest mb-1">Join {info.campName}</h1>
-              <p className="text-[12px] text-forest/50 mb-6">
+              <p className="text-[12px] text-ink-soft mb-6">
                 {info.groupName ? `You'll join as ${info.groupName}. ` : ''}
                 We'll email you a code to sign in — no password needed.
               </p>
@@ -223,12 +223,12 @@ export function JoinCamp() {
             <>
               <button
                 onClick={() => { setStep('identity'); setOtp(''); setError(null); }}
-                className="inline-flex items-center gap-1.5 text-[12px] text-forest/40 hover:text-forest mb-4 transition-colors"
+                className="inline-flex items-center gap-1.5 text-[12px] text-ink-faint hover:text-forest mb-4 transition-colors"
               >
                 <ArrowLeft className="w-3.5 h-3.5" /> Back
               </button>
               <h1 className="text-[17px] font-semibold text-forest mb-1">Enter your code</h1>
-              <p className="text-[12px] text-forest/50 mb-6">
+              <p className="text-[12px] text-ink-soft mb-6">
                 We sent a sign-in code to <span className="font-medium text-forest">{email}</span>.
               </p>
               {error && <ErrorNote>{error}</ErrorNote>}
@@ -240,7 +240,7 @@ export function JoinCamp() {
                   inputMode="numeric"
                   // Lets iOS/Android offer the code straight from the notification.
                   autoComplete="one-time-code"
-                  className="w-full px-3 py-3 rounded-lg border border-stone-200 text-center text-[22px] font-mono font-semibold tracking-[0.35em] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
+                  className="w-full px-3 py-3 rounded-lg border border-border text-center text-[22px] font-mono font-semibold tracking-[0.35em] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
                 />
                 <button
                   type="submit"
@@ -253,7 +253,7 @@ export function JoinCamp() {
               <button
                 onClick={handleResend}
                 disabled={cooldown > 0}
-                className="w-full text-[12px] text-forest/40 hover:text-forest transition-colors pt-3 disabled:hover:text-forest/40"
+                className="w-full text-[12px] text-ink-faint hover:text-forest transition-colors pt-3 disabled:hover:text-ink-faint"
               >
                 {cooldown > 0 ? `Send a new code in ${cooldown}s` : 'Send a new code'}
               </button>
@@ -266,12 +266,12 @@ export function JoinCamp() {
 }
 
 const inputClass =
-  'w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20';
+  'w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[12px] font-medium text-forest/70 mb-1.5">{label}</label>
+      <label className="block text-[12px] font-medium text-ink mb-1.5">{label}</label>
       {children}
     </div>
   );

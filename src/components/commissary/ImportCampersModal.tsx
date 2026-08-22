@@ -138,18 +138,18 @@ export function ImportCampersModal() {
       <div className="space-y-4">
         {rows.length === 0 ? (
           <>
-            <p className="text-[13px] text-forest/60 leading-relaxed">
+            <p className="text-[13px] text-ink-soft leading-relaxed">
               Upload a spreadsheet with one row per camper. Include a name column, optionally
               a cabin column, and one column per allergy or dietary restriction.
             </p>
             <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-3">
-              <p className="text-[11px] font-semibold text-forest/60 uppercase tracking-widest mb-1.5">Example</p>
-              <pre className="text-[11px] font-mono text-forest/60 overflow-x-auto">
+              <p className="text-[11px] font-semibold text-ink-soft uppercase tracking-widest mb-1.5">Example</p>
+              <pre className="text-[11px] font-mono text-ink-soft overflow-x-auto">
 {`Name,Cabin,Peanut,Tree nut,Gluten,Vegetarian
 Sarah M.,Cabin 3,anaphylactic,yes,,
 Emma T.,Cabin 2,,anaphylactic,yes,yes`}
               </pre>
-              <p className="text-[11px] text-forest/45 mt-2 leading-relaxed">
+              <p className="text-[11px] text-ink-faint mt-2 leading-relaxed">
                 A blank cell means no restriction. Write <span className="font-mono">anaphylactic</span>,{' '}
                 <span className="font-mono">intolerance</span>, or anything else (like{' '}
                 <span className="font-mono">yes</span>) for a confirmed allergy.
@@ -179,13 +179,13 @@ Emma T.,Cabin 2,,anaphylactic,yes,yes`}
             </div>
 
             <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-3">
-              <p className="text-[12px] text-forest/70">
+              <p className="text-[12px] text-ink">
                 <span className="font-mono font-semibold text-forest">{validRows.length}</span> campers ·{' '}
                 <span className="font-mono font-semibold text-forest">{restrictionColumns.length}</span> restriction
                 {restrictionColumns.length === 1 ? '' : 's'} recognised
               </p>
               {restrictionColumns.length > 0 && (
-                <p className="text-[11px] text-forest/45 mt-1">
+                <p className="text-[11px] text-ink-faint mt-1">
                   {restrictionColumns.map((c) => c.header).join(', ')}
                 </p>
               )}
@@ -207,9 +207,9 @@ Emma T.,Cabin 2,,anaphylactic,yes,yes`}
               <table className="w-full">
                 <thead className="bg-cream-dark/40 sticky top-0">
                   <tr>
-                    <th className="text-left px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-forest/40">Name</th>
-                    <th className="text-left px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-forest/40">Cabin</th>
-                    <th className="text-left px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-forest/40">Restrictions</th>
+                    <th className="text-left px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Name</th>
+                    <th className="text-left px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Cabin</th>
+                    <th className="text-left px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Restrictions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -218,8 +218,8 @@ Emma T.,Cabin 2,,anaphylactic,yes,yes`}
                     return (
                       <tr key={i} className="border-t border-border">
                         <td className="px-3 py-1.5 text-[12px] text-forest">{String(r[nameKey])}</td>
-                        <td className="px-3 py-1.5 text-[12px] text-forest/50">{cabinKey ? String(r[cabinKey] ?? '') : '—'}</td>
-                        <td className="px-3 py-1.5 text-[11px] text-forest/50">
+                        <td className="px-3 py-1.5 text-[12px] text-ink-soft">{cabinKey ? String(r[cabinKey] ?? '') : '—'}</td>
+                        <td className="px-3 py-1.5 text-[11px] text-ink-soft">
                           {found.length ? found.map((c) => c.header).join(', ') : '—'}
                         </td>
                       </tr>
@@ -228,7 +228,7 @@ Emma T.,Cabin 2,,anaphylactic,yes,yes`}
                 </tbody>
               </table>
               {validRows.length > 20 && (
-                <p className="px-3 py-1.5 text-[11px] text-forest/40 border-t border-border">
+                <p className="px-3 py-1.5 text-[11px] text-ink-faint border-t border-border">
                   …and {validRows.length - 20} more
                 </p>
               )}

@@ -7,7 +7,7 @@ interface Props {
 
 export function ActivityFeed({ entries }: Props) {
   if (entries.length === 0) {
-    return <p className="text-[12px] text-forest/50 italic">No activity yet.</p>;
+    return <p className="text-[12px] text-ink-soft italic">No activity yet.</p>;
   }
 
   return (
@@ -17,7 +17,7 @@ export function ActivityFeed({ entries }: Props) {
           <div className="mt-1.5 w-2 h-2 rounded-full bg-sage flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-[13px] text-forest leading-snug">{entry.action}</p>
-            <p className="text-[11px] text-forest/50 mt-0.5">
+            <p className="text-[11px] text-ink-soft mt-0.5">
               {entry.userName} · {relativeTime(entry.timestamp)}
             </p>
           </div>

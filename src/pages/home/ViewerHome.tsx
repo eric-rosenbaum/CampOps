@@ -26,12 +26,12 @@ export function ViewerHome() {
     <div className="p-7 max-w-4xl">
       <div className="mb-7">
         <h1 className="text-[22px] font-bold text-forest">{currentCamp?.name}</h1>
-        <p className="text-[13px] text-forest/50 mt-0.5">Read-only view</p>
+        <p className="text-[13px] text-ink-soft mt-0.5">Read-only view</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <div className={`rounded-xl border p-5 ${urgentIssues.length > 0 ? 'border-red-200 bg-red-50' : 'border-stone-200 bg-white'}`}>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-forest/40 mb-2">Open Issues</p>
+        <div className={`rounded-xl border p-5 ${urgentIssues.length > 0 ? 'border-red-200 bg-red-50' : 'border-border bg-white'}`}>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-ink-faint mb-2">Open Issues</p>
           <p className={`text-2xl font-bold ${urgentIssues.length > 0 ? 'text-red-600' : 'text-forest'}`}>
             {openIssues.length}
           </p>
@@ -40,8 +40,8 @@ export function ViewerHome() {
           )}
         </div>
         {modules.pool && poolStatus && (
-          <div className="rounded-xl border border-stone-200 bg-white p-5">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-forest/40 mb-2">Pool Status</p>
+          <div className="rounded-xl border border-border bg-white p-5">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-ink-faint mb-2">Pool Status</p>
             <p className="text-2xl font-bold text-forest capitalize">
               {poolStatus.replace(/_/g, ' ').replace('open ', '').replace('closed ', 'Closed')}
             </p>
@@ -50,13 +50,13 @@ export function ViewerHome() {
       </div>
 
       {openIssues.length > 0 && (
-        <div className="bg-white rounded-xl border border-stone-200">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+        <div className="bg-white rounded-xl border border-border">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-forest/50" />
+              <AlertTriangle className="w-4 h-4 text-ink-soft" />
               <h2 className="text-[14px] font-semibold text-forest">Open Issues</h2>
             </div>
-            <Link to="/issues" className="text-[12px] text-forest/50 hover:text-forest flex items-center gap-1">
+            <Link to="/issues" className="text-[12px] text-ink-soft hover:text-forest flex items-center gap-1">
               View all <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
@@ -65,14 +65,14 @@ export function ViewerHome() {
               <div key={issue.id} className="px-5 py-3 flex items-center justify-between">
                 <div>
                   <p className="text-[13px] font-medium text-forest">{issue.title}</p>
-                  <p className="text-[11px] text-forest/40 mt-0.5">
+                  <p className="text-[11px] text-ink-faint mt-0.5">
                     {issue.locations.join(', ') || 'No location'} · {issue.status.replace('_', ' ')}
                   </p>
                 </div>
                 <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
                   issue.priority === 'urgent' ? 'bg-red-100 text-red-700' :
                   issue.priority === 'high'   ? 'bg-amber-100 text-amber-700' :
-                  'bg-stone-100 text-stone-500'
+                  'bg-cream-dark text-ink-soft'
                 }`}>
                   {issue.priority}
                 </span>

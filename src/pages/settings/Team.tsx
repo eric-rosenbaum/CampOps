@@ -42,7 +42,7 @@ const EMPTY_MODULES: StaffGroupModules = {
 
 function ModuleBadge({ label }: { label: string }) {
   return (
-    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-forest/8 text-forest/60 border border-forest/10">
+    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-forest/8 text-ink-soft border border-forest/10">
       {label}
     </span>
   );
@@ -79,7 +79,7 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
-        <label className="block text-[11px] font-medium text-forest/60 mb-1">Group name</label>
+        <label className="block text-[11px] font-medium text-ink-soft mb-1">Group name</label>
         <input
           type="text"
           required
@@ -87,12 +87,12 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Pool Staff, Maintenance Crew"
-          className="w-full px-3 py-1.5 border border-stone-200 rounded-lg text-[12px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20"
+          className="w-full px-3 py-1.5 border border-border rounded-lg text-[12px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20"
         />
       </div>
 
       <div>
-        <label className="block text-[11px] font-medium text-forest/60 mb-1.5">Module access</label>
+        <label className="block text-[11px] font-medium text-ink-soft mb-1.5">Module access</label>
         <div className="space-y-1">
           {ALL_MODULES.map((key) => (
             <label key={key} className="flex items-center gap-2 cursor-pointer group">
@@ -102,15 +102,15 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
                 onChange={() => toggleModule(key)}
                 className="w-3.5 h-3.5 accent-forest rounded"
               />
-              <span className="text-[12px] text-forest group-hover:text-forest/80">{MODULE_LABELS[key]}</span>
+              <span className="text-[12px] text-forest group-hover:text-ink">{MODULE_LABELS[key]}</span>
             </label>
           ))}
         </div>
       </div>
 
       {(modules.issues_repairs || modules.pre_post) && (
-        <div className="bg-stone-50 border border-stone-200 rounded-lg px-3 py-2.5 space-y-1.5">
-          <p className="text-[11px] font-medium text-forest/60 mb-1">Task visibility</p>
+        <div className="bg-paper border border-border rounded-lg px-3 py-2.5 space-y-1.5">
+          <p className="text-[11px] font-medium text-ink-soft mb-1">Task visibility</p>
           {modules.issues_repairs && (
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -133,7 +133,7 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
               <span className="text-[12px] text-forest">Pre/Post Camp — can see unassigned tasks</span>
             </label>
           )}
-          <p className="text-[10px] text-forest/40 pt-0.5">
+          <p className="text-[10px] text-ink-faint pt-0.5">
             Staff never see tasks assigned to other people — only their own and optionally unassigned ones.
           </p>
         </div>
@@ -151,7 +151,7 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
             />
             <span className="text-[12px] text-forest">
               Can view camper names, cabins and allergy severities
-              <span className="block text-[11px] text-forest/50 mt-0.5 leading-relaxed">
+              <span className="block text-[11px] text-ink-soft mt-0.5 leading-relaxed">
                 Leave off for kitchen staff: they still see allergen counts and which recipes
                 conflict, which is what they need to cook safely. Enforced in the database,
                 not just hidden in the interface.
@@ -171,7 +171,7 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
         <button
           type="button"
           onClick={onCancel}
-          className="text-[12px] text-forest/40 hover:text-forest px-3 py-1.5 rounded-lg hover:bg-stone-50 transition-colors"
+          className="text-[12px] text-ink-faint hover:text-forest px-3 py-1.5 rounded-lg hover:bg-paper transition-colors"
         >
           Cancel
         </button>
@@ -205,26 +205,26 @@ function AddLinkForm({ onSave, onCancel, saving }: AddLinkFormProps) {
   return (
     <form onSubmit={handleSubmit} className="flex items-end gap-2 mt-2">
       <div>
-        <label className="block text-[10px] font-medium text-forest/50 mb-0.5">Expires (days)</label>
+        <label className="block text-[10px] font-medium text-ink-soft mb-0.5">Expires (days)</label>
         <input
           type="number" min="1" max="365" required value={days}
           onChange={(e) => setDays(e.target.value)}
-          className="w-20 px-2 py-1 border border-stone-200 rounded-lg text-[11px] text-forest focus:outline-none focus:ring-1 focus:ring-forest/20"
+          className="w-20 px-2 py-1 border border-border rounded-lg text-[11px] text-forest focus:outline-none focus:ring-1 focus:ring-forest/20"
         />
       </div>
       <div>
-        <label className="block text-[10px] font-medium text-forest/50 mb-0.5">Max uses</label>
+        <label className="block text-[10px] font-medium text-ink-soft mb-0.5">Max uses</label>
         <input
           type="number" min="1" value={maxUses}
           onChange={(e) => setMaxUses(e.target.value)}
           placeholder="∞"
-          className="w-16 px-2 py-1 border border-stone-200 rounded-lg text-[11px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-1 focus:ring-forest/20"
+          className="w-16 px-2 py-1 border border-border rounded-lg text-[11px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-1 focus:ring-forest/20"
         />
       </div>
       <button
         type="button"
         onClick={onCancel}
-        className="text-[11px] text-forest/40 hover:text-forest px-2 py-1 rounded transition-colors"
+        className="text-[11px] text-ink-faint hover:text-forest px-2 py-1 rounded transition-colors"
       >
         Cancel
       </button>
@@ -332,17 +332,17 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
   }
 
   return (
-    <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
+    <div className="bg-white border border-border rounded-xl overflow-hidden">
       {/* Header */}
       <div className="px-5 py-3.5 flex items-center gap-3">
         <div className="w-7 h-7 rounded-lg bg-forest/8 flex items-center justify-center flex-shrink-0">
-          <Shield className="w-3.5 h-3.5 text-forest/50" />
+          <Shield className="w-3.5 h-3.5 text-ink-soft" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-semibold text-forest">{group.name}</p>
           <div className="flex flex-wrap gap-1 mt-1">
             {enabledModules.length === 0 ? (
-              <span className="text-[10px] text-forest/40 italic">No modules assigned</span>
+              <span className="text-[10px] text-ink-faint italic">No modules assigned</span>
             ) : (
               enabledModules.map((k) => <ModuleBadge key={k} label={MODULE_LABELS[k]} />)
             )}
@@ -351,21 +351,21 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             onClick={() => { setEditing(true); setExpanded(true); }}
-            className="p-1.5 rounded hover:bg-stone-100 text-stone-400 hover:text-forest transition-colors"
+            className="p-1.5 rounded hover:bg-cream-dark text-ink-faint hover:text-forest transition-colors"
             title="Edit group"
           >
             <Pencil className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={handleDeleteGroup}
-            className="p-1.5 rounded hover:bg-red-50 text-stone-400 hover:text-red-500 transition-colors"
+            className="p-1.5 rounded hover:bg-red-50 text-ink-faint hover:text-red-500 transition-colors"
             title="Delete group"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="p-1.5 rounded hover:bg-stone-100 text-stone-400 hover:text-forest transition-colors"
+            className="p-1.5 rounded hover:bg-cream-dark text-ink-faint hover:text-forest transition-colors"
           >
             {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
@@ -373,7 +373,7 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
       </div>
 
       {expanded && (
-        <div className="border-t border-stone-100 px-5 py-3">
+        <div className="border-t border-border px-5 py-3">
           {editing ? (
             <GroupForm
               initial={{
@@ -392,7 +392,7 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
             <>
               {/* Visibility notes */}
               {(group.modules.issues_repairs || group.modules.pre_post || group.modules.commissary) && (
-                <div className="mb-3 text-[11px] text-forest/50 space-y-0.5">
+                <div className="mb-3 text-[11px] text-ink-soft space-y-0.5">
                   {group.modules.issues_repairs && (
                     <p>Issues & Repairs: {group.issuesSeeUnassigned ? 'assigned to them + unassigned' : 'assigned to them only'}</p>
                   )}
@@ -406,7 +406,7 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
               )}
 
               {/* Join codes */}
-              <p className="text-[11px] font-medium text-forest/50 mb-1.5">Join links</p>
+              <p className="text-[11px] font-medium text-ink-soft mb-1.5">Join links</p>
               {groupCodes.length === 0 && !showAddLink && (
                 <p className="text-[11px] text-forest/30 italic mb-2">No active links</p>
               )}
@@ -417,7 +417,7 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
                 return (
                   <div key={jc.id} className="py-2.5 border-b border-stone-50 last:border-0">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] text-forest/40">
+                      <span className="text-[10px] text-ink-faint">
                         {jc.useCount}{jc.maxUses ? `/${jc.maxUses}` : ''} uses · {formatExpiry(jc.expiresAt)}
                       </span>
                       <button
@@ -429,11 +429,11 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
                     </div>
                     <div className="flex items-center gap-2">
                       {/* Short code */}
-                      <div className="flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 flex-shrink-0">
+                      <div className="flex items-center gap-1.5 bg-paper border border-border rounded-lg px-2.5 py-1.5 flex-shrink-0">
                         <code className="text-[12px] font-mono font-bold text-forest tracking-widest">{jc.code}</code>
                         <button
                           onClick={() => handleCopy(jc.code, codeKey)}
-                          className="text-forest/40 hover:text-forest transition-colors"
+                          className="text-ink-faint hover:text-forest transition-colors"
                           title="Copy code"
                         >
                           {copiedId === codeKey
@@ -443,12 +443,12 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
                       </div>
                       <span className="text-[10px] text-forest/30">or</span>
                       {/* Full link */}
-                      <div className="flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 bg-paper border border-border rounded-lg px-2.5 py-1.5 flex-1 min-w-0">
                         <Link2 className="w-3 h-3 text-forest/30 flex-shrink-0" />
-                        <span className="text-[11px] text-forest/50 truncate flex-1">{url}</span>
+                        <span className="text-[11px] text-ink-soft truncate flex-1">{url}</span>
                         <button
                           onClick={() => handleCopy(url, linkKey)}
-                          className="text-forest/40 hover:text-forest transition-colors flex-shrink-0"
+                          className="text-ink-faint hover:text-forest transition-colors flex-shrink-0"
                           title="Copy link"
                         >
                           {copiedId === linkKey
@@ -475,7 +475,7 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
               ) : (
                 <button
                   onClick={() => setShowAddLink(true)}
-                  className="mt-2 flex items-center gap-1.5 text-[11px] text-forest/50 hover:text-forest transition-colors"
+                  className="mt-2 flex items-center gap-1.5 text-[11px] text-ink-soft hover:text-forest transition-colors"
                 >
                   <Plus className="w-3 h-3" />
                   Add join link
@@ -634,7 +634,7 @@ export function Team() {
     <div className="p-7 max-w-3xl">
       <div className="mb-7">
         <h1 className="text-[20px] font-bold text-forest">Team</h1>
-        <p className="text-[12px] text-forest/50 mt-0.5">{members.length} active member{members.length !== 1 ? 's' : ''}</p>
+        <p className="text-[12px] text-ink-soft mt-0.5">{members.length} active member{members.length !== 1 ? 's' : ''}</p>
       </div>
 
       {/* ─── Staff Groups ─────────────────────────────────────────────────────── */}
@@ -642,7 +642,7 @@ export function Team() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="text-[14px] font-semibold text-forest">Staff groups</h2>
-            <p className="text-[11px] text-forest/40 mt-0.5">Each group controls which modules staff can access and how tasks are filtered.</p>
+            <p className="text-[11px] text-ink-faint mt-0.5">Each group controls which modules staff can access and how tasks are filtered.</p>
           </div>
           {isAdmin && !showCreateGroup && (
             <button
@@ -656,7 +656,7 @@ export function Team() {
         </div>
 
         {showCreateGroup && (
-          <div className="bg-white border border-stone-200 rounded-xl p-5 mb-3">
+          <div className="bg-white border border-border rounded-xl p-5 mb-3">
             <h3 className="text-[13px] font-semibold text-forest mb-3">New staff group</h3>
             <GroupForm
               onSave={handleCreateGroup}
@@ -669,9 +669,9 @@ export function Team() {
 
         <div className="space-y-3">
           {staffGroups.length === 0 && !showCreateGroup && (
-            <div className="bg-white border border-dashed border-stone-200 rounded-xl px-5 py-4 sm:py-6 text-center">
-              <p className="text-[13px] font-medium text-forest/50">No staff groups yet</p>
-              <p className="text-[11px] text-forest/35 mt-1">Create a group to start inviting staff with specific module access.</p>
+            <div className="bg-white border border-dashed border-border rounded-xl px-5 py-4 sm:py-6 text-center">
+              <p className="text-[13px] font-medium text-ink-soft">No staff groups yet</p>
+              <p className="text-[11px] text-ink-faint mt-1">Create a group to start inviting staff with specific module access.</p>
             </div>
           )}
           {staffGroups.map((group) => (
@@ -687,10 +687,10 @@ export function Team() {
 
         {/* Legacy join codes (no group attached) */}
         {legacyJoinCodes.length > 0 && (
-          <div className="bg-white border border-stone-200 rounded-xl mt-3 overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-stone-100">
-              <h3 className="text-[12px] font-semibold text-forest/60">Legacy join links</h3>
-              <p className="text-[11px] text-forest/40">Created before groups were introduced. Staff who join with these links get full access.</p>
+          <div className="bg-white border border-border rounded-xl mt-3 overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-border">
+              <h3 className="text-[12px] font-semibold text-ink-soft">Legacy join links</h3>
+              <p className="text-[11px] text-ink-faint">Created before groups were introduced. Staff who join with these links get full access.</p>
             </div>
             <div className="px-5 py-3 space-y-2">
               {legacyJoinCodes.map((jc) => {
@@ -698,12 +698,12 @@ export function Team() {
                 return (
                   <div key={jc.id} className="flex items-center gap-3">
                     <code className="text-[11px] font-mono font-bold text-forest tracking-widest w-16">{jc.code}</code>
-                    <span className="text-[10px] text-forest/40 flex-1">
+                    <span className="text-[10px] text-ink-faint flex-1">
                       {ROLE_LABELS[jc.role]} · {jc.useCount}{jc.maxUses ? `/${jc.maxUses}` : ''} uses
                     </span>
                     <button
                       onClick={() => handleCopy(url, jc.id)}
-                      className="flex items-center gap-1 text-[10px] text-forest/50 hover:text-forest transition-colors"
+                      className="flex items-center gap-1 text-[10px] text-ink-soft hover:text-forest transition-colors"
                     >
                       {copiedId === jc.id ? <><Check className="w-2.5 h-2.5 text-green-600" /> Copied</> : <><Link2 className="w-2.5 h-2.5" /> Copy</>}
                     </button>
@@ -727,9 +727,9 @@ export function Team() {
       </div>
 
       {/* ─── Invite by email ──────────────────────────────────────────────────── */}
-      <div className="bg-white border border-stone-200 rounded-xl p-5 mb-6">
+      <div className="bg-white border border-border rounded-xl p-5 mb-6">
         <h2 className="text-[13px] font-semibold text-forest mb-0.5">Invite by email</h2>
-        <p className="text-[11px] text-forest/40 leading-relaxed mb-4">
+        <p className="text-[11px] text-ink-faint leading-relaxed mb-4">
           The simplest way to bring staff on. We email each person their own link, and they set
           up an account without needing a join code.
         </p>
@@ -745,7 +745,7 @@ export function Team() {
             </button>
             <button
               onClick={() => setShowInviteForm(true)}
-              className="flex items-center gap-2 text-[12px] font-medium text-forest px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 transition-colors"
+              className="flex items-center gap-2 text-[12px] font-medium text-forest px-3 py-1.5 rounded-lg border border-border hover:bg-paper transition-colors"
             >
               <UserPlus className="w-3.5 h-3.5" />
               Invite one person
@@ -767,28 +767,28 @@ export function Team() {
         {showInviteForm && !inviteLink && (
           <form onSubmit={handleInvite} className="space-y-2.5">
             <div>
-              <label className="block text-[11px] font-medium text-forest/60 mb-1">Email address</label>
+              <label className="block text-[11px] font-medium text-ink-soft mb-1">Email address</label>
               <input
                 type="email" required autoFocus value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
-                className="w-full px-3 py-1.5 border border-stone-200 rounded-lg text-[12px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
+                className="w-full px-3 py-1.5 border border-border rounded-lg text-[12px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
-                <label className="block text-[11px] font-medium text-forest/60 mb-1">Role</label>
+                <label className="block text-[11px] font-medium text-ink-soft mb-1">Role</label>
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as CampRole)}
-                  className="w-full px-2 py-1.5 border border-stone-200 rounded-lg text-[12px] text-forest bg-white focus:outline-none focus:ring-2 focus:ring-forest/20"
+                  className="w-full px-2 py-1.5 border border-border rounded-lg text-[12px] text-forest bg-white focus:outline-none focus:ring-2 focus:ring-forest/20"
                 >
                   {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
               </div>
               {inviteRole === 'staff' && (
                 <div>
-                  <label className="block text-[11px] font-medium text-forest/60 mb-1">Staff group</label>
+                  <label className="block text-[11px] font-medium text-ink-soft mb-1">Staff group</label>
                   {staffGroups.length === 0 ? (
                     <p className="text-[11px] text-red-500 pt-1.5">Create a staff group first</p>
                   ) : (
@@ -796,7 +796,7 @@ export function Team() {
                       value={inviteGroupId}
                       onChange={(e) => setInviteGroupId(e.target.value)}
                       required
-                      className="w-full px-2 py-1.5 border border-stone-200 rounded-lg text-[12px] text-forest bg-white focus:outline-none focus:ring-2 focus:ring-forest/20"
+                      className="w-full px-2 py-1.5 border border-border rounded-lg text-[12px] text-forest bg-white focus:outline-none focus:ring-2 focus:ring-forest/20"
                     >
                       <option value="">Select group…</option>
                       {staffGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -814,7 +814,7 @@ export function Team() {
               <button
                 type="button"
                 onClick={() => { setShowInviteForm(false); setInviteError(null); }}
-                className="text-[12px] text-forest/40 hover:text-forest px-3 py-1.5 rounded-lg hover:bg-stone-50 transition-colors"
+                className="text-[12px] text-ink-faint hover:text-forest px-3 py-1.5 rounded-lg hover:bg-paper transition-colors"
               >
                 Cancel
               </button>
@@ -836,20 +836,20 @@ export function Team() {
                 ? <span className="text-green-700 font-medium">✓ Invite emailed to <strong>{inviteLinkEmail}</strong>. Here’s the link as a backup:</span>
                 : <span className="text-amber-700 font-medium">Couldn’t email {inviteLinkEmail}{inviteEmailError ? ` (${inviteEmailError})` : ''} — copy the link and send it manually:</span>}
             </p>
-            <div className="bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 mb-2.5">
+            <div className="bg-paper border border-border rounded-lg px-3 py-2 mb-2.5">
               <code className="text-[10px] text-forest break-all leading-relaxed">{inviteLink}</code>
             </div>
             <div className="flex gap-2 mb-3">
               <button
                 onClick={() => handleCopy(inviteLink, 'invite-link')}
-                className="flex items-center gap-1.5 text-[11px] text-forest font-medium px-2.5 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 transition-colors"
+                className="flex items-center gap-1.5 text-[11px] text-forest font-medium px-2.5 py-1.5 rounded-lg border border-border hover:bg-paper transition-colors"
               >
                 {copiedId === 'invite-link' ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
                 {copiedId === 'invite-link' ? 'Copied!' : 'Copy link'}
               </button>
               <a
                 href={mailtoHref(inviteLinkEmail, inviteLink)}
-                className="flex items-center gap-1.5 text-[11px] text-forest font-medium px-2.5 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 transition-colors"
+                className="flex items-center gap-1.5 text-[11px] text-forest font-medium px-2.5 py-1.5 rounded-lg border border-border hover:bg-paper transition-colors"
               >
                 <Mail className="w-3 h-3" />
                 Open in email
@@ -857,7 +857,7 @@ export function Team() {
             </div>
             <button
               onClick={() => { setInviteLink(null); setInviteLinkEmail(''); setShowInviteForm(true); }}
-              className="text-[11px] text-forest/40 hover:text-forest transition-colors"
+              className="text-[11px] text-ink-faint hover:text-forest transition-colors"
             >
               + Invite another person
             </button>
@@ -866,8 +866,8 @@ export function Team() {
       </div>
 
       {/* ─── Active members ───────────────────────────────────────────────────── */}
-      <div className="bg-white border border-stone-200 rounded-xl mb-6">
-        <div className="px-5 py-4 border-b border-stone-100">
+      <div className="bg-white border border-border rounded-xl mb-6">
+        <div className="px-5 py-4 border-b border-border">
           <h2 className="text-[13px] font-semibold text-forest">Active members</h2>
         </div>
         <div className="divide-y divide-stone-100">
@@ -887,11 +887,11 @@ export function Team() {
                   <div className="flex items-center gap-1.5">
                     <p className="text-[13px] font-medium text-forest truncate">{m.fullName}</p>
                     {m.isCreator && (
-                      <span className="text-[10px] font-medium text-forest/40 bg-stone-100 px-1.5 py-0.5 rounded">Creator</span>
+                      <span className="text-[10px] font-medium text-ink-faint bg-cream-dark px-1.5 py-0.5 rounded">Creator</span>
                     )}
                   </div>
                   {m.role === 'staff' && (
-                    <p className="text-[11px] text-forest/40">{groupName ?? 'Full access (legacy)'}</p>
+                    <p className="text-[11px] text-ink-faint">{groupName ?? 'Full access (legacy)'}</p>
                   )}
                 </div>
                 <select
@@ -907,7 +907,7 @@ export function Team() {
                       setRoleError(err instanceof Error ? err.message : 'Failed to update role');
                     }
                   }}
-                  className="text-[12px] border border-stone-200 rounded-md px-2 py-1 text-forest bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-[12px] border border-border rounded-md px-2 py-1 text-forest bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
@@ -923,7 +923,7 @@ export function Team() {
                         setRoleError(err instanceof Error ? err.message : 'Failed to update group');
                       }
                     }}
-                    className="text-[12px] border border-stone-200 rounded-md px-2 py-1 text-forest bg-white"
+                    className="text-[12px] border border-border rounded-md px-2 py-1 text-forest bg-white"
                   >
                     <option value="">Full access</option>
                     {staffGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -936,7 +936,7 @@ export function Team() {
                       await removeMember(m.id);
                       reload();
                     }}
-                    className="p-1.5 rounded hover:bg-red-50 text-stone-400 hover:text-red-500 transition-colors"
+                    className="p-1.5 rounded hover:bg-red-50 text-ink-faint hover:text-red-500 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -949,8 +949,8 @@ export function Team() {
 
       {/* ─── Pending invitations ──────────────────────────────────────────────── */}
       {invitations.length > 0 && (
-        <div className="bg-white border border-stone-200 rounded-xl">
-          <div className="px-5 py-4 border-b border-stone-100">
+        <div className="bg-white border border-border rounded-xl">
+          <div className="px-5 py-4 border-b border-border">
             <h2 className="text-[13px] font-semibold text-forest">Pending invitations</h2>
           </div>
           <div className="divide-y divide-stone-100">
@@ -961,27 +961,27 @@ export function Team() {
                 <div key={inv.id} className="px-5 py-3 flex items-center gap-4">
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-medium text-forest truncate">{inv.email}</p>
-                    <p className="text-[11px] text-forest/40">
+                    <p className="text-[11px] text-ink-faint">
                       {ROLE_LABELS[inv.role]}{gName ? ` · ${gName}` : ''} · expires {new Date(inv.expiresAt).toLocaleDateString()}
                     </p>
                   </div>
                   <button
                     onClick={() => handleCopy(link, `inv-${inv.id}`)}
-                    className="flex items-center gap-1.5 text-[12px] text-forest/50 hover:text-forest transition-colors flex-shrink-0"
+                    className="flex items-center gap-1.5 text-[12px] text-ink-soft hover:text-forest transition-colors flex-shrink-0"
                   >
                     {copiedId === `inv-${inv.id}` ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
                     {copiedId === `inv-${inv.id}` ? 'Copied!' : 'Copy link'}
                   </button>
                   <a
                     href={mailtoHref(inv.email, link)}
-                    className="flex items-center gap-1.5 text-[12px] text-forest/50 hover:text-forest transition-colors flex-shrink-0"
+                    className="flex items-center gap-1.5 text-[12px] text-ink-soft hover:text-forest transition-colors flex-shrink-0"
                   >
                     <Mail className="w-3 h-3" />
                     Send email
                   </a>
                   <button
                     onClick={async () => { await revokeInvitation(inv.id); reload(); }}
-                    className="p-1.5 rounded hover:bg-red-50 text-stone-400 hover:text-red-500 transition-colors flex-shrink-0"
+                    className="p-1.5 rounded hover:bg-red-50 text-ink-faint hover:text-red-500 transition-colors flex-shrink-0"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

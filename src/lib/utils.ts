@@ -92,3 +92,14 @@ export function formatChemValue(value: number | null | undefined, decimals = 1):
 export function roundChemValue(value: number, decimals = 1): number {
   return Number(value.toFixed(decimals));
 }
+
+/**
+ * First letter of the first and last word — "Marcus Tate" → MT, "Dana" → D.
+ * Filters empty parts because names arrive with trailing whitespace ("Prakash ").
+ */
+export function initialsFor(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}

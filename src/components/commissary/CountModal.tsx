@@ -41,7 +41,7 @@ export function CountModal() {
   return (
     <Modal title="Take inventory" onClose={closeModal} width="620px">
       <div className="space-y-4">
-        <p className="text-[12px] text-forest/55 leading-relaxed">
+        <p className="text-[12px] text-ink-soft leading-relaxed">
           The weekly walk-the-walk-in. Enter what you count in each storage area — this becomes the
           truth the projection runs from. Any number that differs posts a correction; entering a
           matching number still marks the item counted (clearing its "not counted" flag). Blank rows are untouched.
@@ -50,14 +50,14 @@ export function CountModal() {
         <div className="max-h-[55vh] overflow-y-auto space-y-4">
           {grouped.map((g) => (
             <div key={g.loc}>
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40 mb-1.5 sticky top-0 bg-white py-1">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint mb-1.5 sticky top-0 bg-white py-1">
                 {STORAGE_LABELS[g.loc]}
               </p>
               <div className="rounded-card border border-border overflow-hidden">
                 {g.items.map((item) => (
                   <div key={item.id} className="flex items-center gap-3 px-3 py-2 border-b border-border last:border-0">
                     <span className="text-[13px] text-forest flex-1 truncate">{item.name}</span>
-                    <span className="font-mono text-[11px] text-forest/40 w-24 text-right">was {onHandInStockUnit(item).toLocaleString()} {item.stockUnit}</span>
+                    <span className="font-mono text-[11px] text-ink-faint w-24 text-right">was {onHandInStockUnit(item).toLocaleString()} {item.stockUnit}</span>
                     <input
                       type="number" step="any" min="0"
                       value={counts[item.id] ?? ''}
@@ -65,7 +65,7 @@ export function CountModal() {
                       className="w-20 font-mono text-[12px] bg-white border border-border rounded-btn px-2 py-1 focus:outline-none focus:border-sage"
                       placeholder="count"
                     />
-                    <span className="text-[11px] text-forest/40 w-12">{item.stockUnit}</span>
+                    <span className="text-[11px] text-ink-faint w-12">{item.stockUnit}</span>
                   </div>
                 ))}
               </div>
@@ -74,7 +74,7 @@ export function CountModal() {
         </div>
 
         <div className="flex items-center gap-2 pt-1">
-          <span className="text-[12px] text-forest/50">
+          <span className="text-[12px] text-ink-soft">
             {entered} counted{changed > 0 ? ` · ${changed} correction${changed === 1 ? '' : 's'}` : ''}
           </span>
           <div className="flex-1" />

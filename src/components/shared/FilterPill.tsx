@@ -5,26 +5,28 @@ interface Props {
   count?: number;
 }
 
+/**
+ * A tab in the toolbar rule, not a pill.
+ *
+ * The active filter is marked by an ember underline sitting on the toolbar's own bottom border,
+ * so the selected view reads as the sheet of paper you are looking at rather than as a
+ * separate chip floating above it.
+ */
 export function FilterPill({ label, active, onClick, count }: Props) {
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-pill text-[12px] font-medium transition-colors cursor-pointer border ${
+      aria-pressed={active}
+      className={`-mb-px inline-flex items-center gap-1.5 whitespace-nowrap border-b-[3px] px-3 pb-2.5 pt-3
+                  text-[13px] font-semibold transition-colors cursor-pointer ${
         active
-          ? 'bg-forest text-cream border-forest'
-          : 'bg-white text-forest/70 border-border hover:border-forest/30 hover:text-forest'
+          ? 'border-red text-forest'
+          : 'border-transparent text-ink-soft hover:text-forest'
       }`}
     >
       {label}
       {count !== undefined && (
-        <span
-          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-            active ? 'bg-white/20 text-cream' : 'bg-forest/8 text-forest/60'
-          }`}
-          style={!active ? { backgroundColor: 'rgba(26,46,26,0.07)' } : undefined}
-        >
-          {count}
-        </span>
+        <span className="text-[11px] font-medium tabular-nums opacity-75">{count}</span>
       )}
     </button>
   );

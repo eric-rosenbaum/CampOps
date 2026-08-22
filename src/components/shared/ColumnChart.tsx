@@ -107,7 +107,7 @@ export function ColumnChart({ data, series, formatValue, height = 180, emptyMess
                   />
                   <text
                     x={PAD_LEFT - 8} y={y + 3.5} textAnchor="end"
-                    className="fill-current text-forest/45"
+                    className="fill-current text-ink-faint"
                     style={{ fontSize: 10, fontVariantNumeric: 'tabular-nums' }}
                   >
                     {formatValue(value)}
@@ -136,7 +136,7 @@ export function ColumnChart({ data, series, formatValue, height = 180, emptyMess
                   })}
                   <text
                     x={cx + barW / 2} y={PAD_TOP + plotH + 15} textAnchor="middle"
-                    className="fill-current text-forest/50"
+                    className="fill-current text-ink-soft"
                     style={{ fontSize: 10 }}
                   >
                     {d.label}
@@ -150,7 +150,7 @@ export function ColumnChart({ data, series, formatValue, height = 180, emptyMess
             {!hasAny && emptyMessage && (
               <text
                 x={PAD_LEFT + plotW / 2} y={PAD_TOP + plotH / 2} textAnchor="middle"
-                className="fill-current text-forest/45" style={{ fontSize: 12 }}
+                className="fill-current text-ink-faint" style={{ fontSize: 12 }}
               >
                 {emptyMessage}
               </text>
@@ -161,7 +161,7 @@ export function ColumnChart({ data, series, formatValue, height = 180, emptyMess
 
       <div className="flex flex-wrap items-center gap-4 mt-2 pl-[52px]">
         {series.map((s) => (
-          <span key={s.label} className="inline-flex items-center gap-1.5 text-[11px] text-forest/60">
+          <span key={s.label} className="inline-flex items-center gap-1.5 text-[11px] text-ink-soft">
             <span className="w-2.5 h-2.5 rounded-[2px] flex-shrink-0" style={{ backgroundColor: s.color }} />
             {s.label}
           </span>

@@ -6,7 +6,7 @@ import { useLocationStore } from '@/store/locationStore';
 import type { CampLocation } from '@/lib/types';
 
 const inputClass = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
+const labelClass = 'block text-secondary font-medium text-ink mb-1';
 
 // A room is a child `locations` node under its building. New rooms are added in Camp Info →
 // Locations; this modal only edits/renames an existing room from Building Systems.

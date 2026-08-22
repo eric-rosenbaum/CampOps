@@ -34,7 +34,7 @@ export function TemplateEntryModal({ templateId, weekNumber, dayIndex, mealPerio
     <Modal title={`Add to ${MEAL_PERIOD_LABELS[mealPeriod].toLowerCase()}`} onClose={closeModal} width="460px">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-2.5">
-          <p className="text-[12px] text-forest/60">Week {weekNumber} · {TEMPLATE_DAY_LABELS[dayIndex]}</p>
+          <p className="text-[12px] text-ink-soft">Week {weekNumber} · {TEMPLATE_DAY_LABELS[dayIndex]}</p>
         </div>
         <div>
           <label className={labelClass}>Recipe</label>

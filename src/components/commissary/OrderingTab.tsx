@@ -15,7 +15,7 @@ import { InlineNumberEdit } from './commissaryUi';
 import type { PurchaseOrder } from '@/lib/types';
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: 'bg-cream-dark text-forest/70 border-border',
+  draft: 'bg-cream-dark text-ink border-border',
   sent: 'bg-amber-bg text-amber-text border-amber/25',
   received: 'bg-green-muted-bg text-green-muted-text border-sage/25',
   cancelled: 'bg-red-bg text-red border-red/20',
@@ -81,10 +81,10 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
   return (
     <div className="bg-white rounded-card border border-border overflow-x-auto">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-        <Truck className="w-4 h-4 text-forest/40 flex-shrink-0" />
+        <Truck className="w-4 h-4 text-ink-faint flex-shrink-0" />
         <div className="min-w-0">
           <p className="text-[14px] font-semibold text-forest truncate">{order.vendorName}</p>
-          <p className="text-[11px] text-forest/45">
+          <p className="text-[11px] text-ink-faint">
             {lines.length} line{lines.length === 1 ? '' : 's'} ·{' '}
             {order.source === 'menu' ? `from week ${order.weekNumber} menu` : 'built by hand / reorder level'}
             {order.sentAt && ` · sent ${new Date(order.sentAt).toLocaleDateString()}`}
@@ -96,7 +96,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
 
       <div className={`grid ${editable ? 'grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] min-w-[760px] sm:min-w-0' : 'grid-cols-[2fr_1fr_1fr_1fr_1fr] min-w-[640px] sm:min-w-0'} gap-3 px-4 py-2 bg-cream-dark/40 border-b border-border`}>
         {['Item', 'On hand', 'Needed', 'Order', 'Total'].map((h) => (
-          <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>
+          <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>
         ))}
         {editable && <span />}
       </div>
@@ -113,7 +113,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
                 <span className="block text-[13px] text-forest truncate">{l.itemName}</span>
                 <select value={order.vendorId ?? ''} onChange={(e) => setOrderLineVendor(l.id, e.target.value)}
                   title="Order this line from another vendor"
-                  className="mt-0.5 max-w-full text-[10px] text-forest/50 bg-transparent border border-border rounded px-1 py-0.5 focus:outline-none focus:border-sage">
+                  className="mt-0.5 max-w-full text-[10px] text-ink-soft bg-transparent border border-border rounded px-1 py-0.5 focus:outline-none focus:border-sage">
                   {!hasCurrent && order.vendorId && <option value={order.vendorId}>{order.vendorName} (current)</option>}
                   {itemPacks.map((p) => (
                     <option key={p.id} value={p.vendorId}>{vendors.find((v) => v.id === p.vendorId)?.name ?? 'Vendor'}</option>
@@ -122,10 +122,10 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
               </div>
             );
           })()}
-          <span className="font-mono text-[12px] text-forest/50">
+          <span className="font-mono text-[12px] text-ink-soft">
             {formatQty(l.onHandBase / l.purchaseUnitInBase, l.purchaseUnit)}
           </span>
-          <span className="font-mono text-[12px] text-forest/50">
+          <span className="font-mono text-[12px] text-ink-soft">
             {l.neededBase > 0 ? formatQty(l.neededBase / l.purchaseUnitInBase, l.purchaseUnit) : <span className="text-forest/25">—</span>}
           </span>
           {editable ? (
@@ -135,7 +135,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
                 onChange={(e) => updateOrderLineQty(l.id, Math.max(0, Number(e.target.value) || 0))}
                 className="w-16 font-mono text-[12px] bg-white border border-border rounded-btn px-2 py-1 focus:outline-none focus:border-sage"
               />
-              <span className="text-[11px] text-forest/40">{l.purchaseUnit}</span>
+              <span className="text-[11px] text-ink-faint">{l.purchaseUnit}</span>
             </div>
           ) : (
             <span className="font-mono text-[12px] text-forest font-medium">
@@ -156,13 +156,13 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
       ))}
 
       {lines.length === 0 && (
-        <p className="px-4 py-4 text-[12px] text-forest/40 text-center">No items yet — add some below.</p>
+        <p className="px-4 py-4 text-[12px] text-ink-faint text-center">No items yet — add some below.</p>
       )}
 
       {/* Add any item */}
       {editable && (
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-cream-dark/20">
-          <Plus className="w-3.5 h-3.5 text-forest/40 flex-shrink-0" />
+          <Plus className="w-3.5 h-3.5 text-ink-faint flex-shrink-0" />
           <select
             value={addItemId} onChange={(e) => setAddItemId(e.target.value)}
             className="flex-1 min-w-0 text-[12px] bg-white border border-border rounded-btn px-2 py-1.5 focus:outline-none focus:border-sage"
@@ -185,7 +185,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
       )}
 
       <div className="px-4 py-3 flex items-center gap-4 flex-wrap">
-        <div className="text-[12px] text-forest/60">
+        <div className="text-[12px] text-ink-soft">
           Subtotal <span className="font-mono text-forest">{formatCurrency(order.subtotal)}</span>
           {order.deliveryFee > 0 && <> · delivery <span className="font-mono text-forest">{formatCurrency(order.deliveryFee)}</span></>}
         </div>
@@ -227,7 +227,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
       </div>
 
       {order.status === 'received' && (
-        <p className="px-4 pb-3 text-[11px] text-forest/45">
+        <p className="px-4 pb-3 text-[11px] text-ink-faint">
           Received {order.receivedAt ? new Date(order.receivedAt).toLocaleDateString() : ''} — every line was booked into stock and logged.
         </p>
       )}
@@ -262,10 +262,10 @@ function LiveOrderCard({ draft }: { draft: DraftOrder }) {
   return (
     <div className="bg-white rounded-card border border-border overflow-x-auto">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-        <Truck className="w-4 h-4 text-forest/40 flex-shrink-0" />
+        <Truck className="w-4 h-4 text-ink-faint flex-shrink-0" />
         <div className="min-w-0">
           <p className="text-[14px] font-semibold text-forest truncate">{draft.vendorName}</p>
-          <p className="text-[11px] text-forest/45">
+          <p className="text-[11px] text-ink-faint">
             {finalLines.length} item{finalLines.length === 1 ? '' : 's'} to order{draft.deliveryFee > 0 && ` · ${formatCurrency(draft.deliveryFee)} delivery`}
           </p>
         </div>
@@ -274,19 +274,19 @@ function LiveOrderCard({ draft }: { draft: DraftOrder }) {
           <Download className="w-3.5 h-3.5" /> PDF
         </Button>
         <span className="font-mono text-[13px] text-forest" title="Estimated from your prices — the invoice at delivery is the actual cost">
-          {formatCurrency(total)} <span className="text-[10px] font-sans text-forest/40">est.</span>
+          {formatCurrency(total)} <span className="text-[10px] font-sans text-ink-faint">est.</span>
         </span>
       </div>
 
       <div className="grid grid-cols-[2fr_1fr_1fr_1fr] min-w-[640px] sm:min-w-0 gap-3 px-4 py-2 bg-cream-dark/40 border-b border-border">
-        {['Item', 'On hand', 'Order', 'Total'].map((h) => <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>)}
+        {['Item', 'On hand', 'Order', 'Total'].map((h) => <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>)}
       </div>
       {draft.lines.map((l) => {
         const q = qtyOf(l);
         return (
           <div key={l.itemId} className="grid grid-cols-[2fr_1fr_1fr_1fr] min-w-[640px] sm:min-w-0 gap-3 px-4 py-2 border-b border-border last:border-0 items-center">
             <span className="text-[13px] text-forest truncate">{l.itemName}</span>
-            <span className="font-mono text-[12px] text-forest/50">{formatQty(l.onHandBase / l.purchaseUnitInBase, l.purchaseUnit)}</span>
+            <span className="font-mono text-[12px] text-ink-soft">{formatQty(l.onHandBase / l.purchaseUnitInBase, l.purchaseUnit)}</span>
             {canManage ? (
               <InlineNumberEdit value={q} min={0} suffix={l.purchaseUnit} widthClass="w-16"
                 onSave={(n) => setOverrides((o) => ({ ...o, [l.itemId]: n }))} />
@@ -345,11 +345,11 @@ export function OrderingTab() {
     return (
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
-          <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-            <ShoppingCart className="w-7 h-7 text-stone-400" />
+          <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mb-4">
+            <ShoppingCart className="w-7 h-7 text-ink-faint" />
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">Nothing to order yet</h3>
-          <p className="text-[13px] text-forest/50 leading-relaxed mb-4">
+          <p className="text-[13px] text-ink-soft leading-relaxed mb-4">
             Add inventory items with a reorder level and a vendor, and this tab will work out
             what you are short and group it into a purchase order per vendor. You can also build
             an order by hand.
@@ -409,17 +409,17 @@ export function OrderingTab() {
           item's minimum through the next delivery cycle, netting out on-hand + in-transit. */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         {retreatsMode ? (
-          <span className="text-[12px] text-forest/60 inline-flex items-center gap-2">
+          <span className="text-[12px] text-ink-soft inline-flex items-center gap-2">
             Order to cover through
             <input type="date" value={retreatCoverageEnd || windowEnd}
               onChange={(e) => setRetreatCoverage(retreatCoverageStart, e.target.value)}
               className="text-[12px] bg-white border border-border rounded-btn px-2 py-1 focus:outline-none focus:border-sage" />
-            <span className="text-forest/40">· covers every group between now and this date</span>
+            <span className="text-ink-faint">· covers every group between now and this date</span>
           </span>
         ) : (
-          <span className="text-[12px] text-forest/60">
+          <span className="text-[12px] text-ink-soft">
             Covering through <span className="font-medium text-forest">{windowLabel}</span>
-            <span className="text-forest/40"> · next delivery {fmtDay(win.nextDelivery)} · {win.frequency}-day cycle</span>
+            <span className="text-ink-faint"> · next delivery {fmtDay(win.nextDelivery)} · {win.frequency}-day cycle</span>
           </span>
         )}
         <div className="flex-1" />
@@ -438,13 +438,13 @@ export function OrderingTab() {
       </div>
 
       {!retreatsMode && !session && (
-        <p className="text-[12px] text-forest/45 mb-4">
+        <p className="text-[12px] text-ink-faint mb-4">
           No active session, so there's no menu to forecast against — suggestions here are driven purely by
           each item's minimum on hand. Pick a session on the Menu tab to order against the menu too.
         </p>
       )}
       {retreatsMode && (
-        <p className="text-[12px] text-forest/45 mb-4">
+        <p className="text-[12px] text-ink-faint mb-4">
           Ordering across all retreats combined — the forecast sums every group's menu in the coverage window
           above, netted against on-hand stock, in-transit deliveries, and each item's minimum.
         </p>
@@ -452,18 +452,18 @@ export function OrderingTab() {
 
       {drafts.length > 0 && (
         <div className="mb-6">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40 mb-2">To order — live, always current</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint mb-2">To order — live, always current</p>
           <div className="space-y-3">
             {drafts.map((d) => <LiveOrderCard key={d.vendorId ?? '__unassigned'} draft={d} />)}
           </div>
-          <p className="text-[11px] text-forest/40 mt-2">
+          <p className="text-[11px] text-ink-faint mt-2">
             These recompute continuously from your counts and menu — tweak a quantity if you want, then Review &amp; send.
             Nothing is saved as an order until you send it.
           </p>
 
           {/* The math behind every quantity — collapsed by default, for auditing/trust. */}
           <button type="button" onClick={() => setShowMath((v) => !v)}
-            className="flex items-center gap-1.5 mt-3 text-[12px] font-medium text-forest/60 hover:text-forest">
+            className="flex items-center gap-1.5 mt-3 text-[12px] font-medium text-ink-soft hover:text-forest">
             {showMath ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             Show the math — how each quantity is calculated
           </button>
@@ -473,7 +473,7 @@ export function OrderingTab() {
               <div className="mt-2 bg-white rounded-card border border-border overflow-x-auto">
                 <div className="grid grid-cols-[1.6fr_1fr_1.1fr_0.8fr_1fr_1fr] min-w-[760px] sm:min-w-0 gap-2 px-4 py-2 bg-cream-dark/40 border-b border-border">
                   {['Item', 'On hand now', `Used by ${windowLabel}`, 'Floor', 'In transit', '→ Order'].map((h) => (
-                    <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">{h}</span>
+                    <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>
                   ))}
                 </div>
                 {rows.map((r) => {
@@ -484,13 +484,13 @@ export function OrderingTab() {
                     <div key={r.item.id} className="px-4 py-2 border-b border-border last:border-0">
                       <div className="grid grid-cols-[1.6fr_1fr_1.1fr_0.8fr_1fr_1fr] min-w-[760px] sm:min-w-0 gap-2 items-center">
                         <span className="text-[13px] text-forest truncate">{r.item.name}</span>
-                        <span className="font-mono text-[12px] text-forest/70">{f(r.onHandNow)}</span>
-                        <span className="font-mono text-[12px] text-forest/70">{f(r.draw)}</span>
-                        <span className="font-mono text-[12px] text-forest/70">{f(r.floor)}</span>
-                        <span className="font-mono text-[12px] text-forest/70">{r.inTransit > 0 ? f(r.inTransit) : '—'}</span>
+                        <span className="font-mono text-[12px] text-ink">{f(r.onHandNow)}</span>
+                        <span className="font-mono text-[12px] text-ink">{f(r.draw)}</span>
+                        <span className="font-mono text-[12px] text-ink">{f(r.floor)}</span>
+                        <span className="font-mono text-[12px] text-ink">{r.inTransit > 0 ? f(r.inTransit) : '—'}</span>
                         <span className="font-mono text-[12px] font-medium text-forest">{packs}</span>
                       </div>
-                      <p className="text-[11px] text-forest/45 mt-0.5 leading-relaxed">
+                      <p className="text-[11px] text-ink-faint mt-0.5 leading-relaxed">
                         {f(r.onHandNow)} on hand − {f(r.draw)} used by {windowLabel}
                         {r.inTransit > 0 && ` + ${f(r.inTransit)} in transit`} = {f(r.projectedAtEnd)} projected,
                         {' '}below your {f(r.floor)} floor → order {f(r.need)} → rounds up to {packs}.
@@ -505,7 +505,7 @@ export function OrderingTab() {
       )}
 
       {drafts.length === 0 && (
-        <p className="text-[13px] text-forest/45 mb-6 bg-white rounded-card border border-border px-4 py-4 sm:py-6 text-center">
+        <p className="text-[13px] text-ink-faint mb-6 bg-white rounded-card border border-border px-4 py-4 sm:py-6 text-center">
           You're covered through {windowLabel} — projected stock stays above every item's minimum. Build an order
           by hand above if you want to stock up anyway.
         </p>
@@ -513,18 +513,18 @@ export function OrderingTab() {
 
       {open.length > 0 && (
         <div className="mb-6">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40 mb-2">Open orders</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint mb-2">Open orders</p>
           <div className="space-y-3">{open.map((o) => <OrderCard key={o.id} order={o} />)}</div>
         </div>
       )}
 
       {history.length > 0 && (
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40 mb-2">History</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint mb-2">History</p>
           <div className="bg-white rounded-card border border-border overflow-x-auto">
             {history.map((o) => (
               <div key={o.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0">
-                <span className="text-[12px] text-forest/45 w-24 flex-shrink-0">{new Date(o.receivedAt ?? o.updatedAt).toLocaleDateString()}</span>
+                <span className="text-[12px] text-ink-faint w-24 flex-shrink-0">{new Date(o.receivedAt ?? o.updatedAt).toLocaleDateString()}</span>
                 <span className="text-[13px] text-forest flex-1 truncate">{o.vendorName}</span>
                 <StatusBadge status={o.status} />
                 <span className="font-mono text-[12px] text-forest w-24 text-right">{formatCurrency(o.total)}</span>

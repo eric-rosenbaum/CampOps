@@ -48,7 +48,7 @@ export function RetreatMenuBuilder() {
             <UtensilsCrossed className="w-7 h-7 text-forest/30" />
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No retreats to plan</h3>
-          <p className="text-[13px] text-forest/50 leading-relaxed">Create a retreat in the Retreats module, then build its menu here.</p>
+          <p className="text-[13px] text-ink-soft leading-relaxed">Create a retreat in the Retreats module, then build its menu here.</p>
         </div>
       </div>
     );
@@ -70,13 +70,13 @@ export function RetreatMenuBuilder() {
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <div>
           <h3 className="text-[14px] font-semibold text-forest">{retreat.groupName} — menu</h3>
-          <p className="text-[12px] text-forest/50">{retreat.headcount} guests · {days.length} day{days.length === 1 ? '' : 's'} · drives combined ordering + the guest portal</p>
+          <p className="text-[12px] text-ink-soft">{retreat.headcount} guests · {days.length} day{days.length === 1 ? '' : 's'} · drives combined ordering + the guest portal</p>
         </div>
         {canManage && (
           <button
             onClick={() => updateRetreat({ ...retreat, menuPublished: !retreat.menuPublished, updatedAt: new Date().toISOString() })}
             className={`inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-btn border transition-colors ${
-              retreat.menuPublished ? 'bg-sage-pale text-forest border-sage/40' : 'bg-white text-forest/55 border-border hover:border-forest/30'
+              retreat.menuPublished ? 'bg-sage-pale text-forest border-sage/40' : 'bg-white text-ink-soft border-border hover:border-forest/30'
             }`}
           >
             {retreat.menuPublished ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
@@ -90,11 +90,11 @@ export function RetreatMenuBuilder() {
         <div className="min-w-max">
           {/* Header: days across the top */}
           <div className="grid bg-cream-dark/40 border-b border-border" style={gridCols}>
-            <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-forest/50">Meal</div>
+            <div className="px-4 py-2.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Meal</div>
             {days.map((d, i) => (
               <div key={d} className="px-3 py-2 border-l border-border">
                 <p className="text-[12px] font-semibold text-forest leading-tight">Day {i + 1}</p>
-                <p className="text-[10px] text-forest/45">{new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+                <p className="text-[10px] text-ink-faint">{new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
               </div>
             ))}
           </div>
@@ -132,7 +132,7 @@ export function RetreatMenuBuilder() {
                     {canManage && (
                       <button
                         onClick={() => openModal({ kind: 'retreatMenuEntry', retreatId: retreat.id, dayDate: d, mealPeriod: meal })}
-                        className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-forest/45 hover:text-forest"
+                        className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-ink-faint hover:text-forest"
                       >
                         <Plus className="w-3 h-3" /> Add
                       </button>

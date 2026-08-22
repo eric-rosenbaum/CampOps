@@ -140,9 +140,9 @@ export function DocumentModal({ retreatId, docType, docId }: { retreatId: string
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="w-full text-[12px] text-forest/70 file:mr-3 file:rounded-btn file:border file:border-border file:bg-cream-dark file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-forest hover:file:bg-cream cursor-pointer"
+              className="w-full text-[12px] text-ink file:mr-3 file:rounded-btn file:border file:border-border file:bg-cream-dark file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-forest hover:file:bg-cream cursor-pointer"
             />
-            <p className="text-[11px] text-forest/45 mt-1">
+            <p className="text-[11px] text-ink-faint mt-1">
               Attach the PDF/image to store it privately. Leave blank to just record the status.
             </p>
           </div>
@@ -159,7 +159,7 @@ export function DocumentModal({ retreatId, docType, docId }: { retreatId: string
 
         {type === 'coi' && (
           <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-3 space-y-3">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/50">Policy details</p>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-soft">Policy details</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Policy number</label>
@@ -184,7 +184,7 @@ export function DocumentModal({ retreatId, docType, docId }: { retreatId: string
         )}
 
         <div>
-          <label className={labelClass}>Due date {type === 'coi' && <span className="text-forest/40 normal-case">(14 days before arrival)</span>}</label>
+          <label className={labelClass}>Due date {type === 'coi' && <span className="text-ink-faint normal-case">(14 days before arrival)</span>}</label>
           <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
         </div>
 

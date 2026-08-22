@@ -38,7 +38,7 @@ export function RetreatCostsTab() {
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="max-w-md mx-auto text-center mt-24">
           <p className="text-[15px] font-semibold text-forest">No retreats yet</p>
-          <p className="text-[13px] text-forest/55 mt-2 leading-relaxed">
+          <p className="text-[13px] text-ink-soft mt-2 leading-relaxed">
             Payments, invoices, and financial standing for each group appear here once you create a retreat.
           </p>
         </div>
@@ -70,7 +70,7 @@ export function RetreatCostsTab() {
               <button
                 key={y}
                 onClick={() => setYear(y)}
-                className={`text-[12px] font-semibold px-3 py-1 rounded-[6px] transition-colors ${y === year ? 'bg-white text-forest shadow-sm' : 'text-forest/50 hover:text-forest'}`}
+                className={`text-[12px] font-semibold px-3 py-1 rounded-[6px] transition-colors ${y === year ? 'bg-white text-forest shadow-sm' : 'text-ink-soft hover:text-forest'}`}
               >
                 {y}
               </button>
@@ -127,7 +127,7 @@ function GroupFinanceCard({
         : { text: `${money(fin.outstanding)} outstanding`, tone: 'warn' as const };
 
   const standingCls = standing.tone === 'ok' ? 'bg-green-muted-bg text-green-muted-text'
-    : standing.tone === 'warn' ? 'bg-amber-bg text-amber-text' : 'bg-cream-dark text-forest/55';
+    : standing.tone === 'warn' ? 'bg-amber-bg text-amber-text' : 'bg-cream-dark text-ink-soft';
 
   return (
     <div className="bg-white rounded-card border border-border overflow-hidden">
@@ -136,7 +136,7 @@ function GroupFinanceCard({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="text-[14px] font-semibold text-forest truncate">{r.groupName}</p>
-            <p className="text-[11px] text-forest/50 mt-0.5">{fmtRange(r.arrivalDate, r.departureDate)} · {r.headcount} guests</p>
+            <p className="text-[11px] text-ink-soft mt-0.5">{fmtRange(r.arrivalDate, r.departureDate)} · {r.headcount} guests</p>
           </div>
           <div className="flex-shrink-0"><StatusBadge status={r.status} /></div>
         </div>
@@ -160,7 +160,7 @@ function GroupFinanceCard({
               <Wallet className="w-3.5 h-3.5" />
               Deposit {money(depositReq)} · {depositOk ? 'received' : depositPaid > 0 ? `${money(depositPaid)} in` : 'due'}
             </span>
-          ) : <span className="text-[11px] text-forest/40">No deposit required</span>}
+          ) : <span className="text-[11px] text-ink-faint">No deposit required</span>}
           <span className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${standingCls}`}>{standing.text}</span>
         </div>
       </div>
@@ -183,7 +183,7 @@ function GroupFinanceCard({
         </div>
       )}
       {fin.source === 'estimate' && fin.expected > 0 && (
-        <p className="px-4 pb-3 -mt-1 text-[11px] text-forest/40">Showing the rate estimate — send an invoice to lock the billed amount.</p>
+        <p className="px-4 pb-3 -mt-1 text-[11px] text-ink-faint">Showing the rate estimate — send an invoice to lock the billed amount.</p>
       )}
     </div>
   );
@@ -193,7 +193,7 @@ function Fig({ label, value, tone = 'default' }: { label: string; value: string;
   const cls = tone === 'green' ? 'text-green-muted-text' : tone === 'amber' ? 'text-amber' : 'text-forest';
   return (
     <div className="px-3 py-2.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-forest/40">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">{label}</p>
       <p className={`font-mono text-[14px] font-semibold mt-0.5 ${cls}`}>{value}</p>
     </div>
   );

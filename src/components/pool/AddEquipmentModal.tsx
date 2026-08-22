@@ -17,7 +17,7 @@ interface FormValues {
 }
 
 const inputClass = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
+const labelClass = 'block text-secondary font-medium text-ink mb-1';
 
 export function AddEquipmentModal() {
   const { closeAllModals } = useUIStore();
@@ -51,7 +51,7 @@ export function AddEquipmentModal() {
   return (
     <Modal title="Add equipment" onClose={closeAllModals}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <p className="text-secondary text-forest/50 -mt-1">Add a piece of pool equipment to track</p>
+        <p className="text-secondary text-ink-soft -mt-1">Add a piece of pool equipment to track</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>

@@ -40,13 +40,13 @@ export function SeasonModal() {
   if (!isSeasonModalOpen) return null;
 
   const inputClass = 'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-  const labelClass = 'block text-[12px] font-medium text-forest/70 mb-1';
+  const labelClass = 'block text-[12px] font-medium text-ink mb-1';
   const errorClass = 'text-[11px] text-red mt-0.5';
 
   return (
     <Modal title="New season" onClose={closeAllModals}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <p className="text-[13px] text-forest/60 bg-amber-bg border border-amber/20 rounded-btn px-3 py-2">
+        <p className="text-[13px] text-ink-soft bg-amber-bg border border-amber/20 rounded-btn px-3 py-2">
           This will reset all checklist task statuses to Pending and recompute due dates.
         </p>
 
@@ -88,7 +88,7 @@ export function SeasonModal() {
             {...register('acaInspectionDate')}
             className={inputClass}
           />
-          <p className="text-[11px] text-forest/40 mt-1">If your camp has an upcoming ACA accreditation visit, enter the date to track it in Safety & Compliance.</p>
+          <p className="text-[11px] text-ink-faint mt-1">If your camp has an upcoming ACA accreditation visit, enter the date to track it in Safety & Compliance.</p>
         </div>
 
         <div className="flex gap-2 pt-2">

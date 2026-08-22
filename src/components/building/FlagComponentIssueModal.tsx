@@ -10,7 +10,7 @@ import { buildingLocationFor } from './useBuildings';
 import type { ComponentStatus, Issue } from '@/lib/types';
 
 const inputClass = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
+const labelClass = 'block text-secondary font-medium text-ink mb-1';
 
 export function FlagComponentIssueModal({ componentId }: { componentId: string }) {
   const { components, updateComponent, closeModal } = useBuildingStore();
@@ -63,6 +63,7 @@ export function FlagComponentIssueModal({ componentId }: { componentId: string }
         isPublicReport: false,
         reporterName: null,
         reporterContact: null,
+        source: 'web',
         createdAt: now,
         updatedAt: now,
         activityLog: [{
@@ -108,9 +109,9 @@ export function FlagComponentIssueModal({ componentId }: { componentId: string }
         </div>
         <label className="flex items-start gap-2 cursor-pointer">
           <input type="checkbox" checked={createIssue} onChange={(e) => setCreateIssue(e.target.checked)} className="w-4 h-4 accent-forest rounded mt-0.5" />
-          <span className="text-body text-forest/80">
+          <span className="text-body text-ink">
             Also create a ticket in Issues &amp; Repairs
-            {building && <span className="text-forest/40"> (location: {building.name})</span>}
+            {building && <span className="text-ink-faint"> (location: {building.name})</span>}
           </span>
         </label>
 

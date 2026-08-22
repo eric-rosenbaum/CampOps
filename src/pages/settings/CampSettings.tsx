@@ -33,8 +33,8 @@ const inputCls = 'w-full text-[13px] bg-white border border-border rounded-btn p
 // Same as inputCls but without w-full — use when the field's width is controlled by flex (side-by-side rows),
 // since a baked-in w-full beats flex-1/w-40 in Tailwind's stylesheet order and collapses the layout.
 const fieldCls = 'text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-const labelCls = 'block text-[12px] font-medium text-forest/60 mb-1';
-const cardCls  = 'bg-white border border-stone-200 rounded-xl p-5';
+const labelCls = 'block text-[12px] font-medium text-ink-soft mb-1';
+const cardCls  = 'bg-white border border-border rounded-xl p-5';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -129,7 +129,7 @@ function ProfileTab() {
 
         <div className={cardCls}>
           <h2 className="text-[13px] font-semibold text-forest mb-1">Modules</h2>
-          <p className="text-[11px] text-forest/40 mb-4">Enable only the modules your camp uses</p>
+          <p className="text-[11px] text-ink-faint mb-4">Enable only the modules your camp uses</p>
           <div className="space-y-3">
             {MODULE_OPTIONS.map(mod => (
               <div
@@ -137,12 +137,12 @@ function ProfileTab() {
                 className="flex items-center gap-3 cursor-pointer"
                 onClick={() => setModules(p => ({ ...p, [mod.key]: !p[mod.key] }))}
               >
-                <div className={`w-9 h-5 rounded-full flex-shrink-0 flex items-center transition-colors ${modules[mod.key] ? 'bg-forest' : 'bg-stone-200'}`}>
+                <div className={`w-9 h-5 rounded-full flex-shrink-0 flex items-center transition-colors ${modules[mod.key] ? 'bg-forest' : 'bg-cream-dark'}`}>
                   <div className={`w-4 h-4 bg-white rounded-full shadow mx-0.5 transition-transform ${modules[mod.key] ? 'translate-x-4' : 'translate-x-0'}`} />
                 </div>
                 <div>
                   <p className="text-[13px] font-medium text-forest">{mod.label}</p>
-                  <p className="text-[11px] text-forest/40">{mod.desc}</p>
+                  <p className="text-[11px] text-ink-faint">{mod.desc}</p>
                 </div>
               </div>
             ))}
@@ -170,7 +170,7 @@ function ProfileTab() {
         return (
           <div className={cardCls}>
             <h2 className="text-[13px] font-semibold text-forest mb-1">Public issue report link</h2>
-            <p className="text-[12px] text-forest/40 mb-3">
+            <p className="text-[12px] text-ink-faint mb-3">
               Share this link so anyone — campers, parents, staff — can report an issue without an account. Reports appear in Issues &amp; Repairs with a Public badge.
             </p>
             <div className="flex items-center gap-2 bg-cream border border-border rounded-btn px-3 py-2">
@@ -178,14 +178,14 @@ function ProfileTab() {
                 to={`/report/${currentCamp.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 text-[12px] text-forest/70 font-mono truncate hover:text-forest transition-colors"
+                className="flex-1 text-[12px] text-ink font-mono truncate hover:text-forest transition-colors"
               >
                 {reportUrl}
               </Link>
               <button
                 type="button"
                 onClick={copyUrl}
-                className="flex items-center gap-1 text-[11px] font-medium text-forest/50 hover:text-forest transition-colors flex-shrink-0 px-1.5 py-0.5 rounded hover:bg-stone-100"
+                className="flex items-center gap-1 text-[11px] font-medium text-ink-soft hover:text-forest transition-colors flex-shrink-0 px-1.5 py-0.5 rounded hover:bg-cream-dark"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-sage" /> : <Copy className="w-3.5 h-3.5" />}
                 {copied ? 'Copied' : 'Copy'}
@@ -296,7 +296,7 @@ function SeasonTab() {
             <div>
               <label className={labelCls}>ACA inspection date <span className="text-forest/30 font-normal">(optional)</span></label>
               <input type="date" {...register('acaInspectionDate')} className={inputCls} />
-              <p className="text-[11px] text-forest/40 mt-1">Used to track your ACA accreditation visit in Safety &amp; Compliance.</p>
+              <p className="text-[11px] text-ink-faint mt-1">Used to track your ACA accreditation visit in Safety &amp; Compliance.</p>
             </div>
 
             <div className="flex gap-2 pt-1">
@@ -309,7 +309,7 @@ function SeasonTab() {
               <button
                 type="button"
                 onClick={() => setMode('view')}
-                className="text-[13px] text-forest/50 px-4 py-2 rounded-lg hover:bg-cream transition-colors"
+                className="text-[13px] text-ink-soft px-4 py-2 rounded-lg hover:bg-cream transition-colors"
               >
                 Cancel
               </button>
@@ -338,11 +338,11 @@ function SeasonTab() {
                     Active
                   </span>
                 </div>
-                <p className="text-[13px] text-forest/60 mt-0.5">
+                <p className="text-[13px] text-ink-soft mt-0.5">
                   {fmt(season.openingDate)} → {fmt(season.closingDate)}
                 </p>
                 {season.acaInspectionDate && (
-                  <p className="text-[12px] text-forest/40 mt-1">
+                  <p className="text-[12px] text-ink-faint mt-1">
                     ACA inspection: {fmt(season.acaInspectionDate)}
                   </p>
                 )}
@@ -359,7 +359,7 @@ function SeasonTab() {
               </button>
               <button
                 onClick={startNew}
-                className="flex items-center gap-1.5 text-[13px] text-forest/50 px-4 py-2 rounded-lg hover:bg-cream transition-colors"
+                className="flex items-center gap-1.5 text-[13px] text-ink-soft px-4 py-2 rounded-lg hover:bg-cream transition-colors"
               >
                 <Calendar className="w-3.5 h-3.5" />
                 Start new season
@@ -368,11 +368,11 @@ function SeasonTab() {
           </>
         ) : (
           <div className="text-center py-4 sm:py-6">
-            <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-3">
+            <div className="w-12 h-12 rounded-full bg-cream-dark flex items-center justify-center mx-auto mb-3">
               <Calendar className="w-6 h-6 text-forest/25" />
             </div>
             <p className="text-[14px] font-semibold text-forest mb-1">No active season</p>
-            <p className="text-[12px] text-forest/40 mb-5 max-w-xs mx-auto">
+            <p className="text-[12px] text-ink-faint mb-5 max-w-xs mx-auto">
               Set up your camp season to enable due date tracking on pre/post camp checklist tasks.
             </p>
             <button
@@ -393,7 +393,7 @@ function SeasonTab() {
 // Locations overview: read-only rows that open a detail editor modal.
 function LocBadge({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'neutral' | 'sage' | 'blue' | 'muted' }) {
   const cls = tone === 'sage' ? 'bg-sage-pale text-forest' : tone === 'blue' ? 'bg-blue-bg text-blue-text'
-    : tone === 'muted' ? 'bg-cream-dark text-forest/45' : 'bg-cream-dark text-forest/60';
+    : tone === 'muted' ? 'bg-cream-dark text-ink-faint' : 'bg-cream-dark text-ink-soft';
   return <span className={`inline-flex px-1.5 py-0.5 rounded-tag text-[10px] font-semibold uppercase tracking-wide ${cls}`}>{children}</span>;
 }
 
@@ -413,7 +413,7 @@ function LocationRow({ loc, depth, onOpen }: { loc: CampLocation; depth: number;
         style={{ paddingLeft: `${depth * 20 + 4}px` }}
       >
         {depth > 0 && <CornerDownRight className="w-3.5 h-3.5 text-forest/25 flex-shrink-0" />}
-        <span className={`text-[13px] font-medium truncate ${loc.isActive ? 'text-forest' : 'text-forest/40 line-through'}`}>
+        <span className={`text-[13px] font-medium truncate ${loc.isActive ? 'text-forest' : 'text-ink-faint line-through'}`}>
           {loc.name || 'Untitled location'}
         </span>
         <span className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
@@ -422,7 +422,7 @@ function LocationRow({ loc, depth, onOpen }: { loc: CampLocation; depth: number;
           {loc.retreatAvailable && <LocBadge tone="sage">Retreat</LocBadge>}
           {loc.accessible && <LocBadge tone="blue">ADA</LocBadge>}
           {!loc.isActive && <LocBadge tone="muted">Blocked</LocBadge>}
-          {depth === 0 && catName && <span className="text-[11px] text-forest/35">{catName}</span>}
+          {depth === 0 && catName && <span className="text-[11px] text-ink-faint">{catName}</span>}
         </span>
         <Pencil className="w-3.5 h-3.5 text-forest/25 flex-shrink-0" />
       </button>
@@ -475,20 +475,20 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
   }
 
   const sortedCats = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
-  const toggle = (on: boolean) => `inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1.5 rounded-pill border transition-colors ${on ? 'bg-sage text-white border-sage' : 'bg-white text-forest/50 border-border hover:border-forest/30'}`;
+  const toggle = (on: boolean) => `inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1.5 rounded-pill border transition-colors ${on ? 'bg-sage text-white border-sage' : 'bg-white text-ink-soft border-border hover:border-forest/30'}`;
 
   return (
     <Modal title={isRoom ? 'Edit room' : 'Edit location'} onClose={onClose} width="460px">
       <div className="space-y-4">
         <div>
-          <label className="block text-[12px] font-medium text-forest/70 mb-1">Name</label>
+          <label className="block text-[12px] font-medium text-ink mb-1">Name</label>
           <input autoFocus value={name} onChange={e => setName(e.target.value)} className={inputCls} placeholder="e.g. Birch Cabin, Room 2" />
         </div>
 
         {!isRoom && (
           <>
             <div>
-              <label className="block text-[12px] font-medium text-forest/70 mb-1">Category</label>
+              <label className="block text-[12px] font-medium text-ink mb-1">Category</label>
               <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className={inputCls}>
                 <option value="">Uncategorized</option>
                 {sortedCats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -498,14 +498,14 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
               <button type="button" onClick={() => setIsDorm(v => !v)} className={toggle(isDorm)}>{isDorm && <Check className="w-3 h-3" />} Dorm / sleeping quarters</button>
               {isDorm && <button type="button" onClick={() => setRetreatAvailable(v => !v)} className={toggle(retreatAvailable)}>{retreatAvailable && <Check className="w-3 h-3" />} Available to retreats</button>}
             </div>
-            {isDorm && <p className="text-[11px] text-forest/45 -mt-1.5">Beds live on this building's rooms — add rooms below and set their beds.</p>}
+            {isDorm && <p className="text-[11px] text-ink-faint -mt-1.5">Beds live on this building's rooms — add rooms below and set their beds.</p>}
           </>
         )}
 
         {isRoom && (
           <>
             <div>
-              <label className="block text-[12px] font-medium text-forest/70 mb-1">Beds</label>
+              <label className="block text-[12px] font-medium text-ink mb-1">Beds</label>
               <input type="number" min={0} value={beds} onChange={e => setBeds(e.target.value)} className={`${inputCls} w-28`} placeholder="0" />
             </div>
             <div>
@@ -514,7 +514,7 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
                 {parentAvailable && retreatAvailable && <Check className="w-3 h-3" />} Available to retreats
               </button>
               {!parentAvailable && (
-                <p className="text-[11px] text-forest/45 mt-1">Mark <span className="font-medium">{parent?.name ?? 'the building'}</span> available to retreats first.</p>
+                <p className="text-[11px] text-ink-faint mt-1">Mark <span className="font-medium">{parent?.name ?? 'the building'}</span> available to retreats first.</p>
               )}
             </div>
           </>
@@ -526,25 +526,25 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
         </div>
 
         <div>
-          <label className="block text-[12px] font-medium text-forest/70 mb-1">Notes</label>
+          <label className="block text-[12px] font-medium text-ink mb-1">Notes</label>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={`${inputCls} resize-none`} placeholder="optional" />
         </div>
 
         {!isRoom && (
           <div className="border-t border-border pt-3">
             <div className="flex items-center justify-between mb-1.5">
-              <p className="text-[12px] font-semibold text-forest/60">Rooms / sub-locations</p>
-              <button type="button" onClick={addRoom} className="inline-flex items-center gap-1 text-[12px] font-medium text-forest/60 hover:text-forest"><Plus className="w-3.5 h-3.5" /> Add room</button>
+              <p className="text-[12px] font-semibold text-ink-soft">Rooms / sub-locations</p>
+              <button type="button" onClick={addRoom} className="inline-flex items-center gap-1 text-[12px] font-medium text-ink-soft hover:text-forest"><Plus className="w-3.5 h-3.5" /> Add room</button>
             </div>
             {kids.length === 0 ? (
-              <p className="text-[11px] text-forest/40 italic">No rooms yet.</p>
+              <p className="text-[11px] text-ink-faint italic">No rooms yet.</p>
             ) : (
               <div className="divide-y divide-stone-100">
                 {kids.map(k => (
                   <button key={k.id} type="button" onClick={() => onOpen(k)} className="w-full flex items-center gap-2 py-1.5 text-left text-[12px] text-forest hover:text-sage">
                     <CornerDownRight className="w-3.5 h-3.5 text-forest/25" />
-                    <span className={k.isActive ? '' : 'text-forest/40 line-through'}>{k.name}</span>
-                    {k.bedCapacity != null && <span className="text-forest/40">· {k.bedCapacity} beds</span>}
+                    <span className={k.isActive ? '' : 'text-ink-faint line-through'}>{k.name}</span>
+                    {k.bedCapacity != null && <span className="text-ink-faint">· {k.bedCapacity} beds</span>}
                   </button>
                 ))}
               </div>
@@ -555,7 +555,7 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
         <div className="flex gap-2 pt-1">
           <button onClick={save} className="flex-1 bg-forest text-cream text-[13px] font-medium py-2 rounded-btn hover:bg-forest/90 transition-colors">Save changes</button>
           <button onClick={remove} className="text-[13px] text-red hover:bg-red-bg px-3 py-2 rounded-btn transition-colors">Delete</button>
-          <button onClick={onClose} className="text-[13px] text-forest/50 hover:text-forest px-3 py-2 rounded-btn transition-colors">Cancel</button>
+          <button onClick={onClose} className="text-[13px] text-ink-soft hover:text-forest px-3 py-2 rounded-btn transition-colors">Cancel</button>
         </div>
       </div>
     </Modal>
@@ -685,7 +685,7 @@ function LocationsTab() {
       {/* Locations tree */}
       <div className={cardCls}>
         <h2 className="text-[13px] font-semibold text-forest mb-1">Camp locations</h2>
-        <p className="text-[12px] text-forest/40 mb-4">
+        <p className="text-[12px] text-ink-faint mb-4">
           The unified place inventory — used across the app to tag issues, tasks, assets, dorms, and retreats.
         </p>
 
@@ -699,13 +699,13 @@ function LocationsTab() {
           />
 
           {/* (b) DIY spreadsheet import */}
-          <div className="rounded-xl border border-stone-200 px-4 py-5 text-center bg-white flex flex-col items-center gap-1.5">
-            <Upload className="w-5 h-5 text-forest/35" />
+          <div className="rounded-xl border border-border px-4 py-5 text-center bg-white flex flex-col items-center gap-1.5">
+            <Upload className="w-5 h-5 text-ink-faint" />
             <p className="text-[12px] font-semibold text-forest">Upload it yourself</p>
-            <p className="text-[11px] text-forest/45 leading-snug">Format a CSV or spreadsheet and import it directly.</p>
+            <p className="text-[11px] text-ink-faint leading-snug">Format a CSV or spreadsheet and import it directly.</p>
             <div className="flex items-center gap-3 mt-1.5">
-              <button onClick={() => fileRef.current?.click()} className="text-[12px] font-medium text-forest border border-stone-300 hover:border-forest/40 px-3 py-1.5 rounded-btn transition-colors">Choose file</button>
-              <button onClick={() => setShowInstructions(v => !v)} className="text-[12px] text-forest/50 hover:text-forest inline-flex items-center gap-1">
+              <button onClick={() => fileRef.current?.click()} className="text-[12px] font-medium text-forest border border-border hover:border-forest/40 px-3 py-1.5 rounded-btn transition-colors">Choose file</button>
+              <button onClick={() => setShowInstructions(v => !v)} className="text-[12px] text-ink-soft hover:text-forest inline-flex items-center gap-1">
                 {showInstructions ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />} Formatting guide
               </button>
             </div>
@@ -715,32 +715,32 @@ function LocationsTab() {
 
         {/* Collapsible DIY formatting instructions */}
         {showInstructions && (
-          <div className="mb-4 text-[12px] text-forest/55 bg-cream/60 border border-border rounded-btn px-3.5 py-2.5 leading-relaxed">
-            <span className="font-semibold text-forest/70">Spreadsheet format</span> — one row per location. Column headers are matched loosely (case-insensitive):
+          <div className="mb-4 text-[12px] text-ink-soft bg-cream/60 border border-border rounded-btn px-3.5 py-2.5 leading-relaxed">
+            <span className="font-semibold text-ink">Spreadsheet format</span> — one row per location. Column headers are matched loosely (case-insensitive):
             <ul className="mt-1.5 space-y-0.5 list-disc pl-4">
-              <li><span className="font-medium text-forest/70">name</span> <span className="text-forest/40">(required)</span> — the location's name, e.g. “Birch Cabin”.</li>
-              <li><span className="font-medium text-forest/70">category</span> — e.g. Housing, Waterfront, Dining. Created automatically if it's new.</li>
-              <li><span className="font-medium text-forest/70">parent</span> — the exact name of another location to nest under (list parents above their children).</li>
-              <li><span className="font-medium text-forest/70">dorm</span> — yes / true / x to mark a sleeping quarters.</li>
-              <li><span className="font-medium text-forest/70">beds</span> — number of beds (dorms).</li>
-              <li><span className="font-medium text-forest/70">accessible</span> — yes / true if ADA-accessible.</li>
+              <li><span className="font-medium text-ink">name</span> <span className="text-ink-faint">(required)</span> — the location's name, e.g. “Birch Cabin”.</li>
+              <li><span className="font-medium text-ink">category</span> — e.g. Housing, Waterfront, Dining. Created automatically if it's new.</li>
+              <li><span className="font-medium text-ink">parent</span> — the exact name of another location to nest under (list parents above their children).</li>
+              <li><span className="font-medium text-ink">dorm</span> — yes / true / x to mark a sleeping quarters.</li>
+              <li><span className="font-medium text-ink">beds</span> — number of beds (dorms).</li>
+              <li><span className="font-medium text-ink">accessible</span> — yes / true if ADA-accessible.</li>
             </ul>
-            <p className="mt-1.5 text-forest/40">Example row: <code className="bg-white border border-border rounded px-1">Birch Cabin, Housing, , yes, 12, yes</code></p>
+            <p className="mt-1.5 text-ink-faint">Example row: <code className="bg-white border border-border rounded px-1">Birch Cabin, Housing, , yes, 12, yes</code></p>
           </div>
         )}
 
         {/* Import preview */}
         {preview && (
-          <div className="mb-4 p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-2">
+          <div className="mb-4 p-4 bg-paper border border-border rounded-xl space-y-2">
             <p className="text-[12px] font-medium text-forest">
               {preview.fileName} — {preview.rows.length} row{preview.rows.length !== 1 ? 's' : ''} ready
             </p>
-            <div className="max-h-32 overflow-y-auto text-[12px] text-forest/60 space-y-0.5">
+            <div className="max-h-32 overflow-y-auto text-[12px] text-ink-soft space-y-0.5">
               {preview.rows.slice(0, 8).map((r, i) => (
                 <div key={i} className="flex gap-2">
                   {r.parent && <CornerDownRight className="w-3.5 h-3.5 text-forest/25" />}
                   <span className="text-forest">{r.name}</span>
-                  {r.category && <span className="text-forest/40">· {r.category}</span>}
+                  {r.category && <span className="text-ink-faint">· {r.category}</span>}
                   {r.isDorm && <span className="text-sage">· dorm{r.beds ? ` (${r.beds})` : ''}</span>}
                 </div>
               ))}
@@ -748,7 +748,7 @@ function LocationsTab() {
             </div>
             <div className="flex gap-2 pt-1">
               <button onClick={runImport} className="bg-forest text-cream text-[12px] font-medium px-3 py-1.5 rounded-btn">Import {preview.rows.length}</button>
-              <button onClick={() => setPreview(null)} className="text-[12px] text-forest/50 hover:text-forest px-3 py-1.5">Cancel</button>
+              <button onClick={() => setPreview(null)} className="text-[12px] text-ink-soft hover:text-forest px-3 py-1.5">Cancel</button>
             </div>
           </div>
         )}
@@ -766,12 +766,12 @@ function LocationsTab() {
         <div className="space-y-4">
           {groups.filter(g => g.items.length > 0).map(g => (
             <div key={g.key}>
-              <div className="flex items-center justify-between mb-0.5 pb-1 border-b border-stone-100">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-forest/45">{g.label}</p>
+              <div className="flex items-center justify-between mb-0.5 pb-1 border-b border-border">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{g.label}</p>
                 {g.catId && (
                   <button
                     onClick={() => setDetailLoc(addLocation({ name: 'New location', categoryId: g.catId }))}
-                    className="text-[11px] text-forest/40 hover:text-forest transition-colors flex items-center gap-1"
+                    className="text-[11px] text-ink-faint hover:text-forest transition-colors flex items-center gap-1"
                   >
                     <Plus className="w-3 h-3" /> Add
                   </button>
@@ -812,7 +812,7 @@ function LocationsTab() {
         <button onClick={() => setShowCats(v => !v)} className="flex items-center gap-1.5 text-[13px] font-semibold text-forest w-full">
           {showCats ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           Categories
-          <span className="text-[11px] font-normal text-forest/40 ml-1">({sortedCats.length})</span>
+          <span className="text-[11px] font-normal text-ink-faint ml-1">({sortedCats.length})</span>
         </button>
 
         {showCats && (
@@ -872,7 +872,7 @@ function PoolsTab() {
         <div className="flex items-start justify-between mb-5">
           <div>
             <h2 className="text-[13px] font-semibold text-forest">Pools & waterfront</h2>
-            <p className="text-[12px] text-forest/40 mt-0.5">Aquatic locations tracked in Pool Management</p>
+            <p className="text-[12px] text-ink-faint mt-0.5">Aquatic locations tracked in Pool Management</p>
           </div>
           <button
             onClick={() => openAddEditPoolModal()}
@@ -891,7 +891,7 @@ function PoolsTab() {
               <div key={pool.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-forest truncate">{pool.name}</p>
-                  <p className="text-[11px] text-forest/40">{POOL_TYPE_LABELS[pool.type]}</p>
+                  <p className="text-[11px] text-ink-faint">{POOL_TYPE_LABELS[pool.type]}</p>
                 </div>
                 <button
                   onClick={() =>
@@ -900,14 +900,14 @@ function PoolsTab() {
                   className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full transition-colors flex-shrink-0 ${
                     pool.isActive
                       ? 'bg-green-muted-bg text-green-muted-text hover:opacity-70'
-                      : 'bg-stone-100 text-forest/40 hover:opacity-70'
+                      : 'bg-cream-dark text-ink-faint hover:opacity-70'
                   }`}
                 >
                   {pool.isActive ? 'Active' : 'Inactive'}
                 </button>
                 <button
                   onClick={() => openAddEditPoolModal(pool.id)}
-                  className="flex items-center gap-1 text-[12px] text-forest/40 hover:text-forest px-2 py-1 rounded hover:bg-cream transition-colors flex-shrink-0"
+                  className="flex items-center gap-1 text-[12px] text-ink-faint hover:text-forest px-2 py-1 rounded hover:bg-cream transition-colors flex-shrink-0"
                 >
                   <Pencil className="w-3 h-3" />
                   Edit
@@ -933,7 +933,7 @@ export function CampSettings() {
       {/* Page header + tab bar */}
       <div className="px-4 sm:px-7 pt-7 pb-0 border-b border-border bg-white flex-shrink-0 overflow-x-auto">
         <h1 className="text-[20px] font-bold text-forest">Camp Info</h1>
-        <p className="text-[12px] text-forest/40 mt-0.5">
+        <p className="text-[12px] text-ink-faint mt-0.5">
           Manage your camp's profile, season, locations, and pools
         </p>
         <div className="flex mt-5">
@@ -941,10 +941,10 @@ export function CampSettings() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors -mb-px whitespace-nowrap ${
+              className={`px-4 py-2.5 text-[13px] font-medium border-b-[3px] transition-colors -mb-px whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'border-sage text-forest'
-                  : 'border-transparent text-forest/40 hover:text-forest'
+                  : 'border-transparent text-ink-faint hover:text-forest'
               }`}
             >
               {tab.label}
@@ -954,7 +954,7 @@ export function CampSettings() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto bg-stone-50">
+      <div className="flex-1 overflow-y-auto bg-paper">
         {activeTab === 'profile'   && <ProfileTab />}
         {activeTab === 'season'    && <SeasonTab />}
         {activeTab === 'locations' && <LocationsTab />}

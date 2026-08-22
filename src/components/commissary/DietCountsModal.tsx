@@ -45,13 +45,13 @@ export function DietCountsModal() {
     <Modal title="Dietary defaults" onClose={closeModal} width="480px">
       <div className="space-y-4">
         <label className={`flex items-center gap-2.5 rounded-card border border-border px-4 py-3 ${isAdmin ? 'cursor-pointer' : 'opacity-60'}`}>
-          <Utensils className="w-4 h-4 text-forest/50" />
+          <Utensils className="w-4 h-4 text-ink-soft" />
           <input type="checkbox" checked={kosher} disabled={!isAdmin} onChange={toggleKosher} className="accent-sage" />
-          <span className="text-[13px] text-forest/80">Kitchen serves fully kosher</span>
-          {!isAdmin && <span className="text-[11px] text-forest/40 ml-auto">Admins only</span>}
+          <span className="text-[13px] text-ink">Kitchen serves fully kosher</span>
+          {!isAdmin && <span className="text-[11px] text-ink-faint ml-auto">Admins only</span>}
         </label>
 
-        <p className="text-[12px] text-forest/55 leading-relaxed">
+        <p className="text-[12px] text-ink-soft leading-relaxed">
           Set how many campers this session have each restriction, when you know the number
           but not the names. Production uses these to plan parallel portions.
         </p>

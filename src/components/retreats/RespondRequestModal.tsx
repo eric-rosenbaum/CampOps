@@ -30,7 +30,7 @@ export function RespondRequestModal({ requestId }: { requestId: string }) {
   if (!request) {
     return (
       <Modal title="Respond to request" onClose={closeModal} width="520px">
-        <p className="text-[13px] text-forest/50">This change request could not be found.</p>
+        <p className="text-[13px] text-ink-soft">This change request could not be found.</p>
         <div className="flex justify-end mt-4"><Button variant="ghost" onClick={closeModal}>Close</Button></div>
       </Modal>
     );
@@ -54,7 +54,7 @@ export function RespondRequestModal({ requestId }: { requestId: string }) {
             {request.body}
           </div>
           {request.submittedBy && (
-            <p className="text-[11px] text-forest/45 mt-1">Submitted by {request.submittedBy}</p>
+            <p className="text-[11px] text-ink-faint mt-1">Submitted by {request.submittedBy}</p>
           )}
         </div>
 
@@ -72,7 +72,7 @@ export function RespondRequestModal({ requestId }: { requestId: string }) {
           <textarea value={responseMessage} onChange={(e) => setResponseMessage(e.target.value)} rows={4}
                     className={`${inputClass} resize-y`}
                     placeholder="What the group will see in their portal…" />
-          <p className="text-[11px] text-forest/45 mt-1">Visible to the group.</p>
+          <p className="text-[11px] text-ink-faint mt-1">Visible to the group.</p>
         </div>
 
         <div>
@@ -80,7 +80,7 @@ export function RespondRequestModal({ requestId }: { requestId: string }) {
           <textarea value={internalNote} onChange={(e) => setInternalNote(e.target.value)} rows={2}
                     className={`${inputClass} resize-y`}
                     placeholder="For your team only…" />
-          <p className="text-[11px] text-forest/45 mt-1">Not visible to the group.</p>
+          <p className="text-[11px] text-ink-faint mt-1">Not visible to the group.</p>
         </div>
 
         <div className="flex gap-2 pt-1">

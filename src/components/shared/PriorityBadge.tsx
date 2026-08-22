@@ -5,15 +5,15 @@ interface Props {
 }
 
 const config: Record<Priority, { label: string; className: string }> = {
-  urgent: { label: 'Urgent', className: 'bg-red-bg text-red border-red/20' },
-  high: { label: 'High', className: 'bg-amber-bg text-amber-text border-amber/20' },
-  normal: { label: 'Normal', className: 'bg-green-muted-bg text-green-muted-text border-sage/20' },
+  urgent: { label: 'Urgent', className: 'text-red border-red' },
+  high: { label: 'High', className: 'text-amber-text border-amber' },
+  normal: { label: 'Normal', className: 'text-sage border-sage' },
 };
 
 export function PriorityBadge({ priority }: Props) {
   const { label, className } = config[priority];
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-pill text-[11px] font-medium border ${className}`}>
+    <span className={`inline-flex items-center rounded-tag border px-[5px] py-px text-[9.5px] font-bold uppercase tracking-[0.1em] ${className}`}>
       {label}
     </span>
   );

@@ -64,15 +64,15 @@ export function PaymentModal({ retreatId, defaultKind }: { retreatId: string; de
       <div className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="rounded-card border border-border bg-cream px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-widest text-forest/45 font-semibold">Charged</p>
+            <p className="text-[10px] uppercase tracking-widest text-ink-faint font-semibold">Charged</p>
             <p className="font-mono text-[15px] text-forest mt-0.5">{money(bal.totalCharges)}</p>
           </div>
           <div className="rounded-card border border-border bg-cream px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-widest text-forest/45 font-semibold">Paid</p>
+            <p className="text-[10px] uppercase tracking-widest text-ink-faint font-semibold">Paid</p>
             <p className="font-mono text-[15px] text-green-muted-text mt-0.5">{money(bal.totalPaid)}</p>
           </div>
           <div className="rounded-card border border-border bg-cream px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-widest text-forest/45 font-semibold">Balance</p>
+            <p className="text-[10px] uppercase tracking-widest text-ink-faint font-semibold">Balance</p>
             <p className={`font-mono text-[15px] mt-0.5 ${bal.balance > 0 ? 'text-amber' : 'text-forest'}`}>{money(bal.balance)}</p>
           </div>
         </div>
@@ -80,8 +80,8 @@ export function PaymentModal({ retreatId, defaultKind }: { retreatId: string; de
         {canManage && (
           <form onSubmit={handleSubmit} className="space-y-3 border-t border-border pt-4">
             <div className="flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40">{editingId ? 'Edit payment' : 'Record a payment'}</p>
-              {editingId && <button type="button" onClick={resetForm} className="text-[11px] text-forest/50 hover:text-forest">Cancel edit</button>}
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint">{editingId ? 'Edit payment' : 'Record a payment'}</p>
+              {editingId && <button type="button" onClick={resetForm} className="text-[11px] text-ink-soft hover:text-forest">Cancel edit</button>}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -116,20 +116,20 @@ export function PaymentModal({ retreatId, defaultKind }: { retreatId: string; de
         )}
 
         <div className="border-t border-border pt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40 mb-2">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint mb-2">
             {payments.length} payment{payments.length === 1 ? '' : 's'} on file
           </p>
           {payments.length === 0 ? (
-            <p className="text-[13px] text-forest/45 bg-cream rounded-card px-4 py-5 text-center">
+            <p className="text-[13px] text-ink-faint bg-cream rounded-card px-4 py-5 text-center">
               No payments recorded yet.
             </p>
           ) : (
             <div className="rounded-card border border-border overflow-hidden">
               {payments.map((p) => (
                 <div key={p.id} className={`flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0 ${editingId === p.id ? 'bg-sage-pale/50' : ''}`}>
-                  <span className="text-[12px] font-mono text-forest/50 w-24 flex-shrink-0">{fmtDateFull(p.paidOn)}</span>
-                  <span className="text-[11px] text-forest/60 w-16 flex-shrink-0">{KIND_LABELS[p.kind]}</span>
-                  <span className="text-[12px] text-forest/70 flex-1 truncate">{p.method ?? p.note ?? '—'}</span>
+                  <span className="text-[12px] font-mono text-ink-soft w-24 flex-shrink-0">{fmtDateFull(p.paidOn)}</span>
+                  <span className="text-[11px] text-ink-soft w-16 flex-shrink-0">{KIND_LABELS[p.kind]}</span>
+                  <span className="text-[12px] text-ink flex-1 truncate">{p.method ?? p.note ?? '—'}</span>
                   <span className="font-mono text-[13px] text-green-muted-text">{money(p.amount)}</span>
                   {canManage && (
                     <>

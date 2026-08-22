@@ -36,12 +36,12 @@ function TaskRow({ task }: { task: ProductionTask }) {
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className={`text-[13px] font-medium ${task.isComplete ? 'text-forest/40 line-through' : 'text-forest'}`}>
+            <p className={`text-[13px] font-medium ${task.isComplete ? 'text-ink-faint line-through' : 'text-forest'}`}>
               {task.title}
             </p>
-            <span className="font-mono text-[11px] text-forest/40">{task.portions} portions</span>
-            {task.prepTime && <span className="text-[11px] text-forest/40">prep {task.prepTime}</span>}
-            {task.cookTime && <span className="text-[11px] text-forest/40">cook {task.cookTime}</span>}
+            <span className="font-mono text-[11px] text-ink-faint">{task.portions} portions</span>
+            {task.prepTime && <span className="text-[11px] text-ink-faint">prep {task.prepTime}</span>}
+            {task.cookTime && <span className="text-[11px] text-ink-faint">cook {task.cookTime}</span>}
           </div>
 
           <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -50,8 +50,8 @@ function TaskRow({ task }: { task: ProductionTask }) {
                 key={i}
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-tag text-[11px] border ${
                   ing.linked
-                    ? 'bg-cream-dark text-forest/70 border-border'
-                    : 'bg-white text-forest/40 border-dashed border-border'
+                    ? 'bg-cream-dark text-ink border-border'
+                    : 'bg-white text-ink-faint border-dashed border-border'
                 }`}
                 title={ing.linked ? undefined : 'Unlinked ingredient — not scaled'}
               >
@@ -73,7 +73,7 @@ function TaskRow({ task }: { task: ProductionTask }) {
           )}
 
           {task.isComplete && task.completedBy && (
-            <p className="text-[11px] text-forest/35 mt-1.5">Done by {task.completedBy}</p>
+            <p className="text-[11px] text-ink-faint mt-1.5">Done by {task.completedBy}</p>
           )}
         </div>
       </div>
@@ -98,17 +98,17 @@ function PrepDueToday({ tasks, onToggle, canManage }: {
   return (
     <div className="bg-white rounded-card border border-sage/40 overflow-hidden mb-5">
       <div className="flex items-center gap-2 px-4 py-2.5 bg-green-muted-bg/40 border-b border-border">
-        <CalendarClock className="w-4 h-4 text-forest/60" />
+        <CalendarClock className="w-4 h-4 text-ink-soft" />
         <p className="text-[13px] font-semibold text-forest">Prep due today</p>
-        <span className="text-[11px] text-forest/45">— get ahead-prep for upcoming meals done</span>
+        <span className="text-[11px] text-ink-faint">— get ahead-prep for upcoming meals done</span>
         <div className="flex-1" />
-        <span className={`text-[11px] font-medium ${done === tasks.length ? 'text-green-muted-text' : 'text-forest/45'}`}>
+        <span className={`text-[11px] font-medium ${done === tasks.length ? 'text-green-muted-text' : 'text-ink-faint'}`}>
           {done} of {tasks.length} done
         </span>
       </div>
       {order.filter((s) => bySlot.has(s)).map((slot) => (
         <div key={slot} className="px-4 py-3 border-b border-border last:border-0">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40 flex items-center gap-1.5 mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint flex items-center gap-1.5 mb-2">
             <Clock className="w-3 h-3" /> {PREP_SLOT_LABELS[slot]}
           </p>
           <div className="space-y-2">
@@ -122,15 +122,15 @@ function PrepDueToday({ tasks, onToggle, canManage }: {
                     className="mt-0.5 accent-sage w-4 h-4 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed"
                   />
                   <div className="min-w-0 flex-1">
-                    <span className={`text-[12px] ${t.isComplete ? 'text-forest/40 line-through' : 'text-forest/80'}`}>
+                    <span className={`text-[12px] ${t.isComplete ? 'text-ink-faint line-through' : 'text-ink'}`}>
                       {t.instruction}
                     </span>
-                    <span className="text-[11px] text-forest/40">
+                    <span className="text-[11px] text-ink-faint">
                       {' — '}{t.title}
                       {ahead && `, serves ${new Date(`${t.serviceDate}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short' })}`}
                     </span>
                   </div>
-                  {t.portions > 0 && <span className="font-mono text-[11px] text-forest/40 flex-shrink-0">{t.portions}p</span>}
+                  {t.portions > 0 && <span className="font-mono text-[11px] text-ink-faint flex-shrink-0">{t.portions}p</span>}
                 </div>
               );
             })}
@@ -156,7 +156,7 @@ function PrepScheduleView({ slots }: { slots: PrepScheduleSlot[] }) {
       <div className="bg-white rounded-card border border-border px-6 py-10 text-center">
         <CalendarClock className="w-7 h-7 text-stone-300 mx-auto mb-3" />
         <p className="text-[14px] font-semibold text-forest mb-1">Nothing scheduled</p>
-        <p className="text-[13px] text-forest/50 max-w-md mx-auto leading-relaxed">
+        <p className="text-[13px] text-ink-soft max-w-md mx-auto leading-relaxed">
           When this week's menu has recipes with steps, they appear here on the day and time
           they must be prepped. Tag a step "night before" or "2 days before" in the recipe editor
           to schedule it ahead.
@@ -167,7 +167,7 @@ function PrepScheduleView({ slots }: { slots: PrepScheduleSlot[] }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-forest/45 leading-relaxed">
+      <p className="text-[11px] text-ink-faint leading-relaxed">
         A planning overview of the week's prep, each step on the day and time it's due — steps
         tagged ahead ("night before", "2 days before") show on their prep day, not the serving
         day. To check prep off, open the <strong>Day plan</strong> for that day ("Prep due today").
@@ -179,7 +179,7 @@ function PrepScheduleView({ slots }: { slots: PrepScheduleSlot[] }) {
           </div>
           {dateSlots.map((slot) => (
             <div key={slot.slot} className="px-4 py-3 border-b border-border last:border-0">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40 flex items-center gap-1.5 mb-2">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint flex items-center gap-1.5 mb-2">
                 <Clock className="w-3 h-3" /> {PREP_SLOT_LABELS[slot.slot]}
               </p>
               <div className="space-y-1.5">
@@ -189,13 +189,13 @@ function PrepScheduleView({ slots }: { slots: PrepScheduleSlot[] }) {
                     <div key={i} className="flex items-start gap-3 text-[12px]">
                       <span className="text-forest/30 mt-0.5">☐</span>
                       <div className="min-w-0 flex-1">
-                        <span className="text-forest/80">{it.instruction}</span>
-                        <span className="text-forest/40">
+                        <span className="text-ink">{it.instruction}</span>
+                        <span className="text-ink-faint">
                           {' — '}{it.recipeName} · {it.mealLabel}
                           {ahead && `, serves ${new Date(`${it.serviceDateStr}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short' })}`}
                         </span>
                       </div>
-                      <span className="font-mono text-[11px] text-forest/40 flex-shrink-0">{it.portions}p</span>
+                      <span className="font-mono text-[11px] text-ink-faint flex-shrink-0">{it.portions}p</span>
                     </div>
                   );
                 })}
@@ -288,11 +288,11 @@ export function ProductionTab() {
     return (
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
-          <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-            <ChefHat className="w-7 h-7 text-stone-400" />
+          <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mb-4">
+            <ChefHat className="w-7 h-7 text-ink-faint" />
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No session yet</h3>
-          <p className="text-[13px] text-forest/50 leading-relaxed mb-4">
+          <p className="text-[13px] text-ink-soft leading-relaxed mb-4">
             Production quantities scale from a session's head count. Create one on the Menu
             tab, plan a week of meals, then generate a prep plan for each day.
           </p>
@@ -308,7 +308,7 @@ export function ProductionTab() {
       <div className="flex items-center gap-2 mb-5">
         <FilterPill label="Day plan" active={prodView === 'day'} onClick={() => setProdView('day')} />
         <FilterPill label="Prep schedule" active={prodView === 'schedule'} onClick={() => setProdView('schedule')} />
-        <span className="text-[11px] text-forest/40 ml-1">Week {activeWeek}</span>
+        <span className="text-[11px] text-ink-faint ml-1">Week {activeWeek}</span>
       </div>
 
       {prodView === 'schedule' ? (
@@ -327,11 +327,11 @@ export function ProductionTab() {
               className={`px-3 py-2 rounded-btn border text-center transition-colors ${
                 active
                   ? 'bg-forest text-cream border-forest'
-                  : 'bg-white text-forest/60 border-border hover:border-forest/30'
+                  : 'bg-white text-ink-soft border-border hover:border-forest/30'
               }`}
             >
               <span className="block text-[11px] font-semibold">{day}</span>
-              <span className={`block text-[10px] ${active ? 'text-cream/60' : 'text-forest/35'}`}>
+              <span className={`block text-[10px] ${active ? 'text-cream/60' : 'text-ink-faint'}`}>
                 {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </span>
             </button>
@@ -409,13 +409,13 @@ export function ProductionTab() {
         <div className="bg-white rounded-card border border-border px-6 py-10 text-center">
           <ChefHat className="w-7 h-7 text-stone-300 mx-auto mb-3" />
           <p className="text-[14px] font-semibold text-forest mb-1">No plan for {dayLabelForCell(session.startDate, activeWeek, activeDayIndex)}</p>
-          <p className="text-[13px] text-forest/50 max-w-md mx-auto leading-relaxed">
+          <p className="text-[13px] text-ink-soft max-w-md mx-auto leading-relaxed">
             {linkedCount === 0
               ? "Nothing on this day's menu is linked to a recipe, so there is nothing to prep against. Attach recipes on the Menu tab."
               : `Generate a prep plan from the ${linkedCount} recipe${linkedCount === 1 ? '' : 's'} on this day's menu, scaled to ${portions()} portions.`}
           </p>
           {unlinkedCount > 0 && linkedCount > 0 && (
-            <p className="text-[11px] text-forest/40 mt-3">
+            <p className="text-[11px] text-ink-faint mt-3">
               {unlinkedCount} free-text item{unlinkedCount === 1 ? '' : 's'} will be skipped — no recipe to prep.
             </p>
           )}
@@ -432,7 +432,7 @@ export function ProductionTab() {
                   <p className="text-[13px] font-semibold text-forest">{MEAL_PERIOD_LABELS[meal]}</p>
                   <div className="flex-1" />
                   <span className={`text-[11px] font-medium ${
-                    mealDone === mealTasks.length ? 'text-green-muted-text' : 'text-forest/45'
+                    mealDone === mealTasks.length ? 'text-green-muted-text' : 'text-ink-faint'
                   }`}>
                     {mealDone} of {mealTasks.length} complete
                   </span>
@@ -447,7 +447,7 @@ export function ProductionTab() {
             <div className="bg-white rounded-card border border-border p-4">
               <div className="flex items-center gap-2 mb-2">
                 <p className="text-[13px] font-semibold text-forest flex items-center gap-1.5">
-                  <Replace className="w-3.5 h-3.5 text-forest/50" /> Replacement meals
+                  <Replace className="w-3.5 h-3.5 text-ink-soft" /> Replacement meals
                 </p>
                 <div className="flex-1" />
                 {canManage && (
@@ -457,7 +457,7 @@ export function ProductionTab() {
                 )}
               </div>
               {daySubs.length === 0 ? (
-                <p className="text-[12px] text-forest/45">
+                <p className="text-[12px] text-ink-faint">
                   No replacements set for this day. Add one so allergy-affected campers have a main and side in place.
                 </p>
               ) : (
@@ -474,12 +474,12 @@ export function ProductionTab() {
                           <p className="text-[12px] font-medium text-forest">
                             {s.forRestriction ? restrictionLabel(s.forRestriction) : 'General'} · {MEAL_PERIOD_LABELS[s.mealPeriod]}
                           </p>
-                          <p className="text-[12px] text-forest/70">
+                          <p className="text-[12px] text-ink">
                             Main: {s.mainLabel}{s.sideLabel ? ` · Side: ${s.sideLabel}` : ''}
                           </p>
-                          {s.notes && <p className="text-[11px] text-forest/45 mt-0.5">{s.notes}</p>}
+                          {s.notes && <p className="text-[11px] text-ink-faint mt-0.5">{s.notes}</p>}
                         </div>
-                        {n != null && <span className="font-mono text-[11px] text-forest/50 flex-shrink-0">{n} portion{n === 1 ? '' : 's'}</span>}
+                        {n != null && <span className="font-mono text-[11px] text-ink-soft flex-shrink-0">{n} portion{n === 1 ? '' : 's'}</span>}
                       </button>
                     );
                   })}
@@ -493,7 +493,7 @@ export function ProductionTab() {
               <p className="text-[13px] font-semibold text-forest mb-2">Substitutions to plate</p>
               <ul className="space-y-1.5">
                 {worklist.map((w, i) => (
-                  <li key={i} className={`text-[12px] flex gap-2 ${/ANAPHYLACTIC/.test(w) ? 'text-red' : 'text-forest/70'}`}>
+                  <li key={i} className={`text-[12px] flex gap-2 ${/ANAPHYLACTIC/.test(w) ? 'text-red' : 'text-ink'}`}>
                     <span className="text-forest/30">•</span><span>{w}</span>
                   </li>
                 ))}
@@ -501,7 +501,7 @@ export function ProductionTab() {
             </div>
           )}
 
-          <p className="text-[11px] text-forest/40 leading-relaxed">
+          <p className="text-[11px] text-ink-faint leading-relaxed">
             Quantities are frozen from when the plan was generated, so a printout and this
             screen always agree. Ahead-prep (thawing, marinating) shows on the day it's due
             in "Prep due today" above. Allergy warnings are live — they reflect the current roster.

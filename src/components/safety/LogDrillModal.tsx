@@ -19,7 +19,7 @@ interface FormValues {
 }
 
 const ic = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-const lc = 'block text-[12px] font-medium text-forest/70 mb-1';
+const lc = 'block text-[12px] font-medium text-ink mb-1';
 
 export function LogDrillModal() {
   const { closeAllModals, drillModalMode, editingDrillId } = useUIStore();
@@ -127,14 +127,14 @@ export function LogDrillModal() {
     <Modal title={title} onClose={closeAllModals} width="480px">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {!existingDrill && (
-          <p className="text-[13px] text-forest/50 -mt-1">
+          <p className="text-[13px] text-ink-soft -mt-1">
             {isScheduleMode
               ? 'Pre-schedule a drill so it appears on your calendar and overview.'
               : 'Record a completed emergency drill with all details for your compliance log.'}
           </p>
         )}
         {existingDrill && (
-          <p className="text-[13px] text-forest/50 -mt-1">
+          <p className="text-[13px] text-ink-soft -mt-1">
             Record the outcome of the <strong>{DRILL_TYPE_LABELS[existingDrill.drillType]}</strong> drill.
           </p>
         )}

@@ -43,7 +43,7 @@ export function ComponentDetailPanel({ component }: { component: BuildingCompone
       lg:static lg:z-auto lg:w-detail lg:min-w-detail lg:h-full">
       <button
         onClick={() => setActiveComponent(null)}
-        className="lg:hidden flex items-center gap-1.5 px-4 py-3 border-b border-border text-[13px] font-medium text-forest/70 hover:text-forest w-full"
+        className="lg:hidden flex items-center gap-1.5 px-4 py-3 border-b border-border text-[13px] font-medium text-ink hover:text-forest w-full"
       >
         <ChevronLeft className="w-4 h-4" />
         Back
@@ -51,14 +51,14 @@ export function ComponentDetailPanel({ component }: { component: BuildingCompone
       <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-9 h-9 rounded-btn bg-cream-dark flex items-center justify-center flex-shrink-0">
-            <ComponentIcon type={component.type} className="w-5 h-5 text-forest/60" />
+            <ComponentIcon type={component.type} className="w-5 h-5 text-ink-soft" />
           </div>
           <div className="min-w-0">
             <p className="text-card-title font-semibold text-forest truncate">{component.label}</p>
-            <p className="text-meta text-forest/40">{COMPONENT_TYPE_LABELS[component.type]}</p>
+            <p className="text-meta text-ink-faint">{COMPONENT_TYPE_LABELS[component.type]}</p>
           </div>
         </div>
-        <button onClick={() => setActiveComponent(null)} className="text-forest/40 hover:text-forest transition-colors">
+        <button onClick={() => setActiveComponent(null)} className="text-ink-faint hover:text-forest transition-colors">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -66,7 +66,7 @@ export function ComponentDetailPanel({ component }: { component: BuildingCompone
       <div className="px-5 py-4 space-y-4">
         <div className="flex items-center gap-2">
           <ComponentStatusBadge status={component.status} />
-          {component.statusDetail && <span className="text-meta text-forest/50">{component.statusDetail}</span>}
+          {component.statusDetail && <span className="text-meta text-ink-soft">{component.statusDetail}</span>}
         </div>
 
         {component.photoUrl && (
@@ -87,8 +87,8 @@ export function ComponentDetailPanel({ component }: { component: BuildingCompone
 
         {component.notes && (
           <div>
-            <p className="text-label font-semibold uppercase tracking-widest text-forest/40 mb-1">Notes</p>
-            <p className="text-body text-forest/70 whitespace-pre-wrap">{component.notes}</p>
+            <p className="text-label font-semibold uppercase tracking-widest text-ink-faint mb-1">Notes</p>
+            <p className="text-body text-ink whitespace-pre-wrap">{component.notes}</p>
           </div>
         )}
 
@@ -96,12 +96,12 @@ export function ComponentDetailPanel({ component }: { component: BuildingCompone
         {isPanel && (
           <div>
             <div className="flex items-center gap-1.5 mb-1.5">
-              <Zap className="w-3.5 h-3.5 text-forest/40" />
-              <span className="text-label font-semibold uppercase tracking-widest text-forest/40">Panel schedule</span>
+              <Zap className="w-3.5 h-3.5 text-ink-faint" />
+              <span className="text-label font-semibold uppercase tracking-widest text-ink-faint">Panel schedule</span>
               {canManage && (
                 <button
                   onClick={() => openModal({ kind: 'circuit', panelId: component.id })}
-                  className="ml-auto inline-flex items-center gap-0.5 text-meta text-forest/50 hover:text-forest font-medium transition-colors"
+                  className="ml-auto inline-flex items-center gap-0.5 text-meta text-ink-soft hover:text-forest font-medium transition-colors"
                 >
                   <Plus className="w-3 h-3" /> Breaker
                 </button>
@@ -118,20 +118,20 @@ export function ComponentDetailPanel({ component }: { component: BuildingCompone
                       c.isOn ? '' : 'opacity-50'
                     }`}
                   >
-                    <span className="text-meta font-mono font-semibold text-forest/60 w-7 flex-shrink-0 text-right">
+                    <span className="text-meta font-mono font-semibold text-ink-soft w-7 flex-shrink-0 text-right">
                       {c.breakerNumber ?? '–'}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-body text-forest truncate">{c.label ?? c.controls ?? 'Unlabeled'}</p>
-                      {(c.controls && c.label) && <p className="text-meta text-forest/40 truncate">{c.controls}</p>}
-                      {c.amperage ? <p className="text-meta text-forest/40">{c.amperage}A{c.isOn ? '' : ' · OFF'}</p> : (!c.isOn && <p className="text-meta text-forest/40">OFF</p>)}
+                      {(c.controls && c.label) && <p className="text-meta text-ink-faint truncate">{c.controls}</p>}
+                      {c.amperage ? <p className="text-meta text-ink-faint">{c.amperage}A{c.isOn ? '' : ' · OFF'}</p> : (!c.isOn && <p className="text-meta text-ink-faint">OFF</p>)}
                     </div>
                     {canManage && (
                       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openModal({ kind: 'circuit', panelId: component.id, editId: c.id })} className="p-1 rounded text-forest/40 hover:text-forest hover:bg-cream" title="Edit breaker">
+                        <button onClick={() => openModal({ kind: 'circuit', panelId: component.id, editId: c.id })} className="p-1 rounded text-ink-faint hover:text-forest hover:bg-cream" title="Edit breaker">
                           <Pencil className="w-3 h-3" />
                         </button>
-                        <button onClick={() => deleteCircuit(c.id)} className="p-1 rounded text-forest/40 hover:text-red hover:bg-red-bg" title="Delete breaker">
+                        <button onClick={() => deleteCircuit(c.id)} className="p-1 rounded text-ink-faint hover:text-red hover:bg-red-bg" title="Delete breaker">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
@@ -176,8 +176,8 @@ export function ComponentDetailPanel({ component }: { component: BuildingCompone
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
-      <dt className="text-meta text-forest/40 w-28 flex-shrink-0">{label}</dt>
-      <dd className="text-body text-forest/80 min-w-0">{value}</dd>
+      <dt className="text-meta text-ink-faint w-28 flex-shrink-0">{label}</dt>
+      <dd className="text-body text-ink min-w-0">{value}</dd>
     </div>
   );
 }

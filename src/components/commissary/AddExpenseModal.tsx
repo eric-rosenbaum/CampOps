@@ -28,7 +28,7 @@ export function AddExpenseModal() {
   return (
     <Modal title="Add expense" onClose={closeModal} width="440px">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <p className="text-[12px] text-forest/55 leading-relaxed">
+        <p className="text-[12px] text-ink-soft leading-relaxed">
           For food spending that didn't go through a purchase order — a cash produce run, a
           Costco trip, a standing contract. Counts toward the session's per-diem.
         </p>

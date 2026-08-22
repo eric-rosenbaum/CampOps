@@ -64,16 +64,16 @@ export function Retreats() {
         ) : undefined}
       />
 
-      <div className="bg-white border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto">
+      <div className="bg-paper-raised border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto overflow-y-hidden no-scrollbar">
         <div className="flex">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-5 py-3 text-body border-b-2 transition-colors whitespace-nowrap ${
+              className={`-mb-px whitespace-nowrap border-b-[3px] px-4 pb-2.5 pt-3 text-[13px] font-semibold transition-colors ${
                 activeTab === tab.id
-                  ? 'text-forest font-semibold border-sage'
-                  : 'text-forest/40 font-medium border-transparent hover:text-forest/70'
+                  ? 'border-red text-forest'
+                  : 'border-transparent text-ink-soft hover:text-forest'
               }`}
             >
               {tab.label}

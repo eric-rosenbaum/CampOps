@@ -207,6 +207,7 @@ export function LogIssueModal() {
         isPublicReport: false,
         reporterName: null,
         reporterContact: null,
+        source: 'web',
         createdAt: now,
         updatedAt: now,
         activityLog,
@@ -224,7 +225,7 @@ export function LogIssueModal() {
   const displayPhoto = photoPreview ?? (editingIssue?.photoUrl && !removeExistingPhoto ? editingIssue.photoUrl : null);
 
   const inputClass = 'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-  const labelClass = 'block text-[12px] font-medium text-forest/70 mb-1';
+  const labelClass = 'block text-[12px] font-medium text-ink mb-1';
   const errorClass = 'text-[11px] text-red mt-0.5';
 
   return (
@@ -312,7 +313,7 @@ export function LogIssueModal() {
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <label className="flex items-center gap-1.5 text-[11px] text-forest/50 cursor-pointer hover:text-forest/70 transition-colors w-fit">
+              <label className="flex items-center gap-1.5 text-[11px] text-ink-soft cursor-pointer hover:text-ink transition-colors w-fit">
                 <Camera className="w-3 h-3" />
                 <span>Change photo</span>
                 <input
@@ -324,7 +325,7 @@ export function LogIssueModal() {
               </label>
             </div>
           ) : (
-            <label className="flex items-center gap-2 py-3 px-3 bg-cream rounded-card border border-dashed border-border text-forest/40 cursor-pointer hover:border-sage hover:text-forest/60 transition-colors">
+            <label className="flex items-center gap-2 py-3 px-3 bg-cream rounded-card border border-dashed border-border text-ink-faint cursor-pointer hover:border-sage hover:text-ink-soft transition-colors">
               <Camera className="w-4 h-4" />
               <span className="text-[12px]">Click to attach photo</span>
               <input
@@ -344,7 +345,7 @@ export function LogIssueModal() {
             {...register('isRecurring')}
             className="w-3.5 h-3.5 accent-sage"
           />
-          <label htmlFor="isRecurring" className="text-[13px] text-forest/70 cursor-pointer">
+          <label htmlFor="isRecurring" className="text-[13px] text-ink cursor-pointer">
             Recurring issue
           </label>
         </div>

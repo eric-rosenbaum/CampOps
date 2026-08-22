@@ -33,7 +33,7 @@ export function ActivityLogTab() {
   if (feed.length === 0) {
     return (
       <div className="text-center py-16">
-        <p className="text-body text-forest/40">No activity recorded yet.</p>
+        <p className="text-body text-ink-faint">No activity recorded yet.</p>
       </div>
     );
   }
@@ -69,7 +69,7 @@ export function ActivityLogTab() {
               date={item.date}
               onClickAsset={() => setActiveAsset(item.assetId)}
               assetName={item.assetName}
-              body={<>returned by <span className="font-medium">{item.by}</span> — <span className={hasIssue ? 'text-amber-text font-medium' : 'text-forest/50'}>{conditionLabel}</span></>}
+              body={<>returned by <span className="font-medium">{item.by}</span> — <span className={hasIssue ? 'text-amber-text font-medium' : 'text-ink-soft'}>{conditionLabel}</span></>}
               sub={item.notes ?? undefined}
               onEdit={() => openEditCheckoutModal(item.checkoutId, item.assetId)}
               onDelete={() => deleteCheckout(item.checkoutId, item.assetId)}
@@ -81,12 +81,12 @@ export function ActivityLogTab() {
         return (
           <ActivityRow
             key={i}
-            icon={<Wrench className="w-3.5 h-3.5 text-forest/50" />}
+            icon={<Wrench className="w-3.5 h-3.5 text-ink-soft" />}
             iconBg="bg-cream-dark"
             date={item.date}
             onClickAsset={() => setActiveAsset(item.assetId)}
             assetName={item.assetName}
-            body={<>{SERVICE_TYPE_LABELS[item.serviceType] ?? item.serviceType} by <span className="font-medium">{item.performedBy}</span>{item.cost !== null && <span className="text-forest/50"> · ${item.cost.toFixed(2)}</span>}</>}
+            body={<>{SERVICE_TYPE_LABELS[item.serviceType] ?? item.serviceType} by <span className="font-medium">{item.performedBy}</span>{item.cost !== null && <span className="text-ink-soft"> · ${item.cost.toFixed(2)}</span>}</>}
             onEdit={() => openEditServiceRecordModal(item.recordId, item.assetId)}
             onDelete={() => deleteServiceRecord(item.recordId)}
           />
@@ -121,10 +121,10 @@ function ActivityRow({ icon, iconBg, date, onClickAsset, assetName, body, sub, o
           <button className="font-semibold hover:underline" onClick={onClickAsset}>{assetName}</button>
           {' '}{body}
         </p>
-        {sub && <p className="text-meta text-forest/50 mt-0.5 italic">{sub}</p>}
+        {sub && <p className="text-meta text-ink-soft mt-0.5 italic">{sub}</p>}
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
-        <span className="text-meta text-forest/40">{dateStr}</span>
+        <span className="text-meta text-ink-faint">{dateStr}</span>
         <button onClick={onEdit} className="p-1 text-forest/30 hover:text-forest transition-colors rounded ml-1" title="Edit">
           <Pencil className="w-3.5 h-3.5" />
         </button>

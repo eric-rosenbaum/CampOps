@@ -35,7 +35,7 @@ export function TemplateModal({ editId }: { editId?: string }) {
   return (
     <Modal title={existing ? 'Edit template' : 'New menu template'} onClose={closeModal} width="440px">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <p className="text-[12px] text-forest/55 leading-relaxed">
+        <p className="text-[12px] text-ink-soft leading-relaxed">
           A reusable cycle menu — build it once, then apply it to any session, repeating the
           rotation across the session's weeks.
         </p>

@@ -81,11 +81,11 @@ export function AllergyTab() {
     return (
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
-          <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-            <HeartPulse className="w-7 h-7 text-stone-400" />
+          <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mb-4">
+            <HeartPulse className="w-7 h-7 text-ink-faint" />
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No dietary restrictions recorded</h3>
-          <p className="text-[13px] text-forest/50 leading-relaxed">
+          <p className="text-[13px] text-ink-soft leading-relaxed">
             When allergies are entered, you'll see counts here and warnings on any
             menu item that conflicts with them. Names are visible only to
             administrators and staff groups with health access.
@@ -100,11 +100,11 @@ export function AllergyTab() {
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <CommissaryFilesPanel />
         <div className="flex flex-col items-center justify-center text-center max-w-sm mx-auto py-12">
-          <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-            <HeartPulse className="w-7 h-7 text-stone-400" />
+          <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mb-4">
+            <HeartPulse className="w-7 h-7 text-ink-faint" />
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No one added yet</h3>
-          <p className="text-[13px] text-forest/50 leading-relaxed mb-4">
+          <p className="text-[13px] text-ink-soft leading-relaxed mb-4">
             Add people with their allergies and dietary preferences. Menu items and prep
             tasks will then warn when they conflict with someone.
           </p>
@@ -158,7 +158,7 @@ export function AllergyTab() {
 
       {/* Aggregate — visible to everyone */}
       <div className="mb-6">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40 mb-2">Restrictions in this camp</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint mb-2">Restrictions in this camp</p>
         <div className="flex flex-wrap gap-2">
           {[...allergenRows, ...dietaryRows].map((r) => (
             <div
@@ -168,7 +168,7 @@ export function AllergyTab() {
                   ? 'bg-red-bg border-red/20 text-red'
                   : r.kind === 'allergen'
                     ? 'bg-amber-bg border-amber/20 text-amber-text'
-                    : 'bg-cream-dark border-border text-forest/70'
+                    : 'bg-cream-dark border-border text-ink'
               }`}
             >
               <span className="font-medium">{restrictionLabel(r.restriction)}</span>
@@ -187,9 +187,9 @@ export function AllergyTab() {
       {conflictingRecipes.length > 0 && (
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">Recipes that conflict</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Recipes that conflict</p>
             <div className="flex-1" />
-            <span className={`text-[11px] ${replacementCount > 0 ? 'text-green-muted-text' : 'text-forest/45'}`}>
+            <span className={`text-[11px] ${replacementCount > 0 ? 'text-green-muted-text' : 'text-ink-faint'}`}>
               {replacementCount > 0
                 ? `${replacementCount} replacement meal${replacementCount === 1 ? '' : 's'} defined this session`
                 : 'No replacement meals defined — set them on the Menu builder'}
@@ -203,7 +203,7 @@ export function AllergyTab() {
                   <div className={`w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0 ${ana ? 'bg-red' : 'bg-amber'}`} />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-medium text-forest">{recipe.name}</p>
-                    <p className="text-[11px] text-forest/45">{MEAL_PERIOD_LABELS[recipe.mealPeriod]}</p>
+                    <p className="text-[11px] text-ink-faint">{MEAL_PERIOD_LABELS[recipe.mealPeriod]}</p>
                   </div>
                   <div className="flex flex-wrap gap-1.5 justify-end max-w-[60%]">
                     {conflicts.map((c) => (
@@ -233,7 +233,7 @@ export function AllergyTab() {
         <div className="bg-white rounded-card border border-border px-6 py-8 text-center">
           <Lock className="w-6 h-6 text-stone-300 mx-auto mb-3" />
           <p className="text-[14px] font-semibold text-forest mb-1">Names are restricted</p>
-          <p className="text-[13px] text-forest/50 max-w-lg mx-auto leading-relaxed">
+          <p className="text-[13px] text-ink-soft max-w-lg mx-auto leading-relaxed">
             You can see how many campers each restriction affects and which recipes conflict,
             which is what the kitchen needs to cook safely. Names, cabins and individual
             severities are limited to administrators and staff groups with health access —
@@ -243,7 +243,7 @@ export function AllergyTab() {
       ) : (
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">
               Camp roster ({campers.length})
             </p>
             <div className="flex-1" />
@@ -260,21 +260,21 @@ export function AllergyTab() {
           {campers.length === 0 ? (
             <div className="bg-white rounded-card border border-border px-6 py-8 text-center">
               <Users className="w-6 h-6 text-stone-300 mx-auto mb-2" />
-              <p className="text-[13px] text-forest/50">No one on the roster yet.</p>
+              <p className="text-[13px] text-ink-soft">No one on the roster yet.</p>
             </div>
           ) : (
             <div className="bg-white rounded-card border border-border overflow-x-auto">
               <table className="w-full min-w-[720px]">
                 <thead>
                   <tr className="bg-cream-dark/40 border-b border-border">
-                    <th className="text-left px-4 py-2 text-[10px] font-semibold uppercase tracking-widest text-forest/40">Name</th>
-                    <th className="text-left px-2 py-2 text-[10px] font-semibold uppercase tracking-widest text-forest/40">Cabin</th>
+                    <th className="text-left px-4 py-2 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Name</th>
+                    <th className="text-left px-2 py-2 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Cabin</th>
                     {ALLERGENS.map((a) => (
-                      <th key={a} className="px-1 py-2 text-[10px] font-medium text-forest/40 text-center whitespace-nowrap">
+                      <th key={a} className="px-1 py-2 text-[10px] font-medium text-ink-faint text-center whitespace-nowrap">
                         {ALLERGEN_LABELS[a]}
                       </th>
                     ))}
-                    <th className="px-2 py-2 text-[10px] font-semibold uppercase tracking-widest text-forest/40 text-left">Dietary</th>
+                    <th className="px-2 py-2 text-[10px] font-semibold uppercase tracking-widest text-ink-faint text-left">Dietary</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -293,19 +293,19 @@ export function AllergyTab() {
                           {(() => {
                             const names = sessionNames(c.id);
                             return (
-                              <span className="block text-[10px] text-forest/40">
+                              <span className="block text-[10px] text-ink-faint">
                                 {names.length ? names.join(', ') : 'All sessions'}
                               </span>
                             );
                           })()}
                         </td>
-                        <td className="px-2 py-2 text-[12px] text-forest/50 whitespace-nowrap">{c.cabin ?? '—'}</td>
+                        <td className="px-2 py-2 text-[12px] text-ink-soft whitespace-nowrap">{c.cabin ?? '—'}</td>
                         {ALLERGENS.map((a) => (
                           <td key={a} className="px-1 py-2 text-center">
                             <RestrictionCell severity={byId.get(a)?.severity} />
                           </td>
                         ))}
-                        <td className="px-2 py-2 text-[11px] text-forest/50 whitespace-nowrap">
+                        <td className="px-2 py-2 text-[11px] text-ink-soft whitespace-nowrap">
                           {diets.length ? diets.map((d) => restrictionLabel(d.restriction)).join(', ') : '—'}
                         </td>
                       </tr>
@@ -316,7 +316,7 @@ export function AllergyTab() {
             </div>
           )}
 
-          <p className="text-[11px] text-forest/40 mt-3">
+          <p className="text-[11px] text-ink-faint mt-3">
             <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-red text-white text-[9px] font-bold mr-1">!</span>
             anaphylactic · <span className="text-green-muted-text font-semibold">✓</span> confirmed allergy ·{' '}
             <span className="text-amber-text font-semibold">~</span> intolerance. {restrictions.length} restriction

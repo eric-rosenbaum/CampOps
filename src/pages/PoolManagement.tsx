@@ -80,15 +80,15 @@ export function PoolManagement() {
       />
 
       {/* Pool selector tab strip */}
-      <div className="bg-white border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto">
+      <div className="bg-paper-raised border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto overflow-y-hidden no-scrollbar">
         <div className="flex min-w-max">
           {/* All pools tab */}
           <button
             onClick={() => setActivePool(null)}
-            className={`px-4 py-3 text-body border-b-2 transition-colors flex-shrink-0 ${
+            className={`px-4 py-3 text-body border-b-[3px] transition-colors flex-shrink-0 ${
               !activePoolId
-                ? 'text-forest font-semibold border-sage'
-                : 'text-forest/40 font-medium border-transparent hover:text-forest/70'
+                ? 'border-red text-forest'
+                : 'border-transparent text-ink-soft hover:text-forest'
             }`}
           >
             All pools
@@ -104,10 +104,10 @@ export function PoolManagement() {
             <button
               key={p.id}
               onClick={() => setActivePool(p.id)}
-              className={`px-4 py-3 text-body border-b-2 transition-colors flex-shrink-0 ${
+              className={`px-4 py-3 text-body border-b-[3px] transition-colors flex-shrink-0 ${
                 activePoolId === p.id
-                  ? 'text-forest font-semibold border-sage'
-                  : 'text-forest/40 font-medium border-transparent hover:text-forest/70'
+                  ? 'border-red text-forest'
+                  : 'border-transparent text-ink-soft hover:text-forest'
               }`}
             >
               {p.name}
@@ -119,11 +119,11 @@ export function PoolManagement() {
 
       {/* Sub-tab bar — only visible when a pool is selected */}
       {activePoolId && (
-        <div className="bg-white border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto">
+        <div className="bg-paper-raised border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto overflow-y-hidden no-scrollbar">
           <div className="flex items-center gap-1">
             <button
               onClick={() => setActivePool(null)}
-              className="flex items-center gap-1 text-meta text-forest/40 hover:text-forest mr-3 transition-colors py-3"
+              className="flex items-center gap-1 text-meta text-ink-faint hover:text-forest mr-3 transition-colors py-3"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
               All pools
@@ -132,10 +132,10 @@ export function PoolManagement() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-5 py-3 text-body border-b-2 transition-colors whitespace-nowrap ${
+                className={`px-5 py-3 text-body border-b-[3px] transition-colors whitespace-nowrap ${
                   effectiveTab === tab.id
-                    ? 'text-forest font-semibold border-sage'
-                    : 'text-forest/40 font-medium border-transparent hover:text-forest/70'
+                    ? 'border-red text-forest'
+                    : 'border-transparent text-ink-soft hover:text-forest'
                 }`}
               >
                 {tab.label}
@@ -149,11 +149,11 @@ export function PoolManagement() {
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         {pools.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
-            <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-              <Waves className="w-7 h-7 text-stone-400" />
+            <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mb-4">
+              <Waves className="w-7 h-7 text-ink-faint" />
             </div>
             <h3 className="text-[15px] font-semibold text-forest mb-1.5">No pools set up yet</h3>
-            <p className="text-[13px] text-forest/50 leading-relaxed">
+            <p className="text-[13px] text-ink-soft leading-relaxed">
               Add pools and waterfront locations from <strong>Camp Info → Pools & Waterfront</strong>.
             </p>
           </div>

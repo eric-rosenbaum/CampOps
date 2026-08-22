@@ -29,7 +29,7 @@ function StatusBadge({ status, label }: { status: PoolEquipment['status']; label
 function FieldBlock({ label, value, valueClass = '' }: { label: string; value: string; valueClass?: string }) {
   return (
     <div>
-      <p className="text-meta text-forest/40 font-medium mb-0.5">{label}</p>
+      <p className="text-meta text-ink-faint font-medium mb-0.5">{label}</p>
       <p className={`text-body font-medium font-mono ${valueClass || 'text-forest'}`}>{value}</p>
     </div>
   );
@@ -88,9 +88,9 @@ export function EquipmentTab() {
           { label: 'Needs repair', value: needsRepair, hint: 'Issue flagged', cls: needsRepair > 0 ? 'text-red' : 'text-forest' },
         ].map(({ label, value, hint, cls }) => (
           <div key={label} className="bg-white border border-border rounded-card px-4 py-4">
-            <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">{label}</p>
+            <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">{label}</p>
             <p className={`font-mono text-stat font-semibold mt-1 ${cls}`}>{value}</p>
-            <p className="text-meta text-forest/40 mt-0.5">{hint}</p>
+            <p className="text-meta text-ink-faint mt-0.5">{hint}</p>
           </div>
         ))}
       </div>
@@ -113,7 +113,7 @@ export function EquipmentTab() {
       </div>
 
       {equipment.length === 0 && (
-        <p className="text-body text-forest/40 text-center py-10">No equipment added yet.</p>
+        <p className="text-body text-ink-faint text-center py-10">No equipment added yet.</p>
       )}
 
       <div className="flex flex-col gap-2.5">
@@ -129,7 +129,7 @@ export function EquipmentTab() {
                 <div className="flex items-center gap-2">
                   <StatusBadge status={equip.status} label={statusLabel(equip)} />
                   {equip.specs && (
-                    <span className="text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide bg-cream-dark text-forest/50">
+                    <span className="text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide bg-cream-dark text-ink-soft">
                       {equip.specs}
                     </span>
                   )}

@@ -52,7 +52,7 @@ export function StaffHome() {
         <h1 className="text-[22px] font-bold text-forest">
           {department ? deptLabel[department] : 'Staff'}
         </h1>
-        <p className="text-[13px] text-forest/50 mt-0.5">{currentCamp?.name}</p>
+        <p className="text-[13px] text-ink-soft mt-0.5">{currentCamp?.name}</p>
       </div>
 
       {/* Pool status for waterfront */}
@@ -72,29 +72,29 @@ export function StaffHome() {
       )}
 
       {/* Assigned issues */}
-      <div className="bg-white rounded-xl border border-stone-200 mb-5">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+      <div className="bg-white rounded-xl border border-border mb-5">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 className="text-[14px] font-semibold text-forest">Assigned to me</h2>
-          <Link to="/issues" className="text-[12px] text-forest/50 hover:text-forest flex items-center gap-1">
+          <Link to="/issues" className="text-[12px] text-ink-soft hover:text-forest flex items-center gap-1">
             All issues <ChevronRight className="w-3 h-3" />
           </Link>
         </div>
         {myIssues.length === 0 ? (
-          <p className="px-5 py-4 sm:py-6 text-[13px] text-forest/40 text-center">No issues assigned.</p>
+          <p className="px-5 py-4 sm:py-6 text-[13px] text-ink-faint text-center">No issues assigned.</p>
         ) : (
           <div className="divide-y divide-stone-100">
             {myIssues.slice(0, 6).map((issue) => (
               <div key={issue.id} className="px-5 py-3 flex items-center justify-between">
                 <div>
                   <p className="text-[13px] font-medium text-forest">{issue.title}</p>
-                  <p className="text-[11px] text-forest/40 mt-0.5">
+                  <p className="text-[11px] text-ink-faint mt-0.5">
                     {issue.locations.join(', ') || 'No location'}
                   </p>
                 </div>
                 <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
                   issue.priority === 'urgent' ? 'bg-red-100 text-red-700' :
                   issue.priority === 'high'   ? 'bg-amber-100 text-amber-700' :
-                  'bg-stone-100 text-stone-500'
+                  'bg-cream-dark text-ink-soft'
                 }`}>
                   {issue.priority}
                 </span>
@@ -106,10 +106,10 @@ export function StaffHome() {
 
       {/* My tasks */}
       {myTasks.length > 0 && (
-        <div className="bg-white rounded-xl border border-stone-200">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+        <div className="bg-white rounded-xl border border-border">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <h2 className="text-[14px] font-semibold text-forest">My tasks</h2>
-            <Link to="/pre-post" className="text-[12px] text-forest/50 hover:text-forest flex items-center gap-1">
+            <Link to="/pre-post" className="text-[12px] text-ink-soft hover:text-forest flex items-center gap-1">
               All tasks <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
@@ -117,7 +117,7 @@ export function StaffHome() {
             {myTasks.slice(0, 4).map((task) => (
               <div key={task.id} className="px-5 py-3">
                 <p className="text-[13px] font-medium text-forest">{task.title}</p>
-                <p className="text-[11px] text-forest/40 mt-0.5">
+                <p className="text-[11px] text-ink-faint mt-0.5">
                   {task.phase === 'pre' ? 'Pre-camp' : 'Post-camp'} · {task.status.replace('_', ' ')}
                 </p>
               </div>

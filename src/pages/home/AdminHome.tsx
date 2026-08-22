@@ -69,10 +69,10 @@ function StatTile({
   const bg = variant === 'red' ? 'bg-red-bg/50 border-red/25' : variant === 'amber' ? 'bg-amber-bg/50 border-amber/25' : 'bg-white border-border';
   return (
     <Link to={to} className={`rounded-card border px-4 py-3.5 flex flex-col hover:shadow-sm transition-all group ${bg}`}>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-forest/45 leading-none mb-1.5">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint leading-none mb-1.5">{label}</p>
       <p className={`font-mono text-[26px] font-semibold leading-none ${valCls}`}>{value}</p>
       {sub && (
-        <p className={`text-[10px] mt-1.5 ${variant === 'red' ? 'text-red/70 font-medium' : variant === 'amber' ? 'text-amber/80 font-medium' : 'text-forest/35'}`}>
+        <p className={`text-[10px] mt-1.5 ${variant === 'red' ? 'text-red/70 font-medium' : variant === 'amber' ? 'text-amber/80 font-medium' : 'text-ink-faint'}`}>
           {sub}
         </p>
       )}
@@ -92,7 +92,7 @@ const MODULE_BADGE: Record<string, string> = {
   Issue:     'bg-red/8 text-red/80 border border-red/15',
   Pool:      'bg-blue-50 text-blue-600 border border-blue-100',
   Safety:    'bg-amber/10 text-amber border border-amber/20',
-  Fleet:     'bg-forest/8 text-forest/60 border border-forest/10',
+  Fleet:     'bg-forest/8 text-ink-soft border border-forest/10',
   Checklist: 'bg-sage/10 text-sage border border-sage/20',
   Cert:      'bg-purple-50 text-purple-600 border border-purple-100',
 };
@@ -103,7 +103,7 @@ function ActionQueue({ items }: { items: ActionItem[] }) {
       <div className="bg-white rounded-card border border-border flex flex-col items-center justify-center py-10">
         <CheckCircle2 className="w-7 h-7 text-sage mb-2" />
         <p className="text-[13px] font-semibold text-forest mb-0.5">All clear</p>
-        <p className="text-[11px] text-forest/40">No action items right now</p>
+        <p className="text-[11px] text-ink-faint">No action items right now</p>
       </div>
     );
   }
@@ -120,10 +120,10 @@ function ActionQueue({ items }: { items: ActionItem[] }) {
         >
           <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${PRIORITY_DOT[item.priority]}`} />
           <p className="text-[12px] text-forest flex-1 min-w-0 leading-snug">{item.label}</p>
-          <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide shrink-0 ${MODULE_BADGE[item.module] ?? 'bg-cream text-forest/50'}`}>
+          <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide shrink-0 ${MODULE_BADGE[item.module] ?? 'bg-cream text-ink-soft'}`}>
             {item.module}
           </span>
-          <ChevronRight className="w-3 h-3 text-forest/25 group-hover:text-forest/50 transition-colors shrink-0" />
+          <ChevronRight className="w-3 h-3 text-forest/25 group-hover:text-ink-soft transition-colors shrink-0" />
         </Link>
       ))}
     </div>
@@ -160,7 +160,7 @@ function ExpandedPoolCard({ pool, latestReading, recentReadings }: {
 
   const dotBg: Record<Dot, string> = { green: 'bg-sage', amber: 'bg-amber', red: 'bg-red', gray: 'bg-border' };
   const statusCls: Record<Dot, string> = {
-    green: 'text-green-muted-text', amber: 'text-amber', red: 'text-red font-semibold', gray: 'text-forest/35',
+    green: 'text-green-muted-text', amber: 'text-amber', red: 'text-red font-semibold', gray: 'text-ink-faint',
   };
 
   const sparkValues = [...recentReadings]
@@ -191,10 +191,10 @@ function ExpandedPoolCard({ pool, latestReading, recentReadings }: {
           <table className="w-full">
             <thead>
               <tr>
-                <th className="text-left text-[9px] font-semibold text-forest/35 uppercase tracking-wide pb-1.5 pr-2">Chemical</th>
-                <th className="text-right text-[9px] font-semibold text-forest/35 uppercase tracking-wide pb-1.5 pr-2">Reading</th>
-                <th className="text-right text-[9px] font-semibold text-forest/35 uppercase tracking-wide pb-1.5 pr-2">Range</th>
-                <th className="text-right text-[9px] font-semibold text-forest/35 uppercase tracking-wide pb-1.5">Status</th>
+                <th className="text-left text-[9px] font-semibold text-ink-faint uppercase tracking-wide pb-1.5 pr-2">Chemical</th>
+                <th className="text-right text-[9px] font-semibold text-ink-faint uppercase tracking-wide pb-1.5 pr-2">Reading</th>
+                <th className="text-right text-[9px] font-semibold text-ink-faint uppercase tracking-wide pb-1.5 pr-2">Range</th>
+                <th className="text-right text-[9px] font-semibold text-ink-faint uppercase tracking-wide pb-1.5">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -205,7 +205,7 @@ function ExpandedPoolCard({ pool, latestReading, recentReadings }: {
                 const displayed = decimals === 0 ? Math.round(val).toString() : val.toFixed(decimals);
                 return (
                   <tr key={field} className="border-t border-border/50">
-                    <td className="py-1.5 pr-2 text-[11px] text-forest/55">{range.label}</td>
+                    <td className="py-1.5 pr-2 text-[11px] text-ink-soft">{range.label}</td>
                     <td className={`py-1.5 pr-2 text-right font-mono text-[12px] font-semibold ${status === 'alert' ? 'text-red' : status === 'warn' ? 'text-amber' : 'text-forest'}`}>
                       {displayed}{range.unit}
                     </td>
@@ -225,7 +225,7 @@ function ExpandedPoolCard({ pool, latestReading, recentReadings }: {
 
           {sparkValues.length >= 2 && (
             <div className="mt-3 pt-2.5 border-t border-border/50">
-              <p className="text-[9px] text-forest/35 mb-1">Free Cl — last {sparkValues.length} readings</p>
+              <p className="text-[9px] text-ink-faint mb-1">Free Cl — last {sparkValues.length} readings</p>
               <Sparkline values={sparkValues} field="freeChlorine" />
             </div>
           )}
@@ -234,19 +234,19 @@ function ExpandedPoolCard({ pool, latestReading, recentReadings }: {
 
       {isWaterfrontType(pool.type) && (
         <div className="px-4 py-4">
-          <p className="text-[11px] text-forest/40">Waterfront — chemical tracking not applicable</p>
+          <p className="text-[11px] text-ink-faint">Waterfront — chemical tracking not applicable</p>
         </div>
       )}
 
       {!isWaterfrontType(pool.type) && !latestReading && (
         <div className="px-4 py-4">
-          <p className="text-[11px] text-forest/40">No readings logged yet</p>
+          <p className="text-[11px] text-ink-faint">No readings logged yet</p>
         </div>
       )}
 
       {/* Footer */}
       <div className="px-4 py-2 border-t border-border bg-cream-dark/30">
-        <p className="text-[9px] text-forest/35">
+        <p className="text-[9px] text-ink-faint">
           {latestReading
             ? `Last logged ${formatDistanceToNow(new Date(latestReading.readingTime), { addSuffix: true })} · by ${latestReading.loggedByName}`
             : 'No readings on file'}
@@ -265,7 +265,7 @@ function DeadlineStrip({ items }: { items: DeadlineItem[] }) {
     <div>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-forest/40" />
+          <Calendar className="w-4 h-4 text-ink-faint" />
           <h2 className="text-[15px] font-semibold text-forest">Upcoming — next 14 days</h2>
         </div>
       </div>
@@ -286,15 +286,15 @@ function DeadlineStrip({ items }: { items: DeadlineItem[] }) {
               }`}
             >
               <div className="flex items-start justify-between gap-2 mb-1.5">
-                <p className={`font-mono text-[11px] font-semibold ${isPast ? 'text-red' : isToday ? 'text-amber' : 'text-forest/50'}`}>
+                <p className={`font-mono text-[11px] font-semibold ${isPast ? 'text-red' : isToday ? 'text-amber' : 'text-ink-soft'}`}>
                   {isPast ? 'OVERDUE' : isToday ? 'TODAY' : format(date, 'MMM d')}
                 </p>
-                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide shrink-0 ${MODULE_BADGE[item.module] ?? 'bg-cream text-forest/50'}`}>
+                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide shrink-0 ${MODULE_BADGE[item.module] ?? 'bg-cream text-ink-soft'}`}>
                   {item.module}
                 </span>
               </div>
               <p className={`text-[12px] font-medium leading-snug ${isPast ? 'text-red' : 'text-forest'}`}>{item.label}</p>
-              <p className="text-[10px] text-forest/40 mt-0.5">{item.sub}</p>
+              <p className="text-[10px] text-ink-faint mt-0.5">{item.sub}</p>
             </div>
           );
         })}
@@ -319,14 +319,14 @@ function ActivityFeed({ items }: { items: ActivityItem[] }) {
     <div>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-forest/40" />
+          <Users className="w-4 h-4 text-ink-faint" />
           <h2 className="text-[15px] font-semibold text-forest">Recent activity</h2>
         </div>
-        <p className="text-[11px] text-forest/35">Last 24 hours across all modules</p>
+        <p className="text-[11px] text-ink-faint">Last 24 hours across all modules</p>
       </div>
       <div className="bg-white rounded-card border border-border overflow-hidden">
         {items.length === 0 ? (
-          <p className="text-center text-[12px] text-forest/35 py-8">No activity in the last 24 hours</p>
+          <p className="text-center text-[12px] text-ink-faint py-8">No activity in the last 24 hours</p>
         ) : (
           items.map((item, i) => (
             <div
@@ -334,20 +334,20 @@ function ActivityFeed({ items }: { items: ActivityItem[] }) {
               className={`flex items-start gap-3 px-4 py-3 ${i < items.length - 1 ? 'border-b border-border' : ''}`}
             >
               <div className="w-6 h-6 rounded-full bg-cream-dark flex items-center justify-center shrink-0 mt-0.5">
-                <span className="text-[9px] font-bold text-forest/55 uppercase">
+                <span className="text-[9px] font-bold text-ink-soft uppercase">
                   {item.userName.trim().split(/\s+/).map(n => n[0]).join('').slice(0, 2)}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] text-forest leading-snug">
                   <span className="font-semibold">{item.userName}</span>{' '}
-                  <span className="text-forest/55">{item.action}</span>{' '}
-                  <span className="text-forest/70">{item.context}</span>
+                  <span className="text-ink-soft">{item.action}</span>{' '}
+                  <span className="text-ink">{item.context}</span>
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <div className={`w-1.5 h-1.5 rounded-full ${MOD_DOT[item.module] ?? 'bg-forest/30'}`} />
-                <p className="text-[10px] text-forest/35 whitespace-nowrap">
+                <p className="text-[10px] text-ink-faint whitespace-nowrap">
                   {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}
                 </p>
               </div>
@@ -670,7 +670,7 @@ export function AdminHome() {
               )}
             </h2>
             {deduped.length > 0 && (
-              <p className="text-[11px] text-forest/40">
+              <p className="text-[11px] text-ink-faint">
                 {deduped.filter(i => i.priority === 'critical').length} critical · {deduped.filter(i => i.priority === 'warning').length} warnings
               </p>
             )}
@@ -680,7 +680,7 @@ export function AdminHome() {
           {issues.filter(i => i.status !== 'resolved' && i.priority === 'normal').length > 0 && (
             <div className="mt-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-[12px] font-semibold text-forest/60">Normal priority issues</h3>
+                <h3 className="text-[12px] font-semibold text-ink-soft">Normal priority issues</h3>
                 <Link to="/issues" className="text-[11px] text-sage hover:text-sage-light flex items-center gap-0.5 transition-colors">
                   All issues <ArrowRight className="w-3 h-3" />
                 </Link>
@@ -698,8 +698,8 @@ export function AdminHome() {
                     >
                       <div className="w-1.5 h-1.5 rounded-full bg-sage shrink-0" />
                       <p className="text-[12px] text-forest flex-1 min-w-0 truncate">{issue.title}</p>
-                      <p className="text-[10px] text-forest/35 shrink-0">{issue.locations?.[0]}</p>
-                      <ChevronRight className="w-3 h-3 text-forest/25 group-hover:text-forest/50 shrink-0" />
+                      <p className="text-[10px] text-ink-faint shrink-0">{issue.locations?.[0]}</p>
+                      <ChevronRight className="w-3 h-3 text-forest/25 group-hover:text-ink-soft shrink-0" />
                     </Link>
                   ))}
               </div>
@@ -714,7 +714,7 @@ export function AdminHome() {
         {activePools.length > 0 && (
           <div>
             <SectionHeader
-              icon={<Droplets className="w-4 h-4 text-forest/40" />}
+              icon={<Droplets className="w-4 h-4 text-ink-faint" />}
               title="Pools & waterfront"
               badge={closedPools.length}
               badgeRed
@@ -737,7 +737,7 @@ export function AdminHome() {
         {/* ── Safety & compliance ──────────────────────────────────────── */}
         <div>
           <SectionHeader
-            icon={<Shield className="w-4 h-4 text-forest/40" />}
+            icon={<Shield className="w-4 h-4 text-ink-faint" />}
             title="Safety & compliance"
             badge={safetyStats.overdue + failedDevices.length + expiredCerts}
             badgeRed
@@ -747,7 +747,7 @@ export function AdminHome() {
 
             {/* Compliance overview */}
             <div className="bg-white rounded-card border border-border p-4">
-              <p className="text-[10px] font-semibold text-forest/40 uppercase tracking-wide mb-3">Compliance overview</p>
+              <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wide mb-3">Compliance overview</p>
               <div className="flex items-center gap-4 mb-4">
                 <div className="relative w-14 h-14 shrink-0">
                   <svg viewBox="0 0 36 36" className="w-14 h-14 -rotate-90">
@@ -765,7 +765,7 @@ export function AdminHome() {
                 </div>
                 <div className="space-y-1 flex-1">
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-forest/50">Compliant</span>
+                    <span className="text-ink-soft">Compliant</span>
                     <span className="font-semibold text-forest font-mono">{safetyStats.compliant}</span>
                   </div>
                   <div className="flex justify-between text-[11px]">
@@ -808,22 +808,22 @@ export function AdminHome() {
 
               {nextDrill && (
                 <div className="border-t border-border pt-3 mt-3">
-                  <p className="text-[10px] font-semibold text-forest/40 uppercase tracking-wide mb-1">Next drill</p>
+                  <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wide mb-1">Next drill</p>
                   <p className="text-[12px] text-forest font-medium">{DRILL_TYPE_LABELS[nextDrill.drillType as keyof typeof DRILL_TYPE_LABELS]}</p>
-                  <p className="text-[11px] text-forest/40">{format(new Date(nextDrill.scheduledDate + 'T00:00:00'), 'EEEE, MMM d, yyyy')}</p>
-                  {nextDrill.lead && <p className="text-[10px] text-forest/35 mt-0.5">Lead: {nextDrill.lead}</p>}
+                  <p className="text-[11px] text-ink-faint">{format(new Date(nextDrill.scheduledDate + 'T00:00:00'), 'EEEE, MMM d, yyyy')}</p>
+                  {nextDrill.lead && <p className="text-[10px] text-ink-faint mt-0.5">Lead: {nextDrill.lead}</p>}
                 </div>
               )}
             </div>
 
             {/* Items needing attention */}
             <div className="bg-white rounded-card border border-border p-4">
-              <p className="text-[10px] font-semibold text-forest/40 uppercase tracking-wide mb-3">Items needing attention</p>
+              <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wide mb-3">Items needing attention</p>
               {failedDevices.length === 0 && overdueItems_.length === 0 ? (
                 <div className="flex flex-col items-center py-4 sm:py-6">
                   <CheckCircle2 className="w-6 h-6 text-sage mb-1.5" />
                   <p className="text-[12px] text-green-muted-text font-medium">All items current</p>
-                  <p className="text-[10px] text-forest/35 mt-0.5">No failed or overdue inspections</p>
+                  <p className="text-[10px] text-ink-faint mt-0.5">No failed or overdue inspections</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -836,7 +836,7 @@ export function AdminHome() {
                             <div className="w-1.5 h-1.5 rounded-full bg-red shrink-0 mt-1.5" />
                             <div className="min-w-0">
                               <p className="text-[11px] font-medium text-forest truncate">{item.name}</p>
-                              <p className="text-[10px] text-forest/40">{item.location}</p>
+                              <p className="text-[10px] text-ink-faint">{item.location}</p>
                             </div>
                           </div>
                         ))}
@@ -852,7 +852,7 @@ export function AdminHome() {
                             <div className="w-1.5 h-1.5 rounded-full bg-amber shrink-0 mt-1.5" />
                             <div className="min-w-0 flex-1">
                               <p className="text-[11px] font-medium text-forest truncate">{item.name}</p>
-                              <p className="text-[10px] text-forest/40">{item.location}</p>
+                              <p className="text-[10px] text-ink-faint">{item.location}</p>
                             </div>
                             {item.nextDue && (
                               <p className="text-[10px] text-red shrink-0">
@@ -862,7 +862,7 @@ export function AdminHome() {
                           </div>
                         ))}
                         {overdueItems_.length > 6 && (
-                          <p className="text-[10px] text-forest/35 pt-1.5">+{overdueItems_.length - 6} more overdue</p>
+                          <p className="text-[10px] text-ink-faint pt-1.5">+{overdueItems_.length - 6} more overdue</p>
                         )}
                       </div>
                     </div>
@@ -873,9 +873,9 @@ export function AdminHome() {
 
             {/* Staff certifications */}
             <div className="bg-white rounded-card border border-border p-4">
-              <p className="text-[10px] font-semibold text-forest/40 uppercase tracking-wide mb-3">Staff certifications</p>
+              <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wide mb-3">Staff certifications</p>
               {staffList.length === 0 ? (
-                <p className="text-[12px] text-forest/40">No staff on file</p>
+                <p className="text-[12px] text-ink-faint">No staff on file</p>
               ) : (
                 <div className="overflow-y-auto max-h-[260px]">
                   {staffList.map(({ staff, certs }, i) => {
@@ -888,7 +888,7 @@ export function AdminHome() {
                       <div key={staff.id} className={`flex items-center gap-2 py-1.5 ${i < staffList.length - 1 ? 'border-b border-border' : ''}`}>
                         <div className="flex-1 min-w-0">
                           <p className="text-[12px] font-medium text-forest truncate">{staff.name}</p>
-                          <p className="text-[10px] text-forest/40">{certs.length} cert{certs.length !== 1 ? 's' : ''}</p>
+                          <p className="text-[10px] text-ink-faint">{certs.length} cert{certs.length !== 1 ? 's' : ''}</p>
                         </div>
                         <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase shrink-0 ${pillCls}`}>
                           {pillLabel}
@@ -905,7 +905,7 @@ export function AdminHome() {
         {/* ── Assets & vehicles ────────────────────────────────────────── */}
         <div>
           <SectionHeader
-            icon={<Truck className="w-4 h-4 text-forest/40" />}
+            icon={<Truck className="w-4 h-4 text-ink-faint" />}
             title="Assets & vehicles"
             badge={overdueOuts.length + maintOverdue.length || null}
             badgeRed={overdueOuts.length > 0}
@@ -915,22 +915,22 @@ export function AdminHome() {
 
             {/* Fleet status + maintenance overdue */}
             <div className="bg-white rounded-card border border-border p-4">
-              <p className="text-[10px] font-semibold text-forest/40 uppercase tracking-wide mb-3">Fleet status</p>
+              <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wide mb-3">Fleet status</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
                 {[
                   { label: 'Available', val: fleet.available, cls: 'text-green-muted-text' },
                   { label: 'Checked out', val: fleet.checkedOut, cls: fleet.checkedOut > 0 ? 'text-amber' : 'text-forest' },
-                  { label: 'In service', val: fleet.inService, cls: 'text-forest/60' },
+                  { label: 'In service', val: fleet.inService, cls: 'text-ink-soft' },
                 ].map(({ label, val, cls }) => (
                   <div key={label} className="text-center bg-cream-dark/60 rounded-md py-2.5">
                     <p className={`font-mono text-[22px] font-semibold leading-none ${cls}`}>{val}</p>
-                    <p className="text-[9px] text-forest/45 mt-0.5">{label}</p>
+                    <p className="text-[9px] text-ink-faint mt-0.5">{label}</p>
                   </div>
                 ))}
               </div>
 
               <div className="border-t border-border pt-3">
-                <p className="text-[10px] font-semibold text-forest/40 uppercase tracking-wide mb-2">Maintenance overdue</p>
+                <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wide mb-2">Maintenance overdue</p>
                 {maintOverdue.length === 0 ? (
                   <p className="text-[11px] text-green-muted-text font-medium">All service records current</p>
                 ) : (
@@ -940,7 +940,7 @@ export function AdminHome() {
                         <div className="w-1.5 h-1.5 rounded-full bg-amber shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] font-medium text-forest truncate">{entry.asset.name}</p>
-                          <p className="text-[10px] text-forest/40 truncate">
+                          <p className="text-[10px] text-ink-faint truncate">
                             {SERVICE_TYPE_LABELS[entry.record.serviceType] ?? entry.record.serviceType}
                             {entry.record.nextServiceDate && ` · Due ${format(new Date(entry.record.nextServiceDate + 'T00:00:00'), 'MMM d')}`}
                           </p>
@@ -948,7 +948,7 @@ export function AdminHome() {
                       </div>
                     ))}
                     {maintOverdue.length > 5 && (
-                      <p className="text-[10px] text-forest/35 pt-1.5">+{maintOverdue.length - 5} more overdue</p>
+                      <p className="text-[10px] text-ink-faint pt-1.5">+{maintOverdue.length - 5} more overdue</p>
                     )}
                   </div>
                 )}
@@ -957,7 +957,7 @@ export function AdminHome() {
 
             {/* Currently checked out */}
             <div className="bg-white rounded-card border border-border p-4">
-              <p className="text-[10px] font-semibold text-forest/40 uppercase tracking-wide mb-3">
+              <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wide mb-3">
                 Currently checked out
                 {checkedOutNow.length > 0 && (
                   <span className="ml-1.5 font-mono">({checkedOutNow.length})</span>
@@ -966,11 +966,11 @@ export function AdminHome() {
               {checkedOutNow.length === 0 ? (
                 <div className="flex flex-col items-center py-4 sm:py-6">
                   <CheckCircle2 className="w-6 h-6 text-sage mb-1.5" />
-                  <p className="text-[12px] text-forest/40">All assets returned</p>
+                  <p className="text-[12px] text-ink-faint">All assets returned</p>
                 </div>
               ) : (
                 <div>
-                  <div className="grid text-[10px] font-semibold text-forest/35 uppercase tracking-wide pb-1.5 border-b border-border mb-0"
+                  <div className="grid text-[10px] font-semibold text-ink-faint uppercase tracking-wide pb-1.5 border-b border-border mb-0"
                     style={{ gridTemplateColumns: '1fr 1fr auto' }}>
                     <span>Asset</span>
                     <span>Checked out by</span>
@@ -989,16 +989,16 @@ export function AdminHome() {
                       >
                         <div className="min-w-0">
                           <p className={`text-[12px] font-medium truncate ${isOverdue ? 'text-red' : 'text-forest'}`}>{asset.name}</p>
-                          <p className="text-[10px] text-forest/35 truncate">{asset.category}</p>
+                          <p className="text-[10px] text-ink-faint truncate">{asset.category}</p>
                         </div>
-                        <p className="text-[11px] text-forest/65 truncate pt-0.5">{checkout.checkedOutBy}</p>
+                        <p className="text-[11px] text-ink-soft truncate pt-0.5">{checkout.checkedOutBy}</p>
                         <div className="text-right">
                           {isOverdue ? (
                             <span className="text-[10px] font-semibold text-red bg-red/8 px-1.5 py-0.5 rounded">
                               {daysOver}d overdue
                             </span>
                           ) : (
-                            <p className="text-[11px] text-forest/55">
+                            <p className="text-[11px] text-ink-soft">
                               {format(new Date(checkout.expectedReturnAt), 'MMM d, h:mm a')}
                             </p>
                           )}
@@ -1019,7 +1019,7 @@ export function AdminHome() {
         <div className="bg-white rounded-card border border-border px-5 py-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Wrench className="w-3.5 h-3.5 text-forest/40" />
+              <Wrench className="w-3.5 h-3.5 text-ink-faint" />
               <h2 className="text-[15px] font-semibold text-forest">Pre / post camp checklist</h2>
             </div>
             <Link to="/pre-post" className="text-[11px] text-sage hover:text-sage-light flex items-center gap-0.5 transition-colors">
@@ -1033,7 +1033,7 @@ export function AdminHome() {
             ].map(({ label, pct, done, total }) => (
               <div key={label}>
                 <div className="flex justify-between mb-1.5">
-                  <p className="text-[12px] text-forest/60">{label}</p>
+                  <p className="text-[12px] text-ink-soft">{label}</p>
                   <p className="text-[12px] font-semibold text-forest font-mono">{pct}%</p>
                 </div>
                 <div className="h-2 bg-cream-dark rounded-full overflow-hidden">
@@ -1042,7 +1042,7 @@ export function AdminHome() {
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-forest/35 mt-1">{done} of {total} tasks complete</p>
+                <p className="text-[10px] text-ink-faint mt-1">{done} of {total} tasks complete</p>
               </div>
             ))}
           </div>

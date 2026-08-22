@@ -21,12 +21,12 @@ function ComponentRow({ component }: { component: BuildingComponent }) {
         isActive ? 'border-sage bg-sage/[0.06]' : 'border-transparent hover:bg-cream-dark'
       }`}
     >
-      <ComponentIcon type={component.type} className="w-4 h-4 text-forest/50 flex-shrink-0" />
+      <ComponentIcon type={component.type} className="w-4 h-4 text-ink-soft flex-shrink-0" />
       <StatusDot status={component.status} />
       <div className="min-w-0 flex-1">
         <p className="text-body text-forest truncate">{component.label}</p>
         {(summary || component.locationDetail) && (
-          <p className="text-meta text-forest/40 truncate">
+          <p className="text-meta text-ink-faint truncate">
             {[COMPONENT_TYPE_LABELS[component.type], summary, component.locationDetail].filter(Boolean).join(' · ')}
           </p>
         )}
@@ -48,11 +48,11 @@ function SystemGroup({ system, components, canManage, onAdd }: SystemGroupProps)
   return (
     <div className="mb-3">
       <div className="flex items-center gap-1.5 px-1 mb-1">
-        <Icon className="w-3.5 h-3.5 text-forest/40" />
-        <span className="text-label font-semibold uppercase tracking-widest text-forest/40">{label}</span>
+        <Icon className="w-3.5 h-3.5 text-ink-faint" />
+        <span className="text-label font-semibold uppercase tracking-widest text-ink-faint">{label}</span>
         <span className="text-meta text-forest/30">{components.length}</span>
         {canManage && (
-          <button onClick={onAdd} className="ml-auto text-meta text-forest/50 hover:text-forest font-medium transition-colors">
+          <button onClick={onAdd} className="ml-auto text-meta text-ink-soft hover:text-forest font-medium transition-colors">
             + Add
           </button>
         )}
@@ -100,7 +100,7 @@ export function BuildingDetail() {
       <div key={locationId} className="bg-white border border-border rounded-card p-4 mb-4">
         <div className="flex items-center gap-2 mb-3">
           <span className="text-card-title font-semibold text-forest">{name}</span>
-          {subtitle && <span className="text-meta text-forest/40">{subtitle}</span>}
+          {subtitle && <span className="text-meta text-ink-faint">{subtitle}</span>}
           <span className="text-meta text-forest/30 ml-1">{comps.length} item{comps.length !== 1 ? 's' : ''}</span>
           {canManage && isRoom && (
             <button
@@ -134,7 +134,7 @@ export function BuildingDetail() {
       <div className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-7 py-5">
         <button
           onClick={() => setActiveBuilding(null)}
-          className="flex items-center gap-1 text-meta text-forest/40 hover:text-forest mb-3 transition-colors"
+          className="flex items-center gap-1 text-meta text-ink-faint hover:text-forest mb-3 transition-colors"
         >
           <ChevronLeft className="w-3.5 h-3.5" /> All buildings
         </button>
@@ -142,12 +142,12 @@ export function BuildingDetail() {
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <h2 className="text-panel-title font-semibold text-forest">{building.name}</h2>
-            <p className="text-meta text-forest/40">{typeLabel}</p>
+            <p className="text-meta text-ink-faint">{typeLabel}</p>
           </div>
           {canManage && (
             <button
               onClick={() => openModal({ kind: 'building', editId: buildingId })}
-              className="inline-flex items-center gap-1 text-meta text-forest/50 hover:text-forest font-medium transition-colors"
+              className="inline-flex items-center gap-1 text-meta text-ink-soft hover:text-forest font-medium transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" /> Edit building
             </button>
@@ -162,7 +162,7 @@ export function BuildingDetail() {
               {refs.map((r) => (
                 <div key={r.label} className="flex items-start gap-1.5 text-body">
                   <r.icon className="w-3.5 h-3.5 text-amber-text/60 mt-0.5 flex-shrink-0" />
-                  <span className="text-forest/50">{r.label}:</span>
+                  <span className="text-ink-soft">{r.label}:</span>
                   <span className="text-forest font-medium">{r.value}</span>
                 </div>
               ))}
@@ -174,16 +174,16 @@ export function BuildingDetail() {
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <button
               onClick={() => openModal({ kind: 'component', buildingId, defaultLocationId: buildingId })}
-              className="inline-flex items-center gap-1 text-meta font-medium text-forest/60 hover:text-forest border border-border rounded-btn px-2.5 py-1.5 transition-colors"
+              className="inline-flex items-center gap-1 text-meta font-medium text-ink-soft hover:text-forest border border-border rounded-btn px-2.5 py-1.5 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" /> Add component
             </button>
-            <span className="text-meta text-forest/40">Rooms are added in <span className="font-medium">Camp Info → Locations</span> (as sub-locations of this building).</span>
+            <span className="text-meta text-ink-faint">Rooms are added in <span className="font-medium">Camp Info → Locations</span> (as sub-locations of this building).</span>
           </div>
         )}
 
         {rooms.length === 0 && buildingLevel.length === 0 && (
-          <p className="text-body text-forest/40 px-1">
+          <p className="text-body text-ink-faint px-1">
             No rooms or components yet.{canManage ? ' Add a room, or add components directly to the building.' : ''}
           </p>
         )}

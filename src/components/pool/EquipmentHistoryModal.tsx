@@ -17,9 +17,9 @@ const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
 const SERVICE_TYPE_COLORS: Record<ServiceType, string> = {
   routine_maintenance: 'bg-green-muted-bg text-green-muted-text',
   repair: 'bg-red-bg text-red',
-  inspection: 'bg-cream-dark text-forest/60',
+  inspection: 'bg-cream-dark text-ink-soft',
   part_replacement: 'bg-amber-bg text-amber-text',
-  vendor_service: 'bg-cream-dark text-forest/60',
+  vendor_service: 'bg-cream-dark text-ink-soft',
 };
 
 export function EquipmentHistoryModal() {
@@ -46,12 +46,12 @@ export function EquipmentHistoryModal() {
         {/* Equipment summary */}
         <div className="bg-cream rounded-card px-4 py-3 flex items-center gap-6 text-body -mt-1">
           <div>
-            <span className="text-forest/50 text-secondary">Type</span>
+            <span className="text-ink-soft text-secondary">Type</span>
             <span className="ml-2 font-medium text-forest capitalize">{equip.type}</span>
           </div>
           {equip.lastServiced && (
             <div>
-              <span className="text-forest/50 text-secondary">Last serviced</span>
+              <span className="text-ink-soft text-secondary">Last serviced</span>
               <span className="ml-2 font-medium font-mono text-forest">
                 {new Date(equip.lastServiced + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
@@ -59,7 +59,7 @@ export function EquipmentHistoryModal() {
           )}
           {equip.nextServiceDue && (
             <div>
-              <span className="text-forest/50 text-secondary">Next due</span>
+              <span className="text-ink-soft text-secondary">Next due</span>
               <span className="ml-2 font-medium font-mono text-forest">
                 {new Date(equip.nextServiceDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
@@ -69,7 +69,7 @@ export function EquipmentHistoryModal() {
 
         {/* Log entries */}
         {history.length === 0 ? (
-          <p className="text-body text-forest/40 text-center py-8">No service records yet for this equipment.</p>
+          <p className="text-body text-ink-faint text-center py-8">No service records yet for this equipment.</p>
         ) : (
           <div className="border border-border rounded-card overflow-hidden">
             {history.map((entry, idx) => (
@@ -85,13 +85,13 @@ export function EquipmentHistoryModal() {
                       <span className={`text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide ${SERVICE_TYPE_COLORS[entry.serviceType]}`}>
                         {SERVICE_TYPE_LABELS[entry.serviceType]}
                       </span>
-                      <span className="text-meta text-forest/40 font-mono">
+                      <span className="text-meta text-ink-faint font-mono">
                         {new Date(entry.datePerformed + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     </div>
-                    <p className="text-body text-forest/70">By {entry.performedBy}</p>
+                    <p className="text-body text-ink">By {entry.performedBy}</p>
                     {entry.notes && (
-                      <p className="text-secondary text-forest/50 mt-1">{entry.notes}</p>
+                      <p className="text-secondary text-ink-soft mt-1">{entry.notes}</p>
                     )}
                   </div>
                   <div className="flex items-start gap-2 flex-shrink-0">
@@ -102,7 +102,7 @@ export function EquipmentHistoryModal() {
                         </p>
                       )}
                       {entry.nextServiceDue && (
-                        <p className="text-meta text-forest/40 mt-0.5">
+                        <p className="text-meta text-ink-faint mt-0.5">
                           Next: {new Date(entry.nextServiceDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </p>
                       )}
@@ -111,7 +111,7 @@ export function EquipmentHistoryModal() {
                       <button
                         type="button"
                         onClick={() => { closeAllModals(); openEditServiceLogModal(entry.id); }}
-                        className="p-1.5 rounded text-forest/40 hover:text-forest hover:bg-cream transition-colors"
+                        className="p-1.5 rounded text-ink-faint hover:text-forest hover:bg-cream transition-colors"
                         title="Edit record"
                       >
                         <Pencil className="w-3.5 h-3.5" />
@@ -119,7 +119,7 @@ export function EquipmentHistoryModal() {
                       <button
                         type="button"
                         onClick={() => handleDelete(entry.id)}
-                        className="p-1.5 rounded text-forest/40 hover:text-red hover:bg-red-bg transition-colors"
+                        className="p-1.5 rounded text-ink-faint hover:text-red hover:bg-red-bg transition-colors"
                         title="Delete record"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

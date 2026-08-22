@@ -20,7 +20,7 @@ interface FormValues {
 }
 
 const ic = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-const lc = 'block text-[12px] font-medium text-forest/70 mb-1';
+const lc = 'block text-[12px] font-medium text-ink mb-1';
 
 const RESULT_OPTIONS: { value: SafetyInspectionLog['result']; label: string }[] = [
   { value: 'passed', label: 'Passed — no issues' },
@@ -129,7 +129,7 @@ export function LogInspectionModal() {
     <Modal title={editing ? 'Edit inspection record' : 'Log inspection'} onClose={closeAllModals} width="480px">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {!editing && (
-          <p className="text-[13px] text-forest/50 -mt-1">Record a completed inspection, corrective action, or compliance event.</p>
+          <p className="text-[13px] text-ink-soft -mt-1">Record a completed inspection, corrective action, or compliance event.</p>
         )}
 
         <div>
@@ -202,7 +202,7 @@ export function LogInspectionModal() {
             <label className={lc}>Next due</label>
             <input {...register('nextDue')} type="date" className={ic} />
             {suggestedNextDue && !editing && (
-              <p className="text-[10px] text-forest/40 mt-0.5">Suggested: {new Date(suggestedNextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+              <p className="text-[10px] text-ink-faint mt-0.5">Suggested: {new Date(suggestedNextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
             )}
           </div>
         </div>

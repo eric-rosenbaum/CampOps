@@ -57,9 +57,7 @@ struct HomeView: View {
                 .frame(width: 22, height: 22)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             } else {
-                Image(systemName: "tree.fill")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Color.sage)
+                FirepitMark(size: 20)
             }
             Text(authManager.currentCamp?.name ?? "CampCommand")
                 .font(.campBodySemibold)

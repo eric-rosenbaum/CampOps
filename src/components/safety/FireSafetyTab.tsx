@@ -51,9 +51,9 @@ function ItemCard({ item, onLog }: { item: SafetyItem; onLog: () => void }) {
         <div className="flex-1 min-w-0 pr-4">
           <h4 className="text-[13px] font-semibold text-forest">
             {item.name}
-            {item.unitCount > 1 ? <span className="text-forest/40 font-normal"> (×{item.unitCount})</span> : ''}
+            {item.unitCount > 1 ? <span className="text-ink-faint font-normal"> (×{item.unitCount})</span> : ''}
           </h4>
-          <p className="text-[11px] text-forest/40 mt-0.5 leading-relaxed">
+          <p className="text-[11px] text-ink-faint mt-0.5 leading-relaxed">
             {item.location}
             {meta.extinguisher_class ? ` · Type: ${meta.extinguisher_class}` : ''}
             {' · '}{item.frequency.charAt(0).toUpperCase() + item.frequency.slice(1)} inspection
@@ -63,7 +63,7 @@ function ItemCard({ item, onLog }: { item: SafetyItem; onLog: () => void }) {
         <div className="text-right flex-shrink-0">
           <StatusBadge status={status} nextDue={item.nextDue} />
           {item.nextDue && (
-            <p className="font-mono text-[12px] text-forest/40 mt-1.5">
+            <p className="font-mono text-[12px] text-ink-faint mt-1.5">
               {status === 'ok' ? 'Next:' : 'Due:'} {new Date(item.nextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </p>
           )}
@@ -73,25 +73,25 @@ function ItemCard({ item, onLog }: { item: SafetyItem; onLog: () => void }) {
       {/* Details grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
         <div>
-          <p className="text-[10px] text-forest/40 font-medium mb-0.5">Units</p>
+          <p className="text-[10px] text-ink-faint font-medium mb-0.5">Units</p>
           <p className={`text-[12px] font-semibold font-mono ${status === 'ok' ? 'text-green-muted-text' : status === 'warn' ? 'text-amber' : 'text-red'}`}>
             {item.unitCount} unit{item.unitCount === 1 ? '' : 's'}
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-forest/40 font-medium mb-0.5">Last inspected</p>
+          <p className="text-[10px] text-ink-faint font-medium mb-0.5">Last inspected</p>
           <p className={`text-[12px] font-semibold font-mono ${item.lastInspected ? (status === 'ok' ? 'text-green-muted-text' : status === 'warn' ? 'text-amber' : 'text-red') : 'text-forest/30'}`}>
             {item.lastInspected ? new Date(item.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
           </p>
         </div>
         {meta.expiry_year && (
           <div>
-            <p className="text-[10px] text-forest/40 font-medium mb-0.5">Cylinder expiry</p>
+            <p className="text-[10px] text-ink-faint font-medium mb-0.5">Cylinder expiry</p>
             <p className="text-[12px] font-semibold font-mono text-forest">{meta.expiry_year}</p>
           </div>
         )}
         <div>
-          <p className="text-[10px] text-forest/40 font-medium mb-0.5">{item.vendor ? 'Inspector' : 'Frequency'}</p>
+          <p className="text-[10px] text-ink-faint font-medium mb-0.5">{item.vendor ? 'Inspector' : 'Frequency'}</p>
           <p className="text-[12px] font-medium text-forest">{item.vendor ?? item.frequency}</p>
         </div>
       </div>
@@ -116,7 +116,7 @@ function ItemCard({ item, onLog }: { item: SafetyItem; onLog: () => void }) {
 
       {showHistory && (
         <div className="mt-3 pt-3 border-t border-cream-dark">
-          <p className="text-[11px] font-semibold text-forest/50 mb-2">Inspection history</p>
+          <p className="text-[11px] font-semibold text-ink-soft mb-2">Inspection history</p>
           {historyLogs.length === 0 ? (
             <p className="text-[11px] text-forest/30 italic">No inspections logged yet.</p>
           ) : (
@@ -127,12 +127,12 @@ function ItemCard({ item, onLog }: { item: SafetyItem; onLog: () => void }) {
                   log.result === 'failed' ? 'text-red' : 'text-amber-text';
                 return (
                   <div key={log.id} className="flex items-start gap-4 text-[11px]">
-                    <span className="font-mono text-forest/60 flex-shrink-0">
+                    <span className="font-mono text-ink-soft flex-shrink-0">
                       {new Date(log.inspectionDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
-                    <span className="text-forest/40 flex-shrink-0">{log.completedBy}</span>
+                    <span className="text-ink-faint flex-shrink-0">{log.completedBy}</span>
                     <span className={`font-semibold flex-shrink-0 ${resultColor}`}>{RESULT_LABELS[log.result] ?? log.result}</span>
-                    {log.notes && <span className="text-forest/40 truncate flex-1">{log.notes}</span>}
+                    {log.notes && <span className="text-ink-faint truncate flex-1">{log.notes}</span>}
                     <button
                       onClick={() => openEditInspectionLogModal(log.id)}
                       className="flex-shrink-0 text-forest/30 hover:text-sage cursor-pointer ml-auto"
@@ -175,40 +175,40 @@ export function FireSafetyTab() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5 mb-6">
         <div className="bg-white border border-border rounded-card px-4 py-4">
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Extinguishers</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Extinguishers</p>
           <p className="font-mono font-semibold text-stat mt-1 text-forest">{extinguishers.reduce((s, i) => s + i.unitCount, 0)}</p>
-          <p className="text-meta text-forest/40 mt-0.5">Total on property</p>
+          <p className="text-meta text-ink-faint mt-0.5">Total on property</p>
         </div>
         <div className="bg-white border border-border rounded-card px-4 py-4">
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Inspected</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Inspected</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${stats.ok > 0 ? 'text-green-muted-text' : 'text-forest/30'}`}>{stats.ok}</p>
-          <p className="text-meta text-forest/40 mt-0.5">Current this period</p>
+          <p className="text-meta text-ink-faint mt-0.5">Current this period</p>
         </div>
         <div className="bg-white border border-border rounded-card px-4 py-4">
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Overdue</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Overdue</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${stats.alert > 0 ? 'text-red' : 'text-forest/30'}`}>{stats.alert}</p>
-          <p className={`text-meta mt-0.5 ${stats.alert > 0 ? 'text-red' : 'text-forest/40'}`}>{stats.alert > 0 ? 'Need inspection now' : 'All current'}</p>
+          <p className={`text-meta mt-0.5 ${stats.alert > 0 ? 'text-red' : 'text-ink-faint'}`}>{stats.alert > 0 ? 'Need inspection now' : 'All current'}</p>
         </div>
         <div className={`bg-white border border-border rounded-card px-4 py-4 ${failedItems.length > 0 ? 'border-l-[3px] border-l-red' : ''}`}>
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Failed last test</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Failed last test</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${failedItems.length > 0 ? 'text-red' : 'text-forest/30'}`}>{failedItems.length}</p>
-          <p className={`text-meta mt-0.5 ${failedItems.length > 0 ? 'text-red' : 'text-forest/40'}`}>
+          <p className={`text-meta mt-0.5 ${failedItems.length > 0 ? 'text-red' : 'text-ink-faint'}`}>
             {failedItems.length > 0 ? 'Require follow-up' : 'All passed'}
           </p>
         </div>
         <div className="bg-white border border-border rounded-card px-4 py-4">
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Next service</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Next service</p>
           {nextWarn ? (
             <>
               <p className="font-semibold text-[18px] mt-2 text-forest">
                 {new Date(nextWarn.nextDue! + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </p>
-              <p className="text-meta text-forest/40 mt-0.5 truncate">{nextWarn.location}</p>
+              <p className="text-meta text-ink-faint mt-0.5 truncate">{nextWarn.location}</p>
             </>
           ) : (
             <>
               <p className="font-semibold text-[18px] mt-2 text-forest/30">—</p>
-              <p className="text-meta text-forest/40 mt-0.5">Nothing due soon</p>
+              <p className="text-meta text-ink-faint mt-0.5">Nothing due soon</p>
             </>
           )}
         </div>
@@ -244,7 +244,7 @@ export function FireSafetyTab() {
 
       {extinguishers.length === 0 ? (
         <div className="bg-white border border-border rounded-card px-5 py-8 text-center mb-6">
-          <p className="text-[13px] text-forest/40">No fire extinguishers added yet.</p>
+          <p className="text-[13px] text-ink-faint">No fire extinguishers added yet.</p>
           <button onClick={() => openSafetyAddItemModal({ type: 'extinguisher' })} className="text-[12px] text-sage font-medium mt-1 cursor-pointer hover:underline">+ Add fire extinguisher</button>
         </div>
       ) : (
@@ -267,7 +267,7 @@ export function FireSafetyTab() {
 
       {smokeAlarms.length === 0 && coAlarms.length === 0 ? (
         <div className="bg-white border border-border rounded-card px-5 py-8 text-center mb-6">
-          <p className="text-[13px] text-forest/40">No alarms added yet.</p>
+          <p className="text-[13px] text-ink-faint">No alarms added yet.</p>
           <div className="flex justify-center gap-3 mt-1">
             <button onClick={() => openSafetyAddItemModal({ type: 'smoke_alarm' })} className="text-[12px] text-sage font-medium cursor-pointer hover:underline">+ Add smoke alarm</button>
             <span className="text-forest/20">·</span>
@@ -283,7 +283,7 @@ export function FireSafetyTab() {
       )}
 
       {totalUnits === 0 && (
-        <p className="text-[13px] text-forest/40 text-center py-4">
+        <p className="text-[13px] text-ink-faint text-center py-4">
           Use "+ Add unit" to register fire safety equipment and start tracking compliance.
         </p>
       )}

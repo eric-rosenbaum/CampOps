@@ -99,7 +99,7 @@ export function HousingAssignModal({ retreatId, housingId }: { retreatId: string
           <p className="text-[11px] text-amber-text">No retreat-available buildings yet — toggle them on from "Manage spaces" first.</p>
         )}
         {buildingId && rooms.length === 0 && (
-          <p className="text-[11px] text-forest/45">This building has no rooms. Add rooms as sub-locations in Camp Info → Locations to assign by room.</p>
+          <p className="text-[11px] text-ink-faint">This building has no rooms. Add rooms as sub-locations in Camp Info → Locations to assign by room.</p>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

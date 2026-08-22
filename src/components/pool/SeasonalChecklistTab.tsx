@@ -41,11 +41,11 @@ function TaskRow({ task, canManage, onToggle, onEdit, onDelete }: TaskRowProps) 
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className={`text-body ${task.isComplete ? 'line-through text-forest/40' : 'text-forest'}`}>
+        <p className={`text-body ${task.isComplete ? 'line-through text-ink-faint' : 'text-forest'}`}>
           {task.title}
         </p>
         {task.detail && (
-          <p className="text-meta text-forest/40 mt-0.5">{task.detail}</p>
+          <p className="text-meta text-ink-faint mt-0.5">{task.detail}</p>
         )}
         {(task.assignees.length > 0 || (task.isComplete && task.completedDate)) && (
           <div className="flex gap-1.5 mt-1.5 flex-wrap">
@@ -73,7 +73,7 @@ function TaskRow({ task, canManage, onToggle, onEdit, onDelete }: TaskRowProps) 
           <button
             type="button"
             onClick={() => onEdit(task.id)}
-            className="p-1.5 rounded text-forest/40 hover:text-forest hover:bg-cream transition-colors"
+            className="p-1.5 rounded text-ink-faint hover:text-forest hover:bg-cream transition-colors"
             title="Edit task"
           >
             <Pencil className="w-3.5 h-3.5" />
@@ -81,7 +81,7 @@ function TaskRow({ task, canManage, onToggle, onEdit, onDelete }: TaskRowProps) 
           <button
             type="button"
             onClick={() => onDelete(task.id)}
-            className="p-1.5 rounded text-forest/40 hover:text-red hover:bg-red-bg transition-colors"
+            className="p-1.5 rounded text-ink-faint hover:text-red hover:bg-red-bg transition-colors"
             title="Delete task"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -107,7 +107,7 @@ interface SectionProps {
 }
 
 function phaseBadge(done: number, total: number): { label: string; cls: string } {
-  if (total === 0) return { label: 'Empty', cls: 'bg-cream-dark text-forest/40' };
+  if (total === 0) return { label: 'Empty', cls: 'bg-cream-dark text-ink-faint' };
   if (done === total) return { label: `${total} of ${total} done`, cls: 'bg-green-muted-bg text-green-muted-text' };
   if (done === 0) return { label: 'Not started', cls: 'bg-red-bg text-red' };
   return { label: `${done} of ${total} done`, cls: 'bg-amber-bg text-amber-text' };
@@ -126,14 +126,14 @@ function PhaseSection({ phase, label, subtitle, tasks, canManage, onToggle, onEd
         <span className={`text-label font-semibold px-2 py-0.5 rounded-tag uppercase tracking-wide ${badge.cls}`}>
           {badge.label}
         </span>
-        <span className="text-meta text-forest/40 ml-auto">
+        <span className="text-meta text-ink-faint ml-auto">
           {total} task{total !== 1 ? 's' : ''}{subtitle ? ` · ${subtitle}` : ''}
         </span>
         {canManage && (
           <button
             type="button"
             onClick={() => onAdd(phase)}
-            className="text-meta text-forest/50 hover:text-forest font-medium ml-2 transition-colors"
+            className="text-meta text-ink-soft hover:text-forest font-medium ml-2 transition-colors"
           >
             + Add task
           </button>
@@ -182,8 +182,8 @@ function ChecklistTaskRow({ task, onToggle }: { task: ChecklistTask; onToggle: (
         {isDone && <span className="text-white text-[11px] font-bold leading-none">✓</span>}
       </button>
       <div className="flex-1 min-w-0">
-        <p className={`text-body ${isDone ? 'line-through text-forest/40' : 'text-forest'}`}>{task.title}</p>
-        {task.description && <p className="text-meta text-forest/40 mt-0.5">{task.description}</p>}
+        <p className={`text-body ${isDone ? 'line-through text-ink-faint' : 'text-forest'}`}>{task.title}</p>
+        {task.description && <p className="text-meta text-ink-faint mt-0.5">{task.description}</p>}
       </div>
       <span className="text-label text-forest/30 uppercase tracking-wide flex-shrink-0 mt-0.5">checklist</span>
     </div>
@@ -238,18 +238,18 @@ export function SeasonalChecklistTab() {
           <div className="h-2 bg-cream-dark rounded-full">
             <div className="h-2 bg-sage rounded-full transition-all" style={{ width: `${pct}%` }} />
           </div>
-          <p className="text-meta text-forest/40 mt-1.5">
+          <p className="text-meta text-ink-faint mt-1.5">
             {progress.done} of {progress.total} tasks complete
           </p>
         </div>
         <div className="flex gap-5 flex-shrink-0">
           <div className="text-center">
             <p className="font-mono text-[22px] font-semibold text-green-muted-text">{progress.done}</p>
-            <p className="text-label uppercase tracking-wide text-forest/40 mt-0.5">Done</p>
+            <p className="text-label uppercase tracking-wide text-ink-faint mt-0.5">Done</p>
           </div>
           <div className="text-center">
             <p className="font-mono text-[22px] font-semibold text-amber">{progress.total - progress.done}</p>
-            <p className="text-label uppercase tracking-wide text-forest/40 mt-0.5">Open</p>
+            <p className="text-label uppercase tracking-wide text-ink-faint mt-0.5">Open</p>
           </div>
         </div>
       </div>
@@ -273,7 +273,7 @@ export function SeasonalChecklistTab() {
             />
             {phaseChecklistTasks.length > 0 && (
               <div className="mb-6 -mt-4 ml-0">
-                <p className="text-meta text-forest/40 font-medium px-3.5 mb-1">From pre/post checklist:</p>
+                <p className="text-meta text-ink-faint font-medium px-3.5 mb-1">From pre/post checklist:</p>
                 <div className="flex flex-col gap-0.5">
                   {phaseChecklistTasks.map((t) => (
                     <ChecklistTaskRow

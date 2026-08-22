@@ -41,39 +41,39 @@ function ComplianceStrip() {
   return (
     <div className="bg-white rounded-card border border-border p-4 mb-5">
       <div className="flex items-center gap-2 mb-3">
-        <ShieldCheck className="w-4 h-4 text-forest/50" />
+        <ShieldCheck className="w-4 h-4 text-ink-soft" />
         <p className="text-[13px] font-semibold text-forest">Kitchen compliance</p>
-        <span className="text-[11px] text-forest/40">from Safety &amp; Compliance</span>
+        <span className="text-[11px] text-ink-faint">from Safety &amp; Compliance</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <p className="text-[11px] uppercase tracking-widest text-forest/40 font-semibold mb-1.5">Permits</p>
+          <p className="text-[11px] uppercase tracking-widest text-ink-faint font-semibold mb-1.5">Permits</p>
           {foodLicenses.length === 0 ? (
-            <p className="text-[12px] text-forest/40">None recorded in Safety.</p>
+            <p className="text-[12px] text-ink-faint">None recorded in Safety.</p>
           ) : foodLicenses.map((l) => {
             const d = daysUntil(l.expiryDate);
             const bad = d != null && d < 0;
             const soon = d != null && d >= 0 && d <= SOON_DAYS;
             return (
-              <p key={l.id} className={`text-[12px] ${bad ? 'text-red' : soon ? 'text-amber-text' : 'text-forest/70'}`}>
+              <p key={l.id} className={`text-[12px] ${bad ? 'text-red' : soon ? 'text-amber-text' : 'text-ink'}`}>
                 {l.name}{d != null && (bad ? ` — expired` : soon ? ` — ${d}d left` : '')}
               </p>
             );
           })}
         </div>
         <div>
-          <p className="text-[11px] uppercase tracking-widest text-forest/40 font-semibold mb-1.5">Food-handler certs</p>
-          <p className="text-[12px] text-forest/70">
+          <p className="text-[11px] uppercase tracking-widest text-ink-faint font-semibold mb-1.5">Food-handler certs</p>
+          <p className="text-[12px] text-ink">
             {foodCerts.length} of {activeStaff} staff
           </p>
-          <p className="text-[11px] text-forest/40 mt-0.5">
+          <p className="text-[11px] text-ink-faint mt-0.5">
             {foodCerts.length === 0 ? 'Record ServSafe / food-handler certs in Safety.' : 'Current on file.'}
           </p>
         </div>
         <div>
-          <p className="text-[11px] uppercase tracking-widest text-forest/40 font-semibold mb-1.5">Storage temps</p>
+          <p className="text-[11px] uppercase tracking-widest text-ink-faint font-semibold mb-1.5">Storage temps</p>
           {mappedTemps.length === 0 ? (
-            <p className="text-[12px] text-forest/40">No walk-ins linked yet.</p>
+            <p className="text-[12px] text-ink-faint">No walk-ins linked yet.</p>
           ) : outOfRange.length > 0 ? (
             <p className="text-[12px] text-red flex items-center gap-1">
               <ThermometerSnowflake className="w-3.5 h-3.5" /> {outOfRange.length} out of range
@@ -139,11 +139,11 @@ export function CostTab() {
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <ComplianceStrip />
         <div className="flex flex-col items-center justify-center text-center max-w-sm mx-auto py-16">
-          <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-            <DollarSign className="w-7 h-7 text-stone-400" />
+          <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mb-4">
+            <DollarSign className="w-7 h-7 text-ink-faint" />
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No session yet</h3>
-          <p className="text-[13px] text-forest/50 leading-relaxed">
+          <p className="text-[13px] text-ink-soft leading-relaxed">
             Per-diem — cost per camper per day — is measured across a session. Create one on the
             Menu tab and set its budget to track spending against it.
           </p>
@@ -158,7 +158,7 @@ export function CostTab() {
     <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       <ComplianceStrip />
 
-      <p className="text-[12px] text-forest/55 leading-relaxed mb-4">
+      <p className="text-[12px] text-ink-soft leading-relaxed mb-4">
         <strong>Actual</strong> figures come from your delivery invoices (captured at receiving) — accurate whether or
         not you track per-item prices. The <strong>forecast</strong> is only an estimate from the prices you've entered,
         and improves as receiving records what you actually paid.
@@ -200,7 +200,7 @@ export function CostTab() {
               const pct = total > 0 ? Math.round((amt / total) * 100) : 0;
               return (
                 <div key={cat} className="flex items-center gap-3">
-                  <span className="text-[12px] text-forest/70 w-24 flex-shrink-0">{CATEGORY_LABELS[cat] ?? cat}</span>
+                  <span className="text-[12px] text-ink w-24 flex-shrink-0">{CATEGORY_LABELS[cat] ?? cat}</span>
                   <div className="flex-1 h-2 bg-cream-dark rounded-full overflow-hidden">
                     <div className="h-full bg-sage rounded-full" style={{ width: `${pct}%` }} />
                   </div>
@@ -213,12 +213,12 @@ export function CostTab() {
       )}
 
       <div className="flex items-center gap-2 mb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">Non-PO expenses</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Non-PO expenses</p>
         <div className="flex-1" />
         {canManage && <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'expense' })}>+ Add expense</Button>}
       </div>
       {expenses.length === 0 ? (
-        <p className="text-[13px] text-forest/45 bg-white rounded-card border border-border px-4 py-4 sm:py-6 text-center">
+        <p className="text-[13px] text-ink-faint bg-white rounded-card border border-border px-4 py-4 sm:py-6 text-center">
           Received purchase orders count automatically. Add cash runs, Costco trips, or standing
           contracts here so per-diem reflects everything.
         </p>
@@ -226,8 +226,8 @@ export function CostTab() {
         <div className="bg-white rounded-card border border-border overflow-hidden">
           {expenses.map((e) => (
             <div key={e.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0">
-              <span className="text-[12px] text-forest/45 w-24 flex-shrink-0">{new Date(`${e.date}T00:00:00`).toLocaleDateString()}</span>
-              <span className="text-[12px] text-forest/60 w-20 flex-shrink-0">{CATEGORY_LABELS[e.category] ?? e.category}</span>
+              <span className="text-[12px] text-ink-faint w-24 flex-shrink-0">{new Date(`${e.date}T00:00:00`).toLocaleDateString()}</span>
+              <span className="text-[12px] text-ink-soft w-20 flex-shrink-0">{CATEGORY_LABELS[e.category] ?? e.category}</span>
               <span className="text-[13px] text-forest flex-1 truncate">{e.description ?? '—'}</span>
               <span className="font-mono text-[13px] text-forest">{formatCurrency(e.amount)}</span>
               {canManage && (

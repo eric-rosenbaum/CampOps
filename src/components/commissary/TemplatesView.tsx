@@ -14,7 +14,7 @@ function TemplateCell({ templateId, week, dayIndex, meal }: { templateId: string
   return (
     <div className="border-r border-b border-border p-1.5 min-h-[68px] flex flex-col gap-1">
       {entries.map((e) => (
-        <div key={e.id} className="group relative rounded-tag px-2 py-1 text-[11px] leading-tight border bg-cream-dark border-border text-forest/80">
+        <div key={e.id} className="group relative rounded-tag px-2 py-1 text-[11px] leading-tight border bg-cream-dark border-border text-ink">
           <span className="truncate block">{e.label ?? '—'}</span>
           {canManage && (
             <button onClick={() => deleteTemplateEntry(e.id)} className="absolute -top-1 -right-1 hidden group-hover:flex w-4 h-4 rounded-full bg-forest text-cream items-center justify-center" aria-label="Remove">
@@ -25,7 +25,7 @@ function TemplateCell({ templateId, week, dayIndex, meal }: { templateId: string
       ))}
       {canManage && (
         <button onClick={() => openModal({ kind: 'templateEntry', templateId, weekNumber: week, dayIndex, mealPeriod: meal })}
-                className="text-[11px] text-forest/30 hover:text-forest/70 text-left px-1 py-0.5 transition-colors">
+                className="text-[11px] text-forest/30 hover:text-ink text-left px-1 py-0.5 transition-colors">
           + add
         </button>
       )}
@@ -46,11 +46,11 @@ export function TemplatesView() {
     return (
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
-          <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-            <CalendarRange className="w-7 h-7 text-stone-400" />
+          <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mb-4">
+            <CalendarRange className="w-7 h-7 text-ink-faint" />
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No menu templates yet</h3>
-          <p className="text-[13px] text-forest/50 leading-relaxed mb-4">
+          <p className="text-[13px] text-ink-soft leading-relaxed mb-4">
             Build your cycle menu once — a 1 to 3 week rotation — then apply it to any session
             instead of planning each week from scratch.
           </p>
@@ -79,22 +79,22 @@ export function TemplatesView() {
       </div>
 
       {!template ? (
-        <p className="text-[13px] text-forest/45 bg-white rounded-card border border-border px-4 py-4 sm:py-6 text-center">
+        <p className="text-[13px] text-ink-faint bg-white rounded-card border border-border px-4 py-4 sm:py-6 text-center">
           Pick a template to edit its cycle.
         </p>
       ) : (
         <>
           <div className="flex items-center gap-2 mb-3">
             <button onClick={() => setActiveTemplateWeek(Math.max(1, activeTemplateWeek - 1))} disabled={activeTemplateWeek <= 1}
-                    className="w-7 h-7 rounded-btn border border-border flex items-center justify-center text-forest/60 hover:bg-cream-dark disabled:opacity-30">
+                    className="w-7 h-7 rounded-btn border border-border flex items-center justify-center text-ink-soft hover:bg-cream-dark disabled:opacity-30">
               <ChevronLeft className="w-4 h-4" />
             </button>
             <p className="text-[13px] font-semibold text-forest min-w-[120px] text-center">Cycle week {activeTemplateWeek}</p>
             <button onClick={() => setActiveTemplateWeek(Math.min(template.lengthWeeks, activeTemplateWeek + 1))} disabled={activeTemplateWeek >= template.lengthWeeks}
-                    className="w-7 h-7 rounded-btn border border-border flex items-center justify-center text-forest/60 hover:bg-cream-dark disabled:opacity-30">
+                    className="w-7 h-7 rounded-btn border border-border flex items-center justify-center text-ink-soft hover:bg-cream-dark disabled:opacity-30">
               <ChevronRight className="w-4 h-4" />
             </button>
-            <span className="text-[11px] text-forest/40 ml-1">of {template.lengthWeeks}</span>
+            <span className="text-[11px] text-ink-faint ml-1">of {template.lengthWeeks}</span>
             <div className="flex-1" />
             <Button size="sm" onClick={() => openModal({ kind: 'applyTemplate' })}>
               <Plus className="w-3.5 h-3.5" /> Apply to a session

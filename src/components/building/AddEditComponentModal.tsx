@@ -11,7 +11,7 @@ import type {
 } from '@/lib/types';
 
 const inputClass = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
+const labelClass = 'block text-secondary font-medium text-ink mb-1';
 
 interface Props {
   // Building location id. defaultLocationId is the pre-selected attach target: a
@@ -101,7 +101,7 @@ export function AddEditComponentModal({ buildingId, editId, defaultLocationId, d
               type="button"
               onClick={() => changeSystem(s)}
               className={`text-body font-medium rounded-btn py-2 border transition-colors capitalize ${
-                system === s ? 'border-sage bg-sage/[0.1] text-forest' : 'border-border text-forest/50 hover:bg-cream-dark'
+                system === s ? 'border-sage bg-sage/[0.1] text-forest' : 'border-border text-ink-soft hover:bg-cream-dark'
               }`}
             >
               {s}
@@ -143,7 +143,7 @@ export function AddEditComponentModal({ buildingId, editId, defaultLocationId, d
                 {f.kind === 'bool' ? (
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={Boolean(metadata[f.key])} onChange={(e) => setMeta(f.key, e.target.checked)} className="w-4 h-4 accent-forest rounded" />
-                    <span className="text-body text-forest/80">{f.label}</span>
+                    <span className="text-body text-ink">{f.label}</span>
                   </label>
                 ) : f.kind === 'select' ? (
                   <>

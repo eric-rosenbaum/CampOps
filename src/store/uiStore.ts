@@ -97,9 +97,27 @@ interface UIStore {
   openAddMaintenanceTaskModal: (assetId: string) => void;
   openEditMaintenanceTaskModal: (assetId: string, taskId: string) => void;
   closeAllModals: () => void;
+
+  // ── Chrome ────────────────────────────────────────────────────────────────
+  /** Sidebar collapsed to an icon rail. Persisted: it's a working preference, not transient. */
+  sidebarCollapsed: boolean;
+  toggleSidebar: () => void;
 }
 
-export const useUIStore = create<UIStore>((set) => ({
+const RAIL_KEY = 'campops_sidebar_collapsed';
+
+function readRail(): boolean {
+  try { return localStorage.getItem(RAIL_KEY) === '1'; } catch { return false; }
+}
+
+export const useUIStore = create<UIStore>((set, get) => ({
+  sidebarCollapsed: readRail(),
+  toggleSidebar: () => {
+    const next = !get().sidebarCollapsed;
+    set({ sidebarCollapsed: next });
+    try { localStorage.setItem(RAIL_KEY, next ? '1' : '0'); } catch { /* private mode */ }
+  },
+
   isLogIssueModalOpen: false,
   isLogTaskModalOpen: false,
   isSeasonModalOpen: false,

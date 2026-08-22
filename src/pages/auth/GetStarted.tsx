@@ -73,7 +73,7 @@ export function GetStarted() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-stone-50 flex flex-col items-center justify-center p-4 sm:p-6">
+    <div className="min-h-screen w-full bg-paper flex flex-col items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-md">
         <Link to="/" className="flex items-center gap-2 mb-8 justify-center">
           <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center">
@@ -82,9 +82,9 @@ export function GetStarted() {
           <span className="text-lg font-semibold text-forest">CampCommand</span>
         </Link>
 
-        <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-6 sm:p-8">
+        <div className="bg-white rounded-xl border border-border shadow-sm p-6 sm:p-8">
           <h1 className="text-[20px] font-bold text-forest mb-1.5">Get started</h1>
-          <p className="text-[13px] text-forest/60 leading-relaxed mb-6">
+          <p className="text-[13px] text-ink-soft leading-relaxed mb-6">
             Sign in or set up your account wherever you work. Everything stays in sync, so you
             can log an issue on your phone and pick it up later at a desk.
           </p>
@@ -97,25 +97,25 @@ export function GetStarted() {
                 disabled={!card.available}
                 className={`w-full flex items-center gap-3 text-left px-4 py-3 rounded-lg border transition-colors ${
                   card.available
-                    ? 'border-stone-200 hover:border-forest/30 hover:bg-stone-50'
-                    : 'border-stone-200 bg-stone-50/60 cursor-default'
+                    ? 'border-border hover:border-forest/30 hover:bg-paper'
+                    : 'border-border bg-paper/60 cursor-default'
                 }`}
               >
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  card.available ? 'bg-sage-pale' : 'bg-stone-100'
+                  card.available ? 'bg-sage-pale' : 'bg-cream-dark'
                 }`}>
-                  <card.icon className={`w-4 h-4 ${card.available ? 'text-forest/70' : 'text-forest/30'}`} />
+                  <card.icon className={`w-4 h-4 ${card.available ? 'text-ink' : 'text-forest/30'}`} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className={`text-[13px] font-medium ${card.available ? 'text-forest' : 'text-forest/40'}`}>
+                  <p className={`text-[13px] font-medium ${card.available ? 'text-forest' : 'text-ink-faint'}`}>
                     {card.title}
                     {card.id === platform && card.available && (
-                      <span className="ml-2 text-[10px] font-medium text-forest/45 uppercase tracking-wide">
+                      <span className="ml-2 text-[10px] font-medium text-ink-faint uppercase tracking-wide">
                         You're here
                       </span>
                     )}
                   </p>
-                  <p className={`text-[11.5px] ${card.available ? 'text-forest/50' : 'text-forest/35'}`}>
+                  <p className={`text-[11.5px] ${card.available ? 'text-ink-soft' : 'text-ink-faint'}`}>
                     {card.detail}
                   </p>
                 </div>
@@ -129,21 +129,21 @@ export function GetStarted() {
             telling where their way in comes from rather than being shown a signup form that
             would only reject them.
           */}
-          <div className="mt-7 pt-6 border-t border-stone-100">
-            <p className="text-[11px] font-medium text-forest/45 uppercase tracking-wide mb-3">
+          <div className="mt-7 pt-6 border-t border-border">
+            <p className="text-[11px] font-medium text-ink-faint uppercase tracking-wide mb-3">
               Setting up for the first time?
             </p>
             <div className="space-y-2.5">
               <div className="flex items-start gap-2.5">
-                <Mail className="w-3.5 h-3.5 text-forest/40 mt-0.5 flex-shrink-0" />
-                <p className="text-[12px] text-forest/65 leading-relaxed">
+                <Mail className="w-3.5 h-3.5 text-ink-faint mt-0.5 flex-shrink-0" />
+                <p className="text-[12px] text-ink-soft leading-relaxed">
                   Your camp administrator emails you an invitation. Open that link on any device
                   and it sets up your account. This is the usual way in.
                 </p>
               </div>
               <div className="flex items-start gap-2.5">
-                <KeyRound className="w-3.5 h-3.5 text-forest/40 mt-0.5 flex-shrink-0" />
-                <p className="text-[12px] text-forest/65 leading-relaxed">
+                <KeyRound className="w-3.5 h-3.5 text-ink-faint mt-0.5 flex-shrink-0" />
+                <p className="text-[12px] text-ink-soft leading-relaxed">
                   Given a join code instead?{' '}
                   <Link to="/join" className="font-medium text-forest hover:underline">
                     Enter it here
@@ -155,7 +155,7 @@ export function GetStarted() {
           </div>
         </div>
 
-        <p className="text-center text-[12px] text-forest/45 mt-5">
+        <p className="text-center text-[12px] text-ink-faint mt-5">
           Already have an account?{' '}
           <Link to="/login" className="font-medium text-forest hover:underline">Sign in</Link>
         </p>

@@ -1,3 +1,5 @@
+import { Topbar } from '@/components/layout/Topbar';
+import { Button } from '@/components/shared/Button';
 import { Plus } from 'lucide-react';
 import { useAssetStore, type AssetPageTab } from '@/store/assetStore';
 import { useUIStore } from '@/store/uiStore';
@@ -38,24 +40,19 @@ export default function AssetVehicles() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-white">
-        <div>
-          <h1 className="text-page-title font-semibold text-forest">Assets & Vehicles</h1>
-          <p className="text-meta text-forest/50 mt-0.5">Fleet management, checkout tracking, and service history</p>
-        </div>
-        {isAdmin && activePageTab === 'fleet' && (
-          <button
-            onClick={openAddAssetModal}
-            className="flex items-center gap-2 px-4 py-2 text-body font-medium bg-forest text-cream rounded-btn hover:bg-forest/90 transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Add asset
-          </button>
-        )}
-      </div>
+      <Topbar
+        flush
+        title="Assets & Vehicles"
+        subtitle="Fleet management, checkout tracking, and service history"
+        actions={isAdmin && activePageTab === 'fleet' ? (
+          <Button size="sm" onClick={openAddAssetModal}>
+            <Plus className="w-3.5 h-3.5" /> Add asset
+          </Button>
+        ) : undefined}
+      />
 
       {/* Tab strip */}
-      <div className="flex gap-0 border-b border-border bg-white px-6">
+      <div className="flex gap-0 border-b border-border bg-paper-raised px-6 overflow-x-auto overflow-y-hidden no-scrollbar">
         {PAGE_TABS.map((tab) => {
           const badge = tabBadge(tab.id);
           const isAlert = tab.id === 'checked_out' && overdueCount > 0;
@@ -63,7 +60,7 @@ export default function AssetVehicles() {
             <button
               key={tab.id}
               onClick={() => setPageTab(tab.id)}
-              className={`flex items-center gap-2 py-3 px-1 mr-6 text-body font-medium border-b-2 transition-colors -mb-px ${activePageTab === tab.id ? 'border-forest text-forest' : 'border-transparent text-forest/50 hover:text-forest/70'}`}
+              className={`flex items-center gap-2 py-3 px-1 mr-6 text-body font-medium border-b-[3px] transition-colors -mb-px ${activePageTab === tab.id ? 'border-red text-forest' : 'border-transparent text-ink-soft hover:text-forest'}`}
             >
               {tab.label}
               {badge !== null && (

@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { useCampStore } from '@/store/campStore';
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40 mb-2 mt-2">{children}</p>;
+  return <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint mb-2 mt-2">{children}</p>;
 }
 
 // ─── Multi-factor authentication (per-user) ─────────────────────────────────────
@@ -71,12 +71,12 @@ function MfaSection() {
         </div>
         <div>
           <h2 className="text-[15px] font-semibold text-forest">Two-step sign-in</h2>
-          <p className="text-[13px] text-forest/55 mt-0.5">Add a second step when you sign in, using a free authenticator app (Google Authenticator, 1Password, Authy). Recommended for anyone with access to camper information.</p>
+          <p className="text-[13px] text-ink-soft mt-0.5">Add a second step when you sign in, using a free authenticator app (Google Authenticator, 1Password, Authy). Recommended for anyone with access to camper information.</p>
         </div>
       </div>
 
       {loading ? (
-        <p className="text-[13px] text-forest/40">Loading…</p>
+        <p className="text-[13px] text-ink-faint">Loading…</p>
       ) : (
         <>
           {verified.length > 0 && (
@@ -85,7 +85,7 @@ function MfaSection() {
                 <div key={f.id} className="flex items-center gap-3 px-4 py-3 rounded-btn border border-border bg-cream/40">
                   <Check className="w-4 h-4 text-green-muted-text flex-shrink-0" />
                   <span className="text-[13px] font-medium text-forest flex-1">Two-step sign-in is on</span>
-                  <button onClick={() => removeFactor(f.id)} className="text-forest/40 hover:text-red transition-colors" title="Turn off">
+                  <button onClick={() => removeFactor(f.id)} className="text-ink-faint hover:text-red transition-colors" title="Turn off">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -100,8 +100,8 @@ function MfaSection() {
                 {/* qr_code is an SVG data URI from Supabase */}
                 <img src={enrolling.qr} alt="QR code for authenticator setup" className="w-40 h-40 rounded-lg border border-border bg-white" />
                 <div className="flex-1 min-w-[200px]">
-                  <p className="text-[11px] uppercase tracking-wide text-forest/45 font-semibold mb-1">Can’t scan? Enter this key instead</p>
-                  <code className="text-[12px] break-all text-forest/70">{enrolling.secret}</code>
+                  <p className="text-[11px] uppercase tracking-wide text-ink-faint font-semibold mb-1">Can’t scan? Enter this key instead</p>
+                  <code className="text-[12px] break-all text-ink">{enrolling.secret}</code>
                   <div className="mt-4">
                     <input
                       value={code}
@@ -158,7 +158,7 @@ function DataExportSection({ campId, campName }: { campId: string; campName: str
         </div>
         <div>
           <h2 className="text-[15px] font-semibold text-forest">Download your data</h2>
-          <p className="text-[13px] text-forest/55 mt-0.5">Get a complete copy of everything in your camp as a single file — useful for your own records or backups. The download is noted in your activity log.</p>
+          <p className="text-[13px] text-ink-soft mt-0.5">Get a complete copy of everything in your camp as a single file — useful for your own records or backups. The download is noted in your activity log.</p>
         </div>
       </div>
       <Button size="sm" variant="ghost" onClick={exportData} disabled={busy}>{busy ? 'Preparing…' : 'Download a copy'}</Button>
@@ -203,18 +203,18 @@ function ActivitySection({ campId, memberNames }: { campId: string; memberNames:
         </div>
         <div>
           <h2 className="text-[15px] font-semibold text-forest">Activity log</h2>
-          <p className="text-[13px] text-forest/55 mt-0.5">A record of sensitive actions — who viewed or changed camper health info, team roles, retreat billing, data downloads, and guest-link resets.</p>
+          <p className="text-[13px] text-ink-soft mt-0.5">A record of sensitive actions — who viewed or changed camper health info, team roles, retreat billing, data downloads, and guest-link resets.</p>
         </div>
       </div>
       {loading ? (
-        <p className="text-[13px] text-forest/40">Loading…</p>
+        <p className="text-[13px] text-ink-faint">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="text-[13px] text-forest/40 italic">No activity yet.</p>
+        <p className="text-[13px] text-ink-faint italic">No activity yet.</p>
       ) : (
         <div className="overflow-x-auto -mx-2">
           <table className="w-full min-w-[520px] text-[13px]">
             <thead>
-              <tr className="text-forest/45 text-[11px] uppercase tracking-wide">
+              <tr className="text-ink-faint text-[11px] uppercase tracking-wide">
                 <th className="text-left font-semibold px-2 py-1.5">When</th>
                 <th className="text-left font-semibold px-2 py-1.5">Who</th>
                 <th className="text-left font-semibold px-2 py-1.5">Action</th>
@@ -224,10 +224,10 @@ function ActivitySection({ campId, memberNames }: { campId: string; memberNames:
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-cream-dark">
-                  <td className="px-2 py-2 text-forest/60 whitespace-nowrap">{new Date(r.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                  <td className="px-2 py-2 text-forest/80">{(r.actor_id ? memberNames[r.actor_id] : '') || r.actor_email || 'System'}</td>
+                  <td className="px-2 py-2 text-ink-soft whitespace-nowrap">{new Date(r.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                  <td className="px-2 py-2 text-ink">{(r.actor_id ? memberNames[r.actor_id] : '') || r.actor_email || 'System'}</td>
                   <td className="px-2 py-2 text-forest font-medium">{ACTION_LABELS[r.action] ?? r.action}</td>
-                  <td className="px-2 py-2 text-forest/50">{r.target_table ? (TABLE_LABELS[r.target_table] ?? '—') : '—'}</td>
+                  <td className="px-2 py-2 text-ink-soft">{r.target_table ? (TABLE_LABELS[r.target_table] ?? '—') : '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -244,10 +244,10 @@ function PolicyLink({ href, title, desc }: { href: string; title: string; desc: 
   return (
     <a href={href} target="_blank" rel="noopener noreferrer"
        className="flex items-center gap-3 px-4 py-3 rounded-btn border border-border hover:border-sage hover:bg-cream/40 transition-colors group">
-      <FileText className="w-4 h-4 text-forest/40 group-hover:text-sage flex-shrink-0" />
+      <FileText className="w-4 h-4 text-ink-faint group-hover:text-sage flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-medium text-forest">{title}</p>
-        <p className="text-[12px] text-forest/50">{desc}</p>
+        <p className="text-[12px] text-ink-soft">{desc}</p>
       </div>
       <ExternalLink className="w-3.5 h-3.5 text-forest/30 group-hover:text-sage" />
     </a>
@@ -258,7 +258,7 @@ function PrivacySection() {
   return (
     <section className="bg-white rounded-card border border-border p-4 sm:p-6">
       <h2 className="text-[15px] font-semibold text-forest mb-1">Privacy &amp; security</h2>
-      <p className="text-[13px] text-forest/55 mb-4">Your camp's information — including camper health details — is kept private to your camp and protected with industry-standard safeguards. The full details are here:</p>
+      <p className="text-[13px] text-ink-soft mb-4">Your camp's information — including camper health details — is kept private to your camp and protected with industry-standard safeguards. The full details are here:</p>
       <div className="grid sm:grid-cols-2 gap-2.5">
         <PolicyLink href="/privacy" title="Privacy Policy" desc="What we collect and how it's used" />
         <PolicyLink href="/security" title="Security Overview" desc="How your data is protected" />

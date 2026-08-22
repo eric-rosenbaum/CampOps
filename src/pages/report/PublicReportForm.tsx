@@ -113,6 +113,7 @@ export function PublicReportForm() {
         assignee_id: null,
         reported_by_id: null,
         is_public_report: true,
+        source: 'public',
         reporter_name: reporterName.trim() || null,
         reporter_contact: reporterContact.trim() || null,
         estimated_cost_display: null,
@@ -135,26 +136,26 @@ export function PublicReportForm() {
     }
   }
 
-  const inputClass = 'w-full text-[15px] bg-white border border-stone-200 rounded-xl px-4 py-3.5 focus:outline-none focus:border-stone-400 focus:ring-2 focus:ring-stone-100 transition-all placeholder:text-stone-400';
-  const labelClass = 'block text-[12px] font-semibold text-stone-500 uppercase tracking-wide mb-2';
+  const inputClass = 'w-full text-[15px] bg-white border border-border rounded-xl px-4 py-3.5 focus:outline-none focus:border-stone-400 focus:ring-2 focus:ring-stone-100 transition-all placeholder:text-ink-faint';
+  const labelClass = 'block text-[12px] font-semibold text-ink-soft uppercase tracking-wide mb-2';
 
   if (pageState === 'loading') {
     return (
-      <div className="min-h-screen bg-stone-50 w-full flex items-center justify-center">
-        <div className="w-7 h-7 border-2 border-stone-200 border-t-stone-500 rounded-full animate-spin" />
+      <div className="min-h-screen bg-paper w-full flex items-center justify-center">
+        <div className="w-7 h-7 border-2 border-border border-t-stone-500 rounded-full animate-spin" />
       </div>
     );
   }
 
   if (pageState === 'not_found') {
     return (
-      <div className="min-h-screen bg-stone-50 w-full flex items-center justify-center p-4 sm:p-6">
+      <div className="min-h-screen bg-paper w-full flex items-center justify-center p-4 sm:p-6">
           <div className="text-center max-w-sm">
-            <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="w-7 h-7 text-stone-400" />
+            <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-7 h-7 text-ink-faint" />
             </div>
-            <h1 className="text-[20px] font-bold text-stone-800 mb-2">Page not found</h1>
-            <p className="text-[14px] text-stone-400 leading-relaxed">This report link doesn't exist or is no longer active.</p>
+            <h1 className="text-[20px] font-bold text-ink mb-2">Page not found</h1>
+            <p className="text-[14px] text-ink-faint leading-relaxed">This report link doesn't exist or is no longer active.</p>
           </div>
       </div>
     );
@@ -174,13 +175,13 @@ export function PublicReportForm() {
       setPageState('form');
     }
     return (
-      <div className="min-h-screen bg-stone-50 w-full flex items-center justify-center p-4 sm:p-6">
+      <div className="min-h-screen bg-paper w-full flex items-center justify-center p-4 sm:p-6">
           <div className="text-center max-w-sm">
             <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
               <CheckCircle className="w-8 h-8 text-emerald-500" />
             </div>
-            <h1 className="text-[22px] font-bold text-stone-800 mb-2">Report submitted</h1>
-            <p className="text-[15px] text-stone-400 leading-relaxed mb-8">
+            <h1 className="text-[22px] font-bold text-ink mb-2">Report submitted</h1>
+            <p className="text-[15px] text-ink-faint leading-relaxed mb-8">
               Thank you — {camp?.name} staff will review your report.
             </p>
             <button
@@ -195,9 +196,9 @@ export function PublicReportForm() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 w-full">
+    <div className="min-h-screen bg-paper w-full">
       {/* Header */}
-      <div className="bg-white border-b border-stone-100 px-5 py-4">
+      <div className="bg-white border-b border-border px-5 py-4">
         <div className="max-w-lg mx-auto flex items-center gap-3">
           {camp?.logoUrl ? (
             <img src={camp.logoUrl} alt="" className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
@@ -207,8 +208,8 @@ export function PublicReportForm() {
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest">Report an issue</p>
-            <h1 className="text-[16px] font-bold text-stone-800 leading-tight truncate">{camp?.name}</h1>
+            <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-widest">Report an issue</p>
+            <h1 className="text-[16px] font-bold text-ink leading-tight truncate">{camp?.name}</h1>
           </div>
         </div>
       </div>
@@ -272,7 +273,7 @@ export function PublicReportForm() {
             </label>
             {photoPreview ? (
               <div className="space-y-2.5">
-                <div className="relative rounded-xl overflow-hidden border border-stone-200">
+                <div className="relative rounded-xl overflow-hidden border border-border">
                   <img src={photoPreview} alt="Preview" className="w-full max-h-52 object-cover" />
                   <button
                     type="button"
@@ -283,18 +284,18 @@ export function PublicReportForm() {
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <label className="flex items-center gap-1.5 text-[12px] text-stone-400 cursor-pointer hover:text-stone-600 transition-colors w-fit">
+                <label className="flex items-center gap-1.5 text-[12px] text-ink-faint cursor-pointer hover:text-ink-soft transition-colors w-fit">
                   <Camera className="w-3.5 h-3.5" />
                   <span>Change photo</span>
                   <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
                 </label>
               </div>
             ) : (
-              <label className="flex flex-col items-center gap-2.5 py-7 px-4 bg-white rounded-xl border border-dashed border-stone-200 cursor-pointer hover:border-stone-400 hover:bg-stone-50 transition-all">
-                <div className="w-9 h-9 bg-stone-100 rounded-xl flex items-center justify-center">
-                  <Camera className="w-4.5 h-4.5 text-stone-400" />
+              <label className="flex flex-col items-center gap-2.5 py-7 px-4 bg-white rounded-xl border border-dashed border-border cursor-pointer hover:border-stone-400 hover:bg-paper transition-all">
+                <div className="w-9 h-9 bg-cream-dark rounded-xl flex items-center justify-center">
+                  <Camera className="w-4.5 h-4.5 text-ink-faint" />
                 </div>
-                <span className="text-[13px] text-stone-400">Tap to attach a photo</span>
+                <span className="text-[13px] text-ink-faint">Tap to attach a photo</span>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
               </label>
             )}
@@ -303,9 +304,9 @@ export function PublicReportForm() {
           {/* Divider */}
           <div className="pt-1">
             <div className="flex items-center gap-3 mb-5">
-              <div className="h-px flex-1 bg-stone-100" />
-              <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-widest">Your info — optional</p>
-              <div className="h-px flex-1 bg-stone-100" />
+              <div className="h-px flex-1 bg-cream-dark" />
+              <p className="text-[11px] font-semibold text-ink-faint uppercase tracking-widest">Your info — optional</p>
+              <div className="h-px flex-1 bg-cream-dark" />
             </div>
 
             <div className="space-y-4">

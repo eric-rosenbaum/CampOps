@@ -115,11 +115,11 @@ export function SendReminderModal({ retreatId, reminderType }: { retreatId: stri
           <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={8}
                     className={`${inputClass} resize-y`} placeholder="Write your reminder…" />
           {retreat?.coordinatorEmail && (
-            <p className="text-[11px] text-forest/45 mt-1">To: {retreat.coordinatorName ? `${retreat.coordinatorName} · ` : ''}{retreat.coordinatorEmail}</p>
+            <p className="text-[11px] text-ink-faint mt-1">To: {retreat.coordinatorName ? `${retreat.coordinatorName} · ` : ''}{retreat.coordinatorEmail}</p>
           )}
         </div>
 
-        <p className="text-[11px] text-forest/45 leading-relaxed bg-cream-dark/50 border border-border rounded-btn px-3 py-2">
+        <p className="text-[11px] text-ink-faint leading-relaxed bg-cream-dark/50 border border-border rounded-btn px-3 py-2">
           {hasEmail
             ? <>This emails {retreat?.coordinatorName ?? 'the coordinator'} from your camp (replies come back to you) and logs it in the retreat's history.</>
             : <>No coordinator email on file — this will only log the reminder to history. Add an email on the retreat to send it.</>}

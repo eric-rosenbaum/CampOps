@@ -57,6 +57,9 @@ export interface ActivityEntry {
   timestamp: string;
 }
 
+/** Where an issue came in from. Null means unknown, not web. */
+export type IssueSource = 'web' | 'ios' | 'public';
+
 export interface Issue {
   id: string;
   title: string;
@@ -77,6 +80,8 @@ export interface Issue {
   isPublicReport: boolean;
   reporterName: string | null;
   reporterContact: string | null;
+  /** Which client logged this. Null on rows predating the column — show nothing, don't guess. */
+  source: IssueSource | null;
   createdAt: string;
   updatedAt: string;
   activityLog: ActivityEntry[];

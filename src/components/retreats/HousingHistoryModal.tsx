@@ -10,10 +10,10 @@ export function HousingHistoryModal({ retreatId }: { retreatId: string }) {
 
   return (
     <Modal title="Housing version history" onClose={closeModal} width="520px">
-      {retreat && <p className="text-[12px] text-forest/50 -mt-2 mb-4">{retreat.groupName}</p>}
+      {retreat && <p className="text-[12px] text-ink-soft -mt-2 mb-4">{retreat.groupName}</p>}
 
       {versions.length === 0 ? (
-        <p className="bg-cream rounded-card border border-border px-4 py-8 text-center text-[13px] text-forest/45">
+        <p className="bg-cream rounded-card border border-border px-4 py-8 text-center text-[13px] text-ink-faint">
           No saved versions yet. A version is snapshotted each time housing is locked.
         </p>
       ) : (
@@ -25,17 +25,17 @@ export function HousingHistoryModal({ retreatId }: { retreatId: string }) {
                 key={v.id}
                 className={`rounded-card border px-4 py-3 ${latest ? 'bg-green-muted-bg border-sage/40' : 'bg-cream border-border'}`}
               >
-                <div className={`flex items-center justify-between text-[12px] font-semibold ${latest ? 'text-green-muted-text' : 'text-forest/60'}`}>
+                <div className={`flex items-center justify-between text-[12px] font-semibold ${latest ? 'text-green-muted-text' : 'text-ink-soft'}`}>
                   <span>v{v.version}{v.label ? ` — ${v.label}` : ''}{latest ? ' (current)' : ''}</span>
                   <span className="font-mono">{fmtDateFull(v.createdAt.slice(0, 10))}</span>
                 </div>
                 {v.summary && (
-                  <p className={`text-[12px] mt-1 leading-relaxed ${latest ? 'text-green-muted-text' : 'text-forest/55'}`}>
+                  <p className={`text-[12px] mt-1 leading-relaxed ${latest ? 'text-green-muted-text' : 'text-ink-soft'}`}>
                     {v.summary}
                   </p>
                 )}
                 {v.createdBy && (
-                  <p className={`text-[11px] mt-1 ${latest ? 'text-green-muted-text/80' : 'text-forest/40'}`}>
+                  <p className={`text-[11px] mt-1 ${latest ? 'text-green-muted-text/80' : 'text-ink-faint'}`}>
                     Saved by {v.createdBy}
                   </p>
                 )}

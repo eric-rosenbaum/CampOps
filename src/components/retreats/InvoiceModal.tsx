@@ -73,7 +73,7 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
   if (!retreat) {
     return (
       <Modal title="Invoices" onClose={closeModal} width="560px">
-        <p className="text-[13px] text-forest/55">Retreat not found.</p>
+        <p className="text-[13px] text-ink-soft">Retreat not found.</p>
       </Modal>
     );
   }
@@ -177,14 +177,14 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
       <div className="space-y-5">
         {/* Builder */}
         <div className="rounded-card border border-border bg-cream px-4 py-3.5 space-y-3.5">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40">Create an invoice</p>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint">Create an invoice</p>
           <div>
             <label className={labelClass}>Invoice type</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {(['deposit', 'balance'] as RetreatInvoiceKind[]).map((k) => (
                 <button
                   key={k} type="button" onClick={() => setKind(k)}
-                  className={`text-[13px] font-semibold rounded-btn py-2 border transition-colors ${kind === k ? 'border-sage bg-sage-pale text-forest' : 'border-border bg-white text-forest/60 hover:border-sage'}`}
+                  className={`text-[13px] font-semibold rounded-btn py-2 border transition-colors ${kind === k ? 'border-sage bg-sage-pale text-forest' : 'border-border bg-white text-ink-soft hover:border-sage'}`}
                 >
                   {k === 'deposit' ? 'Deposit invoice' : 'Balance invoice'}
                 </button>
@@ -199,20 +199,20 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
               <input type="number" min={0} value={headcount}
                      onChange={(e) => setHeadcount(e.target.value)}
                      className={`${inputClass} w-32`} />
-              <p className="text-[11px] text-forest/45 mt-1">Defaults to the group's confirmed headcount — edit to bill a different number.</p>
+              <p className="text-[11px] text-ink-faint mt-1">Defaults to the group's confirmed headcount — edit to bill a different number.</p>
             </div>
           )}
 
           {/* Preview lines */}
           <div className="rounded-btn bg-white border border-border overflow-hidden">
             {lines.length === 0 ? (
-              <p className="text-[12px] text-forest/45 px-3 py-3">
+              <p className="text-[12px] text-ink-faint px-3 py-3">
                 {kind === 'balance' ? 'No charges yet — add charges in Costs & invoice first.' : 'Set a deposit amount on the retreat first.'}
               </p>
             ) : lines.map((l, i) => (
               <div key={i} className="flex justify-between gap-3 px-3 py-2 border-b border-cream-dark last:border-0 text-[13px]">
-                <span className="text-forest/70 truncate">{l.description}</span>
-                <span className={`font-mono ${l.amount < 0 ? 'text-forest/45' : 'text-forest'}`}>{money(l.amount)}</span>
+                <span className="text-ink truncate">{l.description}</span>
+                <span className={`font-mono ${l.amount < 0 ? 'text-ink-faint' : 'text-forest'}`}>{money(l.amount)}</span>
               </div>
             ))}
             <div className="flex justify-between gap-3 px-3 py-2 bg-cream border-t border-border text-[13px] font-semibold">
@@ -228,7 +228,7 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
               <div className="space-y-1 mb-2">
                 {fees.map((f, i) => (
                   <div key={i} className="flex items-center justify-between gap-2 text-[12px] bg-white border border-border rounded-btn px-2.5 py-1.5">
-                    <span className="text-forest/70 truncate">{f.description}</span>
+                    <span className="text-ink truncate">{f.description}</span>
                     <span className="inline-flex items-center gap-2 flex-shrink-0">
                       <span className="font-mono text-forest">{money(f.amount)}</span>
                       <button type="button" onClick={() => setFees((fs) => fs.filter((_, idx) => idx !== i))} className="text-forest/30 hover:text-red" aria-label="Remove fee"><X className="w-3.5 h-3.5" /></button>
@@ -252,7 +252,7 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
               <input type="date" value={effectiveDue} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
             </div>
             <div className="flex items-end">
-              <p className="text-[11px] text-forest/45 leading-snug">
+              <p className="text-[11px] text-ink-faint leading-snug">
                 {fmtRange(retreat.arrivalDate, retreat.departureDate)}
               </p>
             </div>
@@ -262,7 +262,7 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
               <label className={`${labelClass} mb-0`}>Note (optional)</label>
               <button type="button" onClick={saveNoteDefault} disabled={!note.trim()}
                 className={`inline-flex items-center gap-1 text-[11px] font-medium transition-colors disabled:opacity-40 ${
-                  noteSaved || isCurrentDefault ? 'text-green-muted-text' : 'text-forest/55 hover:text-forest underline'
+                  noteSaved || isCurrentDefault ? 'text-green-muted-text' : 'text-ink-soft hover:text-forest underline'
                 }`}>
                 {(noteSaved || isCurrentDefault) && <Check className="w-3 h-3" />}
                 {noteSaved ? 'Saved as default' : isCurrentDefault ? 'Saved — update' : 'Save as default'}
@@ -272,7 +272,7 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
                       placeholder="e.g. Please Zelle billing@camp.org, or send ACH to account 12345 / routing 12345." />
           </div>
 
-          <label className={`flex items-center gap-2 text-[13px] ${coordinatorEmail ? 'text-forest/75' : 'text-forest/35'}`}>
+          <label className={`flex items-center gap-2 text-[13px] ${coordinatorEmail ? 'text-forest/75' : 'text-ink-faint'}`}>
             <input type="checkbox" checked={emailToo && !!coordinatorEmail} disabled={!coordinatorEmail} onChange={(e) => setEmailToo(e.target.checked)} className="accent-sage" />
             {coordinatorEmail ? <>Also email {coordinatorEmail}</> : 'No coordinator email on file to send to'}
           </label>
@@ -289,37 +289,37 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
           {banner && (
             <p className={`text-[12px] ${banner.tone === 'ok' ? 'text-green-muted-text' : 'text-red'}`}>{banner.text}</p>
           )}
-          <p className="text-[11px] text-forest/45 leading-relaxed">
+          <p className="text-[11px] text-ink-faint leading-relaxed">
             "Send to portal" makes this invoice appear in the group's guest portal immediately. With the box checked, it also emails the coordinator a link (replies come back to you).
           </p>
         </div>
 
         {/* Sent invoices */}
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-forest/40 mb-2">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint mb-2">
             {existing.length} invoice{existing.length === 1 ? '' : 's'} on file
           </p>
           {existing.length === 0 ? (
-            <p className="text-[13px] text-forest/45 bg-cream rounded-card px-4 py-5 text-center">No invoices created yet.</p>
+            <p className="text-[13px] text-ink-faint bg-cream rounded-card px-4 py-5 text-center">No invoices created yet.</p>
           ) : (
             <div className="rounded-card border border-border overflow-hidden">
               {existing.map((inv) => (
                 <div key={inv.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0">
-                  <FileText className="w-4 h-4 text-forest/35 flex-shrink-0" />
+                  <FileText className="w-4 h-4 text-ink-faint flex-shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-medium text-forest truncate">
-                      {inv.number} · <span className="text-forest/55 capitalize">{inv.kind}</span>
+                      {inv.number} · <span className="text-ink-soft capitalize">{inv.kind}</span>
                     </p>
-                    <p className="text-[11px] text-forest/45">
+                    <p className="text-[11px] text-ink-faint">
                       {money(inv.amount)}{inv.dueDate ? ` · due ${fmtDateFull(inv.dueDate)}` : ''} · {inv.status}
                     </p>
                   </div>
                   {canManage && coordinatorEmail && retreat && (
-                    <button onClick={() => emailInvoice(inv, retreat)} disabled={emailingId === inv.id} className="p-1.5 text-forest/40 hover:text-forest disabled:opacity-50" title={`Email to ${coordinatorEmail}`}>
+                    <button onClick={() => emailInvoice(inv, retreat)} disabled={emailingId === inv.id} className="p-1.5 text-ink-faint hover:text-forest disabled:opacity-50" title={`Email to ${coordinatorEmail}`}>
                       {emailingId === inv.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
                     </button>
                   )}
-                  <button onClick={() => printInvoice(draftFor(inv))} className="p-1.5 text-forest/40 hover:text-forest" title="Download PDF">
+                  <button onClick={() => printInvoice(draftFor(inv))} className="p-1.5 text-ink-faint hover:text-forest" title="Download PDF">
                     <Download className="w-4 h-4" />
                   </button>
                   {canManage && (

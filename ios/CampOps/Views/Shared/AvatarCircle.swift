@@ -13,7 +13,7 @@ struct AvatarCircle: View {
             )
             .overlay(
                 Text(initials)
-                    .font(.custom("DMSans-SemiBold", size: size * 0.38))
+                    .font(.custom("Karla-Regular_SemiBold", size: size * 0.38))
                     .foregroundStyle(Color.forest)
             )
     }

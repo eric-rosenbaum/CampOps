@@ -50,7 +50,7 @@ export function FeedbackTab() {
       {rows.length === 0 ? (
         <div className="max-w-md mx-auto text-center mt-20">
           <p className="text-[15px] font-semibold text-forest">No feedback yet</p>
-          <p className="text-[13px] text-forest/55 mt-2 leading-relaxed">
+          <p className="text-[13px] text-ink-soft mt-2 leading-relaxed">
             Feedback surveys are sent to group coordinators at checkout. Record responses here to
             track satisfaction and spot returning groups.
           </p>
@@ -68,7 +68,7 @@ export function FeedbackTab() {
               <div key={s.label} className="bg-white rounded-card border border-border px-5 py-4 text-center">
                 <p className="font-mono text-[32px] font-semibold text-forest leading-none">{fmtScore(s.value)}</p>
                 <p className="text-[14px] text-amber mt-1.5">{s.value != null ? stars(s.value) : ''}</p>
-                <p className="text-[11px] uppercase tracking-wide text-forest/45 mt-1.5">{s.label}</p>
+                <p className="text-[11px] uppercase tracking-wide text-ink-faint mt-1.5">{s.label}</p>
               </div>
             ))}
           </div>
@@ -116,9 +116,9 @@ function FeedbackCard({ f, groupName, canManage, onDelete }: {
       <div className="flex items-center justify-between gap-4 mb-3">
         <p className="text-[14px] font-semibold text-forest">{groupName}</p>
         <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="text-[11px] font-mono text-forest/45">Received {fmtDateFull(f.receivedAt.slice(0, 10))}</span>
+          <span className="text-[11px] font-mono text-ink-faint">Received {fmtDateFull(f.receivedAt.slice(0, 10))}</span>
           {canManage && (
-            <button onClick={() => { if (confirm('Delete this feedback?')) onDelete(); }} className="text-[11px] text-forest/40 hover:text-red">Delete</button>
+            <button onClick={() => { if (confirm('Delete this feedback?')) onDelete(); }} className="text-[11px] text-ink-faint hover:text-red">Delete</button>
           )}
         </div>
       </div>
@@ -126,15 +126,15 @@ function FeedbackCard({ f, groupName, canManage, onDelete }: {
         {tiles.map((t) => (
           <div key={t.label} className="bg-cream rounded-btn px-2.5 py-2 text-center">
             <p className="font-mono text-[16px] font-semibold text-forest">{t.value == null ? '—' : t.value.toFixed(1)}</p>
-            <p className="text-[10px] text-forest/45 mt-0.5">{t.label}</p>
+            <p className="text-[10px] text-ink-faint mt-0.5">{t.label}</p>
           </div>
         ))}
       </div>
       {f.comment && (
-        <p className="text-[13px] text-forest/70 leading-relaxed italic bg-cream rounded-btn px-3.5 py-2.5">"{f.comment}"</p>
+        <p className="text-[13px] text-ink leading-relaxed italic bg-cream rounded-btn px-3.5 py-2.5">"{f.comment}"</p>
       )}
       {f.returningStatus && (
-        <p className={`text-[12px] mt-2.5 ${isReturning ? 'text-green-muted-text' : 'text-forest/50'}`}>
+        <p className={`text-[12px] mt-2.5 ${isReturning ? 'text-green-muted-text' : 'text-ink-soft'}`}>
           {isReturning ? '✓ ' : '— '}{f.returningStatus}
         </p>
       )}

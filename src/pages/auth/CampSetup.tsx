@@ -98,7 +98,7 @@ export function CampSetup() {
       </div>
 
       {/* Right panel */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-stone-50 p-4 sm:p-6 sm:p-10">
+      <div className="flex-1 flex flex-col items-center justify-center bg-paper p-4 sm:p-6 sm:p-10">
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2 mb-8">
           <div className="w-7 h-7 bg-forest rounded-lg flex items-center justify-center">
@@ -116,7 +116,7 @@ export function CampSetup() {
               }
               else setStep(0);
             }}
-            className="inline-flex items-center gap-1.5 text-[12px] text-forest/50 hover:text-forest mb-6 transition-colors"
+            className="inline-flex items-center gap-1.5 text-[12px] text-ink-soft hover:text-forest mb-6 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             {step === 0 ? 'Sign out' : 'Back'}
@@ -130,49 +130,49 @@ export function CampSetup() {
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold transition-colors ${
                     step > s ? 'bg-forest text-cream' :
                     step === s ? 'bg-forest text-cream' :
-                    'bg-stone-200 text-stone-500'
+                    'bg-cream-dark text-ink-soft'
                   }`}>
                     {step > s ? <Check className="w-3 h-3" /> : s}
                   </div>
-                  {s < 2 && <div className={`w-8 h-px transition-colors ${step > s ? 'bg-forest' : 'bg-stone-200'}`} />}
+                  {s < 2 && <div className={`w-8 h-px transition-colors ${step > s ? 'bg-forest' : 'bg-cream-dark'}`} />}
                 </div>
               ))}
-              <span className="ml-2 text-[12px] text-forest/40">
+              <span className="ml-2 text-[12px] text-ink-faint">
                 {step === 1 ? 'Camp info' : 'Choose modules'}
               </span>
             </div>
           )}
 
-          <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-8">
+          <div className="bg-white rounded-xl border border-border shadow-sm p-8">
             {/* Step 0 — choose path */}
             {step === 0 && (
               <>
                 <h1 className="text-[18px] font-semibold text-forest mb-1">Welcome to CampCommand</h1>
-                <p className="text-[12px] text-forest/50 mb-6">Are you setting up a new camp or joining an existing one?</p>
+                <p className="text-[12px] text-ink-soft mb-6">Are you setting up a new camp or joining an existing one?</p>
                 <div className="space-y-3">
                   <button
                     onClick={() => setStep(1)}
-                    className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-stone-200 hover:border-forest/40 hover:bg-forest/5 text-left transition-colors group"
+                    className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-border hover:border-forest/40 hover:bg-forest/5 text-left transition-colors group"
                   >
                     <div className="w-10 h-10 rounded-lg bg-forest/10 flex items-center justify-center flex-shrink-0 group-hover:bg-forest/15 transition-colors">
                       <Plus className="w-5 h-5 text-forest" />
                     </div>
                     <div>
                       <p className="text-[14px] font-semibold text-forest">Create a new camp</p>
-                      <p className="text-[12px] text-forest/50 mt-0.5">Set up CampCommand for your camp and invite your team</p>
+                      <p className="text-[12px] text-ink-soft mt-0.5">Set up CampCommand for your camp and invite your team</p>
                     </div>
                   </button>
 
                   <button
                     onClick={() => navigate('/join', { replace: true })}
-                    className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-stone-200 hover:border-forest/40 hover:bg-forest/5 text-left transition-colors group"
+                    className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-border hover:border-forest/40 hover:bg-forest/5 text-left transition-colors group"
                   >
                     <div className="w-10 h-10 rounded-lg bg-forest/10 flex items-center justify-center flex-shrink-0 group-hover:bg-forest/15 transition-colors">
                       <Users className="w-5 h-5 text-forest" />
                     </div>
                     <div>
                       <p className="text-[14px] font-semibold text-forest">Join an existing camp</p>
-                      <p className="text-[12px] text-forest/50 mt-0.5">Enter a join code from your camp administrator</p>
+                      <p className="text-[12px] text-ink-soft mt-0.5">Enter a join code from your camp administrator</p>
                     </div>
                   </button>
                 </div>
@@ -182,27 +182,27 @@ export function CampSetup() {
             {step === 1 && (
               <>
                 <h1 className="text-[18px] font-semibold text-forest mb-1">Camp information</h1>
-                <p className="text-[12px] text-forest/50 mb-6">Tell us a bit about your camp.</p>
+                <p className="text-[12px] text-ink-soft mb-6">Tell us a bit about your camp.</p>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-[12px] font-medium text-forest/70 mb-1.5">Camp name</label>
+                    <label className="block text-[12px] font-medium text-ink mb-1.5">Camp name</label>
                     <input
                       type="text"
                       autoFocus
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Pinecrest Summer Camp"
-                      className="w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
+                      className="w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[12px] font-medium text-forest/70 mb-1.5">Camp type</label>
+                    <label className="block text-[12px] font-medium text-ink mb-1.5">Camp type</label>
                     <select
                       value={campType}
                       onChange={(e) => setCampType(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
+                      className="w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
                     >
                       {CAMP_TYPES.map((t) => (
                         <option key={t} value={t}>{t}</option>
@@ -211,11 +211,11 @@ export function CampSetup() {
                   </div>
 
                   <div>
-                    <label className="block text-[12px] font-medium text-forest/70 mb-1.5">State</label>
+                    <label className="block text-[12px] font-medium text-ink mb-1.5">State</label>
                     <select
                       value={state}
                       onChange={(e) => setState(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
+                      className="w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
                     >
                       <option value="">Select state</option>
                       {US_STATES.map((s) => (
@@ -238,7 +238,7 @@ export function CampSetup() {
             {step === 2 && (
               <>
                 <h1 className="text-[18px] font-semibold text-forest mb-1">Choose modules</h1>
-                <p className="text-[12px] text-forest/50 mb-5">
+                <p className="text-[12px] text-ink-soft mb-5">
                   Enable the tools your camp will use. You can change these later in settings.
                 </p>
 
@@ -250,17 +250,17 @@ export function CampSetup() {
                       className={`w-full flex items-start gap-3 p-3 rounded-lg border text-left transition-colors ${
                         modules[mod.key]
                           ? 'border-forest/40 bg-forest/5'
-                          : 'border-stone-200 hover:border-stone-300'
+                          : 'border-border hover:border-border'
                       }`}
                     >
                       <div className={`mt-0.5 w-4 h-4 rounded flex-shrink-0 flex items-center justify-center border transition-colors ${
-                        modules[mod.key] ? 'bg-forest border-forest' : 'border-stone-300'
+                        modules[mod.key] ? 'bg-forest border-forest' : 'border-border'
                       }`}>
                         {modules[mod.key] && <Check className="w-2.5 h-2.5 text-cream" />}
                       </div>
                       <div>
                         <p className="text-[13px] font-medium text-forest">{mod.label}</p>
-                        <p className="text-[11px] text-forest/50 mt-0.5">{mod.description}</p>
+                        <p className="text-[11px] text-ink-soft mt-0.5">{mod.description}</p>
                       </div>
                     </button>
                   ))}
@@ -275,7 +275,7 @@ export function CampSetup() {
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={() => setStep(1)}
-                    className="flex-1 border border-stone-200 text-forest font-medium text-[13px] py-2.5 rounded-lg hover:bg-stone-50 transition-colors"
+                    className="flex-1 border border-border text-forest font-medium text-[13px] py-2.5 rounded-lg hover:bg-paper transition-colors"
                   >
                     Back
                   </button>

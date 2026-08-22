@@ -114,7 +114,7 @@ export function DocumentsTab() {
             <FileText className="w-7 h-7 text-forest/30" />
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No retreats yet</h3>
-          <p className="text-[13px] text-forest/50 leading-relaxed">
+          <p className="text-[13px] text-ink-soft leading-relaxed">
             Once you add a retreat, its agreement, certificate of insurance, waivers, and deposit will be tracked here.
           </p>
         </div>
@@ -146,7 +146,7 @@ export function DocumentsTab() {
           <div className="flex items-center justify-between mb-3.5">
             <div className="flex items-center gap-2.5">
               <h3 className="text-[14px] font-semibold text-forest">{retreat.groupName}</h3>
-              <span className="text-[12px] text-forest/45 font-mono">
+              <span className="text-[12px] text-ink-faint font-mono">
                 {fmtDate(retreat.arrivalDate)} – {fmtDate(retreat.departureDate)}
               </span>
             </div>
@@ -155,7 +155,7 @@ export function DocumentsTab() {
 
           <div className="flex flex-col gap-2 mb-6">
             {docs.length === 0 && (
-              <p className="bg-white rounded-card border border-border px-4 py-8 text-center text-[13px] text-forest/45">
+              <p className="bg-white rounded-card border border-border px-4 py-8 text-center text-[13px] text-ink-faint">
                 No documents on file for this retreat yet.
               </p>
             )}
@@ -174,14 +174,14 @@ export function DocumentsTab() {
                     <p className={`text-[13px] font-semibold ${missing ? 'text-red' : 'text-forest'}`}>
                       {doc.name || DOC_TYPE_LABEL[doc.docType]} — {STATUS_LABEL[doc.status]}
                     </p>
-                    <p className={`text-[11px] mt-0.5 ${missing ? 'text-red-text' : 'text-forest/50'}`}>
+                    <p className={`text-[11px] mt-0.5 ${missing ? 'text-red-text' : 'text-ink-soft'}`}>
                       {missing && doc.docType === 'coi'
                         ? `Required: $1M general liability · Pinecrest named additional insured · Must be received by ${fmtDateFull(coiDueDate(retreat.arrivalDate))}`
                         : metaLine(doc)}
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className={`text-[11px] font-mono ${missing ? 'text-red font-semibold' : 'text-forest/45'}`}>
+                    <p className={`text-[11px] font-mono ${missing ? 'text-red font-semibold' : 'text-ink-faint'}`}>
                       {missing ? 'Overdue' : doc.dueDate ? `Due ${fmtDate(doc.dueDate)}` : fmtDate(doc.updatedAt.slice(0, 10))}
                     </p>
                     <div className="flex gap-1.5 justify-end mt-1.5">
@@ -214,7 +214,7 @@ export function DocumentsTab() {
 
           {canManage && (
             <div className="flex items-center justify-between mb-4">
-              <span className="text-[12px] text-forest/45">
+              <span className="text-[12px] text-ink-faint">
                 {docs.length} document{docs.length === 1 ? '' : 's'} tracked for this retreat.
               </span>
               <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'uploadDoc', retreatId: retreat.id, docType: 'other' })}>
@@ -227,15 +227,15 @@ export function DocumentsTab() {
           {canManage && agreementMissing && (
             <div className="bg-white rounded-card border border-border px-5 py-4 mb-3">
               <p className="text-[13px] font-semibold text-forest mb-1">Add the retreat agreement</p>
-              <p className="text-[12px] text-forest/50 mb-3.5">Upload the signed rental / retreat agreement for this group.</p>
+              <p className="text-[12px] text-ink-soft mb-3.5">Upload the signed rental / retreat agreement for this group.</p>
               <button
                 type="button"
                 onClick={() => openModal({ kind: 'uploadDoc', retreatId: retreat.id, docType: 'agreement' })}
                 className="w-full rounded-btn border-2 border-dashed border-border hover:border-sage hover:bg-sage-pale/40 transition-colors px-4 py-4 sm:py-6 text-center cursor-pointer"
               >
-                <Paperclip className="w-6 h-6 text-forest/40 mx-auto mb-2" />
+                <Paperclip className="w-6 h-6 text-ink-faint mx-auto mb-2" />
                 <p className="text-[13px] font-medium text-forest">Click to upload retreat agreement</p>
-                <p className="text-[11px] text-forest/45 mt-1">PDF, JPG, or PNG · Max 10MB</p>
+                <p className="text-[11px] text-ink-faint mt-1">PDF, JPG, or PNG · Max 10MB</p>
               </button>
             </div>
           )}
@@ -243,7 +243,7 @@ export function DocumentsTab() {
           {canManage && coiMissing && (
             <div className="bg-white rounded-card border border-border px-5 py-4 mb-6">
               <p className="text-[13px] font-semibold text-forest mb-1">Upload certificate of insurance</p>
-              <p className="text-[12px] text-forest/50 mb-3.5">
+              <p className="text-[12px] text-ink-soft mb-3.5">
                 Groups can upload directly via the guest portal, or you can upload on their behalf below.
               </p>
               <button
@@ -251,9 +251,9 @@ export function DocumentsTab() {
                 onClick={() => openModal({ kind: 'uploadDoc', retreatId: retreat.id, docType: 'coi' })}
                 className="w-full rounded-btn border-2 border-dashed border-border hover:border-sage hover:bg-sage-pale/40 transition-colors px-4 py-4 sm:py-6 text-center cursor-pointer"
               >
-                <Paperclip className="w-6 h-6 text-forest/40 mx-auto mb-2" />
+                <Paperclip className="w-6 h-6 text-ink-faint mx-auto mb-2" />
                 <p className="text-[13px] font-medium text-forest">Click to upload COI document</p>
-                <p className="text-[11px] text-forest/45 mt-1">PDF, JPG, or PNG · Max 10MB</p>
+                <p className="text-[11px] text-ink-faint mt-1">PDF, JPG, or PNG · Max 10MB</p>
               </button>
             </div>
           )}

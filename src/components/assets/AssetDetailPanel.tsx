@@ -67,30 +67,30 @@ export function AssetDetailPanel() {
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-panel-title font-semibold text-forest">{asset.name}</h2>
-            <span className="text-label px-2 py-0.5 rounded-tag bg-cream-dark text-forest/50 uppercase tracking-wide">
+            <span className="text-label px-2 py-0.5 rounded-tag bg-cream-dark text-ink-soft uppercase tracking-wide">
               {SUBTYPE_LABELS[asset.subtype] ?? asset.subtype}
             </span>
           </div>
-          <p className="text-meta text-forest/50 mt-0.5">
+          <p className="text-meta text-ink-soft mt-0.5">
             {ASSET_CATEGORY_LABELS[asset.category]} · {asset.storageLocation}
           </p>
         </div>
         <div className="flex items-center gap-1">
           {isAdmin && (
             <>
-              <button onClick={() => openEditAssetModal(asset.id)} className="p-1.5 text-forest/40 hover:text-forest transition-colors rounded">
+              <button onClick={() => openEditAssetModal(asset.id)} className="p-1.5 text-ink-faint hover:text-forest transition-colors rounded">
                 <Pencil className="w-4 h-4" />
               </button>
               <button
                 onClick={handleDelete}
-                className={`p-1.5 transition-colors rounded ${confirmDelete ? 'text-red hover:text-red/80' : 'text-forest/40 hover:text-forest'}`}
+                className={`p-1.5 transition-colors rounded ${confirmDelete ? 'text-red hover:text-red/80' : 'text-ink-faint hover:text-forest'}`}
                 title={confirmDelete ? 'Click again to confirm delete' : 'Delete asset'}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
             </>
           )}
-          <button onClick={() => { setActiveAsset(null); setConfirmDelete(false); }} className="p-1.5 text-forest/40 hover:text-forest transition-colors rounded">
+          <button onClick={() => { setActiveAsset(null); setConfirmDelete(false); }} className="p-1.5 text-ink-faint hover:text-forest transition-colors rounded">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -102,7 +102,7 @@ export function AssetDetailPanel() {
           <button
             key={tab.id}
             onClick={() => setDetailTab(tab.id)}
-            className={`py-2.5 text-body font-medium border-b-2 transition-colors -mb-px ${activeDetailTab === tab.id ? 'border-forest text-forest' : 'border-transparent text-forest/50 hover:text-forest/70'}`}
+            className={`py-2.5 text-body font-medium border-b-[3px] transition-colors -mb-px ${activeDetailTab === tab.id ? 'border-red text-forest' : 'border-transparent text-ink-soft hover:text-forest'}`}
           >
             {tab.label}
           </button>
@@ -173,16 +173,16 @@ function OverviewTab({ asset, checkout, isOverdue, onCheckout, onReturn, onServi
       <div className="flex items-center gap-3 flex-wrap">
         <StatusBadge status={checkout ? 'checked_out' : asset.status} />
         {!checkout && (
-          <button onClick={onCheckout} className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-forest/60 hover:text-forest transition-colors">
+          <button onClick={onCheckout} className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-ink-soft hover:text-forest transition-colors">
             <LogIn className="w-3.5 h-3.5" /> Check out
           </button>
         )}
         {checkout && (
-          <button onClick={onReturn} className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-forest/60 hover:text-forest transition-colors">
+          <button onClick={onReturn} className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-ink-soft hover:text-forest transition-colors">
             <RotateCcw className="w-3.5 h-3.5" /> Return
           </button>
         )}
-        <button onClick={onService} className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-forest/60 hover:text-forest transition-colors">
+        <button onClick={onService} className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-ink-soft hover:text-forest transition-colors">
           <Wrench className="w-3.5 h-3.5" /> Log service
         </button>
       </div>
@@ -193,10 +193,10 @@ function OverviewTab({ asset, checkout, isOverdue, onCheckout, onReturn, onServi
           <p className={`text-body font-semibold ${isOverdue ? 'text-red' : 'text-blue-700'}`}>
             {isOverdue ? '⚠ Overdue checkout' : 'Currently checked out'}
           </p>
-          <p className="text-meta text-forest/60 mt-1">
+          <p className="text-meta text-ink-soft mt-1">
             {checkout.checkedOutBy} · {checkout.purpose}
           </p>
-          <p className={`text-meta mt-0.5 ${isOverdue ? 'text-red font-medium' : 'text-forest/50'}`}>
+          <p className={`text-meta mt-0.5 ${isOverdue ? 'text-red font-medium' : 'text-ink-soft'}`}>
             {isOverdue ? 'Was due ' : 'Return by '}
             {new Date(checkout.expectedReturnAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
           </p>
@@ -219,8 +219,8 @@ function OverviewTab({ asset, checkout, isOverdue, onCheckout, onReturn, onServi
 
       {asset.notes && (
         <div>
-          <p className="text-meta font-medium text-forest/50 uppercase tracking-wide mb-1">Notes</p>
-          <p className="text-body text-forest/70">{asset.notes}</p>
+          <p className="text-meta font-medium text-ink-soft uppercase tracking-wide mb-1">Notes</p>
+          <p className="text-body text-ink">{asset.notes}</p>
         </div>
       )}
     </div>
@@ -232,10 +232,10 @@ function StatusBadge({ status }: { status: string }) {
     available: 'bg-green-muted-bg text-green-muted-text',
     checked_out: 'bg-blue-50 text-blue-700',
     in_service: 'bg-amber-bg text-amber-text',
-    retired: 'bg-cream-dark text-forest/40',
+    retired: 'bg-cream-dark text-ink-faint',
   };
   return (
-    <span className={`text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide ${styles[status] ?? 'bg-cream-dark text-forest/40'}`}>
+    <span className={`text-label font-semibold px-2.5 py-1 rounded-tag uppercase tracking-wide ${styles[status] ?? 'bg-cream-dark text-ink-faint'}`}>
       {ASSET_STATUS_LABELS[status as keyof typeof ASSET_STATUS_LABELS] ?? status}
     </span>
   );
@@ -244,7 +244,7 @@ function StatusBadge({ status }: { status: string }) {
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-meta text-forest/50">{label}</p>
+      <p className="text-meta text-ink-soft">{label}</p>
       <p className="text-body font-medium text-forest">{value}</p>
     </div>
   );
@@ -294,7 +294,7 @@ function CheckoutsTab({ assetId, history, currentCheckout, onReturn, onEdit, onD
       )}
 
       {history.length === 0 && !currentCheckout && (
-        <p className="text-body text-forest/40 text-center py-8">No checkout history.</p>
+        <p className="text-body text-ink-faint text-center py-8">No checkout history.</p>
       )}
 
       {history.map((c) => (
@@ -302,7 +302,7 @@ function CheckoutsTab({ assetId, history, currentCheckout, onReturn, onEdit, onD
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-body font-medium text-forest">{c.checkedOutBy} · {c.purpose}</p>
-              <p className="text-meta text-forest/50 mt-0.5">
+              <p className="text-meta text-ink-soft mt-0.5">
                 {new Date(c.checkedOutAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 {c.returnedAt && ` → ${new Date(c.returnedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
               </p>
@@ -313,7 +313,7 @@ function CheckoutsTab({ assetId, history, currentCheckout, onReturn, onEdit, onD
                 </p>
               )}
               {c.fuelLevelOut && (
-                <p className="text-meta text-forest/40 mt-0.5">
+                <p className="text-meta text-ink-faint mt-0.5">
                   {FUEL_LEVEL_LABELS[c.fuelLevelOut as FuelLevel]}
                   {c.fuelLevelIn ? ` → ${FUEL_LEVEL_LABELS[c.fuelLevelIn as FuelLevel]}` : ''}
                 </p>
@@ -345,13 +345,13 @@ function ServiceTab({ records, onLogService, onEdit, onDelete }: {
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        <button onClick={onLogService} className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-forest/60 hover:text-forest transition-colors">
+        <button onClick={onLogService} className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-ink-soft hover:text-forest transition-colors">
           <Wrench className="w-3.5 h-3.5" /> Log service
         </button>
       </div>
 
       {records.length === 0 && (
-        <p className="text-body text-forest/40 text-center py-8">No service records.</p>
+        <p className="text-body text-ink-faint text-center py-8">No service records.</p>
       )}
 
       {records.map((r) => (
@@ -362,17 +362,17 @@ function ServiceTab({ records, onLogService, onEdit, onDelete }: {
                 <span className="text-body font-semibold text-forest">{SERVICE_TYPE_LABELS[r.serviceType] ?? r.serviceType}</span>
                 {r.isInspection && <span className="text-label px-2 py-0.5 rounded-tag bg-sage/10 text-sage uppercase tracking-wide">Inspection</span>}
               </div>
-              <p className="text-meta text-forest/50 mt-0.5">
+              <p className="text-meta text-ink-soft mt-0.5">
                 {new Date(r.datePerformed + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 {' · '}{r.performedBy}
                 {r.vendor && ` (${r.vendor})`}
                 {r.cost !== null && ` · $${r.cost.toFixed(2)}`}
               </p>
-              {r.odometerAtService !== null && <p className="text-meta text-forest/40">{r.odometerAtService.toLocaleString()} mi</p>}
-              {r.hoursAtService !== null && <p className="text-meta text-forest/40">{r.hoursAtService.toFixed(0)} hrs</p>}
-              {r.description && <p className="text-meta text-forest/60 mt-1 italic">{r.description}</p>}
+              {r.odometerAtService !== null && <p className="text-meta text-ink-faint">{r.odometerAtService.toLocaleString()} mi</p>}
+              {r.hoursAtService !== null && <p className="text-meta text-ink-faint">{r.hoursAtService.toFixed(0)} hrs</p>}
+              {r.description && <p className="text-meta text-ink-soft mt-1 italic">{r.description}</p>}
               {r.nextServiceDate && (
-                <p className="text-meta text-forest/50 mt-1">
+                <p className="text-meta text-ink-soft mt-1">
                   Next service: {new Date(r.nextServiceDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   {r.nextServiceOdometer !== null && ` or ${r.nextServiceOdometer.toLocaleString()} mi`}
                   {r.nextServiceHours !== null && ` or ${r.nextServiceHours.toFixed(0)} hrs`}
@@ -418,11 +418,11 @@ function MaintenanceTab({ assetId, activeMaintPhase, setActiveMaintPhase, tasks,
             <button
               key={value}
               onClick={() => setActiveMaintPhase(value)}
-              className={`flex-1 py-2 text-body font-medium rounded-btn border transition-colors ${activeMaintPhase === value ? 'bg-forest border-forest text-cream' : 'border-border text-forest/60 hover:border-forest/40'}`}
+              className={`flex-1 py-2 text-body font-medium rounded-btn border transition-colors ${activeMaintPhase === value ? 'bg-forest border-forest text-cream' : 'border-border text-ink-soft hover:border-forest/40'}`}
             >
               {label}
               {progress.total > 0 && (
-                <span className={`block text-label mt-0.5 ${activeMaintPhase === value ? 'text-cream/70' : 'text-forest/40'}`}>
+                <span className={`block text-label mt-0.5 ${activeMaintPhase === value ? 'text-cream/70' : 'text-ink-faint'}`}>
                   {progress.done}/{progress.total}
                 </span>
               )}
@@ -432,26 +432,26 @@ function MaintenanceTab({ assetId, activeMaintPhase, setActiveMaintPhase, tasks,
       </div>
 
       <div className="flex justify-end">
-        <button onClick={onAdd} className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-forest/60 hover:text-forest transition-colors">
+        <button onClick={onAdd} className="flex items-center gap-1.5 px-3 py-1.5 text-label font-medium rounded-btn border border-border hover:border-sage hover:bg-sage/5 text-ink-soft hover:text-forest transition-colors">
           <Plus className="w-3.5 h-3.5" /> Add task
         </button>
       </div>
 
       {tasks.length === 0 && (
-        <p className="text-body text-forest/40 text-center py-4 sm:py-6">No tasks for this phase.</p>
+        <p className="text-body text-ink-faint text-center py-4 sm:py-6">No tasks for this phase.</p>
       )}
 
       <div className="space-y-2">
         {tasks.sort((a, b) => a.sortOrder - b.sortOrder).map((task) => (
           <div key={task.id} className="flex items-start gap-3 bg-white border border-border rounded-card px-4 py-3">
-            <button onClick={() => onToggle(task.id, !task.isComplete)} className="mt-0.5 flex-shrink-0 text-forest/50 hover:text-forest transition-colors">
+            <button onClick={() => onToggle(task.id, !task.isComplete)} className="mt-0.5 flex-shrink-0 text-ink-soft hover:text-forest transition-colors">
               {task.isComplete ? <CheckSquare className="w-5 h-5 text-sage" /> : <Square className="w-5 h-5" />}
             </button>
             <div className="flex-1 min-w-0">
-              <p className={`text-body ${task.isComplete ? 'line-through text-forest/40' : 'text-forest'}`}>{task.title}</p>
-              {task.detail && <p className="text-meta text-forest/50 mt-0.5">{task.detail}</p>}
+              <p className={`text-body ${task.isComplete ? 'line-through text-ink-faint' : 'text-forest'}`}>{task.title}</p>
+              {task.detail && <p className="text-meta text-ink-soft mt-0.5">{task.detail}</p>}
               {task.isComplete && task.completedBy && (
-                <p className="text-meta text-forest/40 mt-0.5">Done by {task.completedBy}{task.completedDate ? ` · ${new Date(task.completedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}</p>
+                <p className="text-meta text-ink-faint mt-0.5">Done by {task.completedBy}{task.completedDate ? ` · ${new Date(task.completedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}</p>
               )}
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">

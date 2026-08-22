@@ -63,19 +63,19 @@ export function Signup() {
   // Account created, pending the confirmation click.
   if (awaitingConfirmation) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-stone-50 p-4 sm:p-6">
+      <div className="min-h-screen w-full flex items-center justify-center bg-paper p-4 sm:p-6">
         <div className="w-full max-w-sm text-center">
           <div className="flex items-center gap-2 mb-8 justify-center">
             <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-cream" /></div>
             <span className="text-lg font-semibold text-forest">CampCommand</span>
           </div>
-          <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-8">
+          <div className="bg-white rounded-xl border border-border shadow-sm p-8">
             <h1 className="text-[18px] font-semibold text-forest mb-2">Confirm your email</h1>
-            <p className="text-[13px] text-forest/60 leading-relaxed">
+            <p className="text-[13px] text-ink-soft leading-relaxed">
               We’ve sent a link to <span className="font-medium text-forest">{email}</span>.
               Open it to finish setting up your account.
             </p>
-            <p className="text-[12px] text-forest/40 leading-relaxed mt-4">
+            <p className="text-[12px] text-ink-faint leading-relaxed mt-4">
               You can close this page. The link works on any device.
             </p>
           </div>
@@ -87,15 +87,15 @@ export function Signup() {
   // Invite-only gate: without an invitation, there's nothing to sign up for.
   if (!inviteToken) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-stone-50 p-4 sm:p-6">
+      <div className="min-h-screen w-full flex items-center justify-center bg-paper p-4 sm:p-6">
         <div className="w-full max-w-sm text-center">
           <div className="flex items-center gap-2 mb-8 justify-center">
             <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-cream" /></div>
             <span className="text-lg font-semibold text-forest">CampCommand</span>
           </div>
-          <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-8">
+          <div className="bg-white rounded-xl border border-border shadow-sm p-8">
             <h1 className="text-[18px] font-semibold text-forest mb-2">Accounts are by invitation</h1>
-            <p className="text-[13px] text-forest/60 leading-relaxed mb-5">
+            <p className="text-[13px] text-ink-soft leading-relaxed mb-5">
               CampCommand is set up for your camp by our team. Book a demo to get started, and we’ll create your account.
             </p>
             <a href="https://www.campcommand.app" className="inline-flex items-center justify-center w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors mb-3">
@@ -130,7 +130,7 @@ export function Signup() {
       </div>
 
       {/* Right form panel */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-stone-50 p-4 sm:p-6 sm:p-10">
+      <div className="flex-1 flex flex-col items-center justify-center bg-paper p-4 sm:p-6 sm:p-10">
         <div className="lg:hidden flex items-center gap-2 mb-8">
           <div className="w-7 h-7 bg-forest rounded-lg flex items-center justify-center">
             <TreePine className="w-4 h-4 text-cream" />
@@ -139,17 +139,17 @@ export function Signup() {
         </div>
 
         <div className="w-full max-w-sm">
-          <Link to="/login" className="inline-flex items-center gap-1.5 text-[12px] text-forest/50 hover:text-forest mb-6 transition-colors">
+          <Link to="/login" className="inline-flex items-center gap-1.5 text-[12px] text-ink-soft hover:text-forest mb-6 transition-colors">
             <ArrowLeft className="w-3.5 h-3.5" />
             Back to sign in
           </Link>
 
-          <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-8">
+          <div className="bg-white rounded-xl border border-border shadow-sm p-8">
             <h1 className="text-[18px] font-semibold text-forest mb-6">Create account</h1>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-[12px] font-medium text-forest/70 mb-1.5">
+                <label className="block text-[12px] font-medium text-ink mb-1.5">
                   Full name
                 </label>
                 <input
@@ -159,12 +159,12 @@ export function Signup() {
                   autoComplete="name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
+                  className="w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
                 />
               </div>
 
               <div>
-                <label className="block text-[12px] font-medium text-forest/70 mb-1.5">
+                <label className="block text-[12px] font-medium text-ink mb-1.5">
                   Email address
                 </label>
                 <input
@@ -173,12 +173,12 @@ export function Signup() {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
+                  className="w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
                 />
               </div>
 
               <div>
-                <label className="block text-[12px] font-medium text-forest/70 mb-1.5">
+                <label className="block text-[12px] font-medium text-ink mb-1.5">
                   Password
                 </label>
                 <input
@@ -187,9 +187,9 @@ export function Signup() {
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-stone-200 text-[13px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
+                  className="w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40"
                 />
-                <p className="text-[11px] text-forest/40 mt-1">Minimum 8 characters</p>
+                <p className="text-[11px] text-ink-faint mt-1">Minimum 8 characters</p>
               </div>
 
               {error && (
@@ -208,7 +208,7 @@ export function Signup() {
             </form>
           </div>
 
-          <p className="text-center text-[12px] text-forest/50 mt-5">
+          <p className="text-center text-[12px] text-ink-soft mt-5">
             Already have an account?{' '}
             <Link to="/login" className="text-forest font-medium hover:underline">
               Sign in

@@ -439,8 +439,10 @@ private struct IssueInsert: Encodable {
     let locationIds: [String]; let locations: [String]; let priority, status: String
     let assigneeId: String?; let reportedById: String
     let estimatedCost: Double?; let actualCost: Double?; let photoUrl: String?
+    /// Constant, not read off the model: every row this struct writes came from this app.
+    let source = "ios"
     enum CodingKeys: String, CodingKey {
-        case id, title, description, locations, priority, status
+        case id, title, description, locations, priority, status, source
         case locationIds   = "location_ids"
         case campId        = "camp_id"
         case assigneeId    = "assignee_id"

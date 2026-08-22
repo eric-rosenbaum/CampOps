@@ -51,14 +51,14 @@ function MenuCell({ week, dayIndex, meal }: { week: number; dayIndex: number; me
             key={e.id}
             className={`group relative rounded-tag px-2 py-1 text-[11px] leading-tight border ${
               unlinked
-                ? 'bg-white border-dashed border-border text-forest/55'
+                ? 'bg-white border-dashed border-border text-ink-soft'
                 : allCovered
                   ? 'bg-green-muted-bg border-sage/30 text-green-muted-text'
                   : anaphylactic
                     ? 'bg-red-bg border-red/25 text-red'
                     : conflicted
                       ? 'bg-amber-bg border-amber/25 text-amber-text'
-                      : 'bg-cream-dark border-border text-forest/80'
+                      : 'bg-cream-dark border-border text-ink'
             }`}
             title={
               unlinked
@@ -112,14 +112,14 @@ function MenuCell({ week, dayIndex, meal }: { week: number; dayIndex: number; me
         <div className="flex items-center gap-2">
           <button
             onClick={() => openModal({ kind: 'menuEntry', weekNumber: week, dayIndex, mealPeriod: meal })}
-            className="text-[11px] text-forest/30 hover:text-forest/70 text-left px-1 py-0.5 transition-colors"
+            className="text-[11px] text-forest/30 hover:text-ink text-left px-1 py-0.5 transition-colors"
           >
             + add
           </button>
           {entries.length > 0 && (
             <button
               onClick={() => openModal({ kind: 'substitution', weekNumber: week, dayIndex, mealPeriod: meal })}
-              className="text-[10px] text-forest/25 hover:text-forest/60 text-left px-1 py-0.5 transition-colors"
+              className="text-[10px] text-forest/25 hover:text-ink-soft text-left px-1 py-0.5 transition-colors"
               title="Add a replacement meal for allergy-affected campers"
             >
               + replacement
@@ -164,11 +164,11 @@ export function MenuTab() {
     return (
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
-          <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-            <CalendarDays className="w-7 h-7 text-stone-400" />
+          <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mb-4">
+            <CalendarDays className="w-7 h-7 text-ink-faint" />
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No session yet</h3>
-          <p className="text-[13px] text-forest/50 leading-relaxed mb-4">
+          <p className="text-[13px] text-ink-soft leading-relaxed mb-4">
             A session sets the dates and the head count. Every recipe yield and every
             ordering quantity scales from that number, so the menu needs one first.
           </p>
@@ -247,13 +247,13 @@ export function MenuTab() {
         <div className="flex items-start gap-3">
           {attendanceVaries ? (
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">
                 Head count by meal — week {activeWeek}
               </p>
               <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-1">
                 {mealBreakdown.map((m) => (
                   <span key={m.meal} className="inline-flex items-baseline gap-1.5">
-                    <span className="text-[11px] text-forest/50">{MEAL_PERIOD_LABELS[m.meal]}</span>
+                    <span className="text-[11px] text-ink-soft">{MEAL_PERIOD_LABELS[m.meal]}</span>
                     <span className="font-mono text-[17px] text-forest leading-none">
                       {m.min === m.max
                         ? m.min.toLocaleString()
@@ -265,11 +265,11 @@ export function MenuTab() {
             </div>
           ) : (
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-forest/40">Session head count</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Session head count</p>
               <p className="font-mono text-[20px] text-forest leading-tight mt-0.5">{total.toLocaleString()}</p>
             </div>
           )}
-          <p className="text-[11px] text-forest/50 leading-relaxed max-w-md">
+          <p className="text-[11px] text-ink-soft leading-relaxed max-w-md">
             {session.camperCount.toLocaleString()} campers + {session.staffCount.toLocaleString()} staff.
             {attendanceVaries
               ? ' Each meal scales to its own count — per-meal overrides and day events are already applied.'
@@ -285,11 +285,11 @@ export function MenuTab() {
 
         {exceptions.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pt-2.5 border-t border-border">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-forest/35">Exceptions</span>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Exceptions</span>
             {exceptions.map((x) => (
               <span
                 key={`${x.meal}-${x.dayIndex}`}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill border border-border bg-cream-dark text-[11px] text-forest/70"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill border border-border bg-cream-dark text-[11px] text-ink"
               >
                 {dayLabels[x.dayIndex]} {MEAL_PERIOD_LABELS[x.meal].toLowerCase()}
                 <span className="font-mono font-semibold">{x.count.toLocaleString()}</span>
@@ -300,7 +300,7 @@ export function MenuTab() {
       </div>
 
       {unlinked > 0 && (
-        <div className="flex items-center gap-2 text-[11px] text-forest/50 bg-cream-dark/40 border border-border rounded-card px-3 py-2 mb-4">
+        <div className="flex items-center gap-2 text-[11px] text-ink-soft bg-cream-dark/40 border border-border rounded-card px-3 py-2 mb-4">
           <Link2Off className="w-3.5 h-3.5 flex-shrink-0" />
           <span>
             {unlinked} item{unlinked === 1 ? '' : 's'} on this week's menu {unlinked === 1 ? 'is' : 'are'} not
@@ -315,7 +315,7 @@ export function MenuTab() {
           <button
             onClick={() => setActiveWeek(Math.max(1, activeWeek - 1))}
             disabled={activeWeek <= 1}
-            className="w-7 h-7 rounded-btn border border-border flex items-center justify-center text-forest/60 hover:bg-cream-dark disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-7 h-7 rounded-btn border border-border flex items-center justify-center text-ink-soft hover:bg-cream-dark disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -325,11 +325,11 @@ export function MenuTab() {
           <button
             onClick={() => setActiveWeek(Math.min(weeks, activeWeek + 1))}
             disabled={activeWeek >= weeks}
-            className="w-7 h-7 rounded-btn border border-border flex items-center justify-center text-forest/60 hover:bg-cream-dark disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-7 h-7 rounded-btn border border-border flex items-center justify-center text-ink-soft hover:bg-cream-dark disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
-          <span className="text-[11px] text-forest/40 ml-1">of {weeks}</span>
+          <span className="text-[11px] text-ink-faint ml-1">of {weeks}</span>
         </div>
 
         <div className="flex gap-2">
@@ -369,13 +369,13 @@ export function MenuTab() {
               key={e.id}
               onClick={() => canManage && openModal({ kind: 'mealEvent', editId: e.id })}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-pill text-[11px] font-medium border ${
-                e.kind === 'bag_lunch' ? 'bg-cream-dark text-forest/70 border-border' : 'bg-forest/8 text-forest border-forest/15'
+                e.kind === 'bag_lunch' ? 'bg-cream-dark text-ink border-border' : 'bg-forest/8 text-forest border-forest/15'
               }`}
               style={{ backgroundColor: e.kind === 'bag_lunch' ? undefined : 'rgba(26,46,26,0.06)' }}
             >
               {e.kind === 'bag_lunch' ? <Sandwich className="w-3 h-3" /> : <CalendarClock className="w-3 h-3" />}
               {e.label}
-              <span className="text-forest/40">
+              <span className="text-ink-faint">
                 {new Date(`${e.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short' })}
                 {e.mealPeriod ? ` ${MEAL_PERIOD_LABELS[e.mealPeriod].toLowerCase()}` : ''}
                 {' · '}{e.countMode === 'delta' && e.count >= 0 ? '+' : ''}{e.count}
@@ -383,7 +383,7 @@ export function MenuTab() {
             </button>
           ))}
           {canManage && (
-            <button onClick={() => openModal({ kind: 'mealEvent' })} className="text-[11px] text-forest/40 hover:text-forest/70 px-1">
+            <button onClick={() => openModal({ kind: 'mealEvent' })} className="text-[11px] text-ink-faint hover:text-ink px-1">
               + event
             </button>
           )}
@@ -399,7 +399,7 @@ export function MenuTab() {
             return (
               <div key={i} className="border-r border-b border-border bg-cream-dark/50 px-2 py-2 text-center last:border-r-0">
                 <p className="text-[11px] font-semibold text-forest">{day}</p>
-                <p className="text-[10px] text-forest/40">{fmtDate(d)}</p>
+                <p className="text-[10px] text-ink-faint">{fmtDate(d)}</p>
               </div>
             );
           })}
@@ -417,7 +417,7 @@ export function MenuTab() {
         </div>
       </div>
 
-      <p className="text-[11px] text-forest/40 mt-3 leading-relaxed">
+      <p className="text-[11px] text-ink-faint mt-3 leading-relaxed">
         Amber chips conflict with a camper's allergy or dietary restriction; red chips conflict
         with an anaphylactic camper. A chip turns green once every restriction it conflicts with
         has a replacement meal plated in the same cell. A recipe containing an allergen nobody in

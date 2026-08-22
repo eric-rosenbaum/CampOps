@@ -67,7 +67,7 @@ function QuickTempInput({ session, item, loggedBy, onLog }: {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[10px] font-semibold text-forest/40 uppercase w-5">{session}</span>
+      <span className="text-[10px] font-semibold text-ink-faint uppercase w-5">{session}</span>
       <input
         type="number"
         step="0.1"
@@ -106,7 +106,7 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
       <div className="flex items-start justify-between">
         <div className="flex-1 pr-4">
           <h4 className="text-[13px] font-semibold text-forest">{item.name}</h4>
-          <p className="text-[11px] text-forest/40 mt-0.5 leading-relaxed">
+          <p className="text-[11px] text-ink-faint mt-0.5 leading-relaxed">
             {item.type === 'hood_fan' ? 'Fire code required' : ''} every {item.frequencyDays} days
             {item.vendor ? ` · Vendor: ${item.vendor}` : ''}
             {item.lastInspected ? ` · Last: ${new Date(item.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
@@ -115,7 +115,7 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
         <div className="text-right flex-shrink-0">
           <StatusBadge status={status} nextDue={item.nextDue} />
           {item.nextDue && (
-            <p className="font-mono text-[12px] text-forest/40 mt-1.5">
+            <p className="font-mono text-[12px] text-ink-faint mt-1.5">
               {status === 'ok' ? 'Next:' : 'Due:'} {new Date(item.nextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </p>
           )}
@@ -125,21 +125,21 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
       {item.type === 'hood_fan' && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
           <div>
-            <p className="text-[10px] text-forest/40 font-medium mb-0.5">Fan units</p>
+            <p className="text-[10px] text-ink-faint font-medium mb-0.5">Fan units</p>
             <p className="text-[12px] font-medium text-forest">{item.unitCount}</p>
           </div>
           <div>
-            <p className="text-[10px] text-forest/40 font-medium mb-0.5">Last cleaned</p>
+            <p className="text-[10px] text-ink-faint font-medium mb-0.5">Last cleaned</p>
             <p className={`text-[12px] font-semibold font-mono ${status === 'ok' ? 'text-green-muted-text' : status === 'warn' ? 'text-amber' : 'text-red'}`}>
               {item.lastInspected ? new Date(item.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-forest/40 font-medium mb-0.5">Frequency</p>
+            <p className="text-[10px] text-ink-faint font-medium mb-0.5">Frequency</p>
             <p className="text-[12px] font-medium text-forest">Every {item.frequencyDays} days</p>
           </div>
           <div>
-            <p className="text-[10px] text-forest/40 font-medium mb-0.5">Vendor</p>
+            <p className="text-[10px] text-ink-faint font-medium mb-0.5">Vendor</p>
             <p className="text-[12px] font-medium text-forest truncate">{item.vendor ?? '—'}</p>
           </div>
         </div>
@@ -148,23 +148,23 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
       {item.type === 'health_inspection' && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t border-cream-dark">
           <div>
-            <p className="text-[10px] text-forest/40 font-medium mb-0.5">Inspecting authority</p>
+            <p className="text-[10px] text-ink-faint font-medium mb-0.5">Inspecting authority</p>
             <p className="text-[12px] font-medium text-forest">{item.vendor ?? '—'}</p>
           </div>
           <div>
-            <p className="text-[10px] text-forest/40 font-medium mb-0.5">Last result</p>
+            <p className="text-[10px] text-ink-faint font-medium mb-0.5">Last result</p>
             <p className={`text-[12px] font-semibold ${
               recentLogs[0]?.result === 'failed' ? 'text-red' :
               recentLogs[0]?.result === 'passed_with_notes' || recentLogs[0]?.result === 'action_taken' ? 'text-amber-text' :
               recentLogs[0]?.result === 'passed' ? 'text-green-muted-text' :
-              'text-forest/40'
+              'text-ink-faint'
             }`}>
               {recentLogs[0] ? (RESULT_LABELS[recentLogs[0].result] ?? recentLogs[0].result) : '—'}
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-forest/40 font-medium mb-0.5">Last inspected</p>
-            <p className="text-[12px] font-semibold font-mono text-forest/70">
+            <p className="text-[10px] text-ink-faint font-medium mb-0.5">Last inspected</p>
+            <p className="text-[12px] font-semibold font-mono text-ink">
               {item.lastInspected ? new Date(item.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
             </p>
           </div>
@@ -173,9 +173,9 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
 
       {recentLogs.length > 0 && item.type === 'hood_fan' && (
         <div className="flex items-center gap-2 mt-3 pt-3 border-t border-cream-dark flex-wrap">
-          <span className="text-[11px] text-forest/40 mr-1">Cleaning history:</span>
+          <span className="text-[11px] text-ink-faint mr-1">Cleaning history:</span>
           {recentLogs.map((log) => (
-            <span key={log.id} className="text-[11px] bg-cream-dark text-forest/60 px-2 py-0.5 rounded-tag font-mono">
+            <span key={log.id} className="text-[11px] bg-cream-dark text-ink-soft px-2 py-0.5 rounded-tag font-mono">
               {new Date(log.inspectionDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </span>
           ))}
@@ -194,7 +194,7 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
 
       {showHistory && (
         <div className="mt-3 pt-3 border-t border-cream-dark">
-          <p className="text-[11px] font-semibold text-forest/50 mb-2">
+          <p className="text-[11px] font-semibold text-ink-soft mb-2">
             {item.type === 'hood_fan' ? 'Cleaning history' : 'Inspection history'}
           </p>
           {historyLogs.length === 0 ? (
@@ -207,12 +207,12 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
                   log.result === 'failed' ? 'text-red' : 'text-amber-text';
                 return (
                   <div key={log.id} className="flex items-start gap-4 text-[11px]">
-                    <span className="font-mono text-forest/60 flex-shrink-0">
+                    <span className="font-mono text-ink-soft flex-shrink-0">
                       {new Date(log.inspectionDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
-                    <span className="text-forest/40 flex-shrink-0">{log.completedBy}</span>
+                    <span className="text-ink-faint flex-shrink-0">{log.completedBy}</span>
                     <span className={`font-semibold flex-shrink-0 ${resultColor}`}>{RESULT_LABELS[log.result] ?? log.result}</span>
-                    {log.notes && <span className="text-forest/40 truncate flex-1">{log.notes}</span>}
+                    {log.notes && <span className="text-ink-faint truncate flex-1">{log.notes}</span>}
                     <button
                       onClick={() => openEditInspectionLogModal(log.id)}
                       className="flex-shrink-0 text-forest/30 hover:text-sage cursor-pointer ml-auto"
@@ -264,7 +264,7 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
       <div className="flex items-start justify-between">
         <div className="flex-1 pr-4">
           <h4 className="text-[13px] font-semibold text-forest">{item.name}</h4>
-          <p className="text-[11px] text-forest/40 mt-0.5">
+          <p className="text-[11px] text-ink-faint mt-0.5">
             Required range: {meta.temp_min}–{meta.temp_max}°F · Logged {item.frequency}
           </p>
         </div>
@@ -281,23 +281,23 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-cream-dark">
         <div>
-          <p className="text-[10px] text-forest/40 font-medium mb-0.5">AM reading</p>
+          <p className="text-[10px] text-ink-faint font-medium mb-0.5">AM reading</p>
           <p className={`text-[13px] font-semibold font-mono ${amStatus === 'ok' ? 'text-green-muted-text' : amStatus === 'alert' ? 'text-red' : 'text-forest/30'}`}>
             {am ? `${am.temperature}°F` : '— pending'}
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-forest/40 font-medium mb-0.5">PM reading</p>
+          <p className="text-[10px] text-ink-faint font-medium mb-0.5">PM reading</p>
           <p className={`text-[13px] font-semibold font-mono ${pmStatus === 'ok' ? 'text-green-muted-text' : pmStatus === 'alert' ? 'text-red' : 'text-forest/30'}`}>
             {pm ? `${pm.temperature}°F` : '— pending'}
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-forest/40 font-medium mb-0.5">Required range</p>
+          <p className="text-[10px] text-ink-faint font-medium mb-0.5">Required range</p>
           <p className="text-[12px] font-medium text-forest">{meta.temp_min}–{meta.temp_max}°F</p>
         </div>
         <div>
-          <p className="text-[10px] text-forest/40 font-medium mb-0.5">Logged by</p>
+          <p className="text-[10px] text-ink-faint font-medium mb-0.5">Logged by</p>
           <p className="text-[12px] font-medium text-forest">{am?.loggedBy ?? pm?.loggedBy ?? '—'}</p>
         </div>
       </div>
@@ -305,7 +305,7 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
       {/* Quick inline log */}
       {(!am || !pm) && (
         <div className="flex items-center gap-4 mt-3 pt-3 border-t border-cream-dark flex-wrap">
-          <span className="text-[11px] text-forest/40 font-medium">Quick log:</span>
+          <span className="text-[11px] text-ink-faint font-medium">Quick log:</span>
           {!am && (
             <QuickTempInput session="am" item={item} loggedBy={currentUser.name} onLog={addTempLog} />
           )}
@@ -325,7 +325,7 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
 
       {showHistory && (
         <div className="mt-3 pt-3 border-t border-cream-dark">
-          <p className="text-[11px] font-semibold text-forest/50 mb-2">Temperature log history</p>
+          <p className="text-[11px] font-semibold text-ink-soft mb-2">Temperature log history</p>
           {historyDates.length === 0 ? (
             <p className="text-[11px] text-forest/30 italic">No temperature logs yet.</p>
           ) : (
@@ -341,7 +341,7 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
                 const anyOutOfRange = (amLog && !amLog.inRange) || (pmLog && !pmLog.inRange);
                 return (
                   <div key={date} className={`grid grid-cols-[1fr_1fr_1fr_1fr_auto] min-w-[640px] sm:min-w-0 gap-3 py-1.5 border-t border-cream-dark text-[11px] ${anyOutOfRange ? 'bg-red-bg/30 -mx-1 px-1 rounded' : ''}`}>
-                    <span className="font-mono text-forest/60">
+                    <span className="font-mono text-ink-soft">
                       {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       {date === today ? <span className="text-sage ml-1 font-semibold">today</span> : ''}
                     </span>
@@ -357,7 +357,7 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
                     >
                       {pmLog ? `${pmLog.temperature}°F` : '—'}
                     </button>
-                    <span className="text-forest/40 truncate">{amLog?.loggedBy ?? pmLog?.loggedBy ?? '—'}</span>
+                    <span className="text-ink-faint truncate">{amLog?.loggedBy ?? pmLog?.loggedBy ?? '—'}</span>
                     <div className="flex gap-2">
                       {amLog && <button onClick={() => openEditTempLogModal(amLog.id)} className="text-forest/30 hover:text-sage cursor-pointer">Edit AM</button>}
                       {pmLog && <button onClick={() => openEditTempLogModal(pmLog.id)} className="text-forest/30 hover:text-sage cursor-pointer">Edit PM</button>}
@@ -403,11 +403,11 @@ export function KitchenTab() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
         <div className={`bg-white border border-border rounded-card px-4 py-4 ${stats.alert > 0 ? 'border-l-[3px] border-l-red' : ''}`}>
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Hood fan cleaning</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Hood fan cleaning</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${hoodFans.some(i => safetyItemStatus(i) === 'alert') ? 'text-red' : hoodFans.some(i => safetyItemStatus(i) === 'warn') ? 'text-amber' : 'text-green-muted-text'}`}>
             {hoodFans.length === 0 ? '—' : hoodFans.every(i => safetyItemStatus(i) === 'ok') ? 'Current' : hoodFans.some(i => safetyItemStatus(i) === 'alert') ? 'Overdue' : 'Due soon'}
           </p>
-          <p className="text-meta text-forest/40 mt-0.5">{hoodFans.length} unit group{hoodFans.length === 1 ? '' : 's'}</p>
+          <p className="text-meta text-ink-faint mt-0.5">{hoodFans.length} unit group{hoodFans.length === 1 ? '' : 's'}</p>
         </div>
         {(() => {
           const healthPermit = licenses.find((l) => l.licenseType === 'health_permit');
@@ -419,11 +419,11 @@ export function KitchenTab() {
             <div
               className={`bg-white border border-border rounded-card px-4 py-4 ${ps === 'expired' ? 'border-l-[3px] border-l-red' : ps === 'expiring' ? 'border-l-[3px] border-l-amber' : ''}`}
             >
-              <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Health permit</p>
+              <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Health permit</p>
               <p className={`font-mono font-semibold text-stat mt-1 ${ps === 'ok' ? 'text-green-muted-text' : ps === 'expiring' ? 'text-amber' : ps === 'expired' ? 'text-red' : 'text-forest/30'}`}>
                 {ps === 'ok' ? 'Valid' : ps === 'expiring' ? 'Expiring' : ps === 'expired' ? 'Expired' : '—'}
               </p>
-              <p className={`text-meta mt-0.5 ${ps === 'expired' ? 'text-red' : ps === 'expiring' ? 'text-amber-text' : 'text-forest/40'}`}>
+              <p className={`text-meta mt-0.5 ${ps === 'expired' ? 'text-red' : ps === 'expiring' ? 'text-amber-text' : 'text-ink-faint'}`}>
                 {healthPermit ? (
                   expiryLabel
                 ) : (
@@ -436,27 +436,27 @@ export function KitchenTab() {
           );
         })()}
         <div className="bg-white border border-border rounded-card px-4 py-4">
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Last inspection</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Last inspection</p>
           {healthInspections[0]?.lastInspected ? (
             <>
               <p className="font-semibold text-[18px] mt-2 text-green-muted-text">
                 {new Date(healthInspections[0].lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </p>
-              <p className="text-meta text-forest/40 mt-0.5">Health dept.</p>
+              <p className="text-meta text-ink-faint mt-0.5">Health dept.</p>
             </>
           ) : (
             <>
               <p className="font-semibold text-[18px] mt-2 text-forest/30">—</p>
-              <p className="text-meta text-forest/40 mt-0.5">None on file</p>
+              <p className="text-meta text-ink-faint mt-0.5">None on file</p>
             </>
           )}
         </div>
         <div className="bg-white border border-border rounded-card px-4 py-4">
-          <p className="text-meta font-semibold uppercase tracking-wide text-forest/40">Temp logs today</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Temp logs today</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${tempLogsPending > 0 ? 'text-amber' : refrigeration.length === 0 ? 'text-forest/30' : 'text-green-muted-text'}`}>
             {refrigeration.length === 0 ? '—' : `${tempLogsToday}/${refrigeration.length}`}
           </p>
-          <p className="text-meta text-forest/40 mt-0.5">
+          <p className="text-meta text-ink-faint mt-0.5">
             {refrigeration.length === 0 ? 'No units set up' : tempLogsPending > 0 ? `${tempLogsPending} log${tempLogsPending === 1 ? '' : 's'} pending` : 'All logged'}
           </p>
         </div>
@@ -479,7 +479,7 @@ export function KitchenTab() {
       </div>
       {hoodFans.length === 0 ? (
         <div className="bg-white border border-border rounded-card px-5 py-8 text-center mb-6">
-          <p className="text-[13px] text-forest/40">No hood fans added yet.</p>
+          <p className="text-[13px] text-ink-faint">No hood fans added yet.</p>
           <button onClick={addHoodFan} className="text-[12px] text-sage font-medium mt-1 cursor-pointer hover:underline">+ Add hood fan</button>
         </div>
       ) : (
@@ -500,7 +500,7 @@ export function KitchenTab() {
       </div>
       {refrigeration.length === 0 ? (
         <div className="bg-white border border-border rounded-card px-5 py-8 text-center mb-6">
-          <p className="text-[13px] text-forest/40">No refrigeration units added yet.</p>
+          <p className="text-[13px] text-ink-faint">No refrigeration units added yet.</p>
           <button onClick={addRefrigeration} className="text-[12px] text-sage font-medium mt-1 cursor-pointer hover:underline">+ Add refrigeration unit</button>
         </div>
       ) : (
@@ -518,7 +518,7 @@ export function KitchenTab() {
       </div>
       {healthInspections.length === 0 ? (
         <div className="bg-white border border-border rounded-card px-5 py-8 text-center">
-          <p className="text-[13px] text-forest/40">No health inspection records added yet.</p>
+          <p className="text-[13px] text-ink-faint">No health inspection records added yet.</p>
           <button onClick={addHealthInspection} className="text-[12px] text-sage font-medium mt-1 cursor-pointer hover:underline">+ Add inspection</button>
         </div>
       ) : (

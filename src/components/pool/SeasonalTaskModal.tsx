@@ -16,7 +16,7 @@ interface FormValues {
 }
 
 const inputClass = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
+const labelClass = 'block text-secondary font-medium text-ink mb-1';
 
 // ─── User combobox ────────────────────────────────────────────────────────────
 
@@ -109,7 +109,7 @@ function UserCombobox({
           ref={listRef}
           className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-border rounded-btn shadow-lg px-3 py-2"
         >
-          <p className="text-meta text-forest/40">No matching users</p>
+          <p className="text-meta text-ink-faint">No matching users</p>
         </div>
       )}
     </div>
@@ -229,7 +229,7 @@ export function SeasonalTaskModal({ defaultPhase }: { defaultPhase?: SeasonalPha
                   <button
                     type="button"
                     onClick={() => setAssignees(assignees.filter((x) => x !== a))}
-                    className="text-forest/40 hover:text-forest transition-colors"
+                    className="text-ink-faint hover:text-forest transition-colors"
                   >
                     <X className="w-3 h-3" />
                   </button>

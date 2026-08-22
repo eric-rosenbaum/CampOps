@@ -102,17 +102,17 @@ export function BulkInviteForm({
             : `${sent} invitation${sent === 1 ? '' : 's'} sent${failed > 0 ? `, ${failed} failed` : ''}`}
         </p>
 
-        <div className="max-h-64 overflow-y-auto rounded-lg border border-stone-200 divide-y divide-stone-100">
+        <div className="max-h-64 overflow-y-auto rounded-lg border border-border divide-y divide-stone-100">
           {rows.map((r) => (
             <div key={r.email} className="flex items-start gap-2.5 px-3 py-2">
               <StatusIcon status={r.status} />
               <div className="min-w-0 flex-1">
                 <p className="text-[12px] text-forest truncate">{r.email}</p>
-                {r.detail && <p className="text-[11px] text-forest/45">{r.detail}</p>}
+                {r.detail && <p className="text-[11px] text-ink-faint">{r.detail}</p>}
                 {r.status === 'failed' && r.link && (
                   <button
                     onClick={() => navigator.clipboard.writeText(r.link!)}
-                    className="text-[11px] font-medium text-forest/60 hover:text-forest underline"
+                    className="text-[11px] font-medium text-ink-soft hover:text-forest underline"
                   >
                     Copy the invite link instead
                   </button>
@@ -137,16 +137,16 @@ export function BulkInviteForm({
   return (
     <div className="space-y-2.5">
       <div>
-        <label className="block text-[11px] font-medium text-forest/60 mb-1">Email addresses</label>
+        <label className="block text-[11px] font-medium text-ink-soft mb-1">Email addresses</label>
         <textarea
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           rows={5}
           autoFocus
           placeholder={'Paste your staff roster here.\nOne per line, or separated by commas.'}
-          className="w-full px-3 py-2 border border-stone-200 rounded-lg text-[12px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20"
+          className="w-full px-3 py-2 border border-border rounded-lg text-[12px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20"
         />
-        <p className="text-[11px] text-forest/45 mt-1">
+        <p className="text-[11px] text-ink-faint mt-1">
           {parsed.valid.length > 0
             ? `${parsed.valid.length} address${parsed.valid.length === 1 ? '' : 'es'} ready`
             : 'Everyone receives their own invitation link.'}
@@ -161,25 +161,25 @@ export function BulkInviteForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
-          <label className="block text-[11px] font-medium text-forest/60 mb-1">Role</label>
+          <label className="block text-[11px] font-medium text-ink-soft mb-1">Role</label>
           <select
             value={role}
             onChange={(e) => setRole(e.target.value as CampRole)}
-            className="w-full px-2 py-1.5 border border-stone-200 rounded-lg text-[12px] text-forest bg-white focus:outline-none focus:ring-2 focus:ring-forest/20"
+            className="w-full px-2 py-1.5 border border-border rounded-lg text-[12px] text-forest bg-white focus:outline-none focus:ring-2 focus:ring-forest/20"
           >
             {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </div>
         {role === 'staff' && (
           <div>
-            <label className="block text-[11px] font-medium text-forest/60 mb-1">Staff group</label>
+            <label className="block text-[11px] font-medium text-ink-soft mb-1">Staff group</label>
             {staffGroups.length === 0 ? (
               <p className="text-[11px] text-red-500 pt-1.5">Create a staff group first</p>
             ) : (
               <select
                 value={groupId}
                 onChange={(e) => setGroupId(e.target.value)}
-                className="w-full px-2 py-1.5 border border-stone-200 rounded-lg text-[12px] text-forest bg-white focus:outline-none focus:ring-2 focus:ring-forest/20"
+                className="w-full px-2 py-1.5 border border-border rounded-lg text-[12px] text-forest bg-white focus:outline-none focus:ring-2 focus:ring-forest/20"
               >
                 <option value="">Select group…</option>
                 {staffGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -189,7 +189,7 @@ export function BulkInviteForm({
         )}
       </div>
 
-      <p className="text-[11px] text-forest/45 leading-relaxed">
+      <p className="text-[11px] text-ink-faint leading-relaxed">
         Everyone in this batch gets the same role and group. Because the link arrives in their
         own inbox, they set up an account without needing a join code.
       </p>
@@ -198,7 +198,7 @@ export function BulkInviteForm({
         <button
           type="button"
           onClick={onCancel}
-          className="text-[12px] text-forest/40 hover:text-forest px-3 py-1.5 rounded-lg hover:bg-stone-50 transition-colors"
+          className="text-[12px] text-ink-faint hover:text-forest px-3 py-1.5 rounded-lg hover:bg-paper transition-colors"
         >
           Cancel
         </button>
@@ -219,8 +219,8 @@ export function BulkInviteForm({
 function StatusIcon({ status }: { status: Status }) {
   if (status === 'sent') return <Check className="w-3.5 h-3.5 text-green-600 mt-0.5 flex-shrink-0" />;
   if (status === 'failed') return <AlertCircle className="w-3.5 h-3.5 text-red-500 mt-0.5 flex-shrink-0" />;
-  if (status === 'sending') return <Loader2 className="w-3.5 h-3.5 text-forest/50 mt-0.5 flex-shrink-0 animate-spin" />;
-  return <span className="w-3.5 h-3.5 rounded-full border border-stone-200 mt-0.5 flex-shrink-0" />;
+  if (status === 'sending') return <Loader2 className="w-3.5 h-3.5 text-ink-soft mt-0.5 flex-shrink-0 animate-spin" />;
+  return <span className="w-3.5 h-3.5 rounded-full border border-border mt-0.5 flex-shrink-0" />;
 }
 
 function patch(rows: Row[] | null, email: string, next: Partial<Row>): Row[] {

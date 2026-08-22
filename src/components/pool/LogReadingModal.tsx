@@ -20,8 +20,8 @@ interface FormValues {
 }
 
 const inputClass = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-const labelClass = 'block text-secondary font-medium text-forest/70 mb-1';
-const rangeClass = 'text-meta text-forest/40 mt-1';
+const labelClass = 'block text-secondary font-medium text-ink mb-1';
+const rangeClass = 'text-meta text-ink-faint mt-1';
 
 export function LogReadingModal() {
   const { closeAllModals, editingReadingId } = useUIStore();
@@ -122,7 +122,7 @@ export function LogReadingModal() {
   return (
     <Modal title={editing ? 'Edit chemical reading' : 'Log chemical reading'} onClose={closeAllModals} width="520px">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <p className="text-secondary text-forest/50 -mt-1">
+        <p className="text-secondary text-ink-soft -mt-1">
           {pool?.name ?? 'Pool'} · {now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
         </p>
 
@@ -179,7 +179,7 @@ export function LogReadingModal() {
             <input
               value={currentUser.name}
               disabled
-              className={`${inputClass} bg-cream-dark text-forest/50`}
+              className={`${inputClass} bg-cream-dark text-ink-soft`}
             />
           </div>
         </div>

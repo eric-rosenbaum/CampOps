@@ -283,7 +283,9 @@ footer{margin-top:26px;padding:16px 0 28px;border-top:1px solid var(--border);
 // are how a checklist like this actually reaches the person who has to gather the data, and
 // none of them should require the reader to know what their browser can do.
 (function () {
-  var url = window.location.href.split('#')[0];
+  // The canonical public address, not wherever this copy happens to be open. A link emailed
+  // from app.campcommand.app or a preview deploy has to still point somewhere a camp can read.
+  var url = 'https://www.campcommand.app/setup-guide';
 
   document.getElementById('btn-print').addEventListener('click', function () {
     window.print();
@@ -291,13 +293,12 @@ footer{margin-top:26px;padding:16px 0 28px;border-top:1px solid var(--border);
 
   document.getElementById('btn-email').addEventListener('click', function () {
     var subject = 'CampCommand setup checklist';
+    // Nothing here invites a reply with attachments. Files go through Setup Files, which is
+    // the whole point of the upload: email is exactly where camper information must not go.
     var body = [
       'Here is the setup checklist for CampCommand:',
       '',
       url,
-      '',
-      'It lists what we need from you for each module you are turning on.',
-      'Send files through Camp Info > Setup Files, or reply to this email.',
       ''
     ].join('\r\n');
     window.location.href = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);

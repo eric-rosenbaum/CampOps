@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
+import { FullScreenLoading } from '@/components/shared/ModuleLoading';
 
 const SUPPORT_EMAIL = 'prakash@campcommand.app';
 
@@ -122,12 +123,5 @@ export function NoCampAccess() {
 }
 
 function AppLoadingScreen() {
-  return (
-    <div className="fixed inset-0 bg-paper flex items-center justify-center z-50">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 border-2 border-forest border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-ink-soft font-medium">Loading…</p>
-      </div>
-    </div>
-  );
+  return <FullScreenLoading label="Getting your camp ready" sublabel="Signing you in and loading your modules" />;
 }

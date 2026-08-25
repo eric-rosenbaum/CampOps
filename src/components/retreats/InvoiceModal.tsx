@@ -58,6 +58,14 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
   const [fees, setFees] = useState<RetreatInvoiceLine[]>([]);
   const [feeDesc, setFeeDesc] = useState('');
   const [feeAmount, setFeeAmount] = useState('');
+  // A discount off the whole invoice, rather than a negative extra fee. Kept as its own field
+  // so it prints as a discount and can never be mistaken for a charge in the line list.
+  //
+  // Added and removed exactly like a fee: typing in the box used to apply it live, which meant
+  // a half-typed "50" was briefly a $5 discount and there was no way to take one back off.
+  const [discount, setDiscount] = useState<{ note: string; amount: number } | null>(null);
+  const [discountDesc, setDiscountDesc] = useState('');
+  const [discountAmount, setDiscountAmount] = useState('');
 
   async function emailInvoice(inv: RetreatInvoice, r: Retreat) {
     setEmailingId(inv.id); setBanner(null);
@@ -114,8 +122,16 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
   }
   const base = buildLines(kind);
   const feeSum = fees.reduce((s, f) => s + f.amount, 0);
-  const lines: RetreatInvoiceLine[] = [...base.lines, ...fees];
-  const amount = base.amount + feeSum;
+  const subtotal = base.amount + feeSum;
+  // Never below zero, and never more than the invoice: a discount that made the total negative
+  // would read as the camp owing the group money.
+  const discountValue = Math.min(discount?.amount ?? 0, Math.max(0, subtotal));
+  const lines: RetreatInvoiceLine[] = [
+    ...base.lines,
+    ...fees,
+    ...(discountValue > 0 ? [{ description: discount?.note || 'Discount', amount: -discountValue }] : []),
+  ];
+  const amount = subtotal - discountValue;
   const effectiveDue = dueDate || (kind === 'deposit' ? retreat.depositDue ?? '' : '');
 
   async function saveNoteDefault() {
@@ -125,6 +141,13 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
   }
   const savedDefaultNote = (currentCamp?.retreatPaymentNote ?? '').trim();
   const isCurrentDefault = savedDefaultNote !== '' && note.trim() === savedDefaultNote;
+
+  function addDiscount() {
+    const amt = Number(discountAmount);
+    if (!Number.isFinite(amt) || amt <= 0) return;
+    setDiscount({ note: discountDesc.trim() || 'Discount', amount: amt });
+    setDiscountDesc(''); setDiscountAmount('');
+  }
 
   function addFee() {
     const amt = Number(feeAmount);
@@ -149,6 +172,8 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
       dueDate: inv?.dueDate ?? (effectiveDue || null),
       lineItems: inv?.lineItems ?? lines,
       amount: inv?.amount ?? amount,
+      discount: inv?.discount ?? discountValue,
+      discountNote: inv?.discountNote ?? (discount?.note ?? null),
       note: inv?.note ?? (note.trim() || null),
       arrivalDate: retreat!.arrivalDate, departureDate: retreat!.departureDate,
     };
@@ -160,11 +185,12 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
     const inv: RetreatInvoice = {
       id: generateId(), campId: '', retreatId, kind, number: nextNumber(kind),
       amount, note: note.trim() || null, dueDate: effectiveDue || null, status: 'sent',
+      discount: discountValue, discountNote: discountValue > 0 ? (discount?.note ?? 'Discount') : null,
       lineItems: lines, issuedAt: now(), createdBy: currentUser.name || null,
       createdAt: now(), updatedAt: now(),
     };
     addInvoice(inv);
-    setNote(''); setDueDate(''); setFees([]);
+    setNote(''); setDueDate(''); setFees([]); setDiscount(null); setDiscountDesc(''); setDiscountAmount('');
     if (emailToo && coordinatorEmail) {
       await emailInvoice(inv, retreat);
     } else {
@@ -216,6 +242,12 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
                 <span className={`font-mono ${l.amount < 0 ? 'text-ink-faint' : 'text-forest'}`}>{money(l.amount)}</span>
               </div>
             ))}
+            {discountValue > 0 && (
+              <div className="flex justify-between gap-3 px-3 py-2 border-t border-cream-dark text-[12.5px]">
+                <span className="text-ink-soft">Subtotal before discount</span>
+                <span className="font-mono text-ink-soft">{money(subtotal)}</span>
+              </div>
+            )}
             <div className="flex justify-between gap-3 px-3 py-2 bg-cream border-t border-border text-[13px] font-semibold">
               <span className="text-forest">{kind === 'deposit' ? 'Deposit due' : 'Total due'}</span>
               <span className="font-mono text-forest">{money(amount)}</span>
@@ -245,6 +277,42 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
                 <Plus className="w-3.5 h-3.5" /> Add
               </Button>
             </div>
+          </div>
+
+          <div>
+            <label className={labelClass}>Discount (optional)</label>
+            {discount && (
+              <div className="mb-2">
+                <div className="flex items-center justify-between gap-2 text-[12px] bg-white border border-border rounded-btn px-2.5 py-1.5">
+                  <span className="text-ink truncate">{discount.note}</span>
+                  <span className="inline-flex items-center gap-2 flex-shrink-0">
+                    <span className="font-mono text-green-muted-text">-{money(discountValue)}</span>
+                    <button type="button" onClick={() => setDiscount(null)} className="text-forest/30 hover:text-red" aria-label="Remove discount"><X className="w-3.5 h-3.5" /></button>
+                  </span>
+                </div>
+              </div>
+            )}
+            {!discount && (
+              <div className="flex gap-2">
+                <div className="flex-1 min-w-0">
+                  <input value={discountDesc} onChange={(e) => setDiscountDesc(e.target.value)}
+                         className={inputClass} placeholder="e.g. Returning group, Off-season rate" />
+                </div>
+                <div className="w-28">
+                  <input type="number" step="0.01" min={0} value={discountAmount}
+                         onChange={(e) => setDiscountAmount(e.target.value)}
+                         className={inputClass} placeholder="0.00" />
+                </div>
+                <Button type="button" variant="ghost" onClick={addDiscount} disabled={!(Number(discountAmount) > 0)}>
+                  <Plus className="w-3.5 h-3.5" /> Add
+                </Button>
+              </div>
+            )}
+            {discountValue > 0 && (
+              <p className="text-[11px] text-green-muted-text mt-1">
+                {money(discountValue)} off. Billed total and balance both drop to {money(amount)}.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

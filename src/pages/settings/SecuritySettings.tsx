@@ -5,6 +5,7 @@ import { Button } from '@/components/shared/Button';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { useCampStore } from '@/store/campStore';
+import { LoadingBlock } from '@/components/shared/ModuleLoading';
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint mb-2 mt-2">{children}</p>;
@@ -76,7 +77,7 @@ function MfaSection() {
       </div>
 
       {loading ? (
-        <p className="text-[13px] text-ink-faint">Loading…</p>
+        <LoadingBlock size="sm" label="Loading" className="py-6" />
       ) : (
         <>
           {verified.length > 0 && (
@@ -207,7 +208,7 @@ function ActivitySection({ campId, memberNames }: { campId: string; memberNames:
         </div>
       </div>
       {loading ? (
-        <p className="text-[13px] text-ink-faint">Loading…</p>
+        <LoadingBlock size="sm" label="Loading" className="py-6" />
       ) : rows.length === 0 ? (
         <p className="text-[13px] text-ink-faint italic">No activity yet.</p>
       ) : (

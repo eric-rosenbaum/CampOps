@@ -4,16 +4,18 @@ import {
   CalendarDays, Users, User, Moon, AlertCircle, CheckCircle2, FileText,
   PenLine, ShieldCheck, BedDouble, UtensilsCrossed, MessageSquarePlus,
   Star, Clock, Trash2, Send, Lock, ClipboardList, Loader2,
-  Circle, ChevronRight, Wallet, UploadCloud, DollarSign, Bell, X,
+  Circle, ChevronRight, Wallet, UploadCloud, DollarSign, Bell, X, Check,
 } from 'lucide-react';
 import {
   money, fmtDateFull, fmtRange, nights, MEAL_PERIOD_LABELS,
 } from '@/components/retreats/retreatUi';
 import { printInvoice } from '@/lib/invoiceHtml';
+import { monotonic, stagePercent, STAGE_LABEL, type UploadStatus } from '@/lib/uploadProgress';
+import { FullScreenLoading } from '@/components/shared/ModuleLoading';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
 import { RoomingBoard } from './RoomingBoard';
 import {
-  supabasePublic, SUPABASE_URL, portalFnHeaders,
+  supabasePublic, SUPABASE_URL, portalFnHeaders, portalFnPost,
   readPortalSession, writePortalSession, clearPortalSession,
   cardClass, inputClass, labelClass, btnPrimary,
   type PortalRetreat, type PortalDocument, type PortalSpace, type PortalHousing,
@@ -201,11 +203,7 @@ export function RetreatPortal() {
   }, [token]);
 
   if (pageState === 'loading') {
-    return (
-      <div className="min-h-screen bg-cream w-full flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-sage animate-spin" />
-      </div>
-    );
+    return <FullScreenLoading fixed={false} label="Opening your portal" sublabel="Loading everything for your stay" />;
   }
 
   if (pageState === 'expired') {
@@ -306,12 +304,18 @@ function buildSteps(data: PortalData): Step[] {
   const housingSubmitted = housing.length > 0;
   const roster = data.guests.length;
   const placed = data.guests.filter((g) => g.location_id).length;
-  const roomingDone = housingLocked || (roster > 0 && placed === roster) || (roster === 0 && housingSubmitted);
+  // The group saying they are finished is what closes this step. Everyone being placed is a
+  // good sign but not the same claim: a coordinator can place everybody and still be moving
+  // people around, and the camp needs to know which of those it is looking at.
+  const housingDeclared = retreat.housing_submitted_at != null;
+  const roomingDone = housingLocked || housingDeclared
+    || (roster === 0 && housingSubmitted);
   steps.push({
     key: 'housing', label: 'Sort your group into rooms',
-    hint: housingLocked ? 'Finalized & locked'
+    hint: housingLocked ? 'Finalized & locked by the camp'
+      : housingDeclared ? 'You marked this complete'
       : roster === 0 ? `Add your guest list · due ${fmtDateFull(housingDue)}`
-      : placed === roster ? `All ${roster} guests have a room`
+      : placed === roster ? `All ${roster} placed · mark it complete when you're happy`
       : `${placed} of ${roster} guests placed`,
     state: roomingDone ? 'done' : urgency(housingDue), dueDate: housingDue, sectionId: 'housing', counts: true,
   });
@@ -336,7 +340,7 @@ function buildSteps(data: PortalData): Step[] {
     const pending = data.change_requests.filter((r) => r.status === 'pending').length;
     const answered = data.change_requests.filter((r) => r.status !== 'pending').length;
     steps.push({
-      key: 'requests', label: 'Special requests',
+      key: 'requests', label: 'Requests',
       hint: pending > 0 ? `${pending} awaiting a reply from the camp`
         : answered > 0 ? `${answered} answered`
         : 'Program spaces, dietary, childcare & more',
@@ -360,6 +364,12 @@ interface PortalUpdate {
   title: string;
   detail: string;
   view: ViewId;
+  /**
+   * The checklist item to open on arrival. Without it "View" only switched view, and the To do
+   * list stayed on whatever it had opened by default, so tapping View on a message from the
+   * camp landed the reader on "Pay your deposit".
+   */
+  step?: string;
 }
 
 function seenKey(token: string) { return `campops_portal_seen_${token}`; }
@@ -385,12 +395,22 @@ function buildUpdates(data: PortalData): PortalUpdate[] {
       view: 'stay',
     }));
   data.change_requests
-    .filter((r) => r.status !== 'pending' && r.response_message)
+    .filter((r) => r.origin !== 'camp' && r.status !== 'pending' && r.response_message)
     .forEach((r) => out.push({
       id: `request:${r.id}:${r.responded_at ?? r.status}`,
       title: 'The camp replied to your request',
       detail: r.response_message as string,
-      view: 'todo',
+      view: 'todo', step: 'requests',
+    }));
+  // A question the camp is waiting on. Louder than a reply to something you already sent,
+  // because nothing else on the page tells you it is there.
+  data.change_requests
+    .filter((r) => r.origin === 'camp' && !r.responded_at)
+    .forEach((r) => out.push({
+      id: `ask:${r.id}`,
+      title: 'The camp has a question for you',
+      detail: r.body,
+      view: 'todo', step: 'requests',
     }));
   data.documents
     .filter((d) => d.doc_type !== 'coi' && d.has_file && d.status !== 'signed' && d.status !== 'approved')
@@ -398,7 +418,7 @@ function buildUpdates(data: PortalData): PortalUpdate[] {
       id: `doc:${d.id}:${d.status}`,
       title: `${d.name} needs your attention`,
       detail: d.due_date ? `Due ${fmtDateFull(d.due_date)}` : 'Shared by the camp',
-      view: 'todo',
+      view: 'todo', step: d.doc_type === 'agreement' ? 'agreement' : 'documents',
     }));
   return out;
 }
@@ -732,7 +752,12 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <button
-                      onClick={() => { setView(u.view); dismiss(u.id); }}
+                      onClick={() => {
+                        setView(u.view);
+                        if (u.step) setOpenStep(u.step);
+                        dismiss(u.id);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
                       className="text-[12.5px] font-semibold text-forest bg-white border border-border rounded-btn px-3 py-1.5 hover:border-sage transition-colors"
                     >
                       View
@@ -1127,6 +1152,7 @@ function CoiBlock({ retreat, documents, token, refetch }: { retreat: PortalRetre
   const received = !!coiDoc && (coiDoc.status === 'received' || coiDoc.status === 'approved' || !!coiDoc.has_file);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<UploadStatus | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1135,16 +1161,30 @@ function CoiBlock({ retreat, documents, token, refetch }: { retreat: PortalRetre
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) { setError('File must be under 10 MB.'); return; }
     setBusy(true); setError(null);
+    const report = monotonic(setProgress);
+    report({ stage: 'uploading', percent: 0, label: STAGE_LABEL.uploading });
     try {
       const b64 = await fileToBase64(file);
-      const { data: res, error: err } = await supabasePublic.functions.invoke('portal-upload-coi', {
-        body: { token, fileBase64: b64, fileName: file.name, contentType: file.type, uploadedBy: retreat.coordinator_name },
-      });
-      if (err || !(res as { ok?: boolean })?.ok) { setError('Could not upload. Use a PDF, JPG or PNG under 10 MB.'); setBusy(false); return; }
-      setBusy(false);
+      const res = await portalFnPost<{ ok?: boolean }>(
+        'portal-upload-coi',
+        { token, fileBase64: b64, fileName: file.name, contentType: file.type, uploadedBy: retreat.coordinator_name },
+        (f) => report({ stage: 'uploading', percent: stagePercent('uploading', f), label: STAGE_LABEL.uploading }),
+      );
+      if (!res?.ok) throw new Error('rejected');
+
+      // Same rule as the camp side: the transfer finishing is not the same as the document
+      // existing. The portal reloads and the file is only counted once the record comes back
+      // saying a file is attached to it.
+      report({ stage: 'saving', percent: stagePercent('saving', 1), label: STAGE_LABEL.saving });
+      report({ stage: 'verifying', percent: stagePercent('verifying', 0.4), label: STAGE_LABEL.verifying });
       await refetch();
+      report({ stage: 'done', percent: 100, label: STAGE_LABEL.done });
+      setBusy(false);
+      // Left on screen briefly so the tick is seen rather than flashing past.
+      setTimeout(() => setProgress(null), 1200);
     } catch {
-      setError('Could not upload. Please try again.');
+      setError('Could not upload. Use a PDF, JPG or PNG under 10 MB.');
+      setProgress(null);
       setBusy(false);
     }
   }
@@ -1187,8 +1227,31 @@ function CoiBlock({ retreat, documents, token, refetch }: { retreat: PortalRetre
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
             {busy ? 'Uploading…' : received ? 'Replace file' : 'Upload your COI'}
           </button>
+          {progress && <div className="mt-3"><PortalUploadBar status={progress} /></div>}
           {error && <p className="text-[12px] text-red mt-2">{error}</p>}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** The portal's own progress bar. Same stages as the ops one, portal shapes and type sizes. */
+function PortalUploadBar({ status }: { status: UploadStatus }) {
+  const done = status.stage === 'done';
+  return (
+    <div className="rounded-xl border border-border bg-cream px-3.5 py-3">
+      <div className="flex items-center justify-between gap-3 mb-1.5">
+        <p className="text-[12.5px] font-semibold text-forest inline-flex items-center gap-1.5">
+          {done ? <Check className="w-3.5 h-3.5 text-sage" /> : <Loader2 className="w-3.5 h-3.5 animate-spin text-ink-soft" />}
+          {done ? 'Uploaded and checked' : status.label}
+        </p>
+        <span className="font-mono text-[12px] text-ink-soft tabular-nums">{status.percent}%</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-cream-dark overflow-hidden">
+        <div
+          className="h-full rounded-full bg-sage transition-[width] duration-300 ease-out"
+          style={{ width: `${status.percent}%` }}
+        />
       </div>
     </div>
   );
@@ -1552,16 +1615,99 @@ function HousingBlock({ retreat, spaces, housing, guests, token, refetch, today 
   const deadlinePassed = !!retreat.housing_deadline && retreat.housing_deadline < today;
 
   return (
-    <RoomingBoard
-      retreat={retreat}
-      spaces={spaces}
-      housing={housing}
-      guests={guests}
-      token={token}
-      refetch={refetch}
-      locked={locked}
-      deadlinePassed={deadlinePassed}
-    />
+    <div className="space-y-3">
+      {/* Above the board, not below it. At the bottom of a long room list it was under the
+          fold on every screen that mattered, which is a poor place for the one control that
+          tells the camp this plan is finished. */}
+      {!locked && <HousingSignOff retreat={retreat} guests={guests} token={token} refetch={refetch} />}
+      <RoomingBoard
+        retreat={retreat}
+        spaces={spaces}
+        housing={housing}
+        guests={guests}
+        token={token}
+        refetch={refetch}
+        locked={locked}
+        deadlinePassed={deadlinePassed}
+      />
+    </div>
+  );
+}
+
+/**
+ * "We're done placing people."
+ *
+ * Without this the camp cannot tell a rooming plan that is finished from one that is halfway
+ * through, so they either chase the coordinator or make an assumption. Reversible on purpose:
+ * spotting a mistake five minutes later should not need an email. It is the group's statement
+ * only, and the camp still approves and locks separately.
+ */
+function HousingSignOff({ retreat, guests, token, refetch }: {
+  retreat: PortalRetreat; guests: PortalGuest[]; token: string; refetch: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const done = retreat.housing_submitted_at != null;
+  const unplaced = guests.filter((g) => !g.location_id).length;
+
+  async function set(complete: boolean) {
+    if (busy) return;
+    setBusy(true); setError(null);
+    // No name field: the portal link already identifies the group, and the coordinator on
+    // record is who we attribute it to. One more box to fill is one more reason not to press
+    // the button, and the camp only needs to know the group is finished.
+    const { error: err } = await supabasePublic.rpc('portal_set_housing_complete', {
+      p_token: token, p_complete: complete, p_submitted_by: retreat.coordinator_name ?? null,
+    });
+    if (err) setError(err.message);
+    else await refetch();
+    setBusy(false);
+  }
+
+  if (done) {
+    return (
+      <div className="rounded-card border border-sage/40 bg-sage-pale px-4 py-3.5">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-[13.5px] font-semibold text-forest">Rooming marked complete</p>
+            <p className="text-[12px] text-forest/70 mt-0.5">
+              {retreat.housing_submitted_by ? `${retreat.housing_submitted_by} · ` : ''}
+              {fmtDateFull(retreat.housing_submitted_at!.slice(0, 10))}. The camp can see it is
+              ready for them to review.
+            </p>
+          </div>
+          <button
+            onClick={() => set(false)}
+            disabled={busy}
+            className="text-[12px] font-semibold text-forest/70 underline underline-offset-2 hover:text-forest disabled:opacity-50"
+          >
+            {busy ? 'Reopening…' : 'Reopen to make changes'}
+          </button>
+        </div>
+        {error && <p className="text-[12px] text-red-text mt-2">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-card border border-border bg-white px-4 py-3.5">
+      <p className="text-[13.5px] font-semibold text-forest">Finished placing everyone?</p>
+      <p className="text-[12px] text-ink-soft mt-0.5 leading-relaxed">
+        {unplaced > 0
+          ? `${unplaced} ${unplaced === 1 ? 'person is' : 'people are'} still without a room. You can still mark this complete if that is intentional.`
+          : 'Let the camp know your rooming is settled. You can reopen it later if something changes.'}
+      </p>
+      <button
+        onClick={() => set(true)}
+        disabled={busy}
+        className={`${btnPrimary} w-full mt-3`}
+      >
+        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+        {busy ? 'Saving…' : 'Housing is complete'}
+      </button>
+      {error && <p className="text-[12px] text-red-text mt-2">{error}</p>}
+    </div>
   );
 }
 
@@ -1654,6 +1800,13 @@ function ChangeRequestsBlock({ requests, defaultName, token, refetch }: {
 
   const [removingId, setRemovingId] = useState<string | null>(null);
 
+  // Requests run both ways now. The camp's questions are pulled out and shown first, because
+  // they are the only ones on this page that are waiting on the person reading it.
+  const fromCamp = requests
+    .filter((r) => r.origin === 'camp')
+    .sort((a, b) => (b.submitted_at ?? '').localeCompare(a.submitted_at ?? ''));
+  const mine = requests.filter((r) => r.origin !== 'camp');
+
   /**
    * Withdraw a request. Only possible while it is still pending. Once the camp has replied,
    * the exchange is part of the record of what was agreed and shouldn't vanish from their side.
@@ -1720,11 +1873,21 @@ function ChangeRequestsBlock({ requests, defaultName, token, refetch }: {
         <p className="text-[11px] text-ink-faint text-center">The camp reviews and approves all changes. You'll see the status below.</p>
       </div>
 
+      {/* From the camp, waiting on this group */}
+      {fromCamp.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">From the camp</p>
+          {fromCamp.map((r) => (
+            <CampAsk key={r.id} request={r} defaultName={defaultName} token={token} refetch={refetch} />
+          ))}
+        </div>
+      )}
+
       {/* Existing requests */}
-      {requests.length > 0 && (
+      {mine.length > 0 && (
         <div className="space-y-3">
           <p className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">Your requests</p>
-          {requests
+          {mine
             .slice()
             .sort((a, b) => (b.submitted_at ?? '').localeCompare(a.submitted_at ?? ''))
             .map((r) => {
@@ -1911,6 +2074,92 @@ function EmptyCard({ children }: { children: React.ReactNode }) {
   return (
     <div className={`${cardClass} p-4 sm:p-6 text-center text-[13px] text-ink-soft leading-relaxed`}>
       {children}
+    </div>
+  );
+}
+
+/**
+ * Something the camp asked this group, and the box to answer it in.
+ *
+ * Answered ones stay on the page rather than disappearing: the exchange is part of what was
+ * agreed about the booking, and the coordinator should be able to find what they said.
+ */
+function CampAsk({ request, defaultName, token, refetch }: {
+  request: PortalChangeRequest; defaultName: string | null; token: string; refetch: () => Promise<void>;
+}) {
+  const [reply, setReply] = useState('');
+  const [name, setName] = useState(defaultName ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const answered = !!request.responded_at;
+
+  async function send() {
+    if (!reply.trim()) { setError('Please write a reply.'); return; }
+    if (!name.trim()) { setError('Please enter your name.'); return; }
+    setBusy(true); setError(null);
+    const { error: err } = await supabasePublic.rpc('portal_respond_to_request', {
+      p_token: token, p_request_id: request.id, p_body: reply.trim(), p_submitted_by: name.trim(),
+    });
+    if (err) { setError('Could not send your reply. Please try again.'); setBusy(false); return; }
+    setReply('');
+    setBusy(false);
+    await refetch();
+  }
+
+  return (
+    <div className={`${cardClass} border-l-4 ${answered ? 'border-l-sage' : 'border-l-blue'} p-4`}>
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-soft">
+          {KIND_LABELS[request.kind] ?? request.kind}
+        </span>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${
+          answered ? 'bg-green-muted-bg text-green-muted-text' : 'bg-blue-bg text-blue-text'
+        }`}>
+          {answered ? 'Answered' : 'Needs your reply'}
+        </span>
+      </div>
+      <p className="text-[13px] text-ink leading-relaxed">{request.body}</p>
+      <p className="text-[11px] text-ink-faint mt-1.5 inline-flex items-center gap-1">
+        <Clock className="w-3 h-3" /> Asked {fmtDateTime(request.submitted_at)}
+        {request.submitted_by ? ` by ${request.submitted_by}` : ''}
+      </p>
+
+      {answered ? (
+        <div className="mt-2.5 pt-2.5 border-t border-cream-dark">
+          <p className="text-[12px] text-ink leading-relaxed italic">
+            <span className="font-semibold not-italic text-forest">Your reply:</span> {request.response_message}
+          </p>
+          {request.responded_at && (
+            <p className="text-[11px] text-ink-faint mt-1">
+              {request.responded_by ? `${request.responded_by} · ` : ''}{fmtDateTime(request.responded_at)}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="mt-3 pt-3 border-t border-cream-dark space-y-2.5">
+          <textarea
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
+            className={`${inputClass} resize-none`}
+            rows={3}
+            placeholder="Write your reply to the camp…"
+            disabled={busy}
+          />
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={inputClass}
+            placeholder="Your name"
+            disabled={busy}
+          />
+          {error && <p className="text-[13px] text-red">{error}</p>}
+          <button onClick={send} disabled={busy} className={`${btnPrimary} w-full`}>
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquarePlus className="w-4 h-4" />}
+            {busy ? 'Sending…' : 'Send reply'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -47,7 +47,7 @@ const RETREAT_TABS: { id: RetreatTab; label: string }[] = [
   { id: 'housing', label: 'Housing' },
   { id: 'menu', label: 'Menu & dining' },
   { id: 'retreatCosts', label: 'Costs & invoice' },
-  { id: 'requests', label: 'Change requests' },
+  { id: 'requests', label: 'Requests' },
   { id: 'portal', label: 'Guest portal' },
   { id: 'feedback', label: 'Feedback' },
 ];

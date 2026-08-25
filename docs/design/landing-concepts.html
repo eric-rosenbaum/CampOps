@@ -1,0 +1,323 @@
+<title>The Settle</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700&family=Karla:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --paper:#F6F1E4; --card:#FCF9F1; --ink:#23201B; --soft:#6B6357; --faint:#9A9285;
+    --forest:#1D3A2E; --sage:#5E7A61; --sage-pale:#E6E9D8; --amber:#D08C1B;
+    --ember:#B0522F; --border:#DED3BB; --rule:#EFE9D9;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --paper:#14170F; --card:#1C211A; --ink:#EFE9DC; --soft:#A9A091; --faint:#7C7466;
+    --forest:#8FB894; --sage:#8FB894; --sage-pale:#232B23; --amber:#E5B45C;
+    --ember:#E5865C; --border:#353D2E; --rule:#232A20;
+  }}
+  :root[data-theme="dark"]{
+    --paper:#14170F; --card:#1C211A; --ink:#EFE9DC; --soft:#A9A091; --faint:#7C7466;
+    --forest:#8FB894; --sage:#8FB894; --sage-pale:#232B23; --amber:#E5B45C;
+    --ember:#E5865C; --border:#353D2E; --rule:#232A20;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:Karla,system-ui,sans-serif;
+    font-size:16px;line-height:1.62;margin:0}
+  .wrap{max-width:880px;margin:0 auto;padding:56px 24px 96px}
+  h1,h2,h3{font-family:Bitter,Georgia,serif;text-wrap:balance;color:var(--forest);margin:0}
+  h1{font-size:clamp(30px,5vw,44px);line-height:1.1;letter-spacing:-.01em}
+  h2{font-size:24px;margin:58px 0 6px;line-height:1.25}
+  h3{font-size:16.5px;margin:32px 0 6px;color:var(--ink)}
+  p{margin:12px 0}
+  .lede{font-size:18px;color:var(--soft);margin-top:14px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+    color:var(--ember);margin:0 0 10px}
+  .rule{height:1px;background:var(--border);margin:14px 0 0}
+  ul,ol{margin:12px 0;padding-left:22px} li{margin:7px 0}
+  strong{font-weight:700;color:var(--ink)}
+  code{font-family:var(--mono);font-size:.87em;background:var(--sage-pale);padding:1px 5px;
+    border-radius:3px;color:var(--forest)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:20px 22px;margin:20px 0}
+  .rec{border-left:3px solid var(--sage);background:var(--sage-pale);border-radius:0 6px 6px 0;
+    padding:16px 20px;margin:22px 0}
+  .rec .t{font-weight:700;color:var(--forest);font-size:12px;letter-spacing:.09em;
+    text-transform:uppercase;margin:0 0 6px}
+  .flag{border-left:3px solid var(--amber);background:var(--card);border-radius:0 6px 6px 0;
+    padding:16px 20px;margin:22px 0}
+  .flag .t{font-weight:700;color:var(--amber);font-size:12px;letter-spacing:.09em;
+    text-transform:uppercase;margin:0 0 6px}
+  .scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-size:14.5px;margin:16px 0;min-width:440px}
+  th{text-align:left;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+    font-weight:700;padding:8px 12px 8px 0;border-bottom:1px solid var(--border)}
+  td{padding:10px 12px 10px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+  td:last-child,th:last-child{padding-right:0}
+
+  /* ── the animated concept ── */
+  .stage{position:relative;background:var(--forest);border-radius:8px;height:340px;
+    overflow:hidden;margin:20px 0}
+  .frag{position:absolute;background:#FCF9F1;color:#23201B;border-radius:4px;
+    padding:6px 9px;font-size:10.5px;line-height:1.35;box-shadow:0 6px 16px rgba(0,0,0,.28);
+    max-width:150px;transition:all 1.15s cubic-bezier(.22,.9,.24,1)}
+  .frag .k{display:block;font-size:8px;letter-spacing:.1em;text-transform:uppercase;
+    color:#9A9285;font-weight:700;margin-bottom:1px}
+  .lane-label{position:absolute;font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+    font-weight:700;color:#9AA98F;opacity:0;transition:opacity .5s ease .9s}
+  .stage.settled .lane-label{opacity:1}
+  .board{position:absolute;left:50%;top:14px;bottom:14px;width:2px;background:#5E7A61;
+    opacity:0;transition:opacity .6s ease .8s}
+  .stage.settled .board{opacity:.5}
+  .replay{position:absolute;right:12px;bottom:12px;z-index:5;background:rgba(255,255,255,.12);
+    color:#F6F1E4;border:1px solid rgba(255,255,255,.25);border-radius:99px;
+    padding:5px 13px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:Karla,sans-serif}
+  .replay:hover{background:rgba(255,255,255,.2)}
+  .cap{font-size:12.5px;color:var(--faint);text-align:center;margin:6px 0 0}
+
+  /* ── plain wireframes ── */
+  .wf{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:14px;
+    margin:18px 0;font-size:11.5px}
+  .box{border:1px dashed var(--border);border-radius:4px;padding:12px;background:var(--paper)}
+  .box .h{font-weight:700;color:var(--forest);font-size:10.5px;letter-spacing:.06em;
+    text-transform:uppercase;margin-bottom:7px}
+  .cols{display:grid;gap:10px}
+  @media(min-width:680px){.cols.four{grid-template-columns:repeat(4,1fr)}
+    .cols.three{grid-template-columns:repeat(3,1fr)}}
+  .line{height:7px;background:var(--rule);border-radius:2px;margin:5px 0}
+  .line.s{width:55%} .line.m{width:78%}
+  .foot{margin-top:64px;padding-top:20px;border-top:1px solid var(--border);
+    color:var(--faint);font-size:13px}
+  @media (prefers-reduced-motion:reduce){.frag{transition:none}}
+</style>
+
+<div class="wrap">
+
+<p class="eyebrow">CampCommand · Landing page</p>
+<h1>The Settle</h1>
+<p class="lede">One hero animation that performs the mission statement instead of sitting next
+to it: scattered scraps of camp operations fly in, then settle into four labelled lanes feeding
+a single board.</p>
+<div class="rule"></div>
+
+<h2>Try it</h2>
+<p>This is the concept, not the final art. Watch what it says before reading why.</p>
+
+<div class="stage" id="stage">
+  <div class="board"></div>
+  <button class="replay" onclick="run()">Replay</button>
+</div>
+<p class="cap">Chaos on the left, order on the right. Same objects, moved.</p>
+
+<h2>Why this instead of a hub diagram</h2>
+
+<p>Your instinct was modules feeding one platform, and that is right. The trap is the obvious
+execution: four boxes with arrows pointing at a logo in the middle. Every B2B site has that
+diagram, it is static, and critically it <strong>only shows the after</strong>. Your mission
+statement leads with the before, the chaos and the wasted money, and that is the half a camp
+director actually recognises.</p>
+
+<p>So the hero shows both, in order. It opens as a mess of the real artifacts operations runs
+on today, then resolves. The resolved state <em>is</em> the module diagram you wanted, just
+arrived at rather than asserted.</p>
+
+<div class="rec">
+  <p class="t">The one-line version</p>
+  <p style="margin:0">A hub diagram says "we integrate four modules". The Settle says "we take
+  the mess you are living in and make it one board." Those are different products to a buyer,
+  and only one of them is your mission statement.</p>
+</div>
+
+<h3>What the fragments should be</h3>
+<p>Real artifacts, in your camp's own vocabulary, never lorem and never generic "Task 1" cards.
+The recognition is the whole point, a director should see their own week:</p>
+<ul>
+  <li>A text message: <em>"heater out in bathhouse 2, girls sent to 1"</em></li>
+  <li>A sticky note: <em>"Cabin 12 window — order glass?"</em></li>
+  <li>A spreadsheet row: <em>Cl 2.4 · pH 7.3 · 4:37pm</em></li>
+  <li>A whiteboard line: <em>"Tufts arrives Fri, 50pax, COI??"</em></li>
+  <li>A voicemail slip, a walkie call, a clipboard, a photo of a broken thing</li>
+</ul>
+<p>Roughly twelve to sixteen. Fewer reads as decoration, more reads as noise.</p>
+
+<h3>Restraint that keeps it from feeling like a toy</h3>
+<ul>
+  <li><strong>It settles once</strong>, over about 1.2 seconds, then holds. No looping, no
+  scroll-jacking, no parallax. A hero that keeps moving is a hero nobody reads past.</li>
+  <li><strong>Interaction is hover, not choreography.</strong> Hovering a lane lifts its
+  fragments and dims the rest, so the four modules become legible on demand.</li>
+  <li><strong>A quiet Replay</strong> in the corner, because the first two seconds are the pitch
+  and some people arrive mid-animation.</li>
+  <li><strong>`prefers-reduced-motion` renders the settled state directly.</strong> Non-negotiable,
+  and it also means the static screenshot of your hero is the good frame.</li>
+</ul>
+
+<h2>What the page becomes</h2>
+
+<p>The current page is competent and generic: photo hero with a dark gradient, then
+<code>01 / 02 / 03</code> numbered steps. Both are the default look of an AI-assisted SaaS
+site in 2026, and neither carries your mission. The new order:</p>
+
+<div class="scroll"><table>
+  <thead><tr><th>#</th><th>Section</th><th>Job</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><strong>The Settle</strong> + headline</td><td>Show chaos becoming order in two seconds</td></tr>
+    <tr><td>2</td><td><strong>Mission</strong>, full width, large type</td><td>Say it plainly, once, with air around it</td></tr>
+    <tr><td>3</td><td><strong>What scattered costs you</strong></td><td>Three real numbers. The money half of the mission</td></tr>
+    <tr><td>4</td><td><strong>Four lanes, one board</strong></td><td>The modules, each with real product UI</td></tr>
+    <tr><td>5</td><td><strong>A day at camp</strong></td><td>One issue followed end to end across modules</td></tr>
+    <tr><td>6</td><td><strong>Close</strong></td><td>Demo, and the no-login tour link</td></tr>
+  </tbody>
+</table></div>
+
+<h3>2 · The mission, given room</h3>
+<p>Directly under the hero, on paper, no card, no icon, just large Bitter at a comfortable
+measure. It reads as a statement of belief rather than a feature blurb:</p>
+
+<div class="card" style="font-family:Bitter,Georgia,serif;font-size:19px;line-height:1.5;color:var(--forest)">
+  Our mission is to streamline the chaos of camp operations and eliminate the stress and wasted
+  money that come from scattered systems. We do it by providing systematic workflows and
+  resources that keep your entire operations team on the same page across facilities, pool and
+  waterfront, commissary, and retreats.
+</div>
+
+<div class="flag">
+  <p class="t">Three typos fixed</p>
+  <p style="margin:0">Your version had <code>recources</code> → <strong>resources</strong>,
+  <code>opertaions</code> → <strong>operations</strong>, and a missing comma after
+  <strong>facilities</strong>. Otherwise it is verbatim. Flagging because you said "as it should
+  appear", and I did not want to silently rewrite your words, or silently ship the typos.</p>
+</div>
+
+<h3>3 · What scattered costs you</h3>
+<p>This is the half of the mission most camp software never argues, and you already have the
+material for it. Three figures, each with its source visible on hover rather than an
+unsupported claim:</p>
+<div class="wf">
+  <div class="cols three">
+    <div class="box"><div class="h">Hours / week</div><div class="line m"></div><div class="line s"></div></div>
+    <div class="box"><div class="h">Repeat purchases</div><div class="line m"></div><div class="line s"></div></div>
+    <div class="box"><div class="h">Failed inspections</div><div class="line m"></div><div class="line s"></div></div>
+  </div>
+</div>
+<p style="font-size:13.5px;color:var(--soft)">Use only numbers you can stand behind. One
+sourced figure beats three impressive ones, and camp directors talk to each other.</p>
+
+<h3>4 · Four lanes, one board</h3>
+<p>The hero's resolved state, expanded. One row per module, alternating image side, each
+showing <em>real product UI</em> rather than an icon in a circle. You already have the
+screenshots.</p>
+<div class="wf">
+  <div class="cols four">
+    <div class="box"><div class="h">Facilities</div><div class="line"></div><div class="line s"></div></div>
+    <div class="box"><div class="h">Pool &amp; waterfront</div><div class="line"></div><div class="line s"></div></div>
+    <div class="box"><div class="h">Commissary</div><div class="line"></div><div class="line s"></div></div>
+    <div class="box"><div class="h">Retreats</div><div class="line"></div><div class="line s"></div></div>
+  </div>
+</div>
+
+<h3>5 · A day at camp</h3>
+<p>The section I would add that you do not have. Follow one real thread all the way through:
+a counsellor photographs a cracked window at 7:02am → it lands in Facilities → the director
+assigns it → the part is ordered through Commissary → it closes before the retreat group
+arrives Friday. Horizontal, timestamped, scroll-revealed.</p>
+<p>This is what "same page across modules" means in practice, and it is impossible to say
+convincingly in a feature grid.</p>
+
+<h2>Build notes</h2>
+<ul>
+  <li><strong>CSS transforms only.</strong> Every fragment is a positioned div moving between
+  two transform states. No canvas, no animation library, no measurable weight.</li>
+  <li><strong>Palette is already yours</strong>: pine <code>#1D3A2E</code> ground, paper
+  fragments, sage lanes, ember for the one accent. Bitter for display, Karla for text.</li>
+  <li><strong>Mobile</strong>: fewer fragments, shorter travel, same settle. It must not become
+  a wall of overlapping cards on a phone.</li>
+  <li><strong>The hero must not block paint.</strong> Text and buttons render immediately; the
+  animation is decoration layered behind, so a slow connection still gets a working page.</li>
+</ul>
+
+<div class="foot">
+  Proposal only, nothing built yet. If the direction lands, I would build the hero first as a
+  standalone piece so you can judge the real thing before the rest of the page changes.
+</div>
+
+</div>
+
+<script>
+  const FRAGS = [
+    ['Text',       '"heater out in bathhouse 2"', 0],
+    ['Sticky',     'Cabin 12 window — order glass?', 0],
+    ['Voicemail',  'Kitchen walk-in at 46°F', 2],
+    ['Photo',      'roof drip, art barn', 0],
+    ['Spreadsheet','Cl 2.4 · pH 7.3 · 4:37pm', 1],
+    ['Clipboard',  'AM temp log — not filed', 2],
+    ['Whiteboard', 'Tufts Fri · 50pax · COI??', 3],
+    ['Email',      'invoice INV-2603 unpaid', 3],
+    ['Walkie',     '"who has the pool key"', 1],
+    ['Sticky',     'chlorine order — Tues?', 1],
+    ['Note',       'bus arrives 4pm not 2pm', 3],
+    ['Text',       '"cabin 7 needs mattress"', 0],
+  ];
+  const LANES = ['Facilities','Pool & waterfront','Commissary','Retreats'];
+  const stage = document.getElementById('stage');
+  let els = [], labels = [];
+
+  function build() {
+    els.forEach(e => e.remove()); labels.forEach(l => l.remove());
+    els = []; labels = [];
+    LANES.forEach((name, i) => {
+      const l = document.createElement('div');
+      l.className = 'lane-label';
+      l.textContent = name;
+      l.style.left = '52%';
+      l.style.top = (10 + i * 24.5) + '%';
+      stage.appendChild(l); labels.push(l);
+    });
+    FRAGS.forEach(([kind, text, lane]) => {
+      const d = document.createElement('div');
+      d.className = 'frag';
+      d.innerHTML = '<span class="k">' + kind + '</span>' + text;
+      d.dataset.lane = lane;
+      stage.appendChild(d); els.push(d);
+    });
+  }
+
+  function scatter() {
+    stage.classList.remove('settled');
+    els.forEach(d => {
+      const x = 2 + Math.random() * 42, y = 4 + Math.random() * 78;
+      d.style.left = x + '%';
+      d.style.top = y + '%';
+      d.style.transform = 'rotate(' + (Math.random() * 26 - 13) + 'deg)';
+      d.style.opacity = '1';
+    });
+  }
+
+  function settle() {
+    stage.classList.add('settled');
+    const perLane = [0, 0, 0, 0];
+    els.forEach(d => {
+      const lane = +d.dataset.lane;
+      const n = perLane[lane]++;
+      d.style.left = (56 + n * 11) + '%';
+      d.style.top = (11 + lane * 24.5) + '%';
+      d.style.transform = 'rotate(0deg) scale(.94)';
+    });
+  }
+
+  function run() {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    scatter();
+    if (reduced) { settle(); return; }
+    setTimeout(settle, 900);
+  }
+
+  build();
+  run();
+
+  // Hovering a lane label lifts that module and dims the rest.
+  stage.addEventListener('mouseover', (e) => {
+    const l = labels.indexOf(e.target);
+    if (l < 0) return;
+    els.forEach(d => { d.style.opacity = (+d.dataset.lane === l) ? '1' : '.28'; });
+  });
+  stage.addEventListener('mouseout', (e) => {
+    if (labels.indexOf(e.target) < 0) return;
+    els.forEach(d => { d.style.opacity = '1'; });
+  });
+</script>

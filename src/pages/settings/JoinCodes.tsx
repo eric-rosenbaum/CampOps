@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Copy, Check, Trash2, Plus } from 'lucide-react';
 import { useCampStore } from '@/store/campStore';
 import type { JoinCode, CampRole, Department } from '@/store/campStore';
+import { LoadingBlock } from '@/components/shared/ModuleLoading';
 
 const ROLE_LABELS: Record<CampRole, string> = {
   admin: 'Admin', staff: 'Staff', viewer: 'Viewer',
@@ -76,7 +77,7 @@ export function JoinCodes() {
   }
 
   if (loading) {
-    return <div className="p-7 text-[13px] text-ink-faint">Loading…</div>;
+    return <LoadingBlock size="sm" label="Loading join codes" className="p-10" />;
   }
 
   return (

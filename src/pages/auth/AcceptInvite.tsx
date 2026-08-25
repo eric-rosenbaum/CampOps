@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
 import { CampCommandMark } from '@/components/shared/CampCommandMark';
+import { CampLoader } from '@/components/shared/ModuleLoading';
 
 type Info = { email: string; campName: string; role: string };
 type Phase = 'loading' | 'invalid' | 'ready' | 'joining' | 'confirm-email' | 'done';
@@ -124,7 +125,7 @@ export function AcceptInvite() {
         <div className="bg-white rounded-xl border border-border shadow-sm p-8">
           {(phase === 'loading' || phase === 'joining') && (
             <div className="text-center py-2">
-              <div className="w-8 h-8 border-2 border-forest border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <CampLoader size="sm" className="mb-4" />
               <p className="text-[14px] font-medium text-forest">{phase === 'joining' ? 'Joining…' : 'Loading your invitation…'}</p>
             </div>
           )}

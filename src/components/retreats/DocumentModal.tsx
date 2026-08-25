@@ -5,6 +5,8 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { generateId } from '@/lib/utils';
 import type { RetreatDocument, RetreatDocType, RetreatDocStatus } from '@/lib/types';
 import { inputClass, labelClass } from './retreatUi';
+import { UploadProgressBar } from '@/components/shared/UploadProgressBar';
+import type { UploadStatus } from '@/lib/uploadProgress';
 
 const DOC_TYPE_OPTIONS: { value: RetreatDocType; label: string; defaultName: string }[] = [
   { value: 'agreement', label: 'Retreat agreement', defaultName: 'Retreat agreement' },
@@ -35,6 +37,8 @@ export function DocumentModal({ retreatId, docType, docId }: { retreatId: string
   const [dueDate, setDueDate] = useState(existing?.dueDate ?? '');
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<UploadStatus | null>(null);
 
   // COI structured meta.
   const em = (existing?.meta ?? {}) as Record<string, unknown>;
@@ -44,6 +48,15 @@ export function DocumentModal({ retreatId, docType, docId }: { retreatId: string
   const [additionalInsured, setAdditionalInsured] = useState(
     em.additionalInsured ? String(em.additionalInsured) : 'Pinecrest Summer Camp',
   );
+
+  // One agreement per retreat, matching the unique index in the database. Replacing means
+  // deleting the one on file first, which is deliberate: two agreements against one booking
+  // and nobody can say which one was signed.
+  const existingAgreement = docsFor(retreatId).find(
+    (d) => d.docType === 'agreement' && d.id !== existing?.id,
+  );
+  const agreementTaken = !!existingAgreement;
+  const blockedByAgreement = type === 'agreement' && agreementTaken;
 
   function handleTypeChange(v: RetreatDocType) {
     setType(v);
@@ -63,7 +76,7 @@ export function DocumentModal({ retreatId, docType, docId }: { retreatId: string
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || blockedByAgreement) return;
     const meta = coiMeta();
 
     if (existing) {
@@ -82,9 +95,21 @@ export function DocumentModal({ retreatId, docType, docId }: { retreatId: string
 
     if (file) {
       setBusy(true);
+      setUploadError(null);
+      setProgress({ stage: 'uploading', percent: 0, label: 'Uploading' });
       try {
-        await uploadDocument(file, retreatId, type, name.trim(), meta, dueDate || null);
+        await uploadDocument(file, retreatId, type, name.trim(), meta, dueDate || null, setProgress);
+        // Only reached once the file has been read back and the row confirmed, so closing
+        // here is a real promise that the document opens. Held for a beat first: a bar that
+        // jumps to 100% and vanishes in the same frame never actually shows completion, and
+        // the confirmation is the point of making the caller wait for it.
+        await new Promise((r) => setTimeout(r, 650));
         closeModal();
+      } catch (err) {
+        // The modal stays open on purpose. Closing it used to imply the document was saved
+        // when the file had not been stored at all.
+        setUploadError(err instanceof Error ? err.message : 'The upload did not complete. Try again.');
+        setProgress(null);
       } finally {
         setBusy(false);
       }
@@ -123,8 +148,24 @@ export function DocumentModal({ retreatId, docType, docId }: { retreatId: string
         <div>
           <label className={labelClass}>Document type</label>
           <select value={type} onChange={(e) => handleTypeChange(e.target.value as RetreatDocType)} className={inputClass}>
-            {DOC_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            {DOC_TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}{o.value === 'agreement' && agreementTaken ? ' (already on file)' : ''}
+              </option>
+            ))}
           </select>
+          {blockedByAgreement && (
+            <div className="mt-2 rounded-card border border-amber/30 bg-amber-bg px-3.5 py-3">
+              <p className="text-[12.5px] text-amber-text leading-relaxed">
+                This retreat already has a retreat agreement
+                {existingAgreement?.name ? ` ("${existingAgreement.name}")` : ''}. A booking can
+                only have one, so there is never a question about which copy was signed.
+              </p>
+              <p className="text-[11.5px] text-amber-text/80 mt-1.5">
+                Delete the one on file first if you need to replace it.
+              </p>
+            </div>
+          )}
         </div>
 
         <div>
@@ -139,7 +180,7 @@ export function DocumentModal({ retreatId, docType, docId }: { retreatId: string
             <input
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => { setFile(e.target.files?.[0] ?? null); setUploadError(null); }}
               className="w-full text-[12px] text-ink file:mr-3 file:rounded-btn file:border file:border-border file:bg-cream-dark file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-forest hover:file:bg-cream cursor-pointer"
             />
             <p className="text-[11px] text-ink-faint mt-1">
@@ -188,9 +229,23 @@ export function DocumentModal({ retreatId, docType, docId }: { retreatId: string
           <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
         </div>
 
+        {progress && !uploadError && <UploadProgressBar status={progress} fileName={file?.name} />}
+
+        {uploadError && (
+          <div className="rounded-card border border-red/30 bg-red-bg px-3.5 py-3">
+            <p className="text-[12.5px] text-red-text leading-relaxed">{uploadError}</p>
+            <p className="text-[11.5px] text-red-text/75 mt-1">
+              Nothing was added to this retreat. Choose the file again to retry.
+            </p>
+          </div>
+        )}
+
         <div className="flex gap-2 pt-1">
-          <Button type="submit" disabled={busy} className="flex-1 justify-center">
-            {busy ? 'Uploading…' : existing ? 'Save changes' : file ? 'Upload document' : 'Add document'}
+          <Button type="submit" disabled={busy || blockedByAgreement} className="flex-1 justify-center">
+            {busy ? (progress?.label ?? 'Uploading') + '…'
+              : existing ? 'Save changes'
+              : file ? (uploadError ? 'Try again' : 'Upload document')
+              : 'Add document'}
           </Button>
           {existing && <Button type="button" variant="ghost" className="text-red hover:bg-red-bg" onClick={handleDelete}>Delete</Button>}
           <Button type="button" variant="ghost" onClick={closeModal}>Cancel</Button>

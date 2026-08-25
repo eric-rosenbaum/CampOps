@@ -93,6 +93,9 @@ export interface PortalRetreat {
   final_headcount: number | null;
   final_headcount_at: string | null;
   final_headcount_by: string | null;
+  /** The group's own "we're finished" on rooming. The camp's approval is housing[].locked. */
+  housing_submitted_at: string | null;
+  housing_submitted_by: string | null;
   total_charges: number | null;
   total_paid: number | null;
   balance_due: number | null;
@@ -159,8 +162,12 @@ export interface PortalChangeRequest {
   kind: string;
   body: string;
   status: string;
+  /** 'camp' means the camp asked and this group owes the answer. */
+  origin: 'guest' | 'camp';
+  submitted_by: string | null;
   submitted_at: string | null;
   response_message: string | null;
+  responded_by: string | null;
   responded_at: string | null;
 }
 
@@ -173,6 +180,8 @@ export interface PortalInvoice {
   due_date: string | null;
   status: string;
   line_items: { description: string; amount: number }[];
+  discount: number | null;
+  discount_note: string | null;
   issued_at: string;
 }
 
@@ -282,4 +291,37 @@ export function looksLastFirst(raw: string): boolean {
   const distinct = new Set(pairs.map((p) => p.toLowerCase())).size;
   const singleWord = pairs.filter((p) => !p.includes(' ')).length;
   return distinct / pairs.length > 0.8 && singleWord / pairs.length > 0.8;
+}
+
+// ─── Upload with progress ────────────────────────────────────────────────────
+/**
+ * POST JSON to an edge function and report how much of the body has gone out.
+ *
+ * `functions.invoke` uses fetch, which cannot report request progress, and a guest uploading a
+ * COI over a phone connection deserves better than a spinner. The payload is base64 (a third
+ * larger than the file), so the wait is real and worth drawing.
+ */
+export function portalFnPost<T>(
+  fn: string,
+  body: unknown,
+  onProgress?: (fraction: number) => void,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${SUPABASE_URL}/functions/v1/${fn}`, true);
+    Object.entries(portalFnHeaders()).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+    });
+    xhr.onload = () => {
+      let parsed: unknown = null;
+      try { parsed = JSON.parse(xhr.responseText); } catch { /* non-JSON error page */ }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(parsed as T);
+      else reject(new Error((parsed as { error?: string })?.error ?? `Upload failed (${xhr.status})`));
+    };
+    xhr.onerror = () => reject(new Error('The connection dropped during the upload.'));
+    xhr.ontimeout = () => reject(new Error('The upload timed out.'));
+    xhr.send(JSON.stringify(body));
+  });
 }

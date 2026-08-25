@@ -8,11 +8,21 @@ import type { Retreat, CampLocation, RetreatHousing, RetreatGuest } from '@/lib/
 import { fmtDate, fmtDateFull } from './retreatUi';
 import { BuildingAccordion, type BuildingVM } from '@/components/rooming/BuildingAccordion';
 
-type Phase = 1 | 2 | 3;
+/**
+ * 1 nothing yet · 2 the group is still working · 2.5 the group says they are done · 3 the camp
+ * has locked it.
+ *
+ * The middle state is the point of this. "Some rooms have people in them" and "the coordinator
+ * considers this finished" look identical from the camp's side otherwise, so the camp either
+ * chased them or assumed. The group's sign-off is theirs to give and does not lock anything:
+ * approving and locking is still the camp's call.
+ */
+type Phase = 1 | 2 | 25 | 3;
 
-function derivePhase(rows: RetreatHousing[]): Phase {
+function derivePhase(rows: RetreatHousing[], submittedAt: string | null | undefined): Phase {
+  if (rows.length > 0 && rows.every((h) => h.locked)) return 3;
+  if (submittedAt) return 25;
   if (rows.length === 0) return 1;
-  if (rows.every((h) => h.locked)) return 3;
   return 2;
 }
 
@@ -162,7 +172,7 @@ export function HousingTab() {
     };
   }).filter((b) => b.rooms.length > 0);
 
-  const phase = derivePhase(rows);
+  const phase = derivePhase(rows, retreat?.housingSubmittedAt);
   const allLocked = phase === 3;
   const assigned = rows.reduce((sum, h) => sum + h.peopleCount, 0);
 
@@ -180,6 +190,14 @@ export function HousingTab() {
       title: 'text-amber-text', body: 'text-amber-text',
       titleText: 'Phase 2, Housing in progress',
       bodyText: 'Assignments are being built. Review each cabin, then lock the plan to finalize it and snapshot a version the group can rely on.',
+    },
+    25: {
+      wrap: 'bg-sage-pale border-sage/50',
+      title: 'text-forest', body: 'text-forest/80',
+      titleText: 'The group says their rooming is complete',
+      bodyText: retreat?.housingSubmittedAt
+        ? `${retreat.housingSubmittedBy ?? 'The coordinator'} marked it complete on ${fmtDateFull(retreat.housingSubmittedAt.slice(0, 10))}. Review it and lock the plan when you are happy. They can still reopen it until you do.`
+        : 'Review it and lock the plan when you are happy.',
     },
     3: {
       wrap: 'bg-green-muted-bg border-sage/40',

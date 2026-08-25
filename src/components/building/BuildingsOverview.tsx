@@ -49,6 +49,12 @@ function BuildingCard({ building }: { building: CampLocation }) {
         {flagged > 0 && <span className="ml-auto text-amber-text font-medium">{flagged} flagged</span>}
       </div>
 
+      {rooms.length === 0 && (
+        <p className="text-meta text-ink-soft bg-cream-dark/60 rounded-tag px-2 py-1.5 mb-2">
+          No rooms yet. Add them under Camp Info to map systems room by room.
+        </p>
+      )}
+
       {refs.length > 0 ? (
         <div className="mt-auto pt-2 border-t border-border/60 space-y-1">
           {refs.map((r) => (

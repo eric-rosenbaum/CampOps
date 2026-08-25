@@ -48,3 +48,26 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Loading ─────────────────────────────────────────────────────────────────
+   The app's one loading treatment: the CampCommand mark breathing inside a
+   sweeping ring. Defined here rather than in the component so every loader on
+   the page shares one set of keyframes and stays in step with the others. */
+@keyframes cc-loading-spin { to { transform: rotate(360deg); } }
+@keyframes cc-loading-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+@keyframes cc-loading-fade {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.cc-loading-sweep { animation: cc-loading-spin 1.9s linear infinite; transform-origin: 50% 50%; }
+.cc-loading-breathe { display: inline-block; animation: cc-loading-breathe 2.4s ease-in-out infinite; }
+.cc-loading-shimmer { animation: cc-loading-fade 1.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-loading-sweep,
+  .cc-loading-breathe,
+  .cc-loading-shimmer { animation: none; }
+}

@@ -1172,6 +1172,9 @@ export interface Retreat {
   finalHeadcount: number | null;
   finalHeadcountAt: string | null;
   finalHeadcountBy: string | null;
+  /** The group said their rooming is finished. Their sign-off, not the camp's approval. */
+  housingSubmittedAt: string | null;
+  housingSubmittedBy: string | null;
   /** Aggregate counts, e.g. { vegetarian: 4, gluten_free: 2, kosher: 0, nut_allergy: 1 }. */
   dietaryFlags: Record<string, number> | null;
   notes: string | null;
@@ -1287,10 +1290,14 @@ export interface RetreatMeal {
 export type RetreatRequestKind = 'housing' | 'menu' | 'headcount' | 'other';
 export type RetreatRequestStatus = 'pending' | 'approved' | 'declined' | 'countered';
 
+/** Who started the thread. 'camp' requests are answered by the group in the portal. */
+export type RetreatRequestOrigin = 'guest' | 'camp';
+
 export interface RetreatChangeRequest {
   id: string;
   campId: string;
   retreatId: string;
+  origin: RetreatRequestOrigin;
   kind: RetreatRequestKind;
   submittedBy: string | null;
   submittedAt: string;
@@ -1358,6 +1365,9 @@ export interface RetreatInvoice {
   note: string | null;
   dueDate: string | null;
   status: RetreatInvoiceStatus;
+  /** Subtracted from the line total. `amount` is already net of it. */
+  discount: number;
+  discountNote: string | null;
   /** Snapshot of the billed lines at issue time (immutable). */
   lineItems: RetreatInvoiceLine[];
   issuedAt: string;

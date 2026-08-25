@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { uploadToBucket } from './storageUpload';
 import { createClient } from '@supabase/supabase-js';
 import { campLog, campError } from './campLog';
 import { loadAndApply, debounce, WAL_DEBOUNCE_MS } from './syncGuard';
@@ -312,11 +313,10 @@ const PHOTO_BUCKET = 'issue-photos';
 
 export async function dbUploadPhoto(file: File, issueId: string): Promise<string | null> {
   const path = `${_campId}/${issueId}-${Date.now()}`;
-  const { error } = await supabase.storage
-    .from(PHOTO_BUCKET)
-    .upload(path, file, { contentType: file.type });
-  if (error) {
-    console.error('[Supabase] Photo upload error:', error.message);
+  try {
+    await uploadToBucket(supabase, PHOTO_BUCKET, path, file);
+  } catch (err) {
+    console.error('[Supabase] Photo upload error:', err instanceof Error ? err.message : err);
     return null;
   }
   const { data } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
@@ -336,11 +336,10 @@ const PUBLIC_REPORT_BUCKET = 'public-report-photos';
 
 export async function dbUploadPublicReportPhoto(file: File, campId: string, issueId: string): Promise<string | null> {
   const path = `${campId}/${issueId}-${Date.now()}`;
-  const { error } = await supabasePublic.storage
-    .from(PUBLIC_REPORT_BUCKET)
-    .upload(path, file, { contentType: file.type });
-  if (error) {
-    console.error('[Supabase] Public report photo upload error:', error.message);
+  try {
+    await uploadToBucket(supabasePublic, PUBLIC_REPORT_BUCKET, path, file);
+  } catch (err) {
+    console.error('[Supabase] Public report photo upload error:', err instanceof Error ? err.message : err);
     return null;
   }
   const { data } = supabasePublic.storage.from(PUBLIC_REPORT_BUCKET).getPublicUrl(path);
@@ -3146,9 +3145,12 @@ export async function dbUploadCommissaryFile(file: File, sessionId: string | nul
   const id = crypto.randomUUID();
   const safeName = file.name.replace(/[^\w.-]+/g, '_');
   const path = `${_campId}/${id}-${safeName}`;
-  const { error: upErr } = await supabase.storage.from(COMMISSARY_FILE_BUCKET)
-    .upload(path, file, { contentType: file.type || 'application/octet-stream' });
-  if (upErr) { console.error('dbUploadCommissaryFile upload error:', upErr.message); return null; }
+  try {
+    await uploadToBucket(supabase, COMMISSARY_FILE_BUCKET, path, file);
+  } catch (err) {
+    console.error('dbUploadCommissaryFile upload error:', err instanceof Error ? err.message : err);
+    return null;
+  }
 
   const row = {
     id, camp_id: _campId, session_id: sessionId, name: file.name, path,

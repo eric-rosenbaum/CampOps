@@ -3,20 +3,26 @@ import { useLocationStore } from '@/store/locationStore';
 import type { CampLocation, BuildingDetail } from '@/lib/types';
 
 // The Building Systems module composes its "buildings" from the unified locations
-// tree: a building is a top-level location that also has a building_details row;
-// its rooms are that location's child nodes. These hooks/selectors bridge the
-// locationStore into the building UI.
+// tree: a building is a top-level location and its rooms are that location's child
+// nodes. These hooks/selectors bridge the locationStore into the building UI.
 
-/** Top-level locations that have a building_details row. The buildings list. */
+/**
+ * Every building the camp has, which means every top-level location.
+ *
+ * This used to also require a `building_details` row, which made the module quietly lie: a
+ * building added under Camp Info showed up everywhere else in the app but was missing here,
+ * rooms and all, until somebody happened to record a shutoff location against it. Camp Info
+ * owns the list of buildings; `building_details` is the systems metadata hung off one, so it
+ * describes a building rather than deciding whether there is one.
+ */
 export function useBuildings(): CampLocation[] {
   const locations = useLocationStore((s) => s.locations);
-  const buildingDetails = useLocationStore((s) => s.buildingDetails);
-  return useMemo(() => {
-    const structureIds = new Set(buildingDetails.map((b) => b.locationId));
-    return locations
-      .filter((l) => l.parentId == null && structureIds.has(l.id))
-      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
-  }, [locations, buildingDetails]);
+  return useMemo(
+    () => locations
+      .filter((l) => l.parentId == null && l.isActive)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
+    [locations],
+  );
 }
 
 /** A building's rooms = its child location nodes. */

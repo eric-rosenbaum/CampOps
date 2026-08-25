@@ -3,6 +3,8 @@
 // to token-keyed RPCs from its own anon client (see pages/portal). Low data volume per
 // camp, so a single realtime channel + one loader covers the whole module.
 import { supabase } from './supabase';
+import { uploadToBucket, verifyReadable } from './storageUpload';
+import type { UploadProgress } from './uploadProgress';
 import { campLog, campError } from './campLog';
 import { getCampId, assertLoaded } from './db';
 import { loadAndApply, debounce, WAL_DEBOUNCE_MS } from './syncGuard';
@@ -33,6 +35,7 @@ export function rowToRetreat(r: Row): Retreat {
     status: (r.status as Retreat['status']) ?? 'inquiry',
     housingDeadline: s(r.housing_deadline), headcountCutoff: s(r.headcount_cutoff),
     finalHeadcount: n(r.final_headcount), finalHeadcountAt: s(r.final_headcount_at), finalHeadcountBy: s(r.final_headcount_by),
+    housingSubmittedAt: s(r.housing_submitted_at), housingSubmittedBy: s(r.housing_submitted_by),
     dietaryFlags: (r.dietary_flags as Record<string, number>) ?? null,
     notes: s(r.notes), portalToken: r.portal_token as string,
     menuPublished: Boolean(r.menu_published), changeRequestsEnabled: Boolean(r.change_requests_enabled),
@@ -62,7 +65,7 @@ function rowToMeal(r: Row): RetreatMeal {
   return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, dayDate: r.day_date as string, mealPeriod: (r.meal_period as MealPeriod) ?? 'breakfast', name: s(r.name), items: s(r.items), allergens: (r.allergens as string[]) ?? [], alternatives: s(r.alternatives), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
 }
 function rowToChangeRequest(r: Row): RetreatChangeRequest {
-  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, kind: (r.kind as RetreatChangeRequest['kind']) ?? 'other', submittedBy: s(r.submitted_by), submittedAt: r.submitted_at as string, body: r.body as string, status: (r.status as RetreatChangeRequest['status']) ?? 'pending', responseMessage: s(r.response_message), internalNote: s(r.internal_note), respondedBy: s(r.responded_by), respondedAt: s(r.responded_at), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, origin: (r.origin as RetreatChangeRequest['origin']) ?? 'guest', kind: (r.kind as RetreatChangeRequest['kind']) ?? 'other', submittedBy: s(r.submitted_by), submittedAt: r.submitted_at as string, body: r.body as string, status: (r.status as RetreatChangeRequest['status']) ?? 'pending', responseMessage: s(r.response_message), internalNote: s(r.internal_note), respondedBy: s(r.responded_by), respondedAt: s(r.responded_at), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
 }
 function rowToCost(r: Row): RetreatCost {
   return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, category: r.category as string, budgeted: Number(r.budgeted ?? 0), actual: n(r.actual), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
@@ -94,6 +97,7 @@ function rowToInvoice(r: Row): RetreatInvoice {
     kind: (r.kind as RetreatInvoice['kind']) ?? 'balance', number: r.number as string,
     amount: Number(r.amount ?? 0), note: s(r.note), dueDate: s(r.due_date),
     status: (r.status as RetreatInvoice['status']) ?? 'sent',
+    discount: Number(r.discount ?? 0), discountNote: s(r.discount_note),
     lineItems: Array.isArray(r.line_items) ? (r.line_items as RetreatInvoiceLine[]) : [],
     issuedAt: (r.issued_at as string) ?? (r.created_at as string), createdBy: s(r.created_by),
     createdAt: r.created_at as string, updatedAt: r.updated_at as string,
@@ -200,6 +204,7 @@ export function retreatToRow(r: Retreat): Row {
     coordinator_name: r.coordinatorName, coordinator_email: r.coordinatorEmail, coordinator_phone: r.coordinatorPhone,
     status: r.status, housing_deadline: r.housingDeadline, headcount_cutoff: r.headcountCutoff,
     final_headcount: r.finalHeadcount, final_headcount_at: r.finalHeadcountAt, final_headcount_by: r.finalHeadcountBy,
+    housing_submitted_at: r.housingSubmittedAt, housing_submitted_by: r.housingSubmittedBy,
     dietary_flags: r.dietaryFlags, notes: r.notes, portal_token: r.portalToken,
     menu_published: r.menuPublished, change_requests_enabled: r.changeRequestsEnabled, feedback_opens: r.feedbackOpens,
     created_at: r.createdAt, updated_at: r.updatedAt,
@@ -240,7 +245,7 @@ export const dbAddMeal = (x: RetreatMeal) => ins('retreat_meals', { id: x.id, ca
 export const dbUpdateMeal = (x: RetreatMeal) => upd('retreat_meals', x.id, { day_date: x.dayDate, meal_period: x.mealPeriod, name: x.name, items: x.items, allergens: x.allergens, alternatives: x.alternatives, sort_order: x.sortOrder });
 export const dbDeleteMeal = (id: string) => del('retreat_meals', id);
 
-export const dbAddChangeRequest = (x: RetreatChangeRequest) => ins('retreat_change_requests', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, kind: x.kind, submitted_by: x.submittedBy, submitted_at: x.submittedAt, body: x.body, status: x.status, response_message: x.responseMessage, internal_note: x.internalNote, responded_by: x.respondedBy, responded_at: x.respondedAt, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbAddChangeRequest = (x: RetreatChangeRequest) => ins('retreat_change_requests', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, origin: x.origin, kind: x.kind, submitted_by: x.submittedBy, submitted_at: x.submittedAt, body: x.body, status: x.status, response_message: x.responseMessage, internal_note: x.internalNote, responded_by: x.respondedBy, responded_at: x.respondedAt, created_at: x.createdAt, updated_at: x.updatedAt });
 export const dbUpdateChangeRequest = (x: RetreatChangeRequest) => upd('retreat_change_requests', x.id, { kind: x.kind, body: x.body, status: x.status, response_message: x.responseMessage, internal_note: x.internalNote, responded_by: x.respondedBy, responded_at: x.respondedAt });
 
 export const dbAddCost = (x: RetreatCost) => ins('retreat_costs', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, category: x.category, budgeted: x.budgeted, actual: x.actual, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
@@ -273,16 +278,36 @@ export const dbDeleteFeedback = (id: string) => del('retreat_feedback', id);
 
 export const dbAddReminder = (x: RetreatReminder) => ins('retreat_reminders', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, reminder_type: x.reminderType, message: x.message, sent_by: x.sentBy, sent_at: x.sentAt });
 
-export const dbAddInvoice = (x: RetreatInvoice) => ins('retreat_invoices', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, kind: x.kind, number: x.number, amount: x.amount, note: x.note, due_date: x.dueDate, status: x.status, line_items: x.lineItems, issued_at: x.issuedAt, created_by: x.createdBy, created_at: x.createdAt, updated_at: x.updatedAt });
-export const dbUpdateInvoice = (x: RetreatInvoice) => upd('retreat_invoices', x.id, { kind: x.kind, number: x.number, amount: x.amount, note: x.note, due_date: x.dueDate, status: x.status, line_items: x.lineItems });
+export const dbAddInvoice = (x: RetreatInvoice) => ins('retreat_invoices', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, kind: x.kind, number: x.number, amount: x.amount, note: x.note, due_date: x.dueDate, status: x.status, discount: x.discount, discount_note: x.discountNote, line_items: x.lineItems, issued_at: x.issuedAt, created_by: x.createdBy, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbUpdateInvoice = (x: RetreatInvoice) => upd('retreat_invoices', x.id, { kind: x.kind, number: x.number, amount: x.amount, note: x.note, due_date: x.dueDate, status: x.status, discount: x.discount, discount_note: x.discountNote, line_items: x.lineItems });
 export const dbDeleteInvoice = (id: string) => del('retreat_invoices', id);
 
 // ─── Document storage (private bucket, signed URLs) ──────────────────────────
-export async function dbUploadRetreatDocument(file: File, retreatId: string): Promise<string | null> {
+const DOC_BUCKET = 'retreat-documents';
+
+/** Throws UploadError if the file did not store. Never returns a path for a failed upload. */
+export async function dbUploadRetreatDocument(
+  file: File, retreatId: string, onProgress?: UploadProgress,
+): Promise<string> {
   const path = `${CID()}/${retreatId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-  const { error } = await supabase.storage.from('retreat-documents').upload(path, file);
-  if (error) { campError('upload retreat doc', error.message); return null; }
-  return path;
+  return uploadToBucket(supabase, DOC_BUCKET, path, file, onProgress);
+}
+
+/** Can this document be opened? Signs it and reads a byte back, exactly as a viewer would. */
+export const dbVerifyRetreatDocument = (path: string) => verifyReadable(supabase, DOC_BUCKET, path);
+
+/**
+ * Read the stored row back and confirm it points at the file.
+ *
+ * The optimistic row in the store proves nothing about what the database holds. This is what
+ * closes the loop between "we sent an insert" and "a document exists that anyone else loading
+ * this retreat will also see".
+ */
+export async function dbConfirmDocumentStored(id: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('retreat_documents').select('id, file_path').eq('id', id).maybeSingle();
+  if (error) { campError('confirm document stored', error.message); return false; }
+  return !!data?.file_path;
 }
 export async function dbSignRetreatDocument(path: string): Promise<string | null> {
   const { data, error } = await supabase.storage.from('retreat-documents').createSignedUrl(path, 60 * 30);

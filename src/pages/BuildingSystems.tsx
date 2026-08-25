@@ -1,4 +1,5 @@
 import { Building2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Topbar } from '@/components/layout/Topbar';
 import { Button } from '@/components/shared/Button';
 import { useBuildingStore, type BuildingTab } from '@/store/buildingStore';
@@ -7,7 +8,6 @@ import { BuildingsOverview } from '@/components/building/BuildingsOverview';
 import { BuildingDetail } from '@/components/building/BuildingDetail';
 import { ElectricalTab } from '@/components/building/ElectricalTab';
 import { PlumbingTab } from '@/components/building/PlumbingTab';
-import { AddEditBuildingModal } from '@/components/building/AddEditBuildingModal';
 import { AddEditRoomModal } from '@/components/building/AddEditRoomModal';
 import { AddEditComponentModal } from '@/components/building/AddEditComponentModal';
 import { AddEditCircuitModal } from '@/components/building/AddEditCircuitModal';
@@ -23,7 +23,7 @@ const TABS: { id: BuildingTab; label: string }[] = [
 export function BuildingSystems() {
   const {
     activeTab, activeBuildingId,
-    setActiveTab, setActiveBuilding, openModal, modal,
+    setActiveTab, setActiveBuilding, modal,
   } = useBuildingStore();
   const buildings = useBuildings();
   const { can } = useAuth();
@@ -33,15 +33,9 @@ export function BuildingSystems() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <Topbar
-        title="Building Systems"
-        subtitle={subtitle}
-        actions={
-          canManage && activeTab === 'buildings' && !activeBuildingId ? (
-            <Button size="sm" onClick={() => openModal({ kind: 'building' })}>+ Add building</Button>
-          ) : undefined
-        }
-      />
+      {/* No "add building" here on purpose: Camp Info owns the location tree, and a second
+          place to create one produced buildings that only half the app agreed existed. */}
+      <Topbar title="Building Systems" subtitle={subtitle} />
 
       {/* Tab strip */}
       <div className="bg-paper-raised border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto overflow-y-hidden no-scrollbar">
@@ -72,11 +66,14 @@ export function BuildingSystems() {
               </div>
               <h3 className="text-[15px] font-semibold text-forest mb-1.5">No buildings yet</h3>
               <p className="text-[13px] text-ink-soft leading-relaxed mb-4">
-                Add your cabins, bathhouses, dining hall and utility buildings, then map their
-                electrical and plumbing (outlets, panels, shutoffs and more) room by room.
+                Buildings come from your camp's locations. Add your cabins, bathhouses, dining
+                hall and utility buildings under Camp Info, then map their electrical and
+                plumbing room by room here.
               </p>
               {canManage && (
-                <Button size="sm" onClick={() => openModal({ kind: 'building' })}>+ Add your first building</Button>
+                <Link to="/settings">
+                  <Button size="sm">Go to Camp Info</Button>
+                </Link>
               )}
             </div>
           </div>
@@ -91,7 +88,6 @@ export function BuildingSystems() {
       </div>
 
       {/* Modals */}
-      {modal?.kind === 'building' && <AddEditBuildingModal editId={modal.editId} />}
       {modal?.kind === 'room' && <AddEditRoomModal buildingId={modal.buildingId} editId={modal.editId} />}
       {modal?.kind === 'component' && (
         <AddEditComponentModal

@@ -5,6 +5,7 @@
 // bucket, and a metadata row so the camp can see a receipt of everything they've sent.
 // There is deliberately no delete here. Uploads are permanent (see the migration).
 import { supabase } from './supabase';
+import { uploadToBucket } from './storageUpload';
 import { campError } from './campLog';
 import { getCampId } from './db';
 import type { ImplementationFile, ImplementationCategory } from './types';
@@ -54,9 +55,12 @@ export async function dbUploadImplementationFile(
   const safeName = file.name.replace(/[^\w.-]+/g, '_');
   const path = `${campId}/${category}/${id}-${safeName}`;
 
-  const { error: upErr } = await supabase.storage.from(BUCKET)
-    .upload(path, file, { contentType: file.type || 'application/octet-stream' });
-  if (upErr) { campError('upload implementation file', upErr.message); return null; }
+  try {
+    await uploadToBucket(supabase, BUCKET, path, file);
+  } catch (err) {
+    campError('upload implementation file', err instanceof Error ? err.message : String(err));
+    return null;
+  }
 
   const { data, error } = await supabase.from('implementation_files').insert({
     id, camp_id: campId, category, name: file.name, path,

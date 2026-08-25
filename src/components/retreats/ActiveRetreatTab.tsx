@@ -79,7 +79,7 @@ export function ActiveRetreatTab() {
         <div className="min-w-0">
           <p className="text-[20px] font-semibold">{r.groupName}</p>
           <p className="text-[12px] text-sage-light mt-1">
-            {fmtRange(r.arrivalDate, r.departureDate)} · {r.headcount} people · {GROUP_TYPE_LABELS[r.groupType] ?? r.groupType}
+            {fmtRange(r.arrivalDate, r.departureDate)} · {r.finalHeadcount ?? r.headcount} people · {GROUP_TYPE_LABELS[r.groupType] ?? r.groupType}
             {spaces ? ` · ${spaces}` : ''}
           </p>
           {canManage && (
@@ -120,7 +120,31 @@ export function ActiveRetreatTab() {
             )}
           </div>
           <Row k="Coordinator" v={r.coordinatorName ? `${r.coordinatorName}${r.coordinatorPhone ? ` · ${r.coordinatorPhone}` : ''}` : '-'} />
-          <Row k="Total headcount" v={`${r.headcount} confirmed`} />
+          {/* The estimate booked the retreat; the confirmed number is what the group submits in
+              the portal. This row read `headcount` and labelled it "confirmed", so a headcount
+              the coordinator had already confirmed never appeared here. */}
+          <Row
+            k="Total headcount"
+            v={r.finalHeadcount != null ? (
+              <span>
+                <span className="font-semibold text-forest">{r.finalHeadcount} confirmed</span>
+                {r.finalHeadcount !== r.headcount && (
+                  <span className="text-ink-faint"> · {r.headcount} estimated</span>
+                )}
+              </span>
+            ) : (
+              <span>
+                {r.headcount} estimated
+                <span className="text-ink-faint"> · not yet confirmed by the group</span>
+              </span>
+            )}
+          />
+          {r.finalHeadcount != null && (r.finalHeadcountBy || r.finalHeadcountAt) && (
+            <Row
+              k="Confirmed by"
+              v={`${r.finalHeadcountBy ?? 'the group'}${r.finalHeadcountAt ? ` · ${fmtDate(r.finalHeadcountAt.slice(0, 10))}` : ''}`}
+            />
+          )}
           <Row k="Subgroups" v={subgroups || '-'} />
           <Row k="Dietary flags" v={dietary || 'None flagged'} />
           {r.coordinatorEmail && <Row k="Email" v={r.coordinatorEmail} />}

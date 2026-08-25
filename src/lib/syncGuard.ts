@@ -94,11 +94,61 @@ export async function loadAndApply<T>(
 ): Promise<boolean> {
   await awaitWriteQuiet();
   const token = beginSnapshot(domain);
-  const data = await load();
-  if (data == null) return false;
-  if (!shouldApplySnapshot(domain, token)) return false;
-  apply(data);
-  return true;
+  try {
+    const data = await load();
+    if (data == null) return false;
+    if (!shouldApplySnapshot(domain, token)) return false;
+    apply(data);
+    return true;
+  } finally {
+    // In `finally` on purpose: a domain that failed to load has still been looked at, and a
+    // module stuck on a loading screen forever is worse than one showing an empty list.
+    markHydrated(domain);
+  }
+}
+
+// ─── First-load tracking ─────────────────────────────────────────────────────
+// Separate from snapshot ordering above, and answering a different question: not "is this
+// data the newest" but "have we looked at all yet".
+//
+// Without it every module renders its empty state during the first second after a refresh,
+// and an empty state is an assertion: "no retreats", "no issues", "nothing overdue". It reads
+// as settled rather than pending, which makes it the version people believe. Tracked here
+// because `loadAndApply` is the one place every module's first read passes through, so no
+// store needs its own flag and none of them can forget to clear it.
+
+const _hydrated = new Set<string>();
+const _hydrationListeners = new Set<() => void>();
+
+function notifyHydration() {
+  for (const listener of _hydrationListeners) listener();
+}
+
+/**
+ * Record that a domain has been looked at. Called when a load *settles*, not when it
+ * succeeds: a failed load leaves the module showing its empty state, which is wrong but
+ * recoverable, where leaving it loading forever is a dead page.
+ */
+export function markHydrated(domain: string): void {
+  if (_hydrated.has(domain)) return;
+  _hydrated.add(domain);
+  notifyHydration();
+}
+
+export function isHydrated(domain: string): boolean {
+  return _hydrated.has(domain);
+}
+
+/** Changing camp means nothing has been looked at yet, whatever the last camp had loaded. */
+export function resetHydration(): void {
+  if (_hydrated.size === 0) return;
+  _hydrated.clear();
+  notifyHydration();
+}
+
+export function subscribeHydration(listener: () => void): () => void {
+  _hydrationListeners.add(listener);
+  return () => { _hydrationListeners.delete(listener); };
 }
 
 /**

@@ -157,7 +157,7 @@ export const PHASE_HINTS: Record<(typeof PHASE_KEYS)[number], Record<PhaseState,
   },
   housing: {
     locked: 'Nobody is in a room yet. Add the guest list, then place people.',
-    active: 'Assignments are being built. Use "Lock housing" to finalise the plan and tick this off.',
+    active: 'Assignments are being built. The Housing tab says whether the group has marked theirs complete. Use "Lock housing" to finalise the plan and tick this off.',
     done: 'Housing is locked and final.',
   },
   menu: {

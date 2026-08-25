@@ -68,7 +68,9 @@ import {
   type AssetData, type BuildingData,
 } from '@/lib/db';
 import { startSupabaseHeartbeat, installWriteDebugHooks } from '@/lib/supabase';
-import { awaitWriteQuiet, beginSnapshot, shouldApplySnapshot, loadAndApply } from '@/lib/syncGuard';
+import { awaitWriteQuiet, beginSnapshot, shouldApplySnapshot, loadAndApply, markHydrated, resetHydration } from '@/lib/syncGuard';
+import { useHydrated } from '@/lib/useHydrated';
+import { ModuleLoading } from '@/components/shared/ModuleLoading';
 import { campLog } from '@/lib/campLog';
 import { useIssuesStore, startIssueWriteQueue } from '@/store/issuesStore';
 import { useChecklistStore } from '@/store/checklistStore';
@@ -96,6 +98,32 @@ function HomeRouter() {
 //    (possibly stale) session. Marketing is a public surface and must never route into the app,
 //    otherwise a leftover session bounces "/" → /home → (HostGuard) → app → /login.
 //  • Dev / preview (localhost, *.vercel.app): behave like a single domain.
+/** Commissary is assembled from six independent loads; it is only whole when all six land. */
+const COMMISSARY_DOMAINS = [
+  'commissary-inventory', 'commissary-catalog', 'commissary-menu',
+  'commissary-orders', 'commissary-production', 'commissary-allergy',
+];
+
+/**
+ * Hold a module on the loading screen until its data has been looked at.
+ *
+ * The alternative is what every page did before: render against empty arrays for the second
+ * or two after a refresh. That is not a slower version of the right answer, it is briefly the
+ * wrong one, and "No issues", "No retreats yet", "Nothing overdue" all look settled enough to
+ * be believed. Someone glancing at the page during that second walks away misinformed.
+ */
+function Gate({ of, label, children }: { of: string[]; label: string; children: React.ReactNode }) {
+  const ready = useHydrated(...of);
+  if (!ready) {
+    return (
+      <div className="flex flex-col h-full min-h-0">
+        <ModuleLoading label={label} />
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
 function LandingOrHome() {
   const { session, isLoading } = useAuthStore();
   const host = typeof window !== 'undefined' ? window.location.hostname : '';
@@ -134,6 +162,8 @@ function CampDataLoader() {
 
   useEffect(() => {
     if (!campId) return;
+    // Nothing has been looked at for this camp yet, whatever the previous one had loaded.
+    resetHydration();
     let unsubIssues: (() => void) | null = null;
     let unsubTasks: (() => void) | null = null;
     let unsubPool: (() => void) | null = null;
@@ -291,7 +321,14 @@ function CampDataLoader() {
       return applied;
     };
 
-    loadIssuesAndTasks();
+    // This loader hand-rolls the snapshot dance instead of going through loadAndApply, so it
+    // has to report its own first load. Marked whatever the outcome, same rule as in there.
+    const loadIssuesAndTasksTracked = () => loadIssuesAndTasks().finally(() => {
+      markHydrated('issues');
+      markHydrated('tasks');
+    });
+
+    loadIssuesAndTasksTracked();
     loadAndApply('pool', () => loadPoolFromSupabase(campId), applyPool);
     loadAndApply('safety', () => loadSafetyFromSupabase(campId), applySafety);
     loadAndApply('assets', () => loadAssetsFromSupabase(campId), applyAssets);
@@ -498,16 +535,19 @@ export default function App() {
             {/* Authenticated + camp required */}
             <Route element={<CampRoute />}>
               <Route element={<><CampDataLoader /><Layout /></>}>
-                <Route path="/home" element={<HomeRouter />} />
-                <Route path="/my-tasks" element={<MyTasks />} />
-                <Route path="/issues" element={<IssuesRepairs />} />
-                <Route path="/pre-post" element={<PrePostCamp />} />
-                <Route path="/pool" element={<PoolManagement />} />
-                <Route path="/safety" element={<SafetyCompliance />} />
-                <Route path="/assets" element={<AssetVehicles />} />
-                <Route path="/building" element={<BuildingSystems />} />
-                <Route path="/commissary" element={<Commissary />} />
-                <Route path="/retreats" element={<Retreats />} />
+                {/* Each module waits for its own data before rendering. Gating here rather
+                    than inside every page keeps it to one list and out of the pages' hook
+                    order. See <Gate> for why an empty state is the wrong thing to show. */}
+                <Route path="/home" element={<Gate of={['issues', 'tasks']} label="Building your dashboard"><HomeRouter /></Gate>} />
+                <Route path="/my-tasks" element={<Gate of={['tasks']} label="Loading your tasks"><MyTasks /></Gate>} />
+                <Route path="/issues" element={<Gate of={['issues', 'locations']} label="Opening issues & repairs"><IssuesRepairs /></Gate>} />
+                <Route path="/pre-post" element={<Gate of={['tasks', 'locations']} label="Opening pre/post camp"><PrePostCamp /></Gate>} />
+                <Route path="/pool" element={<Gate of={['pool']} label="Opening pool & waterfront"><PoolManagement /></Gate>} />
+                <Route path="/safety" element={<Gate of={['safety', 'locations']} label="Opening safety & compliance"><SafetyCompliance /></Gate>} />
+                <Route path="/assets" element={<Gate of={['assets', 'locations']} label="Opening assets & vehicles"><AssetVehicles /></Gate>} />
+                <Route path="/building" element={<Gate of={['building', 'locations']} label="Opening building systems"><BuildingSystems /></Gate>} />
+                <Route path="/commissary" element={<Gate of={COMMISSARY_DOMAINS} label="Opening the kitchen manager"><Commissary /></Gate>} />
+                <Route path="/retreats" element={<Gate of={['retreats', 'locations']} label="Opening the retreat manager"><Retreats /></Gate>} />
                 <Route path="/settings" element={<CampSettings />} />
                 <Route path="/settings/team" element={<Team />} />
                 <Route path="/settings/security" element={<SecuritySettings />} />

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useCampStore } from '@/store/campStore';
 import { CampCommandMark } from '@/components/shared/CampCommandMark';
+import { CampLoader } from '@/components/shared/ModuleLoading';
 
 // Frictionless demo entry. The shareable link (app.campcommand.app/try/:token) drops anyone -
 // no email, no password, straight into ONE demo camp via an anonymous session. Multiple people
@@ -55,7 +56,7 @@ export function TryDemo() {
             </>
           ) : (
             <>
-              <div className="w-8 h-8 border-2 border-forest border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <CampLoader size="sm" className="mb-4" />
               <p className="text-[14px] font-medium text-forest">Opening your demo…</p>
               <p className="text-[12px] text-ink-faint mt-1">No sign-in needed.</p>
             </>

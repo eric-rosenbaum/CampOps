@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { campLog, campError } from './campLog';
 import { noteWriteStart, noteWriteEnd } from './syncGuard';
 import { recordWriteFailure } from './writeFailures';
+import { reportUploadBytes } from './uploadProgress';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -12,7 +13,37 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 //
 // XMLHttpRequest.abort() operates at Chrome's network-service layer and actually
 // closes the socket.  This adaptor lets us use XHR via the fetch() API so that
-// AbortController works correctly and the 4 s timeout below actually fires retries.
+// cancellation works correctly and a dead connection is retried promptly.
+//
+// XHR earns its keep a second time here: its progress events are what let the timeout below
+// measure silence rather than elapsed time.
+
+/**
+ * How long a request may make *no progress* before its socket is called dead.
+ *
+ * Idle time is the thing worth measuring, never total time. A stale TCP socket moves no bytes
+ * at all, so it trips this quickly and the retry opens a fresh connection. A live 9 MB upload
+ * on a slow link moves bytes the whole way and never trips it, however long it takes.
+ *
+ * The fixed 4 s *total* budget this replaces could not tell those two apart. It aborted uploads
+ * the storage API had already accepted, so the client never saw the 200 that was on its way
+ * back, and the retry then failed as a duplicate. A file that uploaded perfectly was reported
+ * to the user as a failure.
+ */
+const STALL_MS = 20_000;
+
+/**
+ * Grace before the first observable byte, when there is nothing to measure yet.
+ *
+ * DNS, TLS and the CORS preflight are all invisible from here: the browser issues the OPTIONS
+ * itself and XHR reports nothing until it has succeeded. A storage preflight was measured at
+ * 3.5 s on a real connection, which on its own exhausted the entire old budget. Requests
+ * carrying a file get far more, because that preflight is the only thing standing between them
+ * and their first progress event, and losing the race costs a whole upload.
+ */
+const FIRST_BYTE_MS = 8_000;
+const FIRST_BYTE_BODY_MS = 45_000;
+
 function xhrFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   return new Promise((resolve, reject) => {
     // campOpsDebug.simulateStaleFetch() sets this to test stale-TCP behaviour fast.
@@ -41,9 +72,11 @@ function xhrFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respons
     xhr.responseType = 'arraybuffer';
 
     let settled = false;
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
     const settle = (fn: () => void) => {
       if (settled) return;
       settled = true;
+      clearTimeout(watchdog);
       init?.signal?.removeEventListener('abort', onAbort);
       fn();
     };
@@ -53,6 +86,48 @@ function xhrFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respons
       settle(() => reject(new DOMException('The operation was aborted.', 'AbortError')));
     };
     init?.signal?.addEventListener('abort', onAbort, { once: true });
+
+    // A file, rather than any body at all: a JSON write is as small as a read and should be
+    // called dead just as quickly. Only an actual upload earns the long first-byte grace.
+    const body = init?.body;
+    const isFileUpload = body instanceof FormData || body instanceof Blob || body instanceof ArrayBuffer;
+
+    // Progress-driven deadline: any byte in either direction pushes it out, so only real
+    // silence can expire it.
+    let deadline = Date.now() + (isFileUpload ? FIRST_BYTE_BODY_MS : FIRST_BYTE_MS);
+    const bump = () => { deadline = Date.now() + STALL_MS; };
+
+    const tick = () => {
+      if (settled) return;
+      const remaining = deadline - Date.now();
+      if (remaining > 0) {
+        // Re-check rather than trusting one long timer: a throttled background tab fires
+        // timers late, and we would rather notice that than abort a healthy request.
+        watchdog = setTimeout(tick, Math.min(remaining, 2000));
+        return;
+      }
+      settle(() => reject(new DOMException(
+        `No progress for ${Math.round(STALL_MS / 1000)}s`, 'TimeoutError')));
+      xhr.abort();
+    };
+
+    // Only for uploads. Any listener on xhr.upload makes the request non-simple and forces a
+    // CORS preflight, which is not a cost worth adding to requests that have nothing to send.
+    if (isFileUpload) {
+      xhr.upload.addEventListener('progress', (e) => {
+        bump();
+        // The only point in the stack where the bytes of an upload are visible. Anything
+        // wanting to draw a progress bar reads them from here.
+        if (e.lengthComputable) reportUploadBytes(url, e.loaded, e.total);
+      });
+      xhr.upload.addEventListener('load', bump);
+    }
+    xhr.addEventListener('progress', bump);
+    xhr.addEventListener('readystatechange', () => {
+      // readyState 1 fires on open(), before anything has been sent, and would shorten the
+      // first-byte grace to the stall budget. Only headers onwards count as progress.
+      if (xhr.readyState >= XMLHttpRequest.HEADERS_RECEIVED) bump();
+    });
 
     xhr.onload = () => settle(() => {
       const headers = new Headers();
@@ -79,12 +154,12 @@ function xhrFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respons
     }
 
     xhr.send((init?.body ?? null) as XMLHttpRequestBodyInit | null);
+    tick();
   });
 }
 
-// Wraps xhrFetch with a per-attempt AbortController timeout and retries.
-// With xhrFetch, the abort actually cancels the socket, so the retry opens a
-// genuinely fresh connection, total time on a stale connection is ~5 s.
+// Wraps xhrFetch with retries. xhrFetch's abort actually cancels the socket, so a retry
+// opens a genuinely fresh connection rather than queueing behind the dead one.
 async function fetchWithRetry(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   // Every write in the app funnels through here, which makes this the one place that can
   // tell the sync guard "a mutation is still on the wire". Reloads triggered by realtime
@@ -201,7 +276,8 @@ function describeTarget(url: string): string {
 }
 
 async function fetchWithRetryInner(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const ATTEMPT_TIMEOUT_MS = 4000;
+  // Timeouts belong to xhrFetch, which can see progress. A timer out here can only measure
+  // elapsed time, and elapsed time is exactly the wrong thing to abort a file upload on.
   const delays = [1000, 5000];
   const url = input instanceof Request ? input.url : String(input);
   const tag = url.split('?')[0].split('/').slice(-2).join('/'); // "rest/v1/issues" etc
@@ -215,29 +291,14 @@ async function fetchWithRetryInner(input: RequestInfo | URL, init?: RequestInit)
       campLog(`[CampOps] fetch attempt ${i + 1} (after ${delays[i - 1] / 1000}s wait) ${tag}`);
     }
 
-    const timer = new AbortController();
-    const timeoutId = setTimeout(() => {
-      campLog(`[CampOps] fetchWithRetry abort timer FIRED attempt=${i + 1} ${tag}`);
-      timer.abort();
-    }, ATTEMPT_TIMEOUT_MS);
-
-    // Merge our timeout signal with any external signal the SDK may have set.
-    let signal: AbortSignal = timer.signal;
-    if (init?.signal) {
-      signal = (AbortSignal as { any?(s: AbortSignal[]): AbortSignal }).any?.([init.signal, timer.signal])
-        ?? timer.signal;
-    }
-
     try {
       const breakLeft = (window as unknown as Record<string, unknown>)._campOpsBreakWrites as number | undefined;
       if (breakLeft && isMutatingRequest(input, init)) {
         (window as unknown as Record<string, unknown>)._campOpsBreakWrites = breakLeft - 1;
-        clearTimeout(timeoutId);
         throw new TypeError('campOpsDebug: forced write failure');
       }
 
-      const res = await xhrFetch(input, { ...init, signal });
-      clearTimeout(timeoutId);
+      const res = await xhrFetch(input, init);
 
       // supabase-js does not throw on an HTTP error, and the retry loop used to only catch
       // thrown ones, so a 401 from an expired JWT sailed through as a "successful" fetch and
@@ -260,7 +321,6 @@ async function fetchWithRetryInner(input: RequestInfo | URL, init?: RequestInit)
       }
       return res;
     } catch (err) {
-      clearTimeout(timeoutId);
       if (init?.signal?.aborted) throw err; // caller cancelled, don't retry
       if (i < delays.length) {
         campLog(`[CampOps] fetch attempt ${i + 1} failed, retrying in ${delays[i] / 1000}s: ${String(err)}`);

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore, OTP_MIN_LENGTH, OTP_MAX_LENGTH } from '@/store/authStore';
 import { CampCommandMark } from '@/components/shared/CampCommandMark';
+import { CampLoader } from '@/components/shared/ModuleLoading';
 
 type CodeInfo = { valid: boolean; reason?: string; campName?: string; role?: string; groupName?: string };
 type Step = 'code' | 'identity' | 'otp' | 'joining';
@@ -140,7 +141,7 @@ export function JoinCamp() {
         <div className="bg-white rounded-xl border border-border shadow-sm p-8">
           {step === 'joining' && (
             <div className="text-center py-4">
-              <div className="w-8 h-8 border-2 border-forest border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <CampLoader size="sm" className="mb-4" />
               <p className="text-[14px] font-medium text-forest mb-1">Joining {info?.campName ?? 'camp'}…</p>
               <p className="text-[12px] text-ink-faint">Just a moment</p>
             </div>

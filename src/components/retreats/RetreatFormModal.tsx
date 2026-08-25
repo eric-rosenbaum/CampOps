@@ -107,6 +107,8 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
         finalHeadcount: null,
         finalHeadcountAt: null,
         finalHeadcountBy: null,
+        housingSubmittedAt: null,
+        housingSubmittedBy: null,
         dietaryFlags: null,
         notes: notes.trim() || null,
         portalToken: generateId() + generateId(),

@@ -19,8 +19,8 @@ type LucideIcon = React.ComponentType<{ className?: string }>;
  */
 function navClass(isActive: boolean, collapsed: boolean): string {
   const base = collapsed
-    ? 'group relative flex items-center justify-center mx-2 mb-0.5 py-2.5 rounded-btn transition-colors'
-    : 'group relative flex items-center gap-2.5 py-[9px] pr-2 mb-[3px] text-[14px] transition-colors border-l-[3px]';
+    ? 'group relative flex items-center justify-center mx-2 mb-0.5 py-2 rounded-btn transition-colors'
+    : 'group relative flex items-center gap-2.5 py-[7px] pr-2 mb-px text-[14px] transition-colors border-l-[3px]';
   if (isActive) {
     return collapsed
       ? `${base} bg-cream text-forest`
@@ -61,11 +61,17 @@ const todayItems: NavItem[] = [
 const facilityItems: NavItem[] = [
   { path: '/issues', label: 'Issues & Repairs', icon: Wrench, end: false, module: 'issues_repairs' },
   { path: '/pre-post', label: 'Pre/Post Camp', icon: ClipboardList, end: false, module: 'pre_post' },
-  { path: '/pool', label: 'Pool Management', icon: Waves, end: false, module: 'pool' },
   { path: '/safety', label: 'Safety & Compliance', icon: ShieldCheck, end: false, module: 'safety' },
   { path: '/assets', label: 'Assets & Vehicles', icon: Truck, end: false, module: 'assets' },
   { path: '/building', label: 'Building Systems', icon: Building2, end: false, module: 'building_systems' },
-  { path: '/commissary', label: 'Commissary', icon: UtensilsCrossed, end: false, module: 'commissary' },
+];
+
+const commissaryItems: NavItem[] = [
+  { path: '/commissary', label: 'Kitchen Manager', icon: UtensilsCrossed, end: false, module: 'commissary' },
+];
+
+const aquaticsItems: NavItem[] = [
+  { path: '/pool', label: 'Pool Manager', icon: Waves, end: false, module: 'pool' },
 ];
 
 const retreatItems: NavItem[] = [
@@ -111,22 +117,17 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
   const location = useLocation();
   useEffect(() => { onClose?.(); }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const visibleFacilities = facilityItems.filter(
-    (item) => !item.module || canAccessModule(item.module)
-  );
-  const visibleRetreats = retreatItems.filter(
-    (item) => !item.module || canAccessModule(item.module)
-  );
+  // A section only exists if the staff member can reach something inside it, so a kitchen
+  // hand does not see an empty "Aquatics" heading.
+  const visible = (items: NavItem[]) => items.filter((i) => !i.module || canAccessModule(i.module));
 
   const navSections = [
     { section: 'Today', items: todayItems },
-    ...(visibleFacilities.length > 0
-      ? [{ section: 'Facilities', items: visibleFacilities }]
-      : []),
-    ...(visibleRetreats.length > 0
-      ? [{ section: 'Retreats', items: visibleRetreats }]
-      : []),
-  ];
+    { section: 'Facilities', items: visible(facilityItems) },
+    { section: 'Commissary', items: visible(commissaryItems) },
+    { section: 'Aquatics', items: visible(aquaticsItems) },
+    { section: 'Retreats', items: visible(retreatItems) },
+  ].filter((s) => s.items.length > 0);
 
   return (
     <>
@@ -148,7 +149,7 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
           ${collapsed ? 'lg:w-rail lg:min-w-rail' : ''}`}
       >
       <SidebarContours />
-      <div className={`relative pt-6 pb-5 ${collapsed ? 'lg:px-0 lg:justify-center px-5' : 'px-5'}`}>
+      <div className={`relative pt-5 pb-3.5 ${collapsed ? 'lg:px-0 lg:justify-center px-5' : 'px-5'}`}>
         <div className={`flex items-center gap-2.5 ${collapsed ? 'lg:justify-center' : ''}`}>
           <CampCommandMark size={30} disc={CC_CREAM} ink={CC_GREEN} decorative className="flex-shrink-0" />
           <span className={`font-display text-[17px] font-bold tracking-tight text-side-strong whitespace-nowrap
@@ -160,11 +161,11 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
 
       <div className="relative flex-1 overflow-y-auto overflow-x-hidden">
         {navSections.map((section) => (
-          <div key={section.section} className="mb-4">
+          <div key={section.section} className="mb-2">
             {collapsed ? (
-              <div className="mx-auto my-2 h-px w-6 bg-white/15 lg:block hidden" />
+              <div className="mx-auto my-1.5 h-px w-6 bg-white/15 lg:block hidden" />
             ) : null}
-            <p className={`text-[9.5px] font-bold uppercase tracking-[0.16em] text-side-dim px-[18px] pt-3 pb-1.5
+            <p className={`text-[9.5px] font-bold uppercase tracking-[0.16em] text-side-dim px-[18px] pt-2.5 pb-1
                            ${collapsed ? 'lg:hidden' : ''}`}>
               {section.section}
             </p>
@@ -186,11 +187,11 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
         ))}
 
         {role === 'admin' && (
-          <div className="mb-4">
+          <div className="mb-2">
             {collapsed ? (
-              <div className="mx-auto my-2 h-px w-6 bg-white/15 lg:block hidden" />
+              <div className="mx-auto my-1.5 h-px w-6 bg-white/15 lg:block hidden" />
             ) : null}
-            <p className={`text-[9.5px] font-bold uppercase tracking-[0.16em] text-side-dim px-[18px] pt-3 pb-1.5
+            <p className={`text-[9.5px] font-bold uppercase tracking-[0.16em] text-side-dim px-[18px] pt-2.5 pb-1
                            ${collapsed ? 'lg:hidden' : ''}`}>
               Settings
             </p>

@@ -11,6 +11,7 @@ import {
   dbAddSpace, dbUpdateSpace, dbDeleteSpace,
   dbAddHousing, dbUpdateHousing, dbDeleteHousing, dbSetHousingLock, dbAddHousingVersion, dbAssignGuests,
   dbAddDocument, dbUpdateDocument, dbDeleteDocument, dbUploadRetreatDocument,
+  dbVerifyRetreatDocument, dbConfirmDocumentStored,
   dbAddMeal, dbUpdateMeal, dbDeleteMeal,
   dbAddChangeRequest, dbUpdateChangeRequest,
   dbAddCost, dbUpdateCost, dbDeleteCost,
@@ -24,6 +25,7 @@ import {
   dbRegeneratePortalToken,
 } from '@/lib/retreatsDb';
 import { generateId, todayStr } from '@/lib/utils';
+import { stagePercent, STAGE_LABEL, type UploadProgress } from '@/lib/uploadProgress';
 import { estimateRevenue } from '@/components/retreats/retreatUi';
 
 export type RetreatTab = 'overview' | 'active' | 'documents' | 'housing' | 'menu' | 'requests' | 'costs' | 'retreatCosts' | 'portal' | 'feedback';
@@ -142,7 +144,7 @@ interface RetreatState {
   addDocument: (x: RetreatDocument) => void;
   updateDocument: (x: RetreatDocument) => void;
   deleteDocument: (id: string) => void;
-  uploadDocument: (file: File, retreatId: string, docType: RetreatDocType, name: string, meta: Record<string, unknown> | null, dueDate: string | null) => Promise<void>;
+  uploadDocument: (file: File, retreatId: string, docType: RetreatDocType, name: string, meta: Record<string, unknown> | null, dueDate: string | null, onProgress?: UploadProgress) => Promise<void>;
 
   // Meals
   addMeal: (x: RetreatMeal) => void;
@@ -334,14 +336,50 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   addDocument: (x) => { set((s) => ({ documents: [...s.documents, x] })); dbAddDocument(x); },
   updateDocument: (x) => { set((s) => ({ documents: s.documents.map((y) => y.id === x.id ? x : y) })); dbUpdateDocument(x); },
   deleteDocument: (id) => { set((s) => ({ documents: s.documents.filter((y) => y.id !== id) })); dbDeleteDocument(id); },
-  uploadDocument: async (file, retreatId, docType, name, meta, dueDate) => {
-    const path = await dbUploadRetreatDocument(file, retreatId);
+  uploadDocument: async (file, retreatId, docType, name, meta, dueDate, onProgress) => {
+    // Four stages, and the caller is not told it succeeded until all four have.
+    //
+    // 1 · the bytes reach storage. Deliberately before the row is built, and deliberately not
+    //     caught: a failed upload used to fall through to `filePath: null`, which put a
+    //     document in the list with nothing behind it. The checklist counted it, the portal
+    //     offered it, and the file was never there.
+    // 2 · the row is written.
+    // 3 · the file is signed and read back, the way a viewer will read it.
+    // 4 · the row is read back out of the database and confirmed to carry the path.
+    //
+    // Only then is the document real. Stopping at stage 1 is what made "it uploaded fine" and
+    // "you can open it" two different facts.
+    const path = await dbUploadRetreatDocument(file, retreatId, onProgress);
+
     const x: RetreatDocument = {
-      id: generateId(), campId: '', retreatId, docType, name, status: docType === 'coi' ? 'received' : 'received',
+      id: generateId(), campId: '', retreatId, docType, name, status: 'received',
       filePath: path, signedBy: null, signedAt: null, dueDate, meta,
       sortOrder: get().documents.filter((d) => d.retreatId === retreatId).length, createdAt: now(), updatedAt: now(),
     };
-    set((s) => ({ documents: [...s.documents, x] })); dbAddDocument(x);
+
+    onProgress?.({ stage: 'saving', percent: stagePercent('saving', 0), label: STAGE_LABEL.saving });
+    set((s) => ({ documents: [...s.documents, x] }));
+    await dbAddDocument(x);
+    onProgress?.({ stage: 'saving', percent: stagePercent('saving', 1), label: STAGE_LABEL.saving });
+
+    onProgress?.({ stage: 'verifying', percent: stagePercent('verifying', 0), label: STAGE_LABEL.verifying });
+    const readable = await dbVerifyRetreatDocument(path);
+    onProgress?.({ stage: 'verifying', percent: stagePercent('verifying', 0.6), label: STAGE_LABEL.verifying });
+    const stored = await dbConfirmDocumentStored(x.id);
+
+    if (!readable || !stored) {
+      // The optimistic row is pulled back off: showing a document nobody can open is the exact
+      // failure this whole path exists to prevent.
+      set((s) => ({ documents: s.documents.filter((d) => d.id !== x.id) }));
+      onProgress?.({ stage: 'failed', percent: 0, label: STAGE_LABEL.failed });
+      throw new Error(
+        readable
+          ? 'The file uploaded but the document record did not save. Nothing was added, so try again.'
+          : 'The file uploaded but could not be opened afterwards. Nothing was added, so try again.',
+      );
+    }
+
+    onProgress?.({ stage: 'done', percent: 100, label: STAGE_LABEL.done });
   },
 
   addMeal: (x) => { set((s) => ({ meals: [...s.meals, x] })); dbAddMeal(x); },
@@ -454,13 +492,18 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
     const depositRequired = r?.depositRequired ?? 0;
     const totalCharges = get().charges.filter((c) => c.retreatId === id).reduce((s, c) => s + c.amount, 0);
 
-    // Priority: newest non-void balance invoice's gross (bakes in fees + headcount changes)
+    // Priority: newest non-void balance invoice (bakes in fees + headcount changes)
     // → manual charges → rate-card estimate.
+    //
+    // Positive lines only, because "less payments received" is itself a line and counting it
+    // would subtract payments twice. A discount is not a payment though: it reduces what was
+    // ever owed, so it comes off the billed figure here rather than being netted against cash.
     const latestBal = invoices
       .filter((i) => i.kind === 'balance' && i.status !== 'void')
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0];
     const invoiceGross = latestBal
-      ? latestBal.lineItems.filter((l) => l.amount > 0).reduce((s, l) => s + l.amount, 0)
+      ? Math.max(0, latestBal.lineItems.filter((l) => l.amount > 0).reduce((s, l) => s + l.amount, 0)
+          - (latestBal.discount ?? 0))
       : null;
 
     let expected: number; let source: RetreatFinancials['source'];
@@ -500,8 +543,11 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
     const headcount: PhaseState = r?.finalHeadcountAt
       ? 'done' : r?.headcountCutoff ? 'active' : 'locked';
 
+    // Locked by the camp is the finished state. The group's own sign-off does not close the
+    // step, because the camp has not reviewed it yet, but it does mean work is underway even
+    // if no rows exist yet (a group can declare a plan of "everyone in the lodge").
     const housingState: PhaseState = housing.length > 0 && housing.every((h) => h.locked)
-      ? 'done' : housing.length > 0 ? 'active' : 'locked';
+      ? 'done' : housing.length > 0 || r?.housingSubmittedAt ? 'active' : 'locked';
     // Publishing is what completes this step, and it is the only signal that works for both
     // menu sources: legacy `retreat_meals` and the Commissary retreats builder, which writes
     // to `retreat_menu_entries`. Requiring `meals.length` as well meant a menu authored in
@@ -532,6 +578,9 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
     return { contract, deposit, headcount, housing: housingState, menu: menuState, coi: coiState, finalInvoice };
   },
 
-  pendingRequestCount: () => get().changeRequests.filter((r) => r.status === 'pending').length,
+  // Only what the camp still owes an answer to. A request the camp raised is also 'pending',
+  // but it is pending on the group, and counting it would put a number on the season header
+  // for work nobody at the camp can do.
+  pendingRequestCount: () => get().changeRequests.filter((r) => r.status === 'pending' && r.origin !== 'camp').length,
   portalUrl: (r) => `${typeof window !== 'undefined' ? window.location.origin : ''}/portal/${r.portalToken}`,
 }));

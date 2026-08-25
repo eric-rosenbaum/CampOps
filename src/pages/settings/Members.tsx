@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { UserPlus, Trash2, Copy, Check } from 'lucide-react';
 import { useCampStore } from '@/store/campStore';
 import type { MemberWithProfile, CampRole, Department, Invitation } from '@/store/campStore';
+import { LoadingBlock } from '@/components/shared/ModuleLoading';
 
 const ROLE_LABELS: Record<CampRole, string> = {
   admin: 'Admin', staff: 'Staff', viewer: 'Viewer',
@@ -72,7 +73,7 @@ export function Members() {
   }
 
   if (loading) {
-    return <div className="p-7 text-[13px] text-ink-faint">Loading members…</div>;
+    return <LoadingBlock size="sm" label="Loading members" className="p-10" />;
   }
 
   return (

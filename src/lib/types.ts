@@ -1118,7 +1118,10 @@ export interface CommissaryFile {
 // camp-scoped bucket + metadata row. Never deleted from the app. See the migration.
 
 export const IMPLEMENTATION_CATEGORIES = [
-  'locations', 'staff', 'campers', 'sessions', 'inventory', 'vendors', 'retreats', 'other',
+  'locations', 'staff', 'sessions', 'campers',
+  'prepost', 'pool', 'safety', 'assets', 'building',
+  'inventory', 'vendors', 'retreats',
+  'other',
 ] as const;
 export type ImplementationCategory = (typeof IMPLEMENTATION_CATEGORIES)[number];
 

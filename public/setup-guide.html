@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampCommand Setup Checklist</title>
+<meta name="description" content="What CampCommand needs from your camp to set up each module, and how to send it.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;500;600;700&family=Karla:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Single-theme on purpose: emailed, printed, read on a phone in a maintenance shed. */
+:root{
+  --pine:#1D3A2E; --sage:#5E7A61; --sage-pale:#E6E9D8; --paper:#F6F1E4;
+  --raised:#FCF9F1; --card:#FFFDF7; --ink:#23201B; --soft:#6B6357; --faint:#8B8377;
+  --amber:#D08C1B; --flame:#B0522F; --water:#4A7C8C; --violet:#7B6BA8;
+  --border:#DED3BB; --rule:#EFE9D9; --mono:'DM Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:Karla,system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:Bitter,Georgia,serif;margin:0;letter-spacing:-.01em}
+p{margin:0}
+a{color:var(--pine)}
+.wrap{max-width:1020px;margin:0 auto;padding:0 20px}
+
+/* ── header ── */
+header{background:var(--pine);color:var(--paper);padding:24px 0 22px}
+.brand{display:flex;align-items:center;gap:9px;font-family:Bitter,serif;font-weight:700;font-size:15px}
+header h1{font-size:26px;font-weight:600;margin-top:12px;line-height:1.15}
+header p{margin-top:7px;font-size:14px;color:rgba(246,241,228,.78);max-width:52rem;line-height:1.55}
+
+/* ── actions ── */
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.tools button{display:inline-flex;align-items:center;gap:7px;font-family:Karla,sans-serif;
+  font-size:13px;font-weight:600;color:var(--paper);background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.25);border-radius:5px;padding:8px 14px;cursor:pointer;
+  transition:background .15s ease,border-color .15s ease}
+.tools button:hover{background:rgba(255,255,255,.19);border-color:rgba(255,255,255,.4)}
+.tools button:focus-visible{outline:2px solid var(--sage-pale);outline-offset:2px}
+.tools svg{width:14px;height:14px;flex:0 0 auto}
+
+/* ── section heads ── */
+.bar{display:flex;align-items:baseline;gap:10px;margin:26px 0 12px;flex-wrap:wrap}
+.bar h2{font-size:16px;font-weight:600;color:var(--pine)}
+.bar span{font-size:12.5px;color:var(--faint)}
+
+/* ── checklist cards ── */
+.grid{display:grid;gap:12px}
+@media(min-width:700px){.grid{grid-template-columns:1fr 1fr}}
+@media(min-width:1000px){.grid.three{grid-template-columns:1fr 1fr 1fr}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:6px;
+  padding:13px 15px 14px;break-inside:avoid}
+.card h3{font-size:14.5px;font-weight:600;color:var(--pine);
+  display:flex;align-items:center;gap:8px}
+.card h3 .dot{width:9px;height:9px;border-radius:2px;flex:0 0 auto}
+ul{margin:9px 0 0;padding:0;list-style:none}
+li{position:relative;padding-left:19px;margin-bottom:7px;font-size:13.5px;line-height:1.48}
+li:last-child{margin-bottom:0}
+li::before{content:'';position:absolute;left:0;top:4px;width:10px;height:10px;
+  border:1.5px solid var(--sage);border-radius:2px}
+li b{font-weight:600;color:var(--ink)}
+li i{font-style:normal;color:var(--soft)}
+li .eg{display:block;font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:2px}
+.none{font-size:13px;color:var(--soft);margin-top:9px;font-style:italic}
+
+/* ── send strip ── */
+.send{background:var(--pine);color:var(--paper);border-radius:6px;padding:16px 18px;margin-top:14px}
+.send h3{font-size:15px;font-weight:600;color:var(--paper)}
+.path{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:10px;font-family:var(--mono);font-size:12.5px}
+.path span{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  border-radius:4px;padding:5px 10px}
+.path i{color:rgba(246,241,228,.45);font-style:normal}
+.send p{margin-top:10px;font-size:13px;color:rgba(246,241,228,.78);line-height:1.55}
+.send b{color:var(--paper);font-weight:600}
+
+footer{margin-top:26px;padding:16px 0 28px;border-top:1px solid var(--border);
+  font-size:12.5px;color:var(--faint);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+@media print{
+  @page{margin:12mm}
+  body{background:#fff;font-size:9.5pt;line-height:1.4}
+  header{background:#fff;color:var(--ink);padding:0 0 10pt;border-bottom:1.5pt solid var(--pine)}
+  header h1{font-size:17pt;margin-top:6pt}
+  header p{color:var(--soft);font-size:9pt}
+  .brand{color:var(--pine)}
+  .tools{display:none}
+  .wrap{padding:0;max-width:100%}
+  .bar{margin:12pt 0 6pt}
+  .grid{gap:7pt}
+  .card{padding:8pt 10pt;break-inside:avoid}
+  li{font-size:9pt;margin-bottom:3.5pt}
+  .send{background:#fff;color:var(--ink);border:1pt solid var(--pine)}
+  .send h3,.send b{color:var(--pine)}
+  .send p,.path{color:var(--soft)}
+  .path span{background:#fff;border-color:var(--border);color:var(--ink)}
+  footer{border-top:1pt solid var(--border)}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" width="26" height="26" aria-hidden="true">
+        <circle cx="32" cy="32" r="31" fill="#F6F1E4"/>
+        <circle cx="32" cy="32" r="27" fill="none" stroke="#1D3A2E" stroke-width="1.4"/>
+        <path d="M 28.863 17.965A7 7 0 1 0 28.863 28.035L 26.779 25.877A4 4 0 1 1 26.779 20.123Z" fill="#1D3A2E"/>
+        <path d="M 44.863 17.965A7 7 0 1 0 44.863 28.035L 42.779 25.877A4 4 0 1 1 42.779 20.123Z" fill="#1D3A2E"/>
+        <path d="M32 32C35 37 38 40 38 44A6 6 0 0 1 26 44C26 40.8 27.8 38.6 29 36C29.8 38.6 30.7 40 31.6 40.7C31.3 37.6 31.5 34.6 32 32Z" fill="#1D3A2E"/>
+        <path d="M18 51 46 45.5" stroke="#1D3A2E" stroke-width="3"/>
+        <path d="M18 45.5 46 51" stroke="#1D3A2E" stroke-width="3"/>
+      </svg>
+      CampCommand
+    </div>
+    <h1>Setup checklist</h1>
+    <p>
+      Send us what you already have and we load it for you. Gather only the sections for the
+      modules you are turning on.
+    </p>
+
+    <div class="tools">
+      <button type="button" id="btn-print">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/>
+        </svg>
+        Print or save as PDF
+      </button>
+      <button type="button" id="btn-email">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>
+        </svg>
+        Email this
+      </button>
+      <button type="button" id="btn-copy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>
+        </svg>
+        <span id="copy-label">Copy link</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="bar">
+    <h2>Every camp</h2>
+    <span>Needed whichever modules you use</span>
+  </div>
+
+  <div class="grid three">
+    <div class="card">
+      <h3><span class="dot" style="background:var(--pine)"></span>Locations</h3>
+      <ul>
+        <li><b>Every building</b> <i>and what it is</i><span class="eg">Cabin 1–12 · Dining Hall · Bathhouse</span></li>
+        <li><b>Rooms inside each building</b><span class="eg">Cabin 4 → bunkroom, counselor room, bathroom</span></li>
+        <li><b>Bed count</b> <i>for rooms people sleep in, and whether each is step-free</i></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot" style="background:var(--pine)"></span>Team</h3>
+      <ul>
+        <li><b>One camp administrator</b> <i>— name and email. They invite everyone else and set who sees what.</i></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot" style="background:var(--pine)"></span>Season</h3>
+      <ul>
+        <li><b>Opening and closing dates</b> <i>plus your ACA or health inspection date if booked</i></li>
+        <li><b>Session dates</b> <i>with camper and staff counts</i><span class="eg">Session 1 · Jun 14–27 · 180 campers, 55 staff</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="bar">
+    <h2>By module</h2>
+    <span>Only the ones you are turning on</span>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3><span class="dot" style="background:var(--flame)"></span>Issues &amp; Repairs</h3>
+      <p class="none">Nothing to send. Runs on your locations and team.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot" style="background:var(--flame)"></span>Pre/Post Camp</h3>
+      <ul>
+        <li><b>Opening checklist</b><span class="eg">turn on water · open pool · test alarms · mow fields</span></li>
+        <li><b>Closing checklist</b><span class="eg">blow out lines · pull docks · winterize kitchen</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot" style="background:var(--violet)"></span>Safety &amp; Compliance</h3>
+      <ul>
+        <li><b>Fire extinguishers, smoke and CO alarms</b> <i>— location, last inspected, how often, vendor</i></li>
+        <li><b>Kitchen hood</b> <i>— last cleaned, how often, vendor</i></li>
+        <li><b>Drills and trainings you run</b> <i>and how often</i><span class="eg">fire · lost camper · lockdown · severe weather</span></li>
+        <li><b>Staff certifications with expiry dates</b><span class="eg">Lifeguard · CPR/AED · First Aid · ServSafe</span></li>
+        <li><b>Licenses and permits with expiry dates</b><span class="eg">camp operating permit · food service · ACA · boiler</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot" style="background:var(--water)"></span>Pool &amp; Waterfront</h3>
+      <ul>
+        <li><b>Each body of water</b> <i>and whether it is a pool or a natural waterfront</i></li>
+        <li><b>Inspection schedule</b> <i>— your health department sheet works</i></li>
+        <li><b>Trackable equipment</b> <i>— pumps, filters, heaters, chlorinators, last serviced</i></li>
+        <li><b>Pool opening and closing steps</b></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot" style="background:var(--flame)"></span>Assets &amp; Vehicles</h3>
+      <ul>
+        <li><b>Vehicles</b> <i>— make, model, year, plate, mileage, registration expiry</i></li>
+        <li><b>Golf carts, utility vehicles, mowers</b> <i>— make, model, engine hours</i></li>
+        <li><b>Watercraft</b> <i>— registration and expiry, capacity, lifejacket count</i></li>
+        <li><b>Technology</b> <i>— item, model, serial, who holds it</i><span class="eg">laptops · tablets · radios · cameras</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot" style="background:var(--flame)"></span>Building Systems</h3>
+      <ul>
+        <li><b>Main shutoffs per building</b> <i>— water, electrical panel, gas</i><span class="eg">Dining Hall: water under 3-bay sink, panel in back hall</span></li>
+        <li><b>Panel schedules</b> <i>— a photo of the panel door is enough</i></li>
+        <li><b>Winterization steps per building</b></li>
+      </ul>
+      <p class="none">Room-by-room outlets and fixtures come later. Your crew adds them from their phones.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot" style="background:var(--amber)"></span>Kitchen Manager</h3>
+      <ul>
+        <li><b>Last year's opening order</b> <i>— the invoice or vendor order guide. Does more than anything else on this list.</i></li>
+        <li><b>Vendors</b> <i>— account number, rep, order cutoff, delivery day, minimum</i></li>
+        <li><b>Recipes or menu rotation</b> <i>— ingredients, quantities, how many it serves</i></li>
+        <li><b>Ordering rhythm</b> <i>— count day, order day, delivery day, days each order covers</i></li>
+        <li><b>Minimum quantities</b> <i>for items you never want to run out of</i></li>
+        <li><b>Camper and staff allergies</b> <i>— name, session, need, severity</i></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot" style="background:var(--sage)"></span>Retreat Manager</h3>
+      <ul>
+        <li><b>Which rooms and spaces you rent out</b> <i>with bed counts</i></li>
+        <li><b>Your rate card</b> <i>— per person per night, per cabin, or flat fee — plus your deposit rule</i></li>
+        <li><b>Your retreat agreement</b> <i>as a PDF or Word file</i></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="send">
+    <h3>Sending it to us</h3>
+    <div class="path">
+      <span>Sign in</span><i>→</i><span>Camp Info</span><i>→</i><span>Setup Files</span><i>→</i><span>Drop files in</span>
+    </div>
+    <p>
+      <b>Any format.</b> Spreadsheets, PDFs, Word, photos of a binder page or panel door, or a ZIP
+      of all of it. There is no template to fill in. Send in as many batches as you like.
+      <b>Please send anything with camper information through this upload rather than by email.</b>
+    </p>
+  </div>
+
+  <footer>
+    <span>Questions? Ask your implementation contact or email <a href="mailto:eric@campcommand.app">eric@campcommand.app</a></span>
+    <span>CampCommand</span>
+  </footer>
+
+</div>
+<script>
+// Three ways out of this page: onto paper, into an inbox, or into a chat message. All three
+// are how a checklist like this actually reaches the person who has to gather the data, and
+// none of them should require the reader to know what their browser can do.
+(function () {
+  var url = window.location.href.split('#')[0];
+
+  document.getElementById('btn-print').addEventListener('click', function () {
+    window.print();
+  });
+
+  document.getElementById('btn-email').addEventListener('click', function () {
+    var subject = 'CampCommand setup checklist';
+    var body = [
+      'Here is the setup checklist for CampCommand:',
+      '',
+      url,
+      '',
+      'It lists what we need from you for each module you are turning on.',
+      'Send files through Camp Info > Setup Files, or reply to this email.',
+      ''
+    ].join('\r\n');
+    window.location.href = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  });
+
+  var copyBtn = document.getElementById('btn-copy');
+  var copyLabel = document.getElementById('copy-label');
+  copyBtn.addEventListener('click', function () {
+    function done(text) {
+      copyLabel.textContent = text;
+      setTimeout(function () { copyLabel.textContent = 'Copy link'; }, 2000);
+    }
+    // Clipboard access is refused in some embedded and non-secure contexts, so there is
+    // always a manual fallback rather than a button that silently does nothing.
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(function () { done('Copied'); }, function () { done(url); });
+    } else {
+      done(url);
+    }
+  });
+})();
+</script>
+</body>
+</html>

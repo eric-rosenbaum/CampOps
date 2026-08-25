@@ -13,14 +13,21 @@ import type { ImplementationFile, ImplementationCategory } from '@/lib/types';
 
 const cardCls = 'bg-white border border-border rounded-xl p-5';
 
+// Named for what the camp is sending, in the order the setup guide asks for it, so the list
+// reads as a checklist rather than an inventory of our tables.
 const CATEGORY_LABELS: Record<ImplementationCategory, string> = {
   locations: 'Locations & buildings',
-  staff:     'Staff list',
-  campers:   'Camper roster',
-  sessions:  'Session calendar',
-  inventory: 'Inventory & kitchen',
+  staff:     'Staff list & groups',
+  sessions:  'Season & session dates',
+  campers:   'Camper roster & allergies',
+  prepost:   'Opening & closing checklists',
+  pool:      'Pool & waterfront',
+  safety:    'Safety & compliance',
+  assets:    'Vehicles & equipment',
+  building:  'Electrical & plumbing',
+  inventory: 'Kitchen inventory & recipes',
   vendors:   'Vendor order guides',
-  retreats:  'Retreat groups',
+  retreats:  'Retreat groups & agreements',
   other:     'Something else',
 };
 

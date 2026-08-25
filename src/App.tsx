@@ -41,7 +41,7 @@ import { Support } from '@/pages/legal/Support';
 import { PrivacyPolicy } from '@/pages/legal/PrivacyPolicy';
 import { SecurityOverview } from '@/pages/legal/SecurityOverview';
 import { Dpa } from '@/pages/legal/Dpa';
-import { LandingPage } from '@/pages/LandingPage';
+import { LandingPage } from '@/pages/landing/LandingPage';
 
 // My Tasks
 import { MyTasks } from '@/pages/MyTasks';

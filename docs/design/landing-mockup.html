@@ -98,8 +98,8 @@ nav .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;height:64px;
   background:linear-gradient(180deg,transparent,rgba(154,169,143,.4),transparent);opacity:0;
   transition:opacity .8s ease}
 .stage.settled .divider{opacity:1}
-.tag{position:absolute;font-size:9px;letter-spacing:.16em;text-transform:uppercase;
-  font-weight:700;color:rgba(246,241,228,.34);transition:opacity .5s ease}
+.tag{position:absolute;max-width:40%;font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  line-height:1.6;font-weight:700;color:rgba(246,241,228,.34);transition:opacity .5s ease}
 .replay{position:absolute;right:12px;bottom:12px;z-index:6;background:rgba(255,255,255,.1);
   color:var(--paper);border:1px solid rgba(255,255,255,.22);border-radius:99px;
   padding:6px 15px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:Karla,sans-serif}
@@ -119,9 +119,13 @@ nav .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;height:64px;
 .tab:hover{border-color:var(--sage)}
 .tab[aria-selected="true"]{background:var(--pine);border-color:var(--pine);color:var(--paper)}
 .tab .dot{width:8px;height:8px;border-radius:2px}
-.panel{margin-top:30px;display:none;gap:38px;align-items:start}
-.panel.on{display:grid;animation:fade .45s ease}
-@media(min-width:1000px){.panel.on{grid-template-columns:.78fr 1.22fr}}
+.panel{margin-top:30px;display:none}
+.panel.on{display:block;animation:fade .45s ease}
+.panel-head{max-width:46rem}
+.panel .flow{margin-top:26px}
+.panel .caps{margin-top:26px;columns:1}
+@media(min-width:820px){.panel .caps{columns:2;column-gap:38px}}
+.panel .caps li{break-inside:avoid}
 @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .panel h3{font-size:25px;color:var(--pine);font-weight:600;line-height:1.2}
 .panel .blurb{margin-top:13px;color:var(--soft);font-size:15.5px;line-height:1.68}
@@ -137,15 +141,52 @@ nav .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;height:64px;
 .flow{display:grid;grid-template-columns:auto 30px 1fr;gap:0;align-items:center}
 @media(max-width:620px){.flow{grid-template-columns:1fr;gap:18px}.arrow{display:none}}
 .arrow{display:flex;align-items:center;justify-content:center;color:var(--sage)}
-.phone{width:186px;background:var(--pine);border-radius:20px;padding:7px;
-  box-shadow:0 22px 44px -20px rgba(29,58,46,.6)}
-.phone .screen{background:var(--paper);border-radius:14px;overflow:hidden}
-.phone .notch{height:14px;display:flex;align-items:center;justify-content:center}
-.phone .notch i{width:44px;height:4px;border-radius:99px;background:rgba(255,255,255,.3);display:block}
-.pscreen{padding:11px 11px 13px}
-.pbar{font-size:9.5px;color:var(--faint);display:flex;justify-content:space-between;
-  font-family:var(--mono);margin-bottom:9px}
-.ptitle{font-family:Bitter,serif;font-size:13px;font-weight:600;color:var(--pine);margin-bottom:9px}
+/* The titanium band is a multi-stop gradient rather than a flat colour: a real phone edge
+   catches light at the corners and goes dark along the flats, and that read is most of what
+   separates a device from a rounded rectangle. */
+.phone{position:relative;width:204px;border-radius:42px;padding:2px;
+  background:linear-gradient(147deg,#8d9297 0%,#3f4347 13%,#c3c7cb 27%,#4a4e52 44%,
+             #9aa0a5 61%,#33373a 78%,#7e8489 92%,#2e3134 100%);
+  box-shadow:0 34px 60px -26px rgba(29,58,46,.62),0 3px 8px rgba(0,0,0,.28);}
+.phone .frame{background:#0b0c0d;border-radius:40px;padding:7px;}
+.phone .screen{position:relative;background:var(--paper);border-radius:33px;overflow:hidden;
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.1);
+  /* The real thing, rather than however tall the content happens to be. */
+  aspect-ratio:9/19.5}
+/* Dynamic Island: a real one floats clear of the top edge and overlaps the content beneath. */
+.phone .island{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:6;
+  width:74px;height:22px;border-radius:99px;background:#000}
+.phone .island::after{content:'';position:absolute;right:7px;top:50%;transform:translateY(-50%);
+  width:7px;height:7px;border-radius:50%;
+  background:radial-gradient(circle at 35% 32%,#2b3f52 0%,#0d1620 55%,#000 100%)}
+/* Side buttons, in the places they are on the hardware. */
+.phone .btn-vol,.phone .btn-pwr{position:absolute;width:2px;border-radius:2px;
+  background:linear-gradient(180deg,#7d8286,#3a3e42)}
+.phone .btn-vol{left:-2px}
+.phone .btn-pwr{right:-2px;top:132px;height:64px}
+.phone .v1{top:96px;height:22px}
+.phone .v2{top:130px;height:38px}
+.phone .v3{top:176px;height:38px}
+.phone .home{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);
+  width:96px;height:4px;border-radius:99px;background:rgba(35,32,27,.28);z-index:6}
+.pscreen{position:absolute;inset:0;display:flex;flex-direction:column;padding:44px 13px 26px}
+/* The action sits near the thumb, as it does in the app, instead of floating mid-screen. */
+.pscreen > div:last-child{margin-top:auto}
+.pbar{position:absolute;top:13px;left:0;right:0;z-index:5;display:flex;
+  justify-content:space-between;padding:0 17px;font-size:10px;font-weight:700;color:var(--ink)}
+.pbar .sig{display:inline-flex;align-items:flex-end;gap:1.5px;height:8px}
+.pbar .sig i{width:2.5px;border-radius:.5px;background:var(--ink);display:block}
+.pbar .batt{width:17px;height:8.5px;border:1px solid var(--ink);border-radius:2.5px;
+  padding:1px;display:inline-block;position:relative}
+.pbar .batt::after{content:'';position:absolute;right:-2.5px;top:2.5px;width:1.5px;height:3px;
+  border-radius:0 1px 1px 0;background:var(--ink)}
+.pbar .batt i{display:block;height:100%;width:72%;border-radius:1px;background:var(--ink)}
+.ptitle{font-family:Bitter,serif;font-size:13.5px;font-weight:600;color:var(--pine);margin-bottom:9px}
+.photo{border-radius:8px;overflow:hidden;margin-bottom:9px;position:relative;
+  box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.photo svg{display:block;width:100%;height:auto}
+.photo .stamp{position:absolute;left:6px;bottom:5px;font-family:var(--mono);font-size:7.5px;
+  color:rgba(255,255,255,.9);text-shadow:0 1px 2px rgba(0,0,0,.7)}
 
 .ui{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;
   box-shadow:0 20px 44px -26px rgba(29,58,46,.45)}
@@ -213,10 +254,51 @@ table.data tr:last-child td{border-bottom:0}
 .timeline:before{content:'';position:absolute;left:11px;top:6px;bottom:6px;width:2px;background:var(--border)}
 @media(min-width:880px){
   .timeline:before{left:0;right:0;top:11px;bottom:auto;width:auto;height:2px}
-  .beats{display:grid;grid-template-columns:repeat(5,1fr);gap:18px}
+  .beats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
 }
 .beat{position:relative;padding-left:36px;margin-bottom:26px}
 @media(min-width:880px){.beat{padding-left:0;padding-top:34px;margin-bottom:0}}
+/* The vignettes are the real interface at real fidelity, not diagrams of it. Placeholder bars
+   were what made these read as clip art: a grey rounded rectangle is a wireframe, and nobody
+   believes a wireframe is a product. Everything below is live DOM, so the text is the actual
+   text and it stays sharp at any zoom. */
+.scene{position:relative;height:172px;margin-bottom:13px;border-radius:7px;overflow:hidden;
+  border:1px solid var(--border);background:var(--paper-raised);
+  box-shadow:0 10px 24px -16px rgba(29,58,46,.45)}
+.scene svg{display:block}
+
+/* A phone rising into frame and cropped by it, the way it sits in a hand. */
+.sc-phone{position:absolute;left:50%;transform:translateX(-50%);top:16px;width:126px;
+  border-radius:24px;padding:1.5px;
+  background:linear-gradient(147deg,#8d9297,#3f4347 16%,#c3c7cb 30%,#4a4e52 50%,#9aa0a5 68%,#33373a 86%,#7e8489);
+  box-shadow:0 16px 30px -14px rgba(29,58,46,.6)}
+.sc-phone .fr{background:#0b0c0d;border-radius:23px;padding:4px 4px 0}
+.sc-phone .sc{position:relative;background:var(--card);border-radius:19px 19px 0 0;
+  overflow:hidden;padding:19px 9px 12px}
+.sc-phone .isl{position:absolute;top:5px;left:50%;transform:translateX(-50%);
+  width:44px;height:13px;border-radius:99px;background:#000}
+
+/* The web board, cropped to the rows that matter. */
+.sc-ui{position:absolute;inset:12px;background:var(--card);border:1px solid var(--border);
+  border-radius:6px;overflow:hidden;box-shadow:0 6px 16px -10px rgba(29,58,46,.35)}
+.sc-bar{background:var(--paper);border-bottom:1px solid var(--border);padding:6px 9px;
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sc-bar b{font-family:Bitter,serif;font-size:10px;font-weight:600;color:var(--pine)}
+.sc-bar span{font-family:var(--mono);font-size:8px;color:var(--faint)}
+.sc-row{display:flex;align-items:center;gap:6px;padding:6px 9px;border-bottom:1px solid var(--rule)}
+.sc-row:last-child{border-bottom:0}
+.sc-row .g{flex:1;min-width:0}
+.sc-row .t{font-size:9.5px;font-weight:600;color:var(--ink);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.sc-row .s{font-size:8px;color:var(--faint);margin-top:1px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.sc-chip{font-size:7px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 4px;border-radius:2px;white-space:nowrap}
+.sc-av{width:16px;height:16px;border-radius:50%;background:var(--sage);color:#fff;font-size:7px;
+  font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.sc-new{box-shadow:inset 3px 0 0 var(--flame)}
+.sc-note{padding:5px 9px;font-size:8px;font-weight:600;background:var(--sage-pale);color:#3E5A46}
+.sc-thumb{width:100%;height:44px;object-fit:cover;display:block}
 .beat .dot{position:absolute;left:4px;top:4px;width:16px;height:16px;border-radius:50%;
   background:var(--card);border:2px solid var(--sage)}
 @media(min-width:880px){.beat .dot{left:0;top:4px}}
@@ -255,11 +337,7 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
       </svg>
       CampCommand
     </div>
-    <div class="navlinks">
-      <a href="#services">Our services</a>
-      <a href="#day">A day at camp</a>
-      <a href="#pricing">Pricing</a>
-    </div>
+
     <div style="display:flex;gap:10px">
       <button class="btn btn-ghost">Sign in</button>
       <button class="btn btn-primary">Book a demo</button>
@@ -298,23 +376,22 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
       <h1>Your camp operations command center</h1>
 
       <p class="mission">
-        Our mission is to <b>streamline the chaos of camp operations</b> and eliminate the
-        stress and wasted money that come from scattered systems. We do it by providing
-        systematic workflows and resources that keep your <b>entire operations team on the same
-        page</b> across facilities, pool and waterfront, commissary, and retreats.
+        Our mission is to streamline the chaos of camp operations and <b>eliminate the stress
+        and wasted money that come from scattered systems</b>. We do it by providing systematic
+        workflows and resources that keep your <b>entire operations team on the same page</b>
+        across facilities, pool and waterfront, commissary, and retreats.
       </p>
 
       <div class="cta">
         <button class="btn btn-primary">Book a demo →</button>
       </div>
-      <p class="trust">Built with camp directors, for camps of 40 to 400.</p>
     </div>
 
     <div>
       <div class="stage" id="stage">
         <svg class="trails" id="trails" aria-hidden="true"></svg>
         <div class="divider" id="divider"></div>
-        <div class="tag" id="tagBefore" style="left:16px;top:14px">Scattered today</div>
+        <div class="tag" id="tagBefore" style="left:16px;top:14px">Emails, spreadsheets, and binders</div>
         <div class="tag" id="tagAfter" style="right:16px;top:14px;opacity:0">One board</div>
         <button class="replay" onclick="run()">Replay</button>
       </div>
@@ -327,10 +404,10 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
   <div class="wrap">
     <div class="sechead rv">
       <p class="eyebrow">Our services</p>
-      <h2>Five modules, one central record.</h2>
+      <h2>All operational responsibilities in one command center.</h2>
       <p class="lede">
-        Each module is built for the person who actually does that job, and every one of them
-        writes to the same central place. Pick a module to see how it works.
+        Each module is built for the person who actually does that job, and each one saves to
+        the same central place.
       </p>
     </div>
 
@@ -349,7 +426,7 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
 
     <!-- ── FACILITIES ── -->
     <div class="panel on" id="p-fac">
-      <div>
+      <div class="panel-head">
         <h3>Logged from a phone, handled from the office</h3>
         <p class="blurb">
           A counsellor photographs a broken window where they're standing. It lands on the
@@ -362,30 +439,72 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
           <span class="sub-pill">Assets &amp; vehicles</span>
           <span class="sub-pill">Building systems</span>
         </div>
-        <ul class="caps">
-          <li><span class="tick">✓</span><span>Log with a photo in under fifteen seconds, from anywhere on the property</span></li>
-          <li><span class="tick">✓</span><span>Assign to a person, watch it move without asking</span></li>
-          <li><span class="tick">✓</span><span>Opening and closing checklists that don't live on a clipboard</span></li>
-          <li><span class="tick">✓</span><span>Vehicles, equipment, panels and shutoffs, room by room</span></li>
-        </ul>
       </div>
 
       <div class="flow">
         <div class="phone">
-          <div class="notch"><i></i></div>
-          <div class="screen"><div class="pscreen">
-            <div class="pbar"><span>9:26</span><span>▮▮</span></div>
+          <span class="btn-vol v1"></span><span class="btn-vol v2"></span><span class="btn-vol v3"></span>
+          <span class="btn-pwr"></span>
+          <div class="frame"><div class="screen">
+          <div class="island"></div><div class="home"></div>
+          <div class="pscreen">
+            <div class="pbar"><span>9:26</span>
+              <span style="display:inline-flex;align-items:center;gap:4px">
+                <span class="sig"><i style="height:3px"></i><i style="height:5px"></i><i style="height:6.5px"></i><i style="height:8px"></i></span>
+                <svg width="11" height="9" viewBox="0 0 16 12" fill="currentColor" aria-hidden="true"><path d="M8 11.2 5.9 8.9a3 3 0 0 1 4.2 0zM3.6 6.6 2 4.9a8.6 8.6 0 0 1 12 0l-1.6 1.7a6.3 6.3 0 0 0-8.8 0z"/></svg>
+                <span class="batt"><i></i></span>
+              </span></div>
             <div class="ptitle">Log an issue</div>
-            <div style="background:var(--sage-pale);border-radius:6px;height:62px;
-              display:flex;align-items:center;justify-content:center;font-size:10px;
-              color:#3E5A46;font-weight:600;margin-bottom:8px">📷 photo attached</div>
+            <div class="photo">
+              <!-- The photo the counsellor just took. Drawn rather than loaded so the page stays
+                   one self-contained file with nothing to fetch. -->
+              <svg viewBox="0 0 200 124" role="img" aria-label="Photo of a cracked cabin window">
+                <defs>
+                  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#9dc4d8"/><stop offset="1" stop-color="#cfe0e6"/>
+                  </linearGradient>
+                  <linearGradient id="glare" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#fff" stop-opacity=".55"/>
+                    <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+                  </linearGradient>
+                  <linearGradient id="vig" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#000" stop-opacity=".16"/>
+                    <stop offset=".35" stop-color="#000" stop-opacity="0"/>
+                    <stop offset="1" stop-color="#000" stop-opacity=".22"/>
+                  </linearGradient>
+                </defs>
+                <rect width="200" height="124" fill="#8a6a4a"/>
+                <g fill="#7d5f42">
+                  <rect y="8" width="200" height="2"/><rect y="26" width="200" height="2"/>
+                  <rect y="44" width="200" height="2"/><rect y="62" width="200" height="2"/>
+                  <rect y="80" width="200" height="2"/><rect y="98" width="200" height="2"/>
+                  <rect y="116" width="200" height="2"/>
+                </g>
+                <g opacity=".28" fill="#5e462f">
+                  <rect x="16" y="0" width="1.5" height="124"/><rect x="132" y="0" width="1.5" height="124"/>
+                </g>
+                <rect x="44" y="18" width="112" height="88" rx="2" fill="#f2ede1"/>
+                <rect x="49" y="23" width="102" height="78" fill="url(#sky)"/>
+                <path d="M49 78 L74 56 L92 72 L112 44 L151 78 Z" fill="#5E7A61" opacity=".55"/>
+                <rect x="98" y="23" width="4" height="78" fill="#f2ede1"/>
+                <rect x="49" y="59" width="102" height="4" fill="#f2ede1"/>
+                <path d="M49 23 L92 23 L49 62 Z" fill="url(#glare)"/>
+                <g stroke="#fdfdfd" stroke-width="1.1" fill="none" opacity=".95">
+                  <path d="M70 44 L58 27 M70 44 L52 52 M70 44 L64 66 M70 44 L88 34 M70 44 L86 58 M70 44 L74 78"/>
+                  <path d="M62 36 L57 44 M76 39 L80 47 M67 55 L60 59"/>
+                </g>
+                <circle cx="70" cy="44" r="2.4" fill="#fff" opacity=".9"/>
+                <rect width="200" height="124" fill="url(#vig)"/>
+              </svg>
+              <span class="stamp">Cabin 12 · 9:26 AM</span>
+            </div>
             <div style="font-size:11px;font-weight:600;color:var(--ink);margin-bottom:5px">
               Cabin 12 window cracked</div>
             <div style="display:flex;gap:4px;margin-bottom:9px">
               <span class="chip urgent">Urgent</span><span class="chip grey">Cabin 12</span></div>
-            <div style="background:var(--pine);color:var(--paper);border-radius:5px;
-              text-align:center;padding:8px;font-size:11px;font-weight:600">Submit</div>
-          </div></div>
+            <div style="background:var(--pine);color:var(--paper);border-radius:9px;
+              text-align:center;padding:9px;font-size:11.5px;font-weight:600">Submit</div>
+          </div></div></div>
         </div>
         <div class="arrow"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2"><path d="M4 12h14M13 6l6 6-6 6"/></svg></div>
@@ -408,11 +527,18 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
           </div>
         </div>
       </div>
+
+        <ul class="caps">
+          <li><span class="tick">✓</span><span>Log with a photo in under fifteen seconds, from anywhere on the property</span></li>
+          <li><span class="tick">✓</span><span>Assign to a person, watch it move without asking</span></li>
+          <li><span class="tick">✓</span><span>Opening and closing checklists that don't live on a clipboard</span></li>
+          <li><span class="tick">✓</span><span>Vehicles, equipment, panels and shutoffs, room by room</span></li>
+        </ul>
     </div>
 
     <!-- ── POOL ── -->
     <div class="panel" id="p-pool">
-      <div>
+      <div class="panel-head">
         <h3>Scan the strip, keep the log</h3>
         <p class="blurb">
           Point a phone at a test strip and the reading is captured, checked against your target
@@ -425,19 +551,21 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
           <span class="sub-pill">Inspections</span>
           <span class="sub-pill">Seasonal tasks</span>
         </div>
-        <ul class="caps">
-          <li><span class="tick">✓</span><span>Scan a test strip with the camera, no typing</span></li>
-          <li><span class="tick">✓</span><span>Out-of-range flagged the moment it's entered</span></li>
-          <li><span class="tick">✓</span><span>Every pool and waterfront in one place</span></li>
-          <li><span class="tick">✓</span><span>Exportable log, signed with who took the reading</span></li>
-        </ul>
       </div>
 
       <div class="flow">
         <div class="phone">
-          <div class="notch"><i></i></div>
-          <div class="screen"><div class="pscreen">
-            <div class="pbar"><span>4:37</span><span>▮▮</span></div>
+          <span class="btn-vol v1"></span><span class="btn-vol v2"></span><span class="btn-vol v3"></span>
+          <span class="btn-pwr"></span>
+          <div class="frame"><div class="screen">
+          <div class="island"></div><div class="home"></div>
+          <div class="pscreen">
+            <div class="pbar"><span>4:37</span>
+              <span style="display:inline-flex;align-items:center;gap:4px">
+                <span class="sig"><i style="height:3px"></i><i style="height:5px"></i><i style="height:6.5px"></i><i style="height:8px"></i></span>
+                <svg width="11" height="9" viewBox="0 0 16 12" fill="currentColor" aria-hidden="true"><path d="M8 11.2 5.9 8.9a3 3 0 0 1 4.2 0zM3.6 6.6 2 4.9a8.6 8.6 0 0 1 12 0l-1.6 1.7a6.3 6.3 0 0 0-8.8 0z"/></svg>
+                <span class="batt"><i></i></span>
+              </span></div>
             <div class="ptitle">Scan test strip</div>
             <div class="scanbox">
               <div class="striprow">
@@ -454,9 +582,9 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
               <div style="display:flex;justify-content:space-between;padding:3px 0">
                 <span>Alkalinity</span><b>90 ppm</b></div>
             </div>
-            <div style="background:var(--pine);color:var(--paper);border-radius:5px;margin-top:8px;
-              text-align:center;padding:8px;font-size:11px;font-weight:600">Save reading</div>
-          </div></div>
+            <div style="background:var(--pine);color:var(--paper);border-radius:9px;margin-top:9px;
+              text-align:center;padding:9px;font-size:11.5px;font-weight:600">Save reading</div>
+          </div></div></div>
         </div>
         <div class="arrow"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2"><path d="M4 12h14M13 6l6 6-6 6"/></svg></div>
@@ -484,11 +612,18 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
           </div>
         </div>
       </div>
+
+        <ul class="caps">
+          <li><span class="tick">✓</span><span>Scan a test strip with the camera, no typing</span></li>
+          <li><span class="tick">✓</span><span>Out-of-range flagged the moment it's entered</span></li>
+          <li><span class="tick">✓</span><span>Every pool and waterfront in one place</span></li>
+          <li><span class="tick">✓</span><span>Exportable log, signed with who took the reading</span></li>
+        </ul>
     </div>
 
     <!-- ── COMMISSARY ── -->
     <div class="panel" id="p-com">
-      <div>
+      <div class="panel-head">
         <h3>Plan the menu, and the order writes itself</h3>
         <p class="blurb">
           Build the week's menu and the system works backwards to the shopping list, using your
@@ -501,12 +636,6 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
           <span class="sub-pill">Inventory</span>
           <span class="sub-pill">Allergy program</span>
         </div>
-        <ul class="caps">
-          <li><span class="tick">✓</span><span>Menus drive the order list automatically</span></li>
-          <li><span class="tick">✓</span><span>Suggested quantities net of what you already hold</span></li>
-          <li><span class="tick">✓</span><span>Counted in the units your kitchen actually speaks</span></li>
-          <li><span class="tick">✓</span><span>Allergy and dietary needs tracked per camper</span></li>
-        </ul>
       </div>
 
       <div class="flow" style="grid-template-columns:1fr">
@@ -546,11 +675,18 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
           </div>
         </div>
       </div>
+
+        <ul class="caps">
+          <li><span class="tick">✓</span><span>Menus drive the order list automatically</span></li>
+          <li><span class="tick">✓</span><span>Suggested quantities net of what you already hold</span></li>
+          <li><span class="tick">✓</span><span>Counted in the units your kitchen actually speaks</span></li>
+          <li><span class="tick">✓</span><span>Allergy and dietary needs tracked per camper</span></li>
+        </ul>
     </div>
 
     <!-- ── RETREATS ── -->
     <div class="panel" id="p-ret">
-      <div>
+      <div class="panel-head">
         <h3>Rental groups that run themselves</h3>
         <p class="blurb">
           Every booking gets its own guest portal. The group signs the agreement, confirms
@@ -563,20 +699,22 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
           <span class="sub-pill">Rooming</span>
           <span class="sub-pill">Change requests</span>
         </div>
-        <ul class="caps">
-          <li><span class="tick">✓</span><span>A private link for the coordinator, no password to forget</span></li>
-          <li><span class="tick">✓</span><span>Agreement signed and stored, with an audit trail</span></li>
-          <li><span class="tick">✓</span><span>The group names their own guests and picks their own beds</span></li>
-          <li><span class="tick">✓</span><span>Deposits, invoices and balance in one place per group</span></li>
-        </ul>
       </div>
 
       <div class="flow">
         <div class="phone">
-          <div class="notch"><i></i></div>
-          <div class="screen"><div class="pscreen">
-            <div class="pbar"><span>Guest portal</span><span>▮▮</span></div>
-            <div class="ptitle">Tufts · Oct 1–4</div>
+          <span class="btn-vol v1"></span><span class="btn-vol v2"></span><span class="btn-vol v3"></span>
+          <span class="btn-pwr"></span>
+          <div class="frame"><div class="screen">
+          <div class="island"></div><div class="home"></div>
+          <div class="pscreen">
+            <div class="pbar"><span>10:04</span>
+              <span style="display:inline-flex;align-items:center;gap:4px">
+                <span class="sig"><i style="height:3px"></i><i style="height:5px"></i><i style="height:6.5px"></i><i style="height:8px"></i></span>
+                <svg width="11" height="9" viewBox="0 0 16 12" fill="currentColor" aria-hidden="true"><path d="M8 11.2 5.9 8.9a3 3 0 0 1 4.2 0zM3.6 6.6 2 4.9a8.6 8.6 0 0 1 12 0l-1.6 1.7a6.3 6.3 0 0 0-8.8 0z"/></svg>
+                <span class="batt"><i></i></span>
+              </span></div>
+            <div class="ptitle">Retreat · Oct 1–4</div>
             <div style="background:var(--sage-pale);border-radius:5px;padding:7px 8px;
               font-size:9.5px;color:#3E5A46;font-weight:700;margin-bottom:8px">
               ✓ Agreement signed</div>
@@ -587,14 +725,14 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
               ✓ Headcount · 50</div>
             <div style="font-size:10px;padding:4px 0;color:var(--amber-text);font-weight:600">
               → Rooming, 34 to place</div>
-            <div style="background:var(--pine);color:var(--paper);border-radius:5px;margin-top:9px;
-              text-align:center;padding:8px;font-size:11px;font-weight:600">Open rooming</div>
-          </div></div>
+            <div style="background:var(--pine);color:var(--paper);border-radius:9px;margin-top:10px;
+              text-align:center;padding:9px;font-size:11.5px;font-weight:600">Open rooming</div>
+          </div></div></div>
         </div>
         <div class="arrow"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2"><path d="M4 12h14M13 6l6 6-6 6"/></svg></div>
         <div class="ui">
-          <div class="uibar"><span class="t">Tufts · Oct 1–4</span><span class="meta">50 guests · 3 nights</span></div>
+          <div class="uibar"><span class="t">Retreat · Oct 1–4</span><span class="meta">50 guests · 3 nights</span></div>
           <div class="uibody">
             <div class="progress" style="margin-bottom:12px">
               <div class="step"><div class="lb">Contract</div><div class="cl done">✓</div></div>
@@ -618,11 +756,18 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
           </div>
         </div>
       </div>
+
+        <ul class="caps">
+          <li><span class="tick">✓</span><span>A private link for the coordinator, no password to forget</span></li>
+          <li><span class="tick">✓</span><span>Agreement signed and stored, with an audit trail</span></li>
+          <li><span class="tick">✓</span><span>The group names their own guests and picks their own beds</span></li>
+          <li><span class="tick">✓</span><span>Deposits, invoices and balance in one place per group</span></li>
+        </ul>
     </div>
 
     <!-- ── SAFETY ── -->
     <div class="panel" id="p-saf">
-      <div>
+      <div class="panel-head">
         <h3>Compliance that's already done when they ask</h3>
         <p class="blurb">
           Extinguishers, alarms, drills, kitchen temperatures and staff certifications, each on
@@ -635,12 +780,6 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
           <span class="sub-pill">Kitchen temps</span>
           <span class="sub-pill">Certifications</span>
         </div>
-        <ul class="caps">
-          <li><span class="tick">✓</span><span>Every item on a schedule, overdue surfaced early</span></li>
-          <li><span class="tick">✓</span><span>Drills logged with who ran them and how long they took</span></li>
-          <li><span class="tick">✓</span><span>Staff certifications with expiry dates you'll be warned about</span></li>
-          <li><span class="tick">✓</span><span>ACA and health-department records, exportable</span></li>
-        </ul>
       </div>
 
       <div class="flow" style="grid-template-columns:1fr">
@@ -669,6 +808,13 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
           </div>
         </div>
       </div>
+
+        <ul class="caps">
+          <li><span class="tick">✓</span><span>Every item on a schedule, overdue surfaced early</span></li>
+          <li><span class="tick">✓</span><span>Drills logged with who ran them and how long they took</span></li>
+          <li><span class="tick">✓</span><span>Staff certifications with expiry dates you'll be warned about</span></li>
+          <li><span class="tick">✓</span><span>ACA and health-department records, exportable</span></li>
+        </ul>
     </div>
   </div>
 </section>
@@ -679,28 +825,161 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
     <div class="sechead rv">
       <p class="eyebrow">A day at camp</p>
       <h2>One cracked window, followed all the way through.</h2>
-      <p class="lede">
-        This is what "the same page" means in practice. Four modules, five people, and nobody
-        sent a single status email.
-      </p>
     </div>
     <div class="timeline">
       <div class="beats">
+        <!-- 1 · The phone she is holding, cropped by the frame. -->
         <div class="beat rv"><div class="dot"></div>
+          <div class="scene">
+            <div class="sc-phone">
+              <div class="fr"><div class="sc">
+                <div class="isl"></div>
+                <div style="font-family:Bitter,serif;font-size:9px;font-weight:600;color:var(--pine);margin-bottom:5px">Log an issue</div>
+                <div style="border-radius:5px;overflow:hidden;height:46px;margin-bottom:5px">
+                  <svg viewBox="0 0 200 124" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%;display:block" role="img" aria-label="Cracked window pane">
+              <defs>
+                <linearGradient id="c-sky" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#9dc4d8"/><stop offset="1" stop-color="#cfe0e6"/>
+                </linearGradient>
+                <linearGradient id="c-glare" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#fff" stop-opacity=".5"/>
+                  <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="c-vig" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#000" stop-opacity=".16"/>
+                  <stop offset=".35" stop-color="#000" stop-opacity="0"/>
+                  <stop offset="1" stop-color="#000" stop-opacity=".22"/>
+                </linearGradient>
+              </defs>
+              <rect width="200" height="124" fill="#8a6a4a"/>
+              <g fill="#7d5f42"><rect y="8" width="200" height="2"/><rect y="26" width="200" height="2"/>
+                <rect y="44" width="200" height="2"/><rect y="62" width="200" height="2"/>
+                <rect y="80" width="200" height="2"/><rect y="98" width="200" height="2"/>
+                <rect y="116" width="200" height="2"/></g>
+              <g opacity=".28" fill="#5e462f"><rect x="16" width="1.5" height="124"/><rect x="132" width="1.5" height="124"/></g>
+              <rect x="44" y="18" width="112" height="88" rx="2" fill="#f2ede1"/>
+              <rect x="49" y="23" width="102" height="78" fill="url(#c-sky)"/>
+              <path d="M49 78 L74 56 L92 72 L112 44 L151 78 Z" fill="#5E7A61" opacity=".55"/>
+              <rect x="98" y="23" width="4" height="78" fill="#f2ede1"/>
+              <rect x="49" y="59" width="102" height="4" fill="#f2ede1"/>
+              <path d="M49 23 L92 23 L49 62 Z" fill="url(#c-glare)"/>
+              <g stroke="#fdfdfd" stroke-width="1.1" fill="none" opacity=".95">
+                <path d="M70 44 L58 27 M70 44 L52 52 M70 44 L64 66 M70 44 L88 34 M70 44 L86 58 M70 44 L74 78"/>
+                <path d="M62 36 L57 44 M76 39 L80 47 M67 55 L60 59"/>
+              </g>
+              <circle cx="70" cy="44" r="2.4" fill="#fff" opacity=".9"/>
+              <rect width="200" height="124" fill="url(#c-vig)"/>
+            </svg>
+                </div>
+                <div style="font-size:8.5px;font-weight:600;color:var(--ink);line-height:1.3">Cabin 12 window cracked</div>
+                <div style="display:flex;gap:3px;margin-top:4px">
+                  <span class="sc-chip" style="background:var(--flame-bg);color:#8A3D1E">Urgent</span>
+                  <span class="sc-chip" style="background:var(--rule);color:var(--soft)">Cabin 12</span>
+                </div>
+                <div style="background:var(--pine);color:var(--paper);border-radius:6px;text-align:center;
+                  padding:5px;font-size:8.5px;font-weight:600;margin-top:7px">Submit</div>
+              </div></div>
+            </div>
+          </div>
           <div class="time">7:02 AM</div><div class="who">Counsellor</div>
           <div class="what">Photographs a cracked pane in Cabin 12 on her phone. Two taps, no account needed.</div></div>
+
+        <!-- 2 · It lands at the top of the board, unread. -->
         <div class="beat rv" style="transition-delay:.1s"><div class="dot"></div>
+          <div class="scene">
+            <div class="sc-ui">
+              <div class="sc-bar"><b>Issues &amp; Repairs</b><span>9 open · 3 urgent</span></div>
+              <div class="sc-row sc-new">
+                <span class="sc-chip" style="background:var(--flame-bg);color:#8A3D1E">Urgent</span>
+                <div class="g"><div class="t">Cabin 12 window cracked</div>
+                  <div class="s">Cabin 12 · just now · from phone</div></div>
+              </div>
+              <div class="sc-row">
+                <span class="sc-chip" style="background:var(--flame-bg);color:#8A3D1E">Urgent</span>
+                <div class="g"><div class="t">Kitchen breakers tripping</div>
+                  <div class="s">Kitchen · yesterday</div></div><span class="sc-av">S</span>
+              </div>
+              <div class="sc-row">
+                <span class="sc-chip" style="background:var(--amber-bg);color:var(--amber-text)">High</span>
+                <div class="g"><div class="t">Swim dock ladder loose</div>
+                  <div class="s">Waterfront · yesterday</div></div><span class="sc-av">PS</span>
+              </div>
+            </div>
+          </div>
           <div class="time">7:04 AM</div><div class="who">Facilities</div>
-          <div class="what">It appears as urgent, tagged to Cabin 12, before breakfast is served.</div></div>
+          <div class="what">It appears as urgent, tagged to Cabin 12.</div></div>
+
+        <!-- 3 · The same card, now with a name against it. -->
         <div class="beat rv" style="transition-delay:.2s"><div class="dot"></div>
+          <div class="scene">
+            <div class="sc-ui">
+              <div class="sc-bar"><b>Cabin 12 window cracked</b><span>#418</span></div>
+              <div style="padding:8px 9px 7px">
+                <div style="display:flex;gap:3px;margin-bottom:6px">
+                  <span class="sc-chip" style="background:var(--flame-bg);color:#8A3D1E">Urgent</span>
+                  <span class="sc-chip" style="background:var(--rule);color:var(--soft)">Cabin 12</span>
+                </div>
+                <div style="font-size:8.5px;color:var(--soft);line-height:1.45">
+                  Back bunkroom, lower left pane. Sharp edge, taped off for now.
+                </div>
+              </div>
+              <div class="sc-row" style="border-top:1px solid var(--rule)">
+                <span class="sc-av">MT</span>
+                <div class="g"><div class="t">Marcus Torres</div>
+                  <div class="s">Maintenance · notified 8:15 AM</div></div>
+                <span class="sc-chip" style="background:var(--sage-pale);color:#3E5A46">Assigned</span>
+              </div>
+            </div>
+          </div>
           <div class="time">8:15 AM</div><div class="who">Director</div>
-          <div class="what">Assigns it to Marcus and sees the glass is not in stock.</div></div>
-        <div class="beat rv" style="transition-delay:.3s"><div class="dot"></div>
-          <div class="time">8:20 AM</div><div class="who">Commissary</div>
-          <div class="what">The pane joins Thursday's order with the food, on one delivery.</div></div>
-        <div class="beat rv last" style="transition-delay:.4s"><div class="dot"></div>
-          <div class="time">Thu 2:40 PM</div><div class="who">Retreats</div>
-          <div class="what">Closed and logged, a day before the Tufts group sleeps in that cabin.</div></div>
+          <div class="what">Assigns it to Marcus, who sees it on his phone right away.</div></div>
+
+        <!-- 4 · Closed, with the proof attached. -->
+        <div class="beat rv last" style="transition-delay:.3s"><div class="dot"></div>
+          <div class="scene">
+            <div class="sc-ui">
+              <div class="sc-bar"><b>Cabin 12 window cracked</b>
+                <span style="color:#3E5A46;font-weight:700">Closed</span></div>
+              <div style="height:54px;overflow:hidden"><svg viewBox="0 0 200 124" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%;display:block" role="img" aria-label="Replaced window pane">
+              <defs>
+                <linearGradient id="f-sky" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#9dc4d8"/><stop offset="1" stop-color="#cfe0e6"/>
+                </linearGradient>
+                <linearGradient id="f-glare" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#fff" stop-opacity=".5"/>
+                  <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="f-vig" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#000" stop-opacity=".16"/>
+                  <stop offset=".35" stop-color="#000" stop-opacity="0"/>
+                  <stop offset="1" stop-color="#000" stop-opacity=".22"/>
+                </linearGradient>
+              </defs>
+              <rect width="200" height="124" fill="#8a6a4a"/>
+              <g fill="#7d5f42"><rect y="8" width="200" height="2"/><rect y="26" width="200" height="2"/>
+                <rect y="44" width="200" height="2"/><rect y="62" width="200" height="2"/>
+                <rect y="80" width="200" height="2"/><rect y="98" width="200" height="2"/>
+                <rect y="116" width="200" height="2"/></g>
+              <g opacity=".28" fill="#5e462f"><rect x="16" width="1.5" height="124"/><rect x="132" width="1.5" height="124"/></g>
+              <rect x="44" y="18" width="112" height="88" rx="2" fill="#f2ede1"/>
+              <rect x="49" y="23" width="102" height="78" fill="url(#f-sky)"/>
+              <path d="M49 78 L74 56 L92 72 L112 44 L151 78 Z" fill="#5E7A61" opacity=".55"/>
+              <rect x="98" y="23" width="4" height="78" fill="#f2ede1"/>
+              <rect x="49" y="59" width="102" height="4" fill="#f2ede1"/>
+              <path d="M49 23 L92 23 L49 62 Z" fill="url(#f-glare)"/>
+              
+              <rect width="200" height="124" fill="url(#f-vig)"/>
+            </svg></div>
+              <div class="sc-row">
+                <span class="sc-av">MT</span>
+                <div class="g"><div class="t">Pane replaced</div>
+                  <div class="s">Marcus Torres · 2:40 PM · 1.5 hrs</div></div>
+              </div>
+              <div class="sc-note">Fixed and logged. Nobody sent a status email.</div>
+            </div>
+          </div>
+          <div class="time">2:40 PM</div><div class="who">Maintenance</div>
+          <div class="what">Marcus replaces the pane and marks it fixed. Closed and logged.</div></div>
       </div>
     </div>
   </div>
@@ -709,9 +988,9 @@ footer .inner{max-width:var(--maxw);margin:0 auto;padding:0 24px;display:flex;
 <!-- ═══ CLOSE ═══ -->
 <section class="close" id="pricing">
   <div class="wrap">
-    <h2>See it with your own camp's data.</h2>
-    <p>Twenty minutes, your modules, your cabins. We'll show you the parts that matter for how
-      your camp actually runs.</p>
+    <h2>See how CampCommand can help your operations team.</h2>
+    <p>Book a 30-minute demo so we can learn more about your camp and show you how your
+      operational processes could look using CampCommand.</p>
     <div style="margin-top:32px;display:flex;justify-content:center">
       <button class="btn btn-primary">Book a demo →</button>
     </div>
@@ -755,7 +1034,7 @@ const FRAGS = [
   ['Clipboard',   'AM temp log, not filed',       1],
   ['Voicemail',   '"walk-in is at 46 degrees"',   2],
   ['Text',        '"need 2 more cases of buns"',  2],
-  ['Whiteboard',  'Tufts Fri · 50pax · COI??',    3],
+  ['Whiteboard',  'Retreat Fri · 50pax · COI??',    3],
   ['Email',       'INV-2603 still unpaid',        3],
 ];
 
@@ -820,7 +1099,9 @@ function build(){
   FRAGS.forEach(([kind,text,lane],i)=>{
     const [fx,fy,rot] = spots[i];
     const x = Math.max(8, fx * (L.splitX - 40));
-    const y = 14 + fy * (L.H - CARD_H - 40);
+    // Clears the "Emails, spreadsheets, and binders" label, which wraps to two lines and was
+    // getting buried under the top row of the pile.
+    const y = 50 + fy * (L.H - CARD_H - 76);
 
     const g = document.createElement('div');
     g.className = 'ghost';
@@ -891,7 +1172,8 @@ function run(){
     return;
   }
 
-  // Sit in the mess long enough to be read, then move one card at a time.
+  // Long enough to register the mess, not long enough to wonder if it is broken. The travel
+  // itself stays slow: it was the waiting that dragged, not the movement.
   timers.push(setTimeout(()=>{
     stage.classList.add('ghosted','settled');
     tagA.style.opacity = '1';
@@ -903,7 +1185,7 @@ function run(){
       stage.classList.add('done');
       tagB.style.opacity = '.55';
     }, els.length * 260 + 1500));
-  }, 1800));
+  }, 650));
 }
 
 run();

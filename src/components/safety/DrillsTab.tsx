@@ -70,18 +70,18 @@ function DrillCard({ drill }: { drill: EmergencyDrill }) {
           <div>
             <p className="text-[10px] text-ink-faint font-medium mb-0.5">Response time</p>
             <p className={`text-[12px] font-semibold font-mono ${drill.responseTime ? 'text-green-muted-text' : 'text-forest/30'}`}>
-              {drill.responseTime ?? '—'}
+              {drill.responseTime ?? '-'}
             </p>
           </div>
           <div>
             <p className="text-[10px] text-ink-faint font-medium mb-0.5">All accounted</p>
             <p className={`text-[12px] font-semibold ${drill.allAccounted === null ? 'text-forest/30' : drill.allAccounted ? 'text-green-muted-text' : 'text-red'}`}>
-              {drill.allAccounted === null ? '—' : drill.allAccounted ? 'Yes' : 'No — see notes'}
+              {drill.allAccounted === null ? '-' : drill.allAccounted ? 'Yes' : 'No. See notes'}
             </p>
           </div>
           <div>
             <p className="text-[10px] text-ink-faint font-medium mb-0.5">Participants</p>
-            <p className="text-[12px] font-medium text-forest">{drill.participantCount ?? '—'}</p>
+            <p className="text-[12px] font-medium text-forest">{drill.participantCount ?? '-'}</p>
           </div>
         </div>
       )}
@@ -129,7 +129,7 @@ export function DrillsTab() {
         <div className="bg-white border border-border rounded-card px-4 py-4">
           <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Staff CPR certified</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${cprPct === 100 ? 'text-green-muted-text' : cprPct !== null ? 'text-amber' : 'text-forest/30'}`}>
-            {cprPct !== null ? `${cprPct}%` : '—'}
+            {cprPct !== null ? `${cprPct}%` : '-'}
           </p>
           <p className="text-meta text-ink-faint mt-0.5">
             {cprSummary.total > 0 ? `${cprSummary.current} of ${cprSummary.total} staff` : 'No staff added'}
@@ -146,7 +146,7 @@ export function DrillsTab() {
             </>
           ) : (
             <>
-              <p className="font-semibold text-[18px] mt-2 text-forest/30">—</p>
+              <p className="font-semibold text-[18px] mt-2 text-forest/30">-</p>
               <p className="text-meta text-ink-faint mt-0.5">None scheduled</p>
             </>
           )}
@@ -154,7 +154,7 @@ export function DrillsTab() {
         <div className={`bg-white border border-border rounded-card px-4 py-4 ${drills.length > 0 && !acaMet ? 'border-l-[3px] border-l-amber' : ''}`}>
           <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">ACA requirement</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${drills.length === 0 ? 'text-forest/30' : acaMet ? 'text-green-muted-text' : 'text-amber'}`}>
-            {drills.length === 0 ? '—' : acaMet ? 'Met' : 'In progress'}
+            {drills.length === 0 ? '-' : acaMet ? 'Met' : 'In progress'}
           </p>
           <p className="text-meta text-ink-faint mt-0.5">All mandatory drill types</p>
         </div>

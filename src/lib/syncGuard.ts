@@ -1,7 +1,7 @@
 // ─── Sync guard ───────────────────────────────────────────────────────────────
 // Every store mutation is optimistic: the local slice is updated immediately and the
 // Supabase write is fired without awaiting it. Two separate mechanisms then reload the
-// authoritative rows — the realtime channel (one reload per WAL event) and the periodic
+// authoritative rows. The realtime channel (one reload per WAL event) and the periodic
 // refetchAll in CampDataLoader. Neither used to know anything about writes still on the
 // wire, which produced the "it didn't save until I refreshed and did it again" bug:
 //
@@ -11,7 +11,7 @@
 //   2. Reloads had no ordering. Two overlapping reloads applied in completion order, so
 //      the older snapshot could land last and overwrite the newer one.
 //   3. Once the local store held the half-applied state, re-opening the edit modal
-//      seeded its form from that state — and the next save wrote the loss back to the
+//      seeded its form from that state, and the next save wrote the loss back to the
 //      database for real. That is why the data was gone after a refresh.
 //
 // This module closes all three: writes are counted at the fetch layer, reloads wait for

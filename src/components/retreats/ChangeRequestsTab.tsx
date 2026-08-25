@@ -14,9 +14,9 @@ const KIND_LABELS: Record<RetreatRequestKind, string> = {
 
 /** ISO timestamp → "Jul 6" */
 function fmtWhen(iso: string | null): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '-';
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
@@ -44,7 +44,7 @@ export function ChangeRequestsTab() {
 
       {/* Pending */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[14px] font-semibold text-forest">Pending requests — requires your response</h3>
+        <h3 className="text-[14px] font-semibold text-forest">Pending requests, requires your response</h3>
       </div>
 
       {pending.length === 0 ? (
@@ -58,7 +58,7 @@ export function ChangeRequestsTab() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[13px] font-semibold text-forest">
-                    {groupName(r)} — {KIND_LABELS[r.kind]} change request
+                    {groupName(r)} · {KIND_LABELS[r.kind]} change request
                   </p>
                   <p className="text-[11px] text-ink-faint mt-0.5">
                     Submitted by {r.submittedBy ?? 'group'} · {fmtWhen(r.submittedAt)}
@@ -106,7 +106,7 @@ export function ChangeRequestsTab() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[13px] font-semibold text-forest">
-                      {groupName(r)} — {KIND_LABELS[r.kind]} change
+                      {groupName(r)} · {KIND_LABELS[r.kind]} change
                     </p>
                     <p className="text-[11px] text-ink-faint mt-0.5">
                       Submitted {fmtWhen(r.submittedAt)} · {statusLabel} {fmtWhen(r.respondedAt)}

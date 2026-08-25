@@ -1,4 +1,4 @@
--- Building Systems module — electrical & plumbing infrastructure organized by
+-- Building Systems module, electrical & plumbing infrastructure organized by
 -- building → room → component, plus panel/breaker schedules and a seasonal
 -- (winterization) checklist. All tables are camp-scoped with member RLS.
 
@@ -12,7 +12,7 @@ CREATE TABLE buildings (
                     'office','activity','storage','utility','other')),
   -- Soft link to a camp `locations` string so flagged issues can pre-fill location.
   location_label         text,
-  -- Emergency operation reference — surfaced prominently on the building card.
+  -- Emergency operation reference, surfaced prominently on the building card.
   main_water_shutoff     text,
   main_electrical_panel  text,
   main_gas_shutoff       text,

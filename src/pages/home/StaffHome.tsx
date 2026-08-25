@@ -40,10 +40,10 @@ export function StaffHome() {
   };
 
   const statusLabel: Record<string, { label: string; color: string }> = {
-    open_all_clear:    { label: 'Open — All Clear',    color: 'text-green-700 bg-green-50 border-green-200' },
-    open_monitoring:   { label: 'Open — Monitoring',   color: 'text-amber-700 bg-amber-50 border-amber-200' },
-    closed_corrective: { label: 'Closed — Corrective', color: 'text-red-700 bg-red-50 border-red-200' },
-    closed_retest:     { label: 'Closed — Retest Due', color: 'text-red-700 bg-red-50 border-red-200' },
+    open_all_clear:    { label: 'Open, All Clear',    color: 'text-green-700 bg-green-50 border-green-200' },
+    open_monitoring:   { label: 'Open, Monitoring',   color: 'text-amber-700 bg-amber-50 border-amber-200' },
+    closed_corrective: { label: 'Closed, Corrective', color: 'text-red-700 bg-red-50 border-red-200' },
+    closed_retest:     { label: 'Closed, Retest Due', color: 'text-red-700 bg-red-50 border-red-200' },
   };
 
   return (

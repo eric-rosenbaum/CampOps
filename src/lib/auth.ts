@@ -85,7 +85,7 @@ export function useAuth() {
     role !== 'staff' || !currentStaffGroup || currentStaffGroup.prepostSeeUnassigned;
 
   // Camper names + allergy severities. Unlike every other gate here, this one is
-  // mirrored by real RLS (has_camper_health_access) — this flag only decides what the
+  // mirrored by real RLS (has_camper_health_access). This flag only decides what the
   // UI bothers to render. It also FAILS CLOSED: a staff member with no group is denied,
   // where elsewhere no group means legacy full access.
   const canViewCamperHealth =

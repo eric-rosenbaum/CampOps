@@ -117,12 +117,12 @@ export const useIssuesStore = create<IssuesStore>((set, get) => ({
 
   addIssue: (issue) => {
     campLog('[CampOps] addIssue called', issue.id, issue.title);
-    // 1. Optimistic UI — issue appears instantly.
+    // 1. Optimistic UI. Issue appears instantly.
     set((state) => ({
       issues: [issue, ...state.issues],
       pendingIssues: { ...state.pendingIssues, [issue.id]: issue },
     }));
-    // 2. Persist to localStorage — survives page refresh, retried by the queue processor.
+    // 2. Persist to localStorage, survives page refresh, retried by the queue processor.
     enqueueIssue(issue);
     // 3. Kick off an immediate write attempt alongside the scheduled processor.
     void writeIssueNow(issue);
@@ -283,7 +283,7 @@ async function writeIssueNow(issue: Issue): Promise<boolean> {
 // ─── Queue processor ───────────────────────────────────────────────────────────
 // Processes all queued issue writes. Runs every INTERVAL_MS when the tab is
 // visible, plus immediately on each visibility-change to visible. Any issue that
-// fails stays in the queue and is retried on the next tick — no 30-second give-up.
+// fails stays in the queue and is retried on the next tick, no 30-second give-up.
 
 const INTERVAL_MS = 5_000;
 let _processorRunning = false;
@@ -329,7 +329,7 @@ export function startIssueWriteQueue(): () => void {
 
     const campId = useCampStore.getState().currentCamp?.id;
     const userId = useCampStore.getState().currentMember?.userId;
-    if (!campId || !userId) { console.error('[runTest] No camp/member — are you logged in?'); return; }
+    if (!campId || !userId) { console.error('[runTest] No camp/member, are you logged in?'); return; }
 
     campLogObj?.clear?.();
     campLog(`[TEST] runTest START hangMs=${hangMs}`);
@@ -362,7 +362,7 @@ export function startIssueWriteQueue(): () => void {
     };
 
     (debug.simulateStaleFetch as (ms: number) => void)(hangMs);
-    campLog('[TEST] stale simulation active — calling addIssue');
+    campLog('[TEST] stale simulation active · calling addIssue');
     useIssuesStore.getState().addIssue(testIssue);
 
     // Reset simulation after 4.5s so the queue processor's retry hits real network.
@@ -376,9 +376,9 @@ export function startIssueWriteQueue(): () => void {
       const s = useIssuesStore.getState();
       const pending = !!s.pendingIssues[testIssue.id];
       const inList = s.issues.some((i) => i.id === testIssue.id);
-      if (!pending && inList) campLog('[TEST] PASS ✓ — issue saved and committed');
-      else if (pending) campLog('[TEST] PENDING — write still in-flight (check dump for retries)');
-      else campLog('[TEST] FAIL ✗ — issue was rolled back');
+      if (!pending && inList) campLog('[TEST] PASS ✓, issue saved and committed');
+      else if (pending) campLog('[TEST] PENDING, write still in-flight (check dump for retries)');
+      else campLog('[TEST] FAIL ✗. Issue was rolled back');
       campLog('[TEST] Dump:');
       campLogObj?.dump?.();
     }, 15_000);

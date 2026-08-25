@@ -13,7 +13,7 @@ interface Props {
 }
 
 /**
- * Shared location picker. Searchable, grouped by category, tree-expandable — scales to 150+.
+ * Shared location picker. Searchable, grouped by category, tree-expandable, scales to 150+.
  * Reads the unified location tree from the location store. Multi-select by default;
  * pass multiple={false} for a single-select (assets, building link).
  */
@@ -130,7 +130,7 @@ export function LocationPicker({ value, onChange, multiple = true, filter, place
           </div>
           <div className="max-h-72 overflow-y-auto py-1">
             {active.length === 0 ? (
-              <p className="text-[12px] text-ink-faint italic px-3 py-4 text-center">{emptyHint ?? 'No locations yet — add them in Camp Info.'}</p>
+              <p className="text-[12px] text-ink-faint italic px-3 py-4 text-center">{emptyHint ?? 'No locations yet. Add them in Camp Info.'}</p>
             ) : matches ? (
               matches.length === 0
                 ? <p className="text-[12px] text-ink-faint italic px-3 py-4 text-center">No match for “{query}”.</p>

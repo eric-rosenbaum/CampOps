@@ -1,6 +1,5 @@
 import { FileText, ShieldCheck, Waves, DollarSign, FileQuestion, AlertTriangle, Paperclip, Plus, Pencil, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
-import { FilterPill } from '@/components/shared/FilterPill';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import { dbSignRetreatDocument } from '@/lib/retreatsDb';
@@ -55,7 +54,7 @@ function coiDueDate(arrival: string): string {
   return toDateStr(d);
 }
 
-/** The one line under a doc name — shaped by type + its meta blob. */
+/** The one line under a doc name, shaped by type + its meta blob. */
 function metaLine(doc: RetreatDocument): string {
   const m = (doc.meta ?? {}) as Record<string, unknown>;
   if (doc.docType === 'coi') {
@@ -84,7 +83,7 @@ function overallBadge(docs: RetreatDocument[], retreat: Retreat) {
   const coi = docs.find((d) => d.docType === 'coi');
   const coiMissing = !coi || coi.status === 'missing';
   if (coiMissing) {
-    return <Badge tone="alert">COI missing — due {fmtDate(coiDueDate(retreat.arrivalDate))}</Badge>;
+    return <Badge tone="alert">COI missing, due {fmtDate(coiDueDate(retreat.arrivalDate))}</Badge>;
   }
   if (docs.some((d) => d.status === 'pending' || d.status === 'missing')) {
     return <Badge tone="warn">Documents pending</Badge>;
@@ -100,13 +99,13 @@ async function viewFile(path: string) {
 }
 
 export function DocumentsTab() {
-  const { retreats, activeRetreatId, setActiveRetreat, selectedRetreat, docsFor, openModal } = useRetreatStore();
+  const { selectedRetreat, docsFor, openModal } = useRetreatStore();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
 
   const retreat = selectedRetreat();
 
-  if (retreats.length === 0) {
+  if (!retreat) {
     return (
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
@@ -130,16 +129,6 @@ export function DocumentsTab() {
 
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
-      <div className="flex flex-wrap gap-2 mb-5">
-        {retreats.map((r) => (
-          <FilterPill
-            key={r.id}
-            label={r.groupName}
-            active={(activeRetreatId ?? retreat?.id) === r.id}
-            onClick={() => setActiveRetreat(r.id)}
-          />
-        ))}
-      </div>
 
       {retreat && (
         <>
@@ -172,7 +161,7 @@ export function DocumentsTab() {
                   <DocIcon doc={doc} />
                   <div className="flex-1 min-w-0">
                     <p className={`text-[13px] font-semibold ${missing ? 'text-red' : 'text-forest'}`}>
-                      {doc.name || DOC_TYPE_LABEL[doc.docType]} — {STATUS_LABEL[doc.status]}
+                      {doc.name || DOC_TYPE_LABEL[doc.docType]} · {STATUS_LABEL[doc.status]}
                     </p>
                     <p className={`text-[11px] mt-0.5 ${missing ? 'text-red-text' : 'text-ink-soft'}`}>
                       {missing && doc.docType === 'coi'
@@ -223,7 +212,7 @@ export function DocumentsTab() {
             </div>
           )}
 
-          {/* Retreat agreement — a dedicated slot; upload here or it shows in the list once added. */}
+          {/* Retreat agreement, a dedicated slot; upload here or it shows in the list once added. */}
           {canManage && agreementMissing && (
             <div className="bg-white rounded-card border border-border px-5 py-4 mb-3">
               <p className="text-[13px] font-semibold text-forest mb-1">Add the retreat agreement</p>

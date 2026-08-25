@@ -149,10 +149,10 @@ function ExpandedPoolCard({ pool, latestReading, recentReadings }: {
 
   if (!isWaterfrontType(pool.type) && latestReading) {
     switch (latestReading.poolStatus) {
-      case 'open_all_clear':    dot = 'green'; statusLabel = 'Open — all clear'; break;
-      case 'open_monitoring':   dot = 'amber'; statusLabel = 'Open — monitoring'; break;
-      case 'closed_corrective': dot = 'red';   statusLabel = 'Closed — corrective action'; break;
-      case 'closed_retest':     dot = 'red';   statusLabel = 'Closed — pending retest'; break;
+      case 'open_all_clear':    dot = 'green'; statusLabel = 'Open, all clear'; break;
+      case 'open_monitoring':   dot = 'amber'; statusLabel = 'Open · monitoring'; break;
+      case 'closed_corrective': dot = 'red';   statusLabel = 'Closed, corrective action'; break;
+      case 'closed_retest':     dot = 'red';   statusLabel = 'Closed, pending retest'; break;
     }
   } else if (isWaterfrontType(pool.type)) {
     dot = 'green'; statusLabel = 'Waterfront area';
@@ -225,7 +225,7 @@ function ExpandedPoolCard({ pool, latestReading, recentReadings }: {
 
           {sparkValues.length >= 2 && (
             <div className="mt-3 pt-2.5 border-t border-border/50">
-              <p className="text-[9px] text-ink-faint mb-1">Free Cl — last {sparkValues.length} readings</p>
+              <p className="text-[9px] text-ink-faint mb-1">Free Cl, last {sparkValues.length} readings</p>
               <Sparkline values={sparkValues} field="freeChlorine" />
             </div>
           )}
@@ -234,7 +234,7 @@ function ExpandedPoolCard({ pool, latestReading, recentReadings }: {
 
       {isWaterfrontType(pool.type) && (
         <div className="px-4 py-4">
-          <p className="text-[11px] text-ink-faint">Waterfront — chemical tracking not applicable</p>
+          <p className="text-[11px] text-ink-faint">Waterfront, chemical tracking not applicable</p>
         </div>
       )}
 
@@ -266,7 +266,7 @@ function DeadlineStrip({ items }: { items: DeadlineItem[] }) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-ink-faint" />
-          <h2 className="text-[15px] font-semibold text-forest">Upcoming — next 14 days</h2>
+          <h2 className="text-[15px] font-semibold text-forest">Upcoming, next 14 days</h2>
         </div>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
@@ -461,26 +461,26 @@ export function Dashboard() {
     actionItems.push({ id: `iss-${issue.id}`, priority: 'critical', module: 'Issue', label: `Urgent: ${issue.title}`, to: '/issues' })
   );
   closedPools.forEach(p =>
-    actionItems.push({ id: `pool-${p.id}`, priority: 'critical', module: 'Pool', label: `${p.name} is closed — corrective action needed`, to: '/pool' })
+    actionItems.push({ id: `pool-${p.id}`, priority: 'critical', module: 'Pool', label: `${p.name} is closed, corrective action needed`, to: '/pool' })
   );
   overdueItems_.slice(0, 3).forEach(item =>
     actionItems.push({ id: `saf-${item.id}`, priority: 'critical', module: 'Safety', label: `Inspection overdue: ${item.name} at ${item.location}`, to: '/safety' })
   );
   overdueOuts.slice(0, 3).forEach(({ asset, checkout }) => {
     const daysOver = differenceInDays(today, startOfDay(new Date(checkout.expectedReturnAt)));
-    actionItems.push({ id: `co-${checkout.id}`, priority: 'critical', module: 'Fleet', label: `${asset.name} overdue ${daysOver}d — checked out by ${checkout.checkedOutBy}`, to: '/assets' });
+    actionItems.push({ id: `co-${checkout.id}`, priority: 'critical', module: 'Fleet', label: `${asset.name} overdue ${daysOver}d, checked out by ${checkout.checkedOutBy}`, to: '/assets' });
   });
   failedDevices.slice(0, 2).forEach(item =>
-    actionItems.push({ id: `fail-${item.id}`, priority: 'critical', module: 'Safety', label: `Re-inspect: ${item.name} at ${item.location} — failed last inspection`, to: '/safety' })
+    actionItems.push({ id: `fail-${item.id}`, priority: 'critical', module: 'Safety', label: `Re-inspect: ${item.name} at ${item.location}, failed last inspection`, to: '/safety' })
   );
   certifications.filter(c => certExpiryStatus(c.expiryDate) === 'expired').slice(0, 2).forEach(cert =>
-    actionItems.push({ id: `cert-${cert.id}`, priority: 'critical', module: 'Cert', label: `Expired cert: ${CERT_TYPE_LABELS[cert.certType as keyof typeof CERT_TYPE_LABELS]} — renew staff cert`, to: '/safety' })
+    actionItems.push({ id: `cert-${cert.id}`, priority: 'critical', module: 'Cert', label: `Expired cert: ${CERT_TYPE_LABELS[cert.certType as keyof typeof CERT_TYPE_LABELS]}, renew staff cert`, to: '/safety' })
   );
   issues.filter(i => i.status !== 'resolved' && i.priority === 'high').slice(0, 3).forEach(issue =>
     actionItems.push({ id: `iss-h-${issue.id}`, priority: 'warning', module: 'Issue', label: issue.title, to: '/issues' })
   );
   maintOverdue.slice(0, 2).forEach(({ asset, record }) =>
-    actionItems.push({ id: `maint-${record.id}`, priority: 'warning', module: 'Fleet', label: `${asset.name} — ${SERVICE_TYPE_LABELS[record.serviceType] ?? 'Service'} overdue`, to: '/assets' })
+    actionItems.push({ id: `maint-${record.id}`, priority: 'warning', module: 'Fleet', label: `${asset.name} · ${SERVICE_TYPE_LABELS[record.serviceType] ?? 'Service'} overdue`, to: '/assets' })
   );
   certifications.filter(c => certExpiryStatus(c.expiryDate) === 'expiring').slice(0, 2).forEach(cert =>
     actionItems.push({ id: `certw-${cert.id}`, priority: 'warning', module: 'Cert', label: `Cert expiring soon: ${CERT_TYPE_LABELS[cert.certType as keyof typeof CERT_TYPE_LABELS]}`, to: '/safety' })
@@ -517,7 +517,7 @@ export function Dashboard() {
   assets
     .filter(a => a.uscgRegistrationExpiry && new Date(a.uscgRegistrationExpiry + 'T00:00:00') <= in14)
     .forEach(asset =>
-      deadlineItems.push({ id: `uscg-${asset.id}`, dateStr: asset.uscgRegistrationExpiry!, label: `${asset.name} — USCG reg`, sub: asset.uscgRegistration ?? 'USCG registration', module: 'Fleet', overdue: new Date(asset.uscgRegistrationExpiry! + 'T00:00:00') < today })
+      deadlineItems.push({ id: `uscg-${asset.id}`, dateStr: asset.uscgRegistrationExpiry!, label: `${asset.name} · USCG reg`, sub: asset.uscgRegistration ?? 'USCG registration', module: 'Fleet', overdue: new Date(asset.uscgRegistrationExpiry! + 'T00:00:00') < today })
     );
   if (season?.acaInspectionDate && new Date(season.acaInspectionDate + 'T00:00:00') <= in14)
     deadlineItems.push({ id: 'aca', dateStr: season.acaInspectionDate, label: 'ACA inspection', sub: season.name ?? 'Season inspection', module: 'Safety', overdue: new Date(season.acaInspectionDate + 'T00:00:00') < today });

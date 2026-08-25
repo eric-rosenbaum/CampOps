@@ -151,10 +151,10 @@ enum PoolStatusValue: String, Codable, CaseIterable {
     case closedRetest     = "closed_retest"
     var displayName: String {
         switch self {
-        case .openAllClear:     return "Open — all clear"
-        case .openMonitoring:   return "Open — monitoring"
-        case .closedCorrective: return "Closed — corrective action"
-        case .closedRetest:     return "Closed — re-test required"
+        case .openAllClear:     return "Open · all clear"
+        case .openMonitoring:   return "Open · monitoring"
+        case .closedCorrective: return "Closed · corrective action"
+        case .closedRetest:     return "Closed · re-test required"
         }
     }
 }
@@ -476,7 +476,7 @@ extension Date {
 
 /// Formats a pool chemistry reading for display.
 ///
-/// Readings are entered with a 0.1-step `Stepper`, which does binary float addition — a pH of
+/// Readings are entered with a 0.1-step `Stepper`, which does binary float addition, a pH of
 /// 6.9 can arrive as 6.900000000000002. Rounding to the field's real precision is the
 /// difference between "pH 6.9" and a number that makes the app look broken. Trailing zeros
 /// are dropped so 7.0 reads as "7".

@@ -1,4 +1,4 @@
--- SECURITY PHASE 1 — allow revoking/rotating a guest-portal link.
+-- SECURITY PHASE 1, allow revoking/rotating a guest-portal link.
 -- Portal tokens previously never changed, so a leaked /portal/:token URL was permanent access
 -- to that group's roster, documents, and financial balance. This RPC issues a fresh 256-bit
 -- token (invalidating the old link), gated to admin/staff of the retreat's camp.

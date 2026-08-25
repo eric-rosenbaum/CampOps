@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  TreePine, ArrowRight, ChevronDown, Check, Wrench, ShieldCheck, Waves,
+  ArrowRight, ChevronDown, Check, Wrench, ShieldCheck, Waves,
   Building2, UtensilsCrossed, CalendarRange, Users, CheckSquare, Eye,
   Smartphone, Camera, Wifi,
 } from 'lucide-react';
+import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
 
 const DEMO_MAILTO = 'mailto:eric@campcommand.app?subject=CampCommand%20demo%20request&body=Hi%20%E2%80%94%20I%27d%20like%20to%20see%20a%20demo%20of%20CampCommand%20for%20our%20camp.';
 
@@ -32,9 +33,13 @@ function Nav({ onSignIn, onBookDemo }: { onSignIn: () => void; onBookDemo: () =>
     <header className={`fixed top-0 inset-x-0 z-40 transition-colors duration-300 ${scrolled ? 'bg-cream/95 backdrop-blur border-b border-black/5 shadow-sm' : 'bg-transparent'}`}>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className={`w-8 h-8 rounded-btn flex items-center justify-center flex-shrink-0 transition-colors ${scrolled ? 'bg-sage' : 'bg-white/15 backdrop-blur'}`}>
-            <TreePine className={`w-[18px] h-[18px] ${scrolled ? 'text-forest' : 'text-cream'}`} />
-          </div>
+          <CampCommandMark
+            size={32}
+            disc={scrolled ? CC_GREEN : CC_CREAM}
+            ink={scrolled ? CC_CREAM : CC_GREEN}
+            decorative
+            className="flex-shrink-0"
+          />
           <span className={`text-[16px] font-semibold transition-colors ${scrolled ? 'text-forest' : 'text-cream'}`}>CampCommand</span>
         </div>
         <nav className="flex items-center gap-1 sm:gap-2">
@@ -64,7 +69,7 @@ function Nav({ onSignIn, onBookDemo }: { onSignIn: () => void; onBookDemo: () =>
 
 // ─── The hero's single "operations snapshot" card ───────────────────────────────
 
-// One card that IS the pitch: the whole camp, across every module, handled at a glance —
+// One card that IS the pitch: the whole camp, across every module, handled at a glance -
 // with one item flagged so it reads as a system that catches things, not a static list.
 const SNAPSHOT = [
   { icon: Wrench, label: 'Maintenance', value: '1 to fix', attention: true },
@@ -208,7 +213,7 @@ function HowItWorks() {
 // ─── Feature spotlights (built UI mockups) ───────────────────────────────────────
 
 const MODULES = [
-  { icon: Wrench, title: 'Issues & Repairs', desc: 'Log, assign, and track maintenance requests from any device — with photos and status.' },
+  { icon: Wrench, title: 'Issues & Repairs', desc: 'Log, assign, and track maintenance requests from any device, with photos and status.' },
   { icon: ShieldCheck, title: 'Safety & Compliance', desc: 'Run safety checks, drills, and headcounts with an airtight, timestamped record.' },
   { icon: Waves, title: 'Pool Management', desc: 'Log pool chemistry, scan test strips with AI, and keep every reading on record.' },
   { icon: Building2, title: 'Building Systems', desc: 'Track electrical, plumbing, and shutoffs room by room, ready before you need them.' },
@@ -240,7 +245,7 @@ function Phone({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* 1 — Mobile field logging */
+/* 1, Mobile field logging */
 function MobileMock() {
   const rows = [
     { icon: Wrench, t: 'Cabin 4 · leaky faucet', s: 'Maintenance · 2m ago', c: 'text-amber-text' },
@@ -272,7 +277,7 @@ function MobileMock() {
   );
 }
 
-/* 2 — AI pool test-strip scan */
+/* 2, AI pool test-strip scan */
 function PoolScanMock() {
   const reads = [
     { k: 'pH', v: '7.4', s: 'Ideal' },
@@ -313,7 +318,7 @@ function PoolScanMock() {
   );
 }
 
-/* 3 — Retreats guest portal */
+/* 3, Retreats guest portal */
 function PortalMock() {
   const rows = [
     { t: 'Sign rental agreement', done: true },
@@ -351,10 +356,10 @@ const FEATURES = [
     body: 'Your team logs issues, pool readings, and safety checks right where they happen from their phone. It syncs the second they hit save, so the office always sees the field in real time.',
     points: ['Log from anywhere on the property', 'Photos attach in a tap', 'No radios, no “tell me later”'], Visual: MobileMock },
   { icon: Camera, eyebrow: 'AI pool scan', title: 'Snap the test strip. We read the chemistry.', clip: false,
-    body: 'Point your phone at a pool test strip and CampCommand reads pH, chlorine, and alkalinity for you — logged, timestamped, and flagged the moment anything drifts out of range.',
+    body: 'Point your phone at a pool test strip and CampCommand reads pH, chlorine, and alkalinity for you, logged, timestamped, and flagged the moment anything drifts out of range.',
     points: ['No squinting at color charts', 'Auto-logged to the pool record', 'Out-of-range alerts before it’s a problem'], Visual: PoolScanMock },
   { icon: CalendarRange, eyebrow: 'Retreats', title: 'Turn your off-season into revenue', clip: false,
-    body: 'Rent your facility to outside groups and let them self-serve through a guest portal — contracts, housing, menus, and payments — while your team keeps full oversight.',
+    body: 'Rent your facility to outside groups and let them self-serve through a guest portal (contracts, housing, menus, and payments) while your team keeps full oversight.',
     points: ['A private booking portal per group', 'Contracts and COIs collected for you', 'Housing and menus without the email chain'], Visual: PortalMock },
 ];
 
@@ -416,7 +421,7 @@ function FeatureSpotlights() {
 }
 
 // The six "also covers" tiles. Each reveals a one-line description on hover (desktop) and
-// on tap (touch) — a lightweight, modern reveal rather than a separate tooltip layer.
+// on tap (touch), a lightweight, modern reveal rather than a separate tooltip layer.
 function ModuleBreadth() {
   const [active, setActive] = useState<string | null>(null);
   return (
@@ -489,9 +494,7 @@ function Footer({ onSignIn, onBookDemo }: { onSignIn: () => void; onBookDemo: ()
     <footer className="bg-forest border-t border-white/10 py-12">
       <div className="max-w-6xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-sage rounded-btn flex items-center justify-center">
-            <TreePine className="w-4 h-4 text-forest" />
-          </div>
+          <CampCommandMark size={32} decorative />
           <span className="text-[15px] font-semibold text-cream">CampCommand</span>
         </div>
         <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px] text-cream/50">
@@ -514,7 +517,7 @@ function Footer({ onSignIn, onBookDemo }: { onSignIn: () => void; onBookDemo: ()
 export function LandingPage() {
   const navigate = useNavigate();
   const onSignIn = () => navigate('/login');
-  // Open the booking page (Google Appointment Schedule) in a new tab — Google refuses to be
+  // Open the booking page (Google Appointment Schedule) in a new tab, Google refuses to be
   // embedded in an iframe. Falls back to email if no scheduling URL is configured.
   const onBookDemo = () => {
     if (DEMO_SCHEDULING_URL) window.open(DEMO_SCHEDULING_URL, '_blank', 'noopener,noreferrer');

@@ -202,7 +202,7 @@ export function OverviewTab() {
             </>
           ) : (
             <>
-              <p className="font-semibold text-[18px] mt-2 text-forest/30">—</p>
+              <p className="font-semibold text-[18px] mt-2 text-forest/30">-</p>
               <p className="text-meta text-ink-faint mt-0.5">Not set in season</p>
             </>
           )}
@@ -258,7 +258,7 @@ export function OverviewTab() {
 
       {actionItems.length === 0 && (fireSt.total + waterSt.total + kitchenSt.total) > 0 && (
         <div className="bg-green-muted-bg border border-green-muted-text/20 rounded-card px-4 py-3.5 mb-6">
-          <p className="text-[13px] font-semibold text-green-muted-text">All compliance items are current — no action needed.</p>
+          <p className="text-[13px] font-semibold text-green-muted-text">All compliance items are current, no action needed.</p>
         </div>
       )}
 
@@ -365,7 +365,7 @@ export function OverviewTab() {
         </div>
       )}
 
-      {/* Asset compliance — registrations & inspections */}
+      {/* Asset compliance, registrations & inspections */}
       <AssetComplianceSection assets={assets} serviceRecords={serviceRecords} />
     </div>
   );
@@ -419,7 +419,7 @@ function AssetComplianceSection({
         {regRows.map((row, i) => (
           <div key={`reg-${i}`} className={`flex items-center justify-between px-4 py-3 ${i < regRows.length + inspRows.length - 1 ? 'border-b border-cream-dark' : ''}`}>
             <div>
-              <p className="text-[13px] font-medium text-forest">{row.assetName} — Registration</p>
+              <p className="text-[13px] font-medium text-forest">{row.assetName} · Registration</p>
               <p className="text-[11px] text-ink-faint mt-0.5">
                 {row.status === 'expired' ? 'Expired ' : 'Expires '}
                 {new Date(row.expiry + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -433,7 +433,7 @@ function AssetComplianceSection({
         {inspRows.map((row, i) => (
           <div key={`insp-${i}`} className={`flex items-center justify-between px-4 py-3 ${i < inspRows.length - 1 ? 'border-b border-cream-dark' : ''}`}>
             <div>
-              <p className="text-[13px] font-medium text-forest">{row.assetName} — {SERVICE_TYPE_LABELS[row.serviceType] ?? row.serviceType}</p>
+              <p className="text-[13px] font-medium text-forest">{row.assetName} · {SERVICE_TYPE_LABELS[row.serviceType] ?? row.serviceType}</p>
               <p className="text-[11px] text-ink-faint mt-0.5">
                 {row.status === 'overdue' ? 'Was due ' : 'Due '}
                 {new Date(row.nextDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}

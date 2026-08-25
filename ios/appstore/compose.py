@@ -18,6 +18,7 @@ Vendored from the aso-appstore-screenshots skill and changed in three ways:
 """
 
 import argparse
+import math
 import os
 from PIL import Image, ImageDraw, ImageFont
 
@@ -76,6 +77,40 @@ def load_heavy_font(size):
     raise RuntimeError("No heavy sans-serif font found.")
 
 
+def draw_contours(canvas, tint, opacity=0.22):
+    """The sidebar's topographic contour texture, carried onto the screenshot ground.
+
+    Drawn as sampled sine paths rather than beziers because PIL has no curve primitive, and a
+    sampled polyline at this scale is indistinguishable from one. The lines are deliberately
+    barely-there: they should register as paper texture behind the headline, not as a diagram
+    competing with it.
+    """
+    layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    alpha = int(255 * opacity)
+    w, h = canvas.size
+
+    # (y as a fraction of height, amplitude, wavelength, phase)
+    # Grouped in threes with the gaps between groups uneven, so the texture reads as contour
+    # lines on a map rather than as evenly-ruled stationery.
+    bands = [
+        (0.03, 44, 1500, 0.0), (0.07, 44, 1500, 0.3), (0.11, 44, 1500, 0.6),
+        (0.26, 58, 1750, 1.1), (0.31, 58, 1750, 1.4), (0.36, 58, 1750, 1.7),
+        (0.52, 50, 1600, 2.2), (0.57, 50, 1600, 2.5),
+        (0.72, 54, 1700, 3.0), (0.77, 54, 1700, 3.3), (0.82, 54, 1700, 3.6),
+        (0.93, 46, 1550, 4.1), (0.97, 46, 1550, 4.4),
+    ]
+    for frac, amp, wave, phase in bands:
+        base = h * frac
+        pts = []
+        for x in range(-40, w + 41, 12):
+            y = base + amp * math.sin((x / wave) * 2 * math.pi + phase)
+            pts.append((x, y))
+        d.line(pts, fill=(*tint, alpha), width=3, joint="curve")
+
+    return Image.alpha_composite(canvas, layer)
+
+
 def hex_to_rgb(h):
     h = h.lstrip("#")
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
@@ -131,11 +166,13 @@ def draw_block(draw, baseline_y, text, font, fill, max_w=None, line_gap=0):
 
 
 def compose(bg_hex, fg_hex, verb, desc, screenshot_path, output_path,
-            verb_desc_gap, desc_line_gap):
+            verb_desc_gap, desc_line_gap, contour_hex=None):
     bg = hex_to_rgb(bg_hex)
     fg = hex_to_rgb(fg_hex)
 
     canvas = Image.new("RGBA", (CANVAS_W, CANVAS_H), (*bg, 255))
+    if contour_hex:
+        canvas = draw_contours(canvas, hex_to_rgb(contour_hex))
     draw = ImageDraw.Draw(canvas)
 
     verb_font = fit_font(verb.upper(), MAX_VERB_W, VERB_SIZE_MAX, VERB_SIZE_MIN)
@@ -195,10 +232,12 @@ def main():
     p.add_argument("--output", required=True)
     p.add_argument("--verb-desc-gap", type=int, default=50)
     p.add_argument("--desc-line-gap", type=int, default=32)
+    p.add_argument("--contours", default=None,
+                   help="Hex tint for the topographic contour texture (omit for a flat ground)")
     a = p.parse_args()
     os.makedirs(os.path.dirname(a.output) or ".", exist_ok=True)
     compose(a.bg, a.fg, a.verb, a.desc, a.screenshot, a.output,
-            a.verb_desc_gap, a.desc_line_gap)
+            a.verb_desc_gap, a.desc_line_gap, a.contours)
 
 
 if __name__ == "__main__":

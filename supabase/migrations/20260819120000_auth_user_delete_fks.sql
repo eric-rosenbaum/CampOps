@@ -2,7 +2,7 @@
 --
 -- Deleting a user from the Supabase dashboard failed with "Database error deleting user".
 -- The cause: nine foreign keys into auth.users were declared with no ON DELETE action, so
--- Postgres refused the delete the moment the account had touched anything — reported an
+-- Postgres refused the delete the moment the account had touched anything, reported an
 -- issue, logged a pool reading, been assigned a task, issued a join code. public.delete_my_account()
 -- worked around this by detaching every reference by hand before the delete, but nothing
 -- outside that function could: not the dashboard, not the admin API, not a support script.
@@ -10,7 +10,7 @@
 -- The rule the RPC already encodes is moved into the constraints themselves, so it holds no
 -- matter who does the deleting. Identity goes; the camp's operating record stays, detached and
 -- attributed by the name snapshot on the row. The two NOT NULL columns cannot be detached, so
--- those rows go instead — both are credentials the departing user vouched for.
+-- those rows go instead. Both are credentials the departing user vouched for.
 
 -- Attribution has to be preserved before the id disappears, and the FK action itself cannot do
 -- it. delete_my_account() backfills the name snapshots first; a dashboard delete has no such

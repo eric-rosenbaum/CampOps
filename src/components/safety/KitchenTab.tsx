@@ -131,7 +131,7 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
           <div>
             <p className="text-[10px] text-ink-faint font-medium mb-0.5">Last cleaned</p>
             <p className={`text-[12px] font-semibold font-mono ${status === 'ok' ? 'text-green-muted-text' : status === 'warn' ? 'text-amber' : 'text-red'}`}>
-              {item.lastInspected ? new Date(item.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+              {item.lastInspected ? new Date(item.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}
             </p>
           </div>
           <div>
@@ -140,7 +140,7 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
           </div>
           <div>
             <p className="text-[10px] text-ink-faint font-medium mb-0.5">Vendor</p>
-            <p className="text-[12px] font-medium text-forest truncate">{item.vendor ?? '—'}</p>
+            <p className="text-[12px] font-medium text-forest truncate">{item.vendor ?? '-'}</p>
           </div>
         </div>
       )}
@@ -149,7 +149,7 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t border-cream-dark">
           <div>
             <p className="text-[10px] text-ink-faint font-medium mb-0.5">Inspecting authority</p>
-            <p className="text-[12px] font-medium text-forest">{item.vendor ?? '—'}</p>
+            <p className="text-[12px] font-medium text-forest">{item.vendor ?? '-'}</p>
           </div>
           <div>
             <p className="text-[10px] text-ink-faint font-medium mb-0.5">Last result</p>
@@ -159,13 +159,13 @@ function KitchenItemCard({ item, onLog, onEdit }: { item: SafetyItem; onLog: () 
               recentLogs[0]?.result === 'passed' ? 'text-green-muted-text' :
               'text-ink-faint'
             }`}>
-              {recentLogs[0] ? (RESULT_LABELS[recentLogs[0].result] ?? recentLogs[0].result) : '—'}
+              {recentLogs[0] ? (RESULT_LABELS[recentLogs[0].result] ?? recentLogs[0].result) : '-'}
             </p>
           </div>
           <div>
             <p className="text-[10px] text-ink-faint font-medium mb-0.5">Last inspected</p>
             <p className="text-[12px] font-semibold font-mono text-ink">
-              {item.lastInspected ? new Date(item.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+              {item.lastInspected ? new Date(item.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}
             </p>
           </div>
         </div>
@@ -283,13 +283,13 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
         <div>
           <p className="text-[10px] text-ink-faint font-medium mb-0.5">AM reading</p>
           <p className={`text-[13px] font-semibold font-mono ${amStatus === 'ok' ? 'text-green-muted-text' : amStatus === 'alert' ? 'text-red' : 'text-forest/30'}`}>
-            {am ? `${am.temperature}°F` : '— pending'}
+            {am ? `${am.temperature}°F` : 'pending'}
           </p>
         </div>
         <div>
           <p className="text-[10px] text-ink-faint font-medium mb-0.5">PM reading</p>
           <p className={`text-[13px] font-semibold font-mono ${pmStatus === 'ok' ? 'text-green-muted-text' : pmStatus === 'alert' ? 'text-red' : 'text-forest/30'}`}>
-            {pm ? `${pm.temperature}°F` : '— pending'}
+            {pm ? `${pm.temperature}°F` : 'pending'}
           </p>
         </div>
         <div>
@@ -298,7 +298,7 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
         </div>
         <div>
           <p className="text-[10px] text-ink-faint font-medium mb-0.5">Logged by</p>
-          <p className="text-[12px] font-medium text-forest">{am?.loggedBy ?? pm?.loggedBy ?? '—'}</p>
+          <p className="text-[12px] font-medium text-forest">{am?.loggedBy ?? pm?.loggedBy ?? '-'}</p>
         </div>
       </div>
 
@@ -349,15 +349,15 @@ function TempCard({ item, onEdit }: { item: SafetyItem; onEdit: () => void }) {
                       onClick={() => amLog && openEditTempLogModal(amLog.id)}
                       className={`font-mono font-semibold text-left ${amLog ? ((amLog.inRange ? 'text-green-muted-text' : 'text-red') + ' hover:underline cursor-pointer') : 'text-forest/25 cursor-default'}`}
                     >
-                      {amLog ? `${amLog.temperature}°F` : '—'}
+                      {amLog ? `${amLog.temperature}°F` : '-'}
                     </button>
                     <button
                       onClick={() => pmLog && openEditTempLogModal(pmLog.id)}
                       className={`font-mono font-semibold text-left ${pmLog ? ((pmLog.inRange ? 'text-green-muted-text' : 'text-red') + ' hover:underline cursor-pointer') : 'text-forest/25 cursor-default'}`}
                     >
-                      {pmLog ? `${pmLog.temperature}°F` : '—'}
+                      {pmLog ? `${pmLog.temperature}°F` : '-'}
                     </button>
-                    <span className="text-ink-faint truncate">{amLog?.loggedBy ?? pmLog?.loggedBy ?? '—'}</span>
+                    <span className="text-ink-faint truncate">{amLog?.loggedBy ?? pmLog?.loggedBy ?? '-'}</span>
                     <div className="flex gap-2">
                       {amLog && <button onClick={() => openEditTempLogModal(amLog.id)} className="text-forest/30 hover:text-sage cursor-pointer">Edit AM</button>}
                       {pmLog && <button onClick={() => openEditTempLogModal(pmLog.id)} className="text-forest/30 hover:text-sage cursor-pointer">Edit PM</button>}
@@ -405,7 +405,7 @@ export function KitchenTab() {
         <div className={`bg-white border border-border rounded-card px-4 py-4 ${stats.alert > 0 ? 'border-l-[3px] border-l-red' : ''}`}>
           <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Hood fan cleaning</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${hoodFans.some(i => safetyItemStatus(i) === 'alert') ? 'text-red' : hoodFans.some(i => safetyItemStatus(i) === 'warn') ? 'text-amber' : 'text-green-muted-text'}`}>
-            {hoodFans.length === 0 ? '—' : hoodFans.every(i => safetyItemStatus(i) === 'ok') ? 'Current' : hoodFans.some(i => safetyItemStatus(i) === 'alert') ? 'Overdue' : 'Due soon'}
+            {hoodFans.length === 0 ? '-' : hoodFans.every(i => safetyItemStatus(i) === 'ok') ? 'Current' : hoodFans.some(i => safetyItemStatus(i) === 'alert') ? 'Overdue' : 'Due soon'}
           </p>
           <p className="text-meta text-ink-faint mt-0.5">{hoodFans.length} unit group{hoodFans.length === 1 ? '' : 's'}</p>
         </div>
@@ -421,7 +421,7 @@ export function KitchenTab() {
             >
               <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Health permit</p>
               <p className={`font-mono font-semibold text-stat mt-1 ${ps === 'ok' ? 'text-green-muted-text' : ps === 'expiring' ? 'text-amber' : ps === 'expired' ? 'text-red' : 'text-forest/30'}`}>
-                {ps === 'ok' ? 'Valid' : ps === 'expiring' ? 'Expiring' : ps === 'expired' ? 'Expired' : '—'}
+                {ps === 'ok' ? 'Valid' : ps === 'expiring' ? 'Expiring' : ps === 'expired' ? 'Expired' : '-'}
               </p>
               <p className={`text-meta mt-0.5 ${ps === 'expired' ? 'text-red' : ps === 'expiring' ? 'text-amber-text' : 'text-ink-faint'}`}>
                 {healthPermit ? (
@@ -446,7 +446,7 @@ export function KitchenTab() {
             </>
           ) : (
             <>
-              <p className="font-semibold text-[18px] mt-2 text-forest/30">—</p>
+              <p className="font-semibold text-[18px] mt-2 text-forest/30">-</p>
               <p className="text-meta text-ink-faint mt-0.5">None on file</p>
             </>
           )}
@@ -454,7 +454,7 @@ export function KitchenTab() {
         <div className="bg-white border border-border rounded-card px-4 py-4">
           <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Temp logs today</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${tempLogsPending > 0 ? 'text-amber' : refrigeration.length === 0 ? 'text-forest/30' : 'text-green-muted-text'}`}>
-            {refrigeration.length === 0 ? '—' : `${tempLogsToday}/${refrigeration.length}`}
+            {refrigeration.length === 0 ? '-' : `${tempLogsToday}/${refrigeration.length}`}
           </p>
           <p className="text-meta text-ink-faint mt-0.5">
             {refrigeration.length === 0 ? 'No units set up' : tempLogsPending > 0 ? `${tempLogsPending} log${tempLogsPending === 1 ? '' : 's'} pending` : 'All logged'}

@@ -132,7 +132,7 @@ export function AddEditComponentModal({ buildingId, editId, defaultLocationId, d
 
         <div>
           <label className={labelClass}>Location detail</label>
-          <input value={locationDetail} onChange={(e) => setLocationDetail(e.target.value)} className={inputClass} placeholder="where in the room — optional" />
+          <input value={locationDetail} onChange={(e) => setLocationDetail(e.target.value)} className={inputClass} placeholder="where in the room · optional" />
         </div>
 
         {/* Dynamic specs */}
@@ -149,7 +149,7 @@ export function AddEditComponentModal({ buildingId, editId, defaultLocationId, d
                   <>
                     <label className={labelClass}>{f.label}</label>
                     <select value={String(metadata[f.key] ?? '')} onChange={(e) => setMeta(f.key, e.target.value)} className={inputClass}>
-                      <option value="">—</option>
+                      <option value="">-</option>
                       {f.options?.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </>

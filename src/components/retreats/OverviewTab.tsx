@@ -1,3 +1,4 @@
+import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { StatCard } from '@/components/shared/StatCard';
 import { AlertBanner } from '@/components/shared/AlertBanner';
@@ -15,7 +16,7 @@ import { todayStr } from '@/lib/utils';
 const ACTIVEISH: Retreat['status'][] = ['confirmed', 'ready', 'active'];
 const PIPELINE: { key: Retreat['status']; label: string }[] = [
   { key: 'inquiry', label: 'Inquiry' },
-  { key: 'confirmed', label: 'Confirmed — setup' },
+  { key: 'confirmed', label: 'Confirmed · setup' },
   { key: 'ready', label: 'Ready to go' },
   { key: 'active', label: 'Active now' },
 ];
@@ -31,7 +32,7 @@ interface DerivedState {
 export function OverviewTab() {
   const {
     retreats, retreatsByStatus, docsFor, housingFor, financialsFor,
-    phaseProgress, setActiveRetreat, setActiveTab, openModal,
+    phaseProgress, enterRetreat, openModal,
   } = useRetreatStore();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
@@ -97,7 +98,7 @@ export function OverviewTab() {
         <div className="max-w-md mx-auto text-center mt-24">
           <p className="text-[15px] font-semibold text-forest">No retreats yet</p>
           <p className="text-[13px] text-ink-soft mt-2 leading-relaxed">
-            Track external group rentals from first inquiry through checkout — contracts, COIs,
+            Track external group rentals from first inquiry through checkout · contracts, COIs,
             housing, menus, and billing all in one place.
           </p>
           {canManage && (
@@ -114,8 +115,60 @@ export function OverviewTab() {
     .filter((r) => r.status !== 'cancelled')
     .sort((a, b) => a.arrivalDate.localeCompare(b.arrivalDate));
 
+  // Whoever is on property comes first, then whoever arrives soonest. Groups that have
+  // already left stay reachable but sink to the end.
+  const today = todayStr();
+  const pickList = [...seasonList].sort((a, b) => {
+    const rank = (r: Retreat) =>
+      r.status === 'active' ? 0 : r.departureDate >= today ? 1 : 2;
+    return rank(a) - rank(b) || a.arrivalDate.localeCompare(b.arrivalDate);
+  });
+
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
+      {/* Way in. Everything below this is the season at a glance; the rest of the module
+          only opens once a group has been chosen, so that choice leads the page. */}
+      <div className="mb-6">
+        <div className="flex items-baseline justify-between gap-3 mb-2.5">
+          <h2 className="text-[14px] font-semibold text-forest">Open a retreat</h2>
+          <p className="text-[11.5px] text-ink-soft">
+            Housing, documents, menus and the guest portal all live inside a retreat
+          </p>
+        </div>
+        <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
+          {pickList.map((r) => {
+            const away = daysUntil(r.arrivalDate);
+            const gone = r.departureDate < today;
+            return (
+              <button
+                key={r.id}
+                onClick={() => enterRetreat(r.id)}
+                className={`group flex-shrink-0 w-[230px] text-left rounded-card border px-4 py-3 transition-all hover:shadow-sm ${
+                  r.status === 'active'
+                    ? 'border-sage bg-sage-pale hover:border-sage'
+                    : 'border-border bg-white hover:border-sage'
+                } ${gone ? 'opacity-75' : ''}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[14px] font-semibold text-forest truncate">{r.groupName}</p>
+                  <ChevronRight className="w-4 h-4 flex-shrink-0 text-ink-faint group-hover:text-forest transition-colors" />
+                </div>
+                <p className="text-[11px] text-ink-soft font-mono mt-1">{fmtRange(r.arrivalDate, r.departureDate)}</p>
+                <p className="text-[11px] mt-1.5">
+                  {r.status === 'active'
+                    ? <span className="text-green-muted-text font-semibold">On property now</span>
+                    : gone
+                      ? <span className="text-ink-faint">Departed</span>
+                      : away != null && away >= 0
+                        ? <span className="text-ink-soft">{away === 0 ? 'Arrives today' : `${away} day${away === 1 ? '' : 's'} away`}</span>
+                        : <span className="text-ink-soft">{r.headcount} guests</span>}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Stat row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
         <StatCard label="Active now" value={activeNow} hint={activeNow ? 'On property' : 'None on property'} />
@@ -129,7 +182,7 @@ export function OverviewTab() {
         <AlertBanner
           key={`coi-${r.id}`}
           variant="alert"
-          message={`${r.groupName} (${fmtRange(r.arrivalDate, r.departureDate)}) has not uploaded a certificate of insurance. COI is required before arrival${r.coordinatorName ? ` — contact ${r.coordinatorName}` : ''}.`}
+          message={`${r.groupName} (${fmtRange(r.arrivalDate, r.departureDate)}) has not uploaded a certificate of insurance. COI is required before arrival${r.coordinatorName ? `, contact ${r.coordinatorName}` : ''}.`}
           action={canManage ? { label: 'Send reminder', onClick: () => openModal({ kind: 'sendReminder', retreatId: r.id, reminderType: 'coi' }) } : undefined}
         />
       ))}
@@ -137,7 +190,7 @@ export function OverviewTab() {
         <AlertBanner
           key={`housing-${r.id}`}
           variant="warn"
-          message={`${r.groupName} (${fmtRange(r.arrivalDate, r.departureDate)}) housing submission is open — the group has not finalized their housing preferences${r.housingDeadline ? `. Closes ${fmtDate(r.housingDeadline)}` : ''}.`}
+          message={`${r.groupName} (${fmtRange(r.arrivalDate, r.departureDate)}) housing submission is open. The group has not finalized their housing preferences${r.housingDeadline ? `. Closes ${fmtDate(r.housingDeadline)}` : ''}.`}
           action={canManage ? { label: 'Send reminder', onClick: () => openModal({ kind: 'sendReminder', retreatId: r.id, reminderType: 'housing' }) } : undefined}
         />
       ))}
@@ -158,10 +211,13 @@ export function OverviewTab() {
                 return (
                   <button
                     key={r.id}
-                    onClick={() => { setActiveRetreat(r.id); setActiveTab(r.status === 'active' ? 'active' : 'documents'); }}
-                    className={`w-full text-left bg-white border rounded-btn px-3.5 py-3 mb-2 last:mb-0 hover:shadow-sm transition-shadow ${r.status === 'active' ? 'border-sage bg-sage-pale' : 'border-border'}`}
+                    onClick={() => enterRetreat(r.id)}
+                    className={`group w-full text-left bg-white border rounded-btn px-3.5 py-3 mb-2 last:mb-0 hover:border-sage hover:shadow-sm transition-all ${r.status === 'active' ? 'border-sage bg-sage-pale' : 'border-border'}`}
                   >
-                    <p className="text-[13px] font-semibold text-forest">{r.groupName}</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-[13px] font-semibold text-forest">{r.groupName}</p>
+                      <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-ink-faint group-hover:text-forest transition-colors" />
+                    </div>
                     <p className="text-[11px] text-ink-soft font-mono mt-0.5">{fmtRange(r.arrivalDate, r.departureDate)} · {r.headcount} people</p>
                     <p className={`text-[11px] mt-1 ${NOTE_TEXT[d.noteTone]}`}>{d.note}</p>
                   </button>
@@ -205,17 +261,20 @@ export function OverviewTab() {
                 </div>
               </div>
 
-              <PhaseTracker progress={phaseProgress(r.id)} />
+              <PhaseTracker
+                progress={phaseProgress(r.id)}
+                className="pt-3 mt-3 border-t border-cream-dark"
+                onOpen={(tab) => enterRetreat(r.id, tab)}
+              />
 
               <div className="flex gap-2 mt-3.5 flex-wrap">
-                {r.status === 'active' && (
-                  <Button size="sm" onClick={() => { setActiveRetreat(r.id); setActiveTab('active'); }}>View active retreat</Button>
-                )}
+                {/* One way in. The deep links below still enter the retreat first, so the tab
+                    bar and the group name always agree about where you are. */}
+                <Button size="sm" onClick={() => enterRetreat(r.id)}>Open retreat</Button>
+                <Button size="sm" variant="ghost" onClick={() => enterRetreat(r.id, 'housing')}>Housing</Button>
                 {canManage && (
                   <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'editRetreat', retreatId: r.id })}>Edit details</Button>
                 )}
-                <Button size="sm" variant="ghost" onClick={() => { setActiveRetreat(r.id); setActiveTab('documents'); }}>View documents</Button>
-                <Button size="sm" variant="ghost" onClick={() => { setActiveRetreat(r.id); setActiveTab('housing'); }}>Housing</Button>
                 {canManage && (
                   <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'sendReminder', retreatId: r.id })}>Send reminder</Button>
                 )}

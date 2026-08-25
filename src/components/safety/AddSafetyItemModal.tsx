@@ -72,16 +72,16 @@ const DEFAULT_FREQUENCIES: Record<SafetyItemType, SafetyItem['frequency']> = {
 };
 
 const NAME_PLACEHOLDERS: Record<SafetyItemType, string> = {
-  extinguisher: 'e.g. Dining hall — kitchen (×2)',
-  smoke_alarm: 'e.g. Cabin 4 — smoke alarm',
-  co_alarm: 'e.g. Main lodge — CO alarm',
-  hood_fan: 'e.g. Dining hall — main kitchen hood',
+  extinguisher: 'e.g. Dining hall · kitchen (×2)',
+  smoke_alarm: 'e.g. Cabin 4 · smoke alarm',
+  co_alarm: 'e.g. Main lodge · CO alarm',
+  hood_fan: 'e.g. Dining hall, main kitchen hood',
   refrigeration: 'e.g. Walk-in refrigerator',
   health_inspection: 'e.g. Kitchen & dining hall inspection',
   waterfront_check: 'e.g. Daily waterfront safety check',
-  life_ring: 'e.g. Main dock — life ring station',
+  life_ring: 'e.g. Main dock, life ring station',
   rescue_tube: 'e.g. Lifeguard rescue tube #1',
-  rescue_board: 'e.g. Rescue paddleboard — main beach',
+  rescue_board: 'e.g. Rescue paddleboard · main beach',
 };
 
 const VENDOR_LABELS: Partial<Record<SafetyItemType, string>> = {
@@ -281,7 +281,7 @@ export function AddSafetyItemModal() {
             <div>
               <label className={lc}>Extinguisher class</label>
               <select {...register('extinguisherClass')} className={ic}>
-                <option value="">— Select —</option>
+                <option value="">Select</option>
                 <option value="ABC">ABC dry chemical</option>
                 <option value="Class K">Class K (kitchen)</option>
                 <option value="Class B">Class B (flammable liquid)</option>
@@ -315,11 +315,11 @@ export function AddSafetyItemModal() {
           <div>
             <label className={lc}>Current condition</label>
             <select {...register('condition')} className={ic}>
-              <option value="">— Not assessed —</option>
-              <option value="excellent">Excellent — no issues</option>
-              <option value="good">Good — minor wear</option>
-              <option value="fair">Fair — needs attention</option>
-              <option value="poor">Poor — replace soon</option>
+              <option value="">Not assessed</option>
+              <option value="excellent">Excellent · no issues</option>
+              <option value="good">Good · minor wear</option>
+              <option value="fair">Fair · needs attention</option>
+              <option value="poor">Poor · replace soon</option>
             </select>
           </div>
         )}

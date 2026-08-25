@@ -39,7 +39,7 @@ struct ScanStripSheet: View {
         mainContent
             .sheet(isPresented: $showingCamera) {
                 StripCameraCapture { img in
-                    print("📸 [ScanStrip] camera captured image \(img.size)")
+                    print("[ScanStrip] camera captured image \(img.size)")
                     capturedImage = img
                     startAnalysis(img)
                 }
@@ -252,23 +252,23 @@ struct ScanStripSheet: View {
                     .lineLimit(3...6)
             }
         }
-        .onAppear { print("🖼️ [ScanStrip] reviewView appeared") }
+        .onAppear { print("[ScanStrip] reviewView appeared") }
     }
 
     // MARK: - Photo handling
 
     private func handlePickerItem(_ item: PhotosPickerItem?) {
-        print("📚 [ScanStrip] pickerItem onChange — item=\(item != nil ? "non-nil" : "nil"), phase=\(phase)")
+        print("[ScanStrip] pickerItem onChange, item=\(item != nil ? "non-nil" : "nil"), phase=\(phase)")
         guard let item else { return }
         Task {
-            print("📚 [ScanStrip] loading transferable…")
+            print("[ScanStrip] loading transferable…")
             guard let data = try? await item.loadTransferable(type: Data.self),
                   let img = UIImage(data: data) else {
-                print("📚 [ScanStrip] failed to load image data")
+                print("[ScanStrip] failed to load image data")
                 await MainActor.run { pickerItem = nil }
                 return
             }
-            print("📚 [ScanStrip] image loaded \(img.size), calling startAnalysis")
+            print("[ScanStrip] image loaded \(img.size), calling startAnalysis")
             await MainActor.run {
                 pickerItem = nil
                 capturedImage = img
@@ -280,29 +280,29 @@ struct ScanStripSheet: View {
     // MARK: - Analysis
 
     private func startAnalysis(_ image: UIImage) {
-        print("🔬 [ScanStrip] startAnalysis — phase=\(phase)")
+        print("[ScanStrip] startAnalysis · phase=\(phase)")
         guard phase == .setup else {
-            print("🔬 [ScanStrip] skipped — not in setup phase")
+            print("[ScanStrip] skipped, not in setup phase")
             return
         }
         phase = .analyzing
-        print("🔬 [ScanStrip] phase → analyzing")
+        print("[ScanStrip] phase → analyzing")
         Task { @MainActor in
             do {
-                print("🔬 [ScanStrip] calling TestStripService…")
+                print("[ScanStrip] calling TestStripService…")
                 let result = try await TestStripService.shared.analyzeStrip(image: image, brand: selectedBrand)
-                print("🔬 [ScanStrip] analysis succeeded — fc=\(result.freeChlorine?.value ?? -1) ph=\(result.ph?.value ?? -1) alk=\(result.alkalinity?.value ?? -1)")
-                print("🔬 [ScanStrip] isMainThread=\(Thread.isMainThread)")
+                print("[ScanStrip] analysis succeeded, fc=\(result.freeChlorine?.value ?? -1) ph=\(result.ph?.value ?? -1) alk=\(result.alkalinity?.value ?? -1)")
+                print("[ScanStrip] isMainThread=\(Thread.isMainThread)")
                 applyResult(result)
-                print("🔬 [ScanStrip] applyResult done, setting phase → review")
+                print("[ScanStrip] applyResult done, setting phase → review")
                 phase = .review
-                print("🔬 [ScanStrip] phase = .review assigned")
+                print("[ScanStrip] phase = .review assigned")
             } catch let e as StripScanError {
-                print("🔬 [ScanStrip] StripScanError: \(e.localizedDescription)")
+                print("[ScanStrip] StripScanError: \(e.localizedDescription)")
                 errorMessage = e.localizedDescription
                 phase = .setup
             } catch {
-                print("🔬 [ScanStrip] unknown error: \(error)")
+                print("[ScanStrip] unknown error: \(error)")
                 errorMessage = "Analysis failed. Check your connection and try again."
                 phase = .setup
             }
@@ -337,8 +337,8 @@ struct ScanStripSheet: View {
     /// the moment it is written, so a reader never sees a reading whose photo is still pending.
     ///
     /// A failed photo must not cost the numbers. On failure the reading is saved anyway and the
-    /// person is told the photo did not attach, rather than the whole save being lost or —
-    /// worse — the failure passing unnoticed.
+    /// person is told the photo did not attach, rather than the whole save being lost or -
+    /// worse. The failure passing unnoticed.
     private func saveReading() {
         isSaving = true
         let readingId = UUID().uuidString
@@ -444,18 +444,18 @@ private struct StripCameraCapture: UIViewControllerRepresentable {
 
         func imagePickerController(_ picker: UIImagePickerController,
                                    didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            print("📸 [Camera] didFinishPickingMediaWithInfo")
+            print("[Camera] didFinishPickingMediaWithInfo")
             if let img = info[.originalImage] as? UIImage {
-                print("📸 [Camera] got image \(img.size), firing onCapture")
+                print("[Camera] got image \(img.size), firing onCapture")
                 parent.onCapture(img)
             } else {
-                print("📸 [Camera] no image in info dict — keys: \(info.keys)")
+                print("[Camera] no image in info dict · keys: \(info.keys)")
             }
             parent.dismiss()
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            print("📸 [Camera] cancelled")
+            print("[Camera] cancelled")
             parent.dismiss()
         }
     }

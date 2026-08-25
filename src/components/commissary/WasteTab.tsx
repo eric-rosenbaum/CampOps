@@ -13,7 +13,7 @@ import { formatDate } from '@/lib/utils';
 // Fixed, and not to be re-picked per chart. Validated against the white card surface for
 // colour-vision deficiency (ΔE 25.9 protan, 31.8 normal), which most default categorical
 // palettes fail. The legend carries the meaning, so reusing this pair in other modules is
-// fine — inventing a third colour is what breaks the system.
+// fine, inventing a third colour is what breaks the system.
 const C_REDUCIBLE = '#c47d08';
 const C_OTHER = '#185fa5';
 
@@ -35,7 +35,7 @@ export function WasteTab() {
   const adjustments = useCommissaryStore((s) => s.adjustments);
   const [months, setMonths] = useState<number | null>(6);
 
-  // Keyed on the raw slices, never on a store getter — see the zustand selector gotcha.
+  // Keyed on the raw slices, never on a store getter. See the zustand selector gotcha.
   const summary = useMemo(
     () => buildWasteSummary(adjustments, items, months),
     [adjustments, items, months],
@@ -58,7 +58,7 @@ export function WasteTab() {
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No waste logged yet</h3>
           <p className="text-[13px] text-ink-soft leading-relaxed">
-            Log waste from any item on the Inventory tab — adjust stock, choose
+            Log waste from any item on the Inventory tab. Adjust stock, choose
             “Waste / spoilage”, and say what happened. Once there are a few weeks of
             entries this tab shows what it cost you, and how much of it better ordering
             could have prevented.
@@ -145,7 +145,7 @@ export function WasteTab() {
               <li>
                 · {summary.uncategorisedEvents} entr{summary.uncategorisedEvents === 1 ? 'y was' : 'ies were'} logged
                 without a category{summary.uncategorisedValue > 0 ? ` (${formatCurrency(summary.uncategorisedValue)})` : ''}.
-                They count in the total but not as preventable — assuming a category would
+                They count in the total but not as preventable, assuming a category would
                 be inventing the answer.
               </li>
             )}
@@ -203,7 +203,7 @@ export function WasteTab() {
                 <tr key={it.itemId} className="border-b border-border last:border-0">
                   <td className="px-5 py-2.5 text-[13px] text-forest">{it.itemName}</td>
                   <td className="px-3 py-2.5 text-right text-[11px] text-ink-faint whitespace-nowrap">
-                    {it.reducibleValue > 0 ? `${formatCurrency(it.reducibleValue)} preventable` : '—'}
+                    {it.reducibleValue > 0 ? `${formatCurrency(it.reducibleValue)} preventable` : '-'}
                   </td>
                   <td className="px-5 py-2.5 text-right font-mono text-[13px] text-forest whitespace-nowrap">
                     {formatCurrency(it.value)}
@@ -242,7 +242,7 @@ export function WasteTab() {
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-right font-mono text-[12px] text-ink whitespace-nowrap">
-                    {item ? formatInStockUnit(item, r.qtyBase) : '—'}
+                    {item ? formatInStockUnit(item, r.qtyBase) : '-'}
                   </td>
                   <td className="px-5 py-2.5 text-right font-mono text-[13px] whitespace-nowrap">
                     {r.value == null

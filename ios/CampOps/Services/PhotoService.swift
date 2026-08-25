@@ -11,7 +11,7 @@ final class PhotoService {
             throw PhotoError.compressionFailed
         }
         let campId = AuthManager.shared.currentCamp?.id ?? ""
-        // Unique path, no upsert — matching the web client (`dbUploadPhoto`).
+        // Unique path, no upsert, matching the web client (`dbUploadPhoto`).
         //
         // `upsert: true` makes Storage look for an existing object first, and the
         // `issue-photos` bucket has INSERT/UPDATE/DELETE policies but no SELECT policy, so

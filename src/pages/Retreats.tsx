@@ -1,7 +1,9 @@
+import { ArrowLeft } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore, type RetreatTab } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
+import { fmtRange, GROUP_TYPE_LABELS } from '@/components/retreats/retreatUi';
 
 import { OverviewTab } from '@/components/retreats/OverviewTab';
 import { ActiveRetreatTab } from '@/components/retreats/ActiveRetreatTab';
@@ -10,6 +12,7 @@ import { HousingTab } from '@/components/retreats/HousingTab';
 import { RetreatMenuTab } from '@/components/retreats/RetreatMenuTab';
 import { ChangeRequestsTab } from '@/components/retreats/ChangeRequestsTab';
 import { RetreatCostsTab } from '@/components/retreats/RetreatCostsTab';
+import { RetreatCostsDetailTab } from '@/components/retreats/RetreatCostsDetailTab';
 import { PortalTab } from '@/components/retreats/PortalTab';
 import { FeedbackTab } from '@/components/retreats/FeedbackTab';
 
@@ -30,48 +33,83 @@ import { ChargeModal } from '@/components/retreats/ChargeModal';
 import { PaymentModal } from '@/components/retreats/PaymentModal';
 import { FeedbackModal } from '@/components/retreats/FeedbackModal';
 
-const TABS: { id: RetreatTab; label: string }[] = [
+// Two tabs answer questions about the season as a whole; the rest only make sense once you
+// have said which group you mean. Splitting them is what stops someone changing tabs and
+// quietly editing a different retreat than the one they thought they were looking at.
+const SEASON_TABS: { id: RetreatTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
+  { id: 'costs', label: 'Costs & invoice' },
+];
+
+const RETREAT_TABS: { id: RetreatTab; label: string }[] = [
   { id: 'active', label: 'Active retreat' },
   { id: 'documents', label: 'Documents & compliance' },
   { id: 'housing', label: 'Housing' },
   { id: 'menu', label: 'Menu & dining' },
+  { id: 'retreatCosts', label: 'Costs & invoice' },
   { id: 'requests', label: 'Change requests' },
-  { id: 'costs', label: 'Costs & invoice' },
   { id: 'portal', label: 'Guest portal' },
   { id: 'feedback', label: 'Feedback' },
 ];
 
 export function Retreats() {
-  const { activeTab, setActiveTab, modal, openModal, retreats, retreatsByStatus, pendingRequestCount } = useRetreatStore();
+  const {
+    activeTab, setActiveTab, modal, openModal, retreats, retreatsByStatus,
+    pendingRequestCount, selectedRetreat, exitRetreat,
+  } = useRetreatStore();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
 
   const byStatus = retreatsByStatus();
   const pending = pendingRequestCount();
-  const subtitle = `${retreats.length} retreat${retreats.length === 1 ? '' : 's'} · ${byStatus.active.length} active · ${pending} pending request${pending === 1 ? '' : 's'}`;
+  const retreat = selectedRetreat();
+
+  // A per-retreat tab left selected after stepping out would render an empty shell, so the
+  // view falls back to the season overview.
+  const inRetreat = retreat != null;
+  const tabs = inRetreat ? RETREAT_TABS : SEASON_TABS;
+  const currentTab = tabs.some((t) => t.id === activeTab) ? activeTab : tabs[0].id;
+
+  const subtitle = inRetreat
+    ? `${fmtRange(retreat.arrivalDate, retreat.departureDate)} · ${retreat.headcount} guests · ${GROUP_TYPE_LABELS[retreat.groupType] ?? retreat.groupType}`
+    : `${retreats.length} retreat${retreats.length === 1 ? '' : 's'} · ${byStatus.active.length} active · ${pending} pending request${pending === 1 ? '' : 's'}`;
 
   return (
     <div className="flex flex-col h-full min-h-0">
       <Topbar
-        title="Retreat manager"
+        title={inRetreat ? retreat.groupName : 'Retreat manager'}
         subtitle={subtitle}
-        actions={canManage ? (
+        actions={
           <div className="flex gap-2">
-            <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'spaces' })}>Manage spaces</Button>
-            <Button size="sm" onClick={() => openModal({ kind: 'newRetreat' })}>+ New retreat</Button>
+            {inRetreat ? (
+              <>
+                {canManage && (
+                  <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'editRetreat', retreatId: retreat.id })}>
+                    Edit details
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" onClick={exitRetreat}>
+                  <ArrowLeft className="w-3.5 h-3.5" /> All retreats
+                </Button>
+              </>
+            ) : canManage ? (
+              <>
+                <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'spaces' })}>Manage spaces</Button>
+                <Button size="sm" onClick={() => openModal({ kind: 'newRetreat' })}>+ New retreat</Button>
+              </>
+            ) : null}
           </div>
-        ) : undefined}
+        }
       />
 
       <div className="bg-paper-raised border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto overflow-y-hidden no-scrollbar">
         <div className="flex">
-          {TABS.map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`-mb-px whitespace-nowrap border-b-[3px] px-4 pb-2.5 pt-3 text-[13px] font-semibold transition-colors ${
-                activeTab === tab.id
+                currentTab === tab.id
                   ? 'border-red text-forest'
                   : 'border-transparent text-ink-soft hover:text-forest'
               }`}
@@ -86,15 +124,16 @@ export function Retreats() {
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col">
-        {activeTab === 'overview' && <OverviewTab />}
-        {activeTab === 'active' && <ActiveRetreatTab />}
-        {activeTab === 'documents' && <DocumentsTab />}
-        {activeTab === 'housing' && <HousingTab />}
-        {activeTab === 'menu' && <RetreatMenuTab />}
-        {activeTab === 'requests' && <ChangeRequestsTab />}
-        {activeTab === 'costs' && <RetreatCostsTab />}
-        {activeTab === 'portal' && <PortalTab />}
-        {activeTab === 'feedback' && <FeedbackTab />}
+        {currentTab === 'overview' && <OverviewTab />}
+        {currentTab === 'costs' && <RetreatCostsTab />}
+        {currentTab === 'retreatCosts' && <RetreatCostsDetailTab />}
+        {currentTab === 'active' && <ActiveRetreatTab />}
+        {currentTab === 'documents' && <DocumentsTab />}
+        {currentTab === 'housing' && <HousingTab />}
+        {currentTab === 'menu' && <RetreatMenuTab />}
+        {currentTab === 'requests' && <ChangeRequestsTab />}
+        {currentTab === 'portal' && <PortalTab />}
+        {currentTab === 'feedback' && <FeedbackTab />}
       </div>
 
       {modal?.kind === 'newRetreat' && <RetreatFormModal />}

@@ -37,7 +37,7 @@ struct LogInspectionSheet: View {
             Form {
                 Section("Inspection") {
                     Picker("Type", selection: $selectedId) {
-                        Text("— Not specified —").tag("")
+                        Text("Not specified").tag("")
                         ForEach(inspections) { i in Text(i.name).tag(i.id) }
                         ForEach(hardcodedOptions, id: \.id) { opt in
                             Text(opt.name).tag(opt.id)

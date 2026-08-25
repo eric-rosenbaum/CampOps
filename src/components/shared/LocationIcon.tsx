@@ -6,7 +6,7 @@ import {
  * A location gets a glyph, not just a name.
  *
  * The list is scanned by people who know the property, and a shape is recognised faster than a
- * word is read — "the kitchen one" lands before "Kitchen" does. Matching is on substrings of
+ * word is read, "the kitchen one" lands before "Kitchen" does. Matching is on substrings of
  * the location name because locations are camp-authored free text, not a fixed enum; anything
  * unrecognised falls back to a pin rather than guessing.
  *

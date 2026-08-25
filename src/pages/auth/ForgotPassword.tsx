@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { TreePine, ArrowLeft, MailCheck } from 'lucide-react';
+import { ArrowLeft, MailCheck } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { CampCommandMark } from '@/components/shared/CampCommandMark';
 
 export function ForgotPassword() {
   const requestPasswordReset = useAuthStore((s) => s.requestPasswordReset);
@@ -24,7 +25,7 @@ export function ForgotPassword() {
     <div className="min-h-screen w-full flex items-center justify-center bg-paper p-4 sm:p-6">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-cream" /></div>
+          <CampCommandMark size={36} decorative />
           <span className="text-lg font-semibold text-forest">CampCommand</span>
         </div>
 

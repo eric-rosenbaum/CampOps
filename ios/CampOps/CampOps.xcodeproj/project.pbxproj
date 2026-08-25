@@ -10,7 +10,6 @@
 		098654F0635D443FBD888CB3 /* PoolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE9C53F010A345E8AFD9998A /* PoolView.swift */; };
 		3A1C2D4E5F6A7B8C9D0E1F2A /* AllPoolsOverview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7A8B9C0D1E2F /* AllPoolsOverview.swift */; };
 		49E5A7852F81A74E007122C8 /* AvatarCircle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A77E2F81A74E007122C8 /* AvatarCircle.swift */; };
-		CA11F1E0000000000000FA02 /* FirepitMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA11F1E0000000000000FA01 /* FirepitMark.swift */; };
 		49E5A7862F81A74E007122C8 /* ActivityFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A77C2F81A74E007122C8 /* ActivityFeed.swift */; };
 		49E5A7872F81A74E007122C8 /* AppEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A75D2F81A74E007122C8 /* AppEnums.swift */; };
 		49E5A7882F81A74E007122C8 /* ChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5A7702F81A74E007122C8 /* ChecklistView.swift */; };
@@ -79,6 +78,7 @@
 		B9C0D1E2F3A4B5C6D7E8F9A0 /* AddMaintenanceTaskSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B0C1D2E3F4A5B6C7D8E9F0 /* AddMaintenanceTaskSheet.swift */; };
 		C5EFD4391EE843B589C82DCF /* SeasonalChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B8CADF2E1664949855B8D39 /* SeasonalChecklistView.swift */; };
 		CA11CD01A1B2C3D4E5F60001 /* CreateAccountWithCodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA11CD01A1B2C3D4E5F60002 /* CreateAccountWithCodeView.swift */; };
+		CA11F1E0000000000000FB02 /* CampCommandMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA11F1E0000000000000FB01 /* CampCommandMark.swift */; };
 		CC1A2B3C4D5E6F7A8B9C0D1E /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1A2B3C4D5E6F7A8B9C0D1E /* AuthManager.swift */; };
 		CC2B3C4D5E6F7A8B9C0D1E2F /* CampModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD2B3C4D5E6F7A8B9C0D1E2F /* CampModels.swift */; };
 		CC3C4D5E6F7A8B9C0D1E2F3A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD3C4D5E6F7A8B9C0D1E2F3A /* LoginView.swift */; };
@@ -138,7 +138,6 @@
 		49E5A77C2F81A74E007122C8 /* ActivityFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityFeed.swift; sourceTree = "<group>"; };
 		49E5A77D2F81A74E007122C8 /* AssignPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssignPickerSheet.swift; sourceTree = "<group>"; };
 		49E5A77E2F81A74E007122C8 /* AvatarCircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarCircle.swift; sourceTree = "<group>"; };
-		CA11F1E0000000000000FA01 /* FirepitMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirepitMark.swift; sourceTree = "<group>"; };
 		49E5A77F2F81A74E007122C8 /* PhotoPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPicker.swift; sourceTree = "<group>"; };
 		49E5A7802F81A74E007122C8 /* PriorityBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriorityBadge.swift; sourceTree = "<group>"; };
 		49E5A7812F81A74E007122C8 /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
@@ -171,6 +170,7 @@
 		BFFDB5F5149246DBA7B89BE2 /* PoolViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoolViewModel.swift; sourceTree = "<group>"; };
 		C731083B94C0429FA6E58489 /* ChemicalLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChemicalLogView.swift; sourceTree = "<group>"; };
 		CA11CD01A1B2C3D4E5F60002 /* CreateAccountWithCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateAccountWithCodeView.swift; sourceTree = "<group>"; };
+		CA11F1E0000000000000FB01 /* CampCommandMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampCommandMark.swift; sourceTree = "<group>"; };
 		DA0CA71000000000000000A1 /* Location.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Location.swift; sourceTree = "<group>"; };
 		DA0CA71000000000000000A3 /* LocationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationStore.swift; sourceTree = "<group>"; };
 		DA0CA71000000000000000A5 /* LocationTreePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationTreePicker.swift; sourceTree = "<group>"; };
@@ -368,7 +368,7 @@
 				49E5A77D2F81A74E007122C8 /* AssignPickerSheet.swift */,
 				49E5A7BA2F81A74E007122C8 /* UserMenuButton.swift */,
 				49E5A77E2F81A74E007122C8 /* AvatarCircle.swift */,
-				CA11F1E0000000000000FA01 /* FirepitMark.swift */,
+				CA11F1E0000000000000FB01 /* CampCommandMark.swift */,
 				49E5A77F2F81A74E007122C8 /* PhotoPicker.swift */,
 				49E5A7802F81A74E007122C8 /* PriorityBadge.swift */,
 				49E5A7812F81A74E007122C8 /* StatusBadge.swift */,
@@ -545,7 +545,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				49E5A7852F81A74E007122C8 /* AvatarCircle.swift in Sources */,
-				CA11F1E0000000000000FA02 /* FirepitMark.swift in Sources */,
+				CA11F1E0000000000000FB02 /* CampCommandMark.swift in Sources */,
 				49E5A7862F81A74E007122C8 /* ActivityFeed.swift in Sources */,
 				49E5A7872F81A74E007122C8 /* AppEnums.swift in Sources */,
 				49E5A7882F81A74E007122C8 /* ChecklistView.swift in Sources */,
@@ -766,6 +766,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CampOps/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = CampCommand;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -778,12 +780,16 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.ericrosenbaum.CampOps;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -798,6 +804,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CampOps/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = CampCommand;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -810,12 +818,16 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.ericrosenbaum.CampOps;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};

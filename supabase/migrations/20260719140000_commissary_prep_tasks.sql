@@ -1,11 +1,11 @@
 -- Commissary production: step-level prep tasks (the "Prep due today" board).
 --
--- Dish tasks (production_tasks) are day-of and dish-level. But prep is time-phased —
+-- Dish tasks (production_tasks) are day-of and dish-level. But prep is time-phased -
 -- a recipe step tagged "night before" must be done, and checked off, on a DIFFERENT day
 -- than the meal is served. These rows are that: one per timed recipe step (and one per
 -- auto freezer-pull) generated with a plan, scheduled to prep_date = serviceDate −
 -- leadDays, and independently completable. This is what lets the Day plan show
--- everything due today — today's ahead-prep for upcoming meals plus today's cooking —
+-- everything due today, today's ahead-prep for upcoming meals plus today's cooking -
 -- from a single, checkable board, and retires the old service-day "thaw list".
 
 CREATE TABLE IF NOT EXISTS production_prep_tasks (

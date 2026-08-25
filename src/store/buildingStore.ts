@@ -265,7 +265,7 @@ interface BuildingState {
   toggleSeasonalTask: (id: string, userName: string) => void;
   deleteSeasonalTask: (id: string) => void;
 
-  // Selectors — all *locationId* args are `locations` node ids.
+  // Selectors, all *locationId* args are `locations` node ids.
   activeComponent: () => BuildingComponent | null;
   /** Components attached directly to one location node (a building OR a room). */
   componentsForLocation: (locationId: string) => BuildingComponent[];

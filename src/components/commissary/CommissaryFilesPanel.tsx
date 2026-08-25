@@ -59,7 +59,7 @@ export function CommissaryFilesPanel() {
           )}
           <p className="text-[13px] font-medium text-forest">Drop an allergy roster or document here</p>
           <p className="text-[12px] text-ink-faint mt-1">
-            or click to choose a file. Stored securely — visible only to admins and health staff.
+            or click to choose a file. Stored securely, visible only to admins and health staff.
           </p>
         </div>
       )}

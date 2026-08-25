@@ -133,7 +133,7 @@ export function InspectionsTab() {
           { label: 'Overdue', value: overdue, hint: 'Needs immediate action', cls: overdue > 0 ? 'text-red' : 'text-forest' },
           {
             label: 'Next inspection',
-            value: nextInspection?.nextDue ? new Date(nextInspection.nextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—',
+            value: nextInspection?.nextDue ? new Date(nextInspection.nextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-',
             hint: nextInspection?.name ?? 'None scheduled',
             cls: 'text-forest text-[18px]',
           },

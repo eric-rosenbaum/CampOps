@@ -19,7 +19,7 @@ CampCommand is multi-tenant: many camps share the same application, but no camp 
 
 This is enforced at the **database level** using PostgreSQL **Row-Level Security (RLS)**, applied across approximately **70 tables**. Every request runs in the context of an authenticated user who belongs to exactly one camp, and the database itself filters out any row that does not belong to that camp.
 
-Because this isolation lives in the database rather than in application code, it holds even if there is a bug in the application. A mistake in a screen or an API call cannot cause one camp's data to leak into another camp's account — the database will simply return nothing.
+Because this isolation lives in the database rather than in application code, it holds even if there is a bug in the application. A mistake in a screen or an API call cannot cause one camp's data to leak into another camp's account. The database will simply return nothing.
 
 ---
 
@@ -27,17 +27,17 @@ Because this isolation lives in the database rather than in application code, it
 
 Within a camp, access is governed by roles:
 
-- **Admin** — full administrative access to their camp's data and settings.
-- **Staff** — day-to-day operational access, scoped further by module permissions (see below).
-- **Viewer** — read-only access.
+- **Admin**, full administrative access to their camp's data and settings.
+- **Staff**, day-to-day operational access, scoped further by module permissions (see below).
+- **Viewer** · read-only access.
 
-On top of roles, CampCommand supports **staff-group module permissions**. Administrators can define named groups of staff and grant each group access to specific modules (for example, kitchen staff see the commissary module; maintenance staff see building systems). This lets camps follow the principle of least privilege — staff see the parts of the system they need for their job, and nothing more.
+On top of roles, CampCommand supports **staff-group module permissions**. Administrators can define named groups of staff and grant each group access to specific modules (for example, kitchen staff see the commissary module; maintenance staff see building systems). This lets camps follow the principle of least privilege, staff see the parts of the system they need for their job, and nothing more.
 
 ---
 
 ## Camper health data (fail-closed)
 
-Camper health information — allergies, medical restrictions, and nurse-uploaded documents — receives the strictest handling in the product.
+Camper health information (allergies, medical restrictions, and nurse-uploaded documents) receives the strictest handling in the product.
 
 - Access is **fail-closed**: by default, no one can see named health records. Only camp **administrators** or staff who have been **explicitly cleared** for health access can view a camper's identified health details.
 - Staff without health clearance do **not** see named records. Where they need operational awareness (for example, "how many campers in this cabin have a nut allergy"), they see only **de-identified aggregate counts**, never names tied to conditions.

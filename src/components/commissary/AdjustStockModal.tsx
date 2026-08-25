@@ -16,7 +16,7 @@ const ADDITIVE: Record<AdjustmentReason, boolean> = {
   received: true,
   used: false,
   waste: false,
-  count_correction: true, // handled specially — see below
+  count_correction: true, // handled specially. See below
   other: true,
 };
 
@@ -76,7 +76,7 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
   const vendorName = (vId: string) => vendors.find((v) => v.id === vId)?.name ?? 'vendor';
 
   return (
-    <Modal title={`Adjust — ${item.name}`} onClose={closeModal} width="480px">
+    <Modal title={`Adjust · ${item.name}`} onClose={closeModal} width="480px">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-3">
           <p className="text-[11px] uppercase tracking-widest text-ink-faint font-semibold">On hand</p>
@@ -109,9 +109,9 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
             </select>
             <p className="text-[11px] text-ink-faint mt-1">
               {wasteCategory === ''
-                ? 'Required — the waste report separates what ordering can prevent from what it cannot.'
+                ? 'Required. The waste report separates what ordering can prevent from what it cannot.'
                 : isReducibleWaste(wasteCategory)
-                  ? 'Counted as preventable — this shows in the reducible share of the waste report.'
+                  ? 'Counted as preventable. This shows in the reducible share of the waste report.'
                   : 'Recorded, but not counted as preventable by better ordering.'}
             </p>
           </div>
@@ -125,7 +125,7 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
               <option value={STOCK}>{pluralizeUnit(item.stockUnit, 2)} (how you stock it)</option>
               {packs.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.purchaseUnit} — {vendorName(p.vendorId)} ({tidy(p.purchaseUnitInBase / item.stockUnitInBase, 2)} {item.stockUnit})
+                  {p.purchaseUnit} · {vendorName(p.vendorId)} ({tidy(p.purchaseUnitInBase / item.stockUnitInBase, 2)} {item.stockUnit})
                 </option>
               ))}
             </select>
@@ -180,7 +180,7 @@ export function AdjustStockModal({ itemId }: { itemId: string }) {
                 <div key={a.id} className="flex items-center justify-between text-[11px] text-ink-soft">
                   <span>
                     {a.wasteCategory
-                      ? `Waste — ${WASTE_CATEGORY_SHORT[a.wasteCategory].toLowerCase()}`
+                      ? `Waste · ${WASTE_CATEGORY_SHORT[a.wasteCategory].toLowerCase()}`
                       : ADJUSTMENT_REASON_LABELS[a.reason]}
                     {a.adjustedBy ? ` · ${a.adjustedBy}` : ''}
                   </span>

@@ -15,7 +15,7 @@ export const SEED_SEASON: Season = {
   acaInspectionDate: null,
 };
 
-// Reference timestamps relative to "today" concept — seeded as fixed ISO strings
+// Reference timestamps relative to "today" concept, seeded as fixed ISO strings
 const T = {
   now: '2025-06-23T14:00:00.000Z',
   minus1h: '2025-06-23T13:00:00.000Z',
@@ -37,7 +37,7 @@ const T = {
 export const SEED_ISSUES: Issue[] = [
   {
     id: 'i1',
-    title: 'Dock ramp — broken plank, safety hazard',
+    title: 'Dock ramp, broken plank, safety hazard',
     description:
       'Third plank from the end is cracked through. Campers using the dock for kayak launch this afternoon. Needs to be roped off or repaired before the 2pm activity block.',
     locations: ['Waterfront'],
@@ -80,7 +80,7 @@ export const SEED_ISSUES: Issue[] = [
     id: 'i2',
     title: 'Walk-in refrigerator not holding temperature',
     description:
-      'Temp reading 48°F, should be below 40°F. Compressor making intermittent clicking noise. Health code risk — food safety issue. Need emergency HVAC/refrigeration tech.',
+      'Temp reading 48°F, should be below 40°F. Compressor making intermittent clicking noise. Health code risk, food safety issue. Need emergency HVAC/refrigeration tech.',
     locations: ['Dining Hall'],
     locationIds: [],
     priority: 'urgent',
@@ -105,14 +105,14 @@ export const SEED_ISSUES: Issue[] = [
         id: 'a3',
         userId: 'u3',
         userName: 'Dana K.',
-        action: 'Issue logged — refrigerator at 48°F, compressor clicking',
+        action: 'Issue logged, refrigerator at 48°F, compressor clicking',
         timestamp: T.minus3h,
       },
     ],
   },
   {
     id: 'i3',
-    title: 'Cabin 7 — screen door off hinges',
+    title: 'Cabin 7, screen door off hinges',
     description:
       'Screen door in Cabin 7 has come off the bottom hinge. Door is hanging at an angle. Need to re-hang and possibly replace hinge hardware.',
     locations: ['Cabins'],
@@ -155,7 +155,7 @@ export const SEED_ISSUES: Issue[] = [
     id: 'i4',
     title: 'Art barn roof leak above supply storage',
     description:
-      'Active drip in the north corner of the Art Barn, directly above the paper and canvas storage. Tarped the supplies temporarily. Need roofer to assess — likely flashing failure.',
+      'Active drip in the north corner of the Art Barn, directly above the paper and canvas storage. Tarped the supplies temporarily. Need roofer to assess, likely flashing failure.',
     locations: ['Art Barn'],
     locationIds: [],
     priority: 'high',
@@ -180,7 +180,7 @@ export const SEED_ISSUES: Issue[] = [
         id: 'a6',
         userId: 'u2',
         userName: 'Tom H.',
-        action: 'Issue logged — vendor TBD, need to source roofer',
+        action: 'Issue logged, vendor TBD, need to source roofer',
         timestamp: T.minus2d,
       },
     ],
@@ -189,7 +189,7 @@ export const SEED_ISSUES: Issue[] = [
     id: 'i5',
     title: 'Pool pump making unusual noise',
     description:
-      'Main circulation pump is producing a high-pitched whine during operation. Flow rate appears normal but noise started yesterday. Likely bearing wear — may need pump replacement.',
+      'Main circulation pump is producing a high-pitched whine during operation. Flow rate appears normal but noise started yesterday. Likely bearing wear. May need pump replacement.',
     locations: ['Aquatics'],
     locationIds: [],
     priority: 'normal',
@@ -214,23 +214,23 @@ export const SEED_ISSUES: Issue[] = [
         id: 'a7',
         userId: 'u2',
         userName: 'Tom H.',
-        action: 'Status changed to In progress — inspecting pump bearings',
+        action: 'Status changed to In progress, inspecting pump bearings',
         timestamp: T.minus4h,
       },
       {
         id: 'a8',
         userId: 'u3',
         userName: 'Dana K.',
-        action: 'Issue logged — pump noise first noticed at 6am',
+        action: 'Issue logged, pump noise first noticed at 6am',
         timestamp: T.minus1d,
       },
     ],
   },
   {
     id: 'i6',
-    title: 'Main lodge — two light fixtures out',
+    title: 'Main lodge, two light fixtures out',
     description:
-      'Two overhead fluorescent fixtures in the main lodge common area have failed. Replaced bulbs — no change. Likely ballast issue. Non-urgent but affects evening activities.',
+      'Two overhead fluorescent fixtures in the main lodge common area have failed. Replaced bulbs, no change. Likely ballast issue. Non-urgent but affects evening activities.',
     locations: ['Main Lodge'],
     locationIds: [],
     priority: 'normal',
@@ -255,7 +255,7 @@ export const SEED_ISSUES: Issue[] = [
         id: 'a9',
         userId: 'u2',
         userName: 'Tom H.',
-        action: 'Marked resolved — replaced ballasts, $28 actual cost',
+        action: 'Marked resolved, replaced ballasts, $28 actual cost',
         timestamp: T.minus3d,
       },
       {
@@ -278,7 +278,7 @@ export const SEED_ISSUES: Issue[] = [
     id: 'i7',
     title: 'Athletic field irrigation head broken',
     description:
-      'One of the pop-up irrigation heads on field 2 is broken — stuck in the up position and spraying sideways. Needs to be replaced before it becomes a trip hazard.',
+      'One of the pop-up irrigation heads on field 2 is broken, stuck in the up position and spraying sideways. Needs to be replaced before it becomes a trip hazard.',
     locations: ['Athletic Fields'],
     locationIds: [],
     priority: 'normal',
@@ -310,7 +310,7 @@ export const SEED_ISSUES: Issue[] = [
   },
   {
     id: 'i8',
-    title: 'Health center — exam table padding torn',
+    title: 'Health center, exam table padding torn',
     description:
       'The vinyl padding on the exam table has a tear approximately 8 inches long on the seat edge. Needs to be replaced before next medical check-in. Infection control concern.',
     locations: ['Health Center'],
@@ -337,7 +337,7 @@ export const SEED_ISSUES: Issue[] = [
         id: 'a13',
         userId: 'u3',
         userName: 'Dana K.',
-        action: 'Status changed to In progress — sourcing replacement padding',
+        action: 'Status changed to In progress, sourcing replacement padding',
         timestamp: T.minus1d,
       },
       {
@@ -352,7 +352,7 @@ export const SEED_ISSUES: Issue[] = [
   // Additional resolved issues to bring resolved count up
   {
     id: 'i9',
-    title: 'Waterfront dock — loose railing section',
+    title: 'Waterfront dock, loose railing section',
     description: 'South railing section had two loose bolts. Tightened and reinforced.',
     locations: ['Waterfront'],
     locationIds: [],
@@ -378,14 +378,14 @@ export const SEED_ISSUES: Issue[] = [
         id: 'a15',
         userId: 'u2',
         userName: 'Tom H.',
-        action: 'Marked resolved — no cost, maintenance only',
+        action: 'Marked resolved, no cost, maintenance only',
         timestamp: T.minus5d,
       },
     ],
   },
   {
     id: 'i10',
-    title: 'Dining hall — dishwasher drain clog',
+    title: 'Dining hall, dishwasher drain clog',
     description: 'Commercial dishwasher draining slowly. Cleared grease buildup from drain line.',
     locations: ['Dining Hall'],
     locationIds: [],
@@ -411,7 +411,7 @@ export const SEED_ISSUES: Issue[] = [
         id: 'a16',
         userId: 'u4',
         userName: 'Mike L.',
-        action: 'Marked resolved — drain cleared, $45 actual',
+        action: 'Marked resolved, drain cleared, $45 actual',
         timestamp: T.minus7d,
       },
     ],
@@ -436,7 +436,7 @@ export const SEED_POOL_EQUIPMENT: PoolEquipment[] = [
   { id: 'pe1', poolId: SEED_POOL_ID, name: 'Main circulation pump', type: 'pump', status: 'warn', statusDetail: 'Unusual noise', lastServiced: '2025-05-15', nextServiceDue: '2025-07-10', vendor: 'AquaPro Services', specs: '1.5 HP', createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-06T00:00:00.000Z' },
   { id: 'pe2', poolId: SEED_POOL_ID, name: 'Sand filter system', type: 'filter', status: 'ok', statusDetail: 'Normal', lastServiced: '2025-07-03', nextServiceDue: '2025-07-10', vendor: 'AquaPro Services', specs: '48" tank', createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-03T00:00:00.000Z' },
   { id: 'pe3', poolId: SEED_POOL_ID, name: 'Pool heater', type: 'heater', status: 'warn', statusDetail: 'Operational', lastServiced: '2025-01-10', nextServiceDue: '2025-07-21', vendor: 'AquaPro Services', specs: '400k BTU', createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-01-10T00:00:00.000Z' },
-  { id: 'pe4', poolId: SEED_POOL_ID, name: 'Automatic chlorinator', type: 'chlorinator', status: 'ok', statusDetail: 'Low — refill soon', lastServiced: '2025-07-01', nextServiceDue: null, vendor: null, specs: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-01T00:00:00.000Z' },
+  { id: 'pe4', poolId: SEED_POOL_ID, name: 'Automatic chlorinator', type: 'chlorinator', status: 'ok', statusDetail: 'Low, refill soon', lastServiced: '2025-07-01', nextServiceDue: null, vendor: null, specs: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-01T00:00:00.000Z' },
   { id: 'pe5', poolId: SEED_POOL_ID, name: 'Safety & rescue equipment', type: 'safety', status: 'ok', statusDetail: 'All present', lastServiced: '2025-06-21', nextServiceDue: null, vendor: null, specs: null, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-21T00:00:00.000Z' },
 ];
 
@@ -452,14 +452,14 @@ export const SEED_POOL_SEASONAL_TASKS: SeasonalTask[] = [
   // Opening (8 tasks, all complete)
   { id: 'st1', poolId: SEED_POOL_ID, title: 'Remove pool cover and inspect for winter damage', detail: null, phase: 'opening', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-01', assignees: ['Tom H.'], sortOrder: 1, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-01T00:00:00.000Z' },
   { id: 'st2', poolId: SEED_POOL_ID, title: 'Inspect pool shell, coping, and tile for cracks or damage', detail: null, phase: 'opening', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-03', assignees: ['Tom H.', 'Vendor'], sortOrder: 2, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-03T00:00:00.000Z' },
-  { id: 'st3', poolId: SEED_POOL_ID, title: 'Reconnect and prime all equipment — pump, filter, heater', detail: null, phase: 'opening', isComplete: true, completedBy: 'AquaPro Services', completedDate: '2025-06-05', assignees: ['AquaPro Services'], sortOrder: 3, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-05T00:00:00.000Z' },
+  { id: 'st3', poolId: SEED_POOL_ID, title: 'Reconnect and prime all equipment, pump, filter, heater', detail: null, phase: 'opening', isComplete: true, completedBy: 'AquaPro Services', completedDate: '2025-06-05', assignees: ['AquaPro Services'], sortOrder: 3, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-05T00:00:00.000Z' },
   { id: 'st4', poolId: SEED_POOL_ID, title: 'Shock pool and balance all chemical levels', detail: null, phase: 'opening', isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-06-10', assignees: ['Jordan M.'], sortOrder: 4, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-10T00:00:00.000Z' },
   { id: 'st5', poolId: SEED_POOL_ID, title: 'Verify all safety equipment present and in good condition', detail: null, phase: 'opening', isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-06-12', assignees: ['Jordan M.'], sortOrder: 5, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-12T00:00:00.000Z' },
   { id: 'st6', poolId: SEED_POOL_ID, title: 'Verify all lifeguard certifications current', detail: null, phase: 'opening', isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-06-14', assignees: ['Jordan M.'], sortOrder: 6, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-14T00:00:00.000Z' },
   { id: 'st7', poolId: SEED_POOL_ID, title: 'Pass health department pre-season inspection', detail: null, phase: 'opening', isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-06-18', assignees: ['Jordan M.'], sortOrder: 7, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-18T00:00:00.000Z' },
-  { id: 'st8', poolId: SEED_POOL_ID, title: 'Post all required signage — depth markers, rules, emergency contacts', detail: null, phase: 'opening', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-20', assignees: ['Tom H.'], sortOrder: 8, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-20T00:00:00.000Z' },
+  { id: 'st8', poolId: SEED_POOL_ID, title: 'Post all required signage, depth markers, rules, emergency contacts', detail: null, phase: 'opening', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-20', assignees: ['Tom H.'], sortOrder: 8, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-20T00:00:00.000Z' },
   // In-season (13 tasks, 9 done, 4 open)
-  { id: 'st9',  poolId: SEED_POOL_ID, title: 'Daily chemical readings — AM and PM', detail: '2x daily during session · automated reminder at 7am and 2pm', phase: 'in_season', isComplete: true, completedBy: null, completedDate: null, assignees: [], sortOrder: 1, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-07T00:00:00.000Z' },
+  { id: 'st9',  poolId: SEED_POOL_ID, title: 'Daily chemical readings, AM and PM', detail: '2x daily during session · automated reminder at 7am and 2pm', phase: 'in_season', isComplete: true, completedBy: null, completedDate: null, assignees: [], sortOrder: 1, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-07T00:00:00.000Z' },
   { id: 'st10', poolId: SEED_POOL_ID, title: 'Weekly ACA waterfront inspection', detail: null, phase: 'in_season', isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-07-02', assignees: ['Jordan M.'], sortOrder: 2, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-02T00:00:00.000Z' },
   { id: 'st11', poolId: SEED_POOL_ID, title: 'Backwash sand filter', detail: null, phase: 'in_season', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-07-03', assignees: ['Tom H.'], sortOrder: 3, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-03T00:00:00.000Z' },
   { id: 'st12', poolId: SEED_POOL_ID, title: 'Weekly equipment visual inspection', detail: null, phase: 'in_season', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-07-04', assignees: ['Tom H.'], sortOrder: 4, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-07-04T00:00:00.000Z' },
@@ -468,14 +468,14 @@ export const SEED_POOL_SEASONAL_TASKS: SeasonalTask[] = [
   { id: 'st15', poolId: SEED_POOL_ID, title: 'Test emergency phone and communication system', detail: null, phase: 'in_season', isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-06-30', assignees: ['Jordan M.'], sortOrder: 7, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-30T00:00:00.000Z' },
   { id: 'st16', poolId: SEED_POOL_ID, title: 'Inspect and lubricate gate and fence hardware', detail: null, phase: 'in_season', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-28', assignees: ['Tom H.'], sortOrder: 8, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-28T00:00:00.000Z' },
   { id: 'st17', poolId: SEED_POOL_ID, title: 'Clean and inspect pool deck furniture', detail: null, phase: 'in_season', isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-27', assignees: ['Tom H.'], sortOrder: 9, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-27T00:00:00.000Z' },
-  { id: 'st18', poolId: SEED_POOL_ID, title: 'Monthly health department water quality inspection', detail: 'County required · Currently overdue — contact county health office', phase: 'in_season', isComplete: false, completedBy: null, completedDate: null, assignees: ['Jordan M.'], sortOrder: 10, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
-  { id: 'st19', poolId: SEED_POOL_ID, title: 'Monthly equipment service — AquaPro', detail: null, phase: 'in_season', isComplete: false, completedBy: null, completedDate: null, assignees: ['AquaPro Services'], sortOrder: 11, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'st18', poolId: SEED_POOL_ID, title: 'Monthly health department water quality inspection', detail: 'County required · Currently overdue. Contact county health office', phase: 'in_season', isComplete: false, completedBy: null, completedDate: null, assignees: ['Jordan M.'], sortOrder: 10, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'st19', poolId: SEED_POOL_ID, title: 'Monthly equipment service, AquaPro', detail: null, phase: 'in_season', isComplete: false, completedBy: null, completedDate: null, assignees: ['AquaPro Services'], sortOrder: 11, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
   { id: 'st20', poolId: SEED_POOL_ID, title: 'Refill chlorine tablet feeder', detail: 'Tablet level currently low', phase: 'in_season', isComplete: false, completedBy: null, completedDate: null, assignees: ['Tom H.'], sortOrder: 12, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
-  { id: 'st21', poolId: SEED_POOL_ID, title: 'Pump motor service — unusual noise investigation', detail: null, phase: 'in_season', isComplete: false, completedBy: null, completedDate: null, assignees: ['AquaPro Services'], sortOrder: 13, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'st21', poolId: SEED_POOL_ID, title: 'Pump motor service, unusual noise investigation', detail: null, phase: 'in_season', isComplete: false, completedBy: null, completedDate: null, assignees: ['AquaPro Services'], sortOrder: 13, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
   // Closing (8 tasks, 0 done)
   { id: 'st22', poolId: SEED_POOL_ID, title: 'Superchlorinate pool before closing', detail: 'Scheduled for Aug 10 after last swim period', phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: [], sortOrder: 1, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
   { id: 'st23', poolId: SEED_POOL_ID, title: 'Drain pool to winter level and plug returns', detail: null, phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: [], sortOrder: 2, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
-  { id: 'st24', poolId: SEED_POOL_ID, title: 'Blow out all plumbing lines — winterize', detail: null, phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: ['AquaPro Services'], sortOrder: 3, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
+  { id: 'st24', poolId: SEED_POOL_ID, title: 'Blow out all plumbing lines, winterize', detail: null, phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: ['AquaPro Services'], sortOrder: 3, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
   { id: 'st25', poolId: SEED_POOL_ID, title: 'Remove, clean, and store all safety equipment', detail: null, phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: [], sortOrder: 4, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
   { id: 'st26', poolId: SEED_POOL_ID, title: 'End-of-season equipment inspection and service report', detail: null, phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: ['AquaPro Services'], sortOrder: 5, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
   { id: 'st27', poolId: SEED_POOL_ID, title: 'Install winter safety cover', detail: null, phase: 'closing', isComplete: false, completedBy: null, completedDate: null, assignees: [], sortOrder: 6, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
@@ -506,7 +506,7 @@ export const SEED_TASKS: ChecklistTask[] = [
         id: 'ta1',
         userId: 'u2',
         userName: 'Tom H.',
-        action: 'Marked complete — all 48 bunks inspected, 3 mattresses replaced',
+        action: 'Marked complete, all 48 bunks inspected, 3 mattresses replaced',
         timestamp: T.minus7d,
       },
     ],
@@ -532,7 +532,7 @@ export const SEED_TASKS: ChecklistTask[] = [
         id: 'ta2',
         userId: 'u2',
         userName: 'Tom H.',
-        action: 'Marked complete — dock passed inspection, one plank flagged for monitoring',
+        action: 'Marked complete, dock passed inspection, one plank flagged for monitoring',
         timestamp: T.minus5d,
       },
     ],
@@ -558,7 +558,7 @@ export const SEED_TASKS: ChecklistTask[] = [
         id: 'ta3',
         userId: 'u4',
         userName: 'Mike L.',
-        action: 'Marked complete — 34 units tested, all pass, batteries replaced',
+        action: 'Marked complete, 34 units tested, all pass, batteries replaced',
         timestamp: T.minus3d,
       },
     ],
@@ -584,7 +584,7 @@ export const SEED_TASKS: ChecklistTask[] = [
         id: 'ta4',
         userId: 'u3',
         userName: 'Dana K.',
-        action: 'Marked complete — full kitchen deep clean done, health-inspection ready',
+        action: 'Marked complete, full kitchen deep clean done, health-inspection ready',
         timestamp: T.minus5d,
       },
     ],
@@ -610,7 +610,7 @@ export const SEED_TASKS: ChecklistTask[] = [
         id: 'ta5',
         userId: 'u2',
         userName: 'Tom H.',
-        action: 'Status changed to In progress — initial chemistry test done, shock treatment scheduled',
+        action: 'Status changed to In progress, initial chemistry test done, shock treatment scheduled',
         timestamp: T.minus1d,
       },
     ],
@@ -758,51 +758,51 @@ export const SEED_ASSETS: CampAsset[] = [
 ];
 
 export const SEED_ASSET_CHECKOUTS: AssetCheckout[] = [
-  // Golf Cart 2 — currently checked out, overdue
+  // Golf Cart 2, currently checked out, overdue
   { id: 'co-001', assetId: 'asset-002', checkedOutBy: 'Alex R.', purpose: 'Grounds equipment delivery to lower field', checkedOutAt: '2025-07-07T08:30:00.000Z', expectedReturnAt: '2025-07-07T12:00:00.000Z', returnedAt: null, startOdometer: null, endOdometer: null, startHours: 876, endHours: null, fuelLevelOut: 'full', fuelLevelIn: null, checkoutNotes: null, returnNotes: null, returnCondition: null, createdIssueId: null, loggedBy: 'Tom H.', createdAt: '2025-07-07T08:30:00.000Z' },
-  // Past checkouts — Golf Cart 1
+  // Past checkouts, Golf Cart 1
   { id: 'co-002', assetId: 'asset-001', checkedOutBy: 'Dana K.', purpose: 'Medical center supply run', checkedOutAt: '2025-07-06T09:00:00.000Z', expectedReturnAt: '2025-07-06T11:00:00.000Z', returnedAt: '2025-07-06T10:45:00.000Z', startOdometer: null, endOdometer: null, startHours: 411, endHours: 412, fuelLevelOut: 'three_quarter', fuelLevelIn: 'half', checkoutNotes: null, returnNotes: null, returnCondition: 'no_issues', createdIssueId: null, loggedBy: 'Tom H.', createdAt: '2025-07-06T09:00:00.000Z' },
-  { id: 'co-003', assetId: 'asset-001', checkedOutBy: 'Sam K.', purpose: 'Cabin supply delivery', checkedOutAt: '2025-07-05T13:00:00.000Z', expectedReturnAt: '2025-07-05T15:00:00.000Z', returnedAt: '2025-07-05T14:30:00.000Z', startOdometer: null, endOdometer: null, startHours: 410, endHours: 411, fuelLevelOut: 'full', fuelLevelIn: 'three_quarter', checkoutNotes: null, returnNotes: 'Slight pull to the left — may need tire check.', returnCondition: 'minor_note', createdIssueId: null, loggedBy: 'Jordan M.', createdAt: '2025-07-05T13:00:00.000Z' },
+  { id: 'co-003', assetId: 'asset-001', checkedOutBy: 'Sam K.', purpose: 'Cabin supply delivery', checkedOutAt: '2025-07-05T13:00:00.000Z', expectedReturnAt: '2025-07-05T15:00:00.000Z', returnedAt: '2025-07-05T14:30:00.000Z', startOdometer: null, endOdometer: null, startHours: 410, endHours: 411, fuelLevelOut: 'full', fuelLevelIn: 'three_quarter', checkoutNotes: null, returnNotes: 'Slight pull to the left. May need tire check.', returnCondition: 'minor_note', createdIssueId: null, loggedBy: 'Jordan M.', createdAt: '2025-07-05T13:00:00.000Z' },
   // Maintenance truck past checkouts
-  { id: 'co-004', assetId: 'asset-004', checkedOutBy: 'Tom H.', purpose: 'Hardware store run — fence repair supplies', checkedOutAt: '2025-07-03T07:30:00.000Z', expectedReturnAt: '2025-07-03T12:00:00.000Z', returnedAt: '2025-07-03T11:15:00.000Z', startOdometer: 47820, endOdometer: 47850, startHours: null, endHours: null, fuelLevelOut: 'full', fuelLevelIn: 'three_quarter', checkoutNotes: null, returnNotes: null, returnCondition: 'no_issues', createdIssueId: null, loggedBy: 'Tom H.', createdAt: '2025-07-03T07:30:00.000Z' },
+  { id: 'co-004', assetId: 'asset-004', checkedOutBy: 'Tom H.', purpose: 'Hardware store run, fence repair supplies', checkedOutAt: '2025-07-03T07:30:00.000Z', expectedReturnAt: '2025-07-03T12:00:00.000Z', returnedAt: '2025-07-03T11:15:00.000Z', startOdometer: 47820, endOdometer: 47850, startHours: null, endHours: null, fuelLevelOut: 'full', fuelLevelIn: 'three_quarter', checkoutNotes: null, returnNotes: null, returnCondition: 'no_issues', createdIssueId: null, loggedBy: 'Tom H.', createdAt: '2025-07-03T07:30:00.000Z' },
 ];
 
 export const SEED_ASSET_SERVICE_RECORDS: AssetServiceRecord[] = [
-  // Camp Bus — state inspection due, logged as service record
-  { id: 'sr-001', assetId: 'asset-003', serviceType: 'state_inspection', datePerformed: '2025-01-10', performedBy: 'Valley Ford', vendor: 'Valley Ford Service', description: 'Annual state inspection passed. Noted front brake wear — replace before next inspection.', odometerAtService: 81200, hoursAtService: null, cost: 85, nextServiceDate: '2026-01-10', nextServiceOdometer: null, nextServiceHours: null, isInspection: true, createdAt: '2025-01-10T00:00:00.000Z' },
+  // Camp Bus, state inspection due, logged as service record
+  { id: 'sr-001', assetId: 'asset-003', serviceType: 'state_inspection', datePerformed: '2025-01-10', performedBy: 'Valley Ford', vendor: 'Valley Ford Service', description: 'Annual state inspection passed. Noted front brake wear, replace before next inspection.', odometerAtService: 81200, hoursAtService: null, cost: 85, nextServiceDate: '2026-01-10', nextServiceOdometer: null, nextServiceHours: null, isInspection: true, createdAt: '2025-01-10T00:00:00.000Z' },
   { id: 'sr-002', assetId: 'asset-003', serviceType: 'oil_change', datePerformed: '2025-05-15', performedBy: 'Tom H.', vendor: null, description: 'Oil & filter change. Topped off all fluids.', odometerAtService: 83100, hoursAtService: null, cost: 65, nextServiceDate: '2025-11-15', nextServiceOdometer: 86100, nextServiceHours: null, isInspection: false, createdAt: '2025-05-15T00:00:00.000Z' },
   { id: 'sr-003', assetId: 'asset-003', serviceType: 'dot_inspection', datePerformed: '2025-01-10', performedBy: 'Valley Ford', vendor: 'Valley Ford Service', description: 'Annual DOT safety inspection. Passed.', odometerAtService: 81200, hoursAtService: null, cost: 120, nextServiceDate: '2026-01-10', nextServiceOdometer: null, nextServiceHours: null, isInspection: true, createdAt: '2025-01-10T00:00:00.000Z' },
-  // Golf Cart 1 — routine service
+  // Golf Cart 1 · routine service
   { id: 'sr-004', assetId: 'asset-001', serviceType: 'annual_inspection', datePerformed: '2025-06-01', performedBy: 'Tom H.', vendor: null, description: 'Pre-season inspection. Battery pack tested good. Brakes adjusted.', odometerAtService: null, hoursAtService: 398, cost: null, nextServiceDate: '2026-06-01', nextServiceOdometer: null, nextServiceHours: null, isInspection: true, createdAt: '2025-06-01T00:00:00.000Z' },
-  // John Deere — overdue oil change
+  // John Deere, overdue oil change
   { id: 'sr-005', assetId: 'asset-005', serviceType: 'oil_change', datePerformed: '2025-05-20', performedBy: 'Tom H.', vendor: null, description: 'Pre-season oil & filter change. Blade sharpened.', odometerAtService: null, hoursAtService: 150, cost: 45, nextServiceDate: '2025-07-01', nextServiceOdometer: null, nextServiceHours: 200, isInspection: false, createdAt: '2025-05-20T00:00:00.000Z' },
   { id: 'sr-006', assetId: 'asset-005', serviceType: 'blade_sharpening', datePerformed: '2025-06-15', performedBy: 'Tom H.', vendor: null, description: 'Mid-season blade sharpening.', odometerAtService: null, hoursAtService: 168, cost: null, nextServiceDate: null, nextServiceOdometer: null, nextServiceHours: null, isInspection: false, createdAt: '2025-06-15T00:00:00.000Z' },
   // Motorboat
   { id: 'sr-007', assetId: 'asset-007', serviceType: 'hull_inspection', datePerformed: '2025-06-18', performedBy: 'Jordan M.', vendor: null, description: 'Pre-season hull inspection. No cracks. Anti-fouling paint touched up.', odometerAtService: null, hoursAtService: 305, cost: null, nextServiceDate: '2026-06-01', nextServiceOdometer: null, nextServiceHours: null, isInspection: true, createdAt: '2025-06-18T00:00:00.000Z' },
-  { id: 'sr-008', assetId: 'asset-007', serviceType: 'engine_service', datePerformed: '2025-06-18', performedBy: 'Mercury Marine', vendor: 'Mercury Marine — Lakeside', description: 'Annual engine service. Impeller replaced.', odometerAtService: null, hoursAtService: 305, cost: 280, nextServiceDate: '2026-06-01', nextServiceOdometer: null, nextServiceHours: 405, isInspection: false, createdAt: '2025-06-18T00:00:00.000Z' },
+  { id: 'sr-008', assetId: 'asset-007', serviceType: 'engine_service', datePerformed: '2025-06-18', performedBy: 'Mercury Marine', vendor: 'Mercury Marine, Lakeside', description: 'Annual engine service. Impeller replaced.', odometerAtService: null, hoursAtService: 305, cost: 280, nextServiceDate: '2026-06-01', nextServiceOdometer: null, nextServiceHours: 405, isInspection: false, createdAt: '2025-06-18T00:00:00.000Z' },
   // Maintenance Truck
   { id: 'sr-009', assetId: 'asset-004', serviceType: 'oil_change', datePerformed: '2025-04-10', performedBy: 'Quick Lube Express', vendor: 'Quick Lube Express', description: 'Full synthetic 5W-30 oil change. Tire rotation included.', odometerAtService: 46100, hoursAtService: null, cost: 95, nextServiceDate: '2025-10-10', nextServiceOdometer: 51100, nextServiceHours: null, isInspection: false, createdAt: '2025-04-10T00:00:00.000Z' },
 ];
 
 export const SEED_ASSET_MAINTENANCE: AssetMaintenanceTask[] = [
-  // Golf Cart 1 — pre-season (all complete)
+  // Golf Cart 1, pre-season (all complete)
   { id: 'amt-001', assetId: 'asset-001', phase: 'pre_season', title: 'Inspect and test battery pack', detail: null, isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-01', sortOrder: 1, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-01T00:00:00.000Z' },
   { id: 'amt-002', assetId: 'asset-001', phase: 'pre_season', title: 'Check tire pressure and condition', detail: null, isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-01', sortOrder: 2, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-01T00:00:00.000Z' },
   { id: 'amt-003', assetId: 'asset-001', phase: 'pre_season', title: 'Test brakes and steering', detail: null, isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-01', sortOrder: 3, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-01T00:00:00.000Z' },
   { id: 'amt-004', assetId: 'asset-001', phase: 'post_season', title: 'Charge and store battery for winter', detail: null, isComplete: false, completedBy: null, completedDate: null, sortOrder: 1, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
   { id: 'amt-005', assetId: 'asset-001', phase: 'post_season', title: 'Cover and store in shed', detail: null, isComplete: false, completedBy: null, completedDate: null, sortOrder: 2, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
-  // Camp Bus — pre-season (all complete), post-season pending
+  // Camp Bus, pre-season (all complete), post-season pending
   { id: 'amt-006', assetId: 'asset-003', phase: 'pre_season', title: 'Verify state inspection and registration current', detail: null, isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-06-10', sortOrder: 1, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-10T00:00:00.000Z' },
   { id: 'amt-007', assetId: 'asset-003', phase: 'pre_season', title: 'Check all fluid levels and top off', detail: null, isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-10', sortOrder: 2, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-10T00:00:00.000Z' },
   { id: 'amt-008', assetId: 'asset-003', phase: 'pre_season', title: 'Test all lights, signals, and emergency flashers', detail: null, isComplete: true, completedBy: 'Tom H.', completedDate: '2025-06-10', sortOrder: 3, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-10T00:00:00.000Z' },
   { id: 'amt-009', assetId: 'asset-003', phase: 'post_season', title: 'Schedule DOT and state inspection for winter', detail: null, isComplete: false, completedBy: null, completedDate: null, sortOrder: 1, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
   { id: 'amt-010', assetId: 'asset-003', phase: 'post_season', title: 'Full fluid service and tire check', detail: null, isComplete: false, completedBy: null, completedDate: null, sortOrder: 2, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
-  // John Deere — pre-season done, post-season pending
+  // John Deere, pre-season done, post-season pending
   { id: 'amt-011', assetId: 'asset-005', phase: 'pre_season', title: 'Pre-season oil and filter change', detail: null, isComplete: true, completedBy: 'Tom H.', completedDate: '2025-05-20', sortOrder: 1, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-05-20T00:00:00.000Z' },
   { id: 'amt-012', assetId: 'asset-005', phase: 'pre_season', title: 'Sharpen and balance mowing blades', detail: null, isComplete: true, completedBy: 'Tom H.', completedDate: '2025-05-20', sortOrder: 2, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-05-20T00:00:00.000Z' },
   { id: 'amt-013', assetId: 'asset-005', phase: 'post_season', title: 'Fog engine for winter storage', detail: 'Use fogging oil per manufacturer instructions.', isComplete: false, completedBy: null, completedDate: null, sortOrder: 1, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
   { id: 'amt-014', assetId: 'asset-005', phase: 'post_season', title: 'Drain fuel tank or add stabilizer', detail: null, isComplete: false, completedBy: null, completedDate: null, sortOrder: 2, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-04-01T00:00:00.000Z' },
-  // Motorboat — pre-season done, post-season pending
+  // Motorboat, pre-season done, post-season pending
   { id: 'amt-015', assetId: 'asset-007', phase: 'pre_season', title: 'Verify USCG registration current and displayed', detail: null, isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-06-18', sortOrder: 1, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-18T00:00:00.000Z' },
   { id: 'amt-016', assetId: 'asset-007', phase: 'pre_season', title: 'Count and inspect all lifejackets', detail: 'Must have one per max capacity plus extras.', isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-06-18', sortOrder: 2, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-18T00:00:00.000Z' },
   { id: 'amt-017', assetId: 'asset-007', phase: 'pre_season', title: 'Test engine and verify safety equipment present', detail: null, isComplete: true, completedBy: 'Jordan M.', completedDate: '2025-06-18', sortOrder: 3, createdAt: '2025-04-01T00:00:00.000Z', updatedAt: '2025-06-18T00:00:00.000Z' },

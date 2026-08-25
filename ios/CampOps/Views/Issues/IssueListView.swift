@@ -85,7 +85,7 @@ struct IssueListView: View {
                         SectionEyebrow(text: "You reported")
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.top, assignedToMe.isEmpty ? 0 : Spacing.md)
-                        Text("Someone else will pick these up — you'll see status changes here.")
+                        Text("Someone else will pick these up. You'll see status changes here.")
                             .font(.campMeta)
                             .foregroundStyle(Color.forest.opacity(0.45))
                             .frame(maxWidth: .infinity, alignment: .leading)

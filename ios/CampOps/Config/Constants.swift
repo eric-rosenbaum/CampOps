@@ -4,10 +4,10 @@ import SwiftUI
 enum Constants {
     /// The web app. Password resets and invitations are completed there.
     static let webAppBaseURL = "https://app.campcommand.app"
-    /// Shown wherever a member is blocked and needs a human — matches the web app's screens.
+    /// Shown wherever a member is blocked and needs a human, matches the web app's screens.
     static let supportEmail = "prakash@campcommand.app"
 
-    /// Emailed sign-in codes are NOT always 6 digits — the length is a Supabase project
+    /// Emailed sign-in codes are NOT always 6 digits. The length is a Supabase project
     /// setting (Auth → Sign In / Providers → Email → "Email OTP Length") and can be 6–10.
     /// Accept the range and let the server reject a wrong code; hardcoding 6 silently
     /// truncated longer codes so they could never be submitted.
@@ -45,7 +45,7 @@ enum Radius {
 // because asking CoreText for a weight it cannot find falls back to a synthetic one silently.
 //
 // Both faces ship as VARIABLE fonts, and the two families expose their named instances
-// differently — Bitter as the expected `Bitter-SemiBold`, but Karla as `Karla-Regular_SemiBold`.
+// differently, Bitter as the expected `Bitter-SemiBold`, but Karla as `Karla-Regular_SemiBold`.
 // These names were read off `UIFont.fontNames(forFamilyName:)` on a running simulator rather
 // than guessed; `Karla-SemiBold` does not exist and would quietly render as the system face.
 //
@@ -55,12 +55,12 @@ extension Font {
         .custom(face, size: size, relativeTo: style)
     }
 
-    // Display — Bitter. Reserved for greetings, hero numbers, and empty-state titles.
+    // Display, Bitter. Reserved for greetings, hero numbers, and empty-state titles.
     static let campHero      = sans("Bitter-Bold", 32, .largeTitle)
     static let campDisplay   = sans("Bitter-SemiBold", 27, .title)
     static let campTitle     = sans("Bitter-SemiBold", 22, .title2)
 
-    // UI — Karla.
+    // UI · Karla.
     static let campPageTitle = sans("Karla-Regular_Bold", 20, .title3)
     static let campSection   = sans("Karla-Regular_SemiBold", 17, .headline)
     static let campBodyLarge = sans("Karla-Regular", 17, .body)

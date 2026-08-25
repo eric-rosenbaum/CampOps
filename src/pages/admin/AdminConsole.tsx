@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TreePine, Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2, LogOut, Users, ChevronDown, ChevronRight, Link as LinkIcon } from 'lucide-react';
+import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
+import { Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2, LogOut, Users, ChevronDown, ChevronRight, Link as LinkIcon } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useAdminStore, type AdminCamp, type CampAccount } from '@/store/adminStore';
@@ -43,7 +44,7 @@ export function AdminConsole() {
   useEffect(() => { load(); }, [load]);
 
   async function handleSignOut() {
-    // Sign-out always returns to the marketing site (by design), and always redirects —
+    // Sign-out always returns to the marketing site (by design), and always redirects -
     // see the `finally` note in authStore.signOut.
     try {
       await signOut();
@@ -64,9 +65,9 @@ export function AdminConsole() {
       <div className="bg-forest text-white">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-sage rounded-btn flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-forest" /></div>
+            <CampCommandMark size={32} disc={CC_CREAM} ink={CC_GREEN} decorative />
             <div>
-              <p className="text-[15px] font-semibold">CampCommand — Admin</p>
+              <p className="text-[15px] font-semibold">CampCommand · Admin</p>
               <p className="text-[11px] text-white/50">{camps.length} camps · {byType('customer')} customers · {byType('trial')} demos · {byType('demo')} showcase</p>
             </div>
           </div>
@@ -152,7 +153,7 @@ function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: stri
       <td className="px-3 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${TYPE_STYLE[c.accountType]}`}>{TYPE_LABEL[c.accountType] ?? c.accountType}</span></td>
       <td className="px-3 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${STATUS_STYLE[c.status]}`}>{c.status.replace('_', ' ')}</span></td>
       <td className="px-3 py-3">
-        <input defaultValue={c.plan ?? ''} placeholder="—" onBlur={(e) => e.target.value !== (c.plan ?? '') && setPlan(c.id, e.target.value.trim() || null)}
+        <input defaultValue={c.plan ?? ''} placeholder="-" onBlur={(e) => e.target.value !== (c.plan ?? '') && setPlan(c.id, e.target.value.trim() || null)}
           className="w-24 text-[12px] bg-transparent border border-transparent hover:border-border focus:border-sage rounded px-1 py-0.5 focus:outline-none" />
       </td>
       <td className="px-3 py-3">
@@ -161,7 +162,7 @@ function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: stri
           <Users className="w-3.5 h-3.5" /> {c.memberCount}
         </button>
       </td>
-      <td className="px-3 py-3 text-ink-soft">{c.accountType === 'trial' && dl != null ? (dl >= 0 ? `${dl}d left` : 'expired') : '—'}</td>
+      <td className="px-3 py-3 text-ink-soft">{c.accountType === 'trial' && dl != null ? (dl >= 0 ? `${dl}d left` : 'expired') : '-'}</td>
       <td className="px-4 py-3">
         <div className="flex flex-wrap gap-1.5 justify-end">
           <Button size="sm" variant="ghost" disabled={busy} onClick={onOpen}><LogIn className="w-3.5 h-3.5" /> Open</Button>
@@ -238,9 +239,9 @@ function AccountsPanel({ accounts, error }: { accounts: CampAccount[] | null; er
           {accounts.map((a, i) => (
             <tr key={(a.userId ?? a.email) + i} className="border-t border-cream-dark/60">
               <td className="py-1.5 pr-4 font-medium text-forest">{a.email ?? <span className="text-ink-faint italic">demo guest (no email)</span>}</td>
-              <td className="py-1.5 pr-4 text-ink-soft">{a.fullName ?? '—'}</td>
+              <td className="py-1.5 pr-4 text-ink-soft">{a.fullName ?? '-'}</td>
               <td className="py-1.5 pr-4 text-ink capitalize">{a.role}</td>
-              <td className="py-1.5 pr-4 text-ink-soft">{a.staffGroup ?? '—'}</td>
+              <td className="py-1.5 pr-4 text-ink-soft">{a.staffGroup ?? '-'}</td>
               <td className="py-1.5">
                 <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${ACCT_STATUS_STYLE[a.status]}`}>
                   {a.status === 'invited' ? 'invited (pending)' : a.status}
@@ -386,9 +387,9 @@ function InviteResult({ url, email, emailed, emailError }: { url: string; email:
   return (
     <div className="bg-green-muted-bg border border-sage/30 rounded-card p-4">
       {emailed ? (
-        <p className="text-[13px] font-semibold text-green-muted-text mb-1.5">Created ✓ — invite emailed to <span className="font-mono">{email}</span></p>
+        <p className="text-[13px] font-semibold text-green-muted-text mb-1.5">Created ✓, invite emailed to <span className="font-mono">{email}</span></p>
       ) : (
-        <p className="text-[13px] font-semibold text-amber-text mb-1.5">Created ✓ — but the email didn’t send{emailError ? ` (${emailError})` : ''}. Copy the link and send it manually:</p>
+        <p className="text-[13px] font-semibold text-amber-text mb-1.5">Created ✓, but the email didn’t send{emailError ? ` (${emailError})` : ''}. Copy the link and send it manually:</p>
       )}
       <div className="flex items-center gap-2">
         <input readOnly value={url} className="flex-1 text-[12px] font-mono bg-white border border-border rounded-btn px-2.5 py-1.5" />
@@ -405,14 +406,14 @@ function ShareLinkResult({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="bg-green-muted-bg border border-sage/30 rounded-card p-4">
-      <p className="text-[13px] font-semibold text-green-muted-text mb-1.5">Demo ready ✓ — send this link to the prospect:</p>
+      <p className="text-[13px] font-semibold text-green-muted-text mb-1.5">Demo ready ✓. Send this link to the prospect:</p>
       <div className="flex items-center gap-2">
         <input readOnly value={url} className="flex-1 text-[12px] font-mono bg-white border border-border rounded-btn px-2.5 py-1.5" />
         <Button size="sm" onClick={() => { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
           {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
         </Button>
       </div>
-      <p className="text-[11px] text-ink-faint mt-2">Anyone who opens it lands straight in this demo — no sign-in, no password. Their whole team can share the one link.</p>
+      <p className="text-[11px] text-ink-faint mt-2">Anyone who opens it lands straight in this demo, no sign-in, no password. Their whole team can share the one link.</p>
     </div>
   );
 }
@@ -482,11 +483,11 @@ function SpinUpTrialModal({ onClose }: { onClose: () => void }) {
     <Modal title="Spin up a demo" onClose={onClose} width="480px">
       {result ? <div className="space-y-4"><ShareLinkResult url={result} /><Button className="w-full justify-center" onClick={onClose}>Done</Button></div> : (
         <div className="space-y-3.5">
-          <p className="text-[12px] text-ink-soft bg-cream-dark/40 rounded-btn px-3 py-2">A fresh 30-day demo is cloned from the seed — fake data only, fully isolated from every other camp. You’ll get one no-login link the whole prospect team can share.</p>
+          <p className="text-[12px] text-ink-soft bg-cream-dark/40 rounded-btn px-3 py-2">A fresh 30-day demo is cloned from the seed, fake data only, fully isolated from every other camp. You’ll get one no-login link the whole prospect team can share.</p>
           <Field label="Prospect / camp name *"><input autoFocus value={name} onChange={(e) => setName(e.target.value)} className={INPUT} placeholder="e.g. Maplewood (demo)" /></Field>
           <Field label="Seed to clone *">
             <select value={source} onChange={(e) => setSource(e.target.value)} className={INPUT}>
-              {seeds.length === 0 && <option value="" disabled>No seed marked — pick any camp below or mark one “seed”</option>}
+              {seeds.length === 0 && <option value="" disabled>No seed marked. Pick any camp below or mark one “seed”</option>}
               {(seeds.length ? seeds : camps).map((c) => <option key={c.id} value={c.id}>{c.name}{c.isSeed ? ' (seed)' : ''}</option>)}
             </select>
           </Field>

@@ -60,7 +60,7 @@ export type CommissaryMode = 'session' | 'retreats';
 /** Menu tab shows either concrete session menus or the reusable templates. */
 export type MenuView = 'session' | 'templates';
 
-// Discriminated modal state, matching the buildingStore pattern — components
+// Discriminated modal state, matching the buildingStore pattern · components
 // dispatch openModal, the page renders the match, nothing is prop-drilled.
 export type CommissaryModal =
   | { kind: 'item'; editId?: string }
@@ -127,11 +127,15 @@ interface CommissaryState {
 
   /** Whether the module is planning camp sessions or retreats (combined). */
   mode: CommissaryMode;
+  /** Set when arriving from a specific retreat's Menu tab, so the builder opens on that
+   *  group instead of the chooser. Consumed once, then cleared. */
+  retreatMenuTarget: string | null;
   /** Retreats-mode ordering coverage window (YYYY-MM-DD); '' = use defaults. */
   retreatCoverageStart: string;
   retreatCoverageEnd: string;
 
   setMode: (m: CommissaryMode) => void;
+  setRetreatMenuTarget: (id: string | null) => void;
   setRetreatCoverage: (start: string, end: string) => void;
   setRetreatMenuEntries: (rows: RetreatMenuEntry[]) => void;
   addRetreatMenuEntry: (m: RetreatMenuEntry) => void;
@@ -193,7 +197,7 @@ interface CommissaryState {
   saveItemVendors: (itemId: string, packs: ItemVendorPack[]) => void;
   /** Bulk-create items + their default vendor packs from a CSV import. */
   importItems: (rows: { item: InventoryItem; pack: ItemVendorPack | null }[]) => void;
-  /** Layer vendor packs onto EXISTING items (CSV merge) — upsert per (item,vendor), no wipe. */
+  /** Layer vendor packs onto EXISTING items (CSV merge), upsert per (item,vendor), no wipe. */
   addVendorPacks: (packs: ItemVendorPack[]) => void;
 
   saveRecipe: (r: Recipe, ings: RecipeIngredient[], steps: RecipeStep[], isNew: boolean) => void;
@@ -220,7 +224,7 @@ interface CommissaryState {
   addOrderLine: (orderId: string, itemId: string, orderQty: number) => void;
   removeOrderLine: (lineId: string) => void;
   createBlankOrder: (vendorId: string | null, createdBy: string | null) => void;
-  /** Switch a draft line to another vendor's pack — reprices, reconverts, and moves the line to that vendor's order. */
+  /** Switch a draft line to another vendor's pack, reprices, reconverts, and moves the line to that vendor's order. */
   setOrderLineVendor: (lineId: string, vendorId: string) => void;
 
   // Production
@@ -274,7 +278,7 @@ interface CommissaryState {
   weekDemand: (week: number) => Map<string, DemandRow>;
   /** Items whose on-hand cannot cover this week's menu. The real version of the mock's fake banner. */
   weekShortfalls: (week: number) => { item: InventoryItem; neededBase: number }[];
-  /** Menu chips with no recipe attached — invisible to demand and allergen math. */
+  /** Menu chips with no recipe attached, invisible to demand and allergen math. */
   unlinkedEntryCount: (week: number) => number;
 
   // Ordering selectors
@@ -284,7 +288,7 @@ interface CommissaryState {
   orderingWindow: () => { today: string; nextDelivery: string; windowEnd: string; frequency: number; deliveryDay: string | null };
   /** Reconciled order suggestions: cover the window above the floor, net of projection + in-transit. */
   reconciledDraftOrders: (windowEndDate: string) => DraftOrder[];
-  /** The per-item math behind the order — every term, for the "show the math" worksheet. */
+  /** The per-item math behind the order, every term, for the "show the math" worksheet. */
   orderMath: (windowEndDate: string) => {
     item: InventoryItem; onHandNow: number; draw: number; inTransit: number;
     floor: number; projectedAtEnd: number; need: number; orderQty: number;
@@ -400,13 +404,13 @@ interface CommissaryState {
   uploadFile: (file: File, sessionId: string | null, by: string | null) => Promise<CommissaryFile | null>;
   deleteFile: (f: CommissaryFile) => Promise<void>;
 
-  /** Allergens for any chip — recipe union, single item's allergens, or none. */
+  /** Allergens for any chip, recipe union, single item's allergens, or none. */
   entryAllergens: (entry: MenuEntry) => string[];
   /** Camper conflicts for any chip (recipe or item), driven by the aggregate summary. */
   conflictsForEntry: (entry: MenuEntry) => MenuConflict[];
 
   /**
-   * #7 — the forward-looking prep calendar. Every timing-tagged recipe step for the
+   * #7. The forward-looking prep calendar. Every timing-tagged recipe step for the
    * week's meals, resolved to the date+slot it must be done (serviceDate − leadDays).
    * Hybrid source: portions come from a generated plan when present (frozen), else the
    * live per-meal head count.
@@ -449,10 +453,12 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   restrictionSummary: [],
 
   mode: 'session',
+  retreatMenuTarget: null,
   retreatCoverageStart: '',
   retreatCoverageEnd: '',
 
   setMode: (m) => set({ mode: m }),
+  setRetreatMenuTarget: (id) => set({ retreatMenuTarget: id }),
   setRetreatCoverage: (start, end) => set({ retreatCoverageStart: start, retreatCoverageEnd: end }),
   setRetreatMenuEntries: (rows) => set({ retreatMenuEntries: rows }),
   addRetreatMenuEntry: (m) => { set((s) => ({ retreatMenuEntries: [...s.retreatMenuEntries, m] })); dbAddRetreatMenuEntry(m); },
@@ -797,7 +803,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     dbUpdateOrderTotals(order.id, subtotal, total);
   },
 
-  // Add any inventory item to a draft — not just ones flagged short. Adding an item
+  // Add any inventory item to a draft, not just ones flagged short. Adding an item
   // already on the order bumps its quantity rather than creating a duplicate line.
   addOrderLine: (orderId, itemId, qty) => {
     const { items, orderLines, orders } = get();
@@ -813,7 +819,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       id: generateId(), orderId, itemId: item.id, itemName: item.name,
       stockUnit: item.stockUnit, purchaseUnit: item.purchaseUnit,
       purchaseUnitInBase: item.purchaseUnitInBase, onHandBase: item.onHandBase,
-      // neededBase 0 = manually added, not demand-driven. UI shows "—".
+      // neededBase 0 = manually added, not demand-driven. UI shows "-".
       neededBase: 0, orderQty: qty, unitPrice: item.unitPrice,
       lineTotal: tidy((item.unitPrice ?? 0) * qty),
       receivedQty: null, receivedUnitPrice: null, receivedNote: null,
@@ -886,7 +892,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     };
     const sourceLineCount = state.orderLines.filter((l) => l.orderId === source.id).length;
 
-    // Case 1 — sole line on its order: re-vendor the order in place, no move.
+    // Case 1, sole line on its order: re-vendor the order in place, no move.
     if (sourceLineCount === 1) {
       const fee = vendor.deliveryFee ?? 0;
       const total = tidy(lineTotal + fee);
@@ -901,7 +907,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       return;
     }
 
-    // Case 2 — move the line into the vendor's draft order (existing one in the same
+    // Case 2, move the line into the vendor's draft order (existing one in the same
     // source/session/week context, or a new blank one), then re-total both orders.
     const now = new Date().toISOString();
     const existingDest = state.orders.find((o) => o.status === 'draft' && o.vendorId === vendorId
@@ -1006,7 +1012,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
           title: entry.label ?? item?.name ?? 'Item', portions: mealPortions,
           ingredients: item ? [{ label: item.name, qty: formatInStockUnit(item, base), linked: true }] : [],
           allergens: item ? ITEM_FLAGS.filter((a) => item.allergens.includes(a)) : [],
-          prepTime: null, cookTime: null, notes: 'Serve — no prep needed.',
+          prepTime: null, cookTime: null, notes: 'Serve, no prep needed.',
           isComplete: false, completedBy: null, completedAt: null,
           sortOrder: sort++, createdAt: now, updatedAt: now,
         });
@@ -1021,7 +1027,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
         title: bag.label, portions: bag.count,
         ingredients: [], allergens: [],
         prepTime: null, cookTime: null,
-        notes: bag.notes ?? 'Bag lunch — pack separately for off-site.',
+        notes: bag.notes ?? 'Bag lunch, pack separately for off-site.',
         isComplete: false, completedBy: null, completedAt: null,
         sortOrder: 900 + sort++, createdAt: now, updatedAt: now,
       });
@@ -1079,7 +1085,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
         id: generateId(), planId, recipeId: null,
         prepDate: nightBeforeStr, timeSlot: 'evening', mealPeriod: 'dinner',
         serviceDate: dateStr, title: 'Freezer pull',
-        instruction: `Pull ${item.name} from freezer — ${formatInStockUnit(item, row.neededBase)}`,
+        instruction: `Pull ${item.name} from freezer · ${formatInStockUnit(item, row.neededBase)}`,
         portions: 0, isComplete: false, completedBy: null, completedAt: null,
         sortOrder: 800 + psort++, createdAt: now, updatedAt: now,
       });
@@ -1382,7 +1388,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     const state = get();
     const session = state.activeSession();
     // Scale each entry by its OWN meal's head count (per-meal session counts + events),
-    // not the flat session total — otherwise ordering over-orders for smaller meals.
+    // not the flat session total, otherwise ordering over-orders for smaller meals.
     const portionsFor = session
       ? (e: MenuEntry) => state.mealCount(dateStrForCell(session.startDate, e.weekNumber, e.dayIndex), e.mealPeriod)
       : state.portions();
@@ -1437,7 +1443,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   },
 
   // The coverage window from the session's operating cadence: order now, next delivery
-  // lands on the delivery day, and that stock must last until the delivery AFTER it —
+  // lands on the delivery day, and that stock must last until the delivery AFTER it -
   // so cover [today → next delivery + one cycle]. Day defaults to the session start's weekday.
   orderingWindow: () => {
     const state = get();
@@ -1647,7 +1653,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
 
     // Feed the invoiced price back as each item's "last paid" estimate, so order estimates
     // self-improve without anyone maintaining a price list. Only when the pack matches the
-    // item's current one (a price is per purchase unit — don't cross packs).
+    // item's current one (a price is per purchase unit. Don't cross packs).
     const olState = get().orderLines;
     const itState = get().items;
     const priceUpdates: { itemId: string; price: number }[] = [];
@@ -1722,7 +1728,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   },
 
   // Fill the active session's weeks from a template, repeating its cycle. Replaces
-  // every menu entry from startWeek onward — confirm-gated in the UI.
+  // every menu entry from startWeek onward. Confirm-gated in the UI.
   applyTemplate: (templateId, startWeek) => {
     const { activeSessionId, templates, templateEntries } = get();
     if (!activeSessionId) return;
@@ -1783,7 +1789,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       if (!item) continue;
       const countedBase = c.countedStock * item.stockUnitInBase;
       const delta = tidy(countedBase - item.onHandBase, 4);
-      // Counting an item establishes its on-hand even when it matches — so every counted
+      // Counting an item establishes its on-hand even when it matches, so every counted
       // item is stamped "counted", but only a nonzero delta posts a correction.
       if (delta !== 0) {
         changed++;
@@ -1880,7 +1886,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       .filter((e) => e.templateId === templateId && e.weekNumber === week && e.dayIndex === dayIndex && e.mealPeriod === meal)
       .sort((a, b) => a.sortOrder - b.sortOrder),
 
-  // Freezer-stored items needed for a day's menu — the overnight pull list.
+  // Freezer-stored items needed for a day's menu. The overnight pull list.
   thawListForDay: (week, dayIndex) => {
     const state = get();
     const session = state.activeSession();

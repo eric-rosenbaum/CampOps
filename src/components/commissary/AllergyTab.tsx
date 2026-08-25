@@ -18,7 +18,7 @@ function RestrictionCell({ severity }: { severity: string | null | undefined }) 
   if (severity === 'anaphylactic') {
     return (
       <span
-        title="ANAPHYLACTIC — EpiPen required"
+        title="ANAPHYLACTIC · EpiPen required"
         className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red text-white text-[10px] font-bold"
       >
         !
@@ -49,7 +49,7 @@ export function AllergyTab() {
       supabase.rpc('log_audit_event', { p_camp_id: campId, p_action: 'view_camper_health' });
     }
   }, [canViewCamperHealth, campId]);
-  // Adding a camper needs BOTH the module permission and health access — the DB
+  // Adding a camper needs BOTH the module permission and health access. The DB
   // rejects the write otherwise, so don't render a control that cannot succeed.
   const canManage = can('manageCommissary') && canViewCamperHealth;
 
@@ -57,7 +57,7 @@ export function AllergyTab() {
   const dietaryRows = restrictionSummary.filter((r) => r.kind === 'dietary');
 
   // Anaphylaxis counts come from the aggregate, so this renders for the kitchen too.
-  // They are PER-ALLERGEN, not a distinct camper count — a camper with two anaphylactic
+  // They are PER-ALLERGEN, not a distinct camper count, a camper with two anaphylactic
   // allergies appears in two rows, and there is no honest way to de-duplicate without
   // reading the roster. So the copy says "flagged", never "campers".
   const anaphylacticByAllergen = allergenRows.filter((r) => r.anaphylacticCount > 0);
@@ -127,7 +127,7 @@ export function AllergyTab() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
         <StatCard
           label="People with restrictions"
-          value={canViewCamperHealth ? totalCampersWithRestrictions() : '—'}
+          value={canViewCamperHealth ? totalCampersWithRestrictions() : '-'}
           hint={canViewCamperHealth ? `of ${campers.length} on the roster` : 'Requires health access'}
         />
         <StatCard label="Distinct allergens" value={allergenRows.length} hint="Present in this camp" />
@@ -149,14 +149,14 @@ export function AllergyTab() {
             </p>
             <p className="text-[11px] text-red/70 mt-1 leading-relaxed">
               {canViewCamperHealth
-                ? anaphylacticCampers().map((c) => `${c.name}${c.cabin ? ` — ${c.cabin}` : ''}`).join(' · ')
+                ? anaphylacticCampers().map((c) => `${c.name}${c.cabin ? ` · ${c.cabin}` : ''}`).join(' · ')
                 : 'Names and cabins are restricted to administrators and health staff.'}
             </p>
           </div>
         </div>
       )}
 
-      {/* Aggregate — visible to everyone */}
+      {/* Aggregate, visible to everyone */}
       <div className="mb-6">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint mb-2">Restrictions in this camp</p>
         <div className="flex flex-wrap gap-2">
@@ -175,7 +175,7 @@ export function AllergyTab() {
               <span className="font-mono font-semibold">{r.camperCount}</span>
               {r.anaphylacticCount > 0 && (
                 <span className="text-[10px] font-bold" title={`${r.anaphylacticCount} anaphylactic`}>
-                  ⚠{r.anaphylacticCount}
+                  {r.anaphylacticCount}
                 </span>
               )}
             </div>
@@ -183,7 +183,7 @@ export function AllergyTab() {
         </div>
       </div>
 
-      {/* Menu conflicts — visible to everyone, the whole point of the module */}
+      {/* Menu conflicts, visible to everyone, the whole point of the module */}
       {conflictingRecipes.length > 0 && (
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-2">
@@ -192,7 +192,7 @@ export function AllergyTab() {
             <span className={`text-[11px] ${replacementCount > 0 ? 'text-green-muted-text' : 'text-ink-faint'}`}>
               {replacementCount > 0
                 ? `${replacementCount} replacement meal${replacementCount === 1 ? '' : 's'} defined this session`
-                : 'No replacement meals defined — set them on the Menu builder'}
+                : 'No replacement meals defined. Set them on the Menu builder'}
             </span>
           </div>
           <div className="bg-white rounded-card border border-border overflow-hidden">
@@ -217,7 +217,7 @@ export function AllergyTab() {
                       >
                         {restrictionLabel(c.allergen)}
                         <span className="font-mono">{c.camperCount}</span>
-                        {c.anaphylacticCount > 0 && <span className="font-bold">⚠</span>}
+                        {c.anaphylacticCount > 0 && <span className="font-bold">!</span>}
                       </span>
                     ))}
                   </div>
@@ -228,7 +228,7 @@ export function AllergyTab() {
         </div>
       )}
 
-      {/* Named roster — health access only */}
+      {/* Named roster, health access only */}
       {!canViewCamperHealth ? (
         <div className="bg-white rounded-card border border-border px-6 py-8 text-center">
           <Lock className="w-6 h-6 text-stone-300 mx-auto mb-3" />
@@ -236,7 +236,7 @@ export function AllergyTab() {
           <p className="text-[13px] text-ink-soft max-w-lg mx-auto leading-relaxed">
             You can see how many campers each restriction affects and which recipes conflict,
             which is what the kitchen needs to cook safely. Names, cabins and individual
-            severities are limited to administrators and staff groups with health access —
+            severities are limited to administrators and staff groups with health access -
             enforced in the database, not just hidden here.
           </p>
         </div>
@@ -299,14 +299,14 @@ export function AllergyTab() {
                             );
                           })()}
                         </td>
-                        <td className="px-2 py-2 text-[12px] text-ink-soft whitespace-nowrap">{c.cabin ?? '—'}</td>
+                        <td className="px-2 py-2 text-[12px] text-ink-soft whitespace-nowrap">{c.cabin ?? '-'}</td>
                         {ALLERGENS.map((a) => (
                           <td key={a} className="px-1 py-2 text-center">
                             <RestrictionCell severity={byId.get(a)?.severity} />
                           </td>
                         ))}
                         <td className="px-2 py-2 text-[11px] text-ink-soft whitespace-nowrap">
-                          {diets.length ? diets.map((d) => restrictionLabel(d.restriction)).join(', ') : '—'}
+                          {diets.length ? diets.map((d) => restrictionLabel(d.restriction)).join(', ') : '-'}
                         </td>
                       </tr>
                     );

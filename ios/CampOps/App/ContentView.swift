@@ -110,7 +110,7 @@ struct ContentView: View {
 /// Branded full-screen loading state.
 ///
 /// This is the first thing a new staff member sees after their code is accepted, so it carries
-/// the wordmark and says what's happening — an unadorned spinner on a white field reads as a
+/// the wordmark and says what's happening, an unadorned spinner on a white field reads as a
 /// hang, which is precisely the impression we're trying to avoid here.
 private struct AppLoadingView: View {
     var message: String = "Loading…"

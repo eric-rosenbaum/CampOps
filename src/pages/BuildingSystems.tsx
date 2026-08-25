@@ -73,7 +73,7 @@ export function BuildingSystems() {
               <h3 className="text-[15px] font-semibold text-forest mb-1.5">No buildings yet</h3>
               <p className="text-[13px] text-ink-soft leading-relaxed mb-4">
                 Add your cabins, bathhouses, dining hall and utility buildings, then map their
-                electrical and plumbing — outlets, panels, shutoffs and more — room by room.
+                electrical and plumbing (outlets, panels, shutoffs and more) room by room.
               </p>
               {canManage && (
                 <Button size="sm" onClick={() => openModal({ kind: 'building' })}>+ Add your first building</Button>

@@ -119,7 +119,7 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
                 onChange={(e) => setIssuesSeeUnassigned(e.target.checked)}
                 className="w-3.5 h-3.5 accent-forest"
               />
-              <span className="text-[12px] text-forest">Issues & Repairs — can see unassigned issues</span>
+              <span className="text-[12px] text-forest">Issues & Repairs, can see unassigned issues</span>
             </label>
           )}
           {modules.pre_post && (
@@ -130,11 +130,11 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
                 onChange={(e) => setPrepostSeeUnassigned(e.target.checked)}
                 className="w-3.5 h-3.5 accent-forest"
               />
-              <span className="text-[12px] text-forest">Pre/Post Camp — can see unassigned tasks</span>
+              <span className="text-[12px] text-forest">Pre/Post Camp, can see unassigned tasks</span>
             </label>
           )}
           <p className="text-[10px] text-ink-faint pt-0.5">
-            Staff never see tasks assigned to other people — only their own and optionally unassigned ones.
+            Staff never see tasks assigned to other people, only their own and optionally unassigned ones.
           </p>
         </div>
       )}
@@ -579,7 +579,7 @@ export function Team() {
     setInviteError(null);
     try {
       const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Request timed out — check your connection and try again.')), 30_000)
+        setTimeout(() => reject(new Error('Request timed out. Check your connection and try again.')), 30_000)
       );
       const groupId = inviteRole === 'staff' ? inviteGroupId || null : null;
       const to = inviteEmail.trim();
@@ -588,7 +588,7 @@ export function Team() {
         timeout,
       ]);
       const link = `${window.location.origin}/invite/${token}`;
-      // Send the invite email (same flow as customer provisioning), THEN reveal the result — so we
+      // Send the invite email (same flow as customer provisioning), THEN reveal the result · so we
       // don't flash "couldn't send" before the send resolves. The link shows as a backup.
       const { subject, html } = buildInviteEmail(currentCamp?.name ?? 'your camp', link, { owner: false });
       const res = await sendEmail({ to, subject, html, fromName: currentCamp?.name ?? 'CampCommand', fromEmail: 'invites@campcommand.app' });
@@ -834,7 +834,7 @@ export function Team() {
             <p className="text-[11px] mb-2">
               {inviteEmailed
                 ? <span className="text-green-700 font-medium">✓ Invite emailed to <strong>{inviteLinkEmail}</strong>. Here’s the link as a backup:</span>
-                : <span className="text-amber-700 font-medium">Couldn’t email {inviteLinkEmail}{inviteEmailError ? ` (${inviteEmailError})` : ''} — copy the link and send it manually:</span>}
+                : <span className="text-amber-700 font-medium">Couldn’t email {inviteLinkEmail}{inviteEmailError ? ` (${inviteEmailError})` : ''}, copy the link and send it manually:</span>}
             </p>
             <div className="bg-paper border border-border rounded-lg px-3 py-2 mb-2.5">
               <code className="text-[10px] text-forest break-all leading-relaxed">{inviteLink}</code>

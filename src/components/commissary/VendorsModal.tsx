@@ -9,7 +9,7 @@ import { inputClass, labelClass } from './commissaryUi';
 
 /**
  * List + editor in one modal. The item form's vendor dropdown reads from this, and
- * the app only ever has one modal open at a time — so a separate "add vendor" modal
+ * the app only ever has one modal open at a time, so a separate "add vendor" modal
  * launched from the item form would blow away the half-filled item.
  */
 export function VendorsModal({ editId }: { editId?: string }) {

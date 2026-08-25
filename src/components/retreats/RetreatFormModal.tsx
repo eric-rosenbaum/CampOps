@@ -183,7 +183,7 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
           <div>
             <label className={labelClass}>Deposit due</label>
             <input type="date" value={depositDue} onChange={(e) => setDepositDue(e.target.value)} className={inputClass} />
-            <p className="text-[11px] text-ink-faint mt-1">Shown in the guest portal — paying the deposit holds their dates.</p>
+            <p className="text-[11px] text-ink-faint mt-1">Shown in the guest portal, paying the deposit holds their dates.</p>
           </div>
         </div>
 
@@ -211,7 +211,7 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
           <div>
             <label className={labelClass}>Final headcount due</label>
             <input type="date" value={effectiveHeadcountCutoff} onChange={(e) => setHeadcountCutoff(e.target.value)} className={inputClass} />
-            <p className="text-[11px] text-ink-faint mt-1">When the group confirms their final number — defaults to 2 weeks before arrival.</p>
+            <p className="text-[11px] text-ink-faint mt-1">When the group confirms their final number, defaults to 2 weeks before arrival.</p>
           </div>
           {editing && (
             <div>

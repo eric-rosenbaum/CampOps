@@ -84,7 +84,7 @@ export function generateId(): string {
  * `Number()` drops trailing zeros, so 7.0 renders as "7" and 7.25 as "7.3" at 1 decimal.
  */
 export function formatChemValue(value: number | null | undefined, decimals = 1): string {
-  if (value == null || Number.isNaN(value)) return '—';
+  if (value == null || Number.isNaN(value)) return '-';
   return String(Number(value.toFixed(decimals)));
 }
 
@@ -94,7 +94,7 @@ export function roundChemValue(value: number, decimals = 1): number {
 }
 
 /**
- * First letter of the first and last word — "Marcus Tate" → MT, "Dana" → D.
+ * First letter of the first and last word, "Marcus Tate" → MT, "Dana" → D.
  * Filters empty parts because names arrive with trailing whitespace ("Prakash ").
  */
 export function initialsFor(name: string): string {

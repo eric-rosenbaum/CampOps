@@ -39,7 +39,7 @@ export function TemplateEntryModal({ templateId, weekNumber, dayIndex, mealPerio
         <div>
           <label className={labelClass}>Recipe</label>
           <select value={recipeId} onChange={(e) => setRecipeId(e.target.value)} className={inputClass}>
-            <option value="">— No recipe (free text) —</option>
+            <option value="">No recipe (free text)</option>
             {matching.length > 0 && (
               <optgroup label={MEAL_PERIOD_LABELS[mealPeriod]}>
                 {matching.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}

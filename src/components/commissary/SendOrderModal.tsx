@@ -7,7 +7,7 @@ import { inputClass, labelClass } from './commissaryUi';
 
 /**
  * Marks the order sent and records delivery instructions. It does NOT transmit
- * anything to the vendor — there is no email or EDI integration. The copyable summary
+ * anything to the vendor. There is no email or EDI integration. The copyable summary
  * is what a manager actually pastes into an email or reads down the phone, and saying
  * so plainly beats implying an integration that does not exist.
  */
@@ -27,10 +27,10 @@ export function SendOrderModal({ orderId }: { orderId: string }) {
   const vendor = orderVendor;
 
   const summary = [
-    `Purchase order — ${order.vendorName}`,
+    `Purchase order · ${order.vendorName}`,
     vendor?.accountNumber ? `Account: ${vendor.accountNumber}` : null,
     '',
-    ...lines.map((l) => `${tidy(l.orderQty)} ${l.purchaseUnit} — ${l.itemName}`),
+    ...lines.map((l) => `${tidy(l.orderQty)} ${l.purchaseUnit} · ${l.itemName}`),
     '',
     `Subtotal: ${formatCurrency(order.subtotal)}`,
     order.deliveryFee > 0 ? `Delivery: ${formatCurrency(order.deliveryFee)}` : null,
@@ -79,7 +79,7 @@ export function SendOrderModal({ orderId }: { orderId: string }) {
           <label className={labelClass}>Expected delivery</label>
           <input type="date" value={expectedDelivery} onChange={(e) => setExpectedDelivery(e.target.value)} className={inputClass} />
           <p className="text-[11px] text-ink-faint mt-1">
-            When this is due — it counts as in-transit stock so the ordering view won't double-order before it lands.
+            When this is due. It counts as in-transit stock so the ordering view won't double-order before it lands.
             {vendor?.deliveryDay && ` Defaulted to ${vendor.name}'s ${vendor.deliveryDay}.`}
           </p>
         </div>
@@ -99,7 +99,7 @@ export function SendOrderModal({ orderId }: { orderId: string }) {
             {summary}
           </pre>
           <p className="text-[11px] text-ink-faint mt-1.5">
-            Marking an order sent records it here — it does not email the vendor. Copy this
+            Marking an order sent records it here. It does not email the vendor. Copy this
             summary into your own email or read it to your rep.
           </p>
         </div>

@@ -105,7 +105,7 @@ export function StaffCertModal() {
             <select {...register('staffId', { required: true })} className={ic}>
               {activeStaff.length === 0 && <option value="">No staff added yet</option>}
               {activeStaff.map((s) => (
-                <option key={s.id} value={s.id}>{s.name} — {s.title}</option>
+                <option key={s.id} value={s.id}>{s.name} · {s.title}</option>
               ))}
             </select>
           </div>
@@ -132,7 +132,7 @@ export function StaffCertModal() {
             placeholder={
               certType === 'lifeguard' ? 'e.g. Red Cross Lifeguarding' :
               certType === 'cpr_aed' ? 'e.g. Red Cross CPR/AED for Professionals' :
-              certType === 'mandatory_reporter' ? 'e.g. Praesidium Guardian — Child Abuse Prevention' :
+              certType === 'mandatory_reporter' ? 'e.g. Praesidium Guardian, Child Abuse Prevention' :
               'Certification name'
             }
           />

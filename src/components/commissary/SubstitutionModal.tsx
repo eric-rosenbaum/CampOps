@@ -49,7 +49,7 @@ export function SubstitutionModal({ weekNumber, dayIndex, mealPeriod, editId }: 
   const date = dateForCell(session.startDate, weekNumber, dayIndex);
   const dateLabel = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
-  // Restrictions actually present in camp, worst first — the ones worth planning around.
+  // Restrictions actually present in camp, worst first. The ones worth planning around.
   const presentRestrictions = restrictionSummary
     .filter((r) => r.camperCount > 0)
     .sort((a, b) => b.anaphylacticCount - a.anaphylacticCount || b.camperCount - a.camperCount);
@@ -131,7 +131,7 @@ export function SubstitutionModal({ weekNumber, dayIndex, mealPeriod, editId }: 
             <option value="">General (any allergy)</option>
             {presentRestrictions.map((r) => (
               <option key={r.restriction} value={r.restriction}>
-                {restrictionLabel(r.restriction)} — {r.camperCount} affected{r.anaphylacticCount > 0 ? `, ${r.anaphylacticCount} anaphylactic` : ''}
+                {restrictionLabel(r.restriction)} · {r.camperCount} affected{r.anaphylacticCount > 0 ? `, ${r.anaphylacticCount} anaphylactic` : ''}
               </option>
             ))}
           </select>
@@ -139,7 +139,7 @@ export function SubstitutionModal({ weekNumber, dayIndex, mealPeriod, editId }: 
 
         <div>
           <label className={labelClass}>Replacement main *</label>
-          {refPicker(mainRef, pickMain, '— Free text —')}
+          {refPicker(mainRef, pickMain, 'Free text')}
           <input
             value={mainLabel} onChange={(e) => setMainLabel(e.target.value)}
             className={`${inputClass} mt-2`} placeholder="e.g. Grilled chicken (no marinade)"
@@ -148,7 +148,7 @@ export function SubstitutionModal({ weekNumber, dayIndex, mealPeriod, editId }: 
 
         <div>
           <label className={labelClass}>Replacement side</label>
-          {refPicker(sideRef, pickSide, '— Free text / none —')}
+          {refPicker(sideRef, pickSide, 'Free text / none')}
           <input
             value={sideLabel} onChange={(e) => setSideLabel(e.target.value)}
             className={`${inputClass} mt-2`} placeholder="e.g. Steamed rice"

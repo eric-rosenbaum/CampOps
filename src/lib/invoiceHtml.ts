@@ -1,8 +1,12 @@
-// Shared invoice renderer — used by the ops Invoice modal ("Download PDF") and the guest
+// Shared invoice renderer, used by the ops Invoice modal ("Download PDF") and the guest
 // portal ("Download"). Produces a clean standalone invoice document and prints it.
 export interface InvoiceRenderData {
   campName: string;
   groupName: string;
+  /** Billing contact on file for the group. Optional: the guest portal renders the same
+   *  document but is not given the coordinator's address, so it passes the name alone. */
+  coordinatorName?: string | null;
+  coordinatorEmail?: string | null;
   number: string;
   kind: 'deposit' | 'balance';
   issuedAt: string;            // ISO timestamp
@@ -18,7 +22,7 @@ function money(n: number): string {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
 function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = iso.length <= 10 ? new Date(iso + 'T00:00:00') : new Date(iso);
   return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
@@ -32,7 +36,11 @@ export function invoiceHtml(d: InvoiceRenderData): string {
     ? d.lineItems.map((l) => `<tr><td>${esc(l.description)}</td><td class="amt">${money(l.amount)}</td></tr>`).join('')
     : `<tr><td>${d.kind === 'deposit' ? 'Deposit to reserve dates' : 'Balance due'}</td><td class="amt">${money(d.amount)}</td></tr>`;
   const stay = d.arrivalDate && d.departureDate ? `${fmtDate(d.arrivalDate)} – ${fmtDate(d.departureDate)}` : '';
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)} ${esc(d.number)} — ${esc(d.groupName)}</title>
+  const contact = [
+    d.coordinatorName ? `<br><span style="color:#4a5a4a">${esc(d.coordinatorName)}</span>` : '',
+    d.coordinatorEmail ? `<br><span style="color:#6b7c6b">${esc(d.coordinatorEmail)}</span>` : '',
+  ].join('');
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)} ${esc(d.number)} · ${esc(d.groupName)}</title>
   <style>
     *{box-sizing:border-box}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a2e1a;max-width:720px;margin:0 auto;padding:48px 40px;font-size:14px;line-height:1.5}
@@ -60,7 +68,7 @@ export function invoiceHtml(d: InvoiceRenderData): string {
       <div class="doc"><h1>${esc(title)}</h1><div class="num">${esc(d.number)}</div></div>
     </div>
     <div class="meta">
-      <div><div class="label">Billed to</div><div><strong>${esc(d.groupName)}</strong>${stay ? `<br><span style="color:#6b7c6b">${stay}</span>` : ''}</div></div>
+      <div><div class="label">Billed to</div><div><strong>${esc(d.groupName)}</strong>${contact}${stay ? `<br><span style="color:#6b7c6b">${stay}</span>` : ''}</div></div>
       <div><div class="label">Issued</div><div>${fmtDate(d.issuedAt)}</div></div>
       <div><div class="label">Due</div><div>${fmtDate(d.dueDate)}</div></div>
     </div>

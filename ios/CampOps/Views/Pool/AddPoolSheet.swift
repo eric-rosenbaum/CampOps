@@ -87,12 +87,12 @@ struct AddPoolSheet: View {
 
     private var typeDescription: String {
         switch type {
-        case .pool:       return "Chemical pool — tracks chlorine, pH, alkalinity, and cyanuric acid readings alongside equipment and inspections."
-        case .other:      return "Chemical facility — tracks chemical readings like a pool. Use for splash pads or other treated water features."
-        case .lake:       return "Natural lake — no chemical tracking. Manage equipment, safety inspections, and seasonal tasks."
-        case .pond:       return "Pond — no chemical tracking. Manage equipment, safety inspections, and seasonal tasks."
-        case .river:      return "River or stream — no chemical tracking. Manage equipment, safety inspections, and seasonal tasks."
-        case .waterfront: return "General waterfront — no chemical tracking. Manage equipment, safety inspections, and seasonal tasks."
+        case .pool:       return "Chemical pool, tracks chlorine, pH, alkalinity, and cyanuric acid readings alongside equipment and inspections."
+        case .other:      return "Chemical facility, tracks chemical readings like a pool. Use for splash pads or other treated water features."
+        case .lake:       return "Natural lake, no chemical tracking. Manage equipment, safety inspections, and seasonal tasks."
+        case .pond:       return "Pond, no chemical tracking. Manage equipment, safety inspections, and seasonal tasks."
+        case .river:      return "River or stream, no chemical tracking. Manage equipment, safety inspections, and seasonal tasks."
+        case .waterfront: return "General waterfront, no chemical tracking. Manage equipment, safety inspections, and seasonal tasks."
         }
     }
 

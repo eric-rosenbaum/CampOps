@@ -149,7 +149,7 @@ export function LogTempModal() {
           />
           {inRange !== null && tempValue && (
             <p className={`text-[11px] mt-1 font-medium ${inRange ? 'text-green-muted-text' : 'text-red'}`}>
-              {inRange ? '✓ In range' : `⚠ Out of range — required ${tempMin}–${tempMax}°F`}
+              {inRange ? '✓ In range' : `Out of range, required ${tempMin}–${tempMax}°F`}
             </p>
           )}
         </div>

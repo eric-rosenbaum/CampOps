@@ -5,7 +5,7 @@ struct IssueRow: View {
     var onTakeIt: (() -> Void)? = nil
     var onUntake: (() -> Void)? = nil
 
-    /// Nil source means a row written before we recorded it — show nothing rather than guess.
+    /// Nil source means a row written before we recorded it, show nothing rather than guess.
     /// Public reports carry their own badge, so a third marker there would just be noise.
     private var sourceGlyph: String? {
         switch issue.source {

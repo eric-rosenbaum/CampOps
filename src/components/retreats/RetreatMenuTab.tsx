@@ -1,7 +1,6 @@
 import { Utensils, Pencil, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/shared/Button';
-import { FilterPill } from '@/components/shared/FilterPill';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
@@ -85,7 +84,7 @@ function MenuTable({ retreat }: { retreat: Retreat }) {
                       {e.alternatives && <p className="text-[10px] text-green-muted-text mt-0.5 leading-snug">{e.alternatives}</p>}
                     </div>
                   ))}
-                  {cell.length === 0 && <span className="text-[11px] text-forest/25 px-1 py-1">—</span>}
+                  {cell.length === 0 && <span className="text-[11px] text-forest/25 px-1 py-1">-</span>}
                 </div>
               );
             })}
@@ -97,20 +96,25 @@ function MenuTable({ retreat }: { retreat: Retreat }) {
 }
 
 export function RetreatMenuTab() {
-  const { retreats, activeRetreatId, selectedRetreat, setActiveRetreat, updateRetreat } = useRetreatStore();
+  const { selectedRetreat, updateRetreat } = useRetreatStore();
   const setMode = useCommissaryStore((s) => s.setMode);
   const setCommissaryTab = useCommissaryStore((s) => s.setActiveTab);
+  const setRetreatMenuTarget = useCommissaryStore((s) => s.setRetreatMenuTarget);
   const navigate = useNavigate();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
 
+  const retreat = selectedRetreat();
+
   function editInCommissary() {
     setMode('retreats');
     setCommissaryTab('menu');
+    // Carry the group across, so "edit" lands on this menu rather than the chooser.
+    if (retreat) setRetreatMenuTarget(retreat.id);
     navigate('/commissary');
   }
 
-  if (retreats.length === 0) {
+  if (!retreat) {
     return (
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
@@ -124,58 +128,44 @@ export function RetreatMenuTab() {
     );
   }
 
-  const retreat = selectedRetreat();
-
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
-      <div className="flex flex-wrap gap-2 mb-5">
-        {retreats.map((r) => (
-          <FilterPill key={r.id} label={r.groupName} active={(activeRetreatId ?? retreat?.id) === r.id} onClick={() => setActiveRetreat(r.id)} />
-        ))}
-      </div>
-
-      {!retreat ? (
-        <div className="bg-white rounded-card border border-border px-5 py-8 text-center text-[13px] text-ink-faint">Select a retreat to view its menu.</div>
-      ) : (
-        <>
-          <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-            <h2 className="text-[14px] font-semibold text-forest">
-              Menu — {retreat.groupName} · {fmtRange(retreat.arrivalDate, retreat.departureDate)}
-            </h2>
-            {canManage && (
-              <div className="flex gap-2">
-                <Button size="sm" variant="ghost" onClick={editInCommissary}>
-                  <Pencil className="w-3.5 h-3.5" /> Edit in Commissary
-                </Button>
-                <Button
-                  size="sm"
-                  variant={retreat.menuPublished ? 'ghost' : 'primary'}
-                  onClick={() => updateRetreat({ ...retreat, menuPublished: !retreat.menuPublished, updatedAt: new Date().toISOString() })}
-                >
-                  {retreat.menuPublished ? <><Eye className="w-3.5 h-3.5" /> Published — unpublish</> : <><EyeOff className="w-3.5 h-3.5" /> Publish to portal</>}
-                </Button>
-              </div>
-            )}
-          </div>
-
-          <div className="bg-cream-dark/40 border border-border rounded-card px-4 py-2.5 mb-4 text-[12px] text-ink-soft">
-            This menu is planned in <span className="font-medium text-forest">Commissary → Retreats → Menu builder</span>, where it also drives food ordering. This tab is a preview of what the group sees.
-          </div>
-
-          {retreat.dietaryFlags && Object.keys(retreat.dietaryFlags).length > 0 && (
-            <div className="bg-blue-bg border border-blue/20 rounded-card px-4 py-3 mb-4 text-[12px] text-blue-text leading-relaxed">
-              <strong className="font-semibold">Dietary flags for this group:</strong>{' '}
-              {Object.entries(retreat.dietaryFlags).map(([k, v]) => `${v} ${dietLabel(k)}`).join(' · ')}.
+        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+          <h2 className="text-[14px] font-semibold text-forest">
+            Menu · {retreat.groupName} · {fmtRange(retreat.arrivalDate, retreat.departureDate)}
+          </h2>
+          {canManage && (
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={editInCommissary}>
+                <Pencil className="w-3.5 h-3.5" /> Edit in Commissary
+              </Button>
+              <Button
+                size="sm"
+                variant={retreat.menuPublished ? 'ghost' : 'primary'}
+                onClick={() => updateRetreat({ ...retreat, menuPublished: !retreat.menuPublished, updatedAt: new Date().toISOString() })}
+              >
+                {retreat.menuPublished ? <><Eye className="w-3.5 h-3.5" /> Published · unpublish</> : <><EyeOff className="w-3.5 h-3.5" /> Publish to portal</>}
+              </Button>
             </div>
           )}
+        </div>
 
-          <MenuTable retreat={retreat} />
+        <div className="bg-cream-dark/40 border border-border rounded-card px-4 py-2.5 mb-4 text-[12px] text-ink-soft">
+          This menu is planned in <span className="font-medium text-forest">Commissary → Retreats → Menu builder</span>, where it also drives food ordering. This tab is a preview of what the group sees.
+        </div>
 
-          {!retreat.menuPublished && (
-            <p className="text-[11px] text-ink-faint mt-3">This menu is a draft — not yet visible to the group. Use “Publish to portal” to share it.</p>
-          )}
-        </>
-      )}
+        {retreat.dietaryFlags && Object.keys(retreat.dietaryFlags).length > 0 && (
+          <div className="bg-blue-bg border border-blue/20 rounded-card px-4 py-3 mb-4 text-[12px] text-blue-text leading-relaxed">
+            <strong className="font-semibold">Dietary flags for this group:</strong>{' '}
+            {Object.entries(retreat.dietaryFlags).map(([k, v]) => `${v} ${dietLabel(k)}`).join(' · ')}.
+          </div>
+        )}
+
+        <MenuTable retreat={retreat} />
+
+        {!retreat.menuPublished && (
+          <p className="text-[11px] text-ink-faint mt-3">This menu is a draft, not yet visible to the group. Use “Publish to portal” to share it.</p>
+        )}
     </div>
   );
 }

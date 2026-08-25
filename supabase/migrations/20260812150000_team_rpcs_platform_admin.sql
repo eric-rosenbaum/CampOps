@@ -7,7 +7,7 @@
 -- don't belong to hit `RAISE EXCEPTION 'Forbidden'`.
 --
 -- PostgREST resolves by argument list, and the web app always passes p_staff_group_id, so
--- these overloads are the ones Settings → Team actually calls — the corrected 5-arg and
+-- these overloads are the ones Settings → Team actually calls. The corrected 5-arg and
 -- 3-arg versions were never reached.
 --
 -- Signatures are unchanged so overload resolution stays exactly as it is. Every other guard

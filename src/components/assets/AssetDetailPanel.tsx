@@ -191,7 +191,7 @@ function OverviewTab({ asset, checkout, isOverdue, onCheckout, onReturn, onServi
       {checkout && (
         <div className={`rounded-card border px-4 py-3 ${isOverdue ? 'bg-red/5 border-red/20' : 'bg-blue-50 border-blue-200'}`}>
           <p className={`text-body font-semibold ${isOverdue ? 'text-red' : 'text-blue-700'}`}>
-            {isOverdue ? '⚠ Overdue checkout' : 'Currently checked out'}
+            {isOverdue ? 'Overdue checkout' : 'Currently checked out'}
           </p>
           <p className="text-meta text-ink-soft mt-1">
             {checkout.checkedOutBy} · {checkout.purpose}

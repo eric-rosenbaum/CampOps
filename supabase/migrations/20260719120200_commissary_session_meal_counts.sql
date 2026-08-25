@@ -1,6 +1,6 @@
 -- Commissary sessions: per-meal head counts.
 --
--- Attendance often differs by meal — some campers go home for dinner, some arrive
+-- Attendance often differs by meal, some campers go home for dinner, some arrive
 -- early for breakfast. meal_counts lets a session declare a head count PER meal
 -- period. NULL (the default) means "same for every meal" = camper_count + staff_count,
 -- preserving existing behavior. A JSON object keyed by meal period, e.g.

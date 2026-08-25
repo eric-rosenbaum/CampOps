@@ -60,7 +60,6 @@ export function AssetCard({ asset, onClick }: { asset: CampAsset; onClick: () =>
 
             {checkout && (
               <span className={`text-meta ${isOverdue ? 'text-red font-semibold' : 'text-ink-soft'}`}>
-                {isOverdue ? '⚠ ' : ''}
                 {checkout.checkedOutBy} · {isOverdue ? 'overdue since' : 'return by'} {new Date(checkout.expectedReturnAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
               </span>
             )}

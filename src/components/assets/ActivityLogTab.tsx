@@ -69,7 +69,7 @@ export function ActivityLogTab() {
               date={item.date}
               onClickAsset={() => setActiveAsset(item.assetId)}
               assetName={item.assetName}
-              body={<>returned by <span className="font-medium">{item.by}</span> — <span className={hasIssue ? 'text-amber-text font-medium' : 'text-ink-soft'}>{conditionLabel}</span></>}
+              body={<>returned by <span className="font-medium">{item.by}</span>-<span className={hasIssue ? 'text-amber-text font-medium' : 'text-ink-soft'}>{conditionLabel}</span></>}
               sub={item.notes ?? undefined}
               onEdit={() => openEditCheckoutModal(item.checkoutId, item.assetId)}
               onDelete={() => deleteCheckout(item.checkoutId, item.assetId)}

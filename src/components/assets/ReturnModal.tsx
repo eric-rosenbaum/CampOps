@@ -56,7 +56,7 @@ export function ReturnModal() {
       issueId = generateId();
       addIssue({
         id: issueId,
-        title: `${asset.name} — returned with damage/issue noted`,
+        title: `${asset.name}, returned with damage/issue noted`,
         description: returnNotes.trim(),
         locationIds: asset.locationId ? [asset.locationId] : [],
         locations: asset.storageLocation ? [asset.storageLocation] : [],

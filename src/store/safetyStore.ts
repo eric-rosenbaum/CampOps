@@ -27,7 +27,7 @@ export const FREQUENCY_DAYS: Record<SafetyItem['frequency'], number> = {
 
 export const DRILL_TYPE_LABELS: Record<EmergencyDrill['drillType'], string> = {
   fire_evacuation: 'Full camp fire evacuation',
-  nighttime_cabin: 'Cabin fire drill — nighttime',
+  nighttime_cabin: 'Cabin fire drill · nighttime',
   missing_swimmer: 'Waterfront missing swimmer',
   severe_weather: 'Severe weather / shelter-in-place',
   medical_emergency: 'Medical emergency response',

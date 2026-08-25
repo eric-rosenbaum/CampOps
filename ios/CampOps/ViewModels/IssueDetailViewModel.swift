@@ -45,7 +45,7 @@ final class IssueDetailViewModel: ObservableObject {
         let oldStatus = issue.status; let oldCost = issue.actualCost
         issue.status = .resolved; issue.actualCost = actualCost; issue.updatedAt = Date()
         let action = actualCost != nil
-            ? "Resolved — actual cost $\(String(format: "%.2f", actualCost!))"
+            ? "Resolved, actual cost $\(String(format: "%.2f", actualCost!))"
             : "Resolved"
         let entry = ActivityEntry(id: UUID().uuidString, userId: user.id, userName: user.name, action: action)
         issue.activity.append(entry)

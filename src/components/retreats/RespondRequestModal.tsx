@@ -45,7 +45,7 @@ export function RespondRequestModal({ requestId }: { requestId: string }) {
   }
 
   return (
-    <Modal title={`Respond — ${groupName}`} onClose={closeModal} width="520px">
+    <Modal title={`Respond · ${groupName}`} onClose={closeModal} width="520px">
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Read-only request body */}
         <div>

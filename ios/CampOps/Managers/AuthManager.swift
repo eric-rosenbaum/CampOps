@@ -21,14 +21,14 @@ final class AuthManager: ObservableObject {
     ///
     /// `session` publishes the moment auth succeeds, but the camp arrives a network round trip
     /// later. Without this flag those few hundred milliseconds render as "signed in with no
-    /// camp" — i.e. the join screen, complete with a support email address — which reads as a
+    /// camp" (i.e. the join screen, complete with a support email address) which reads as a
     /// failed login right at the moment the user succeeded.
     @Published private(set) var isLoadingCamp = false
     @Published var authError: String? = nil
 
     var isAuthenticated: Bool { session != nil }
     var hasCamp: Bool { currentCamp != nil }
-    /// True when a camp is selected but suspended or trial-expired — the app shows a
+    /// True when a camp is selected but suspended or trial-expired. The app shows a
     /// blocking screen instead of the tabs, matching the web app's `CampRoute`.
     var isCampBlocked: Bool {
         guard let camp = currentCamp else { return false }
@@ -54,7 +54,7 @@ final class AuthManager: ObservableObject {
     func canAccessModule(_ module: String) -> Bool {
         guard let member = currentMember else { return false }
         if member.role == .admin { return true }
-        // Viewers get no module access at all — same rule as the web app's canAccessModule.
+        // Viewers get no module access at all, same rule as the web app's canAccessModule.
         if member.role == .viewer { return false }
         guard let group = currentStaffGroup else { return true }
         switch module {
@@ -132,7 +132,7 @@ final class AuthManager: ObservableObject {
     ///
     /// This is how seasonal staff get in: one code creates the account, proves the address is
     /// real, and signs them in. No password to invent on a phone, and nothing to forget between
-    /// visits. Creating a bare account grants no access — camp membership still comes only from
+    /// visits. Creating a bare account grants no access, camp membership still comes only from
     /// `join_camp_with_code`, which validates the code server-side.
     ///
     /// `shouldCreateUser` is true only when joining with a verified code; plain sign-in passes
@@ -165,7 +165,7 @@ final class AuthManager: ObservableObject {
         } catch {
             let raw = error.localizedDescription
             if raw.localizedCaseInsensitiveContains("expired") {
-                authError = "That code has expired — request a new one."
+                authError = "That code has expired, request a new one."
             } else if raw.localizedCaseInsensitiveContains("invalid") {
                 authError = "That code isn't right. Check it and try again."
             } else {
@@ -182,8 +182,8 @@ final class AuthManager: ObservableObject {
     /// wrong moment: verifying the emailed code flips `isAuthenticated`, which swaps the whole
     /// root view out, and any redemption still running inside that view's Task can be cancelled
     /// mid-flight. Landing on the "you belong to no camp" screen holding a code they already
-    /// typed correctly is the one outcome this whole flow exists to prevent, so the manager —
-    /// which outlives every view — owns the last step.
+    /// typed correctly is the one outcome this whole flow exists to prevent, so the manager -
+    /// which outlives every view, owns the last step.
     private var pendingJoinCode: String? = nil
 
     func setPendingJoinCode(_ code: String) { pendingJoinCode = code }
@@ -221,7 +221,7 @@ final class AuthManager: ObservableObject {
     // `auth.signUp`, which was a way around that gate. Invited staff create their account from
     // the invite link on the web, then sign in here.
 
-    /// Sends a password-reset email. The link opens the web app's /reset-password page —
+    /// Sends a password-reset email. The link opens the web app's /reset-password page -
     /// the same flow as the web "Forgot your password?" link.
     func requestPasswordReset(email: String) async -> Bool {
         authError = nil
@@ -242,7 +242,7 @@ final class AuthManager: ObservableObject {
     /// `auth.signOut()` removes the stored session and emits `.signedOut` BEFORE it POSTs to
     /// /auth/v1/logout (see AuthClient.signOut), so this device is signed out the moment it is
     /// called. Only the server-side token revoke needs the network, and on a stale connection
-    /// that POST can sit for a long time — so it runs unawaited. If it never lands, the refresh
+    /// that POST can sit for a long time, so it runs unawaited. If it never lands, the refresh
     /// token expires on its own. The web client time-boxes the same call for the same reason.
     func signOut() async {
         Task { try? await supabase.auth.signOut() }
@@ -262,9 +262,9 @@ final class AuthManager: ObservableObject {
     /// Deletes the signed-in account, then signs out.
     ///
     /// Required by App Store Guideline 5.1.1(v): an app that creates accounts must let a user
-    /// delete one without leaving the app. The server does the deciding — it refuses when the
+    /// delete one without leaving the app. The server does the deciding. It refuses when the
     /// caller is the last administrator of a camp, because a camp left with no admin cannot
-    /// invite anyone or recover itself — so a refusal arrives as a message rather than an
+    /// invite anyone or recover itself, so a refusal arrives as a message rather than an
     /// error, and is shown to the user as written.
     ///
     /// - Returns: nil on success, or the reason it was refused.
@@ -303,7 +303,7 @@ final class AuthManager: ObservableObject {
             return "We couldn't find an account for that email. Check the spelling, or use the invite link your camp administrator sent you."
         }
         if raw.localizedCaseInsensitiveContains("email not confirmed") {
-            return "Please confirm your email address first — check your inbox for the link."
+            return "Please confirm your email address first. Check your inbox for the link."
         }
         if raw.localizedCaseInsensitiveContains("network")
             || raw.localizedCaseInsensitiveContains("offline")
@@ -311,7 +311,7 @@ final class AuthManager: ObservableObject {
             || raw.localizedCaseInsensitiveContains("connection") {
             // Reached after the retry ladder in NetworkService has already given the
             // connection three chances, so this really is "the network is not working".
-            return "Can't reach CampCommand — check your signal and try again."
+            return "Can't reach CampCommand. Check your signal and try again."
         }
         return raw
     }

@@ -5,7 +5,7 @@
 --
 -- What deletion means here needs stating, because a camp is a shared workspace and not all of
 -- the data is the user's to remove. Their identity goes: the auth user, the profile, and every
--- camp membership. Their work stays, because it is the camp's operating record — an inspector
+-- camp membership. Their work stays, because it is the camp's operating record, an inspector
 -- asking for a year of pool readings should not find a hole where someone's summer was. What
 -- stays is detached and attributed by the name snapshot already stored on each row, so the
 -- record reads "Sam Reyes" without pointing at a user that no longer exists.

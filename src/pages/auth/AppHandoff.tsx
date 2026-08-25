@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // No offline claim here: the iOS app has no offline layer, so any copy implying it works
 // without a signal would be false advertising in the one place a new user reads carefully.
-import { TreePine, Camera, ClipboardCheck, Bell } from 'lucide-react';
+import { Camera, ClipboardCheck, Bell } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
 import {
@@ -10,12 +10,13 @@ import {
   markAppHandoffSeen,
   shouldOfferAppDownload,
 } from '@/lib/appDownload';
+import { CampCommandMark } from '@/components/shared/CampCommandMark';
 
 /**
  * Shown once, immediately after someone joins a camp on an iPhone.
  *
  * Account creation happens on the web (invitations and join codes are links), but the day-to-day
- * job — logging an issue in a cabin, photographing a broken fixture — is a phone job. This is the
+ * job (logging an issue in a cabin, photographing a broken fixture) is a phone job. This is the
  * handoff between the two.
  *
  * Inert unless a store link is configured AND the visitor is on iOS: in every other case it
@@ -50,9 +51,7 @@ export function AppHandoff() {
     <div className="min-h-screen w-full bg-paper flex flex-col items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center">
-            <TreePine className="w-4.5 h-4.5 text-cream" />
-          </div>
+          <CampCommandMark size={36} decorative />
           <span className="text-lg font-semibold text-forest">CampCommand</span>
         </div>
 

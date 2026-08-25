@@ -49,7 +49,7 @@ const COMPONENT_ICONS: Record<string, LucideIcon> = {
 };
 
 // Rendered as a component (not via a function call that returns a component) so
-// the icon is selected by member access — the pattern the static-components lint
+// the icon is selected by member access. The pattern the static-components lint
 // rule allows.
 export function ComponentIcon({ type, className }: { type: string; className?: string }) {
   const Icon = COMPONENT_ICONS[type] ?? Wrench;

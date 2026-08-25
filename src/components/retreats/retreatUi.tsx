@@ -4,7 +4,7 @@
 // Shared UI atoms + formatters for the Retreats module. Import these from every tab so
 // status colors, badges, the 5-phase tracker, and date/money formatting stay consistent.
 import type { Retreat, RetreatStatus, RetreatPricingModel } from '@/lib/types';
-import type { PhaseState } from '@/store/retreatStore';
+import type { PhaseState, RetreatTab } from '@/store/retreatStore';
 
 export const inputClass =
   'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
@@ -12,15 +12,15 @@ export const labelClass = 'block text-[11px] font-semibold uppercase tracking-wi
 
 // ─── Money & dates ────────────────────────────────────────────────────────────
 export function money(n: number | null | undefined): string {
-  if (n == null) return '—';
+  if (n == null) return '-';
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 }
 export function fmtDate(d: string | null): string {
-  if (!d) return '—';
+  if (!d) return '-';
   return new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 export function fmtDateFull(d: string | null): string {
-  if (!d) return '—';
+  if (!d) return '-';
   return new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 export function fmtRange(a: string, b: string): string {
@@ -60,7 +60,7 @@ export function pricingRate(r: Retreat): number | null {
 /** Human summary of how a group is billed, e.g. "$85/person/night" or "$8,000 flat". */
 export function rateSummary(r: Retreat): string {
   const v = pricingRate(r);
-  if (v == null) return '—';
+  if (v == null) return '-';
   if (r.pricingModel === 'per_person_night') return `${money(v)}/person/night`;
   if (r.pricingModel === 'per_cabin_night') return `${money(v)}/cabin/night`;
   return `${money(v)} flat`;
@@ -68,7 +68,7 @@ export function rateSummary(r: Retreat): string {
 
 /**
  * Estimated total revenue from the rate card (used before real charges exist).
- * per_cabin_night needs a cabin count — pass how many spaces are assigned; 0 → 0 until assigned.
+ * per_cabin_night needs a cabin count, pass how many spaces are assigned; 0 → 0 until assigned.
  */
 export function estimateRevenue(r: Retreat, cabinCount: number): number {
   const nightCount = nights(r.arrivalDate, r.departureDate);
@@ -108,31 +108,123 @@ export function statusAccent(status: RetreatStatus): string {
     : status === 'cancelled' ? 'border-l-red' : 'border-l-cream-dark';
 }
 
-// ─── 5-phase progress tracker ─────────────────────────────────────────────────
-export const PHASE_KEYS = ['contract', 'coi', 'housing', 'menu', 'setup'] as const;
+// ─── Booking progress tracker ─────────────────────────────────────────────────
+// Ordered the way a booking actually moves: sign, take money, lock the numbers, place the
+// group, feed them, collect the paperwork, bill the balance.
+export const PHASE_KEYS = ['contract', 'deposit', 'headcount', 'housing', 'menu', 'coi', 'finalInvoice'] as const;
 export const PHASE_LABELS: Record<(typeof PHASE_KEYS)[number], string> = {
-  contract: 'Contract', coi: 'COI', housing: 'Housing', menu: 'Menu', setup: 'Setup',
+  contract: 'Contract', deposit: 'Deposit', headcount: 'Headcount', housing: 'Housing',
+  menu: 'Menu', coi: 'COI', finalInvoice: 'Final invoice',
+};
+
+const PHASE_STATE_LABELS: Record<PhaseState, string> = {
+  done: 'completed', active: 'in progress', locked: 'not started',
+};
+
+/** Which tab actually lets you finish a step. */
+export const PHASE_TAB: Record<(typeof PHASE_KEYS)[number], RetreatTab> = {
+  contract: 'documents',
+  deposit: 'retreatCosts',
+  headcount: 'portal',
+  housing: 'housing',
+  menu: 'menu',
+  coi: 'documents',
+  finalInvoice: 'retreatCosts',
+};
+
+/**
+ * What is actually left to do, per step and per state.
+ *
+ * Written because a green circle is not self-explanatory. Housing is the case that prompted
+ * this: assignments can be complete while the plan is still unlocked, and nobody guesses that
+ * "Lock housing" is the thing standing between them and a tick.
+ */
+export const PHASE_HINTS: Record<(typeof PHASE_KEYS)[number], Record<PhaseState, string>> = {
+  contract: {
+    locked: 'Upload the retreat agreement so the group can sign it in their portal.',
+    active: 'The agreement is uploaded and waiting on the group to sign it.',
+    done: 'Signed and on file.',
+  },
+  deposit: {
+    locked: 'Raise a deposit invoice, or record the deposit here once it arrives.',
+    active: 'Part of the deposit is in. Log the rest to secure the dates.',
+    done: 'Deposit received in full.',
+  },
+  headcount: {
+    locked: 'Set a headcount cutoff so the group knows when to confirm their numbers.',
+    active: 'Waiting for the group to confirm their final headcount in the portal.',
+    done: 'Final headcount confirmed by the group.',
+  },
+  housing: {
+    locked: 'Nobody is in a room yet. Add the guest list, then place people.',
+    active: 'Assignments are being built. Use "Lock housing" to finalise the plan and tick this off.',
+    done: 'Housing is locked and final.',
+  },
+  menu: {
+    locked: 'Plan the menu in Commissary, then publish it to the portal.',
+    active: 'Dishes are planned but the menu is not published to the portal yet.',
+    done: 'Menu published to the guest portal.',
+  },
+  coi: {
+    locked: 'No certificate of insurance yet. The group can upload it in their portal.',
+    active: 'A certificate is attached and waiting to be accepted.',
+    done: 'Certificate of insurance received.',
+  },
+  finalInvoice: {
+    locked: 'Send the balance invoice when you are ready to bill the stay.',
+    active: 'The balance invoice is out. This ticks off once it is paid in full.',
+    done: 'Paid in full.',
+  },
 };
 
 function PhaseDot({ state }: { state: PhaseState }) {
-  const cls = state === 'done' ? 'bg-sage text-white'
-    : state === 'active' ? 'bg-amber text-white' : 'bg-cream-dark text-ink-faint';
+  const cls = state === 'done' ? 'bg-sage text-white border-sage'
+    : state === 'active' ? 'bg-amber text-white border-amber'
+    : 'bg-white text-ink-faint border-border';
   return (
-    <div className={`w-6 h-6 rounded-full mx-auto flex items-center justify-center text-[11px] font-bold ${cls}`}>
-      {state === 'done' ? '✓' : state === 'active' ? '→' : '○'}
+    <div className={`w-6 h-6 rounded-full mx-auto flex items-center justify-center border text-[11px] font-bold leading-none transition-transform group-hover:scale-110 ${cls}`}>
+      {state === 'done' ? '✓' : state === 'active' ? '→' : ''}
     </div>
   );
 }
 
-export function PhaseTracker({ progress }: { progress: Record<(typeof PHASE_KEYS)[number], PhaseState> }) {
+export function PhaseTracker({
+  progress, className = '', onOpen,
+}: {
+  progress: Record<(typeof PHASE_KEYS)[number], PhaseState>;
+  className?: string;
+  /** Given a tab, take the user to it. Omit to render the tracker read-only. */
+  onOpen?: (tab: RetreatTab) => void;
+}) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-3 mt-3 border-t border-cream-dark">
-      {PHASE_KEYS.map((k) => (
-        <div key={k} className="text-center">
-          <p className="text-[9px] font-semibold uppercase tracking-wide text-ink-faint mb-1">{PHASE_LABELS[k]}</p>
-          <PhaseDot state={progress[k]} />
-        </div>
-      ))}
+    <div className={`grid grid-cols-4 sm:grid-cols-7 gap-y-3 gap-x-2 ${className}`}>
+      {PHASE_KEYS.map((k) => {
+        const state = progress[k];
+        const hint = PHASE_HINTS[k][state];
+        const body = (
+          <>
+            <p className="text-[9px] font-semibold uppercase tracking-wide text-ink-faint mb-1">{PHASE_LABELS[k]}</p>
+            <PhaseDot state={state} />
+            <span className="sr-only">{PHASE_STATE_LABELS[state]}. {hint}</span>
+          </>
+        );
+        // The native title attribute is deliberate: it survives the card's overflow clipping,
+        // works on keyboard focus, and needs no portal.
+        const tip = `${PHASE_LABELS[k]} · ${PHASE_STATE_LABELS[state]}\n${hint}`;
+        return onOpen ? (
+          <button
+            key={k}
+            type="button"
+            title={tip}
+            onClick={(e) => { e.stopPropagation(); onOpen(PHASE_TAB[k]); }}
+            className="group text-center rounded-btn py-1 hover:bg-cream-dark/50 transition-colors"
+          >
+            {body}
+          </button>
+        ) : (
+          <div key={k} className="group text-center" title={tip}>{body}</div>
+        );
+      })}
     </div>
   );
 }
@@ -143,7 +235,7 @@ export const MEAL_PERIOD_LABELS: Record<string, string> = { breakfast: 'Breakfas
 
 /** Stars string for a 0–5 score (e.g. 4.6 → "★★★★½"). */
 export function stars(score: number | null | undefined): string {
-  if (score == null) return '—';
+  if (score == null) return '-';
   const full = Math.floor(score);
   const half = score - full >= 0.25 && score - full < 0.75;
   const rounded = score - full >= 0.75 ? full + 1 : full;

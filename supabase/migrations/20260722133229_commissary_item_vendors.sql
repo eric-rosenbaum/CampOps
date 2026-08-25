@@ -1,14 +1,14 @@
 -- Commissary multi-vendor pack sizes.
 --
 -- The same ingredient is sold by different vendors in different pack sizes and at
--- different prices — a case of chicken is 40 lb from US Foods but 30 lb from Sysco.
+-- different prices, a case of chicken is 40 lb from US Foods but 30 lb from Sysco.
 -- Before this, an item held a single vendor + pack + price. Now an item can carry a
 -- pack per vendor, and an order line can be pointed at whichever vendor you're buying
 -- from that week; the base-unit conversion follows automatically.
 --
 -- The item's own vendor_id / purchase_unit / purchase_unit_in_base / unit_price columns
 -- are KEPT as a mirror of the default pack, so all existing ordering and cost math keeps
--- reading them unchanged — multi-vendor is purely additive. The client keeps the mirror
+-- reading them unchanged, multi-vendor is purely additive. The client keeps the mirror
 -- in sync whenever packs change.
 
 CREATE TABLE IF NOT EXISTS commissary_item_vendors (

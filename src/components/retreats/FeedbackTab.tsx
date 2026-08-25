@@ -14,7 +14,7 @@ function avg(vals: (number | null)[]): number | null {
 }
 
 function fmtScore(n: number | null): string {
-  return n == null ? '—' : n.toFixed(1);
+  return n == null ? '-' : n.toFixed(1);
 }
 
 export function FeedbackTab() {
@@ -78,7 +78,7 @@ export function FeedbackTab() {
             <div className="flex items-start gap-3 rounded-card border border-amber/40 bg-amber-bg px-4 py-3 mb-5">
               <AlertTriangle className="w-4 h-4 text-amber flex-shrink-0 mt-0.5" />
               <p className="text-[13px] text-amber-text leading-relaxed">
-                Communication scored {commAvg.toFixed(1)} — below the {COMM_THRESHOLD} target. Groups most often
+                Communication scored {commAvg.toFixed(1)}, below the {COMM_THRESHOLD} target. Groups most often
                 flag response time on change requests. Consider a 24-hour response commitment for all portal requests.
               </p>
             </div>
@@ -125,7 +125,7 @@ function FeedbackCard({ f, groupName, canManage, onDelete }: {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-3">
         {tiles.map((t) => (
           <div key={t.label} className="bg-cream rounded-btn px-2.5 py-2 text-center">
-            <p className="font-mono text-[16px] font-semibold text-forest">{t.value == null ? '—' : t.value.toFixed(1)}</p>
+            <p className="font-mono text-[16px] font-semibold text-forest">{t.value == null ? '-' : t.value.toFixed(1)}</p>
             <p className="text-[10px] text-ink-faint mt-0.5">{t.label}</p>
           </div>
         ))}
@@ -135,7 +135,7 @@ function FeedbackCard({ f, groupName, canManage, onDelete }: {
       )}
       {f.returningStatus && (
         <p className={`text-[12px] mt-2.5 ${isReturning ? 'text-green-muted-text' : 'text-ink-soft'}`}>
-          {isReturning ? '✓ ' : '— '}{f.returningStatus}
+          {isReturning ? '✓ ' : ''}{f.returningStatus}
         </p>
       )}
     </div>

@@ -1,4 +1,4 @@
--- SECURITY PHASE 1 — stop exposing the whole camps table to anon.
+-- SECURITY PHASE 1, stop exposing the whole camps table to anon.
 -- The old `anon read camp by slug USING(true)` let any holder of the public anon key read
 -- ALL columns of ALL camps (names, street addresses, capacity, module config) cross-tenant.
 -- Replace with a SECURITY DEFINER function that returns only the four fields the public

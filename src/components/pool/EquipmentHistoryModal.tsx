@@ -41,7 +41,7 @@ export function EquipmentHistoryModal() {
   }
 
   return (
-    <Modal title={`Service history — ${equip.name}`} onClose={closeAllModals} width="560px">
+    <Modal title={`Service history · ${equip.name}`} onClose={closeAllModals} width="560px">
       <div className="space-y-4">
         {/* Equipment summary */}
         <div className="bg-cream rounded-card px-4 py-3 flex items-center gap-6 text-body -mt-1">

@@ -285,7 +285,7 @@ struct AddComponentSheet: View {
             Picker(field.label, selection: Binding(
                 get: { specValues[field.key] ?? "" },
                 set: { specValues[field.key] = $0 })) {
-                Text("—").tag("")
+                Text("-").tag("")
                 ForEach(field.options, id: \.value) { Text($0.label).tag($0.value) }
             }
         case .number:
@@ -424,8 +424,8 @@ struct FlagComponentSheet: View {
             Form {
                 Section("Severity") {
                     Picker("Severity", selection: $severity) {
-                        Text("Needs attention — service soon").tag(ComponentStatus.needs_attention)
-                        Text("Out of service — needs repair").tag(ComponentStatus.out_of_service)
+                        Text("Needs attention · service soon").tag(ComponentStatus.needs_attention)
+                        Text("Out of service · needs repair").tag(ComponentStatus.out_of_service)
                     }
                     .pickerStyle(.inline).labelsHidden()
                 }
@@ -444,11 +444,11 @@ struct FlagComponentSheet: View {
                 }
                 if alreadyFlagged {
                     Section {
-                        Button("Clear issue — mark operational") { clear() }.foregroundColor(.green)
+                        Button("Clear issue · mark operational") { clear() }.foregroundColor(.green)
                     }
                 }
             }
-            .navigationTitle("Flag — \(component.label)")
+            .navigationTitle("Flag · \(component.label)")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 if alreadyFlagged {
@@ -490,7 +490,7 @@ struct FlagComponentSheet: View {
         // links to the canonical tree. For now only the name snapshot is written.
         let issue = Issue(
             id: id,
-            title: "\(component.label) — \(BuildingTaxonomy.label(for: component.type))",
+            title: "\(component.label), \(BuildingTaxonomy.label(for: component.type))",
             description: [where_, detail].filter { !$0.isEmpty }.joined(separator: "\n"),
             locations: (b?.locationLabel ?? b?.name).map { [$0] } ?? [],
             priority: severity == .out_of_service ? .high : .normal,

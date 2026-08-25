@@ -3,7 +3,7 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { Retreat, RetreatIssue } from '@/lib/types';
 import {
-  money, fmtDate, fmtRange, nights, Badge, GROUP_TYPE_LABELS, rateSummary, pricingRate, type BadgeTone,
+  money, fmtDate, fmtRange, nights, Badge, GROUP_TYPE_LABELS, rateSummary, pricingRate, PhaseTracker, type BadgeTone,
 } from './retreatUi';
 import { todayStr } from '@/lib/utils';
 
@@ -36,7 +36,7 @@ function CardLabel({ children }: { children: React.ReactNode }) {
 export function ActiveRetreatTab() {
   const {
     activeRetreat, selectedRetreat, scheduleFor, housingFor, financialsFor,
-    issuesFor, checklistFor, toggleChecklistItem, openModal,
+    issuesFor, checklistFor, toggleChecklistItem, openModal, phaseProgress, setActiveTab,
   } = useRetreatStore();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
@@ -97,6 +97,13 @@ export function ActiveRetreatTab() {
         </div>
       </div>
 
+      {/* Same booking progress the overview shows, repeated here so the state of the group on
+          property is readable without going back to the list. */}
+      <div className="bg-white rounded-card border border-border px-5 py-4 mb-5">
+        <CardLabel>Booking progress</CardLabel>
+        <PhaseTracker progress={phaseProgress(r.id)} onOpen={setActiveTab} />
+      </div>
+
       {/* 2×2 active cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
         {/* Group details */}
@@ -112,9 +119,9 @@ export function ActiveRetreatTab() {
               </button>
             )}
           </div>
-          <Row k="Coordinator" v={r.coordinatorName ? `${r.coordinatorName}${r.coordinatorPhone ? ` — ${r.coordinatorPhone}` : ''}` : '—'} />
+          <Row k="Coordinator" v={r.coordinatorName ? `${r.coordinatorName}${r.coordinatorPhone ? ` · ${r.coordinatorPhone}` : ''}` : '-'} />
           <Row k="Total headcount" v={`${r.headcount} confirmed`} />
-          <Row k="Subgroups" v={subgroups || '—'} />
+          <Row k="Subgroups" v={subgroups || '-'} />
           <Row k="Dietary flags" v={dietary || 'None flagged'} />
           {r.coordinatorEmail && <Row k="Email" v={r.coordinatorEmail} />}
         </div>
@@ -144,7 +151,7 @@ export function ActiveRetreatTab() {
               onClick={canManage ? () => openModal({ kind: 'scheduleItem', retreatId: r.id, itemId: s.id }) : undefined}
               className={`w-full flex justify-between items-center gap-3 py-1.5 border-b border-cream-dark last:border-b-0 text-[13px] text-left ${canManage ? 'hover:bg-cream/40 cursor-pointer' : ''}`}
             >
-              <span className="text-ink-soft flex-shrink-0">{s.timeLabel || '—'}</span>
+              <span className="text-ink-soft flex-shrink-0">{s.timeLabel || '-'}</span>
               <span className="font-medium text-forest text-right">
                 {s.title}{s.location ? ` · ${s.location}` : ''}
               </span>
@@ -165,7 +172,7 @@ export function ActiveRetreatTab() {
           ))}
         </div>
 
-        {/* Financial — one shared calculation (financialsFor) drives every money figure module-wide. */}
+        {/* Financial, one shared calculation (financialsFor) drives every money figure module-wide. */}
         {(() => {
           const nightCount = nights(r.arrivalDate, r.departureDate);
           const fin = financialsFor(r.id);
@@ -222,7 +229,7 @@ export function ActiveRetreatTab() {
 
       {/* Checkout checklist */}
       <div className="flex items-center justify-between mb-3.5">
-        <h2 className="text-[14px] font-semibold text-forest">Checkout checklist — {fmtDate(r.departureDate)} by 11am</h2>
+        <h2 className="text-[14px] font-semibold text-forest">Checkout checklist · {fmtDate(r.departureDate)} by 11am</h2>
         {canManage && (
           <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'checklist', retreatId: r.id, phase: 'checkout' })}>Manage</Button>
         )}

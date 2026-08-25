@@ -44,7 +44,7 @@ struct HomeView: View {
         }
     }
 
-    // The camp's own identity in the title bar — its logo when it has one, otherwise a
+    // The camp's own identity in the title bar, its logo when it has one, otherwise a
     // wordmark. `logoUrl` was fetched but never shown anywhere in the app before.
     private var campHeader: some View {
         HStack(spacing: Spacing.sm) {
@@ -57,7 +57,7 @@ struct HomeView: View {
                 .frame(width: 22, height: 22)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             } else {
-                FirepitMark(size: 20)
+                CampCommandMark(size: 20, compact: true)
             }
             Text(authManager.currentCamp?.name ?? "CampCommand")
                 .font(.campBodySemibold)
@@ -104,7 +104,7 @@ struct HomeView: View {
         let uid = authManager.currentUser.id
         // The two left-hand tiles report the CAMP's state, not the viewer's slice of it.
         // A counselor who can't open every issue should still know whether the camp has 3
-        // open or 30 — that's situational awareness, not access to the detail. The list
+        // open or 30, that's situational awareness, not access to the detail. The list
         // itself stays filtered; only these counts are camp-wide.
         let openIssues = issueVM.issues.filter { $0.status != .resolved }
         let urgent = openIssues.filter { $0.priority == .urgent }
@@ -233,7 +233,7 @@ private struct HomeEmptyState: View {
 private struct StatCard: View {
     let label: String
     /// Says whose number this is. Without it, a camp-wide count sitting next to a personal
-    /// one is just misleading — the viewer can't tell which is which.
+    /// one is just misleading. The viewer can't tell which is which.
     var hint: String? = nil
     let value: String; let icon: String; let color: Color
 

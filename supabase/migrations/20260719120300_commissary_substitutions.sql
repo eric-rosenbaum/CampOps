@@ -3,11 +3,11 @@
 -- The module could flag "this meal conflicts with 3 dairy-allergic campers" but never
 -- recorded WHAT they eat instead. A substitution attaches an alternative main (+ side)
 -- to a specific meal on the calendar, targeted at a restriction. It turns an open
--- warning ("3 affected") into a resolved plan ("3 affected — GF chicken + rice plated").
+-- warning ("3 affected") into a resolved plan ("3 affected, GF chicken + rice plated").
 --
 -- Each of main/side may point at a recipe, an inventory item, or be free text; a label
 -- is always stored so the plate instruction reads even if a link is later deleted.
--- Access mirrors the rest of the menu (camp members read; staff manage) — a
+-- Access mirrors the rest of the menu (camp members read; staff manage), a
 -- substitution names a dish, not a camper, so it is not health-gated PII.
 
 CREATE TABLE IF NOT EXISTS menu_substitutions (

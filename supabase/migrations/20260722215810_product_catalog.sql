@@ -1,5 +1,5 @@
 -- Shared product catalog: a global reference of common food-service items and their
--- STANDARD pack/units (no price — price varies by camp/vendor/week; units don't). Every
+-- STANDARD pack/units (no price, price varies by camp/vendor/week; units don't). Every
 -- camp reads it; adding an inventory item can autofill name/category/unit/pack from it.
 -- Not camp-scoped, so it lives outside the per-camp RLS pattern: any authenticated user
 -- can read, and any can contribute (it grows via CSV import).

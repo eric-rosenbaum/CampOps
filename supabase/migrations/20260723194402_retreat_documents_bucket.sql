@@ -1,5 +1,5 @@
 -- Private storage bucket for retreat documents (agreements, COIs, waivers, deposit receipts).
--- Path convention: <camp_id>/<retreat_id>/<file>. Guests never read these directly — staff
+-- Path convention: <camp_id>/<retreat_id>/<file>. Guests never read these directly, staff
 -- generate signed URLs. Mirrors the applied remote migration (repo was out of sync).
 insert into storage.buckets (id, name, public)
 values ('retreat-documents', 'retreat-documents', false)

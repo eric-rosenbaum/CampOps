@@ -236,7 +236,7 @@ const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
  * unpredictable and the addresses often arrive wrapped in names, as in
  * `Sam Reyes <sam@camp.org>`. Rather than guessing at a delimiter, this scans for anything
  * shaped like an address and then treats leftover text as a problem only when it contains an
- * "@" — a bare name is clearly not meant to be an address, whereas `sam@camp` is a typo worth
+ * "@"a bare name is clearly not meant to be an address, whereas `sam@camp` is a typo worth
  * reporting. Silently discarding a typo would mean someone never gets invited and nobody
  * finds out until they say so.
  */

@@ -1,7 +1,7 @@
 -- Commissary phase 2a: purchase ordering.
 --
 -- A purchase order is a SNAPSHOT, not a live view. Prices move, stock moves, and a
--- sent order must not mutate underneath you — so every line freezes the item name,
+-- sent order must not mutate underneath you, so every line freezes the item name,
 -- pack factors, on-hand, computed need and unit price at the moment it was generated.
 -- item_id is kept only as a soft link (ON DELETE SET NULL) for receiving stock back in.
 

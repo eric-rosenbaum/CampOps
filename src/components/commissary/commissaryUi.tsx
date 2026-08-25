@@ -40,7 +40,7 @@ export function StockStatusBadge({ status }: { status: StockStatus }) {
 /** On-hand, coloured by status, in the item's own stock unit. */
 export function OnHandValue({ item }: { item: InventoryItem }) {
   const status = stockStatus(item);
-  // Never counted: don't colour 0 as if it were a real reading — mark it plainly.
+  // Never counted: don't colour 0 as if it were a real reading, mark it plainly.
   if (item.lastCountedAt == null) {
     return (
       <span className="font-mono text-[13px] text-ink-faint" title="On-hand not counted yet">
@@ -60,7 +60,7 @@ export function ParValue({ item }: { item: InventoryItem }) {
   if (item.parLevelBase <= 0) {
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-pill text-[11px] font-medium bg-amber-bg text-amber-text border border-amber/25"
-            title="No reorder level — this item can never flag as low">
+            title="No reorder level. This item can never flag as low">
         Set reorder level
       </span>
     );
@@ -100,7 +100,7 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   other: Box,
 };
 
-// Selected by member access rather than a function call returning a component —
+// Selected by member access rather than a function call returning a component -
 // the pattern react-hooks/static-components allows. See buildingUi.tsx.
 export function CategoryIcon({ category, className }: { category: string; className?: string }) {
   const Icon = CATEGORY_ICONS[category] ?? Box;

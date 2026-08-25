@@ -1,5 +1,5 @@
 -- Track whether an item's on-hand has ever been affirmatively counted/set. NULL means
--- "never counted" — the state a CSV import leaves an item in — so the UI can warn that
+-- "never counted". The state a CSV import leaves an item in, so the UI can warn that
 -- on-hand hasn't been established (distinct from a legitimate on-hand of 0).
 ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS last_counted_at timestamptz;
 

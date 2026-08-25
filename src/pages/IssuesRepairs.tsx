@@ -101,7 +101,7 @@ export function IssuesRepairs() {
       (i) =>
         i.assigneeId === currentUser.id ||
         // You always keep sight of what you reported, even when the group can't see
-        // unassigned work — otherwise logging an issue makes it disappear.
+        // unassigned work, otherwise logging an issue makes it disappear.
         i.reportedById === currentUser.id ||
         (issuesSeeUnassigned && !i.assigneeId)
     );
@@ -137,7 +137,7 @@ export function IssuesRepairs() {
   const selectedIssue = issues.find((i) => i.id === selectedIssueId);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
-  // Exports exactly what the user is looking at — current filter + search, in list order.
+  // Exports exactly what the user is looking at, current filter + search, in list order.
   function handleExport() {
     const memberName = (userId: string | null) =>
       userId ? (members.find((m) => m.userId === userId)?.fullName ?? null) : null;
@@ -264,7 +264,7 @@ export function IssuesRepairs() {
                 </div>
                 <div className="space-y-0.5">
                   {failedDevices.map((item) => (
-                    <p key={item.id} className="text-[11px] text-red/80">• {item.name} — {item.location}</p>
+                    <p key={item.id} className="text-[11px] text-red/80">• {item.name} · {item.location}</p>
                   ))}
                 </div>
               </div>
@@ -273,7 +273,6 @@ export function IssuesRepairs() {
             {/* Issue list */}
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
-                <p className="text-[32px] mb-3">🌲</p>
                 <p className="text-[15px] font-semibold text-ink-soft">
                   {filter === 'urgent' ? 'No urgent issues right now' :
                    filter === 'unassigned' ? 'No unassigned issues' :
@@ -300,7 +299,7 @@ export function IssuesRepairs() {
                   <div>
                     <GroupHeader label="You reported" count={reportedByMe.length} />
                     <p className="-mt-1 mb-2 text-[12px] text-ink-soft">
-                      Someone else will pick these up — you'll see status changes here.
+                      Someone else will pick these up. You'll see status changes here.
                     </p>
                     {reportedByMe.map((issue) => renderIssueCard(issue))}
                   </div>

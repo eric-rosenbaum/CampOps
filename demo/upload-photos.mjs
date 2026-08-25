@@ -3,7 +3,7 @@
 //
 // No service-role key required, which is the point. The `issue-photos` INSERT policy is
 // `is_camp_member(foldername[1])` for the `authenticated` role, and a /try/ anonymous session
-// is made a camp member by join_demo_with_token — so an anonymous sign-in plus the demo token
+// is made a camp member by join_demo_with_token, so an anonymous sign-in plus the demo token
 // is enough to write. Everything here uses the anon key already in .env.local.
 //
 //   node demo/upload-photos.mjs <share-token> <dir-of-images>
@@ -53,7 +53,7 @@ for (const file of files) {
 
   let { error } = await supabase.storage.from('issue-photos').upload(path, body, opts);
 
-  // upsert:true is not an option here — it makes storage check for an existing row, and
+  // upsert:true is not an option here, it makes storage check for an existing row, and
   // issue-photos has INSERT/UPDATE/DELETE policies but no SELECT one, so the lookup is denied
   // and the whole write fails as an RLS violation. Deleting first stays inside the policies we
   // do have, and keeps re-runs idempotent.

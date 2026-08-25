@@ -6,7 +6,7 @@ export interface SendEmailInput {
   to: string;
   subject: string;
   html: string;
-  fromName?: string;   // camp name — appears before the @campcommand.app sender
+  fromName?: string;   // camp name, appears before the @campcommand.app sender
   replyTo?: string;    // camp/staff email so the group replies to the camp
   fromEmail?: string;  // sender address; must be within campcommand.app or it's ignored
 }
@@ -42,7 +42,7 @@ export function buildInviteEmail(campName: string, url: string, opts?: { owner?:
     ? `Your CampCommand account for ${campName} is ready`
     : `You're invited to join ${campName} on CampCommand`;
   const intro = owner
-    ? `Your CampCommand account for <strong>${safeName}</strong> has been created. Click below to set your password and sign in — you'll be the administrator and can invite your team.`
+    ? `Your CampCommand account for <strong>${safeName}</strong> has been created. Click below to set your password and sign in. You'll be the administrator and can invite your team.`
     : `You've been invited to join <strong>${safeName}</strong> on CampCommand. Click below to set your password and sign in.`;
   const html = `
   <div style="font-family:-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;color:#1a2e1a">

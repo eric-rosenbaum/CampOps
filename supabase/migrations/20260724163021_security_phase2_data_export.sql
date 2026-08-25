@@ -1,4 +1,4 @@
--- SECURITY PHASE 2 — per-camp data export (data portability / "give us our data").
+-- SECURITY PHASE 2, per-camp data export (data portability / "give us our data").
 -- Admin-only, audit-logged. Dynamically bundles every camp-scoped table plus the camp profile
 -- row into one JSON document. SECURITY DEFINER (bypasses RLS) but hard-scoped to the caller's
 -- own camp via is_camp_admin + a camp_id filter on every table.

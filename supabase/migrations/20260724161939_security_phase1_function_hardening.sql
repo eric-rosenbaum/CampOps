@@ -1,9 +1,9 @@
--- SECURITY PHASE 1 — SECURITY DEFINER function hardening.
+-- SECURITY PHASE 1, SECURITY DEFINER function hardening.
 
 -- (1) Pin search_path on every SECURITY DEFINER function that lacked it. Without a pinned
 -- path a caller who can create objects in an earlier schema could shadow an unqualified name
 -- and have it run with the definer's (postgres) privileges. ALTER FUNCTION changes only the
--- config, never the body/behavior. The is_camp_* helpers are highest priority — they gate
+-- config, never the body/behavior. The is_camp_* helpers are highest priority. They gate
 -- every RLS policy in the app.
 alter function public.accept_invitation(text) set search_path = public;
 alter function public.create_camp(text,text,text,text,jsonb) set search_path = public;

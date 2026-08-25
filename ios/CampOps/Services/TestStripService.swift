@@ -109,7 +109,7 @@ final class TestStripService {
             throw PhotoError.compressionFailed
         }
         // Camp id first, matching issue-photos. The storage policy scopes writes with
-        // is_camp_member(foldername[1]), so a flat "<readingId>.jpg" path is unauthorisable —
+        // is_camp_member(foldername[1]), so a flat "<readingId>.jpg" path is unauthorisable -
         // which is exactly why every upload under the old layout was silently denied.
         let path = "\(campId)/\(readingId).jpg"
         try await storage.upload(path, data: data,

@@ -45,7 +45,7 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
   // Note prefills with the camp's saved payment/banking instructions (fill once, reuse everywhere).
   const [note, setNote] = useState(currentCamp?.retreatPaymentNote ?? '');
   const [noteSaved, setNoteSaved] = useState(false);
-  // Headcount to bill — defaults to the group's confirmed headcount but is editable per invoice.
+  // Headcount to bill, defaults to the group's confirmed headcount but is editable per invoice.
   // Kept as a string so the field can be cleared to "" while typing (no forced 0).
   const [headcount, setHeadcount] = useState(retreat ? String(retreat.headcount) : '');
   const headcountNum = Math.max(0, Math.round(Number(headcount) || 0));
@@ -62,7 +62,7 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
   async function emailInvoice(inv: RetreatInvoice, r: Retreat) {
     setEmailingId(inv.id); setBanner(null);
     const res = await sendEmail({
-      to: r.coordinatorEmail!, subject: `${inv.kind === 'deposit' ? 'Deposit invoice' : 'Invoice'} ${inv.number} — ${campName}`,
+      to: r.coordinatorEmail!, subject: `${inv.kind === 'deposit' ? 'Deposit invoice' : 'Invoice'} ${inv.number} · ${campName}`,
       html: invoiceEmailHtml(campName, inv, portalUrl(r)), fromName: campName, replyTo: currentUser.email || undefined,
     });
     setEmailingId(null);
@@ -83,7 +83,7 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
   function buildLines(k: RetreatInvoiceKind): { lines: RetreatInvoiceLine[]; amount: number } {
     if (k === 'deposit') {
       const amt = retreat?.depositRequired ?? 0;
-      return { lines: [{ description: `Deposit to reserve dates — ${retreat?.groupName ?? ''}`.trim(), amount: amt }], amount: amt };
+      return { lines: [{ description: `Deposit to reserve dates · ${retreat?.groupName ?? ''}`.trim(), amount: amt }], amount: amt };
     }
     // Balance: manual charges if any, else the rate × people × nights facility fee.
     let base: RetreatInvoiceLine[];
@@ -96,10 +96,10 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
       let amt: number; let desc: string;
       if (retreat.pricingModel === 'per_person_night') {
         amt = rate * headcountNum * n;
-        desc = `Facility — ${money(rate)}/person/night × ${headcountNum} × ${n} night${n === 1 ? '' : 's'}`;
+        desc = `Facility · ${money(rate)}/person/night × ${headcountNum} × ${n} night${n === 1 ? '' : 's'}`;
       } else if (retreat.pricingModel === 'per_cabin_night') {
         amt = rate * cabinCount * n;
-        desc = `Facility — ${money(rate)}/cabin/night × ${cabinCount} × ${n} night${n === 1 ? '' : 's'}`;
+        desc = `Facility · ${money(rate)}/cabin/night × ${cabinCount} × ${n} night${n === 1 ? '' : 's'}`;
       } else {
         amt = retreat.flatRate ?? 0;
         desc = 'Facility fee';
@@ -142,6 +142,7 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
   function draftFor(inv?: RetreatInvoice) {
     return {
       campName, groupName: retreat!.groupName,
+      coordinatorName: retreat!.coordinatorName, coordinatorEmail: retreat!.coordinatorEmail,
       number: inv?.number ?? nextNumber(kind),
       kind: inv?.kind ?? kind,
       issuedAt: inv?.issuedAt ?? now(),
@@ -192,14 +193,14 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
             </div>
           </div>
 
-          {/* Editable headcount — only affects the per-person facility line before extra fees. */}
+          {/* Editable headcount, only affects the per-person facility line before extra fees. */}
           {kind === 'balance' && charges.length === 0 && retreat.pricingModel === 'per_person_night' && (
             <div>
               <label className={labelClass}>Headcount to bill</label>
               <input type="number" min={0} value={headcount}
                      onChange={(e) => setHeadcount(e.target.value)}
                      className={`${inputClass} w-32`} />
-              <p className="text-[11px] text-ink-faint mt-1">Defaults to the group's confirmed headcount — edit to bill a different number.</p>
+              <p className="text-[11px] text-ink-faint mt-1">Defaults to the group's confirmed headcount. Edit to bill a different number.</p>
             </div>
           )}
 
@@ -207,7 +208,7 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
           <div className="rounded-btn bg-white border border-border overflow-hidden">
             {lines.length === 0 ? (
               <p className="text-[12px] text-ink-faint px-3 py-3">
-                {kind === 'balance' ? 'No charges yet — add charges in Costs & invoice first.' : 'Set a deposit amount on the retreat first.'}
+                {kind === 'balance' ? 'No charges yet. Add charges in Costs & invoice first.' : 'Set a deposit amount on the retreat first.'}
               </p>
             ) : lines.map((l, i) => (
               <div key={i} className="flex justify-between gap-3 px-3 py-2 border-b border-cream-dark last:border-0 text-[13px]">
@@ -265,7 +266,7 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
                   noteSaved || isCurrentDefault ? 'text-green-muted-text' : 'text-ink-soft hover:text-forest underline'
                 }`}>
                 {(noteSaved || isCurrentDefault) && <Check className="w-3 h-3" />}
-                {noteSaved ? 'Saved as default' : isCurrentDefault ? 'Saved — update' : 'Save as default'}
+                {noteSaved ? 'Saved as default' : isCurrentDefault ? 'Saved, update' : 'Save as default'}
               </button>
             </div>
             <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} className={`${inputClass} resize-y`}

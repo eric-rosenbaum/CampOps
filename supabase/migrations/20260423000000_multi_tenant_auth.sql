@@ -176,7 +176,7 @@ RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE AS $$
 $$;
 
 -- =============================================================================
--- RLS POLICIES — AUTH TABLES
+-- RLS POLICIES, AUTH TABLES
 -- =============================================================================
 
 -- profiles

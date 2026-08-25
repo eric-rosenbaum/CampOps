@@ -133,7 +133,7 @@ export function MenuEntryModal({ weekNumber, dayIndex, mealPeriod }: Props) {
           <div>
             <label className={labelClass}>Recipe</label>
             <select autoFocus value={recipeId} onChange={(e) => setRecipeId(e.target.value)} className={inputClass}>
-              <option value="">— Select a recipe —</option>
+              <option value="">Select a recipe</option>
               {matching.length > 0 && (
                 <optgroup label={MEAL_PERIOD_LABELS[mealPeriod]}>
                   {matching.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -146,7 +146,7 @@ export function MenuEntryModal({ weekNumber, dayIndex, mealPeriod }: Props) {
               )}
             </select>
             {recipes.length === 0 && (
-              <p className="text-[11px] text-ink-faint mt-1.5">No recipes yet — add one on the Recipe guide tab.</p>
+              <p className="text-[11px] text-ink-faint mt-1.5">No recipes yet. Add one on the Recipe guide tab.</p>
             )}
           </div>
         )}
@@ -156,7 +156,7 @@ export function MenuEntryModal({ weekNumber, dayIndex, mealPeriod }: Props) {
             <div>
               <label className={labelClass}>Inventory item</label>
               <select autoFocus value={itemId} onChange={(e) => pickItem(e.target.value)} className={inputClass}>
-                <option value="">— Select an item —</option>
+                <option value="">Select an item</option>
                 {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
               </select>
               <p className="text-[11px] text-ink-faint mt-1.5 leading-relaxed">
@@ -200,12 +200,12 @@ export function MenuEntryModal({ weekNumber, dayIndex, mealPeriod }: Props) {
           </div>
         )}
 
-        {/* Course bucket — applies to any chip */}
+        {/* Course bucket, applies to any chip */}
         <div>
           <label className={labelClass}>Course (optional)</label>
           <div className="flex gap-2">
             <select value={course} onChange={(e) => setCourse(e.target.value)} className={inputClass}>
-              <option value="">— No course —</option>
+              <option value="">No course</option>
               {courses.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
             </select>
             <Button type="button" variant="ghost" size="sm" className="whitespace-nowrap" onClick={() => openModal({ kind: 'courses' })}>

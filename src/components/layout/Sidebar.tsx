@@ -4,7 +4,8 @@ import {
   LayoutDashboard, CheckSquare, Wrench, ClipboardList,
   Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
 } from 'lucide-react';
-import { FirepitMark, SidebarContours } from '@/components/shared/FirepitMark';
+import { SidebarContours } from '@/components/shared/SidebarContours';
+import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
 import { useAuth } from '@/lib/auth';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
@@ -14,7 +15,7 @@ type LucideIcon = React.ComponentType<{ className?: string }>;
 
 /**
  * The active item is a paper cut-out of the sidebar with an ember edge, rather than a tinted
- * block — it reads as the page you are standing in continuing under the nav.
+ * block. It reads as the page you are standing in continuing under the nav.
  */
 function navClass(isActive: boolean, collapsed: boolean): string {
   const base = collapsed
@@ -81,7 +82,7 @@ interface SidebarProps {
   /** Drawer state below `lg`. Ignored at desktop widths, where the sidebar is always shown. */
   open?: boolean;
   onClose?: () => void;
-  /** Rail mode: icons only. Desktop-only — the drawer is always full width on a phone. */
+  /** Rail mode: icons only. Desktop-only. The drawer is always full width on a phone. */
   collapsed?: boolean;
 }
 
@@ -99,7 +100,7 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
       await signOut();
     } finally {
       // Redirect in `finally`: leaving the app is the point, so it must happen even if the
-      // store's sign-out threw. Return to the public marketing site — on the app subdomain
+      // store's sign-out threw. Return to the public marketing site, on the app subdomain
       // "/" is the login page, so send sign-outs to the marketing host; elsewhere
       // (dev/preview) "/" is the landing page.
       const onAppHost = window.location.hostname.startsWith('app.');
@@ -149,7 +150,7 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
       <SidebarContours />
       <div className={`relative pt-6 pb-5 ${collapsed ? 'lg:px-0 lg:justify-center px-5' : 'px-5'}`}>
         <div className={`flex items-center gap-2.5 ${collapsed ? 'lg:justify-center' : ''}`}>
-          <FirepitMark size={30} className="flex-shrink-0" />
+          <CampCommandMark size={30} disc={CC_CREAM} ink={CC_GREEN} decorative className="flex-shrink-0" />
           <span className={`font-display text-[17px] font-bold tracking-tight text-side-strong whitespace-nowrap
                             ${collapsed ? 'lg:hidden' : ''}`}>
             CampCommand
@@ -222,7 +223,7 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
             <b className="block truncate font-display text-[13px] font-semibold text-side-strong">
               {currentCamp?.name ?? ''}
             </b>
-            <span className="block truncate text-[11px] text-side-dim">{currentUser.name} — {roleLabel}</span>
+            <span className="block truncate text-[11px] text-side-dim">{currentUser.name} · {roleLabel}</span>
           </span>
           {collapsed && <RailTip label={`${currentCamp?.name ?? ''} · ${currentUser.name}`} />}
         </div>

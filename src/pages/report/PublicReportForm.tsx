@@ -8,7 +8,8 @@ const supabasePublic = createClient(
 );
 import { dbUploadPublicReportPhoto } from '@/lib/db';
 import { generateId } from '@/lib/utils';
-import { Camera, X, CheckCircle, AlertCircle, TreePine } from 'lucide-react';
+import { Camera, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { CampCommandMark } from '@/components/shared/CampCommandMark';
 
 interface CampLocationOption { id: string; name: string; }
 
@@ -95,7 +96,7 @@ export function PublicReportForm() {
         try {
           photoUrl = await dbUploadPublicReportPhoto(photoFile, camp.id, issueId);
         } catch {
-          // Photo upload failed — submit without it rather than blocking the report
+          // Photo upload failed. Submit without it rather than blocking the report
         }
       }
 
@@ -182,7 +183,7 @@ export function PublicReportForm() {
             </div>
             <h1 className="text-[22px] font-bold text-ink mb-2">Report submitted</h1>
             <p className="text-[15px] text-ink-faint leading-relaxed mb-8">
-              Thank you — {camp?.name} staff will review your report.
+              Thank you · {camp?.name} staff will review your report.
             </p>
             <button
               onClick={handleSubmitAnother}
@@ -203,9 +204,7 @@ export function PublicReportForm() {
           {camp?.logoUrl ? (
             <img src={camp.logoUrl} alt="" className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
           ) : (
-            <div className="w-9 h-9 bg-stone-800 rounded-xl flex items-center justify-center flex-shrink-0">
-              <TreePine className="w-4.5 h-4.5 text-white" />
-            </div>
+            <CampCommandMark size={36} decorative className="flex-shrink-0" />
           )}
           <div className="min-w-0">
             <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-widest">Report an issue</p>
@@ -234,7 +233,7 @@ export function PublicReportForm() {
           {/* Description */}
           <div>
             <label className={labelClass}>
-              Details <span className="text-stone-300 normal-case font-normal tracking-normal">— optional</span>
+              Details <span className="text-stone-300 normal-case font-normal tracking-normal">optional</span>
             </label>
             <textarea
               value={description}
@@ -250,7 +249,7 @@ export function PublicReportForm() {
           {camp && camp.locations.length > 0 && (
             <div>
               <label className={labelClass}>
-                Location <span className="text-stone-300 normal-case font-normal tracking-normal">— optional</span>
+                Location <span className="text-stone-300 normal-case font-normal tracking-normal">optional</span>
               </label>
               <select
                 value={locationId}
@@ -269,7 +268,7 @@ export function PublicReportForm() {
           {/* Photo */}
           <div>
             <label className={labelClass}>
-              Photo <span className="text-stone-300 normal-case font-normal tracking-normal">— optional</span>
+              Photo <span className="text-stone-300 normal-case font-normal tracking-normal">optional</span>
             </label>
             {photoPreview ? (
               <div className="space-y-2.5">
@@ -305,7 +304,7 @@ export function PublicReportForm() {
           <div className="pt-1">
             <div className="flex items-center gap-3 mb-5">
               <div className="h-px flex-1 bg-cream-dark" />
-              <p className="text-[11px] font-semibold text-ink-faint uppercase tracking-widest">Your info — optional</p>
+              <p className="text-[11px] font-semibold text-ink-faint uppercase tracking-widest">Your info · optional</p>
               <div className="h-px flex-1 bg-cream-dark" />
             </div>
 

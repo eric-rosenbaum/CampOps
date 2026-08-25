@@ -1,4 +1,4 @@
--- SECURITY PHASE 1 — resolve the advisor's one ERROR (security_definer_view).
+-- SECURITY PHASE 1, resolve the advisor's one ERROR (security_definer_view).
 -- camper_restriction_summary was a SECURITY DEFINER view whose only tenant guard was an
 -- inline is_camp_member() the linter can't see. Replace it with an explicit SECURITY DEFINER
 -- function so the tenant check is visible and testable. We keep definer semantics on purpose:

@@ -1,4 +1,4 @@
--- Staff groups — BACKFILL of schema that was applied directly to the production
+-- Staff groups, BACKFILL of schema that was applied directly to the production
 -- database and never captured in a migration. Until now `supabase db push` against
 -- a fresh project produced a database this app could not run on: campStore.ts
 -- queries `staff_groups`, and update_member_role/generate_join_code are called with

@@ -69,7 +69,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
 
   // Each step carries an optional prep-timing preset ("night before") so the production
   // prep calendar can schedule it. Early recipes may carry prose in `method` with no step
-  // rows — seed from that so saving migrates it into steps rather than dropping it.
+  // rows, seed from that so saving migrates it into steps rather than dropping it.
   const [stepDrafts, setStepDrafts] = useState<DraftStep[]>(() => {
     if (existing) {
       const rows = stepsFor(existing.id);
@@ -133,7 +133,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
       name: name.trim(),
       mealPeriod,
       baseYield: yieldN,
-      // Not edited here — the scale lives on the recipe card, so preserve whatever it holds.
+      // Not edited here. The scale lives on the recipe card, so preserve whatever it holds.
       scaleTo: existing?.scaleTo ?? null,
       prepTime: prepTime.trim() || null,
       cookTime: cookTime.trim() || null,
@@ -223,7 +223,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
         <div>
           <label className={labelClass}>Ingredients</label>
           <p className="text-[11px] text-ink-faint mb-2">
-            Quantities are for <strong>{baseYield || '—'} portions</strong> and scale from there.
+            Quantities are for <strong>{baseYield || '-'} portions</strong> and scale from there.
             Link an ingredient to inventory to include it in ordering demand and allergen totals.
           </p>
 
@@ -239,7 +239,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
                     onChange={(e) => pickItem(d.key, e.target.value)}
                     className={inputClass}
                   >
-                    <option value="">— Unlinked ingredient —</option>
+                    <option value="">Unlinked ingredient</option>
                     {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                   </select>
 
@@ -278,7 +278,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
 
                   {item && base != null && d.qty !== '' && (
                     <p className="col-span-4 -mt-1 text-[11px] text-ink-faint font-mono">
-                      = {formatQty(fromBase(base, item.stockUnitInBase), item.stockUnit)} for {baseYield || '—'} portions
+                      = {formatQty(fromBase(base, item.stockUnitInBase), item.stockUnit)} for {baseYield || '-'} portions
                     </p>
                   )}
                 </div>
@@ -308,7 +308,7 @@ export function AddEditRecipeModal({ editId }: { editId?: string }) {
           <div className="rounded-card border border-border bg-cream-dark/30 px-3 py-2.5">
             <AllergenChips allergens={previewAllergens} />
             <p className="text-[11px] text-ink-faint mt-1.5">
-              Derived from the linked ingredients — tag allergens on the inventory item, not here.
+              Derived from the linked ingredients, tag allergens on the inventory item, not here.
             </p>
           </div>
         </div>

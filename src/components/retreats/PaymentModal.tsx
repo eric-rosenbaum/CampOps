@@ -19,12 +19,11 @@ const KIND_LABELS: Record<RetreatPaymentKind, string> = {
 
 /** Record a payment against a retreat and review / edit / delete existing ones. */
 export function PaymentModal({ retreatId, defaultKind }: { retreatId: string; defaultKind?: RetreatPaymentKind }) {
-  const { paymentsFor, addPayment, updatePayment, deletePayment, balanceFor, closeModal } = useRetreatStore();
+  const { paymentsFor, addPayment, updatePayment, deletePayment, closeModal } = useRetreatStore();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
 
   const payments = paymentsFor(retreatId).slice().sort((a, b) => b.paidOn.localeCompare(a.paidOn));
-  const bal = balanceFor(retreatId);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [paidOn, setPaidOn] = useState(today());
@@ -62,23 +61,8 @@ export function PaymentModal({ retreatId, defaultKind }: { retreatId: string; de
   return (
     <Modal title="Payments" onClose={closeModal} width="500px">
       <div className="space-y-5">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-card border border-border bg-cream px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-widest text-ink-faint font-semibold">Charged</p>
-            <p className="font-mono text-[15px] text-forest mt-0.5">{money(bal.totalCharges)}</p>
-          </div>
-          <div className="rounded-card border border-border bg-cream px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-widest text-ink-faint font-semibold">Paid</p>
-            <p className="font-mono text-[15px] text-green-muted-text mt-0.5">{money(bal.totalPaid)}</p>
-          </div>
-          <div className="rounded-card border border-border bg-cream px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-widest text-ink-faint font-semibold">Balance</p>
-            <p className={`font-mono text-[15px] mt-0.5 ${bal.balance > 0 ? 'text-amber' : 'text-forest'}`}>{money(bal.balance)}</p>
-          </div>
-        </div>
-
         {canManage && (
-          <form onSubmit={handleSubmit} className="space-y-3 border-t border-border pt-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint">{editingId ? 'Edit payment' : 'Record a payment'}</p>
               {editingId && <button type="button" onClick={resetForm} className="text-[11px] text-ink-soft hover:text-forest">Cancel edit</button>}
@@ -129,7 +113,7 @@ export function PaymentModal({ retreatId, defaultKind }: { retreatId: string; de
                 <div key={p.id} className={`flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0 ${editingId === p.id ? 'bg-sage-pale/50' : ''}`}>
                   <span className="text-[12px] font-mono text-ink-soft w-24 flex-shrink-0">{fmtDateFull(p.paidOn)}</span>
                   <span className="text-[11px] text-ink-soft w-16 flex-shrink-0">{KIND_LABELS[p.kind]}</span>
-                  <span className="text-[12px] text-ink flex-1 truncate">{p.method ?? p.note ?? '—'}</span>
+                  <span className="text-[12px] text-ink flex-1 truncate">{p.method ?? p.note ?? '-'}</span>
                   <span className="font-mono text-[13px] text-green-muted-text">{money(p.amount)}</span>
                   {canManage && (
                     <>

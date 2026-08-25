@@ -13,8 +13,8 @@ import { inputClass, labelClass } from './commissaryUi';
 const OPTIONS = [...DIETARY_RESTRICTIONS, ...ALLERGENS];
 
 /**
- * Standing dietary counts for a session — for camps that know "42 vegetarian" without
- * entering each camper — plus the camp-level kosher default. Relocated here from the
+ * Standing dietary counts for a session, for camps that know "42 vegetarian" without
+ * entering each camper, plus the camp-level kosher default. Relocated here from the
  * allergy tab, which is now a document locker.
  */
 export function DietCountsModal() {

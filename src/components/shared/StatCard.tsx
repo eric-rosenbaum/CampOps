@@ -16,7 +16,7 @@ const valueColors = {
  * A figure in the header band, not a card.
  *
  * The Field Guide treats the top-of-page numbers as one continuous strip divided by hairlines,
- * the way a printed field report rules its columns — so this renders as a flat cell and lets
+ * the way a printed field report rules its columns, so this renders as a flat cell and lets
  * the parent supply the rule. Boxing each number made four small containers compete with the
  * list below them for attention.
  */

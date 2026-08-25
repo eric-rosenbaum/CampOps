@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { LogOut, Clock, Menu } from 'lucide-react';
-import { FirepitMark } from '@/components/shared/FirepitMark';
 import { Sidebar } from './Sidebar';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useCampStore } from '@/store/campStore';
 import { useUIStore } from '@/store/uiStore';
+import { CampCommandMark } from '@/components/shared/CampCommandMark';
+import { UnsavedChangesBanner } from '@/components/shared/UnsavedChangesBanner';
 
 // Shown when a founder is viewing a camp they don't belong to, or when a trial is counting down.
 function StatusBanners() {
@@ -28,7 +29,7 @@ function StatusBanners() {
     return (
       <div className="flex items-center justify-center gap-2 bg-amber-bg text-amber-text text-[12px] font-medium px-4 py-1.5 flex-shrink-0">
         <Clock className="w-3.5 h-3.5" />
-        {trialDays >= 0 ? `Demo — ${trialDays} day${trialDays === 1 ? '' : 's'} left` : 'Demo ended'}
+        {trialDays >= 0 ? `Demo · ${trialDays} day${trialDays === 1 ? '' : 's'} left` : 'Demo ended'}
       </div>
     );
   }
@@ -48,7 +49,7 @@ function SyncIndicator() {
 
 /**
  * The phone-only header. The sidebar is off-canvas below `lg`, so this is what gives a
- * thumb a way back to navigation — and it keeps the camp's name on screen, which the
+ * thumb a way back to navigation. And it keeps the camp's name on screen, which the
  * sidebar footer would otherwise be the only place to see.
  */
 function MobileHeader({ onMenu }: { onMenu: () => void }) {
@@ -63,7 +64,7 @@ function MobileHeader({ onMenu }: { onMenu: () => void }) {
         <Menu className="w-5 h-5" />
       </button>
       <div className="flex items-center gap-2 min-w-0">
-        <FirepitMark size={24} className="flex-shrink-0" />
+        <CampCommandMark size={24} compact decorative className="flex-shrink-0" />
         <span className="font-display text-[14px] font-bold text-side-strong truncate">
           {currentCamp?.name ?? 'CampCommand'}
         </span>
@@ -100,6 +101,7 @@ export function Layout() {
         <Outlet />
       </div>
       <SyncIndicator />
+      <UnsavedChangesBanner />
     </div>
   );
 }

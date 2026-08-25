@@ -33,7 +33,7 @@ import { SubstitutionModal } from '@/components/commissary/SubstitutionModal';
 import { SettingsTab } from '@/components/commissary/SettingsTab';
 
 // Production guide, Cost and Waste tabs are archived. Their components, store selectors,
-// and DB loaders remain in place and unreachable — re-add the entries here (and the renders
+// and DB loaders remain in place and unreachable, re-add the entries here (and the renders
 // below) to restore them. Waste adjustments are still captured in Inventory, so the report
 // keeps accruing data and comes back populated whenever it is switched on again.
 const TABS: { id: CommissaryTab; label: string }[] = [
@@ -67,7 +67,7 @@ export function Commissary() {
   }
 
   const subtitle = retreatsMode
-    ? 'Retreats — all groups planned as one combined kitchen'
+    ? 'Retreats, all groups planned as one combined kitchen'
     : session
       ? `${session.name} · ${session.camperCount} campers + ${session.staffCount} staff = ${total} total`
       : `${items.length} item${items.length === 1 ? '' : 's'} · ${recipes.length} recipe${recipes.length === 1 ? '' : 's'}`;
@@ -87,7 +87,7 @@ export function Commissary() {
       return <Button size="sm" onClick={() => openModal({ kind: 'recipe' })}>+ Add recipe</Button>;
     }
     if (activeTab === 'allergy') {
-      // Adding campers requires health access, not just manageCommissary — the DB
+      // Adding campers requires health access, not just manageCommissary. The DB
       // would reject the write anyway, so don't offer a button that cannot work.
       if (!canViewCamperHealth) return undefined;
       return <Button size="sm" onClick={() => openModal({ kind: 'camper' })}>+ Add camper</Button>;

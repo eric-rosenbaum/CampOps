@@ -81,7 +81,7 @@ function ItemCard({ item, onLog }: { item: SafetyItem; onLog: () => void }) {
         <div>
           <p className="text-[10px] text-ink-faint font-medium mb-0.5">Last inspected</p>
           <p className={`text-[12px] font-semibold font-mono ${item.lastInspected ? (status === 'ok' ? 'text-green-muted-text' : status === 'warn' ? 'text-amber' : 'text-red') : 'text-forest/30'}`}>
-            {item.lastInspected ? new Date(item.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+            {item.lastInspected ? new Date(item.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}
           </p>
         </div>
         {meta.expiry_year && (
@@ -207,7 +207,7 @@ export function FireSafetyTab() {
             </>
           ) : (
             <>
-              <p className="font-semibold text-[18px] mt-2 text-forest/30">—</p>
+              <p className="font-semibold text-[18px] mt-2 text-forest/30">-</p>
               <p className="text-meta text-ink-faint mt-0.5">Nothing due soon</p>
             </>
           )}
@@ -223,7 +223,7 @@ export function FireSafetyTab() {
           <div className="space-y-1.5">
             {failedItems.map((item) => (
               <div key={item.id} className="flex items-center justify-between">
-                <span className="text-[12px] text-red/80">• {item.name} — {item.location}</span>
+                <span className="text-[12px] text-red/80">• {item.name} · {item.location}</span>
                 <button
                   onClick={() => openSafetyLogInspectionModal(item.id)}
                   className="text-[11px] font-semibold text-red hover:underline cursor-pointer ml-4 flex-shrink-0"

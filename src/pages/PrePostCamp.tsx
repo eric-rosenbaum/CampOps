@@ -48,7 +48,7 @@ function PoolSeasonalSection({ activePhase }: { activePhase: 'pre' | 'post' }) {
         className="w-full flex items-center gap-3 p-4 text-left hover:bg-cream-dark/40 transition-colors rounded-card"
       >
         <span className="text-[13px] font-semibold text-forest flex-1">
-          Pool & waterfront — {poolPhase === 'opening' ? 'opening tasks' : 'closing tasks'}
+          Pool & waterfront · {poolPhase === 'opening' ? 'opening tasks' : 'closing tasks'}
         </span>
         <span className={`text-label font-semibold px-2 py-0.5 rounded-tag uppercase tracking-wide ${
           allDone ? 'bg-green-muted-bg text-green-muted-text' :
@@ -139,7 +139,7 @@ function AssetMaintenanceSection({ activePhase }: { activePhase: 'pre' | 'post' 
         className="w-full flex items-center gap-3 p-4 text-left hover:bg-cream-dark/40 transition-colors rounded-card"
       >
         <span className="text-[13px] font-semibold text-forest flex-1">
-          Assets & vehicles — {maintPhase === 'pre_season' ? 'pre-season prep' : 'post-season storage'}
+          Assets & vehicles · {maintPhase === 'pre_season' ? 'pre-season prep' : 'post-season storage'}
         </span>
         <span className={`text-label font-semibold px-2 py-0.5 rounded-tag uppercase tracking-wide ${
           allDone ? 'bg-green-muted-bg text-green-muted-text' :
@@ -371,7 +371,6 @@ export function PrePostCamp() {
             {/* Task list */}
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
-                <p className="text-[32px] mb-3">🌲</p>
                 <p className="text-[15px] font-semibold text-ink-soft">
                   {filter === 'complete' ? 'No completed tasks yet' :
                    filter === 'pending' ? 'No pending tasks' :

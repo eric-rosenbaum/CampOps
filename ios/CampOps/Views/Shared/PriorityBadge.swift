@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// An outlined stamp rather than a filled pill — on a page of paper-toned cards a filled chip
+/// An outlined stamp rather than a filled pill, on a page of paper-toned cards a filled chip
 /// reads as UI chrome, where a ruled stamp reads as something inked onto the record.
 struct PriorityBadge: View {
     let priority: Priority

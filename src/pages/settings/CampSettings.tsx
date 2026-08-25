@@ -30,7 +30,7 @@ const TABS: { id: TabId; label: string }[] = [
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
 const inputCls = 'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
-// Same as inputCls but without w-full — use when the field's width is controlled by flex (side-by-side rows),
+// Same as inputCls but without w-full. Use when the field's width is controlled by flex (side-by-side rows),
 // since a baked-in w-full beats flex-1/w-40 in Tailwind's stylesheet order and collapses the layout.
 const fieldCls = 'text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
 const labelCls = 'block text-[12px] font-medium text-ink-soft mb-1';
@@ -53,7 +53,7 @@ const MODULE_OPTIONS = [
   { key: 'assets',     label: 'Assets & Vehicles',    desc: 'Fleet, equipment, checkouts, service records' },
   { key: 'building',   label: 'Building Systems',     desc: 'Electrical & plumbing infrastructure by room' },
   // NOTE: camp.modules uses short keys; StaffGroupModules uses long ones
-  // ('building_systems'). Inconsistent, but load-bearing — match, don't refactor.
+  // ('building_systems'). Inconsistent, but load-bearing, match, don't refactor.
   { key: 'commissary', label: 'Commissary',           desc: 'Inventory, recipes, menu planning' },
   { key: 'retreats',   label: 'Retreat Manager',      desc: 'External group rentals, guest portal, invoicing' },
 ];
@@ -171,7 +171,7 @@ function ProfileTab() {
           <div className={cardCls}>
             <h2 className="text-[13px] font-semibold text-forest mb-1">Public issue report link</h2>
             <p className="text-[12px] text-ink-faint mb-3">
-              Share this link so anyone — campers, parents, staff — can report an issue without an account. Reports appear in Issues &amp; Repairs with a Public badge.
+              Share this link so anyone (campers, parents, staff) can report an issue without an account. Reports appear in Issues &amp; Repairs with a Public badge.
             </p>
             <div className="flex items-center gap-2 bg-cream border border-border rounded-btn px-3 py-2">
               <Link
@@ -248,7 +248,7 @@ function SeasonTab() {
   }
 
   function fmt(d: string | null | undefined) {
-    if (!d) return '—';
+    if (!d) return '-';
     try { return format(new Date(d + 'T12:00:00'), 'MMM d, yyyy'); } catch { return d; }
   }
 
@@ -498,7 +498,7 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
               <button type="button" onClick={() => setIsDorm(v => !v)} className={toggle(isDorm)}>{isDorm && <Check className="w-3 h-3" />} Dorm / sleeping quarters</button>
               {isDorm && <button type="button" onClick={() => setRetreatAvailable(v => !v)} className={toggle(retreatAvailable)}>{retreatAvailable && <Check className="w-3 h-3" />} Available to retreats</button>}
             </div>
-            {isDorm && <p className="text-[11px] text-ink-faint -mt-1.5">Beds live on this building's rooms — add rooms below and set their beds.</p>}
+            {isDorm && <p className="text-[11px] text-ink-faint -mt-1.5">Beds live on this building's rooms. Add rooms below and set their beds.</p>}
           </>
         )}
 
@@ -655,7 +655,7 @@ function LocationsTab() {
     }
     const resolveCat = (t: string) => (t ? catMap.get(t.toLowerCase()) ?? null : null);
 
-    // Pass 1 — top-levels (no parent).
+    // Pass 1, top-levels (no parent).
     const topRows = preview.rows.filter(r => !r.parent).map(r => ({
       name: r.name, categoryId: resolveCat(r.category), isDorm: r.isDorm,
       bedCapacity: r.beds, accessible: r.accessible,
@@ -666,7 +666,7 @@ function LocationsTab() {
     const topByName = new Map<string, string>();
     useLocationStore.getState().topLevel().forEach(l => topByName.set(l.name.toLowerCase(), l.id));
 
-    // Pass 2 — children (resolve parent by name; unmatched parents become top-level).
+    // Pass 2, children (resolve parent by name; unmatched parents become top-level).
     const childRows = preview.rows.filter(r => r.parent).map(r => ({
       name: r.name, parentId: topByName.get(r.parent.toLowerCase()) ?? null,
       categoryId: resolveCat(r.category), isDorm: r.isDorm,
@@ -686,12 +686,12 @@ function LocationsTab() {
       <div className={cardCls}>
         <h2 className="text-[13px] font-semibold text-forest mb-1">Camp locations</h2>
         <p className="text-[12px] text-ink-faint mb-4">
-          The unified place inventory — used across the app to tag issues, tasks, assets, dorms, and retreats.
+          The unified place inventory, used across the app to tag issues, tasks, assets, dorms, and retreats.
         </p>
 
         {/* Two import paths: hand off to our team, or DIY spreadsheet import */}
         <div className="grid sm:grid-cols-2 gap-3 mb-4">
-          {/* (a) Drop a file for our team — same hand-off channel as the Setup Files tab */}
+          {/* (a) Drop a file for our team, same hand-off channel as the Setup Files tab */}
           <ImplementationDropzone
             category="locations"
             title="Send us your list"
@@ -716,14 +716,14 @@ function LocationsTab() {
         {/* Collapsible DIY formatting instructions */}
         {showInstructions && (
           <div className="mb-4 text-[12px] text-ink-soft bg-cream/60 border border-border rounded-btn px-3.5 py-2.5 leading-relaxed">
-            <span className="font-semibold text-ink">Spreadsheet format</span> — one row per location. Column headers are matched loosely (case-insensitive):
+            <span className="font-semibold text-ink">Spreadsheet format</span>one row per location. Column headers are matched loosely (case-insensitive):
             <ul className="mt-1.5 space-y-0.5 list-disc pl-4">
-              <li><span className="font-medium text-ink">name</span> <span className="text-ink-faint">(required)</span> — the location's name, e.g. “Birch Cabin”.</li>
-              <li><span className="font-medium text-ink">category</span> — e.g. Housing, Waterfront, Dining. Created automatically if it's new.</li>
-              <li><span className="font-medium text-ink">parent</span> — the exact name of another location to nest under (list parents above their children).</li>
-              <li><span className="font-medium text-ink">dorm</span> — yes / true / x to mark a sleeping quarters.</li>
-              <li><span className="font-medium text-ink">beds</span> — number of beds (dorms).</li>
-              <li><span className="font-medium text-ink">accessible</span> — yes / true if ADA-accessible.</li>
+              <li><span className="font-medium text-ink">name</span> <span className="text-ink-faint">(required)</span>the location's name, e.g. “Birch Cabin”.</li>
+              <li><span className="font-medium text-ink">category</span>e.g. Housing, Waterfront, Dining. Created automatically if it's new.</li>
+              <li><span className="font-medium text-ink">parent</span>the exact name of another location to nest under (list parents above their children).</li>
+              <li><span className="font-medium text-ink">dorm</span>yes / true / x to mark a sleeping quarters.</li>
+              <li><span className="font-medium text-ink">beds</span>number of beds (dorms).</li>
+              <li><span className="font-medium text-ink">accessible</span>yes / true if ADA-accessible.</li>
             </ul>
             <p className="mt-1.5 text-ink-faint">Example row: <code className="bg-white border border-border rounded px-1">Birch Cabin, Housing, , yes, 12, yes</code></p>
           </div>
@@ -733,7 +733,7 @@ function LocationsTab() {
         {preview && (
           <div className="mb-4 p-4 bg-paper border border-border rounded-xl space-y-2">
             <p className="text-[12px] font-medium text-forest">
-              {preview.fileName} — {preview.rows.length} row{preview.rows.length !== 1 ? 's' : ''} ready
+              {preview.fileName} · {preview.rows.length} row{preview.rows.length !== 1 ? 's' : ''} ready
             </p>
             <div className="max-h-32 overflow-y-auto text-[12px] text-ink-soft space-y-0.5">
               {preview.rows.slice(0, 8).map((r, i) => (
@@ -759,7 +759,7 @@ function LocationsTab() {
         )}
 
         {locations.length === 0 && !preview && (
-          <p className="text-[13px] text-forest/30 italic mb-4">No locations yet — add areas below or import a spreadsheet.</p>
+          <p className="text-[13px] text-forest/30 italic mb-4">No locations yet. Add areas below or import a spreadsheet.</p>
         )}
 
         {/* Grouped tree */}

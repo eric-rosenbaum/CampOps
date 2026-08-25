@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { TreePine, Smartphone, Monitor, ArrowRight, Mail, KeyRound } from 'lucide-react';
+import { Smartphone, Monitor, ArrowRight, Mail, KeyRound } from 'lucide-react';
 import {
   ANDROID_APP_AVAILABLE,
   ANDROID_PLAY_STORE_URL,
@@ -8,6 +8,7 @@ import {
   detectPlatform,
 } from '@/lib/appDownload';
 import type { DevicePlatform } from '@/lib/appDownload';
+import { CampCommandMark } from '@/components/shared/CampCommandMark';
 
 interface PlatformCard {
   id: DevicePlatform;
@@ -76,9 +77,7 @@ export function GetStarted() {
     <div className="min-h-screen w-full bg-paper flex flex-col items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-md">
         <Link to="/" className="flex items-center gap-2 mb-8 justify-center">
-          <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center">
-            <TreePine className="w-4.5 h-4.5 text-cream" />
-          </div>
+          <CampCommandMark size={36} decorative />
           <span className="text-lg font-semibold text-forest">CampCommand</span>
         </Link>
 

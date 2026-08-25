@@ -76,7 +76,7 @@ export default function AssetVehicles() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto bg-cream">
         <div className={`mx-auto py-5 px-5 ${activeAssetId ? 'max-w-7xl grid grid-cols-[1fr_420px] gap-5 items-start' : 'max-w-4xl'}`}>
-          {/* Left / full column — page tab content */}
+          {/* Left / full column, page tab content */}
           <div>
             {activePageTab === 'fleet' && <FleetOverviewTab />}
             {activePageTab === 'checked_out' && <CheckedOutTab />}
@@ -84,7 +84,7 @@ export default function AssetVehicles() {
             {activePageTab === 'log' && <ActivityLogTab />}
           </div>
 
-          {/* Right column — asset detail panel (only when an asset is selected) */}
+          {/* Right column, asset detail panel (only when an asset is selected) */}
           {activeAssetId && (
             <div className="sticky top-5">
               <AssetDetailPanel />

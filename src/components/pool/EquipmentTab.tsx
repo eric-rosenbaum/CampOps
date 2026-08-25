@@ -100,7 +100,7 @@ export function EquipmentTab() {
         <AlertBanner
           variant="warn"
           message={
-            warnEquip.map((e) => `${e.name} — ${e.statusDetail.toLowerCase()}.`).join(' ') +
+            warnEquip.map((e) => `${e.name} · ${e.statusDetail.toLowerCase()}.`).join(' ') +
             ' Monitor closely and schedule service as needed.'
           }
         />

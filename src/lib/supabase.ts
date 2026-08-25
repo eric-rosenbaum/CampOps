@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { campLog, campError } from './campLog';
 import { noteWriteStart, noteWriteEnd } from './syncGuard';
+import { recordWriteFailure } from './writeFailures';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -48,7 +49,7 @@ function xhrFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respons
     };
 
     const onAbort = () => {
-      xhr.abort(); // actually closes the socket — this is the key difference from fetch()
+      xhr.abort(); // actually closes the socket. This is the key difference from fetch()
       settle(() => reject(new DOMException('The operation was aborted.', 'AbortError')));
     };
     init?.signal?.addEventListener('abort', onAbort, { once: true });
@@ -59,7 +60,7 @@ function xhrFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respons
         const colon = line.indexOf(':');
         if (colon > 0) headers.append(line.slice(0, colon).trim(), line.slice(colon + 1).trim());
       });
-      // 204/205/304 are "null body status" — Response() throws if a body is passed.
+      // 204/205/304 are "null body status"Response() throws if a body is passed.
       const nullBody = xhr.status === 204 || xhr.status === 205 || xhr.status === 304;
       resolve(new Response(nullBody ? null : (xhr.response as ArrayBuffer), {
         status: xhr.status,
@@ -83,7 +84,7 @@ function xhrFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respons
 
 // Wraps xhrFetch with a per-attempt AbortController timeout and retries.
 // With xhrFetch, the abort actually cancels the socket, so the retry opens a
-// genuinely fresh connection — total time on a stale connection is ~5 s.
+// genuinely fresh connection, total time on a stale connection is ~5 s.
 async function fetchWithRetry(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   // Every write in the app funnels through here, which makes this the one place that can
   // tell the sync guard "a mutation is still on the wire". Reloads triggered by realtime
@@ -92,13 +93,39 @@ async function fetchWithRetry(input: RequestInfo | URL, init?: RequestInit): Pro
   const isWrite = isMutatingRequest(input, init);
   if (isWrite) noteWriteStart();
   try {
-    return await fetchWithRetryInner(input, init);
+    const res = await fetchWithRetryInner(input, init);
+
+    // A mutation that came back non-2xx after every retry did not save. The caller cannot see
+    // this (the dbX() helpers log and return void) so it is recorded here, where every write
+    // in the app passes through exactly once.
+    if (isWrite && !res.ok) {
+      const url = input instanceof Request ? input.url : String(input);
+      recordWriteFailure({
+        table: describeTarget(url),
+        op: (init?.method ?? 'POST').toUpperCase(),
+        status: res.status,
+        message: `${res.status} ${res.statusText || 'request rejected'}`,
+      });
+    }
+    return res;
+  } catch (err) {
+    // Never completed: timed out, aborted, or the network went away.
+    if (isWrite) {
+      const url = input instanceof Request ? input.url : String(input);
+      recordWriteFailure({
+        table: describeTarget(url),
+        op: (init?.method ?? 'POST').toUpperCase(),
+        status: null,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+    throw err;
   } finally {
     if (isWrite) noteWriteEnd();
   }
 }
 
-// RPCs that only read. Everything else that arrives by POST is assumed to mutate —
+// RPCs that only read. Everything else that arrives by POST is assumed to mutate -
 // `adjust_inventory_item` and `receive_purchase_order` are the reason: they change stock
 // through a function rather than a table write, and missing them would let a reload
 // observe the pre-write state exactly as the direct table writes used to.
@@ -107,7 +134,7 @@ const READ_ONLY_RPCS = new Set([
   'is_platform_admin', 'list_platform_admins', 'admin_list_camp_accounts', 'export_camp_data',
 ]);
 
-/** A PostgREST/storage call that changes rows — anything but a plain read. */
+/** A PostgREST/storage call that changes rows, anything but a plain read. */
 function isMutatingRequest(input: RequestInfo | URL, init?: RequestInit): boolean {
   const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
   if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return false;
@@ -119,11 +146,67 @@ function isMutatingRequest(input: RequestInfo | URL, init?: RequestInit): boolea
   return true;
 }
 
+/**
+ * Refresh the access token, collapsing concurrent callers onto one request.
+ *
+ * Without this a page with several writes in flight would fire a refresh per 401, and the
+ * losers would race to write the session back to storage.
+ */
+let _refreshInFlight: Promise<boolean> | null = null;
+
+function refreshSessionOnce(): Promise<boolean> {
+  if (_refreshInFlight) return _refreshInFlight;
+  _refreshInFlight = (async () => {
+    try {
+      const { error } = await supabase.auth.refreshSession();
+      if (error) {
+        campError('[CampOps] token refresh failed', error);
+        return false;
+      }
+      campLog('[CampOps] token refreshed');
+      return true;
+    } catch (err) {
+      campError('[CampOps] token refresh threw', err);
+      return false;
+    } finally {
+      // Cleared on the next tick so callers awaiting this promise all see the same result.
+      setTimeout(() => { _refreshInFlight = null; }, 0);
+    }
+  })();
+  return _refreshInFlight;
+}
+
+/**
+ * Refresh ahead of a write when the token is about to die.
+ *
+ * The heartbeat only runs while the tab is visible, so a tab that sat hidden past the token's
+ * one-hour life comes back with a dead JWT. The visibility handler does refresh on return, but
+ * it is asynchronous and nothing gates writes behind it. Click quickly enough after returning
+ * and the write outruns the refresh. This closes that race for mutations specifically.
+ */
+/** Transient HTTP statuses worth another attempt. Everything else 4xx is a real rejection. */
+function isRetryableStatus(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500;
+}
+
+/** "rest/v1/retreats?..." → "retreats"; "rest/v1/rpc/foo" → "rpc:foo". */
+function describeTarget(url: string): string {
+  const rpc = url.match(/\/rest\/v1\/rpc\/([^/?#]+)/);
+  if (rpc) return `rpc:${rpc[1]}`;
+  const rest = url.match(/\/rest\/v1\/([^/?#]+)/);
+  if (rest) return rest[1];
+  const storage = url.match(/\/storage\/v1\/object\/([^/?#]+)/);
+  if (storage) return `storage:${storage[1]}`;
+  return url.split('?')[0].split('/').slice(-1)[0] || 'unknown';
+}
+
 async function fetchWithRetryInner(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const ATTEMPT_TIMEOUT_MS = 4000;
   const delays = [1000, 5000];
   const url = input instanceof Request ? input.url : String(input);
   const tag = url.split('?')[0].split('/').slice(-2).join('/'); // "rest/v1/issues" etc
+  const isAuthUrl = url.includes('/auth/v1/');
+  let refreshedFor401 = false;
   campLog(`[CampOps] fetchWithRetry CALLED ${tag}`);
 
   for (let i = 0; i <= delays.length; i++) {
@@ -146,14 +229,41 @@ async function fetchWithRetryInner(input: RequestInfo | URL, init?: RequestInit)
     }
 
     try {
+      const breakLeft = (window as unknown as Record<string, unknown>)._campOpsBreakWrites as number | undefined;
+      if (breakLeft && isMutatingRequest(input, init)) {
+        (window as unknown as Record<string, unknown>)._campOpsBreakWrites = breakLeft - 1;
+        clearTimeout(timeoutId);
+        throw new TypeError('campOpsDebug: forced write failure');
+      }
+
       const res = await xhrFetch(input, { ...init, signal });
       clearTimeout(timeoutId);
+
+      // supabase-js does not throw on an HTTP error, and the retry loop used to only catch
+      // thrown ones, so a 401 from an expired JWT sailed through as a "successful" fetch and
+      // became a silently dropped write. Statuses are inspected here for that reason.
+      if (!res.ok && !isAuthUrl) {
+        if (res.status === 401 && !refreshedFor401 && i < delays.length) {
+          refreshedFor401 = true;
+          campLog(`[CampOps] 401 on ${tag}, refreshing token and retrying`);
+          const ok = await refreshSessionOnce();
+          if (ok) {
+            // The SDK reads the session from storage per request, so the retry below picks
+            // up the new token without us rewriting the header by hand.
+            continue;
+          }
+        }
+        if (isRetryableStatus(res.status) && i < delays.length) {
+          campLog(`[CampOps] ${res.status} on ${tag} · retrying`);
+          continue;
+        }
+      }
       return res;
     } catch (err) {
       clearTimeout(timeoutId);
       if (init?.signal?.aborted) throw err; // caller cancelled, don't retry
       if (i < delays.length) {
-        campLog(`[CampOps] fetch attempt ${i + 1} failed — retrying in ${delays[i] / 1000}s: ${String(err)}`);
+        campLog(`[CampOps] fetch attempt ${i + 1} failed, retrying in ${delays[i] / 1000}s: ${String(err)}`);
       } else {
         campLog(`[CampOps] fetch attempt ${i + 1} (final) failed: ${String(err)}`);
         throw err;
@@ -165,21 +275,58 @@ async function fetchWithRetryInner(input: RequestInfo | URL, init?: RequestInit)
 
 // No-op lock.  The default auth-js lock serializes auth ops behind a
 // navigator.locks mutex.  When something inside the lock hangs (typically a
-// network call), the lock is held and ALL subsequent Supabase calls — writes and
-// reads — queue forever behind it (the symptom: dbUpsertIssue never logs SUCCESS
+// network call), the lock is held and ALL subsequent Supabase calls · writes and
+// reads, queue forever behind it (the symptom: dbUpsertIssue never logs SUCCESS
 // or FAILED, and fetchWithRetry never even runs).  Single-tab app, so concurrent
 // refresh races aren't a real concern.
 let _lockSeq = 0;
+
+/**
+ * How long an auth operation may run before we call the client wedged.
+ *
+ * Generous: a token refresh on a slow connection is a couple of seconds, and the fetch layer's
+ * own retry budget is ~10s. Anything past this is not slow, it is stuck.
+ */
+const AUTH_WEDGE_MS = 20_000;
+
 async function lockNoOp<R>(name: string, _acquireTimeout: number, fn: () => Promise<R>): Promise<R> {
   const id = ++_lockSeq;
   campLog(`[CampOps] lockNoOp #${id} START ${name}`);
+
+  // supabase-js resolves the access token *before* it builds a request, so an auth operation
+  // that never settles takes every subsequent write with it: `.from(...).upsert()` awaits a
+  // promise that will not resolve, our fetch wrapper is never reached, and the write dies
+  // without a response, without an error, and without ever appearing in the retry logs. The
+  // optimistic row stays on screen and vanishes on the next refresh. The bug this whole
+  // change is about. Nothing downstream can observe it, so it is reported from here.
+  // Defence in depth. The known cause (an async onAuthStateChange callback making a Supabase
+  // call) is fixed in authStore, but any auth operation that never settles would wedge the
+  // whole client again. Rejecting is strictly better than hanging: a rejected refresh settles
+  // supabase-js's promise so the next operation can proceed, where a hung one poisons every
+  // write for the life of the page.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const wedge = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      campError(`[CampOps] auth op '${name}' exceeded ${AUTH_WEDGE_MS / 1000}s, failing it to keep the client usable`);
+      recordWriteFailure({
+        table: 'session',
+        op: 'AUTH',
+        status: null,
+        message: 'The connection stopped responding. Recent changes may not have been saved.',
+      });
+      reject(new Error(`auth operation timed out after ${AUTH_WEDGE_MS}ms`));
+    }, AUTH_WEDGE_MS);
+  });
+
   try {
-    const result = await fn();
+    const result = await Promise.race([fn(), wedge]);
     campLog(`[CampOps] lockNoOp #${id} DONE`);
     return result;
   } catch (err) {
     campLog(`[CampOps] lockNoOp #${id} THREW: ${String(err)}`);
     throw err;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -190,10 +337,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     // app.campcommand.app stay logged in. Per-origin storage is also what keeps the
     // marketing host (campcommand.app) session-free.
     persistSession: true,
-    // Disabled: auto-refresh fires on every visibilitychange and hangs on stale
-    // TCP, blocking everything behind it.  We refresh manually in the heartbeat and
-    // once at load (authStore.initialize).
-    autoRefreshToken: false,
+    // Re-enabled. It was turned off because auto-refresh fired on every visibilitychange and
+    // hung on stale TCP, holding the auth lock and blocking everything behind it. Both causes
+    // are now neutralised independently: `lock: lockNoOp` removes the mutex that could be held,
+    // and `_onVisibilityChanged` is stubbed out below so the visibility path never runs.
+    //
+    // Leaving it off had a worse failure of its own. supabase-js resolves the access token
+    // *before* it calls our fetch wrapper, so an expired session made `.from(...).upsert()`
+    // hang forever. The request was never issued, `fetchWithRetry` never ran, and the write
+    // died silently while the optimistic row stayed on screen. That is the "logged something,
+    // refreshed, it was gone" bug. The SDK refreshing on demand is what makes the token valid
+    // by the time the request is built.
+    autoRefreshToken: true,
     lock: lockNoOp,
   },
 });
@@ -232,6 +387,41 @@ export function clearStoredAuthSession(): void {
 // during idle periods (server-side FIN that Chrome doesn't notice), and (b)
 // refreshes the auth token before it expires, since we've disabled the SDK's
 // auto-refresh to avoid the lock-on-stale-TCP deadlock.
+/**
+ * Debug hooks for the write-durability work. Reproducing the bug is the only way to know the
+ * fix works. The failure it targets happens after an hour of idle, which is not a thing you
+ * can wait for while iterating.
+ *
+ *   campOpsDebug.expireToken()   corrupt the stored access token → next write 401s
+ *   campOpsDebug.breakWrites(n)  force the next n mutating requests to fail outright
+ */
+export function installWriteDebugHooks(): void {
+  const W = window as unknown as Record<string, unknown>;
+  const debug = (W.campOpsDebug ??= {}) as Record<string, unknown>;
+
+  debug.expireToken = () => {
+    for (const key of Object.keys(localStorage)) {
+      if (!/^sb-.+-auth-token/.test(key)) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed?.access_token) {
+          parsed.access_token = `${parsed.access_token}corrupt`;
+          parsed.expires_at = Math.floor(Date.now() / 1000) - 10;
+          localStorage.setItem(key, JSON.stringify(parsed));
+        }
+      } catch { /* chunked or unexpected shape, skip */ }
+    }
+    console.log('[campOpsDebug] access token corrupted + marked expired. Next write should 401.');
+  };
+
+  debug.breakWrites = (n = 1) => {
+    W._campOpsBreakWrites = n;
+    console.log(`[campOpsDebug] next ${n} mutating request(s) will fail.`);
+  };
+}
+
 export function startSupabaseHeartbeat(): () => void {
   const TICK_MS = 30_000;
   const REFRESH_THRESHOLD_MS = 5 * 60 * 1000; // refresh if expires within 5 min

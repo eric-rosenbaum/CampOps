@@ -139,7 +139,7 @@ export function Members() {
 
           {inviteLink && (
             <div className="mt-4 p-3 bg-paper border border-border rounded-lg">
-              <p className="text-[11px] font-medium text-ink-soft mb-2">Invitation link — share this with the invitee:</p>
+              <p className="text-[11px] font-medium text-ink-soft mb-2">Invitation link, share this with the invitee:</p>
               <div className="flex items-center gap-2">
                 <code className="flex-1 text-[11px] text-forest break-all">{inviteLink}</code>
                 <button onClick={() => handleCopy(inviteLink)} className="flex-shrink-0 p-1.5 rounded hover:bg-cream-dark transition-colors">

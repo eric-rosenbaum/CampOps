@@ -7,7 +7,7 @@ import { formatCurrency, tidy } from '@/lib/commissaryUnits';
 import { inputClass, labelClass } from './commissaryUi';
 
 /**
- * Send a LIVE reconciled order. The order isn't persisted until this confirm — so it's
+ * Send a LIVE reconciled order. The order isn't persisted until this confirm · so it's
  * current by construction and can never have gone stale. Committing writes it straight to
  * a SENT purchase order.
  */
@@ -24,10 +24,10 @@ export function SendLiveOrderModal() {
   if (!draft) return null;
 
   const summary = [
-    `Purchase order — ${draft.vendorName}`,
+    `Purchase order · ${draft.vendorName}`,
     vendor?.accountNumber ? `Account: ${vendor.accountNumber}` : null,
     '',
-    ...draft.lines.map((l) => `${tidy(l.orderQty)} ${l.purchaseUnit} — ${l.itemName}`),
+    ...draft.lines.map((l) => `${tidy(l.orderQty)} ${l.purchaseUnit} · ${l.itemName}`),
     '',
     `Subtotal: ${formatCurrency(draft.subtotal)}`,
     draft.deliveryFee > 0 ? `Delivery: ${formatCurrency(draft.deliveryFee)}` : null,
@@ -90,7 +90,7 @@ export function SendLiveOrderModal() {
             {summary}
           </pre>
           <p className="text-[11px] text-ink-faint mt-1.5">
-            Marking sent records it here — it does not email the vendor. Copy this into your own email or read it to your rep.
+            Marking sent records it here. It does not email the vendor. Copy this into your own email or read it to your rep.
           </p>
         </div>
 

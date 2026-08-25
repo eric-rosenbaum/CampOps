@@ -13,12 +13,12 @@ DECLARE
   v_waterfront uuid := 'ac38a33b-db31-4bfb-a491-13dc05fecb95';
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pools WHERE id IN (v_main_pool, v_waterfront)) THEN
-    RAISE NOTICE 'Demo Camp pools not present — skipping seed';
+    RAISE NOTICE 'Demo Camp pools not present, skipping seed';
     RETURN;
   END IF;
 
   IF EXISTS (SELECT 1 FROM pool_inspections WHERE pool_id IN (v_main_pool, v_waterfront)) THEN
-    RAISE NOTICE 'Inspections already seeded — skipping';
+    RAISE NOTICE 'Inspections already seeded, skipping';
     RETURN;
   END IF;
 

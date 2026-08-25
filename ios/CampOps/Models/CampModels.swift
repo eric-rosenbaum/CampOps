@@ -55,7 +55,7 @@ enum CampRole: String, Codable {
     // Decodes leniently, failing CLOSED to the least-privileged role.
     //
     // This used to be a plain synthesized decode, which meant a role the app didn't know about
-    // threw — and because memberships are decoded as an array, ONE unknown role failed the whole
+    // threw, and because memberships are decoded as an array, ONE unknown role failed the whole
     // `[CampMemberRow]` decode. The user then looked camp-less and was parked on the join screen
     // forever. Any role the web adds in future must degrade to read-only here, never to a lockout.
     init(from decoder: Decoder) throws {
@@ -182,7 +182,7 @@ struct CampMemberRow: Decodable {
     }
 }
 
-/// Preview of a join code from the `join_code_info` RPC — camp name and group, no membership data.
+/// Preview of a join code from the `join_code_info` RPC, camp name and group, no membership data.
 struct JoinCodeInfo: Decodable {
     let valid: Bool
     let reason: String?

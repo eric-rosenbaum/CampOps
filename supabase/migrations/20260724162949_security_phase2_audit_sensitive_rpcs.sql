@@ -1,6 +1,6 @@
 -- Log sensitive, non-row-change actions into the audit trail.
 
--- Portal-token regeneration (invalidates a guest link) — record who did it and for which retreat.
+-- Portal-token regeneration (invalidates a guest link), record who did it and for which retreat.
 create or replace function public.regenerate_portal_token(p_retreat_id uuid)
 returns text language plpgsql security definer set search_path = public as $$
 declare v_camp uuid; v_token text;

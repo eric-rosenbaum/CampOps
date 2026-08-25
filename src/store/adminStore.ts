@@ -124,7 +124,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     const email = buyerEmail.trim();
     const inviteUrl = await inviteAdmin(campId, email);
     // Email the buyer their sign-in link. If it fails (email not configured, provider error),
-    // we still return the link so the founder can send it manually — provisioning itself succeeds.
+    // we still return the link so the founder can send it manually, provisioning itself succeeds.
     const { subject, html } = buildInviteEmail(name, inviteUrl);
     const res = await sendEmail({ to: email, subject, html, fromName: 'CampCommand', fromEmail: 'invites@campcommand.app' });
     await get().load();

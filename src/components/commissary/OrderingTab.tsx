@@ -74,7 +74,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
     w.print();
   }
 
-  // Items not already on the order — no point offering a duplicate.
+  // Items not already on the order, no point offering a duplicate.
   const onOrderIds = new Set(lines.map((l) => l.itemId));
   const addable = items.filter((i) => !onOrderIds.has(i.id));
 
@@ -126,7 +126,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
             {formatQty(l.onHandBase / l.purchaseUnitInBase, l.purchaseUnit)}
           </span>
           <span className="font-mono text-[12px] text-ink-soft">
-            {l.neededBase > 0 ? formatQty(l.neededBase / l.purchaseUnitInBase, l.purchaseUnit) : <span className="text-forest/25">—</span>}
+            {l.neededBase > 0 ? formatQty(l.neededBase / l.purchaseUnitInBase, l.purchaseUnit) : <span className="text-forest/25">-</span>}
           </span>
           {editable ? (
             <div className="flex items-center gap-1.5">
@@ -144,7 +144,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
           )}
           <span className="font-mono text-[12px] text-forest">
             {l.unitPrice == null
-              ? <span className="text-forest/25" title="No price set on this item">—</span>
+              ? <span className="text-forest/25" title="No price set on this item">-</span>
               : formatCurrency(l.lineTotal)}
           </span>
           {editable && (
@@ -156,7 +156,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
       ))}
 
       {lines.length === 0 && (
-        <p className="px-4 py-4 text-[12px] text-ink-faint text-center">No items yet — add some below.</p>
+        <p className="px-4 py-4 text-[12px] text-ink-faint text-center">No items yet. Add some below.</p>
       )}
 
       {/* Add any item */}
@@ -228,7 +228,7 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
 
       {order.status === 'received' && (
         <p className="px-4 pb-3 text-[11px] text-ink-faint">
-          Received {order.receivedAt ? new Date(order.receivedAt).toLocaleDateString() : ''} — every line was booked into stock and logged.
+          Received {order.receivedAt ? new Date(order.receivedAt).toLocaleDateString() : ''}. Every line was booked into stock and logged.
         </p>
       )}
     </div>
@@ -273,7 +273,7 @@ function LiveOrderCard({ draft }: { draft: DraftOrder }) {
         <Button size="sm" variant="ghost" disabled={!finalLines.length} onClick={downloadPdf} title="Save the current order as a PDF">
           <Download className="w-3.5 h-3.5" /> PDF
         </Button>
-        <span className="font-mono text-[13px] text-forest" title="Estimated from your prices — the invoice at delivery is the actual cost">
+        <span className="font-mono text-[13px] text-forest" title="Estimated from your prices. The invoice at delivery is the actual cost">
           {formatCurrency(total)} <span className="text-[10px] font-sans text-ink-faint">est.</span>
         </span>
       </div>
@@ -292,7 +292,7 @@ function LiveOrderCard({ draft }: { draft: DraftOrder }) {
                 onSave={(n) => setOverrides((o) => ({ ...o, [l.itemId]: n }))} />
             ) : <span className="font-mono text-[12px] text-forest">{q} {l.purchaseUnit}</span>}
             <span className="font-mono text-[12px] text-forest">
-              {l.unitPrice == null ? <span className="text-forest/25" title="No price set">—</span> : formatCurrency(tidy((l.unitPrice ?? 0) * q))}
+              {l.unitPrice == null ? <span className="text-forest/25" title="No price set">-</span> : formatCurrency(tidy((l.unitPrice ?? 0) * q))}
             </span>
           </div>
         );
@@ -325,7 +325,7 @@ export function OrderingTab() {
   const [blankVendorId, setBlankVendorId] = useState('');
   const [showMath, setShowMath] = useState(false);
 
-  // Coverage window comes from the session's order cadence — no manual "generate" needed.
+  // Coverage window comes from the session's order cadence · no manual "generate" needed.
   const win = orderingWindow();
   const windowEnd = win.windowEnd;
   const fmtDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
@@ -369,7 +369,7 @@ export function OrderingTab() {
         <StatCard label="Completed" value={history.length} hint="Received or cancelled" />
       </div>
 
-      {/* Critically-low stock — always shown, even when ordering from the menu, because
+      {/* Critically-low stock, always shown, even when ordering from the menu, because
           a critical item nobody put on this week's menu is exactly what gets forgotten. */}
       {critical.length > 0 && (
         <div className="rounded-card border border-red/25 bg-red-bg px-4 py-3.5 mb-5">
@@ -377,7 +377,7 @@ export function OrderingTab() {
             <AlertTriangle className="w-4 h-4 text-red flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-body font-medium text-red/90">
-                {critical.length} item{critical.length === 1 ? ' is' : 's are'} critically low — under half the reorder level.
+                {critical.length} item{critical.length === 1 ? ' is' : 's are'} critically low, under half the reorder level.
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {critical.map((i) => (
@@ -439,33 +439,33 @@ export function OrderingTab() {
 
       {!retreatsMode && !session && (
         <p className="text-[12px] text-ink-faint mb-4">
-          No active session, so there's no menu to forecast against — suggestions here are driven purely by
+          No active session, so there's no menu to forecast against. Suggestions here are driven purely by
           each item's minimum on hand. Pick a session on the Menu tab to order against the menu too.
         </p>
       )}
       {retreatsMode && (
         <p className="text-[12px] text-ink-faint mb-4">
-          Ordering across all retreats combined — the forecast sums every group's menu in the coverage window
+          Ordering across all retreats combined. The forecast sums every group's menu in the coverage window
           above, netted against on-hand stock, in-transit deliveries, and each item's minimum.
         </p>
       )}
 
       {drafts.length > 0 && (
         <div className="mb-6">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint mb-2">To order — live, always current</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint mb-2">To order, live, always current</p>
           <div className="space-y-3">
             {drafts.map((d) => <LiveOrderCard key={d.vendorId ?? '__unassigned'} draft={d} />)}
           </div>
           <p className="text-[11px] text-ink-faint mt-2">
-            These recompute continuously from your counts and menu — tweak a quantity if you want, then Review &amp; send.
+            These recompute continuously from your counts and menu, tweak a quantity if you want, then Review &amp; send.
             Nothing is saved as an order until you send it.
           </p>
 
-          {/* The math behind every quantity — collapsed by default, for auditing/trust. */}
+          {/* The math behind every quantity, collapsed by default, for auditing/trust. */}
           <button type="button" onClick={() => setShowMath((v) => !v)}
             className="flex items-center gap-1.5 mt-3 text-[12px] font-medium text-ink-soft hover:text-forest">
             {showMath ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            Show the math — how each quantity is calculated
+            Show the math, how each quantity is calculated
           </button>
           {showMath && (() => {
             const rows = orderMath(windowEnd);
@@ -487,7 +487,7 @@ export function OrderingTab() {
                         <span className="font-mono text-[12px] text-ink">{f(r.onHandNow)}</span>
                         <span className="font-mono text-[12px] text-ink">{f(r.draw)}</span>
                         <span className="font-mono text-[12px] text-ink">{f(r.floor)}</span>
-                        <span className="font-mono text-[12px] text-ink">{r.inTransit > 0 ? f(r.inTransit) : '—'}</span>
+                        <span className="font-mono text-[12px] text-ink">{r.inTransit > 0 ? f(r.inTransit) : '-'}</span>
                         <span className="font-mono text-[12px] font-medium text-forest">{packs}</span>
                       </div>
                       <p className="text-[11px] text-ink-faint mt-0.5 leading-relaxed">
@@ -506,7 +506,7 @@ export function OrderingTab() {
 
       {drafts.length === 0 && (
         <p className="text-[13px] text-ink-faint mb-6 bg-white rounded-card border border-border px-4 py-4 sm:py-6 text-center">
-          You're covered through {windowLabel} — projected stock stays above every item's minimum. Build an order
+          You're covered through {windowLabel}. Projected stock stays above every item's minimum. Build an order
           by hand above if you want to stock up anyway.
         </p>
       )}

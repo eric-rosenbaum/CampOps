@@ -29,9 +29,9 @@ function resolveUnitOption(raw: string, name: string) {
 }
 
 // A row's fate once mapped against the camp's existing inventory:
-//  new   — no item by this name yet → create it (+ pack if a vendor is chosen)
-//  merge — item exists AND a vendor is chosen → add that vendor's pack to it
-//  skip  — item exists but no vendor to attach (nothing to do), or a repeat within the file
+//  new, no item by this name yet → create it (+ pack if a vendor is chosen)
+//  merge, item exists AND a vendor is chosen → add that vendor's pack to it
+//  skip, item exists but no vendor to attach (nothing to do), or a repeat within the file
 type Mode = 'new' | 'merge' | 'skip';
 
 interface BuiltRow {
@@ -216,7 +216,7 @@ export function CSVImportModal() {
             {result.skipped > 0 && <li className="text-ink-soft">{result.skipped} skipped (already stocked, no vendor to add).</li>}
           </ul>
           <p className="text-[12px] text-ink-soft">
-            Allergens weren't in the file — tag them on each item when you get a chance. Double-check the guessed
+            Allergens weren't in the file, tag them on each item when you get a chance. Double-check the guessed
             "stocked by" unit and pack sizes on a few too.
           </p>
           <Button className="w-full justify-center" onClick={closeModal}>Done</Button>
@@ -236,7 +236,7 @@ export function CSVImportModal() {
         <p className="text-[12px] text-ink-soft leading-relaxed">
           Paste or upload your vendor's order guide (export it as CSV from US Foods MOXē, Sysco Shop, GFS, etc.).
           Map the columns, pick the vendor it's from, and review. Names you already stock get this vendor's pack
-          added; new names become new items. Allergens and storage aren't imported — set those afterward.
+          added; new names become new items. Allergens and storage aren't imported. Set those afterward.
         </p>
 
         <div className="flex items-center gap-3">
@@ -292,7 +292,7 @@ export function CSVImportModal() {
                 )}
               </div>
               <p className="text-[11px] text-ink-faint self-end pb-2">
-                Pick a vendor to attach pack + price — and to add packs to items you already stock. Without one,
+                Pick a vendor to attach pack + price, and to add packs to items you already stock. Without one,
                 only brand-new names import, at their stock unit.
               </p>
             </div>
@@ -315,7 +315,7 @@ export function CSVImportModal() {
                       <span>{modeBadge(r.mode)}</span>
                       <span className="text-ink-soft">{r.stockUnit}</span>
                       <span className="font-mono text-ink-soft truncate">{`${r.packUnitRaw} = ${formatQty(r.packSizeRaw, r.stockUnit)}`}</span>
-                      <span className="font-mono text-ink-soft">{r.priceRaw ? `$${tidy(Number(r.priceRaw))}` : '—'}</span>
+                      <span className="font-mono text-ink-soft">{r.priceRaw ? `$${tidy(Number(r.priceRaw))}` : '-'}</span>
                     </div>
                   ))}
                 </div>

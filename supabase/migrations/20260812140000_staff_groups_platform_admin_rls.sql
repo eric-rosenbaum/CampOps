@@ -1,7 +1,7 @@
 -- staff_groups: use the tenancy helpers instead of an inlined membership check.
 --
 -- Every other table in the schema authorizes through is_camp_member() / is_camp_admin(),
--- and both helpers begin with `is_platform_admin() OR ...` — that is how a founder viewing
+-- and both helpers begin with `is_platform_admin() OR ...`. That is how a founder viewing
 -- a camp they don't belong to gets admin rights. staff_groups was the single holdout: its
 -- policies predate those helpers and were transcribed verbatim from the live database in
 -- 20260709232544_staff_groups_backfill.sql to avoid silently changing authorization.

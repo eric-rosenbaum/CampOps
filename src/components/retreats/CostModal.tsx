@@ -58,7 +58,7 @@ export function CostModal({ retreatId, costId }: { retreatId: string; costId?: s
     <Modal title={existing ? 'Edit cost line' : 'Add cost line'} onClose={closeModal} width="440px">
       <form onSubmit={handleSubmit} className="space-y-4">
         <p className="text-[12px] text-ink-soft leading-relaxed">
-          Track what this retreat costs the camp — food, staff, utilities, cleaning. Actual is
+          Track what this retreat costs the camp, food, staff, utilities, cleaning. Actual is
           optional until you know the real number; margin uses actual when set, otherwise budgeted.
         </p>
         <div>
@@ -78,7 +78,7 @@ export function CostModal({ retreatId, costId }: { retreatId: string; costId?: s
           </div>
           <div>
             <label className={labelClass}>Actual ($)</label>
-            <input type="number" step="1" min="0" value={actual} onChange={(e) => setActual(e.target.value)} className={inputClass} placeholder="—" />
+            <input type="number" step="1" min="0" value={actual} onChange={(e) => setActual(e.target.value)} className={inputClass} placeholder="-" />
           </div>
         </div>
         <div className="flex gap-2 pt-1">

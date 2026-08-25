@@ -5,7 +5,7 @@
 -- say "Join Pine Ridge Camp" and reject a bad code without creating an account first.
 --
 -- Anon-callable: the 6-character code is the secret, exactly as the invite token is. It returns
--- only the camp name, the role the code grants, and the staff group's name — never member
+-- only the camp name, the role the code grants, and the staff group's name, never member
 -- lists, never the camp id, and it does not increment use_count. Validity mirrors
 -- join_camp_with_code() exactly (active, unexpired, uses remaining), so a code that previews
 -- as valid is one that will actually join.

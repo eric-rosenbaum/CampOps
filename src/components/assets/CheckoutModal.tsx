@@ -122,7 +122,7 @@ export function CheckoutModal() {
                 onChange={(e) => setCheckedOutBy(e.target.value)}
                 className="w-full border border-border rounded-btn px-3 py-2 text-body text-forest focus:outline-none focus:ring-1 focus:ring-sage bg-white"
               >
-                <option value="">— Select staff member —</option>
+                <option value="">Select staff member</option>
                 {members.filter((m) => m.isActive).map((m) => (
                   <option key={m.id} value={m.displayName ?? m.fullName}>
                     {m.displayName ?? m.fullName}

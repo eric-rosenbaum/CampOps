@@ -64,7 +64,7 @@ export function FeedbackModal({ retreatId }: { retreatId: string }) {
         {retreat && (
           <p className="text-[12px] text-ink-soft leading-relaxed">
             Post-retreat scores for <span className="font-semibold text-forest/75">{retreat.groupName}</span>.
-            Enter a 0–5 rating for each dimension — leave blank to skip.
+            Enter a 0–5 rating for each dimension. Leave blank to skip.
           </p>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -100,7 +100,7 @@ export function FeedbackModal({ retreatId }: { retreatId: string }) {
         <div>
           <label className={labelClass}>Returning status</label>
           <select value={returningStatus} onChange={(e) => setReturningStatus(e.target.value)} className={inputClass}>
-            <option value="">— Not specified —</option>
+            <option value="">Not specified</option>
             <option value="Returning next year">Returning next year</option>
             <option value="Already booked again">Already booked again</option>
             <option value="Likely to return">Likely to return</option>

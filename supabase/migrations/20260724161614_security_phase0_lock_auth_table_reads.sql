@@ -1,4 +1,4 @@
--- SECURITY PHASE 0 — close world-readable auth-table policies.
+-- SECURITY PHASE 0, close world-readable auth-table policies.
 -- Both were `USING(true)` / `is_active=true` with no role restriction, so the `anon`
 -- role could read every camp's join codes (→ join any camp as staff) and every
 -- invitation email+token cross-tenant.

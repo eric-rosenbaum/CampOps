@@ -61,7 +61,7 @@ function BuildingBlock({ building, rooms, canManage }: { building: CampLocation;
       {building.retreatAvailable && (
         <div className="mt-2.5 space-y-1.5">
           {rooms.length === 0 ? (
-            <p className="text-[11px] text-ink-faint italic">No rooms yet — add rooms as sub-locations in Camp Info → Locations to set beds.</p>
+            <p className="text-[11px] text-ink-faint italic">No rooms yet. Add rooms as sub-locations in Camp Info → Locations to set beds.</p>
           ) : rooms.map((r) => <RoomRow key={r.id} room={r} canManage={canManage} />)}
         </div>
       )}

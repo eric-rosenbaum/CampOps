@@ -117,7 +117,7 @@ export function PoolManagement() {
         </div>
       </div>
 
-      {/* Sub-tab bar — only visible when a pool is selected */}
+      {/* Sub-tab bar, only visible when a pool is selected */}
       {activePoolId && (
         <div className="bg-paper-raised border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto overflow-y-hidden no-scrollbar">
           <div className="flex items-center gap-1">

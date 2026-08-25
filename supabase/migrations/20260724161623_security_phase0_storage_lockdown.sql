@@ -1,7 +1,7 @@
--- SECURITY PHASE 0 — remove dangerous / over-broad storage policies.
+-- SECURITY PHASE 0. Remove dangerous / over-broad storage policies.
 --
 -- issue-photos: four anon policies (added out-of-band, NOT in repo migrations) gave the
--- anonymous role full read/insert/update/DELETE with no path scoping — anyone could
+-- anonymous role full read/insert/update/DELETE with no path scoping, anyone could
 -- enumerate, download, overwrite, or wipe every camp's photos and upload arbitrary files.
 -- Remove all four, plus the broad public listing policy. The authenticated, camp-scoped
 -- upload/update/delete policies remain (staff uploads via db.ts:dbUploadPhoto still work).

@@ -53,9 +53,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     let session = (await supabase.auth.getSession()).data.session;
-    // autoRefreshToken is disabled (stale-TCP safety), so a returning user's stored access
-    // token may be expired. Refresh it once here using the refresh token, otherwise they'd
-    // appear logged out (or hit 401s) until the heartbeat fires. Keeps "remember me" working.
+    // A returning user's stored access token may already be expired. Refresh it once here
+    // using the refresh token so they don't appear logged out on the first paint. The SDK's
+    // own auto-refresh keeps it fresh from then on.
     if (session?.expires_at && session.expires_at * 1000 - Date.now() < 60_000) {
       const { data, error } = await supabase.auth.refreshSession();
       if (!error && data.session) session = data.session;
@@ -68,12 +68,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
     }
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
+    // NOTE: this callback must stay synchronous, and must never call Supabase.
+    //
+    // supabase-js awaits an async auth callback while it still holds its auth lock. A Supabase
+    // call made from inside it needs that same lock to read the access token, so it waits for a
+    // lock held by the thing waiting for it. Nothing times out: the promise simply never
+    // settles, and because the token is resolved before any request is built, EVERY later write
+    // on the page inherits the deadlock, `.from(...).upsert()` awaits forever, the fetch layer
+    // is never reached, and the write dies with no response and no error while its optimistic
+    // row stays on screen. That is the "logged something, refreshed, it was gone" bug, and it
+    // fires on TOKEN_REFRESHED, which is why it follows an idle period.
+    //
+    // The profile read is therefore pushed to a fresh task, where the lock is no longer held.
+    supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         // Set session immediately so components that check session don't race with profile fetch
         set({ session, user: session.user });
-        const profile = await fetchProfile(session.user.id);
-        set({ profile });
+        const userId = session.user.id;
+        setTimeout(() => {
+          void fetchProfile(userId)
+            .then((profile) => { if (get().user?.id === userId) set({ profile }); })
+            .catch(() => { /* profile is non-critical; the session is already applied */ });
+        }, 0);
       } else {
         set({ session: null, user: null, profile: null });
       }
@@ -95,7 +111,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
    *
    * `emailRedirectTo` is where the confirmation link lands the user. It matters more than it
    * looks: when "Confirm email" is on, signUp returns NO session, so the caller cannot finish
-   * joining a camp inline — the join has to resume after the user clicks the link in their
+   * joining a camp inline. The join has to resume after the user clicks the link in their
    * inbox. That inbox is very often a different browser (Gmail's in-app view on a phone), so
    * sessionStorage cannot carry the invite token or join code across. Putting the destination
    * in the confirmation URL is what makes the round trip survive a device switch.
@@ -120,8 +136,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   /**
    * Sign out. Never rejects, and never waits on the network longer than it has to.
    *
-   * `supabase.auth.signOut()` POSTs to /auth/v1/logout. On a stale TCP connection — the
-   * same failure this client's XHR/retry wrapper exists for — that call either retries for
+   * `supabase.auth.signOut()` POSTs to /auth/v1/logout. On a stale TCP connection. The
+   * same failure this client's XHR/retry wrapper exists for. That call either retries for
    * ~15 seconds or rejects. Callers awaited it before redirecting, so the redirect never
    * ran and the button looked dead until the page was refreshed (a refresh gets a fresh
    * connection, which is why the second attempt always worked).
@@ -155,8 +171,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   /**
    * Email a 6-digit sign-in code, creating the account if this address is new.
    *
-   * This is the staff lane. One code does the work of three separate steps — create the
-   * account, prove the address is real, and sign in — because you cannot read the code
+   * This is the staff lane. One code does the work of three separate steps. Create the
+   * account, prove the address is real, and sign in. Because you cannot read the code
    * without controlling the inbox. That's why the staff flow has no "confirm your email"
    * hop and no password to forget.
    *
@@ -185,7 +201,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       type: 'email',
     });
     if (error) {
-      if (/expired/i.test(error.message)) return 'That code has expired — request a new one.';
+      if (/expired/i.test(error.message)) return 'That code has expired, request a new one.';
       if (/invalid/i.test(error.message)) return 'That code isn’t right. Check it and try again.';
       return error.message;
     }
@@ -209,7 +225,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await Promise.race([
         supabase.auth.updateUser({ password }),
         new Promise<{ error: { message: string } }>((resolve) =>
-          setTimeout(() => resolve({ error: { message: 'The request timed out — please try again.' } }), 15000)),
+          setTimeout(() => resolve({ error: { message: 'The request timed out. Please try again.' } }), 15000)),
       ]);
       return (res as { error: { message: string } | null }).error?.message ?? null;
     } catch (e) {

@@ -56,7 +56,7 @@ function ComplianceStrip() {
             const soon = d != null && d >= 0 && d <= SOON_DAYS;
             return (
               <p key={l.id} className={`text-[12px] ${bad ? 'text-red' : soon ? 'text-amber-text' : 'text-ink'}`}>
-                {l.name}{d != null && (bad ? ` — expired` : soon ? ` — ${d}d left` : '')}
+                {l.name}{d != null && (bad ? ' · expired' : soon ? ` · ${d}d left` : '')}
               </p>
             );
           })}
@@ -89,7 +89,7 @@ function ComplianceStrip() {
           <AlertTriangle className="w-3.5 h-3.5 text-red flex-shrink-0 mt-0.5" />
           <p className="text-[11px] text-red/90 leading-relaxed">
             {outOfRange.map((t) => `${STORAGE_LABELS[t.location]} (${t.latest!.temperature}°)`).join(', ')} last logged out of range.
-            Review inventory held there — {itemsById().size > 0 ? 'check dairy and protein' : 'items may be at risk'}.
+            Review inventory held there · {itemsById().size > 0 ? 'check dairy and protein' : 'items may be at risk'}.
           </p>
         </div>
       )}
@@ -144,7 +144,7 @@ export function CostTab() {
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No session yet</h3>
           <p className="text-[13px] text-ink-soft leading-relaxed">
-            Per-diem — cost per camper per day — is measured across a session. Create one on the
+            Per-diem (cost per camper per day) is measured across a session. Create one on the
             Menu tab and set its budget to track spending against it.
           </p>
         </div>
@@ -159,7 +159,7 @@ export function CostTab() {
       <ComplianceStrip />
 
       <p className="text-[12px] text-ink-soft leading-relaxed mb-4">
-        <strong>Actual</strong> figures come from your delivery invoices (captured at receiving) — accurate whether or
+        <strong>Actual</strong> figures come from your delivery invoices (captured at receiving), accurate whether or
         not you track per-item prices. The <strong>forecast</strong> is only an estimate from the prices you've entered,
         and improves as receiving records what you actually paid.
       </p>
@@ -167,17 +167,17 @@ export function CostTab() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
         <StatCard
           label="Per-diem (actual)"
-          value={pd?.perDiemActual != null ? formatCurrency(pd.perDiemActual) : '—'}
+          value={pd?.perDiemActual != null ? formatCurrency(pd.perDiemActual) : '-'}
           hint={pd?.budget != null ? `Budget ${formatCurrency(pd.budget)}` : 'No budget set'}
           variant={perDiemVariant}
         />
         <StatCard label="Actual spend" value={formatCurrency(pd?.actualSpend ?? 0)} hint={`from invoices · ${pd?.peopleDays ?? 0} person-days so far`} />
         <StatCard
           label="Per-diem (forecast)"
-          value={forecastPerDiem != null ? formatCurrency(forecastPerDiem) : '—'}
+          value={forecastPerDiem != null ? formatCurrency(forecastPerDiem) : '-'}
           hint={forecastPerDiem != null ? 'estimate from menu prices' : 'no item prices yet'}
         />
-        <StatCard label="Planned menu cost" value={forecast > 0 ? formatCurrency(forecast) : '—'} hint="estimate · whole session" />
+        <StatCard label="Planned menu cost" value={forecast > 0 ? formatCurrency(forecast) : '-'} hint="estimate · whole session" />
       </div>
 
       {pd?.variance != null && (
@@ -228,7 +228,7 @@ export function CostTab() {
             <div key={e.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0">
               <span className="text-[12px] text-ink-faint w-24 flex-shrink-0">{new Date(`${e.date}T00:00:00`).toLocaleDateString()}</span>
               <span className="text-[12px] text-ink-soft w-20 flex-shrink-0">{CATEGORY_LABELS[e.category] ?? e.category}</span>
-              <span className="text-[13px] text-forest flex-1 truncate">{e.description ?? '—'}</span>
+              <span className="text-[13px] text-forest flex-1 truncate">{e.description ?? '-'}</span>
               <span className="font-mono text-[13px] text-forest">{formatCurrency(e.amount)}</span>
               {canManage && (
                 <button onClick={() => { if (confirm('Delete this expense?')) deleteExpense(e.id); }} className="p-1 text-forest/30 hover:text-red" aria-label="Delete">

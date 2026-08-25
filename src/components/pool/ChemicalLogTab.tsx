@@ -78,23 +78,23 @@ export function ChemicalLogTab() {
           field: 'freeChlorine',
           displayVal: `${latest.freeChlorine.toFixed(1)} ppm`,
           hint: getChemicalStatus('freeChlorine', latest.freeChlorine) === 'alert'
-            ? 'Below range — action needed'
+            ? 'Below range · action needed'
             : getChemicalStatus('freeChlorine', latest.freeChlorine) === 'warn'
-            ? 'Near limit — monitor'
+            ? 'Near limit · monitor'
             : 'Within range',
         },
         {
           field: 'ph',
           displayVal: formatChemValue(latest.ph),
-          hint: getChemicalStatus('ph', latest.ph) === 'ok' ? 'Within range' : 'Out of range — adjust',
+          hint: getChemicalStatus('ph', latest.ph) === 'ok' ? 'Within range' : 'Out of range. Adjust',
         },
         {
           field: 'alkalinity',
           displayVal: `${formatChemValue(latest.alkalinity, 0)} ppm`,
           hint: getChemicalStatus('alkalinity', latest.alkalinity) === 'warn'
-            ? 'Slightly low — monitor'
+            ? 'Slightly low · monitor'
             : getChemicalStatus('alkalinity', latest.alkalinity) === 'alert'
-            ? 'Out of range — adjust'
+            ? 'Out of range. Adjust'
             : 'Within range',
         },
         {
@@ -166,7 +166,7 @@ export function ChemicalLogTab() {
       {/* Range reference */}
       <div className="bg-blue-50 border border-blue-200 rounded-card px-4 py-3.5 mb-6">
         <p className="text-meta font-semibold uppercase tracking-wide text-blue-700 mb-2.5">
-          Acceptable ranges — health dept. & ACA standards
+          Acceptable ranges, health dept. & ACA standards
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           {(Object.keys(CHEMICAL_RANGES) as ChemicalField[]).map((field) => (
@@ -188,7 +188,7 @@ export function ChemicalLogTab() {
 
       {/* Readings table */}
       <div className="flex items-center justify-between mb-3.5">
-        <h3 className="text-card-title font-semibold text-forest">Chemical readings — last 7 days</h3>
+        <h3 className="text-card-title font-semibold text-forest">Chemical readings, last 7 days</h3>
       </div>
 
       <div className="bg-white border border-border rounded-card overflow-hidden">
@@ -227,8 +227,8 @@ export function ChemicalLogTab() {
                 <span className="truncate">{row.loggedByName}</span>
                 {/*
                   Readings taken with the phone's strip scanner carry a photo of the strip
-                  itself. It is the evidence behind the numbers — the thing an inspector or a
-                  second pair of eyes would want when a value looks wrong — so the web surfaces
+                  itself. It is the evidence behind the numbers. The thing an inspector or a
+                  second pair of eyes would want when a value looks wrong, so the web surfaces
                   it rather than leaving it stranded in storage.
                 */}
                 {row.stripPhotoUrl && (

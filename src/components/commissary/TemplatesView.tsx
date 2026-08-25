@@ -15,7 +15,7 @@ function TemplateCell({ templateId, week, dayIndex, meal }: { templateId: string
     <div className="border-r border-b border-border p-1.5 min-h-[68px] flex flex-col gap-1">
       {entries.map((e) => (
         <div key={e.id} className="group relative rounded-tag px-2 py-1 text-[11px] leading-tight border bg-cream-dark border-border text-ink">
-          <span className="truncate block">{e.label ?? '—'}</span>
+          <span className="truncate block">{e.label ?? '-'}</span>
           {canManage && (
             <button onClick={() => deleteTemplateEntry(e.id)} className="absolute -top-1 -right-1 hidden group-hover:flex w-4 h-4 rounded-full bg-forest text-cream items-center justify-center" aria-label="Remove">
               <X className="w-2.5 h-2.5" />
@@ -51,7 +51,7 @@ export function TemplatesView() {
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No menu templates yet</h3>
           <p className="text-[13px] text-ink-soft leading-relaxed mb-4">
-            Build your cycle menu once — a 1 to 3 week rotation — then apply it to any session
+            Build your cycle menu once (a 1 to 3 week rotation) then apply it to any session
             instead of planning each week from scratch.
           </p>
           {canManage && <Button size="sm" onClick={() => openModal({ kind: 'template' })}>+ New template</Button>}

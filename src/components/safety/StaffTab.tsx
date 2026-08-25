@@ -63,7 +63,7 @@ function CertSummaryCard({ certType }: { certType: CertType }) {
               <div key={staff.id} className="flex items-center justify-between py-1.5">
                 <div>
                   <span className="text-[12px] font-medium text-forest">{staff.name}</span>
-                  <span className="text-[11px] text-ink-faint ml-1.5">— {staff.title}</span>
+                  <span className="text-[11px] text-ink-faint ml-1.5">{staff.title}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {cert?.expiryDate && (
@@ -139,7 +139,7 @@ export function StaffTab() {
         <div className={`bg-white border border-border rounded-card px-4 py-4 ${expiredCerts > 0 ? 'border-l-[3px] border-l-red' : expiringCerts > 0 ? 'border-l-[3px] border-l-amber' : ''}`}>
           <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Cert compliance</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${certPct === 100 ? 'text-green-muted-text' : certPct !== null ? (expiredCerts > 0 ? 'text-red' : 'text-amber') : 'text-forest/30'}`}>
-            {certPct !== null ? `${certPct}%` : '—'}
+            {certPct !== null ? `${certPct}%` : '-'}
           </p>
           <p className="text-meta text-ink-faint mt-0.5">{totalCerts > 0 ? `${currentCerts} of ${totalCerts} certs current` : 'No certs on file'}</p>
         </div>
@@ -180,7 +180,7 @@ export function StaffTab() {
       ) : (
         <div className="bg-white border border-border rounded-card mb-6 overflow-hidden">
           <div className="px-4 py-2.5 border-b border-cream-dark bg-cream">
-            <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Active staff — {activeStaff.length} members</p>
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Active staff · {activeStaff.length} members</p>
           </div>
           {activeStaff.map((s, i, arr) => (
             <div

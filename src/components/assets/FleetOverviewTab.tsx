@@ -37,7 +37,7 @@ export function FleetOverviewTab() {
             <p className="text-body font-semibold text-red">{overdue.length} overdue checkout{overdue.length > 1 ? 's' : ''}</p>
             <p className="text-meta text-red/70 mt-0.5">
               {overdue.map((o) => o.asset.name).join(', ')}
-              {' — '}
+              {''}
               <button className="underline" onClick={() => setPageTab('checked_out')}>View checked-out tab</button>
             </p>
           </div>
@@ -51,7 +51,7 @@ export function FleetOverviewTab() {
             <p className="text-body font-semibold text-amber-text">{maintOverdue.length} asset{maintOverdue.length > 1 ? 's' : ''} with overdue service</p>
             <p className="text-meta text-amber-text/70 mt-0.5">
               {maintOverdue.map((m) => m.asset.name).join(', ')}
-              {' — '}
+              {''}
               <button className="underline" onClick={() => setPageTab('maintenance_due')}>View maintenance tab</button>
             </p>
           </div>

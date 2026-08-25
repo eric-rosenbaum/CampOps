@@ -27,7 +27,7 @@ export interface StaffGroup {
   prepostSeeUnassigned: boolean;
   /**
    * Grants this group's members camper NAMES and allergy severities. Enforced in
-   * Postgres by has_camper_health_access(), not just in the UI — health data is the
+   * Postgres by has_camper_health_access(), not just in the UI. Health data is the
    * one place where a client-side module check is not sufficient. Staff with no group
    * are denied (elsewhere, no group means legacy full access; here it fails closed).
    */
@@ -207,7 +207,7 @@ export const useCampStore = create<CampState>((set, get) => ({
     // Platform admins operate from the admin console and enter camps explicitly via "Open".
     // We DON'T auto-drop them into a camp on a fresh login (they may hold a leftover membership
     // on a seed/demo camp). But if they're mid-session viewing a camp and just refreshed the page,
-    // restore that camp — the target is kept in sessionStorage (per-tab, cleared on Exit to admin),
+    // restore that camp. The target is kept in sessionStorage (per-tab, cleared on Exit to admin),
     // so a refresh stays put while a brand-new login still lands on /admin.
     if (isPlatformAdmin) {
       const viewing = sessionStorage.getItem('campcommand_admin_camp_id');
@@ -247,7 +247,7 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     // A platform admin always operates as a full camp admin, regardless of whether they hold a
     // real membership (they may be a leftover staff member of a seed/demo camp with a limited
-    // staff group — that must not downgrade them). Synthesize an admin member and treat it as
+    // staff group. That must not downgrade them). Synthesize an admin member and treat it as
     // impersonation so the "Viewing … as CampCommand admin" banner shows.
     const isPA = get().isPlatformAdmin;
     if (!memberRow && !isPA) return;

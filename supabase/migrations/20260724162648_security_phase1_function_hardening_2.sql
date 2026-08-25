@@ -1,4 +1,4 @@
--- SECURITY PHASE 1 (cont.) — finish the function hardening.
+-- SECURITY PHASE 1 (cont.), finish the function hardening.
 
 -- (1) Pin search_path on every remaining public function still flagged mutable, by name
 --     (robust to overloads / unknown arg types).
@@ -18,7 +18,7 @@ begin
   end loop;
 end $$;
 
--- (2) handle_new_user is a trigger on auth.users — it should never be a callable API
+-- (2) handle_new_user is a trigger on auth.users. It should never be a callable API
 --     endpoint. Revoke execute from everyone (the trigger still fires as table owner).
 revoke execute on function public.handle_new_user() from public, anon, authenticated;
 

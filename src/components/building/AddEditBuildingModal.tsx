@@ -17,7 +17,7 @@ export function AddEditBuildingModal({ editId }: { editId?: string }) {
   const existing: CampLocation | null = editId ? locations.find((l) => l.id === editId) ?? null : null;
   const existingDetail = editId ? buildingDetailFor(editId) : undefined;
 
-  // Existing top-level locations that aren't already buildings — you can attach infra to one
+  // Existing top-level locations that aren't already buildings. You can attach infra to one
   // of these ("promote" it) instead of creating a duplicate location.
   const buildingIds = new Set(buildingDetails.map((b) => b.locationId));
   const candidates = locations

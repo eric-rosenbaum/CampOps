@@ -1,6 +1,6 @@
--- SECURITY PHASE 2 — audit logging.
+-- SECURITY PHASE 2, audit logging.
 -- A tamper-evident, append-only record of sensitive actions. Deliberately METADATA-ONLY
--- (actor, action, table, row id, camp, timestamp) — it does NOT store row snapshots, so the
+-- (actor, action, table, row id, camp, timestamp). It does NOT store row snapshots, so the
 -- log never becomes a second copy of camper health PII and stays clean for retention/deletion.
 
 create table if not exists public.audit_log (

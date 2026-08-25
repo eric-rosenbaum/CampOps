@@ -80,7 +80,7 @@ export interface Issue {
   isPublicReport: boolean;
   reporterName: string | null;
   reporterContact: string | null;
-  /** Which client logged this. Null on rows predating the column — show nothing, don't guess. */
+  /** Which client logged this. Null on rows predating the column, show nothing, don't guess. */
   source: IssueSource | null;
   createdAt: string;
   updatedAt: string;
@@ -521,7 +521,7 @@ export interface BuildingRoom {
 
 export interface BuildingComponent {
   id: string;
-  // The `locations` node this component lives on — either a building (top-level
+  // The `locations` node this component lives on, either a building (top-level
   // structure) location or one of its room (child) locations. Post unification,
   // this replaces the legacy building_id/room_id pair.
   locationId: string;
@@ -578,7 +578,7 @@ export interface BuildingSeasonalTask {
 // ─── Commissary ────────────────────────────────────────────────────────────────
 // Unit model note: every quantity below whose name ends in `Base` is stored in the
 // owning item's canonical base unit (each / oz / fl oz). Convert with the helpers
-// in `src/lib/commissaryUnits.ts` — never compare a Base value to a display value.
+// in `src/lib/commissaryUnits.ts`never compare a Base value to a display value.
 
 export type MealPeriod = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
@@ -597,7 +597,7 @@ export type AdjustmentReason =
  * Why something was thrown away. Only ever set on a `waste` adjustment (enforced by a
  * CHECK constraint), and null on every row logged before categorisation existed.
  *
- * The split that matters is reducible vs not — see `REDUCIBLE_WASTE` in
+ * The split that matters is reducible vs not. See `REDUCIBLE_WASTE` in
  * `commissaryUnits.ts`. Ordering and forecasting can move spoilage, overproduction and
  * damage; they cannot move trim loss or what campers leave on the plate.
  */
@@ -658,8 +658,8 @@ export interface InventoryItem {
   category: InventoryCategory;
   storageLocation: StorageLocation;
 
-  // Unit model. The two `*InBase` factors are facts about THIS item — a case of
-  // eggs is 360 each — so no generic unit table can supply them.
+  // Unit model. The two `*InBase` factors are facts about THIS item, a case of
+  // eggs is 360 each, so no generic unit table can supply them.
   dimension: 'count' | 'weight' | 'volume';
   baseUnit: string;
   stockUnit: string;
@@ -670,7 +670,7 @@ export interface InventoryItem {
   unitPrice: number | null;
 
   onHandBase: number;
-  /** Minimum on hand — the safety floor ordering keeps you above (formerly "par"). */
+  /** Minimum on hand. The safety floor ordering keeps you above (formerly "par"). */
   parLevelBase: number;
   /** When on-hand was last affirmatively counted/set. null = never (e.g. a fresh import). */
   lastCountedAt: string | null;
@@ -680,7 +680,7 @@ export interface InventoryItem {
   vendorId: string | null;
   /** Canonical allergen slugs. Recipes derive theirs from these by union. */
   allergens: string[];
-  /** Dietary tags (vegetarian/vegan/kosher/halal) — accommodations, kept apart from allergens. */
+  /** Dietary tags (vegetarian/vegan/kosher/halal), accommodations, kept apart from allergens. */
   dietary: string[];
   notes: string | null;
   sortOrder: number;
@@ -689,7 +689,7 @@ export interface InventoryItem {
 }
 
 /**
- * One vendor's pack for an item — how that vendor sells it, in the item's base unit.
+ * One vendor's pack for an item, how that vendor sells it, in the item's base unit.
  * An item can have several; the one flagged `isDefault` mirrors the item's own
  * purchaseUnit/purchaseUnitInBase/unitPrice columns and drives order generation until a
  * line is switched to another vendor. See the multi-vendor migration.
@@ -732,7 +732,7 @@ export interface InventoryAdjustment {
   deltaBase: number;
   resultingOnHandBase: number;
   reason: AdjustmentReason;
-  /** Set only when `reason === 'waste'`. null on pre-categorisation rows — never assume a bucket. */
+  /** Set only when `reason === 'waste'`. null on pre-categorisation rows, never assume a bucket. */
   wasteCategory: WasteCategory | null;
   notes: string | null;
   adjustedBy: string | null;
@@ -827,7 +827,7 @@ export type OrderSource = 'menu' | 'par';
 export interface PurchaseOrder {
   id: string;
   vendorId: string | null;
-  /** Frozen at generation — the order stays readable if the vendor is deleted. */
+  /** Frozen at generation. The order stays readable if the vendor is deleted. */
   vendorName: string;
   status: OrderStatus;
   source: OrderSource;
@@ -839,7 +839,7 @@ export interface PurchaseOrder {
   deliveryInstructions: string | null;
   createdBy: string | null;
   sentAt: string | null;
-  /** Expected delivery date, set when the order is sent — drives the in-transit projection. */
+  /** Expected delivery date, set when the order is sent, drives the in-transit projection. */
   expectedDelivery: string | null;
   receivedAt: string | null;
   /** Actual invoiced total, set at receiving; drives per-diem actual spend when present. */
@@ -864,7 +864,7 @@ export interface PurchaseOrderLine {
   orderQty: number;
   unitPrice: number | null;
   lineTotal: number;
-  // Receiving actuals — null until received. What was booked into stock is
+  // Receiving actuals, null until received. What was booked into stock is
   // receivedQty ?? orderQty (see the receive_purchase_order RPC).
   receivedQty: number | null;
   receivedUnitPrice: number | null;
@@ -920,7 +920,7 @@ export interface ProductionTask {
 }
 
 /**
- * A single time-phased prep task — one recipe step (or an auto freezer-pull), scheduled
+ * A single time-phased prep task, one recipe step (or an auto freezer-pull), scheduled
  * to the day it must be done (serviceDate − leadDays) and independently checkable. Drives
  * the "Prep due today" board.
  */
@@ -1115,7 +1115,7 @@ export interface CommissaryFile {
 
 // ─── Implementation files (white-glove onboarding hand-off) ─────────────────────
 // Raw source files a camp sends us during setup so our team can load their data. Private,
-// camp-scoped bucket + metadata row. Never deleted from the app — see the migration.
+// camp-scoped bucket + metadata row. Never deleted from the app. See the migration.
 
 export const IMPLEMENTATION_CATEGORIES = [
   'locations', 'staff', 'campers', 'sessions', 'inventory', 'vendors', 'retreats', 'other',
@@ -1197,6 +1197,23 @@ export interface RetreatSpace {
   updatedAt: string;
 }
 
+/** One named person on a retreat's roster. locationId null = not yet placed in a room. */
+export interface RetreatGuest {
+  id: string;
+  campId: string;
+  retreatId: string;
+  fullName: string;
+  subgroup: string | null;
+  gender: string | null;
+  dietary: string | null;
+  needsAccessible: boolean;
+  notes: string | null;
+  locationId: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RetreatHousing {
   id: string;
   campId: string;
@@ -1207,9 +1224,14 @@ export interface RetreatHousing {
   /** Snapshot so a deleted space (or renamed dorm) still reads. */
   spaceName: string | null;
   subgroupName: string | null;
+  /** Total occupancy: unnamedCount + the number of named guests placed in this room. */
   peopleCount: number;
+  /** People booked here as a bare number, with no name attached. */
+  unnamedCount: number;
   notes: string | null;
   locked: boolean;
+  /** True when peopleCount is maintained from the guest roster rather than typed by hand. */
+  rosterDriven: boolean;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;

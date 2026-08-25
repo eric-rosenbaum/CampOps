@@ -1,12 +1,12 @@
-# Camp Pinecrest — the marketing camp
+# Camp Pinecrest. The marketing camp
 
 The camp to build marketing content in. Named to match the landing page, whose hero card
-already reads *"Today at Pinecrest · Day 12 of 54 · 142 campers on site"* — so screenshots and
+already reads *"Today at Pinecrest · Day 12 of 54 · 142 campers on site"*, so screenshots and
 marketing copy agree instead of quietly contradicting each other.
 
 ## Scope
 
-This is the **only** camp demo tooling may write to. See `../README.md` — every other camp in
+This is the **only** camp demo tooling may write to. See `../README.md`every other camp in
 the project holds real data. Scope every `delete`/`update` in this folder to the camp id below
 and check the `where camp_id` clause before running anything.
 
@@ -38,7 +38,7 @@ The clone brought over scaffolding, not content. Starting point:
 |---|---|---|
 | Locations | 12 (+10 categories) | usable base |
 | Safety & Compliance | 13 items | usable base |
-| Issues & Repairs | 10 | inherited seed junk — replace |
+| Issues & Repairs | 10 | inherited seed junk · replace |
 | Pre/Post checklists | 5 | thin |
 | Assets & Vehicles | 4 | thin |
 | Pool | 2 pools, 0 equipment, 1 reading | needs building |
@@ -59,7 +59,7 @@ Five personas with distinct initial pairs, so the avatar circles read apart at a
 | Priya Shah | PS | staff (waterfront) |
 | Luis Ortega | LO | staff (kitchen) |
 
-No password, no identity row — they cannot sign in. They exist to be believable names on a
+No password, no identity row. They cannot sign in. They exist to be believable names on a
 board. Eric's own account is also a member, as admin.
 
 ## Adding photos

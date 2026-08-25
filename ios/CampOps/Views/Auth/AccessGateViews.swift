@@ -3,7 +3,7 @@ import SwiftUI
 /// Blocks a camp that is suspended or whose demo has expired.
 ///
 /// The web app gates every camp route on `currentCamp.status !== 'active'`. iOS had no notion
-/// of camp status at all, so a camp suspended for non-payment — or a 30-day demo that ended —
+/// of camp status at all, so a camp suspended for non-payment, or a 30-day demo that ended -
 /// stayed fully usable on the phone. This is the missing gate.
 struct CampBlockedView: View {
     @EnvironmentObject private var authManager: AuthManager

@@ -62,11 +62,11 @@ function MenuCell({ week, dayIndex, meal }: { week: number; dayIndex: number; me
             }`}
             title={
               unlinked
-                ? 'Free text — excluded from ordering demand and allergen totals'
+                ? 'Free text, excluded from ordering demand and allergen totals'
                 : conflicted
-                  ? `Conflicts with campers: ${conflicts.map((c) => `${restrictionLabel(c.allergen)} (${c.camperCount}${c.anaphylacticCount > 0 ? `, ${c.anaphylacticCount} anaphylactic` : ''})`).join('; ')}${allCovered ? ' — replacement plated' : ''}`
+                  ? `Conflicts with campers: ${conflicts.map((c) => `${restrictionLabel(c.allergen)} (${c.camperCount}${c.anaphylacticCount > 0 ? `, ${c.anaphylacticCount} anaphylactic` : ''})`).join('; ')}${allCovered ? 'replacement plated' : ''}`
                   : allergens.length
-                    ? `Contains ${allergens.map((a) => restrictionLabel(a)).join(', ')} — no camper affected`
+                    ? `Contains ${allergens.map((a) => restrictionLabel(a)).join(', ')}, no camper affected`
                     : 'No major allergens'
             }
           >
@@ -74,8 +74,8 @@ function MenuCell({ week, dayIndex, meal }: { week: number; dayIndex: number; me
             <span className="flex items-center gap-1">
               {unlinked && <Link2Off className="w-2.5 h-2.5 flex-shrink-0 opacity-50" />}
               {isItem && <Package className="w-2.5 h-2.5 flex-shrink-0 opacity-50" />}
-              <span className="truncate">{e.label ?? '—'}</span>
-              {anaphylactic && !allCovered && <span className="font-bold flex-shrink-0">⚠</span>}
+              <span className="truncate">{e.label ?? '-'}</span>
+              {anaphylactic && !allCovered && <span className="font-bold flex-shrink-0">!</span>}
               {allCovered && <span className="flex-shrink-0" title="Replacement plated">✓</span>}
             </span>
             {canManage && (
@@ -205,7 +205,7 @@ export function MenuTab() {
   const distinctCounts = new Set(mealBreakdown.flatMap((m) => m.days.map((d) => d.count)));
   const attendanceVaries = distinctCounts.size > 1 || !distinctCounts.has(total);
   // Days that depart from that meal's own baseline. The baseline has to be the session's
-  // number, not the week's max — a single visiting day is the exception, and measuring
+  // number, not the week's max, a single visiting day is the exception, and measuring
   // against the max would flag the six ordinary days instead of the one unusual one.
   const exceptions = mealBreakdown.flatMap((m) => {
     const base = sessionMealBase(session, m.meal);
@@ -225,7 +225,7 @@ export function MenuTab() {
         const items = entriesForWeek(activeWeek)
           .filter((e) => e.dayIndex === d && e.mealPeriod === meal)
           .sort((a, b) => a.sortOrder - b.sortOrder)
-          .map((e) => e.label ?? '—');
+          .map((e) => e.label ?? '-');
         cells.push({ meal: MEAL_PERIOD_LABELS[meal], day: dayLabels[d], items });
       }
     }
@@ -242,13 +242,13 @@ export function MenuTab() {
     <div className="flex-1 overflow-y-auto pb-6">
       <ViewToggle menuView={menuView} setMenuView={setMenuView} />
       <div className="px-4 sm:px-7 pt-4">
-      {/* Head count — the number everything downstream scales from. */}
+      {/* Head count. The number everything downstream scales from. */}
       <div className="bg-white rounded-card border border-border px-4 py-3 mb-4">
         <div className="flex items-start gap-3">
           {attendanceVaries ? (
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">
-                Head count by meal — week {activeWeek}
+                Head count by meal · week {activeWeek}
               </p>
               <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-1">
                 {mealBreakdown.map((m) => (
@@ -272,7 +272,7 @@ export function MenuTab() {
           <p className="text-[11px] text-ink-soft leading-relaxed max-w-md">
             {session.camperCount.toLocaleString()} campers + {session.staffCount.toLocaleString()} staff.
             {attendanceVaries
-              ? ' Each meal scales to its own count — per-meal overrides and day events are already applied.'
+              ? ' Each meal scales to its own count, per-meal overrides and day events are already applied.'
               : ' All recipe yields and ordering quantities scale to this number.'}
           </p>
           <div className="flex-1" />
@@ -320,7 +320,7 @@ export function MenuTab() {
             <ChevronLeft className="w-4 h-4" />
           </button>
           <p className="text-[13px] font-semibold text-forest min-w-[240px] text-center">
-            Week {activeWeek} — {fmtDate(weekStart)} – {fmtDate(weekEnd)}
+            Week {activeWeek} · {fmtDate(weekStart)} – {fmtDate(weekEnd)}
           </p>
           <button
             onClick={() => setActiveWeek(Math.min(weeks, activeWeek + 1))}

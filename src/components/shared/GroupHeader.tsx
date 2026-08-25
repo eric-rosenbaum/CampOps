@@ -1,7 +1,7 @@
 /**
  * A ruled section heading: label, a dotted leader running to the right margin, and a count.
  *
- * The leader is doing work, not decoration — it ties the label to its count across the width
+ * The leader is doing work, not decoration. It ties the label to its count across the width
  * of the list the way a printed index does, so the eye can pick up "how many" without leaving
  * the heading.
  */

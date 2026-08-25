@@ -11,7 +11,7 @@ export function PlumbingTab() {
 
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6 space-y-7">
-      {/* Shutoff valve map — the emergency reference */}
+      {/* Shutoff valve map. The emergency reference */}
       <section>
         <h3 className="text-card-title font-semibold text-forest mb-1">Shutoff valves</h3>
         <p className="text-meta text-ink-faint mb-3">Where to cut the water in a hurry.</p>

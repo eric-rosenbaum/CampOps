@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, TreePine } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { CampCommandMark } from '@/components/shared/CampCommandMark';
 
 // Styled element map so the Markdown renders as a clean, readable legal document
 // (no @tailwindcss/typography dependency required).
@@ -37,13 +38,11 @@ const components: Components = {
 export function MarkdownDoc({ content }: { content: string }) {
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="min-h-screen w-full bg-cream">
       <header className="border-b border-border bg-white/70 backdrop-blur sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-sage rounded-btn flex items-center justify-center">
-              <TreePine className="w-3.5 h-3.5 text-forest" />
-            </div>
+            <CampCommandMark size={28} decorative />
             <span className="text-[14px] font-semibold text-forest">CampCommand</span>
           </div>
           <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-[13px] text-ink-soft hover:text-forest transition-colors">

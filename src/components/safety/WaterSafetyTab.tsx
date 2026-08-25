@@ -13,7 +13,7 @@ function CertPill({ cert, onClick }: { cert: StaffCertification | undefined; onC
   if (!cert) {
     return (
       <button onClick={onClick} className="text-[10px] px-2 py-0.5 rounded-tag bg-cream-dark text-ink-faint cursor-pointer hover:bg-cream-dark/80">
-        — N/A
+ · N/A
       </button>
     );
   }
@@ -144,7 +144,7 @@ export function WaterSafetyTab() {
         >
           <p className="text-meta font-semibold uppercase tracking-wide text-ink-faint">Rescue equipment</p>
           <p className={`font-mono font-semibold text-stat mt-1 ${safetyEquipTotal > 0 ? (safetyEquipOk === safetyEquipTotal ? 'text-green-muted-text' : 'text-amber') : 'text-forest/30'}`}>
-            {safetyEquipTotal > 0 ? `${safetyEquipOk} of ${safetyEquipTotal}` : '—'}
+            {safetyEquipTotal > 0 ? `${safetyEquipOk} of ${safetyEquipTotal}` : '-'}
           </p>
           <p className="text-meta text-ink-faint mt-0.5">{safetyEquipTotal > 0 ? 'Items operational' : 'View pool equipment'}</p>
         </button>

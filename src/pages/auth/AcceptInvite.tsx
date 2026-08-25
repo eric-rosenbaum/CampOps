@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { TreePine, Lock, Mail } from 'lucide-react';
+import { Lock, Mail } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
+import { CampCommandMark } from '@/components/shared/CampCommandMark';
 
 type Info = { email: string; campName: string; role: string };
 type Phase = 'loading' | 'invalid' | 'ready' | 'joining' | 'confirm-email' | 'done';
@@ -19,7 +20,7 @@ function roleLabel(role: string): string {
 
 // Accept an invitation. The email is LOCKED to what the invite was sent to (read from the token):
 // the invitee just sets a password and signs in. Works for the initial customer admin and for any
-// team member a camp admin invites — same link, same flow.
+// team member a camp admin invites, same link, same flow.
 export function AcceptInvite() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
@@ -116,7 +117,7 @@ export function AcceptInvite() {
     <div className="min-h-screen w-full flex items-center justify-center bg-paper p-4 sm:p-6">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-cream" /></div>
+          <CampCommandMark size={36} decorative />
           <span className="text-lg font-semibold text-forest">CampCommand</span>
         </div>
 

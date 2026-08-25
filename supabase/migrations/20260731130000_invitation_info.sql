@@ -1,5 +1,5 @@
 -- Expose an invite's details (email, camp, role, validity) from its token so the acceptance page
--- can LOCK the email to what the invite was sent to. Anon-callable — the token is the secret.
+-- can LOCK the email to what the invite was sent to. Anon-callable. The token is the secret.
 CREATE OR REPLACE FUNCTION public.invitation_info(p_token text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE v_inv public.camp_invitations%ROWTYPE; v_camp text;

@@ -10,7 +10,7 @@ import SwiftUI
 /// emailed sign-in code and invite exactly the confusion we removed.
 ///
 /// The order of steps is what keeps the two codes apart. The join code is entered first, on its
-/// own screen, and is checked against the server before an email address is ever requested — so
+/// own screen, and is checked against the server before an email address is ever requested · so
 /// by the time a sign-in code arrives, the join code is already spent and out of sight. The
 /// screen naming follows: "join code" identifies the camp, "sign-in code" proves the address.
 struct CreateAccountWithCodeView: View {

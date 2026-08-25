@@ -2,7 +2,7 @@
 //
 // The app is not on the App Store yet, so IOS_APP_STORE_URL is deliberately empty and every
 // entry point checks `shouldOfferAppDownload()` first. With no URL set the handoff screen is
-// inert — it redirects straight through to the dashboard — so this can ship before the app
+// inert (it redirects straight through to the dashboard) so this can ship before the app
 // does. Fill in the URL (App Store or TestFlight) to turn it on; nothing else needs changing.
 export const IOS_APP_STORE_URL = '';
 

@@ -53,7 +53,7 @@ export function FlagIssueModal() {
 
   return (
     <Modal
-      title={hasExistingIssue ? `Edit issue — ${equip.name}` : `Flag issue — ${equip.name}`}
+      title={hasExistingIssue ? `Edit issue · ${equip.name}` : `Flag issue · ${equip.name}`}
       onClose={closeAllModals}
       width="440px"
     >
@@ -73,8 +73,8 @@ export function FlagIssueModal() {
         <div>
           <label className={labelClass}>Severity *</label>
           <select {...register('status', { required: true })} className={inputClass}>
-            <option value="warn">Warning — service needed soon</option>
-            <option value="alert">Alert — out of service / needs repair</option>
+            <option value="warn">Warning, service needed soon</option>
+            <option value="alert">Alert, out of service / needs repair</option>
           </select>
         </div>
 
@@ -84,7 +84,7 @@ export function FlagIssueModal() {
             {...register('detail', { required: 'Description is required' })}
             className={`${inputClass} resize-none`}
             rows={3}
-            placeholder="Describe the issue — what's wrong, when it was noticed, any immediate action taken…"
+            placeholder="Describe the issue, what's wrong, when it was noticed, any immediate action taken…"
           />
           {errors.detail && <p className="text-meta text-red mt-0.5">{errors.detail.message}</p>}
         </div>

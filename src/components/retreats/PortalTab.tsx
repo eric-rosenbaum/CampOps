@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { Copy, Check, ExternalLink, RefreshCw } from 'lucide-react';
-import { FilterPill } from '@/components/shared/FilterPill';
 import { Badge } from './retreatUi';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
-import type { Retreat } from '@/lib/types';
 import { fmtDateFull } from './retreatUi';
 import { todayStr } from '@/lib/utils';
 
@@ -12,7 +10,7 @@ const today = () => todayStr();
 
 export function PortalTab() {
   const {
-    retreats, selectedRetreat, setActiveRetreat, docsFor, housingFor, paymentsFor,
+    selectedRetreat, docsFor, housingFor, paymentsFor,
     updateRetreat, portalUrl, regeneratePortalToken,
   } = useRetreatStore();
   const { can } = useAuth();
@@ -22,7 +20,7 @@ export function PortalTab() {
 
   const retreat = selectedRetreat();
 
-  if (retreats.length === 0 || !retreat) {
+  if (!retreat) {
     return (
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="max-w-md mx-auto text-center mt-24">
@@ -60,7 +58,7 @@ export function PortalTab() {
   async function regenerateLink() {
     if (!canManage || regenerating || !retreat) return;
     const ok = window.confirm(
-      'Generate a new portal link? The current link will stop working immediately — anyone who already has it will lose access, and you’ll need to share the new link with the group.',
+      'Generate a new portal link? The current link will stop working immediately, anyone who already has it will lose access, and you’ll need to share the new link with the group.',
     );
     if (!ok) return;
     setRegenerating(true);
@@ -104,21 +102,14 @@ export function PortalTab() {
 
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
-      {/* Pill bar */}
-      <div className="flex gap-2 flex-wrap mb-4">
-        {retreats.map((r) => (
-          <FilterPill key={r.id} label={pillLabel(r)} active={r.id === retreat.id} onClick={() => setActiveRetreat(r.id)} />
-        ))}
-      </div>
-
       {/* Portal preview (dark) */}
       <div className="bg-forest rounded-card px-6 py-5 mb-6">
         <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
           <div className="min-w-0">
-            <p className="text-[14px] font-semibold text-white">Guest portal — {retreat.groupName}</p>
+            <p className="text-[14px] font-semibold text-white">Guest portal · {retreat.groupName}</p>
             <p className="text-[11px] font-mono text-sage-light mt-1 break-all">{url}</p>
             <p className="text-[11px] text-white/50 mt-2 leading-relaxed max-w-md">
-              Anyone with this link can open the portal — there's no password. Share it only with the group's coordinator.
+              Anyone with this link can open the portal, there's no password. Share it only with the group's coordinator.
             </p>
           </div>
           <div className="flex gap-2 flex-shrink-0">
@@ -168,12 +159,12 @@ export function PortalTab() {
       <div className="bg-white rounded-card border border-border overflow-hidden mb-6">
         <SettingRow
           title="Deposit due date"
-          desc="Shown in the guest portal — paying the deposit holds their dates"
+          desc="Shown in the guest portal, paying the deposit holds their dates"
           right={<span className="font-mono text-[13px] font-semibold text-ink">{deadlineLabel(retreat.depositDue)}</span>}
         />
         <SettingRow
           title="Housing submission deadline"
-          desc="After this date the group cannot submit housing — ops must contact them directly (portal defaults to 1 week before arrival)"
+          desc="After this date the group cannot submit housing. Ops must contact them directly (portal defaults to 1 week before arrival)"
           right={<span className="font-mono text-[13px] font-semibold text-ink">{deadlineLabel(retreat.housingDeadline)}</span>}
         />
         <SettingRow
@@ -239,7 +230,7 @@ export function PortalTab() {
             {[
               'Guided checklist with countdown & progress',
               'Sign the retreat agreement',
-              depositApplies ? (depositOk ? 'Deposit status (paid · dates held)' : 'Deposit due — pay to hold dates') : 'Booking overview',
+              depositApplies ? (depositOk ? 'Deposit status (paid · dates held)' : 'Deposit due. Pay to hold dates') : 'Booking overview',
               housingLocked ? 'Finalized housing assignments (read only)' : 'Housing preferences submission',
               headcountConfirmed ? 'Final headcount (confirmed)' : 'Confirm final headcount',
               coiOk ? 'COI (received)' : 'Upload certificate of insurance',
@@ -253,7 +244,7 @@ export function PortalTab() {
           <p className="text-[12px] font-semibold text-red uppercase tracking-wide mb-2.5">Group cannot access or edit</p>
           <ul className="text-[13px] text-red-text leading-[1.9]">
             {[
-              'Edit housing directly (locked — request only)',
+              'Edit housing directly (locked · request only)',
               'Edit menu directly (request only)',
               'Change headcount (once cutoff passes)',
               "View other groups' information",
@@ -296,10 +287,6 @@ function ToggleBadge({ on, onLabel, offLabel, disabled, onToggle }: {
   );
 }
 
-function pillLabel(r: Retreat): string {
-  const first = r.groupName.split(' ').slice(0, 2).join(' ');
-  return r.status === 'active' ? `${first} (active)` : first;
-}
 
 function deadlineLabel(d: string | null): string {
   if (!d) return 'Not set';

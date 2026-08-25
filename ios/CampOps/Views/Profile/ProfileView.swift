@@ -89,7 +89,7 @@ struct ProfileView: View {
         .cardSurface(padding: Spacing.xl, radius: Radius.lg)
     }
 
-    // Members of more than one camp had no way to switch on iOS — the app silently picked
+    // Members of more than one camp had no way to switch on iOS. The app silently picked
     // the saved-or-first camp and stayed there. The web app has had a switcher all along.
     private var campSwitcher: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {

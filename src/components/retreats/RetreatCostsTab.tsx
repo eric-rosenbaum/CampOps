@@ -46,7 +46,7 @@ export function RetreatCostsTab() {
     );
   }
 
-  // Year aggregate — driven entirely by the shared financialsFor calc so these totals always
+  // Year aggregate, driven entirely by the shared financialsFor calc so these totals always
   // match the Active-retreat panel and Overview (expected shows the moment a group is scheduled).
   let billed = 0, collected = 0, depositsIn = 0, depositsDue = 0;
   for (const r of yearRetreats) {
@@ -183,7 +183,7 @@ function GroupFinanceCard({
         </div>
       )}
       {fin.source === 'estimate' && fin.expected > 0 && (
-        <p className="px-4 pb-3 -mt-1 text-[11px] text-ink-faint">Showing the rate estimate — send an invoice to lock the billed amount.</p>
+        <p className="px-4 pb-3 -mt-1 text-[11px] text-ink-faint">Showing the rate estimate. Send an invoice to lock the billed amount.</p>
       )}
     </div>
   );

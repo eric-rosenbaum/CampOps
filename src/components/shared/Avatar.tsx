@@ -1,4 +1,4 @@
-// The web half of iOS's AvatarCircle (ios/CampOps/Views/Shared/AvatarCircle.swift) — same
+// The web half of iOS's AvatarCircle (ios/CampOps/Views/Shared/AvatarCircle.swift) · same
 // sage circle, same forest initials, so a person is recognisable at a glance on either client.
 //
 // A name chip is text you have to read; a coloured circle is something you recognise. In a list

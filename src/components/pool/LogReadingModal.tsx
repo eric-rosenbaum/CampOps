@@ -196,10 +196,10 @@ export function LogReadingModal() {
         <div>
           <label className={labelClass}>Pool status</label>
           <select {...register('poolStatus')} className={inputClass}>
-            <option value="open_all_clear">Open — all readings in range</option>
-            <option value="open_monitoring">Open — monitoring</option>
-            <option value="closed_corrective">Closed — corrective action in progress</option>
-            <option value="closed_retest">Closed — awaiting re-test</option>
+            <option value="open_all_clear">Open, all readings in range</option>
+            <option value="open_monitoring">Open · monitoring</option>
+            <option value="closed_corrective">Closed, corrective action in progress</option>
+            <option value="closed_retest">Closed · awaiting re-test</option>
           </select>
         </div>
 

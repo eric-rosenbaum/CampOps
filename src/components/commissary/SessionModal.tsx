@@ -29,7 +29,7 @@ export function SessionModal({ editId }: { editId?: string }) {
   const staff = Number(staffCount) || 0;
   const total = targetPortions(campers, staff);
 
-  // #8 — attendance can differ by meal. Off by default (same count for every meal).
+  // #8. Attendance can differ by meal. Off by default (same count for every meal).
   const [perMeal, setPerMeal] = useState(existing?.mealCounts != null);
   const [mealCounts, setMealCounts] = useState<Record<string, string>>(() => {
     const src = existing?.mealCounts ?? {};
@@ -137,7 +137,7 @@ export function SessionModal({ editId }: { editId?: string }) {
           </div>
         </div>
 
-        {/* #8 — per-meal attendance */}
+        {/* #8, per-meal attendance */}
         <div className="rounded-card border border-border px-4 py-3 space-y-3">
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input type="checkbox" checked={perMeal} onChange={(e) => setPerMeal(e.target.checked)} className="accent-sage" />
@@ -145,7 +145,7 @@ export function SessionModal({ editId }: { editId?: string }) {
           </label>
           <p className="text-[11px] text-ink-faint leading-relaxed">
             {perMeal
-              ? `Set the head count for each meal — some campers go home for dinner, or arrive early for breakfast. Leave a meal blank to use the ${total.toLocaleString()} total. Recipe and ordering quantities scale per meal. One-off changes for a single date are handled on the menu with meal events.`
+              ? `Set the head count for each meal, some campers go home for dinner, or arrive early for breakfast. Leave a meal blank to use the ${total.toLocaleString()} total. Recipe and ordering quantities scale per meal. One-off changes for a single date are handled on the menu with meal events.`
               : `Every meal is cooked for the ${total.toLocaleString()} total. Turn this on if some meals have fewer or more people.`}
           </p>
           {perMeal && (
@@ -164,19 +164,19 @@ export function SessionModal({ editId }: { editId?: string }) {
           )}
         </div>
 
-        {/* Ordering cadence — the weekly rhythm the order coverage window is built from. */}
+        {/* Ordering cadence. The weekly rhythm the order coverage window is built from. */}
         <div className="rounded-card border border-border px-4 py-3 space-y-3">
           <p className="text-[13px] font-medium text-ink">Ordering cadence</p>
           <p className="text-[11px] text-ink-faint leading-relaxed">
             When you take inventory, place orders, and receive them. The ordering view covers you until the
-            delivery after the next one — no "generate" needed. Days are optional; blank uses the start date's weekday.
+            delivery after the next one · no "generate" needed. Days are optional; blank uses the start date's weekday.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {([['Count day', countDay, setCountDay], ['Order day', orderDay, setOrderDay], ['Delivery day', deliveryDay, setDeliveryDay]] as const).map(([lbl, val, set]) => (
               <div key={lbl}>
                 <label className="block text-[11px] font-medium text-ink-soft mb-1">{lbl}</label>
                 <select value={val} onChange={(e) => set(e.target.value)} className={inputClass}>
-                  <option value="">—</option>
+                  <option value="">-</option>
                   {WEEKDAYS.map((d) => <option key={d} value={d}>{d[0].toUpperCase() + d.slice(1)}</option>)}
                 </select>
               </div>

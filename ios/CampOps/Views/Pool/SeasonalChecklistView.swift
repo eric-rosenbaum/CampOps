@@ -95,7 +95,7 @@ private struct PhaseSection: View {
                 .scaleEffect(x: 1, y: 1.2, anchor: .center)
 
             if tasks.isEmpty {
-                Text(canManage ? "No tasks yet — tap + to add" : "No tasks added yet.")
+                Text(canManage ? "No tasks yet. Tap + to add" : "No tasks added yet.")
                     .font(.campBody).foregroundStyle(Color.forest.opacity(0.55))
                     .padding(.vertical, Spacing.xs)
             } else {

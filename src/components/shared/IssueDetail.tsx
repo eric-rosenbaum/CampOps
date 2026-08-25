@@ -73,7 +73,7 @@ export function IssueDetail({ issue }: Props) {
       userId: currentUser.id,
       userName: currentUser.name,
       action: cost != null
-        ? `Marked resolved by ${currentUser.name} — actual cost $${cost.toLocaleString()}`
+        ? `Marked resolved by ${currentUser.name}, actual cost $${cost.toLocaleString()}`
         : `Marked resolved by ${currentUser.name}`,
       timestamp: new Date().toISOString(),
     });
@@ -174,7 +174,7 @@ export function IssueDetail({ issue }: Props) {
           )}
         </div>
 
-        {/* Reporter info — public reports only */}
+        {/* Reporter info, public reports only */}
         {issue.isPublicReport && (issue.reporterName || issue.reporterContact) && (
           <div>
             <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">Reported by</p>
@@ -208,14 +208,14 @@ export function IssueDetail({ issue }: Props) {
           <div className="space-y-1">
             <div className="flex justify-between text-[13px]">
               <span className="text-ink-soft">Estimated</span>
-              <span className="font-medium text-forest">{issue.estimatedCostDisplay ?? '—'}</span>
+              <span className="font-medium text-forest">{issue.estimatedCostDisplay ?? '-'}</span>
             </div>
             <div className="flex justify-between text-[13px]">
               <span className="text-ink-soft">Actual</span>
               {issue.actualCost != null ? (
                 <span className="font-medium text-forest">${issue.actualCost.toLocaleString()}</span>
               ) : (
-                <span className="text-ink-faint italic">— pending resolution</span>
+                <span className="text-ink-faint italic">pending resolution</span>
               )}
             </div>
           </div>

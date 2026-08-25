@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { TreePine, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
 
 export function Signup() {
   const signUp = useAuthStore((s) => s.signUp);
@@ -31,7 +32,7 @@ export function Signup() {
     }
     setLoading(true);
     // This page is only reachable with an invite token (gated below), so send the confirmation
-    // link back to that invitation — it survives the user opening their mail on another device.
+    // link back to that invitation. It survives the user opening their mail on another device.
     const confirmRedirect = inviteToken
       ? `${window.location.origin}/invite/${inviteToken}`
       : undefined;
@@ -66,7 +67,7 @@ export function Signup() {
       <div className="min-h-screen w-full flex items-center justify-center bg-paper p-4 sm:p-6">
         <div className="w-full max-w-sm text-center">
           <div className="flex items-center gap-2 mb-8 justify-center">
-            <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-cream" /></div>
+            <CampCommandMark size={36} decorative />
             <span className="text-lg font-semibold text-forest">CampCommand</span>
           </div>
           <div className="bg-white rounded-xl border border-border shadow-sm p-8">
@@ -90,7 +91,7 @@ export function Signup() {
       <div className="min-h-screen w-full flex items-center justify-center bg-paper p-4 sm:p-6">
         <div className="w-full max-w-sm text-center">
           <div className="flex items-center gap-2 mb-8 justify-center">
-            <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-cream" /></div>
+            <CampCommandMark size={36} decorative />
             <span className="text-lg font-semibold text-forest">CampCommand</span>
           </div>
           <div className="bg-white rounded-xl border border-border shadow-sm p-8">
@@ -113,9 +114,7 @@ export function Signup() {
       {/* Left branding panel */}
       <div className="hidden lg:flex w-[420px] shrink-0 bg-forest flex-col justify-between p-10">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center">
-            <TreePine className="w-4.5 h-4.5 text-cream" />
-          </div>
+          <CampCommandMark size={30} disc={CC_CREAM} ink={CC_GREEN} decorative />
           <span className="text-lg font-semibold text-cream">CampCommand</span>
         </div>
         <div>
@@ -132,9 +131,7 @@ export function Signup() {
       {/* Right form panel */}
       <div className="flex-1 flex flex-col items-center justify-center bg-paper p-4 sm:p-6 sm:p-10">
         <div className="lg:hidden flex items-center gap-2 mb-8">
-          <div className="w-7 h-7 bg-forest rounded-lg flex items-center justify-center">
-            <TreePine className="w-4 h-4 text-cream" />
-          </div>
+          <CampCommandMark size={32} decorative />
           <span className="text-base font-semibold text-forest">CampCommand</span>
         </div>
 

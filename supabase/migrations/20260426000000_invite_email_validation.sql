@@ -38,7 +38,7 @@ BEGIN
 END;
 $$;
 
--- Block admin role from join codes — admins must be invited individually by email.
+-- Block admin role from join codes, admins must be invited individually by email.
 CREATE OR REPLACE FUNCTION generate_join_code(
   p_camp_id  uuid,
   p_role     text DEFAULT 'staff',

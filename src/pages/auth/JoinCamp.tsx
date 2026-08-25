@@ -1,16 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { TreePine, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore, OTP_MIN_LENGTH, OTP_MAX_LENGTH } from '@/store/authStore';
+import { CampCommandMark } from '@/components/shared/CampCommandMark';
 
 type CodeInfo = { valid: boolean; reason?: string; campName?: string; role?: string; groupName?: string };
 type Step = 'code' | 'identity' | 'otp' | 'joining';
 
 // Join codes are word-shaped (CEDAR-4821); older camps still hold 6-character hex ones.
 // The server normalises case and punctuation before matching, so the client only needs a
-// loose length check — and must NOT truncate, which is what broke word codes.
+// loose length check. And must NOT truncate, which is what broke word codes.
 const MIN_JOIN_CODE_LENGTH = 6;
 
 function normaliseCode(raw: string): string {
@@ -27,7 +28,7 @@ function codeProblem(reason?: string): string {
 /**
  * The staff lane: join a camp with a code and an emailed sign-in code. No password.
  *
- * One emailed code creates the account, proves the email is real, and signs the person in —
+ * One emailed code creates the account, proves the email is real, and signs the person in -
  * which is why this flow has no separate "confirm your email" step. Leaders who are invited
  * individually still set a password over in AcceptInvite; this is deliberately the simpler
  * path for seasonal staff who will mostly live in the phone app.
@@ -132,9 +133,7 @@ export function JoinCamp() {
     <div className="min-h-screen bg-paper flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2.5 mb-8 justify-center">
-          <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center">
-            <TreePine className="w-4 h-4 text-cream" />
-          </div>
+          <CampCommandMark size={36} decorative />
           <span className="text-xl font-semibold text-forest">CampCommand</span>
         </div>
 
@@ -147,7 +146,7 @@ export function JoinCamp() {
             </div>
           )}
 
-          {/* Step 1 — the code itself. Also the manual path for someone told the code verbally. */}
+          {/* Step 1. The code itself. Also the manual path for someone told the code verbally. */}
           {step === 'code' && (
             <>
               <h1 className="text-[17px] font-semibold text-forest mb-1">Join your camp</h1>
@@ -180,13 +179,13 @@ export function JoinCamp() {
             </>
           )}
 
-          {/* Step 2 — who they are. The camp is named so they know they're in the right place. */}
+          {/* Step 2. Who they are. The camp is named so they know they're in the right place. */}
           {step === 'identity' && info?.valid && (
             <>
               <h1 className="text-[17px] font-semibold text-forest mb-1">Join {info.campName}</h1>
               <p className="text-[12px] text-ink-soft mb-6">
                 {info.groupName ? `You'll join as ${info.groupName}. ` : ''}
-                We'll email you a code to sign in — no password needed.
+                We'll email you a code to sign in, no password needed.
               </p>
               {error && <ErrorNote>{error}</ErrorNote>}
               <form onSubmit={handleSendCode} className="space-y-3">
@@ -218,7 +217,7 @@ export function JoinCamp() {
             </>
           )}
 
-          {/* Step 3 — the code from their inbox. Signs in and verifies the address at once. */}
+          {/* Step 3. The code from their inbox. Signs in and verifies the address at once. */}
           {step === 'otp' && (
             <>
               <button

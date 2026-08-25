@@ -8,7 +8,7 @@ import { STORAGE_LABELS, onHandInStockUnit } from '@/lib/commissaryUnits';
 const STORAGE_ORDER = ['walk_in_refrigerator', 'walk_in_freezer', 'reach_in_refrigerator', 'dry_storage', 'other'];
 
 /**
- * Physical count — the weekly walk-the-walk-in ritual. Enter what you actually counted,
+ * Physical count. The weekly walk-the-walk-in ritual. Enter what you actually counted,
  * grouped by storage location; each change posts a count-correction adjustment.
  */
 export function CountModal() {
@@ -42,7 +42,7 @@ export function CountModal() {
     <Modal title="Take inventory" onClose={closeModal} width="620px">
       <div className="space-y-4">
         <p className="text-[12px] text-ink-soft leading-relaxed">
-          The weekly walk-the-walk-in. Enter what you count in each storage area — this becomes the
+          The weekly walk-the-walk-in. Enter what you count in each storage area. This becomes the
           truth the projection runs from. Any number that differs posts a correction; entering a
           matching number still marks the item counted (clearing its "not counted" flag). Blank rows are untouched.
         </p>

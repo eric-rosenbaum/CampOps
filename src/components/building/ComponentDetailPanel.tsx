@@ -10,7 +10,7 @@ import { buildingLocationFor } from './useBuildings';
 import type { BuildingComponent } from '@/lib/types';
 
 function formatSpecValue(field: SpecField, value: unknown): string {
-  if (value === undefined || value === null || value === '') return '—';
+  if (value === undefined || value === null || value === '') return '-';
   if (field.kind === 'bool') return value ? 'Yes' : 'No';
   if (field.kind === 'select') return field.options?.find((o) => o.value === String(value))?.label ?? String(value);
   return String(value);

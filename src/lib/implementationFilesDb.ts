@@ -3,7 +3,7 @@
 //
 // Two halves, both camp-scoped by RLS: the file itself in the private `implementation-files`
 // bucket, and a metadata row so the camp can see a receipt of everything they've sent.
-// There is deliberately no delete here — uploads are permanent (see the migration).
+// There is deliberately no delete here. Uploads are permanent (see the migration).
 import { supabase } from './supabase';
 import { campError } from './campLog';
 import { getCampId } from './db';
@@ -69,7 +69,7 @@ export async function dbUploadImplementationFile(
   if (error) {
     // Metadata is what makes the file findable, so a row we couldn't write leaves an
     // orphan. The bucket has no delete policy by design, so we can't clean it up from
-    // here — log loudly instead and let the upload be retried.
+    // here. Log loudly instead and let the upload be retried.
     campError('record implementation file', `${error.message} (orphaned object at ${path})`);
     return null;
   }
@@ -80,7 +80,7 @@ export async function dbUploadImplementationFile(
 export async function dbSignImplementationFile(f: ImplementationFile): Promise<string | null> {
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(f.path, 300);
   if (error) { campError('open implementation file', error.message); return null; }
-  // Downloads are worth a trail of their own — the upload is already covered by the
+  // Downloads are worth a trail of their own. The upload is already covered by the
   // audit trigger on implementation_files.
   supabase.rpc('log_audit_event', {
     p_camp_id: f.campId,

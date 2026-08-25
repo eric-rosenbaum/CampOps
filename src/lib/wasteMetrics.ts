@@ -1,6 +1,6 @@
 // Dollarised waste reporting for the Commissary Waste tab.
 //
-// Everything here is a COUNTED FACT — it is arithmetic over waste adjustments a human
+// Everything here is a COUNTED FACT. It is arithmetic over waste adjustments a human
 // actually logged. Nothing in this file models, projects, or extrapolates, and nothing
 // here should start: the moment a modelled dollar mixes into these totals, the whole tab
 // stops being quotable. Two rules enforce that:
@@ -27,7 +27,7 @@ export interface WasteRow {
   reducible: boolean;
   /** Positive magnitude, in the item's base unit. Always known. */
   qtyBase: number;
-  /** null when the item carries no unit price — the quantity is real, the dollars are not knowable. */
+  /** null when the item carries no unit price. The quantity is real, the dollars are not knowable. */
   value: number | null;
   /** Local calendar day the waste was logged. */
   date: string;
@@ -77,7 +77,7 @@ export interface WasteSummary {
   totalEvents: number;
   /** Events excluded from all dollar figures because the item has no unit price. */
   unpricedEvents: number;
-  /** Events with no category — not counted as reducible, and not counted against it either. */
+  /** Events with no category, not counted as reducible, and not counted against it either. */
   uncategorisedEvents: number;
   /** Distinct items with waste in range that have no unit price set. */
   unpricedItemNames: string[];
@@ -215,7 +215,7 @@ export function buildWasteSummary(
     itemMap.set(r.itemId, item);
   }
 
-  // Chart span: the selected window, or — for all-time — from the oldest waste row.
+  // Chart span: the selected window, or (for all-time) from the oldest waste row.
   // Either way it always runs through the current month so "nothing lately" is visible.
   const oldest = rows.length ? new Date(rows[rows.length - 1].createdAt) : now;
   const spanStart = cutoff ?? (rows.length ? new Date(oldest.getFullYear(), oldest.getMonth(), 1) : now);

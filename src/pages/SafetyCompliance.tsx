@@ -50,8 +50,8 @@ function exportComplianceReport(
               <td>${i.name}</td>
               <td>${i.location}</td>
               <td>${i.unitCount}</td>
-              <td>${i.lastInspected ? new Date(i.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
-              <td>${i.nextDue ? new Date(i.nextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
+              <td>${i.lastInspected ? new Date(i.lastInspected + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}</td>
+              <td>${i.nextDue ? new Date(i.nextDue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}</td>
               <td>${statusLabel(i)}</td>
             </tr>
           `).join('')}
@@ -103,7 +103,7 @@ function exportComplianceReport(
             <td>${s.title}</td>
             ${(['cpr_aed','mandatory_reporter','lifeguard','first_aid','wsi'] as const).map(type => {
               const cert = certs.filter(c => c.certType === type).sort((a,b) => (b.expiryDate ?? '').localeCompare(a.expiryDate ?? ''))[0];
-              if (!cert) return '<td style="color:#999">—</td>';
+              if (!cert) return '<td style="color:#999">-</td>';
               const status = certExpiryStatus(cert.expiryDate);
               const color = status === 'expired' ? '#c0392b' : status === 'expiring' ? '#c47d08' : '#1e6b1e';
               const label = status === 'expired' ? 'Expired' : status === 'expiring' ? 'Expiring' : 'Current';
@@ -129,10 +129,10 @@ function exportComplianceReport(
           <tr>
             <td>${DRILL_TYPE_LABELS[d.drillType]}</td>
             <td>${new Date((d.completedDate ?? d.scheduledDate) + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-            <td>${d.lead || '—'}</td>
-            <td>${d.participantCount ?? '—'}</td>
-            <td>${d.responseTime ?? '—'}</td>
-            <td>${d.allAccounted === null ? '—' : d.allAccounted ? 'Yes' : 'No'}</td>
+            <td>${d.lead || '-'}</td>
+            <td>${d.participantCount ?? '-'}</td>
+            <td>${d.responseTime ?? '-'}</td>
+            <td>${d.allAccounted === null ? '-' : d.allAccounted ? 'Yes' : 'No'}</td>
           </tr>
         `).join('')}
       </tbody>
@@ -146,7 +146,7 @@ function exportComplianceReport(
           <tr>
             <td>${DRILL_TYPE_LABELS[d.drillType]}</td>
             <td>${new Date(d.scheduledDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-            <td>${d.lead || '—'}</td>
+            <td>${d.lead || '-'}</td>
           </tr>
         `).join('')}
       </tbody>

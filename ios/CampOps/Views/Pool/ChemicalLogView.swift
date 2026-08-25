@@ -14,7 +14,7 @@ struct ChemicalLogView: View {
                     ForEach(Array(vm.alertMessages.enumerated()), id: \.offset) { _, item in
                         AlertBannerRow(level: item.level, message: item.message)
                     }
-                    // Status cards grid — tappable for chart
+                    // Status cards grid, tappable for chart
                     statusCards(latest)
                     // Pool status badge
                     poolStatusRow(latest)

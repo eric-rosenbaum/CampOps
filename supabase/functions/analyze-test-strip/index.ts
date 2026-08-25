@@ -34,11 +34,11 @@ Deno.serve(async (req) => {
 
   const prompt = `You are analyzing a photo of a pool or lake chemical test strip. ${brandContext}
 
-Your job is to read the actual colors you see on each pad — not to guess or assume typical values.
+Your job is to read the actual colors you see on each pad, not to guess or assume typical values.
 
-CRITICAL RULES — read carefully:
+CRITICAL RULES · read carefully:
 - Do NOT default to common pool targets (e.g. pH 7.2, chlorine 1.0, alkalinity 100). Only return a value if the pad color in the image literally matches that point on the scale.
-- If you are uncertain what a pad's color is, return a LOW confidence score (below 0.6) and your best guess — do not substitute a plausible-sounding value.
+- If you are uncertain what a pad's color is, return a LOW confidence score (below 0.6) and your best guess. Do not substitute a plausible-sounding value.
 - A confident-looking "normal" reading that you did not actually observe is worse than an uncertain one.
 - In the "notes" field, briefly describe the actual color you saw for each pad (e.g. "chlorine: pale yellow → ~0.5 ppm; pH: olive-green → ~7.4; alk: medium tan → ~100"). This is required and helps the user verify.
 
@@ -52,7 +52,7 @@ Pads to identify:
 Confidence scores:
 - 0.85–1.0: color is clear and unambiguous
 - 0.65–0.84: reasonable read, minor lighting or angle uncertainty
-- 0.40–0.64: uncertain — poor lighting, wet strip, or color between two scale points
+- 0.40–0.64: uncertain, poor lighting, wet strip, or color between two scale points
 - below 0.40: too uncertain; return null for the value
 
 Return ONLY valid JSON in exactly this format:

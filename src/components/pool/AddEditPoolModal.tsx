@@ -60,7 +60,7 @@ export function AddEditPoolModal({ fromSettings = false }: { fromSettings?: bool
 
   return (
     <Modal
-      title={editing ? `Edit — ${editing.name}` : 'Add pool / waterfront'}
+      title={editing ? `Edit · ${editing.name}` : 'Add pool / waterfront'}
       onClose={closeAllModals}
       width="440px"
     >

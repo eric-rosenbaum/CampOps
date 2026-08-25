@@ -74,12 +74,12 @@ export function ReceiveOrderModal({ orderId }: { orderId: string }) {
   }
 
   return (
-    <Modal title={`Receive — ${order.vendorName}`} onClose={closeModal} width="720px">
+    <Modal title={`Receive · ${order.vendorName}`} onClose={closeModal} width="720px">
       <div className="space-y-4">
         <div className="flex items-start gap-3">
           <p className="flex-1 text-[12px] text-ink-soft leading-relaxed">
             Check off each line as it comes off the truck: tick <strong>Arrived</strong> if it came in as ordered,
-            or type the actual amount. What's received — not what was ordered — is booked into stock.
+            or type the actual amount. What's received (not what was ordered) is booked into stock.
           </p>
           <Button type="button" size="sm" variant="ghost" onClick={handlePrintChecklist}>
             <Printer className="w-3.5 h-3.5" /> Print checklist
@@ -112,7 +112,7 @@ export function ReceiveOrderModal({ orderId }: { orderId: string }) {
                 <input
                   type="number" min="0" step="0.01" value={d.receivedUnitPrice}
                   onChange={(e) => patch(d.lineId, { receivedUnitPrice: e.target.value })}
-                  className="w-full font-mono text-[12px] bg-white border border-border rounded-btn px-2 py-1 focus:outline-none focus:border-sage" placeholder="—"
+                  className="w-full font-mono text-[12px] bg-white border border-border rounded-btn px-2 py-1 focus:outline-none focus:border-sage" placeholder="-"
                 />
                 <input
                   value={d.note} onChange={(e) => patch(d.lineId, { note: e.target.value })}

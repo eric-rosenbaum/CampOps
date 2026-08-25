@@ -185,8 +185,8 @@ export function LogDrillModal() {
             <div>
               <label className={lc}>All participants accounted for?</label>
               <select {...register('allAccounted')} className={ic}>
-                <option value="yes">Yes — all accounted for</option>
-                <option value="no">No — issue during drill</option>
+                <option value="yes">Yes, all accounted for</option>
+                <option value="no">No, issue during drill</option>
               </select>
             </div>
           </>

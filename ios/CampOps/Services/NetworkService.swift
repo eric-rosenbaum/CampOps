@@ -2,11 +2,11 @@ import Foundation
 
 /// Hardened networking for every Supabase call the app makes.
 ///
-/// **The problem this solves.** `URLSession.shared` — what supabase-swift uses by default —
+/// **The problem this solves.** `URLSession.shared`what supabase-swift uses by default -
 /// allows 60 seconds per request and never retries. A camp's wifi routinely leaves a TCP
 /// socket half-dead: the connection looks alive to the client, the request goes out, and
 /// nothing ever comes back. The user taps Save, watches a spinner for the better part of a
-/// minute, and then sees a failure — or, if they tap again, a success, because the second tap
+/// minute, and then sees a failure, or, if they tap again, a success, because the second tap
 /// happens to get a fresh socket. That is exactly the "hangs then sometimes works" behaviour
 /// reported across Pool, Assets and Issues.
 ///
@@ -24,7 +24,7 @@ final class RetryingURLProtocol: URLProtocol {
     /// connection, short enough that a dead socket is abandoned before the user gives up.
     private static let attemptTimeout: TimeInterval = 6
     /// Waits before the 2nd and 3rd attempts. Total worst case ≈ 6 + 1 + 6 + 3 + 6 = 22s,
-    /// versus 60s of silence today — and in practice attempt 2 succeeds on a fresh socket.
+    /// versus 60s of silence today, and in practice attempt 2 succeeds on a fresh socket.
     private static let retryDelays: [TimeInterval] = [1, 3]
 
     private static let handledKey = "CampOpsRetryHandled"

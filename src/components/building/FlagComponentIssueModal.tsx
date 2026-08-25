@@ -45,7 +45,7 @@ export function FlagComponentIssueModal({ componentId }: { componentId: string }
       const id = generateId();
       const newIssue: Issue = {
         id,
-        title: `${component.label} — ${COMPONENT_TYPE_LABELS[component.type]}`,
+        title: `${component.label} · ${COMPONENT_TYPE_LABELS[component.type]}`,
         description: [where, detail].filter(Boolean).join('\n'),
         locationIds: component.locationId ? [component.locationId] : [],
         locations: locationName ? [locationName] : [],
@@ -87,13 +87,13 @@ export function FlagComponentIssueModal({ componentId }: { componentId: string }
   }
 
   return (
-    <Modal title={`Flag issue — ${component.label}`} onClose={closeModal} width="440px">
+    <Modal title={`Flag issue · ${component.label}`} onClose={closeModal} width="440px">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className={labelClass}>Severity *</label>
           <select value={severity} onChange={(e) => setSeverity(e.target.value as Exclude<ComponentStatus, 'operational'>)} className={inputClass}>
-            <option value="needs_attention">Needs attention — service soon</option>
-            <option value="out_of_service">Out of service — needs repair</option>
+            <option value="needs_attention">Needs attention · service soon</option>
+            <option value="out_of_service">Out of service · needs repair</option>
           </select>
         </div>
         <div>

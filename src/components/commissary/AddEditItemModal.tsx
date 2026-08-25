@@ -104,7 +104,7 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
   const [allergens, setAllergens] = useState<string[]>(existing?.allergens ?? []);
   const [notes, setNotes] = useState(existing?.notes ?? '');
 
-  // "Add from catalog" — autofill name/category/unit/pack/allergens from the shared catalog.
+  // "Add from catalog"autofill name/category/unit/pack/allergens from the shared catalog.
   const [catalogQuery, setCatalogQuery] = useState('');
   const catalogMatches = catalogQuery ? searchCatalog(catalogQuery) : [];
   function applyCatalog(c: CatalogProduct) {
@@ -251,7 +251,7 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
               <input
                 value={catalogQuery} onChange={(e) => setCatalogQuery(e.target.value)}
                 className="w-full text-body bg-white border border-border rounded-btn pl-8 pr-3 py-2 focus:outline-none focus:border-sage"
-                placeholder="Add from catalog — search e.g. chicken, milk, buns…"
+                placeholder="Add from catalog, search e.g. chicken, milk, buns…"
               />
               {catalogMatches.length > 0 && (
                 <div className="absolute z-10 mt-1 left-0 right-0 max-h-56 overflow-y-auto bg-white border border-border rounded-card shadow-lg">
@@ -267,7 +267,7 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
                 </div>
               )}
             </div>
-            <p className="text-[11px] text-ink-faint mt-1.5">Fills name, category, unit, and pack — pick a vendor and price after. Or just type below.</p>
+            <p className="text-[11px] text-ink-faint mt-1.5">Fills name, category, unit, and pack. Pick a vendor and price after. Or just type below.</p>
           </div>
         )}
 
@@ -324,14 +324,14 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
           </div>
         </div>
         <p className="text-[11px] text-ink-faint -mt-2">
-          "Reorder at" is your minimum on hand — the floor ordering keeps you above.
+          "Reorder at" is your minimum on hand. The floor ordering keeps you above.
         </p>
 
         <div className="flex items-center gap-2">
           <label className="text-[12px] text-ink whitespace-nowrap">Shelf life</label>
           <input type="number" min="1" step="1" value={shelfLife} onChange={(e) => setShelfLife(e.target.value)}
                  className="w-20 text-body bg-white border border-border rounded-btn px-2 py-1.5 focus:outline-none focus:border-sage" placeholder="days" />
-          <span className="text-[11px] text-ink-faint">days — leave blank for non-perishable. Caps how far ahead a perishable is ordered.</span>
+          <span className="text-[11px] text-ink-faint">days. Leave blank for non-perishable. Caps how far ahead a perishable is ordered.</span>
         </div>
 
         {/* ── Vendors & pack sizes (multi-vendor) ────────────────────────────── */}
@@ -342,7 +342,7 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
           </div>
           {packRows.length === 0 && (
             <p className="text-[11px] text-ink-faint">
-              None yet — you'll order in {stockUnit}s. Add a vendor if you buy by the case, or buy from a specific supplier.
+              None yet. You'll order in {stockUnit}s. Add a vendor if you buy by the case, or buy from a specific supplier.
             </p>
           )}
           {packRows.map((r) => (
@@ -386,14 +386,14 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
             <Plus className="w-3.5 h-3.5" /> Add vendor pack
           </button>
           <p className="text-[11px] text-ink-faint">
-            Orders round up to whole packs. Set the ★ default — it's used when generating orders; any line can be switched to another vendor later.
+            Orders round up to whole packs. Set the ★ default. It's used when generating orders; any line can be switched to another vendor later.
           </p>
         </div>
 
         <div>
           <label className={labelClass}>Allergens / Dietary preferences</label>
           <p className="text-[11px] text-ink-faint mb-2">Tagged once here; every recipe using this item inherits them.</p>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint mb-1.5">Allergens <span className="normal-case font-normal text-ink-faint">— safety</span></p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint mb-1.5">Allergens <span className="normal-case font-normal text-ink-faint">safety</span></p>
           <div className="flex flex-wrap gap-1.5">
             {ALLERGENS.map((a) => (
               <button key={a} type="button" onClick={() => toggleAllergen(a)}
@@ -406,7 +406,7 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
               </button>
             ))}
           </div>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint mt-3 mb-1.5">Dietary <span className="normal-case font-normal text-ink-faint">— flags vegetarian/vegan campers on the menu</span></p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint mt-3 mb-1.5">Dietary <span className="normal-case font-normal text-ink-faint">flags vegetarian/vegan campers on the menu</span></p>
           <div className="flex flex-wrap gap-1.5">
             {DIET_FLAGS.map((d) => (
               <button key={d} type="button" onClick={() => toggleAllergen(d)}

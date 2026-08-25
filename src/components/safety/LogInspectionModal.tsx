@@ -23,10 +23,10 @@ const ic = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2
 const lc = 'block text-[12px] font-medium text-ink mb-1';
 
 const RESULT_OPTIONS: { value: SafetyInspectionLog['result']; label: string }[] = [
-  { value: 'passed', label: 'Passed — no issues' },
+  { value: 'passed', label: 'Passed, no issues' },
   { value: 'passed_with_notes', label: 'Passed with notes' },
-  { value: 'action_taken', label: 'Action taken — resolved' },
-  { value: 'failed', label: 'Failed — follow-up required' },
+  { value: 'action_taken', label: 'Action taken · resolved' },
+  { value: 'failed', label: 'Failed, follow-up required' },
 ];
 
 export function LogInspectionModal() {
@@ -135,7 +135,7 @@ export function LogInspectionModal() {
         <div>
           <label className={lc}>Item (optional)</label>
           <select {...register('itemId')} className={ic}>
-            <option value="">— General / not linked to an item —</option>
+            <option value="">General / not linked to an item</option>
             {fireItems.length > 0 && (
               <optgroup label="Fire safety">
                 {fireItems.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}

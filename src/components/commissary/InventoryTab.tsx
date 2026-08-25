@@ -90,7 +90,7 @@ export function InventoryTab() {
     return [it.id, { now: projectedOnHandBase(inp, today), runOut: runOutDate(inp, horizon), cover: daysOfCover(inp, horizon) }];
   }));
 
-  // Soonest to run out first — the reason anyone opens this screen. No run-out sorts last.
+  // Soonest to run out first. The reason anyone opens this screen. No run-out sorts last.
   const sorted = [...rows].sort((a, b) => {
     const ra = projById.get(a.id)?.runOut ?? null;
     const rb = projById.get(b.id)?.runOut ?? null;
@@ -109,7 +109,7 @@ export function InventoryTab() {
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No inventory yet</h3>
           <p className="text-[13px] text-ink-soft leading-relaxed mb-4">
-            Add what you keep on hand — proteins, dairy, produce, dry goods — with a
+            Add what you keep on hand (proteins, dairy, produce, dry goods) with a
             reorder level for each. Recipes draw from these items, and the menu tells you
             what you are short.
           </p>
@@ -130,7 +130,7 @@ export function InventoryTab() {
           <AlertTriangle className="w-5 h-5 text-amber-text flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="text-body text-amber-text font-semibold">
-              {setup.either} item{setup.either === 1 ? '' : 's'} still need setup — ordering and low-stock alerts won't work for {setup.either === 1 ? 'it' : 'them'} yet.
+              {setup.either} item{setup.either === 1 ? '' : 's'} still need setup, ordering and low-stock alerts won't work for {setup.either === 1 ? 'it' : 'them'} yet.
             </p>
             <p className="text-[12px] text-amber-text/80 mt-0.5">
               {[
@@ -245,7 +245,7 @@ export function InventoryTab() {
               </span>
               <span className="text-[12px]">
                 {item.lastCountedAt == null ? (
-                  <span className="text-forest/25">—</span>
+                  <span className="text-forest/25">-</span>
                 ) : p.runOut ? (
                   <span className={soon ? 'text-red font-medium' : near ? 'text-amber-text' : 'text-ink-soft'}>
                     {new Date(`${p.runOut}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}

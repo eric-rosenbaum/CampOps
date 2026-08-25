@@ -7,7 +7,7 @@ import type { CampLocation, BuildingDetail } from '@/lib/types';
 // its rooms are that location's child nodes. These hooks/selectors bridge the
 // locationStore into the building UI.
 
-/** Top-level locations that have a building_details row — the buildings list. */
+/** Top-level locations that have a building_details row. The buildings list. */
 export function useBuildings(): CampLocation[] {
   const locations = useLocationStore((s) => s.locations);
   const buildingDetails = useLocationStore((s) => s.buildingDetails);

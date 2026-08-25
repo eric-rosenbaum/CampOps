@@ -48,14 +48,18 @@ export function HousingAssignModal({ retreatId, housingId }: { retreatId: string
       : selectedDorm?.name ?? existing?.spaceName ?? null;
 
     if (existing) {
-      updateHousing({ ...existing, locationId: targetId, spaceName, subgroupName: subgroupName.trim() || null, peopleCount: people, notes: notes.trim() || null, updatedAt: now });
+      updateHousing({ ...existing, locationId: targetId, spaceName, subgroupName: subgroupName.trim() || null, peopleCount: people, unnamedCount: people, notes: notes.trim() || null, updatedAt: now });
     } else {
       const row: RetreatHousing = {
         id: generateId(), campId: '', retreatId,
         locationId: targetId, spaceId: null, spaceName,
         subgroupName: subgroupName.trim() || null,
+        // A number typed by staff describes people with no names attached; the roster adds
+        // its own on top rather than replacing this.
         peopleCount: people,
+        unnamedCount: people,
         notes: notes.trim() || null,
+        rosterDriven: false,
         locked: false,
         sortOrder: housingFor(retreatId).length,
         createdAt: now, updatedAt: now,
@@ -81,7 +85,7 @@ export function HousingAssignModal({ retreatId, housingId }: { retreatId: string
             <select value={buildingId} onChange={(e) => { setBuildingId(e.target.value); setRoomId(''); }} className={inputClass}>
               <option value="">Select a building…</option>
               {dorms.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}{d.bedCapacity ? ` — ${d.bedCapacity} beds` : ''}</option>
+                <option key={d.id} value={d.id}>{d.name}{d.bedCapacity ? ` · ${d.bedCapacity} beds` : ''}</option>
               ))}
             </select>
           </div>
@@ -90,13 +94,13 @@ export function HousingAssignModal({ retreatId, housingId }: { retreatId: string
             <select value={roomId} onChange={(e) => setRoomId(e.target.value)} className={inputClass} disabled={!buildingId || rooms.length === 0}>
               <option value="">{rooms.length === 0 ? 'Whole building' : 'Whole building (no specific room)'}</option>
               {rooms.map((r) => (
-                <option key={r.id} value={r.id}>{r.name}{r.bedCapacity ? ` — ${r.bedCapacity} beds` : ''}{r.accessible ? ' · accessible' : ''}</option>
+                <option key={r.id} value={r.id}>{r.name}{r.bedCapacity ? ` · ${r.bedCapacity} beds` : ''}{r.accessible ? ' · accessible' : ''}</option>
               ))}
             </select>
           </div>
         </div>
         {dorms.length === 0 && (
-          <p className="text-[11px] text-amber-text">No retreat-available buildings yet — toggle them on from "Manage spaces" first.</p>
+          <p className="text-[11px] text-amber-text">No retreat-available buildings yet, toggle them on from "Manage spaces" first.</p>
         )}
         {buildingId && rooms.length === 0 && (
           <p className="text-[11px] text-ink-faint">This building has no rooms. Add rooms as sub-locations in Camp Info → Locations to assign by room.</p>

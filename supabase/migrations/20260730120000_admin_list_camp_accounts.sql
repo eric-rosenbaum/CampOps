@@ -1,6 +1,6 @@
 -- Admin console: list every account (+ pending invite) tied to a camp, with email + role.
 -- Emails live in auth.users, which the client can't read directly, so this SECURITY DEFINER
--- function exposes them — but only to platform admins.
+-- function exposes them, but only to platform admins.
 
 CREATE OR REPLACE FUNCTION admin_list_camp_accounts(p_camp_id uuid)
 RETURNS TABLE (
@@ -39,7 +39,7 @@ BEGIN
 
     UNION ALL
 
-    -- Pending invitations (sent, not yet accepted / not expired) — no account exists yet
+    -- Pending invitations (sent, not yet accepted / not expired), no account exists yet
     SELECT
       NULL::uuid,
       ci.email::text,

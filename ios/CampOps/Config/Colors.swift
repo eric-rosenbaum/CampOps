@@ -3,12 +3,12 @@ import UIKit
 
 // The brand palette, mirrored from the web app's tailwind.config.js (Field Guide).
 //
-// `forest` is body ink (warm near-black), NOT the pine green — pine lives on `forestFill` and
+// `forest` is body ink (warm near-black), NOT the pine green, pine lives on `forestFill` and
 // is what buttons, the nav and headings use. The two were one token before the redesign.
 //
 // Every token here is DYNAMIC: it resolves differently in light and dark mode. This matters
 // because the app previously mixed hard-coded brand hexes (near-black `forest` text) with
-// adaptive system backgrounds (`systemBackground`, black in dark mode) — which rendered
+// adaptive system backgrounds (`systemBackground`, black in dark mode) · which rendered
 // forest-on-black, i.e. invisible. Tokens that are used as *ink* (forest, forestMid, …)
 // therefore flip to a light cream in dark mode; tokens used as *fills* keep their hue and
 // only change value.
@@ -33,7 +33,7 @@ extension Color {
     // MARK: - Ink
     // Primary text. Light: near-black forest green. Dark: warm cream.
     // Call sites use `.forest.opacity(0.4)` etc. for secondary text, so the opacity ladder
-    // has to read correctly against BOTH canvases — hence a genuinely light dark-mode value.
+    // has to read correctly against BOTH canvases, hence a genuinely light dark-mode value.
     static let forest      = adaptive("23201B", "F1ECDF")
     static let forestMid   = adaptive("6B6357", "C6BFAE")
     static let forestLight = adaptive("9AA98F", "8B9B82")
@@ -47,6 +47,15 @@ extension Color {
     static let cream     = Color(hex: "F6F1E4")
     static let creamDark = adaptive("EFE9D9", "232A20")
 
+    // MARK: - Brand mark
+    // Fixed values from the brand package, not theme tokens: the mark has to render the same
+    // in light and dark, and the same as the favicon and the home-screen icon.
+    static let ccGreen = Color(hex: "24392F")
+    static let ccCream = Color(hex: "FCF9F2")
+    static let ccFlame = Color(hex: "A45838")
+    static let ccEmber = Color(hex: "CF9542")
+    static let ccWood  = Color(hex: "8E6D45")
+
     // MARK: - Surfaces
     /// The screen background. Warm cream instead of iOS's neutral grey.
     static let canvas        = adaptive("F6F1E4", "14170F")
@@ -54,7 +63,7 @@ extension Color {
     static let surface       = adaptive("FFFDF7", "1C211A")
     /// Inset fills: text fields, segmented pills, secondary rows.
     static let surfaceRaised = adaptive("FCF9F1", "262E22")
-    /// Hairline dividers and card borders — used instead of drop shadows.
+    /// Hairline dividers and card borders, used instead of drop shadows.
     static let border        = adaptive("DED3BB", "353D2E")
 
     /// A solid forest fill for primary buttons. Unlike `.forest` this does NOT invert,

@@ -1,4 +1,4 @@
--- UNIFIED LOCATIONS — core schema. One nestable, categorized tree per camp that becomes
+-- UNIFIED LOCATIONS, core schema. One nestable, categorized tree per camp that becomes
 -- the single source of truth for every physical place (feeds issues, tasks, safety, assets,
 -- retreats, building systems). Additive: old columns/tables are kept and backfilled next.
 

@@ -179,7 +179,6 @@ export function AllPoolsDashboard() {
 
       {activePools.length === 0 ? (
         <div className="bg-white border border-border rounded-card px-6 py-12 text-center">
-          <p className="text-[32px] mb-3">🏊</p>
           <p className="text-[15px] font-semibold text-ink-soft">No pools added yet</p>
           <p className="text-[13px] text-ink-faint mt-1 mb-4">Add your first pool or waterfront location to get started.</p>
           <Button size="sm" onClick={() => openAddEditPoolModal()}>Add pool</Button>

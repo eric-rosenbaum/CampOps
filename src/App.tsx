@@ -37,6 +37,7 @@ import { BuildingSystems } from '@/pages/BuildingSystems';
 import { Commissary } from '@/pages/Commissary';
 import { Retreats } from '@/pages/Retreats';
 import { RetreatPortal } from '@/pages/portal/RetreatPortal';
+import { Support } from '@/pages/legal/Support';
 import { PrivacyPolicy } from '@/pages/legal/PrivacyPolicy';
 import { SecurityOverview } from '@/pages/legal/SecurityOverview';
 import { Dpa } from '@/pages/legal/Dpa';
@@ -66,7 +67,7 @@ import {
   loadProductCatalog,
   type AssetData, type BuildingData,
 } from '@/lib/db';
-import { startSupabaseHeartbeat } from '@/lib/supabase';
+import { startSupabaseHeartbeat, installWriteDebugHooks } from '@/lib/supabase';
 import { awaitWriteQuiet, beginSnapshot, shouldApplySnapshot, loadAndApply } from '@/lib/syncGuard';
 import { campLog } from '@/lib/campLog';
 import { useIssuesStore, startIssueWriteQueue } from '@/store/issuesStore';
@@ -90,9 +91,9 @@ function HomeRouter() {
 }
 
 // The root path, resolved by surface:
-//  • App subdomain (app.campcommand.app): product front door — signed-in → /home, else /login.
+//  • App subdomain (app.campcommand.app): product front door, signed-in → /home, else /login.
 //  • Marketing host (campcommand.app / www): ALWAYS the public landing page, regardless of any
-//    (possibly stale) session — marketing is a public surface and must never route into the app,
+//    (possibly stale) session. Marketing is a public surface and must never route into the app,
 //    otherwise a leftover session bounces "/" → /home → (HostGuard) → app → /login.
 //  • Dev / preview (localhost, *.vercel.app): behave like a single domain.
 function LandingOrHome() {
@@ -125,7 +126,7 @@ function CampDataLoader() {
     setCourses, setSubstitutions, setFiles,
   } = useCommissaryStore();
   const {
-    setRetreats, setSpaces, setHousing, setHousingVersions, setDocuments: setRetreatDocs,
+    setRetreats, setSpaces, setHousing, setHousingVersions, setGuests: setRetreatGuests, setDocuments: setRetreatDocs,
     setMeals: setRetreatMeals, setChangeRequests, setCosts: setRetreatCosts, setCharges, setPayments,
     setIssues: setRetreatIssues, setChecklist, setScheduleItems, setFeedback, setReminders, setInvoices,
   } = useRetreatStore();
@@ -140,7 +141,7 @@ function CampDataLoader() {
     let unsubAssets: (() => void) | null = null;
     let unsubBuilding: (() => void) | null = null;
     // Commissary subscribes as three independent domains rather than one. It is the
-    // first module large enough that reloading everything on any WAL event hurts —
+    // first module large enough that reloading everything on any WAL event hurts -
     // adjusting one item's stock should not refetch every recipe and menu chip.
     let unsubCommInventory: (() => void) | null = null;
     let unsubCommCatalog: (() => void) | null = null;
@@ -153,6 +154,7 @@ function CampDataLoader() {
 
     // Start the Supabase keep-alive heartbeat.  Pings every 30 s while visible to
     // keep the TCP socket from going stale and to refresh the JWT before expiry.
+    installWriteDebugHooks();
     const stopHeartbeat = startSupabaseHeartbeat();
     const stopWriteQueue = startIssueWriteQueue();
 
@@ -254,9 +256,10 @@ function CampDataLoader() {
     unsubCommProduction = subscribeToCommissaryProduction(campId, applyCommProduction);
     unsubCommAllergy = subscribeToCommissaryAllergy(campId, applyCommAllergy);
 
-    // Retreats — one low-volume domain (a handful of retreats per camp).
+    // Retreats, one low-volume domain (a handful of retreats per camp).
     const applyRetreatData = (d: import('@/lib/retreatsDb').RetreatData) => {
       setRetreats(d.retreats); setSpaces(d.spaces); setHousing(d.housing); setHousingVersions(d.housingVersions);
+      setRetreatGuests(d.guests);
       setRetreatDocs(d.documents); setRetreatMeals(d.meals); setChangeRequests(d.changeRequests);
       setRetreatCosts(d.costs); setCharges(d.charges); setPayments(d.payments); setRetreatIssues(d.issues);
       setChecklist(d.checklist); setScheduleItems(d.scheduleItems); setFeedback(d.feedback); setReminders(d.reminders);
@@ -294,7 +297,7 @@ function CampDataLoader() {
     loadAndApply('assets', () => loadAssetsFromSupabase(campId), applyAssets);
     loadAndApply('building', () => loadBuildingFromSupabase(campId), applyBuilding);
 
-    // Global shared catalog — not camp-scoped, loaded once (no realtime channel).
+    // Global shared catalog, not camp-scoped, loaded once (no realtime channel).
     loadProductCatalog().then((rows) => { if (rows) setCatalog(rows); });
 
     loadAndApply('commissary-inventory', () => loadCommissaryInventory(campId), applyCommInventory);
@@ -316,7 +319,7 @@ function CampDataLoader() {
     const PERIODIC_REFETCH_MS = 3 * 60 * 1000; // 3 minutes
     let hiddenAt: number | null = null;
 
-    // A safety net, not the primary sync path — realtime is. Every domain goes through
+    // A safety net, not the primary sync path. Realtime is. Every domain goes through
     // the sync guard, so a refetch that raced a save is dropped instead of applied.
     async function refetchAll(reason: string) {
       if (!campId) return;
@@ -359,13 +362,13 @@ function CampDataLoader() {
     // Chrome Page Lifecycle: fires when a frozen tab is resumed.
     // visibilitychange does NOT fire reliably in this case.
     function handleResume() {
-      campLog('[CampOps] page RESUMED from freeze — scheduling refetchAll in 15s');
+      campLog('[CampOps] page RESUMED from freeze, scheduling refetchAll in 15s');
       setTimeout(() => refetchAll('resume'), 15000);
     }
     // pageshow fires when page is restored from bfcache (back/forward navigation).
     function handlePageShow(e: PageTransitionEvent) {
       if (e.persisted) {
-        campLog('[CampOps] page restored from bfcache — scheduling refetchAll in 15s');
+        campLog('[CampOps] page restored from bfcache, scheduling refetchAll in 15s');
         setTimeout(() => refetchAll('pageshow'), 15000);
       }
     }
@@ -409,8 +412,8 @@ function CampDataLoader() {
   return null;
 }
 
-// Keep the marketing host (campcommand.app / www) to public pages only; the product — login
-// and every authenticated route — lives on app.campcommand.app. Any app route requested on the
+// Keep the marketing host (campcommand.app / www) to public pages only; the product · login
+// and every authenticated route, lives on app.campcommand.app. Any app route requested on the
 // marketing host is redirected to the app subdomain. Non-marketing hosts (app.*, localhost,
 // Vercel previews) are unrestricted so dev/preview keep working.
 const MARKETING_HOSTS = ['campcommand.app', 'www.campcommand.app'];
@@ -464,17 +467,18 @@ export default function App() {
           <Route path="/invite/:token" element={<AcceptInvite />} />
           <Route path="/try/:token" element={<TryDemo />} />
 
-          {/* Public — handles auth inline */}
+          {/* Public, handles auth inline */}
           <Route path="/join" element={<JoinCamp />} />
           <Route path="/report/:camp" element={<PublicReportForm />} />
           <Route path="/portal/:token" element={<RetreatPortal />} />
 
           {/* Public legal / trust pages */}
+          <Route path="/support" element={<Support />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/security" element={<SecurityOverview />} />
           <Route path="/dpa" element={<Dpa />} />
 
-          {/* Authenticated — no camp required */}
+          {/* Authenticated, no camp required */}
           <Route element={<ProtectedRoute />}>
             <Route path="/no-access" element={<NoCampAccess />} />
             {/* Post-join iOS app handoff. Redirects to /home when it doesn't apply. */}

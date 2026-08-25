@@ -88,7 +88,7 @@ EXCEPTION WHEN OTHERS THEN NULL; END $$;
 SELECT cron.schedule('purge-anonymous-demo-users', '15 8 * * *', $$SELECT public.purge_anonymous_demo_users();$$);
 
 -- 6. Anonymous users have no email, so the new-user trigger's email-derived full_name would be
---    NULL and violate profiles.full_name NOT NULL — which would make signInAnonymously() itself
+--    NULL and violate profiles.full_name NOT NULL, which would make signInAnonymously() itself
 --    fail. Give any nameless/emailless account a safe fallback.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $function$

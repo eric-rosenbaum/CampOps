@@ -30,8 +30,8 @@ struct FlagIssueSheet: View {
 
                 Section("Severity") {
                     Picker("Severity", selection: $severity) {
-                        Text("Warning — service needed soon").tag(EquipmentStatus.warn)
-                        Text("Alert — out of service / needs repair").tag(EquipmentStatus.alert)
+                        Text("Warning, service needed soon").tag(EquipmentStatus.warn)
+                        Text("Alert, out of service / needs repair").tag(EquipmentStatus.alert)
                     }
                     .pickerStyle(.inline)
                     .labelsHidden()
@@ -49,7 +49,7 @@ struct FlagIssueSheet: View {
                         } label: {
                             HStack {
                                 Spacer()
-                                Text("Clear issue — mark operational")
+                                Text("Clear issue · mark operational")
                                     .foregroundColor(.green)
                                 Spacer()
                             }
@@ -57,7 +57,7 @@ struct FlagIssueSheet: View {
                     }
                 }
             }
-            .navigationTitle(hasExistingIssue ? "Edit issue — \(equipment.name)" : "Flag issue — \(equipment.name)")
+            .navigationTitle(hasExistingIssue ? "Edit issue (\(equipment.name)" : "Flag issue) \(equipment.name)")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 if hasExistingIssue {

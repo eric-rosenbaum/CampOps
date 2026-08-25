@@ -158,7 +158,7 @@ function DataExportSection({ campId, campName }: { campId: string; campName: str
         </div>
         <div>
           <h2 className="text-[15px] font-semibold text-forest">Download your data</h2>
-          <p className="text-[13px] text-ink-soft mt-0.5">Get a complete copy of everything in your camp as a single file — useful for your own records or backups. The download is noted in your activity log.</p>
+          <p className="text-[13px] text-ink-soft mt-0.5">Get a complete copy of everything in your camp as a single file, useful for your own records or backups. The download is noted in your activity log.</p>
         </div>
       </div>
       <Button size="sm" variant="ghost" onClick={exportData} disabled={busy}>{busy ? 'Preparing…' : 'Download a copy'}</Button>
@@ -203,7 +203,7 @@ function ActivitySection({ campId, memberNames }: { campId: string; memberNames:
         </div>
         <div>
           <h2 className="text-[15px] font-semibold text-forest">Activity log</h2>
-          <p className="text-[13px] text-ink-soft mt-0.5">A record of sensitive actions — who viewed or changed camper health info, team roles, retreat billing, data downloads, and guest-link resets.</p>
+          <p className="text-[13px] text-ink-soft mt-0.5">A record of sensitive actions, who viewed or changed camper health info, team roles, retreat billing, data downloads, and guest-link resets.</p>
         </div>
       </div>
       {loading ? (
@@ -227,7 +227,7 @@ function ActivitySection({ campId, memberNames }: { campId: string; memberNames:
                   <td className="px-2 py-2 text-ink-soft whitespace-nowrap">{new Date(r.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</td>
                   <td className="px-2 py-2 text-ink">{(r.actor_id ? memberNames[r.actor_id] : '') || r.actor_email || 'System'}</td>
                   <td className="px-2 py-2 text-forest font-medium">{ACTION_LABELS[r.action] ?? r.action}</td>
-                  <td className="px-2 py-2 text-ink-soft">{r.target_table ? (TABLE_LABELS[r.target_table] ?? '—') : '—'}</td>
+                  <td className="px-2 py-2 text-ink-soft">{r.target_table ? (TABLE_LABELS[r.target_table] ?? '-') : '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -258,7 +258,7 @@ function PrivacySection() {
   return (
     <section className="bg-white rounded-card border border-border p-4 sm:p-6">
       <h2 className="text-[15px] font-semibold text-forest mb-1">Privacy &amp; security</h2>
-      <p className="text-[13px] text-ink-soft mb-4">Your camp's information — including camper health details — is kept private to your camp and protected with industry-standard safeguards. The full details are here:</p>
+      <p className="text-[13px] text-ink-soft mb-4">Your camp's information (including camper health details) is kept private to your camp and protected with industry-standard safeguards. The full details are here:</p>
       <div className="grid sm:grid-cols-2 gap-2.5">
         <PolicyLink href="/privacy" title="Privacy Policy" desc="What we collect and how it's used" />
         <PolicyLink href="/security" title="Security Overview" desc="How your data is protected" />
@@ -269,7 +269,7 @@ function PrivacySection() {
 
 // ─── Page ───────────────────────────────────────────────────────────────────────
 
-// Two-step sign-in (MFA) is built but archived for now — flip to true to re-enable it.
+// Two-step sign-in (MFA) is built but archived for now, flip to true to re-enable it.
 const MFA_ENABLED = false;
 
 export function SecuritySettings() {

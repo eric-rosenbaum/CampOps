@@ -51,7 +51,7 @@ function RecipeCard({ recipeId }: { recipeId: string }) {
 
   // The scale defaults to the session head count, so a cook can ask "what if I make this
   // for 80?" without touching the session. Once set it is saved on the recipe itself
-  // (recipe.scaleTo), so it survives tab switches AND a page refresh — it used to live
+  // (recipe.scaleTo), so it survives tab switches AND a page refresh. It used to live
   // only in memory and silently reverted on reload.
   const sessionPortions = portions();
   const storeScale = recipe.scaleTo ?? (sessionPortions || recipe.baseYield);
@@ -195,7 +195,7 @@ export function RecipesTab() {
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No recipes yet</h3>
           <p className="text-[13px] text-ink-soft leading-relaxed mb-4">
-            Write a recipe once for a base yield — say 50 portions — and link its ingredients
+            Write a recipe once for a base yield (say 50 portions) and link its ingredients
             to inventory. Every quantity then scales to whatever the session's head count is.
           </p>
           {canManage && <Button size="sm" onClick={() => openModal({ kind: 'recipe' })}>+ Add your first recipe</Button>}

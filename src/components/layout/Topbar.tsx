@@ -6,8 +6,8 @@ interface Props {
   subtitle?: string;
   actions?: React.ReactNode;
   /**
-   * Drop the bottom rule when the page continues the header itself — a stat band or a toolbar
-   * directly below — so the whole block reads as one sheet rather than stacked strips.
+   * Drop the bottom rule when the page continues the header itself, a stat band or a toolbar
+   * directly below, so the whole block reads as one sheet rather than stacked strips.
    */
   flush?: boolean;
 }

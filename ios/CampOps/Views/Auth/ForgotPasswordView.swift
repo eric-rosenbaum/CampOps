@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Password reset, matching the web app's /forgot-password.
 ///
-/// The reset link in the email opens the web app's /reset-password page — that host is the one
+/// The reset link in the email opens the web app's /reset-password page. That host is the one
 /// registered in Supabase's allowed redirect URLs, and it's where the password actually changes.
 struct ForgotPasswordView: View {
     @EnvironmentObject private var authManager: AuthManager

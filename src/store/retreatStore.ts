@@ -1,6 +1,7 @@
 import { create } from 'zustand';
+import { useCommissaryStore } from './commissaryStore';
 import type {
-  Retreat, RetreatStatus, RetreatSpace, RetreatHousing, RetreatHousingVersion, RetreatDocument,
+  Retreat, RetreatStatus, RetreatSpace, RetreatHousing, RetreatHousingVersion, RetreatGuest, RetreatDocument,
   RetreatDocType, RetreatMeal, RetreatChangeRequest, RetreatRequestStatus, RetreatCost, RetreatCharge,
   RetreatPayment, RetreatIssue, RetreatChecklistItem, RetreatChecklistPhase, RetreatScheduleItem,
   RetreatFeedback, RetreatReminder, RetreatInvoice, MealPeriod,
@@ -8,7 +9,7 @@ import type {
 import {
   dbAddRetreat, dbUpdateRetreat, dbDeleteRetreat,
   dbAddSpace, dbUpdateSpace, dbDeleteSpace,
-  dbAddHousing, dbUpdateHousing, dbDeleteHousing, dbSetHousingLock, dbAddHousingVersion,
+  dbAddHousing, dbUpdateHousing, dbDeleteHousing, dbSetHousingLock, dbAddHousingVersion, dbAssignGuests,
   dbAddDocument, dbUpdateDocument, dbDeleteDocument, dbUploadRetreatDocument,
   dbAddMeal, dbUpdateMeal, dbDeleteMeal,
   dbAddChangeRequest, dbUpdateChangeRequest,
@@ -25,11 +26,19 @@ import {
 import { generateId, todayStr } from '@/lib/utils';
 import { estimateRevenue } from '@/components/retreats/retreatUi';
 
-export type RetreatTab = 'overview' | 'active' | 'documents' | 'housing' | 'menu' | 'requests' | 'costs' | 'portal' | 'feedback';
+export type RetreatTab = 'overview' | 'active' | 'documents' | 'housing' | 'menu' | 'requests' | 'costs' | 'retreatCosts' | 'portal' | 'feedback';
 
 /** The 5-phase readiness tracker shown on the overview cards. */
 export type PhaseState = 'done' | 'active' | 'locked';
-export interface PhaseProgress { contract: PhaseState; coi: PhaseState; housing: PhaseState; menu: PhaseState; setup: PhaseState }
+export interface PhaseProgress {
+  contract: PhaseState;
+  deposit: PhaseState;
+  headcount: PhaseState;
+  housing: PhaseState;
+  menu: PhaseState;
+  coi: PhaseState;
+  finalInvoice: PhaseState;
+}
 
 export type RetreatModal =
   | { kind: 'newRetreat' }
@@ -72,6 +81,7 @@ interface RetreatState {
   spaces: RetreatSpace[];
   housing: RetreatHousing[];
   housingVersions: RetreatHousingVersion[];
+  guests: RetreatGuest[];
   documents: RetreatDocument[];
   meals: RetreatMeal[];
   changeRequests: RetreatChangeRequest[];
@@ -87,12 +97,15 @@ interface RetreatState {
 
   setActiveTab: (t: RetreatTab) => void;
   setActiveRetreat: (id: string | null) => void;
+  enterRetreat: (id: string, tab?: RetreatTab) => void;
+  exitRetreat: () => void;
   openModal: (m: RetreatModal) => void;
   closeModal: () => void;
 
   setRetreats: (r: Retreat[]) => void;
   setSpaces: (r: RetreatSpace[]) => void;
   setHousing: (r: RetreatHousing[]) => void;
+  setGuests: (r: RetreatGuest[]) => void;
   setHousingVersions: (r: RetreatHousingVersion[]) => void;
   setDocuments: (r: RetreatDocument[]) => void;
   setMeals: (r: RetreatMeal[]) => void;
@@ -184,6 +197,8 @@ interface RetreatState {
   retreatsByStatus: () => Record<RetreatStatus, Retreat[]>;
   docsFor: (retreatId: string) => RetreatDocument[];
   housingFor: (retreatId: string) => RetreatHousing[];
+  guestsFor: (retreatId: string) => RetreatGuest[];
+  assignGuests: (guestIds: string[], locationId: string | null) => void;
   versionsFor: (retreatId: string) => RetreatHousingVersion[];
   mealsFor: (retreatId: string) => RetreatMeal[];
   requestsFor: (retreatId: string) => RetreatChangeRequest[];
@@ -206,28 +221,70 @@ interface RetreatState {
 const now = () => new Date().toISOString();
 const today = () => todayStr();
 
+// Reloading inside a retreat should put you back where you were, not bounce you out to the
+// season overview. Only the location is remembered, never the data.
+const OPEN_KEY = 'campcommand_retreat_open';
+
+function readOpenRetreat(): { retreatId: string | null; tab: RetreatTab | null } {
+  try {
+    const raw = localStorage.getItem(OPEN_KEY);
+    if (!raw) return { retreatId: null, tab: null };
+    const v = JSON.parse(raw) as { retreatId?: string; tab?: RetreatTab };
+    return { retreatId: v.retreatId ?? null, tab: v.tab ?? null };
+  } catch { return { retreatId: null, tab: null }; }
+}
+
+function writeOpenRetreat(retreatId: string | null, tab: RetreatTab) {
+  try {
+    if (!retreatId) localStorage.removeItem(OPEN_KEY);
+    else localStorage.setItem(OPEN_KEY, JSON.stringify({ retreatId, tab }));
+  } catch { /* private mode */ }
+}
+
 export const useRetreatStore = create<RetreatState>((set, get) => ({
-  activeTab: 'overview',
-  activeRetreatId: null,
+  activeTab: readOpenRetreat().tab ?? 'overview',
+  activeRetreatId: readOpenRetreat().retreatId,
   modal: null,
 
-  retreats: [], spaces: [], housing: [], housingVersions: [], documents: [], meals: [],
+  retreats: [], spaces: [], housing: [], housingVersions: [], guests: [], documents: [], meals: [],
   changeRequests: [], costs: [], charges: [], payments: [], issues: [], checklist: [],
   scheduleItems: [], feedback: [], reminders: [], invoices: [],
 
-  setActiveTab: (t) => set({ activeTab: t }),
+  setActiveTab: (t) => set((st) => {
+    writeOpenRetreat(st.activeRetreatId, t);
+    return { activeTab: t };
+  }),
   setActiveRetreat: (id) => set({ activeRetreatId: id }),
+  /** Step into one retreat. Everything except Overview and Costs is scoped to it from here.
+   *  'overview' and 'costs' are season-wide views, so asking to enter on one of them would
+   *  land the user somewhere other than where they clicked. */
+  enterRetreat: (id, tab) => set(() => {
+    // 'overview' is the season view, so entering on it would land somewhere other than where
+    // the user clicked. Everything else, including the per-retreat costs tab, is valid.
+    const next: RetreatTab = !tab || tab === 'overview' ? 'active' : tab;
+    writeOpenRetreat(id, next);
+    return { activeRetreatId: id, activeTab: next };
+  }),
+  /** Step back out to the cross-retreat views. */
+  exitRetreat: () => set(() => {
+    writeOpenRetreat(null, 'overview');
+    return { activeRetreatId: null, activeTab: 'overview' };
+  }),
   openModal: (m) => set({ modal: m }),
   closeModal: () => set({ modal: null }),
 
   setRetreats: (rows) => set((st) => ({
     retreats: rows,
+    // Loading data never picks a retreat for you. It only keeps the one you had entered, and
+    // drops it if that retreat is gone. Auto-selecting on load is what put people inside a
+    // group they had not chosen.
     activeRetreatId: st.activeRetreatId && rows.some((r) => r.id === st.activeRetreatId)
       ? st.activeRetreatId
-      : (rows.find((r) => r.status === 'active')?.id ?? rows[0]?.id ?? null),
+      : null,
   })),
   setSpaces: (rows) => set({ spaces: rows }),
   setHousing: (rows) => set({ housing: rows }),
+  setGuests: (rows) => set({ guests: rows }),
   setHousingVersions: (rows) => set({ housingVersions: rows }),
   setDocuments: (rows) => set({ documents: rows }),
   setMeals: (rows) => set({ meals: rows }),
@@ -338,7 +395,10 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
 
   // ─── Selectors ─────────────────────────────────────────────────────────────
   retreatById: (id) => get().retreats.find((r) => r.id === id) ?? null,
-  selectedRetreat: () => { const s = get(); return s.retreats.find((r) => r.id === s.activeRetreatId) ?? s.retreats[0] ?? null; },
+  // The retreat the user has explicitly entered, or null. It deliberately does NOT fall back
+  // to the first retreat: silently landing on someone else's group is exactly the confusion
+  // the enter/exit model exists to remove.
+  selectedRetreat: () => { const s = get(); return s.retreats.find((r) => r.id === s.activeRetreatId) ?? null; },
   activeRetreat: () => {
     const t = today();
     return get().retreats.find((r) => r.status === 'active')
@@ -352,6 +412,13 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   },
   docsFor: (id) => get().documents.filter((d) => d.retreatId === id).sort((a, b) => a.sortOrder - b.sortOrder),
   housingFor: (id) => get().housing.filter((h) => h.retreatId === id).sort((a, b) => a.sortOrder - b.sortOrder),
+  assignGuests: (guestIds, locationId) => {
+    set((s) => ({
+      guests: s.guests.map((g) => guestIds.includes(g.id) ? { ...g, locationId } : g),
+    }));
+    dbAssignGuests(guestIds, locationId);
+  },
+  guestsFor: (id) => get().guests.filter((g) => g.retreatId === id).sort((a, b) => a.sortOrder - b.sortOrder || a.fullName.localeCompare(b.fullName)),
   versionsFor: (id) => get().housingVersions.filter((v) => v.retreatId === id).sort((a, b) => b.version - a.version),
   mealsFor: (id) => get().meals.filter((m) => m.retreatId === id).sort((a, b) => a.dayDate.localeCompare(b.dayDate) || a.sortOrder - b.sortOrder),
   requestsFor: (id) => get().changeRequests.filter((r) => r.retreatId === id),
@@ -374,7 +441,7 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   // THE one calculation every money figure must use (Overview, Active-retreat panel, Retreat
   // financials cards, per-group card, account balance). Expected gross owed is resolved from the
   // best-known source so the number shows the moment a retreat is scheduled and snaps to invoice
-  // totals once fees/headcount are billed — and always agrees across the whole module.
+  // totals once fees/headcount are billed, and always agrees across the whole module.
   financialsFor: (id) => {
     const r = get().retreatById(id);
     const payments = get().payments.filter((p) => p.retreatId === id);
@@ -405,26 +472,64 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   },
 
   phaseProgress: (id) => {
+    const p_id = id;
     const r = get().retreatById(id);
     const docs = get().docsFor(id);
     const housing = get().housingFor(id);
     const meals = get().mealsFor(id);
+    const invoices = get().invoicesFor(id);
+    const fin = get().financialsFor(id);
     const doc = (type: RetreatDocType) => docs.find((d) => d.docType === type);
     const agreement = doc('agreement');
     const coi = doc('coi');
-    // Each phase reflects ONLY its own state — no sequential gating between phases.
+    // Each phase reflects ONLY its own state, no sequential gating between phases.
     // done = complete, active = started/pending, locked = nothing entered yet.
     const contract: PhaseState = agreement && ['signed', 'approved'].includes(agreement.status)
       ? 'done' : agreement ? 'active' : 'locked';
-    const coiState: PhaseState = coi && ['received', 'signed', 'approved'].includes(coi.status)
-      ? 'done' : coi ? 'active' : 'locked';
+
+    // Money in hand is what closes the deposit step, so a deposit invoice that has been
+    // raised but not paid reads as in-progress rather than done. Comparing received against
+    // required (rather than requiring a non-zero required) keeps a retreat that was never
+    // asked for a deposit from being stuck at locked once a payment lands.
+    const depositInvoice = invoices.find((i) => i.kind === 'deposit' && i.status !== 'void');
+    const deposit: PhaseState = fin.depositReceived > 0 && fin.depositReceived >= fin.depositRequired
+      ? 'done' : fin.depositReceived > 0 || depositInvoice ? 'active' : 'locked';
+
+    // Confirmed through the portal is the only thing that counts as done; a cutoff on the
+    // calendar means we have asked and are waiting.
+    const headcount: PhaseState = r?.finalHeadcountAt
+      ? 'done' : r?.headcountCutoff ? 'active' : 'locked';
+
     const housingState: PhaseState = housing.length > 0 && housing.every((h) => h.locked)
       ? 'done' : housing.length > 0 ? 'active' : 'locked';
-    const menuState: PhaseState = r?.menuPublished && meals.length > 0
-      ? 'done' : meals.length > 0 ? 'active' : 'locked';
-    const setupState: PhaseState = r?.status === 'complete'
-      ? 'done' : r?.status === 'active' ? 'active' : 'locked';
-    return { contract, coi: coiState, housing: housingState, menu: menuState, setup: setupState };
+    // Publishing is what completes this step, and it is the only signal that works for both
+    // menu sources: legacy `retreat_meals` and the Commissary retreats builder, which writes
+    // to `retreat_menu_entries`. Requiring `meals.length` as well meant a menu authored in
+    // Commissary and published to the portal still showed as unfinished.
+    //
+    // The entry count is read lazily rather than imported at module scope: commissaryStore
+    // imports this file, so a top-level import back would be a cycle.
+    const plannedEntries = (() => {
+      try {
+        return useCommissaryStore.getState().retreatMenuEntries
+          .filter((e) => e.retreatId === p_id).length;
+      } catch { return 0; }
+    })();
+    const menuState: PhaseState = r?.menuPublished
+      ? 'done' : meals.length > 0 || plannedEntries > 0 ? 'active' : 'locked';
+    const coiState: PhaseState = coi && ['received', 'signed', 'approved'].includes(coi.status)
+      ? 'done' : coi ? 'active' : 'locked';
+
+    // The balance invoice is the final bill. It closes when the invoice is marked paid OR the
+    // account is actually settled: someone who logs a payment covering (or exceeding) the
+    // balance has finished paying, whether or not anyone went back to flip the invoice's own
+    // status, and showing that as still in progress reads as a mistake.
+    const balanceInvoice = invoices.filter((i) => i.kind === 'balance' && i.status !== 'void');
+    const settled = fin.expected > 0 && fin.collected >= fin.expected;
+    const finalInvoice: PhaseState = balanceInvoice.some((i) => i.status === 'paid') || settled
+      ? 'done' : balanceInvoice.length > 0 ? 'active' : 'locked';
+
+    return { contract, deposit, headcount, housing: housingState, menu: menuState, coi: coiState, finalInvoice };
   },
 
   pendingRequestCount: () => get().changeRequests.filter((r) => r.status === 'pending').length,

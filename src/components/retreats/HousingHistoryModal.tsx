@@ -26,7 +26,7 @@ export function HousingHistoryModal({ retreatId }: { retreatId: string }) {
                 className={`rounded-card border px-4 py-3 ${latest ? 'bg-green-muted-bg border-sage/40' : 'bg-cream border-border'}`}
               >
                 <div className={`flex items-center justify-between text-[12px] font-semibold ${latest ? 'text-green-muted-text' : 'text-ink-soft'}`}>
-                  <span>v{v.version}{v.label ? ` — ${v.label}` : ''}{latest ? ' (current)' : ''}</span>
+                  <span>v{v.version}{v.label ? ` · ${v.label}` : ''}{latest ? ' (current)' : ''}</span>
                   <span className="font-mono">{fmtDateFull(v.createdAt.slice(0, 10))}</span>
                 </div>
                 {v.summary && (

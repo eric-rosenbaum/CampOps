@@ -102,7 +102,7 @@ export function LogInspectionModal() {
         <div>
           <label className={labelClass}>Inspection type</label>
           <select {...register('inspectionId')} className={inputClass}>
-            <option value="">— Select if applicable —</option>
+            <option value="">Select if applicable</option>
             {inspections.map((i) => (
               <option key={i.id} value={i.id}>{i.name}</option>
             ))}
@@ -134,10 +134,10 @@ export function LogInspectionModal() {
         <div>
           <label className={labelClass}>Result *</label>
           <select {...register('result', { required: true })} className={inputClass}>
-            <option value="passed">Passed — no issues</option>
+            <option value="passed">Passed · no issues</option>
             <option value="passed_with_notes">Passed with notes</option>
-            <option value="conditional">Conditional — corrections required</option>
-            <option value="failed">Failed — pool closed</option>
+            <option value="conditional">Conditional · corrections required</option>
+            <option value="failed">Failed · pool closed</option>
           </select>
         </div>
 

@@ -67,7 +67,7 @@ function TaskRow({ task, canManage, onToggle, onEdit, onDelete }: TaskRowProps) 
         )}
       </div>
 
-      {/* Edit / delete — only for managers, only visible on hover */}
+      {/* Edit / delete, only for managers, only visible on hover */}
       {canManage && (
         <div className={`flex items-center gap-1 flex-shrink-0 transition-opacity ${hovered ? 'opacity-100' : 'opacity-0'}`}>
           <button
@@ -146,7 +146,7 @@ function PhaseSection({ phase, label, subtitle, tasks, canManage, onToggle, onEd
 
       {tasks.length === 0 ? (
         <p className="text-meta text-forest/30 px-3.5 py-2">
-          {canManage ? 'No tasks yet — click "+ Add task" to get started.' : 'No tasks added yet.'}
+          {canManage ? 'No tasks yet. Click "+ Add task" to get started.' : 'No tasks added yet.'}
         </p>
       ) : (
         <div className="flex flex-col gap-0.5">

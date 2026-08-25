@@ -53,7 +53,7 @@ function TaskRow({ task }: { task: ProductionTask }) {
                     ? 'bg-cream-dark text-ink border-border'
                     : 'bg-white text-ink-faint border-dashed border-border'
                 }`}
-                title={ing.linked ? undefined : 'Unlinked ingredient — not scaled'}
+                title={ing.linked ? undefined : 'Unlinked ingredient · not scaled'}
               >
                 {!ing.linked && <Link2Off className="w-2.5 h-2.5" />}
                 <span className="font-mono">{ing.qty}</span> {ing.label}
@@ -65,9 +65,9 @@ function TaskRow({ task }: { task: ProductionTask }) {
             <p className={`text-[11px] mt-2 flex items-start gap-1.5 ${anaphylactic ? 'text-red' : 'text-amber-text'}`}>
               <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
               <span>
-                Contains {conflicts.map((c) => restrictionLabel(c.allergen)).join(', ').toLowerCase()} —{' '}
+                Contains {conflicts.map((c) => restrictionLabel(c.allergen)).join(', ').toLowerCase()} -{' '}
                 {conflicts.map((c) => `${c.camperCount} camper${c.camperCount === 1 ? '' : 's'}`).join(', ')} affected
-                {anaphylactic && '. One or more is ANAPHYLACTIC — prepare a separate portion with dedicated equipment.'}
+                {anaphylactic && '. One or more is ANAPHYLACTIC, prepare a separate portion with dedicated equipment.'}
               </span>
             </p>
           )}
@@ -81,7 +81,7 @@ function TaskRow({ task }: { task: ProductionTask }) {
   );
 }
 
-/** The checkable "Prep due today" board on the Day plan — ahead-prep + freezer pulls. */
+/** The checkable "Prep due today" board on the Day plan, ahead-prep + freezer pulls. */
 function PrepDueToday({ tasks, onToggle, canManage }: {
   tasks: ProductionPrepTask[]; onToggle: (id: string) => void; canManage: boolean;
 }) {
@@ -100,7 +100,7 @@ function PrepDueToday({ tasks, onToggle, canManage }: {
       <div className="flex items-center gap-2 px-4 py-2.5 bg-green-muted-bg/40 border-b border-border">
         <CalendarClock className="w-4 h-4 text-ink-soft" />
         <p className="text-[13px] font-semibold text-forest">Prep due today</p>
-        <span className="text-[11px] text-ink-faint">— get ahead-prep for upcoming meals done</span>
+        <span className="text-[11px] text-ink-faint">get ahead-prep for upcoming meals done</span>
         <div className="flex-1" />
         <span className={`text-[11px] font-medium ${done === tasks.length ? 'text-green-muted-text' : 'text-ink-faint'}`}>
           {done} of {tasks.length} done
@@ -126,7 +126,7 @@ function PrepDueToday({ tasks, onToggle, canManage }: {
                       {t.instruction}
                     </span>
                     <span className="text-[11px] text-ink-faint">
-                      {' — '}{t.title}
+                      {''}{t.title}
                       {ahead && `, serves ${new Date(`${t.serviceDate}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short' })}`}
                     </span>
                   </div>
@@ -168,7 +168,7 @@ function PrepScheduleView({ slots }: { slots: PrepScheduleSlot[] }) {
   return (
     <div className="space-y-4">
       <p className="text-[11px] text-ink-faint leading-relaxed">
-        A planning overview of the week's prep, each step on the day and time it's due — steps
+        A planning overview of the week's prep, each step on the day and time it's due · steps
         tagged ahead ("night before", "2 days before") show on their prep day, not the serving
         day. To check prep off, open the <strong>Day plan</strong> for that day ("Prep due today").
       </p>
@@ -191,7 +191,7 @@ function PrepScheduleView({ slots }: { slots: PrepScheduleSlot[] }) {
                       <div className="min-w-0 flex-1">
                         <span className="text-ink">{it.instruction}</span>
                         <span className="text-ink-faint">
-                          {' — '}{it.recipeName} · {it.mealLabel}
+                          {''}{it.recipeName} · {it.mealLabel}
                           {ahead && `, serves ${new Date(`${it.serviceDateStr}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short' })}`}
                         </span>
                       </div>
@@ -248,16 +248,16 @@ export function ProductionTab() {
   // camp-wide kosher. This is the plating instruction a line cook actually works from.
   const worklist = useMemo(() => {
     const lines: string[] = [];
-    if (currentCamp?.dietaryDefaults?.kosher) lines.push('Whole kitchen is kosher — no meat + dairy on the same plate.');
+    if (currentCamp?.dietaryDefaults?.kosher) lines.push('Whole kitchen is kosher, no meat + dairy on the same plate.');
     for (const d of dietCountsForSession()) {
-      lines.push(`${d.count} ${restrictionLabel(d.restriction).toLowerCase()} portion${d.count === 1 ? '' : 's'} — plate a compliant alternative.`);
+      lines.push(`${d.count} ${restrictionLabel(d.restriction).toLowerCase()} portion${d.count === 1 ? '' : 's'}, plate a compliant alternative.`);
     }
     for (const t of tasks) {
       if (!t.recipeId) continue;
       const conflicts = conflictsForRecipe(t.recipeId);
       for (const c of conflicts) {
         const ana = c.anaphylacticCount > 0;
-        lines.push(`${t.title}: ${c.camperCount} camper${c.camperCount === 1 ? '' : 's'} allergic to ${restrictionLabel(c.allergen)}${ana ? ' — ANAPHYLACTIC, dedicated prep' : ''}.`);
+        lines.push(`${t.title}: ${c.camperCount} camper${c.camperCount === 1 ? '' : 's'} allergic to ${restrictionLabel(c.allergen)}${ana ? 'ANAPHYLACTIC, dedicated prep' : ''}.`);
       }
     }
     return lines;
@@ -379,7 +379,7 @@ export function ProductionTab() {
         <StatCard label="Meals on menu" value={dayEntries.length} hint={unlinkedCount > 0 ? `${unlinkedCount} unlinked` : 'All linked to recipes'} />
       </div>
 
-      {/* Ahead-prep + freezer pulls due today (for upcoming meals) — checkable */}
+      {/* Ahead-prep + freezer pulls due today (for upcoming meals) · checkable */}
       <PrepDueToday tasks={prepToday} onToggle={(id) => toggleProductionPrepTask(id, currentUser.name || 'Unknown')} canManage={canManage} />
 
       {stale && (
@@ -416,7 +416,7 @@ export function ProductionTab() {
           </p>
           {unlinkedCount > 0 && linkedCount > 0 && (
             <p className="text-[11px] text-ink-faint mt-3">
-              {unlinkedCount} free-text item{unlinkedCount === 1 ? '' : 's'} will be skipped — no recipe to prep.
+              {unlinkedCount} free-text item{unlinkedCount === 1 ? '' : 's'} will be skipped, no recipe to prep.
             </p>
           )}
         </div>
@@ -442,7 +442,7 @@ export function ProductionTab() {
             );
           })}
 
-          {/* #11 — the specific replacement main + side for affected campers */}
+          {/* #11. The specific replacement main + side for affected campers */}
           {(daySubs.length > 0 || canManage) && (
             <div className="bg-white rounded-card border border-border p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -504,7 +504,7 @@ export function ProductionTab() {
           <p className="text-[11px] text-ink-faint leading-relaxed">
             Quantities are frozen from when the plan was generated, so a printout and this
             screen always agree. Ahead-prep (thawing, marinating) shows on the day it's due
-            in "Prep due today" above. Allergy warnings are live — they reflect the current roster.
+            in "Prep due today" above. Allergy warnings are live. They reflect the current roster.
           </p>
         </div>
       )}

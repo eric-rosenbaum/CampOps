@@ -1,13 +1,13 @@
 -- White-glove implementation hand-off, generalized.
 --
--- During setup a camp needs to send us raw source files — location inventories, staff
+-- During setup a camp needs to send us raw source files, location inventories, staff
 -- lists, camper rosters, session calendars, vendor order guides. Previously only the
 -- locations spreadsheet had a home (the `location-imports` bucket); everything else was
 -- arriving by email, which puts customer data outside the RLS boundary and outside the
 -- audit log. This replaces that with one camp-scoped private bucket + a metadata table so
 -- every hand-off has a receipt: what was sent, by whom, when.
 --
--- RETENTION — deliberately keep-forever. There is no UPDATE or DELETE policy on either the
+-- RETENTION, deliberately keep-forever. There is no UPDATE or DELETE policy on either the
 -- table or the bucket, so no app user (not even a camp admin) can remove or alter an
 -- uploaded file or its metadata row. Purging is a service-role operation, on purpose: the
 -- record of what a camp handed us is permanent.
@@ -75,11 +75,11 @@ create trigger audit_implementation_files
 
 -- ─── Retire the locations-only bucket ─────────────────────────────────────────
 -- Verified empty before writing this migration (zero storage.objects rows) and no longer
--- referenced by any code. Dropping its policies makes it inert — with no policy, RLS on
+-- referenced by any code. Dropping its policies makes it inert, with no policy, RLS on
 -- storage.objects denies every app request against it, which fails closed.
 --
 -- The empty bucket row itself has to go through the Storage API; Postgres blocks direct
 -- deletes from storage.buckets (storage.protect_delete). Remove it from the Supabase
--- dashboard → Storage, or leave it — it is unreachable either way.
+-- dashboard → Storage, or leave it. It is unreachable either way.
 drop policy if exists "loc_import_member_upload" on storage.objects;
 drop policy if exists "loc_import_member_read"   on storage.objects;

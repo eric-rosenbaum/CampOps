@@ -44,7 +44,7 @@ const REMINDER_TYPES: ReminderType[] = [
     value: 'headcount',
     label: 'Headcount',
     message: (r) =>
-      `Hi ${r?.coordinatorName ?? 'there'},\n\nPlease confirm your final headcount for ${r?.groupName ?? 'your group'}${r?.headcountCutoff ? ` by ${fmtDateFull(r.headcountCutoff)}` : ''}. This lets us finalize meals, housing, and staffing. Current count on file: ${r?.headcount ?? '—'}.\n\nThanks!`,
+      `Hi ${r?.coordinatorName ?? 'there'},\n\nPlease confirm your final headcount for ${r?.groupName ?? 'your group'}${r?.headcountCutoff ? ` by ${fmtDateFull(r.headcountCutoff)}` : ''}. This lets us finalize meals, housing, and staffing. Current count on file: ${r?.headcount ?? '-'}.\n\nThanks!`,
   },
   {
     value: 'custom',
@@ -87,7 +87,7 @@ export function SendReminderModal({ retreatId, reminderType }: { retreatId: stri
     if (retreat?.coordinatorEmail) {
       const res = await sendEmail({
         to: retreat.coordinatorEmail,
-        subject: `${label} — ${retreat.groupName}`,
+        subject: `${label} · ${retreat.groupName}`,
         html: textToHtml(message.trim()),
         fromName: currentCamp?.name,
         replyTo: currentUser.email || undefined,
@@ -99,7 +99,7 @@ export function SendReminderModal({ retreatId, reminderType }: { retreatId: stri
   }
 
   return (
-    <Modal title={`Send reminder — ${retreat?.groupName ?? 'Retreat'}`} onClose={closeModal} width="520px">
+    <Modal title={`Send reminder · ${retreat?.groupName ?? 'Retreat'}`} onClose={closeModal} width="520px">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className={labelClass}>Reminder type</label>
@@ -122,7 +122,7 @@ export function SendReminderModal({ retreatId, reminderType }: { retreatId: stri
         <p className="text-[11px] text-ink-faint leading-relaxed bg-cream-dark/50 border border-border rounded-btn px-3 py-2">
           {hasEmail
             ? <>This emails {retreat?.coordinatorName ?? 'the coordinator'} from your camp (replies come back to you) and logs it in the retreat's history.</>
-            : <>No coordinator email on file — this will only log the reminder to history. Add an email on the retreat to send it.</>}
+            : <>No coordinator email on file. This will only log the reminder to history. Add an email on the retreat to send it.</>}
         </p>
 
         {error && <p className="text-[12px] text-red">{error}</p>}

@@ -9,7 +9,7 @@ struct LoginView: View {
     @State private var showingForgotPassword = false
     @State private var showingJoinWithCode = false
     // Staff who joined with a group code have no password, and they are the majority of
-    // phone users — so the emailed code is the DEFAULT here and the password is the
+    // phone users, so the emailed code is the DEFAULT here and the password is the
     // alternative, which is the reverse of the web app's desktop-leaning login.
     @State private var mode: Mode = .emailCode
     @State private var codeSent = false

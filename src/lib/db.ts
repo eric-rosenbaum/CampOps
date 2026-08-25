@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { campLog, campError } from './campLog';
 import { loadAndApply, debounce, WAL_DEBOUNCE_MS } from './syncGuard';
 
-// Plain client for public (unauthenticated) form submissions — no custom fetch
+// Plain client for public (unauthenticated) form submissions, no custom fetch
 // wrapper, no timeout logic, no XHR workarounds. Mobile browsers handle vanilla
 // fetch fine; the custom wrapper was built for the app's stale-TCP problem only.
 const supabasePublic = createClient(
@@ -42,7 +42,7 @@ export function getCampId() { return _campId; }
  * This exists because of a data-loss bug that is easy to reintroduce. supabase-js does NOT
  * throw on an HTTP error: a 401 mid-token-refresh, a 500, or a statement timeout all come
  * back as `{ data: null, error }`. Every loader below then does `res.data ?? []`, so a
- * failed read turned into a perfectly well-formed snapshot full of empty arrays — and
+ * failed read turned into a perfectly well-formed snapshot full of empty arrays · and
  * `loadAndApply` has no way to tell that from a camp that genuinely has no rows, so it
  * applied it and wiped the module's state in the UI while the database was fine.
  *
@@ -388,7 +388,7 @@ export function subscribeToIssues(campId: string, onUpdate: IssueCallback): () =
     .subscribe((status) => {
       campLog('[CampOps] issues channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) { campLog('[CampOps] issues reconnected — reloading in 10s'); setTimeout(() => reload('reconnect'), 10000); }
+        if (everSubscribed) { campLog('[CampOps] issues reconnected, reloading in 10s'); setTimeout(() => reload('reconnect'), 10000); }
         else { campLog('[CampOps] issues initial subscription'); everSubscribed = true; }
       }
     });
@@ -415,7 +415,7 @@ export function subscribeToTasks(campId: string, onUpdate: TaskCallback): () => 
     .subscribe((status) => {
       campLog('[CampOps] tasks channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) { campLog('[CampOps] tasks reconnected — reloading in 10s'); setTimeout(() => reload(), 10000); }
+        if (everSubscribed) { campLog('[CampOps] tasks reconnected, reloading in 10s'); setTimeout(() => reload(), 10000); }
         else { campLog('[CampOps] tasks initial subscription'); everSubscribed = true; }
       }
     });
@@ -744,7 +744,7 @@ export function subscribeToPool(campId: string, onUpdate: PoolDataCallback): () 
   channel.subscribe((status) => {
     campLog('[CampOps] pool channel status:', status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) { campLog('[CampOps] pool reconnected — reloading in 10s'); setTimeout(() => reload(), 10000); }
+      if (everSubscribed) { campLog('[CampOps] pool reconnected, reloading in 10s'); setTimeout(() => reload(), 10000); }
       else { campLog('[CampOps] pool initial subscription'); everSubscribed = true; }
     }
   });
@@ -1123,7 +1123,7 @@ export function subscribeToSafety(campId: string, onUpdate: SafetyDataCallback):
     .subscribe((status) => {
       campLog('[CampOps] safety channel status:', status);
       if (status === 'SUBSCRIBED') {
-        if (everSubscribed) { campLog('[CampOps] safety reconnected — reloading in 10s'); setTimeout(() => reload(), 10000); }
+        if (everSubscribed) { campLog('[CampOps] safety reconnected, reloading in 10s'); setTimeout(() => reload(), 10000); }
         else { campLog('[CampOps] safety initial subscription'); everSubscribed = true; }
       }
     });
@@ -1407,7 +1407,7 @@ export function subscribeToAssets(campId: string, onUpdate: AssetDataCallback): 
   channel.subscribe((status) => {
     campLog('[CampOps] assets channel status:', status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) { campLog('[CampOps] assets reconnected — reloading in 10s'); setTimeout(() => reload(), 10000); }
+      if (everSubscribed) { campLog('[CampOps] assets reconnected, reloading in 10s'); setTimeout(() => reload(), 10000); }
       else { campLog('[CampOps] assets initial subscription'); everSubscribed = true; }
     }
   });
@@ -1416,7 +1416,7 @@ export function subscribeToAssets(campId: string, onUpdate: AssetDataCallback): 
 
 // ─── Building Systems ───────────────────────────────────────────────────────────
 
-// Buildings and rooms are no longer their own tables — they are nodes in the
+// Buildings and rooms are no longer their own tables. They are nodes in the
 // unified `locations` tree (loaded by locationStore). This module now loads only
 // the electrical/plumbing data that hangs off those location nodes.
 
@@ -1618,7 +1618,7 @@ export function subscribeToBuilding(campId: string, onUpdate: BuildingDataCallba
   channel.subscribe((status) => {
     campLog('[CampOps] building channel status:', status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) { campLog('[CampOps] building reconnected — reloading in 10s'); setTimeout(() => reload(), 10000); }
+      if (everSubscribed) { campLog('[CampOps] building reconnected, reloading in 10s'); setTimeout(() => reload(), 10000); }
       else { campLog('[CampOps] building initial subscription'); everSubscribed = true; }
     }
   });
@@ -1626,7 +1626,7 @@ export function subscribeToBuilding(campId: string, onUpdate: BuildingDataCallba
 }
 
 // ─── Commissary ─────────────────────────────────────────────────────────────────
-// Split into THREE subscription domains — inventory, catalog (recipes), menu —
+// Split into THREE subscription domains, inventory, catalog (recipes), menu -
 // rather than the one-domain-per-module pattern the other five modules use.
 // Commissary is the first module big enough that reloading everything on any WAL
 // event visibly hurts: a cook adjusting one item's stock should not refetch every
@@ -2044,7 +2044,7 @@ export async function dbSetItemCounted(itemId: string, ts: string) {
 
 /**
  * Add or update a SINGLE vendor pack on an item without touching its other packs.
- * Upserts on the (item_id, vendor_id) unique key — used by the CSV merge path, where a
+ * Upserts on the (item_id, vendor_id) unique key, used by the CSV merge path, where a
  * second distributor's sheet layers its pack onto an item the camp already stocks.
  */
 export async function dbUpsertItemVendor(pack: ItemVendorPack) {
@@ -2084,7 +2084,7 @@ export async function dbReplaceItemVendors(itemId: string, packs: ItemVendorPack
  * `onHand + delta` from a stale snapshot and the second save would erase the first.
  * The RPC also writes the audit row in the same transaction.
  *
- * Returns the authoritative new on-hand (base units), or null on failure — unlike
+ * Returns the authoritative new on-hand (base units), or null on failure · unlike
  * the fire-and-forget writers above, the caller needs this value to reconcile its
  * optimistic update.
  */
@@ -2132,7 +2132,7 @@ export async function dbUpdateRecipe(r: Recipe) {
 /**
  * Persist just the recipe card's "Scale to" number. Its own writer rather than a full
  * dbUpdateRecipe because it is edited inline from the recipe list, where nothing else on
- * the recipe is in play — a whole-row update there would write back whatever the local
+ * the recipe is in play, a whole-row update there would write back whatever the local
  * copy happened to hold for every other field.
  */
 export async function dbUpdateRecipeScale(recipeId: string, scaleTo: number | null) {
@@ -2225,7 +2225,7 @@ export async function dbDeleteRetreatMenuEntry(id: string) {
   if (error) console.error('dbDeleteRetreatMenuEntry error:', error.message);
 }
 
-/** Bulk insert — used by "Copy last week". */
+/** Bulk insert · used by "Copy last week". */
 export async function dbAddMenuEntries(entries: MenuEntry[]) {
   if (!entries.length) return;
   const { error } = await supabase.from('menu_entries').insert(
@@ -2239,7 +2239,7 @@ export async function dbAddMenuEntries(entries: MenuEntry[]) {
   if (error) console.error('dbAddMenuEntries error:', error.message);
 }
 
-/** Bulk delete — used by "Clear week". */
+/** Bulk delete · used by "Clear week". */
 export async function dbDeleteMenuWeek(sessionId: string, weekNumber: number) {
   const { error } = await supabase.from('menu_entries').delete()
     .eq('session_id', sessionId).eq('week_number', weekNumber);
@@ -2270,7 +2270,7 @@ function makeCommissaryChannel<T>(
   channel.subscribe((status) => {
     campLog(`[CampOps] ${name} status:`, status);
     if (status === 'SUBSCRIBED') {
-      if (everSubscribed) { campLog(`[CampOps] ${name} reconnected — reloading in 10s`); setTimeout(() => reload(), 10000); }
+      if (everSubscribed) { campLog(`[CampOps] ${name} reconnected, reloading in 10s`); setTimeout(() => reload(), 10000); }
       else { campLog(`[CampOps] ${name} initial subscription`); everSubscribed = true; }
     }
   });
@@ -2467,7 +2467,7 @@ async function loadProductionData(campId: string): Promise<CommissaryProductionD
 
 /**
  * `campers` and `camper_restrictions` are gated by RLS to admins and health-flagged
- * staff groups. For everyone else those two selects legitimately return zero rows —
+ * staff groups. For everyone else those two selects legitimately return zero rows -
  * that is not an error, and the summary view still returns counts. Never surface an
  * empty roster as "no campers"; check canViewCamperNames.
  */
@@ -2600,7 +2600,7 @@ export async function dbUpdateOrderLinePack(id: string, patch: {
   if (error) console.error('dbUpdateOrderLinePack error:', error.message);
 }
 
-/** Re-vendor a draft order in place (single-line switch) — new vendor, fee and totals. */
+/** Re-vendor a draft order in place (single-line switch), new vendor, fee and totals. */
 export async function dbUpdateOrderVendor(id: string, vendorId: string, vendorName: string, deliveryFee: number, subtotal: number, total: number) {
   const { error } = await supabase.from('purchase_orders')
     .update({ vendor_id: vendorId, vendor_name: vendorName, delivery_fee: deliveryFee, subtotal, total, updated_at: new Date().toISOString() })
@@ -2610,7 +2610,7 @@ export async function dbUpdateOrderVendor(id: string, vendorId: string, vendorNa
 
 /**
  * Books every line into stock and marks the order received, in one transaction.
- * Returns true on success — the caller must NOT optimistically apply stock changes,
+ * Returns true on success. The caller must NOT optimistically apply stock changes,
  * because the RPC is the only thing that knows the authoritative post-increment values.
  */
 export async function dbReceiveOrder(orderId: string, receivedBy: string | null): Promise<boolean> {
@@ -2738,7 +2738,7 @@ export async function dbDeleteCamper(id: string) {
  *
  * Written as upsert-then-delete-the-rest rather than delete-then-insert. Delete-first
  * loses the whole set if the insert fails (offline, RLS, a bad row), and this is health
- * data — losing it silently is the worst outcome available. `camper_restrictions` has a
+ * data, losing it silently is the worst outcome available. `camper_restrictions` has a
  * UNIQUE (camper_id, restriction), so the upsert is well defined and the delete only has
  * to remove what the user actually unchecked.
  */
@@ -2983,7 +2983,7 @@ export async function dbDeleteExpense(id: string) {
   if (error) console.error('dbDeleteExpense error:', error.message);
 }
 
-// Receiving actuals — write the per-line and per-order actuals, then call the RPC.
+// Receiving actuals, write the per-line and per-order actuals, then call the RPC.
 export async function dbSaveReceivingLine(lineId: string, receivedQty: number | null, receivedUnitPrice: number | null, receivedNote: string | null) {
   const { error } = await supabase.from('purchase_order_lines').update({
     received_qty: receivedQty, received_unit_price: receivedUnitPrice,
@@ -3029,7 +3029,7 @@ export async function dbDeleteTemplateEntry(id: string) {
   const { error } = await supabase.from('menu_template_entries').delete().eq('id', id);
   if (error) console.error('dbDeleteTemplateEntry error:', error.message);
 }
-/** Bulk insert template entries — used by "save week/menu as template". */
+/** Bulk insert template entries · used by "save week/menu as template". */
 export async function dbAddTemplateEntries(entries: MenuTemplateEntry[]) {
   if (!entries.length) return;
   const { error } = await supabase.from('menu_template_entries').insert(

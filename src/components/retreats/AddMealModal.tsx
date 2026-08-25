@@ -135,7 +135,7 @@ export function AddMealModal({
           <label className={labelClass}>Alternatives</label>
           <input value={alternatives} onChange={(e) => setAlternatives(e.target.value)} className={inputClass}
                  placeholder="e.g. GF bagels available · Vegetarian: stuffed portobello" />
-          <p className="text-[11px] text-ink-faint mt-1">Shown in green under the meal — GF / vegetarian / vegan swaps.</p>
+          <p className="text-[11px] text-ink-faint mt-1">Shown in green under the meal, GF / vegetarian / vegan swaps.</p>
         </div>
 
         <div className="flex gap-2 pt-1">

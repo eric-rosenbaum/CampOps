@@ -1,124 +1,27 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { createClient } from '@supabase/supabase-js';
 import {
-  TreePine, CalendarDays, Users, User, Moon, AlertCircle, CheckCircle2, FileText,
-  PenLine, ShieldCheck, BedDouble, Accessibility, UtensilsCrossed, MessageSquarePlus,
-  Star, Clock, Plus, Trash2, Send, Lock, ClipboardList, Loader2,
-  Circle, ChevronRight, Wallet, UploadCloud, ListChecks, DollarSign, AlertTriangle,
+  CalendarDays, Users, User, Moon, AlertCircle, CheckCircle2, FileText,
+  PenLine, ShieldCheck, BedDouble, UtensilsCrossed, MessageSquarePlus,
+  Star, Clock, Trash2, Send, Lock, ClipboardList, Loader2,
+  Circle, ChevronRight, Wallet, UploadCloud, DollarSign, Bell, X,
 } from 'lucide-react';
 import {
   money, fmtDateFull, fmtRange, nights, MEAL_PERIOD_LABELS,
 } from '@/components/retreats/retreatUi';
 import { printInvoice } from '@/lib/invoiceHtml';
+import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
+import { RoomingBoard } from './RoomingBoard';
+import {
+  supabasePublic, SUPABASE_URL, portalFnHeaders,
+  readPortalSession, writePortalSession, clearPortalSession,
+  cardClass, inputClass, labelClass, btnPrimary,
+  type PortalRetreat, type PortalDocument, type PortalSpace, type PortalHousing,
+  type PortalGuest, type PortalMeal, type PortalChangeRequest, type PortalInvoice,
+  type PortalData,
+} from './portalShared';
 
-// This page renders OUTSIDE the authenticated app shell. It talks to Supabase only
-// through token-validated RPCs using its own anonymous client — never the ops store.
-const supabasePublic = createClient(
-  import.meta.env.VITE_SUPABASE_URL as string,
-  import.meta.env.VITE_SUPABASE_ANON_KEY as string,
-);
-
-// ─── Types (shape of get_portal_data) ─────────────────────────────────────────
-interface PortalRetreat {
-  id: string;
-  group_name: string;
-  group_type: string | null;
-  camp_name?: string | null;
-  arrival_date: string;
-  departure_date: string;
-  headcount: number | null;
-  coordinator_name: string | null;
-  status: string;
-  dietary_flags: string[] | null;
-  menu_published: boolean;
-  change_requests_enabled: boolean;
-  feedback_opens: string | null;
-  housing_deadline: string | null;
-  headcount_cutoff: string | null;
-  pricing_model: string | null;
-  rate_per_person_night: number | null;
-  nights: number | null;
-  deposit_required: number | null;
-  deposit_received: number | null;
-  deposit_due: string | null;
-  final_headcount: number | null;
-  final_headcount_at: string | null;
-  final_headcount_by: string | null;
-  total_charges: number | null;
-  total_paid: number | null;
-  balance_due: number | null;
-}
-interface PortalDocument {
-  id: string;
-  doc_type: string;
-  name: string;
-  status: string;
-  due_date: string | null;
-  signed_at: string | null;
-  signed_by: string | null;
-  meta: Record<string, unknown> | null;
-  has_file?: boolean;
-}
-interface PortalSpace {
-  id: string;
-  name: string;
-  building_id: string | null;
-  building: string | null;
-  bed_capacity: number | null;
-  accessible: boolean | null;
-  /** Held by another retreat whose stay overlaps these dates. Not pickable. */
-  taken_by_other?: boolean;
-}
-interface PortalHousing {
-  id: string;
-  space_id: string;
-  space_name: string;
-  subgroup_name: string | null;
-  people_count: number | null;
-  notes: string | null;
-  locked: boolean;
-}
-interface PortalMeal {
-  day_date: string;
-  meal_period: string;
-  name: string | null;
-  items: string[] | string | null;
-  allergens: string[] | null;
-  alternatives: string[] | string | null;
-}
-interface PortalChangeRequest {
-  id: string;
-  kind: string;
-  body: string;
-  status: string;
-  submitted_at: string | null;
-  response_message: string | null;
-  responded_at: string | null;
-}
-interface PortalInvoice {
-  id: string;
-  kind: 'deposit' | 'balance';
-  number: string;
-  amount: number;
-  note: string | null;
-  due_date: string | null;
-  status: string;
-  line_items: { description: string; amount: number }[];
-  issued_at: string;
-}
-interface PortalData {
-  retreat: PortalRetreat;
-  documents: PortalDocument[];
-  invoices: PortalInvoice[];
-  spaces: PortalSpace[];
-  housing: PortalHousing[];
-  meals: PortalMeal[];
-  change_requests: PortalChangeRequest[];
-  feedback_submitted: boolean;
-}
-
-type PageState = 'loading' | 'not_found' | 'ready';
+type PageState = 'loading' | 'not_found' | 'expired' | 'ready';
 
 // ─── Small helpers ─────────────────────────────────────────────────────────────
 function todayISO(): string {
@@ -146,7 +49,7 @@ async function fileToBase64(file: File): Promise<string> {
   });
 }
 function fmtDateTime(iso: string | null): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
     ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -195,13 +98,6 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
-function Banner({ tone, children }: { tone: 'info' | 'warn' | 'ok'; children: React.ReactNode }) {
-  const cls = tone === 'ok' ? 'bg-green-muted-bg text-green-muted-text'
-    : tone === 'warn' ? 'bg-amber-bg text-amber-text' : 'bg-blue-bg text-blue-text';
-  return (
-    <div className={`text-[13px] leading-relaxed rounded-xl px-4 py-3 ${cls}`}>{children}</div>
-  );
-}
 
 function StatusPill({ status }: { status: string }) {
   const s = status;
@@ -216,22 +112,43 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+/**
+ * Stars sit under their label rather than beside it, and they are large.
+ *
+ * Side by side they were competing with the label for a narrow row, which left them small and
+ * pale enough that people did not register them as something to tap. Empty stars now carry a
+ * visible outline instead of near-white fill, so an unrated row still reads as five stars.
+ */
 function StarPicker({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-2.5">
-      <span className="text-[13px] font-medium text-forest">{label}</span>
-      <div className="flex items-center gap-1">
+    <div className="py-3">
+      <div className="flex items-baseline justify-between gap-3 mb-2">
+        <span className="text-[13.5px] font-semibold text-forest">{label}</span>
+        {value > 0 && (
+          <button
+            type="button"
+            onClick={() => onChange(0)}
+            className="text-[11.5px] text-ink-soft hover:text-forest"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             type="button"
-            onClick={() => onChange(n)}
-            className="p-0.5 active:scale-90 transition-transform"
-            aria-label={`${label} ${n} stars`}
+            onClick={() => onChange(n === value ? 0 : n)}
+            className="p-1 -m-1 active:scale-90 transition-transform"
+            aria-label={`${label}, ${n} star${n === 1 ? '' : 's'}`}
+            aria-pressed={n <= value}
           >
             <Star
-              className={`w-6 h-6 ${n <= value ? 'fill-amber text-amber' : 'text-cream-dark'}`}
-              strokeWidth={1.5}
+              className={`w-9 h-9 transition-colors ${
+                n <= value ? 'fill-amber text-amber' : 'fill-none text-border hover:text-sage'
+              }`}
+              strokeWidth={1.75}
             />
           </button>
         ))}
@@ -239,26 +156,6 @@ function StarPicker({ label, value, onChange }: { label: string; value: number; 
     </div>
   );
 }
-
-// ─── Bed dots for a cabin card ────────────────────────────────────────────────
-function BedDots({ taken, capacity }: { taken: number; capacity: number }) {
-  const cap = Math.max(capacity, taken);
-  return (
-    <div className="flex flex-wrap gap-1 mt-2">
-      {Array.from({ length: cap }).map((_, i) => (
-        <span
-          key={i}
-          className={`w-2.5 h-2.5 rounded-full ${i < taken ? 'bg-sage' : 'bg-cream-dark'}`}
-        />
-      ))}
-    </div>
-  );
-}
-
-const cardClass = 'bg-white border border-border rounded-2xl';
-const inputClass = 'w-full text-[15px] bg-white border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-sage focus:ring-2 focus:ring-sage-pale transition-all placeholder:text-forest/30';
-const labelClass = 'block text-[12px] font-semibold uppercase tracking-wide text-ink-faint mb-1.5';
-const btnPrimary = 'inline-flex items-center justify-center gap-2 bg-forest text-white text-[14px] font-semibold rounded-xl px-5 py-3 hover:bg-forest-mid active:bg-forest disabled:opacity-40 disabled:cursor-not-allowed transition-colors';
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export function RetreatPortal() {
@@ -282,8 +179,9 @@ export function RetreatPortal() {
 
   const fetchData = useCallback(async () => {
     if (!token) { setPageState('not_found'); return; }
-    const { data: res, error } = await supabasePublic.rpc('get_portal_data', { p_token: token });
+    const { data: res, error } = await supabasePublic.rpc('get_portal_data', { p_token: token, p_session: readPortalSession(token) });
     if (error || !res) { setPageState('not_found'); return; }
+    if ((res as { expired?: boolean }).expired) { setPageState('expired'); return; }
     setData(res as PortalData);
     setPageState('ready');
   }, [token]);
@@ -292,9 +190,10 @@ export function RetreatPortal() {
     if (!token) return;
     let active = true;
     (async () => {
-      const { data: res, error } = await supabasePublic.rpc('get_portal_data', { p_token: token });
+      const { data: res, error } = await supabasePublic.rpc('get_portal_data', { p_token: token, p_session: readPortalSession(token) });
       if (!active) return;
       if (error || !res) { setPageState('not_found'); return; }
+      if ((res as { expired?: boolean }).expired) { setPageState('expired'); return; }
       setData(res as PortalData);
       setPageState('ready');
     })();
@@ -305,6 +204,23 @@ export function RetreatPortal() {
     return (
       <div className="min-h-screen bg-cream w-full flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-sage animate-spin" />
+      </div>
+    );
+  }
+
+  if (pageState === 'expired') {
+    return (
+      <div className="min-h-screen bg-cream w-full flex items-center justify-center p-4 sm:p-6">
+        <div className="text-center max-w-sm">
+          <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-7 h-7 text-ink-faint" />
+          </div>
+          <h1 className="text-[20px] font-bold text-forest mb-2">This portal has closed</h1>
+          <p className="text-[14px] text-ink-soft leading-relaxed">
+            Retreat portals close a few weeks after the group departs. If you need a copy of your
+            agreement or invoice, the camp can send it to you directly.
+          </p>
+        </div>
       </div>
     );
   }
@@ -364,7 +280,7 @@ function buildSteps(data: PortalData): Step[] {
 
   const steps: Step[] = [];
 
-  // 1 — Agreement (only if the camp has shared one)
+  // 1, Agreement (only if the camp has shared one)
   if (agreementDoc) {
     const signed = agreementDoc.status === 'signed' || agreementDoc.status === 'approved' || !!agreementDoc.signed_at;
     steps.push({
@@ -374,27 +290,33 @@ function buildSteps(data: PortalData): Step[] {
     });
   }
 
-  // 2 — Deposit (only if one is required)
+  // 2, Deposit (only if one is required)
   if (retreat.deposit_required != null && retreat.deposit_required > 0) {
     const paid = (retreat.deposit_received ?? 0) >= retreat.deposit_required;
     const partial = (retreat.deposit_received ?? 0) > 0 && !paid;
     steps.push({
       key: 'deposit', label: 'Pay deposit to hold your dates',
-      hint: paid ? 'Paid — your dates are secured' : partial ? 'Partial payment received' : retreat.deposit_due ? `Due ${fmtDateFull(retreat.deposit_due)}` : 'Invoice sent — pay to lock in your dates',
+      hint: paid ? 'Paid. Your dates are secured' : partial ? 'Partial payment received' : retreat.deposit_due ? `Due ${fmtDateFull(retreat.deposit_due)}` : 'Invoice sent - pay to lock in your dates',
       state: paid ? 'done' : urgency(retreat.deposit_due), dueDate: retreat.deposit_due, sectionId: 'documents', counts: true,
     });
   }
 
-  // 3 — Housing
+  // 3, Rooming: names first, then a bed for each of them
   const housingLocked = housing.length > 0 && housing.some((h) => h.locked);
   const housingSubmitted = housing.length > 0;
+  const roster = data.guests.length;
+  const placed = data.guests.filter((g) => g.location_id).length;
+  const roomingDone = housingLocked || (roster > 0 && placed === roster) || (roster === 0 && housingSubmitted);
   steps.push({
-    key: 'housing', label: 'Assign your group to housing',
-    hint: housingLocked ? 'Finalized & locked' : housingSubmitted ? 'Submitted — you can still edit until the deadline' : `Due ${fmtDateFull(housingDue)}`,
-    state: housingLocked ? 'done' : housingSubmitted ? 'done' : urgency(housingDue), dueDate: housingDue, sectionId: 'housing', counts: true,
+    key: 'housing', label: 'Sort your group into rooms',
+    hint: housingLocked ? 'Finalized & locked'
+      : roster === 0 ? `Add your guest list · due ${fmtDateFull(housingDue)}`
+      : placed === roster ? `All ${roster} guests have a room`
+      : `${placed} of ${roster} guests placed`,
+    state: roomingDone ? 'done' : urgency(housingDue), dueDate: housingDue, sectionId: 'housing', counts: true,
   });
 
-  // 4 — Final headcount
+  // 4 · Final headcount
   const headcountDone = retreat.final_headcount != null;
   steps.push({
     key: 'headcount', label: 'Confirm final headcount',
@@ -402,7 +324,7 @@ function buildSteps(data: PortalData): Step[] {
     state: headcountDone ? 'done' : urgency(headcountDue), dueDate: headcountDue, sectionId: 'final', counts: true,
   });
 
-  // 5 — COI
+  // 5 · COI
   const coiDone = !!coiDoc && (coiDoc.status === 'received' || coiDoc.status === 'approved' || !!coiDoc.has_file);
   steps.push({
     key: 'coi', label: 'Submit certificate of insurance',
@@ -410,51 +332,315 @@ function buildSteps(data: PortalData): Step[] {
     state: coiDone ? 'done' : (daysUntil(arrival) < 0 ? 'overdue' : urgency(coiDue)), dueDate: coiDue, sectionId: 'final', counts: true,
   });
 
+  if (retreat.change_requests_enabled) {
+    const pending = data.change_requests.filter((r) => r.status === 'pending').length;
+    const answered = data.change_requests.filter((r) => r.status !== 'pending').length;
+    steps.push({
+      key: 'requests', label: 'Special requests',
+      hint: pending > 0 ? `${pending} awaiting a reply from the camp`
+        : answered > 0 ? `${answered} answered`
+        : 'Program spaces, dietary, childcare & more',
+      state: 'todo', dueDate: null, sectionId: 'requests', counts: false,
+    });
+  }
+
   return steps;
 }
 
 // ─── Portal content (only rendered with valid data) ───────────────────────────
+/**
+ * Anything the camp has sent that the group has not acknowledged.
+ *
+ * An invoice arriving by email and then sitting three tabs deep is how people end up thinking
+ * the portal is a dead end. These surface at the top of every view until dismissed, and the
+ * dismissal is per link, in local storage, because there is no account to hang it on.
+ */
+interface PortalUpdate {
+  id: string;
+  title: string;
+  detail: string;
+  view: ViewId;
+}
+
+function seenKey(token: string) { return `campops_portal_seen_${token}`; }
+
+function readSeen(token: string): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(seenKey(token)) ?? '[]') as string[]); }
+  catch { return new Set(); }
+}
+
+function writeSeen(token: string, ids: Set<string>) {
+  try { localStorage.setItem(seenKey(token), JSON.stringify(Array.from(ids))); }
+  catch { /* private mode */ }
+}
+
+function buildUpdates(data: PortalData): PortalUpdate[] {
+  const out: PortalUpdate[] = [];
+  data.invoices
+    .filter((i) => i.status !== 'paid' && i.status !== 'void')
+    .forEach((i) => out.push({
+      id: `invoice:${i.id}:${i.status}`,
+      title: `${i.kind === 'deposit' ? 'Deposit invoice' : 'Invoice'} ${i.number} · ${money(i.amount)}`,
+      detail: i.due_date ? `Due ${fmtDateFull(i.due_date)}` : 'Sent by the camp',
+      view: 'stay',
+    }));
+  data.change_requests
+    .filter((r) => r.status !== 'pending' && r.response_message)
+    .forEach((r) => out.push({
+      id: `request:${r.id}:${r.responded_at ?? r.status}`,
+      title: 'The camp replied to your request',
+      detail: r.response_message as string,
+      view: 'todo',
+    }));
+  data.documents
+    .filter((d) => d.doc_type !== 'coi' && d.has_file && d.status !== 'signed' && d.status !== 'approved')
+    .forEach((d) => out.push({
+      id: `doc:${d.id}:${d.status}`,
+      title: `${d.name} needs your attention`,
+      detail: d.due_date ? `Due ${fmtDateFull(d.due_date)}` : 'Shared by the camp',
+      view: 'todo',
+    }));
+  return out;
+}
+
+/**
+ * The unlock step for the private half of the portal.
+ *
+ * Shown in place of whatever it is guarding, rather than as a wall in front of the whole
+ * portal, so a coordinator who only wants to check the menu never meets it at all.
+ */
+function UnlockPanel({
+  token, hint, what, onUnlocked,
+}: {
+  token: string;
+  hint?: string | null;
+  /** What this particular slot is protecting, for the explanatory line. */
+  what: string;
+  onUnlocked: () => Promise<void>;
+}) {
+  const [sent, setSent] = useState(false);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [noEmail, setNoEmail] = useState(false);
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function requestCode() {
+    setBusy(true); setError(null);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/portal-access-code`, {
+        method: 'POST', headers: portalFnHeaders(), body: JSON.stringify({ token }),
+      });
+      const payload = await res.json();
+      if (!res.ok) { setError(payload?.error ?? 'Could not send the code.'); return; }
+      if (payload.codeRequired === false) { setNoEmail(true); return; }
+      setSentTo(payload.sentTo ?? null);
+      setSent(true);
+    } catch {
+      setError('Could not send the code. Please check your connection.');
+    } finally { setBusy(false); }
+  }
+
+  async function verify() {
+    setBusy(true); setError(null);
+    const { data, error: err } = await supabasePublic.rpc('portal_verify_access_code', {
+      p_token: token, p_code: code,
+    });
+    const res = data as { ok: boolean; error?: string; session?: string; hours?: number } | null;
+    if (err || !res?.ok) {
+      setError(res?.error ?? 'Could not check that code.');
+      setBusy(false);
+      return;
+    }
+    writePortalSession(token, res.session as string, res.hours ?? 12);
+    await onUnlocked();
+    setBusy(false);
+  }
+
+  if (noEmail) {
+    return (
+      <div className={`${cardClass} p-5 text-center`}>
+        <Lock className="w-6 h-6 text-ink-faint mx-auto mb-2.5" />
+        <p className="text-[14px] font-semibold text-forest">We have no email on file for you</p>
+        <p className="text-[13px] text-ink-soft mt-1.5 max-w-sm mx-auto leading-relaxed">
+          Only your group can see {what}, and we verify that by emailing a code to the
+          group's coordinator.
+          Ask the camp to add a coordinator email and this will unlock.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${cardClass} p-5`}>
+      <div className="flex items-start gap-3">
+        <div className="w-9 h-9 rounded-xl bg-cream-dark text-ink-soft flex items-center justify-center flex-shrink-0">
+          <Lock className="w-4.5 h-4.5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] font-semibold text-forest">This part is private</p>
+          <p className="text-[13px] text-ink-soft mt-1 leading-relaxed">
+            Only your group can see {what}. We will email a code to
+            {hint ? <> <span className="font-semibold text-forest">{hint}</span></> : ' the coordinator on file'}
+            {' '}to check it is you, and this device stays unlocked for 12 hours.
+          </p>
+
+          {!sent ? (
+            <button onClick={requestCode} disabled={busy} className={`${btnPrimary} mt-3.5`}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Email me a code
+            </button>
+          ) : (
+            <div className="mt-3.5">
+              <p className="text-[12.5px] text-ink-soft mb-2">
+                Sent to <span className="font-semibold text-forest">{sentTo ?? 'your email on file'}</span>. It expires in 15 minutes.
+              </p>
+              <label className={labelClass}>Access code</label>
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className={`${inputClass} tracking-[0.3em] font-mono`}
+                placeholder="000000"
+                inputMode="numeric"
+                disabled={busy}
+              />
+              <div className="flex gap-2 mt-3">
+                <button onClick={verify} disabled={busy || code.length < 6} className={`${btnPrimary} flex-1`}>
+                  {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                  Unlock
+                </button>
+                <button onClick={requestCode} disabled={busy} className="px-3 text-[13px] font-semibold text-ink-soft hover:text-forest">
+                  Resend
+                </button>
+              </div>
+            </div>
+          )}
+          {error && <p className="text-[12.5px] text-red mt-2">{error}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type ViewId = 'todo' | 'stay' | 'rooming' | 'feedback';
+
+/** Matches Tailwind's lg breakpoint, so the checklist can render once instead of twice. */
+function useIsDesktop(): boolean {
+  const query = '(min-width: 1024px)';
+  const [is, setIs] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(query).matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const onChange = () => setIs(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return is;
+}
+
 function PortalContent({ data, token, refetch }: { data: PortalData; token: string; refetch: () => Promise<void>; }) {
-  const { retreat, documents, invoices, spaces, housing, meals, change_requests, feedback_submitted } = data;
+  const { retreat, documents, invoices, spaces, housing, guests, meals, change_requests, feedback_submitted } = data;
   const today = todayISO();
   const numNights = nights(retreat.arrival_date, retreat.departure_date);
+  const isDesktop = useIsDesktop();
+  const unlocked = data.unlocked !== false;
+  const lock = (what: string) => (
+    <UnlockPanel token={token} hint={data.verify_email_hint} what={what} onUnlocked={refetch} />
+  );
 
   const steps = buildSteps(data);
   const counted = steps.filter((s) => s.counts);
   const doneCount = counted.filter((s) => s.state === 'done').length;
   const allDone = counted.length > 0 && doneCount === counted.length;
 
-  // Countdown label
+  // The checklist opens on the first thing that still needs doing, because that is what the
+  // coordinator came here for.
+  const firstOpen = steps.find((s) => s.state !== 'done' && s.key !== 'housing')?.key ?? null;
+  const [openStep, setOpenStep] = useState<string | null>(firstOpen);
+  const [view, setView] = useState<ViewId>('todo');
+
+  const [seen, setSeen] = useState<Set<string>>(() => readSeen(token));
+  const updates = buildUpdates(data).filter((u) => !seen.has(u.id));
+  function dismiss(id: string) {
+    setSeen((prev) => {
+      const next = new Set(prev).add(id);
+      writeSeen(token, next);
+      return next;
+    });
+  }
+
   const dUntil = daysUntil(retreat.arrival_date);
   const dUntilDepart = daysUntil(retreat.departure_date);
   const countdown = dUntil > 0 ? `${dUntil} ${dUntil === 1 ? 'day' : 'days'} until arrival`
     : dUntilDepart >= 0 ? 'Your retreat is underway'
     : 'Retreat complete';
 
-  const NAV = [
-    { id: 'todo', label: 'To-do' },
-    { id: 'info', label: 'Overview' },
-    { id: 'documents', label: 'Agreement' },
-    { id: 'housing', label: 'Housing' },
-    ...(retreat.change_requests_enabled ? [{ id: 'requests', label: 'Requests' }] : []),
-    { id: 'final', label: 'Final steps' },
-    { id: 'menu', label: 'Menu' },
-    { id: 'feedback', label: 'Feedback' },
+  // Feedback only exists once there is something to reflect on.
+  const feedbackFrom = retreat.feedback_opens ?? addDays(retreat.departure_date, 1);
+  const feedbackOpen = today >= feedbackFrom;
+
+  const VIEWS: { id: ViewId; label: string }[] = [
+    { id: 'todo', label: 'To do' },
+    { id: 'stay', label: 'Your stay' },
+    { id: 'rooming', label: 'Rooming' },
+    ...(feedbackOpen ? [{ id: 'feedback' as ViewId, label: 'Feedback' }] : []),
   ];
 
-  function scrollTo(id: string) {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  function openRooming() { setView('rooming'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+  /** The working part of a checklist item, shown when that item is open. */
+  function stepBody(key: string) {
+    switch (key) {
+      case 'agreement':
+        return <DocumentsBlock documents={documents.filter((d) => d.doc_type !== 'coi')} token={token} refetch={refetch} unlocked={unlocked} hint={data.verify_email_hint} />;
+      case 'deposit':
+        return (
+          <div className="space-y-3">
+            <DepositCard retreat={retreat} />
+            {invoices.length > 0 && <InvoicesBlock retreat={retreat} invoices={invoices} />}
+          </div>
+        );
+      case 'housing':
+        return (
+          <div className={`${cardClass} p-4`}>
+            <p className="text-[13px] text-ink leading-relaxed">
+              {guests.length === 0
+                ? 'Add your guest list, then sort everyone into cabins and rooms.'
+                : `${guests.filter((g) => g.location_id).length} of ${guests.length} guests have a room.`}
+            </p>
+            <button onClick={openRooming} className={`${btnPrimary} mt-3 w-full`}>
+              <BedDouble className="w-4 h-4" /> Open rooming
+            </button>
+          </div>
+        );
+      case 'headcount':
+        return <HeadcountBlock retreat={retreat} guests={guests} token={token} refetch={refetch} />;
+      case 'coi':
+        return <CoiBlock retreat={retreat} documents={documents} token={token} refetch={refetch} />;
+      case 'requests':
+        return (
+          <ChangeRequestsBlock
+            requests={change_requests}
+            defaultName={retreat.coordinator_name}
+            token={token}
+            refetch={refetch}
+          />
+        );
+      default:
+        return null;
+    }
   }
+
+  const activeStep = steps.find((s) => s.key === openStep) ?? null;
 
   return (
     <div className="min-h-screen bg-cream w-full">
       {/* Branded header with countdown */}
       <div className="bg-forest text-white">
-        <div className="max-w-lg mx-auto px-5 pt-7 pb-6">
+        <div className="max-w-5xl mx-auto px-5 pt-7 pb-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-sage rounded-xl flex items-center justify-center flex-shrink-0">
-              <TreePine className="w-5 h-5 text-white" />
-            </div>
+            <CampCommandMark size={40} disc={CC_CREAM} ink={CC_GREEN} decorative className="flex-shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-semibold text-sage-light uppercase tracking-widest">Retreat Portal</p>
               <h1 className="text-[19px] font-bold leading-tight truncate">{retreat.group_name}</h1>
@@ -462,6 +648,15 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
             <span className="flex-shrink-0 inline-flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 text-[12px] font-semibold text-sage-light">
               <Clock className="w-3.5 h-3.5" /> {countdown}
             </span>
+            {unlocked && (
+              <button
+                onClick={() => { clearPortalSession(token); void refetch(); }}
+                title="Hide your guest list, invoices and agreement on this device"
+                className="flex-shrink-0 inline-flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 text-[12px] font-semibold text-sage-light hover:bg-white/20 transition-colors"
+              >
+                <Lock className="w-3.5 h-3.5" /> Lock
+              </button>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-white/80">
             <span className="inline-flex items-center gap-1.5">
@@ -480,11 +675,10 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
             )}
           </div>
 
-          {/* Progress bar */}
           {counted.length > 0 && (
-            <div className="mt-4">
+            <div className="mt-4 max-w-md">
               <div className="flex items-center justify-between text-[12px] text-white/70 mb-1.5">
-                <span>{allDone ? "You're all set 🎉" : 'Your progress'}</span>
+                <span>{allDone ? "You're all set" : 'Your progress'}</span>
                 <span className="font-semibold text-white">{doneCount} of {counted.length} done</span>
               </div>
               <div className="h-2 rounded-full bg-white/15 overflow-hidden">
@@ -495,193 +689,263 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
         </div>
       </div>
 
-      {/* Sticky sub-nav */}
+      {/* View switcher */}
       <div className="sticky top-0 z-10 bg-cream/95 backdrop-blur border-b border-border">
-        <div className="max-w-lg mx-auto px-3">
+        <div className="max-w-5xl mx-auto px-3">
           <div className="flex gap-1 overflow-x-auto no-scrollbar py-2">
-            {NAV.map((n) => (
+            {VIEWS.map((v) => (
               <button
-                key={n.id}
-                onClick={() => scrollTo(n.id)}
-                className="flex-shrink-0 text-[13px] font-semibold text-ink hover:text-forest px-3.5 py-1.5 rounded-full hover:bg-sage-pale transition-colors"
+                key={v.id}
+                onClick={() => setView(v.id)}
+                aria-current={view === v.id}
+                className={`flex-shrink-0 text-[13px] font-semibold px-3.5 py-1.5 rounded-full transition-colors ${
+                  view === v.id ? 'bg-forest text-white' : 'text-ink hover:text-forest hover:bg-sage-pale'
+                }`}
               >
-                {n.label}
+                {v.label}
+                {updates.some((u) => u.view === v.id) && (
+                  <span className={`ml-1.5 inline-block w-1.5 h-1.5 rounded-full align-middle ${
+                    view === v.id ? 'bg-white' : 'bg-amber'
+                  }`} />
+                )}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-5 py-7 space-y-9">
-        {/* 0 — Welcome */}
-        <div className="bg-sage-pale border border-sage/30 rounded-2xl px-5 py-4 -mb-3">
-          <p className="text-[15px] font-bold text-forest">Welcome, {retreat.coordinator_name?.split(' ')[0] ?? retreat.group_name} 👋</p>
-          <p className="text-[13px] text-forest/75 mt-1.5 leading-relaxed">
-            This is your private hub for {retreat.group_name}'s stay. The checklist below shows
-            everything the camp needs from you before you arrive — tap any item to jump to it. Your changes save automatically.
-          </p>
-          <p className="text-[12px] text-ink-soft mt-2.5">
-            🔖 Bookmark this page — it's your private link, so there's no password to remember.
-          </p>
-        </div>
-
-        {/* 1 — To-do checklist (the hero) */}
-        <Section id="todo" icon={<ListChecks className="w-4.5 h-4.5" />} title="Your checklist" subtitle={allDone ? 'Everything is in — thank you!' : "What the camp needs from you"}>
-          <ChecklistBlock steps={steps} onJump={scrollTo} />
-        </Section>
-
-        {/* 2 — Overview */}
-        <Section id="info" icon={<ClipboardList className="w-4.5 h-4.5" />} title="Booking overview" subtitle="Your reservation at a glance">
-          <div className={`${cardClass} divide-y divide-cream-dark overflow-hidden`}>
-            <div className="flex items-center justify-between py-3 px-4">
-              <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">Status</span>
-              <StatusPill status={retreat.status} />
+      <div className="max-w-5xl mx-auto px-5 py-7">
+        {updates.length > 0 && (
+          <div className="mb-6 rounded-2xl border border-amber/40 bg-amber-pale overflow-hidden">
+            <div className="px-5 pt-4 pb-2 flex items-center gap-2">
+              <Bell className="w-4 h-4 text-amber-text" />
+              <p className="text-[14px] font-bold text-amber-text">
+                New from {retreat.camp_name ?? 'the camp'}
+              </p>
             </div>
-            <InfoRow icon={<Users className="w-4 h-4" />} label="Group" value={retreat.group_name} />
-            {retreat.group_type && (
-              <InfoRow icon={<FileText className="w-4 h-4" />} label="Type" value={GROUP_TYPE_LABELS[retreat.group_type] ?? retreat.group_type} />
-            )}
-            <InfoRow icon={<CalendarDays className="w-4 h-4" />} label="Dates" value={fmtRange(retreat.arrival_date, retreat.departure_date)} />
-            <InfoRow icon={<Moon className="w-4 h-4" />} label="Nights" value={numNights} />
-            <InfoRow icon={<Users className="w-4 h-4" />} label={retreat.final_headcount != null ? 'Final headcount' : 'Estimated headcount'} value={retreat.final_headcount ?? retreat.headcount} />
-            {retreat.coordinator_name && (
-              <InfoRow icon={<User className="w-4 h-4" />} label="Coordinator" value={retreat.coordinator_name} />
-            )}
+            <div className="divide-y divide-amber/20">
+              {updates.map((u) => (
+                <div key={u.id} className="px-5 py-3 flex items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13.5px] font-semibold text-forest">{u.title}</p>
+                    <p className="text-[12.5px] text-ink-soft mt-0.5">{u.detail}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      onClick={() => { setView(u.view); dismiss(u.id); }}
+                      className="text-[12.5px] font-semibold text-forest bg-white border border-border rounded-btn px-3 py-1.5 hover:border-sage transition-colors"
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => dismiss(u.id)}
+                      aria-label="Dismiss"
+                      className="text-ink-faint hover:text-forest p-1"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
+        )}
 
-          {retreat.dietary_flags && retreat.dietary_flags.length > 0 && (
-            <div className={`${cardClass} p-4 mt-3`}>
-              <p className={labelClass}>Dietary notes on file</p>
-              <div className="flex flex-wrap gap-2">
-                {retreat.dietary_flags.map((f) => (
-                  <span key={f} className="inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-medium bg-amber-bg text-amber-text">
-                    {f}
-                  </span>
+        {/* ── To do ── */}
+        {view === 'todo' && (
+          <div className="space-y-5">
+            <div className="bg-sage-pale border border-sage/30 rounded-2xl px-5 py-4">
+              <p className="text-[15px] font-bold text-forest">Welcome, {retreat.coordinator_name?.split(' ')[0] ?? retreat.group_name}</p>
+              <p className="text-[13px] text-forest/75 mt-1.5 leading-relaxed">
+                This is your private hub for {retreat.group_name}'s stay. Everything the camp
+                needs from you is below. Open an item to deal with it. Your changes save automatically.
+              </p>
+              <p className="text-[12px] text-ink-soft mt-2.5">
+                Bookmark this page. It's your private link, so there's no password to remember.
+              </p>
+            </div>
+
+            <div className="lg:grid lg:grid-cols-[300px_1fr] lg:gap-5 lg:items-start">
+              <div className="space-y-2 lg:sticky lg:top-20">
+                {steps.map((step) => (
+                  <div key={step.key}>
+                    <StepRow
+                      step={step}
+                      open={openStep === step.key}
+                      onClick={() => (step.key === 'housing' && isDesktop
+                        ? openRooming()
+                        : setOpenStep(openStep === step.key ? null : step.key))}
+                    />
+                    {!isDesktop && openStep === step.key && (
+                      <div className="mt-2 mb-3">{stepBody(step.key)}</div>
+                    )}
+                  </div>
                 ))}
               </div>
-            </div>
-          )}
 
-          {(retreat.balance_due != null || retreat.total_charges != null) && (
-            <div className={`${cardClass} p-4 mt-3`}>
-              <p className={labelClass}>Account balance</p>
-              <div className="space-y-1.5 text-[14px]">
-                {retreat.pricing_model === 'per_person_night' && retreat.rate_per_person_night != null && (
-                  <div className="flex justify-between text-ink-soft text-[12px]">
-                    <span>{money(retreat.rate_per_person_night)}/person/night × {retreat.headcount ?? 0} × {retreat.nights ?? 0} night{(retreat.nights ?? 0) === 1 ? '' : 's'}</span>
+              {isDesktop && (
+                <div>
+                  {activeStep ? (
+                    <>
+                      <h2 className="text-[16px] font-bold text-forest mb-1">{activeStep.label}</h2>
+                      <p className="text-[12.5px] text-ink-soft mb-3">{activeStep.hint}</p>
+                      {stepBody(activeStep.key)}
+                    </>
+                  ) : (
+                    <div className={`${cardClass} p-8 text-center`}>
+                      <CheckCircle2 className="w-8 h-8 text-sage mx-auto mb-3" />
+                      <p className="text-[15px] font-semibold text-forest">
+                        {allDone ? 'Everything is in, thank you!' : 'Pick an item to get started'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Your stay ── */}
+        {view === 'stay' && (
+          <div className="space-y-7">
+            <Section id="info" icon={<ClipboardList className="w-4.5 h-4.5" />} title="Booking overview" subtitle="Your reservation at a glance">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+                <div className={`${cardClass} divide-y divide-cream-dark overflow-hidden`}>
+                  <div className="flex items-center justify-between py-3 px-4">
+                    <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">Status</span>
+                    <StatusPill status={retreat.status} />
                   </div>
-                )}
-                <div className="flex justify-between text-ink">
-                  <span>Total charges</span><span className="font-mono">{money(retreat.total_charges)}</span>
+                  <InfoRow icon={<Users className="w-4 h-4" />} label="Group" value={retreat.group_name} />
+                  {retreat.group_type && (
+                    <InfoRow icon={<FileText className="w-4 h-4" />} label="Type" value={GROUP_TYPE_LABELS[retreat.group_type] ?? retreat.group_type} />
+                  )}
+                  <InfoRow icon={<CalendarDays className="w-4 h-4" />} label="Dates" value={fmtRange(retreat.arrival_date, retreat.departure_date)} />
+                  <InfoRow icon={<Moon className="w-4 h-4" />} label="Nights" value={numNights} />
+                  <InfoRow icon={<Users className="w-4 h-4" />} label={retreat.final_headcount != null ? 'Final headcount' : 'Estimated headcount'} value={retreat.final_headcount ?? retreat.headcount} />
+                  {retreat.coordinator_name && (
+                    <InfoRow icon={<User className="w-4 h-4" />} label="Coordinator" value={retreat.coordinator_name} />
+                  )}
                 </div>
-                <div className="flex justify-between text-ink">
-                  <span>Paid</span><span className="font-mono">{money(retreat.total_paid)}</span>
-                </div>
-                <div className="flex justify-between font-semibold text-forest pt-1.5 border-t border-cream-dark">
-                  <span>Balance due</span>
-                  <span className={`font-mono ${(retreat.balance_due ?? 0) > 0 ? 'text-amber-text' : 'text-green-muted-text'}`}>
-                    {money(retreat.balance_due)}
-                  </span>
+
+                <div className="space-y-3">
+                  {retreat.dietary_flags && retreat.dietary_flags.length > 0 && (
+                    <div className={`${cardClass} p-4`}>
+                      <p className={labelClass}>Dietary notes on file</p>
+                      <div className="flex flex-wrap gap-2">
+                        {retreat.dietary_flags.map((f) => (
+                          <span key={f} className="inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-medium bg-amber-bg text-amber-text">
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(retreat.balance_due != null || retreat.total_charges != null) && (
+                    <div className={`${cardClass} p-4`}>
+                      <p className={labelClass}>Account balance</p>
+                      <div className="space-y-1.5 text-[14px]">
+                        {retreat.pricing_model === 'per_person_night' && retreat.rate_per_person_night != null && (
+                          <div className="flex justify-between text-ink-soft text-[12px]">
+                            <span>{money(retreat.rate_per_person_night)}/person/night × {retreat.headcount ?? 0} × {retreat.nights ?? 0} night{(retreat.nights ?? 0) === 1 ? '' : 's'}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-ink">
+                          <span>Total charges</span><span className="font-mono">{money(retreat.total_charges)}</span>
+                        </div>
+                        <div className="flex justify-between text-ink">
+                          <span>Paid</span><span className="font-mono">{money(retreat.total_paid)}</span>
+                        </div>
+                        <div className="flex justify-between font-semibold text-forest pt-1.5 border-t border-cream-dark">
+                          <span>Balance due</span>
+                          <span className={`font-mono ${(retreat.balance_due ?? 0) > 0 ? 'text-amber-text' : 'text-green-muted-text'}`}>
+                            {money(retreat.balance_due)}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-ink-faint mt-2.5">Payments are handled directly with the camp. Contact your coordinator to pay.</p>
+                    </div>
+                  )}
+
+                  {invoices.length > 0 && <InvoicesBlock retreat={retreat} invoices={invoices} />}
                 </div>
               </div>
-              <p className="text-[11px] text-ink-faint mt-2.5">Payments are handled directly with the camp — contact your coordinator to pay.</p>
-            </div>
-          )}
-        </Section>
+            </Section>
 
-        {/* 3 — Agreement & deposit */}
-        <Section id="documents" icon={<FileText className="w-4.5 h-4.5" />} title="Agreement & deposit" subtitle="Secure your booking">
-          <DepositCard retreat={retreat} />
-          {invoices.length > 0 && (
-            <div className="mt-3">
-              <InvoicesBlock retreat={retreat} invoices={invoices} />
-            </div>
-          )}
-          <div className="mt-3">
-            <DocumentsBlock documents={documents.filter((d) => d.doc_type !== 'coi')} token={token} refetch={refetch} />
+            <Section id="menu" icon={<UtensilsCrossed className="w-4.5 h-4.5" />} title="Menu & dining" subtitle="What's being served">
+              <MenuBlock published={retreat.menu_published} meals={meals} />
+            </Section>
+
+            <Section id="documents" icon={<FileText className="w-4.5 h-4.5" />} title="Your documents" subtitle="Agreement, invoices & insurance">
+              <DocumentsBlock documents={documents} token={token} refetch={refetch} unlocked={unlocked} hint={data.verify_email_hint} />
+            </Section>
           </div>
-        </Section>
+        )}
 
-        {/* 4 — Housing */}
-        <Section id="housing" icon={<BedDouble className="w-4.5 h-4.5" />} title="Housing" subtitle="Assign your group to cabins & rooms">
-          <HousingBlock retreat={retreat} spaces={spaces} housing={housing} token={token} refetch={refetch} today={today} />
-        </Section>
-
-        {/* 5 — Special requests */}
-        {retreat.change_requests_enabled && (
-          <Section id="requests" icon={<MessageSquarePlus className="w-4.5 h-4.5" />} title="Special requests" subtitle="Program spaces, dietary, childcare & more">
-            <ChangeRequestsBlock
-              requests={change_requests}
-              defaultName={retreat.coordinator_name}
+        {/* ── Rooming ── */}
+        {view === 'rooming' && (
+          <Section id="rooming" icon={<BedDouble className="w-4.5 h-4.5" />} title="Rooming" subtitle="Your guest list, and who sleeps where">
+            {!unlocked ? lock('your guest list and room assignments') : <HousingBlock
+              retreat={retreat}
+              spaces={spaces}
+              housing={housing}
+              guests={guests}
               token={token}
               refetch={refetch}
-            />
+              today={today}
+            />}
           </Section>
         )}
 
-        {/* 6 — Final steps */}
-        <Section id="final" icon={<ListChecks className="w-4.5 h-4.5" />} title="Final steps" subtitle="Due in the weeks before arrival">
-          <div className="space-y-3">
-            <HeadcountBlock retreat={retreat} token={token} refetch={refetch} />
-            <CoiBlock retreat={retreat} documents={documents} token={token} refetch={refetch} />
-          </div>
-        </Section>
+        {/* ── Feedback ── */}
+        {view === 'feedback' && (
+          <Section id="feedback" icon={<Star className="w-4.5 h-4.5" />} title="Feedback" subtitle="Tell us how it went">
+            <FeedbackBlock retreat={retreat} submitted={feedback_submitted} token={token} refetch={refetch} today={today} />
+          </Section>
+        )}
 
-        {/* 7 — Menu */}
-        <Section id="menu" icon={<UtensilsCrossed className="w-4.5 h-4.5" />} title="Menu & dining" subtitle="What's being served">
-          <MenuBlock published={retreat.menu_published} meals={meals} />
-        </Section>
-
-        {/* 8 — Feedback */}
-        <Section id="feedback" icon={<Star className="w-4.5 h-4.5" />} title="Feedback" subtitle="Tell us how it went">
-          <FeedbackBlock retreat={retreat} submitted={feedback_submitted} token={token} refetch={refetch} today={today} />
-        </Section>
-
-        <div className="pt-2 pb-6 text-center">
-          <p className="text-[11px] text-ink-faint">Powered by CampCommand · This is a private link — please don't share it publicly.</p>
+        <div className="pt-8 pb-6 text-center">
+          <p className="text-[11px] text-ink-faint">Powered by CampCommand · This is a private link. Please don't share it publicly.</p>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Checklist block ──────────────────────────────────────────────────────────
-function ChecklistBlock({ steps, onJump }: { steps: Step[]; onJump: (id: string) => void }) {
-  // Show incomplete items first (most urgent at top), completed at the bottom.
-  const rank: Record<StepState, number> = { overdue: 0, due_soon: 1, todo: 2, locked: 3, done: 4 };
-  const ordered = [...steps].sort((a, b) => rank[a.state] - rank[b.state]);
-
-  const styleFor = (s: StepState) => {
-    switch (s) {
-      case 'done': return { icon: <CheckCircle2 className="w-5 h-5 text-sage" />, chip: 'bg-green-muted-bg text-green-muted-text', chipText: 'Done' };
-      case 'overdue': return { icon: <AlertTriangle className="w-5 h-5 text-red" />, chip: 'bg-red-bg text-red', chipText: 'Overdue' };
-      case 'due_soon': return { icon: <Circle className="w-5 h-5 text-amber-text" />, chip: 'bg-amber-bg text-amber-text', chipText: 'Due soon' };
-      case 'locked': return { icon: <Lock className="w-5 h-5 text-ink-faint" />, chip: 'bg-cream-dark text-ink-soft', chipText: 'Locked' };
-      default: return { icon: <Circle className="w-5 h-5 text-forest/30" />, chip: 'bg-cream-dark text-ink-soft', chipText: 'To do' };
-    }
-  };
+/** One line of the checklist. Doubles as the nav on desktop, so it shows selection. */
+function StepRow({ step, open, onClick }: { step: Step; open: boolean; onClick: () => void }) {
+  const done = step.state === 'done';
+  const tone = !step.counts ? 'text-ink-soft'
+    : done ? 'text-green-muted-text'
+    : step.state === 'overdue' ? 'text-red'
+    : step.state === 'due_soon' ? 'text-amber-text' : 'text-ink-soft';
 
   return (
-    <div className={`${cardClass} divide-y divide-cream-dark overflow-hidden`}>
-      {ordered.map((step) => {
-        const st = styleFor(step.state);
-        return (
-          <button
-            key={step.key}
-            onClick={() => onJump(step.sectionId)}
-            className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-cream/50 transition-colors"
-          >
-            <span className="flex-shrink-0">{st.icon}</span>
-            <span className="min-w-0 flex-1">
-              <span className={`block text-[14px] font-semibold leading-tight ${step.state === 'done' ? 'text-ink-soft' : 'text-forest'}`}>{step.label}</span>
-              <span className="block text-[12px] text-ink-soft mt-0.5">{step.hint}</span>
-            </span>
-            <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${st.chip}`}>{st.chipText}</span>
-            <ChevronRight className="w-4 h-4 text-forest/25 flex-shrink-0" />
-          </button>
-        );
-      })}
-    </div>
+    <button
+      onClick={onClick}
+      className={`w-full text-left flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors ${
+        open ? 'border-sage bg-sage-pale' : 'border-border bg-white hover:border-sage/50'
+      }`}
+    >
+      <span className="flex-shrink-0 mt-0.5">
+        {/* A standing offer like "special requests" is never outstanding, so it gets its own
+            mark rather than an empty circle that reads as unfinished homework. */}
+        {!step.counts
+          ? <MessageSquarePlus className="w-[18px] h-[18px] text-ink-faint" />
+          : done
+            ? <CheckCircle2 className="w-[18px] h-[18px] text-sage" />
+            : step.state === 'overdue'
+              ? <AlertCircle className="w-[18px] h-[18px] text-red" />
+              : <Circle className="w-[18px] h-[18px] text-ink-faint" />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={`block text-[13.5px] font-semibold leading-snug ${done ? 'text-ink-soft' : 'text-forest'}`}>
+          {step.label}
+        </span>
+        <span className={`block text-[11.5px] mt-0.5 ${tone}`}>{step.hint}</span>
+      </span>
+      <ChevronRight className={`w-4 h-4 flex-shrink-0 mt-0.5 text-ink-faint transition-transform ${open ? 'rotate-90' : ''}`} />
+    </button>
   );
 }
 
@@ -699,13 +963,13 @@ function DepositCard({ retreat }: { retreat: PortalRetreat }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <p className="text-[14px] font-semibold text-forest leading-tight">Deposit — holds your dates</p>
+            <p className="text-[14px] font-semibold text-forest leading-tight">Deposit, holds your dates</p>
             <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${paid ? 'bg-green-muted-bg text-green-muted-text' : partial ? 'bg-amber-bg text-amber-text' : 'bg-cream-dark text-ink-soft'}`}>
               {paid ? 'Paid' : partial ? 'Partial' : 'Due'}
             </span>
           </div>
           <p className="text-[12px] text-ink-soft mt-0.5">
-            {paid ? 'Your dates are secured — thank you!'
+            {paid ? 'Your dates are secured · thank you!'
               : retreat.deposit_due ? `Please pay by ${fmtDateFull(retreat.deposit_due)} to lock in your dates.`
               : 'Paying your deposit locks in your dates.'}
           </p>
@@ -716,7 +980,7 @@ function DepositCard({ retreat }: { retreat: PortalRetreat }) {
               {money(retreat.deposit_required)}
             </span>
           </div>
-          {!paid && <p className="text-[11px] text-ink-faint mt-2.5">Payment is handled directly with the camp — contact your coordinator to pay.</p>}
+          {!paid && <p className="text-[11px] text-ink-faint mt-2.5">Payment is handled directly with the camp. Contact your coordinator to pay.</p>}
         </div>
       </div>
     </div>
@@ -728,6 +992,7 @@ function InvoicesBlock({ retreat, invoices }: { retreat: PortalRetreat; invoices
   function download(inv: PortalInvoice) {
     const ok = printInvoice({
       campName: retreat.camp_name ?? 'Camp', groupName: retreat.group_name,
+      coordinatorName: retreat.coordinator_name,
       number: inv.number, kind: inv.kind, issuedAt: inv.issued_at, dueDate: inv.due_date,
       lineItems: inv.line_items ?? [], amount: inv.amount, note: inv.note,
       arrivalDate: retreat.arrival_date, departureDate: retreat.departure_date,
@@ -765,21 +1030,31 @@ function InvoicesBlock({ retreat, invoices }: { retreat: PortalRetreat; invoices
           </div>
         );
       })}
-      <p className="text-[11px] text-ink-faint px-1">Payment is handled directly with the camp — contact your coordinator to pay.</p>
+      <p className="text-[11px] text-ink-faint px-1">Payment is handled directly with the camp. Contact your coordinator to pay.</p>
     </div>
   );
 }
 
 // ─── Final headcount block ────────────────────────────────────────────────────
-function HeadcountBlock({ retreat, token, refetch }: { retreat: PortalRetreat; token: string; refetch: () => Promise<void>; }) {
+function HeadcountBlock({ retreat, guests, token, refetch }: {
+  retreat: PortalRetreat; guests: PortalGuest[]; token: string; refetch: () => Promise<void>;
+}) {
   const confirmed = retreat.final_headcount != null;
-  const [count, setCount] = useState(confirmed ? String(retreat.final_headcount) : (retreat.headcount ? String(retreat.headcount) : ''));
+  // The roster is the best number available, so it seeds the field. It stays editable -
+  // plenty of groups bring someone who never made it onto the list.
+  const rosterCount = guests.length;
+  const seed = confirmed ? String(retreat.final_headcount)
+    : rosterCount > 0 ? String(rosterCount)
+    : (retreat.headcount ? String(retreat.headcount) : '');
+  const [count, setCount] = useState(seed);
   const [name, setName] = useState(retreat.coordinator_name ?? '');
   const [editing, setEditing] = useState(!confirmed);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const due = retreat.headcount_cutoff ?? addDays(retreat.arrival_date, -14);
+  const entered = parseInt(count, 10);
+  const mismatch = rosterCount > 0 && Number.isFinite(entered) ? entered - rosterCount : 0;
 
   async function submit() {
     const n = parseInt(count, 10);
@@ -805,8 +1080,17 @@ function HeadcountBlock({ retreat, token, refetch }: { retreat: PortalRetreat; t
           <p className="text-[12px] text-ink-soft mt-0.5">
             {confirmed && !editing
               ? `Confirmed: ${retreat.final_headcount} guests${retreat.final_headcount_by ? ` · by ${retreat.final_headcount_by}` : ''}`
-              : `Your final number of guests. Due ${fmtDateFull(due)} — about two weeks before arrival.`}
+              : rosterCount > 0
+                ? `Taken from the ${rosterCount} ${rosterCount === 1 ? 'name' : 'names'} on your rooming list. Adjust it if that isn't everyone.`
+                : `Your final number of guests. Due ${fmtDateFull(due)}, about two weeks before arrival.`}
           </p>
+          {rosterCount > 0 && mismatch !== 0 && (
+            <p className="text-[12px] text-amber-text mt-1.5">
+              {mismatch > 0
+                ? `That's ${mismatch} more than the ${rosterCount} on your rooming list · ${mismatch === 1 ? 'that guest still needs' : 'those guests still need'} a name and a bed.`
+                : `That's ${-mismatch} fewer than the ${rosterCount} on your rooming list.`}
+            </p>
+          )}
 
           {confirmed && !editing ? (
             <button onClick={() => setEditing(true)} className="mt-3 text-[13px] font-semibold text-forest inline-flex items-center gap-1.5 hover:text-forest-mid">
@@ -881,7 +1165,7 @@ function CoiBlock({ retreat, documents, token, refetch }: { retreat: PortalRetre
             </span>
           </div>
           <p className="text-[12px] text-ink-soft mt-0.5">
-            {received ? 'Thanks — we have your COI on file.' : `Required before your group enters camp — due ${dueLabel}.`}
+            {received ? 'Thanks, we have your COI on file.' : `Required before your group enters camp, due ${dueLabel}.`}
           </p>
 
           {/* COI meta if the camp recorded any */}
@@ -911,33 +1195,146 @@ function CoiBlock({ retreat, documents, token, refetch }: { retreat: PortalRetre
 }
 
 // ─── Documents block ──────────────────────────────────────────────────────────
-function DocumentsBlock({ documents, token, refetch }: { documents: PortalDocument[]; token: string; refetch: () => Promise<void>; }) {
+function DocumentsBlock({ documents, token, refetch, unlocked, hint }: {
+  documents: PortalDocument[]; token: string; refetch: () => Promise<void>;
+  unlocked: boolean; hint?: string | null;
+}) {
   if (documents.length === 0) {
     return <EmptyCard>No documents have been shared yet.</EmptyCard>;
   }
   return (
     <div className="space-y-3">
-      {documents.map((doc) => <DocumentCard key={doc.id} doc={doc} token={token} refetch={refetch} />)}
+      {documents.map((doc) => (
+        <DocumentCard key={doc.id} doc={doc} token={token} refetch={refetch} unlocked={unlocked} hint={hint} />
+      ))}
     </div>
   );
 }
 
-function DocumentCard({ doc, token, refetch }: { doc: PortalDocument; token: string; refetch: () => Promise<void>; }) {
+function DocumentCard({ doc, token, refetch, unlocked, hint }: {
+  doc: PortalDocument; token: string; refetch: () => Promise<void>;
+  unlocked: boolean; hint?: string | null;
+}) {
+  const [showUnlock, setShowUnlock] = useState(false);
   const [name, setName] = useState('');
+  const [consented, setConsented] = useState(false);
+  const [opened, setOpened] = useState(false);
+  const [fileHash, setFileHash] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [codeRequired, setCodeRequired] = useState(true);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const isSigned = doc.status === 'signed' || !!doc.signed_at;
   const signable = !isSigned && (doc.doc_type === 'agreement' || doc.doc_type === 'waiver' || doc.doc_type === 'contract');
   const isCOI = doc.doc_type === 'coi';
 
+  /** The single next thing standing between the guest and a signature, or null when ready. */
+  const blocker = doc.has_file && !opened
+    ? 'Open the agreement above first, then this unlocks.'
+    : !consented
+      ? 'Tick the box above to confirm you have read it.'
+      : !name.trim()
+        ? 'Type your full name to sign.'
+        : null;
+
+  /**
+   * Fetch a short-lived signed URL for the document.
+   *
+   * The bucket is private and the portal is anonymous, so the URL is minted by an edge function
+   * that validates the portal token server-side. It also returns a hash of the exact bytes
+   * served, which is recorded with the signature so the camp can later prove which version was
+   * agreed to.
+   */
+  async function openDocument(): Promise<void> {
+    setOpening(true); setError(null);
+
+    // A new tab rather than an inline viewer: guests need to read, scroll, print and keep a
+    // copy, and the browser's own PDF viewer does all four better than we would.
+    //
+    // The tab is opened here, synchronously, while the click's user activation is still live.
+    // Opening it after the await below reads as unsolicited and is blocked by default. It
+    // starts blank and is pointed at the signed URL once that comes back. Nulling `opener`
+    // while the tab is still same-origin about:blank is what 'noopener' would have bought us,
+    // except that passing 'noopener' makes window.open return null even when it succeeds --
+    // which is what made this warn about pop-ups on every successful open.
+    const win = window.open('', '_blank');
+    if (win) win.opener = null;
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/portal-document`, {
+        method: 'POST',
+        headers: portalFnHeaders(),
+        body: JSON.stringify({ token, docId: doc.id, access: readPortalSession(token) }),
+      });
+      const payload = await res.json();
+      if (!res.ok) { win?.close(); setError(payload?.error ?? 'Could not open the document.'); return; }
+      setFileHash(payload.sha256 ?? null);
+      setOpened(true);
+      if (win) win.location.replace(payload.url);
+      else setError('Your browser blocked the new tab. Allow pop-ups for this site, then try again.');
+    } catch {
+      win?.close();
+      setError('Could not open the document. Please check your connection.');
+    } finally {
+      setOpening(false);
+    }
+  }
+
+  /**
+   * Ask for the one-time code. It is sent to the coordinator address already on the retreat -
+   * not one entered here, so a forwarded link alone cannot bind the group to a contract.
+   */
+  async function requestCode() {
+    setSending(true); setError(null);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/portal-signing-code`, {
+        method: 'POST',
+        headers: portalFnHeaders(),
+        body: JSON.stringify({ token, docId: doc.id }),
+      });
+      const payload = await res.json();
+      if (!res.ok) { setError(payload?.error ?? 'Could not send the code.'); return; }
+      if (payload.codeRequired === false) {
+        // No coordinator address on file, nothing to verify against, so sign directly.
+        setCodeRequired(false);
+        setCodeSent(true);
+        return;
+      }
+      setCodeRequired(true);
+      setCodeSent(true);
+      setSentTo(payload.sentTo ?? null);
+    } catch {
+      setError('Could not send the code. Please check your connection.');
+    } finally {
+      setSending(false);
+    }
+  }
+
   async function sign() {
     if (!name.trim()) { setError('Please type your full name to sign.'); return; }
+    if (!consented) { setError('Please confirm you agree to sign electronically.'); return; }
+    if (codeRequired && !unlocked && !code.trim()) { setError('Enter the code we emailed you.'); return; }
     setBusy(true); setError(null);
-    const { data: ok, error: err } = await supabasePublic.rpc('portal_sign_document', {
-      p_token: token, p_doc_id: doc.id, p_signed_by: name.trim(),
+    const { data, error: err } = await supabasePublic.rpc('portal_sign_document', {
+      p_token: token,
+      p_doc_id: doc.id,
+      p_signed_by: name.trim(),
+      p_user_agent: navigator.userAgent,
+      p_file_hash: fileHash,
+      p_code: codeRequired ? code.trim() : null,
+      p_access: readPortalSession(token),
     });
-    if (err || !ok) { setError('Could not record signature. Please try again.'); setBusy(false); return; }
+    const result = data as { ok?: boolean; error?: string } | null;
+    if (err || !result?.ok) {
+      setError(result?.error ?? 'Could not record signature. Please try again.');
+      setBusy(false);
+      return;
+    }
     await refetch();
   }
 
@@ -977,26 +1374,169 @@ function DocumentCard({ doc, token, refetch }: { doc: PortalDocument; token: str
             </div>
           )}
 
-          {/* Sign affordance */}
-          {signable && (
-            <div className="mt-3 border-t border-cream-dark pt-3">
-              <label className={labelClass}>Type your full name to sign</label>
-              <div className="flex gap-2">
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className={inputClass}
-                  placeholder="e.g. Jordan Meyer"
-                  disabled={busy}
+          {/* Read the document. Available whether or not it still needs signing · a guest
+              should always be able to retrieve what they agreed to.
+
+              While the portal is locked this becomes the way IN to unlocking, rather than a
+              button that fails with an error the guest cannot act on. */}
+          {doc.has_file && !unlocked && (
+            <button
+              onClick={() => setShowUnlock(true)}
+              className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-forest hover:text-forest-mid"
+            >
+              <Lock className="w-4 h-4" />
+              {isSigned ? 'Unlock to view your signed agreement' : 'Unlock to read the agreement'}
+            </button>
+          )}
+          {doc.has_file && unlocked && (
+            <button
+              onClick={openDocument}
+              disabled={opening}
+              className={
+                // While reading is the step holding up the signature, this stops being a quiet
+                // text link and starts looking like the thing to press.
+                signable && !opened
+                  ? 'mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-forest bg-white border border-sage rounded-btn px-3.5 py-2 hover:bg-sage-pale transition-colors'
+                  : 'mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-forest hover:text-forest-mid'
+              }
+            >
+              {opening ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+              {isSigned ? 'View or download your signed agreement' : 'Read the agreement'}
+            </button>
+          )}
+
+          {/* Locked: explain, and offer the code. Signing is hidden until this clears, because
+              you cannot honestly agree to a document you have not been able to open. */}
+          {!unlocked && (
+            <div className="mt-3">
+              {showUnlock ? (
+                <UnlockPanel
+                  token={token}
+                  hint={hint}
+                  what={doc.doc_type === 'agreement' ? 'your retreat agreement' : `your ${doc.name.toLowerCase()}`}
+                  onUnlocked={refetch}
                 />
-                <button onClick={sign} disabled={busy || !name.trim()} className={`${btnPrimary} flex-shrink-0`}>
-                  {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenLine className="w-4 h-4" />}
-                  Sign
-                </button>
-              </div>
+              ) : (
+                <p className="text-[12.5px] text-ink-soft">
+                  This document is private to your group. Unlocking sends a short code to the
+                  coordinator's email address.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Sign affordance */}
+          {unlocked && signable && (
+            <div className="mt-3 border-t border-cream-dark pt-3">
+              {doc.has_file && !opened && (
+                <p className="text-[12px] text-ink-soft mb-2.5">
+                  Open and read the agreement above before signing.
+                </p>
+              )}
+
+              <label className="flex items-start gap-2 mb-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={consented}
+                  onChange={(e) => setConsented(e.target.checked)}
+                  disabled={busy}
+                  className="mt-0.5 h-4 w-4 flex-none accent-forest"
+                />
+                <span className="text-[12px] leading-relaxed text-ink">
+                  I have read this agreement, I intend to sign it, and I agree that my typed name
+                  is my legally binding signature.
+                </span>
+              </label>
+
+              <label className={labelClass}>Type your full name to sign</label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={inputClass}
+                placeholder="e.g. Jordan Meyer"
+                disabled={busy}
+              />
+
+              {/* Second factor, only when there is no live session. Unlocking the portal already
+                  proved control of the coordinator's inbox, and a second code to the same
+                  address proves nothing further, it just adds a step at the moment the guest is
+                  trying to finish. */}
+              {unlocked ? (
+                <>
+                  <button
+                    onClick={sign}
+                    disabled={busy || !!blocker}
+                    className={`${btnPrimary} mt-3 w-full justify-center`}
+                  >
+                    {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenLine className="w-4 h-4" />}
+                    {busy ? 'Signing…' : 'Sign agreement'}
+                  </button>
+                  {blocker && (
+                    <p className="text-[12px] text-ink-soft text-center mt-2">{blocker}</p>
+                  )}
+                </>
+              ) : !codeSent ? (
+                <>
+                  <button
+                    onClick={requestCode}
+                    disabled={sending || !!blocker}
+                    className={`${btnPrimary} mt-3 w-full justify-center`}
+                  >
+                    {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    Email me a code to sign
+                  </button>
+                  {/* A greyed button with no stated reason is the thing people get stuck on:
+                      the missing step is usually "open the agreement", which sits far enough
+                      above that nobody connects the two. */}
+                  {blocker && (
+                    <p className="text-[12px] text-ink-soft text-center mt-2">{blocker}</p>
+                  )}
+                </>
+              ) : (
+                <div className="mt-3">
+                  {codeRequired && (
+                    <>
+                      <p className="text-[12px] text-ink-soft mb-2">
+                        We sent a 6-digit code to{' '}
+                        <span className="font-semibold text-forest">{sentTo ?? 'your email on file'}</span>.
+                        It expires in 15 minutes.
+                      </p>
+                      <label className={labelClass}>Verification code</label>
+                      <input
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        className={`${inputClass} tracking-[0.3em] font-mono`}
+                        placeholder="000000"
+                        inputMode="numeric"
+                        disabled={busy}
+                      />
+                    </>
+                  )}
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={sign}
+                      disabled={busy || !name.trim() || !consented || (codeRequired && code.length < 6)}
+                      className={`${btnPrimary} flex-1 justify-center`}
+                    >
+                      {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenLine className="w-4 h-4" />}
+                      Sign agreement
+                    </button>
+                    {codeRequired && (
+                      <button
+                        onClick={requestCode}
+                        disabled={sending}
+                        className="flex-shrink-0 px-3 text-[13px] font-semibold text-ink-soft hover:text-forest"
+                      >
+                        Resend
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
               {error && <p className="text-[12px] text-red mt-2">{error}</p>}
             </div>
           )}
+          {!signable && error && <p className="text-[12px] text-red mt-2">{error}</p>}
         </div>
       </div>
     </div>
@@ -1004,298 +1544,24 @@ function DocumentCard({ doc, token, refetch }: { doc: PortalDocument; token: str
 }
 
 // ─── Housing block ────────────────────────────────────────────────────────────
-function HousingBlock({ retreat, spaces, housing, token, refetch, today }: {
+function HousingBlock({ retreat, spaces, housing, guests, token, refetch, today }: {
   retreat: PortalRetreat; spaces: PortalSpace[]; housing: PortalHousing[];
-  token: string; refetch: () => Promise<void>; today: string;
+  guests: PortalGuest[]; token: string; refetch: () => Promise<void>; today: string;
 }) {
   const locked = housing.length > 0 && housing.some((h) => h.locked);
   const deadlinePassed = !!retreat.housing_deadline && retreat.housing_deadline < today;
 
-  if (locked) {
-    return (
-      <div className="space-y-3">
-        <Banner tone="ok">
-          <span className="inline-flex items-center gap-1.5 font-semibold"><Lock className="w-4 h-4" /> Housing is finalized</span>
-          <p className="mt-1">Your assignments are locked in below. Need a change? Use the change requests section and the camp will help.</p>
-        </Banner>
-        <div className="grid grid-cols-1 gap-3">
-          {housing.map((h) => {
-            const space = spaces.find((s) => s.id === h.space_id);
-            const cap = space?.bed_capacity ?? h.people_count ?? 0;
-            const label = space && space.building && space.building !== space.name
-              ? `${space.building} · ${space.name}`
-              : (h.space_name ?? space?.name ?? 'Space');
-            return (
-              <div key={h.id} className={`${cardClass} border-sage p-4`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-[15px] font-bold text-forest">{label}</p>
-                    {h.subgroup_name && <p className="text-[13px] text-ink-soft">{h.subgroup_name}</p>}
-                  </div>
-                  <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-forest">
-                    <Users className="w-4 h-4 text-sage" />{h.people_count ?? 0}{cap ? `/${cap}` : ''}
-                  </span>
-                </div>
-                <BedDots taken={h.people_count ?? 0} capacity={cap} />
-                {h.notes && <p className="text-[12px] text-ink-soft mt-2.5 leading-relaxed">{h.notes}</p>}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <HousingBuilder
+    <RoomingBoard
       retreat={retreat}
       spaces={spaces}
       housing={housing}
+      guests={guests}
       token={token}
       refetch={refetch}
+      locked={locked}
       deadlinePassed={deadlinePassed}
     />
-  );
-}
-
-interface HousingRow { building_id: string; space_id: string; subgroup_name: string; people_count: string; notes: string; }
-
-function HousingBuilder({ retreat, spaces, housing, token, refetch, deadlinePassed }: {
-  retreat: PortalRetreat; spaces: PortalSpace[]; housing: PortalHousing[];
-  token: string; refetch: () => Promise<void>; deadlinePassed: boolean;
-}) {
-  const [rows, setRows] = useState<HousingRow[]>(() =>
-    housing.length > 0
-      ? housing.map((h) => ({
-          building_id: spaces.find((s) => s.id === h.space_id)?.building_id ?? '',
-          space_id: h.space_id,
-          subgroup_name: h.subgroup_name ?? '',
-          people_count: h.people_count != null ? String(h.people_count) : '',
-          notes: h.notes ?? '',
-        }))
-      : [{ building_id: '', space_id: '', subgroup_name: '', people_count: '', notes: '' }],
-  );
-  const [name, setName] = useState(retreat.coordinator_name ?? '');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
-
-  const usedSpaceIds = rows.map((r) => r.space_id);
-
-  /**
-   * A room is pickable unless another group already holds it for these dates. Rooms this
-   * coordinator has already put in another row of this form stay "available" in the count
-   * — they are still theirs — but cannot be picked twice.
-   */
-  const isFree = (s: PortalSpace) => !s.taken_by_other;
-  const roomsIn = (buildingId: string) => spaces.filter((s) => s.building_id === buildingId);
-
-  // Distinct buildings, for the first (building) step of the picker, each carrying how
-  // many of its rooms and beds are actually free — choosing blind and being told later
-  // that a cabin was already gone was the whole problem.
-  const buildings = Array.from(
-    new Map(spaces.filter((s) => s.building_id).map((s) => [s.building_id as string, s.building ?? ''])).entries(),
-  )
-    .map(([id, bname]) => {
-      const rooms = roomsIn(id);
-      const free = rooms.filter(isFree);
-      return {
-        id,
-        name: bname,
-        totalRooms: rooms.length,
-        freeRooms: free.length,
-        freeBeds: free.reduce((sum, s) => sum + (s.bed_capacity ?? 0), 0),
-      };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  const totalFreeRooms = buildings.reduce((sum, b) => sum + b.freeRooms, 0);
-  const totalFreeBeds = buildings.reduce((sum, b) => sum + b.freeBeds, 0);
-
-  function update(i: number, patch: Partial<HousingRow>) {
-    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
-  }
-  function addRow() { setRows((rs) => [...rs, { building_id: '', space_id: '', subgroup_name: '', people_count: '', notes: '' }]); }
-  function removeRow(i: number) { setRows((rs) => rs.filter((_, idx) => idx !== i)); }
-
-  async function submit() {
-    const valid = rows.filter((r) => r.space_id);
-    if (valid.length === 0) { setError('Add at least one cabin assignment.'); return; }
-    if (!name.trim()) { setError('Please enter your name so the camp knows who submitted this.'); return; }
-    setBusy(true); setError(null);
-    const assignments = valid.map((r) => ({
-      space_id: r.space_id,
-      subgroup_name: r.subgroup_name.trim() || null,
-      people_count: r.people_count ? Number(r.people_count) : 0,
-      notes: r.notes.trim() || null,
-    }));
-    const { data: ok, error: err } = await supabasePublic.rpc('portal_submit_housing', {
-      p_token: token, p_assignments: assignments, p_submitted_by: name.trim(),
-    });
-    if (err || !ok) { setError('Could not submit housing. It may now be locked — please contact the camp.'); setBusy(false); return; }
-    setDone(true);
-    await refetch();
-    setBusy(false);
-  }
-
-  return (
-    <div className="space-y-3">
-      {deadlinePassed ? (
-        <Banner tone="warn">
-          The housing deadline {retreat.housing_deadline ? `(${fmtDateFull(retreat.housing_deadline)})` : ''} has passed.
-          You can still try to submit, but please also contact the camp directly to confirm any changes.
-        </Banner>
-      ) : (
-        <Banner tone="info">
-          Assign your group to cabins below.{retreat.housing_deadline ? ` Please submit by ${fmtDateFull(retreat.housing_deadline)}.` : ''}
-          {' '}
-          <strong>{totalFreeRooms} room{totalFreeRooms === 1 ? '' : 's'}</strong> ({totalFreeBeds} bed{totalFreeBeds === 1 ? '' : 's'}) are
-          available for your dates.
-        </Banner>
-      )}
-
-      {done && (
-        <Banner tone="ok">
-          <span className="inline-flex items-center gap-1.5 font-semibold"><CheckCircle2 className="w-4 h-4" /> Housing submitted</span>
-          <p className="mt-1">Thanks! The camp has your assignments and will confirm them.</p>
-        </Banner>
-      )}
-
-      {rows.map((row, i) => {
-        const space = spaces.find((s) => s.id === row.space_id);
-        return (
-          <div key={i} className={`${cardClass} p-4 space-y-3`}>
-            <div className="flex items-center justify-between">
-              <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">Assignment {i + 1}</span>
-              {rows.length > 1 && (
-                <button onClick={() => removeRow(i)} className="text-ink-faint hover:text-red p-1" aria-label="Remove">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className={labelClass}>Building</label>
-                <select
-                  value={row.building_id}
-                  onChange={(e) => update(i, { building_id: e.target.value, space_id: '' })}
-                  className={inputClass}
-                  disabled={busy}
-                >
-                  <option value="">Select a building…</option>
-                  {buildings.map((b) => (
-                    <option key={b.id} value={b.id} disabled={b.freeRooms === 0}>
-                      {b.name} — {b.freeRooms === 0
-                        ? 'fully booked'
-                        : `${b.freeRooms} of ${b.totalRooms} room${b.totalRooms === 1 ? '' : 's'} available · ${b.freeBeds} beds`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>Room</label>
-                <select
-                  value={row.space_id}
-                  onChange={(e) => update(i, { space_id: e.target.value })}
-                  className={inputClass}
-                  disabled={busy || !row.building_id}
-                >
-                  <option value="">{row.building_id ? 'Select a room…' : 'Pick a building first'}</option>
-                  {roomsIn(row.building_id).map((s) => {
-                    const takenByYou = usedSpaceIds.includes(s.id) && s.id !== row.space_id;
-                    const beds = s.bed_capacity ? `${s.bed_capacity} bed${s.bed_capacity === 1 ? '' : 's'}` : 'beds not listed';
-                    const status = s.taken_by_other
-                      ? 'booked by another group'
-                      : takenByYou ? 'already used above' : 'available';
-                    return (
-                      <option
-                        key={s.id}
-                        value={s.id}
-                        disabled={takenByYou || Boolean(s.taken_by_other)}
-                      >
-                        {s.name} · {beds} · {status}{s.accessible ? ' · accessible' : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-                {row.building_id && (() => {
-                  const b = buildings.find((x) => x.id === row.building_id);
-                  return b ? (
-                    <p className="text-[11px] text-ink-faint mt-1">
-                      {b.freeRooms} of {b.totalRooms} room{b.totalRooms === 1 ? '' : 's'} free in {b.name} · {b.freeBeds} beds
-                    </p>
-                  ) : null;
-                })()}
-              </div>
-            </div>
-            {space?.accessible && (
-              <p className="inline-flex items-center gap-1 text-[11px] text-blue-text -mt-1">
-                <Accessibility className="w-3.5 h-3.5" /> Accessible room
-              </p>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className={labelClass}>Subgroup name</label>
-                <input
-                  value={row.subgroup_name}
-                  onChange={(e) => update(i, { subgroup_name: e.target.value })}
-                  className={inputClass}
-                  placeholder="e.g. Staff A"
-                  disabled={busy}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>People</label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  max={space?.bed_capacity ?? undefined}
-                  value={row.people_count}
-                  onChange={(e) => update(i, { people_count: e.target.value })}
-                  className={inputClass}
-                  placeholder="0"
-                  disabled={busy}
-                />
-              </div>
-            </div>
-            <div>
-              <label className={labelClass}>Notes <span className="normal-case font-normal text-forest/30">— optional</span></label>
-              <textarea
-                value={row.notes}
-                onChange={(e) => update(i, { notes: e.target.value })}
-                className={`${inputClass} resize-none`}
-                rows={2}
-                placeholder="Anything the camp should know about this group…"
-                disabled={busy}
-              />
-            </div>
-          </div>
-        );
-      })}
-
-      <button onClick={addRow} disabled={busy} className="w-full inline-flex items-center justify-center gap-2 text-[14px] font-semibold text-forest border-2 border-dashed border-border rounded-xl py-3 hover:border-sage hover:bg-sage-pale/40 transition-colors">
-        <Plus className="w-4 h-4" /> Add another cabin
-      </button>
-
-      <div className={`${cardClass} p-4`}>
-        <label className={labelClass}>Submitted by</label>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className={inputClass}
-          placeholder="Your name"
-          disabled={busy}
-        />
-      </div>
-
-      {error && <p className="text-[13px] text-red">{error}</p>}
-
-      <button onClick={submit} disabled={busy} className={`${btnPrimary} w-full`}>
-        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-        {busy ? 'Submitting…' : 'Submit housing'}
-      </button>
-    </div>
   );
 }
 
@@ -1305,7 +1571,7 @@ function MenuBlock({ published, meals }: { published: boolean; meals: PortalMeal
     return (
       <EmptyCard>
         <UtensilsCrossed className="w-6 h-6 text-forest/25 mx-auto mb-2" />
-        The menu hasn't been published yet. Check back soon — you'll see the full day-by-day plan here once the camp finalizes it.
+        The menu hasn't been published yet. Check back soon. You'll see the full day-by-day plan here once the camp finalizes it.
       </EmptyCard>
     );
   }
@@ -1386,6 +1652,22 @@ function ChangeRequestsBlock({ requests, defaultName, token, refetch }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  /**
+   * Withdraw a request. Only possible while it is still pending. Once the camp has replied,
+   * the exchange is part of the record of what was agreed and shouldn't vanish from their side.
+   */
+  async function remove(id: string) {
+    setRemovingId(id); setError(null);
+    const { data: ok, error: err } = await supabasePublic.rpc('portal_delete_change_request', {
+      p_token: token, p_request_id: id,
+    });
+    if (err || !ok) { setError('Could not withdraw that request. Please try again.'); setRemovingId(null); return; }
+    setRemovingId(null);
+    await refetch();
+  }
+
   async function submit() {
     if (!body.trim()) { setError('Please describe your request.'); return; }
     if (!name.trim()) { setError('Please enter your name.'); return; }
@@ -1459,9 +1741,24 @@ function ChangeRequestsBlock({ requests, defaultName, token, refetch }: {
                     </span>
                   </div>
                   <p className="text-[13px] text-ink leading-relaxed">{r.body}</p>
-                  <p className="text-[11px] text-ink-faint mt-1.5 inline-flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> Submitted {fmtDateTime(r.submitted_at)}
-                  </p>
+                  <div className="mt-1.5 flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-ink-faint inline-flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Submitted {fmtDateTime(r.submitted_at)}
+                    </p>
+                    {r.status === 'pending' && !r.responded_at && (
+                      <button
+                        onClick={() => remove(r.id)}
+                        disabled={removingId === r.id}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink-soft
+                                   transition-colors hover:text-red disabled:opacity-50"
+                      >
+                        {removingId === r.id
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <Trash2 className="w-3 h-3" />}
+                        Withdraw
+                      </button>
+                    )}
+                  </div>
                   {r.response_message && (
                     <div className="mt-2.5 pt-2.5 border-t border-cream-dark">
                       <p className="text-[12px] text-ink leading-relaxed italic">
@@ -1493,8 +1790,16 @@ function FeedbackBlock({ retreat, submitted, token, refetch, today }: {
   const [error, setError] = useState<string | null>(null);
   const [thanks, setThanks] = useState(false);
 
-  const opensSet = !!retreat.feedback_opens;
-  const open = opensSet && retreat.feedback_opens! <= today;
+  /**
+   * A retreat is done the day after it ends, and that is when feedback opens.
+   *
+   * This used to read `retreat.feedback_opens`, a column nothing populates. It is null on
+   * every retreat in the database, so the survey never opened for anybody and the portal kept
+   * saying "not open yet" long after the group had gone home. The date is derived from the
+   * departure date instead, with the column kept as an optional manual override.
+   */
+  const opensOn = retreat.feedback_opens ?? (retreat.departure_date ? addDays(retreat.departure_date, 1) : null);
+  const open = !!opensOn && opensOn <= today;
 
   if (submitted || thanks) {
     return (
@@ -1514,19 +1819,24 @@ function FeedbackBlock({ retreat, submitted, token, refetch, today }: {
     return (
       <EmptyCard>
         <Star className="w-6 h-6 text-forest/25 mx-auto mb-2" />
-        {opensSet
-          ? <>The feedback survey opens on {fmtDateFull(retreat.feedback_opens)}, at the end of your stay.</>
-          : <>The feedback survey isn't open yet. It becomes available at the end of your retreat.</>}
+        {opensOn
+          ? <>The feedback survey opens on {fmtDateFull(opensOn)}, the day after your retreat ends.</>
+          : <>The feedback survey opens the day after your retreat ends.</>}
       </EmptyCard>
     );
   }
 
+  const hasSomething = overall > 0 || accommodations > 0 || food > 0
+    || communication > 0 || comment.trim().length > 0 || returning !== null;
+
   async function submit() {
-    if (overall === 0) { setError('Please give an overall rating.'); return; }
+    // Ratings are optional. A single sentence is worth more than an abandoned form, so the
+    // only thing this refuses is a completely empty submission.
+    if (!hasSomething) { setError('Add a rating or a comment, whichever you have time for.'); return; }
     setBusy(true); setError(null);
     const { error: err } = await supabasePublic.rpc('portal_submit_feedback', {
       p_token: token,
-      p_overall: overall,
+      p_overall: overall || null,
       p_accommodations: accommodations || null,
       p_food: food || null,
       p_communication: communication || null,
@@ -1548,7 +1858,7 @@ function FeedbackBlock({ retreat, submitted, token, refetch, today }: {
       </div>
 
       <div className="pt-3">
-        <label className={labelClass}>Comments <span className="normal-case font-normal text-forest/30">— optional</span></label>
+        <label className={labelClass}>Comments <span className="normal-case font-normal text-forest/30">optional</span></label>
         <textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
@@ -1584,10 +1894,13 @@ function FeedbackBlock({ retreat, submitted, token, refetch, today }: {
       {error && <p className="text-[13px] text-red pt-2">{error}</p>}
 
       <div className="pt-3">
-        <button onClick={submit} disabled={busy} className={`${btnPrimary} w-full`}>
+        <button onClick={submit} disabled={busy || !hasSomething} className={`${btnPrimary} w-full`}>
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           {busy ? 'Submitting…' : 'Submit feedback'}
         </button>
+        <p className="text-[11.5px] text-ink-faint text-center mt-2">
+          Every field is optional. Ratings, a comment, or both, whatever you have time for.
+        </p>
       </div>
     </div>
   );

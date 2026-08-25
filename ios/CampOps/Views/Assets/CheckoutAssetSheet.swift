@@ -127,7 +127,7 @@ struct CheckoutAssetSheet: View {
 
     private func populateFromEditing() {
         // Checking out a vehicle for yourself is the common case, so start with the signed-in
-        // person's name already filled in. It stays editable — someone at the desk often
+        // person's name already filled in. It stays editable, someone at the desk often
         // checks a vehicle out on a colleague's behalf.
         if editing == nil && checkedOutBy.isEmpty {
             checkedOutBy = authManager.currentUser.name

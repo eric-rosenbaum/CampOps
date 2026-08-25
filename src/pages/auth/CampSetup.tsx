@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TreePine, Check, ArrowLeft, Plus, Users } from 'lucide-react';
+import { Check, ArrowLeft, Plus, Users } from 'lucide-react';
+import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
 
@@ -79,9 +80,7 @@ export function CampSetup() {
       {/* Left panel */}
       <div className="hidden lg:flex w-[420px] shrink-0 bg-forest flex-col justify-between p-10">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center">
-            <TreePine className="w-4.5 h-4.5 text-cream" />
-          </div>
+          <CampCommandMark size={32} disc={CC_CREAM} ink={CC_GREEN} decorative />
           <span className="text-lg font-semibold text-cream">CampCommand</span>
         </div>
         <div>
@@ -89,7 +88,7 @@ export function CampSetup() {
             Let's get your camp set up.
           </h2>
           <p className="text-[14px] text-cream/60 leading-relaxed">
-            CampCommand brings your whole team onto one platform — maintenance, safety, pool logs, and more.
+            CampCommand brings your whole team onto one platform, maintenance, safety, pool logs, and more.
           </p>
         </div>
         <p className="text-[11px] text-cream/30">
@@ -101,9 +100,7 @@ export function CampSetup() {
       <div className="flex-1 flex flex-col items-center justify-center bg-paper p-4 sm:p-6 sm:p-10">
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2 mb-8">
-          <div className="w-7 h-7 bg-forest rounded-lg flex items-center justify-center">
-            <TreePine className="w-4 h-4 text-cream" />
-          </div>
+          <CampCommandMark size={30} decorative />
           <span className="text-base font-semibold text-forest">CampCommand</span>
         </div>
 
@@ -122,7 +119,7 @@ export function CampSetup() {
             {step === 0 ? 'Sign out' : 'Back'}
           </button>
 
-          {/* Step indicator — only visible during create camp flow */}
+          {/* Step indicator, only visible during create camp flow */}
           {step > 0 && (
             <div className="flex items-center gap-2 mb-7">
               {[1, 2].map((s) => (
@@ -144,7 +141,7 @@ export function CampSetup() {
           )}
 
           <div className="bg-white rounded-xl border border-border shadow-sm p-8">
-            {/* Step 0 — choose path */}
+            {/* Step 0. Choose path */}
             {step === 0 && (
               <>
                 <h1 className="text-[18px] font-semibold text-forest mb-1">Welcome to CampCommand</h1>

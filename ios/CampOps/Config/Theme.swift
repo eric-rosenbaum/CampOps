@@ -58,7 +58,7 @@ extension View {
 
 // MARK: - Buttons
 
-/// Filled forest button — the single primary action on a screen.
+/// Filled forest button. The single primary action on a screen.
 struct CampPrimaryButtonStyle: ButtonStyle {
     var enabled: Bool = true
 
@@ -75,7 +75,7 @@ struct CampPrimaryButtonStyle: ButtonStyle {
     }
 }
 
-/// Outlined button — secondary actions that still need a full-width target.
+/// Outlined button, secondary actions that still need a full-width target.
 struct CampSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -149,14 +149,8 @@ struct CampWordmark: View {
 
     var body: some View {
         VStack(spacing: Spacing.md) {
-            ZStack {
-                RoundedRectangle(cornerRadius: size * 0.28)
-                    .fill(Color.forestFill)
-                    .frame(width: size * 1.5, height: size * 1.5)
-                Image(systemName: "tree.fill")
-                    .font(.system(size: size * 0.72))
-                    .foregroundStyle(Color.sage)
-            }
+            // The badge carries its own disc, so it needs no tinted plate behind it.
+            CampCommandMark(size: size * 1.5)
             Text("CampCommand")
                 .font(.campTitle)
                 .foregroundStyle(Color.forest)

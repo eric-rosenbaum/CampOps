@@ -1,4 +1,4 @@
--- The invite token is a long, unguessable secret delivered only to the invited person's inbox —
+-- The invite token is a long, unguessable secret delivered only to the invited person's inbox -
 -- possessing it IS the proof of access. The extra "signed-in email must equal the invited email"
 -- check caused lockouts (already logged in as another account, or typed a slightly different
 -- email at signup) with no way forward. Drop it; keep single-use + expiry. Also stop a platform
@@ -14,7 +14,7 @@ BEGIN
   END IF;
 
   IF is_platform_admin() THEN
-    RETURN jsonb_build_object('error', 'You’re a platform admin — open this camp from the admin console instead of accepting an invite.');
+    RETURN jsonb_build_object('error', 'You’re a platform admin. Open this camp from the admin console instead of accepting an invite.');
   END IF;
 
   SELECT * INTO v_inv FROM public.camp_invitations

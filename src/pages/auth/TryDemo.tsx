@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { TreePine } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCampStore } from '@/store/campStore';
+import { CampCommandMark } from '@/components/shared/CampCommandMark';
 
-// Frictionless demo entry. The shareable link (app.campcommand.app/try/:token) drops anyone —
-// no email, no password — straight into ONE demo camp via an anonymous session. Multiple people
+// Frictionless demo entry. The shareable link (app.campcommand.app/try/:token) drops anyone -
+// no email, no password, straight into ONE demo camp via an anonymous session. Multiple people
 // on the same link share that one isolated environment. Non-demo camps can never be reached here.
 export function TryDemo() {
   const { token } = useParams<{ token: string }>();
@@ -33,7 +33,7 @@ export function TryDemo() {
       const r = (result ?? {}) as { error?: string; camp_id?: string };
       if (r.error) { setError(r.error); return; }
 
-      // Load this (anonymous) user's camps — they're a member of exactly this demo — then open it.
+      // Load this (anonymous) user's camps (they're a member of exactly this demo) then open it.
       await useCampStore.getState().loadMyCamps();
       if (r.camp_id) await useCampStore.getState().selectCamp(r.camp_id);
       navigate('/home', { replace: true });
@@ -44,7 +44,7 @@ export function TryDemo() {
     <div className="min-h-screen w-full flex items-center justify-center bg-paper p-4 sm:p-6">
       <div className="w-full max-w-sm text-center">
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-cream" /></div>
+          <CampCommandMark size={36} decorative />
           <span className="text-lg font-semibold text-forest">CampCommand</span>
         </div>
         <div className="bg-white rounded-xl border border-border shadow-sm p-8">

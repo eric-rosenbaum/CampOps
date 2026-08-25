@@ -115,7 +115,7 @@ export function RetreatMenuEntryModal({ retreatId, dayDate, mealPeriod, editId }
           <div>
             <label className={labelClass}>Recipe</label>
             <select autoFocus value={recipeId} onChange={(e) => setRecipeId(e.target.value)} className={inputClass}>
-              <option value="">— Select a recipe —</option>
+              <option value="">Select a recipe</option>
               {matching.length > 0 && (
                 <optgroup label={MEAL_PERIOD_LABELS[mealPeriod]}>
                   {matching.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -127,7 +127,7 @@ export function RetreatMenuEntryModal({ retreatId, dayDate, mealPeriod, editId }
                 </optgroup>
               )}
             </select>
-            {recipes.length === 0 && <p className="text-[11px] text-ink-faint mt-1.5">No recipes yet — add one on the Recipe guide tab.</p>}
+            {recipes.length === 0 && <p className="text-[11px] text-ink-faint mt-1.5">No recipes yet. Add one on the Recipe guide tab.</p>}
           </div>
         )}
 
@@ -136,7 +136,7 @@ export function RetreatMenuEntryModal({ retreatId, dayDate, mealPeriod, editId }
             <div>
               <label className={labelClass}>Inventory item</label>
               <select autoFocus value={itemId} onChange={(e) => pickItem(e.target.value)} className={inputClass}>
-                <option value="">— Select an item —</option>
+                <option value="">Select an item</option>
                 {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
               </select>
             </div>

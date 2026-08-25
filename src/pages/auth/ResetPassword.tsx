@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { TreePine } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
+import { CampCommandMark } from '@/components/shared/CampCommandMark';
 
 type Phase = 'checking' | 'ready' | 'invalid' | 'done';
 
@@ -54,7 +54,7 @@ export function ResetPassword() {
     <div className="min-h-screen w-full flex items-center justify-center bg-paper p-4 sm:p-6">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-4.5 h-4.5 text-cream" /></div>
+          <CampCommandMark size={36} decorative />
           <span className="text-lg font-semibold text-forest">CampCommand</span>
         </div>
 

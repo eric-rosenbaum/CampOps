@@ -50,7 +50,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
         delete next[slug];
         return next;
       }
-      // Default to the middle severity — "confirmed" is the common case, and defaulting
+      // Default to the middle severity, "confirmed" is the common case, and defaulting
       // to anaphylactic would cry wolf while defaulting to intolerance would understate.
       return { ...prev, [slug]: 'confirmed' };
     });
@@ -81,7 +81,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
         id: generateId(), camperId, restriction, kind: 'allergen' as const,
         severity, notes: null, createdAt: now, updatedAt: now,
       })),
-      // Dietary preferences carry no severity — the CHECK constraint requires null here.
+      // Dietary preferences carry no severity. The CHECK constraint requires null here.
       ...diets.map((restriction) => ({
         id: generateId(), camperId, restriction, kind: 'dietary' as const,
         severity: null, notes: null, createdAt: now, updatedAt: now,
@@ -117,7 +117,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
         <div>
           <label className={labelClass}>Sessions attending</label>
           {sessions.length === 0 ? (
-            <p className="text-[11px] text-ink-faint">No sessions yet — create one first. Unassigned people count toward every session's allergy totals.</p>
+            <p className="text-[11px] text-ink-faint">No sessions yet. Create one first. Unassigned people count toward every session's allergy totals.</p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {sessions.map((s) => (
@@ -130,12 +130,12 @@ export function AddCamperModal({ editId }: { editId?: string }) {
               ))}
             </div>
           )}
-          <p className="text-[11px] text-ink-faint mt-1">Pick every session this person attends — their allergies count only toward those sessions' menus.</p>
+          <p className="text-[11px] text-ink-faint mt-1">Pick every session this person attends. Their allergies count only toward those sessions' menus.</p>
         </div>
 
         <div>
           <label className={labelClass}>Allergens / Dietary preferences</label>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint mb-1.5">Allergens <span className="normal-case font-normal text-ink-faint">— safety</span></p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint mb-1.5">Allergens <span className="normal-case font-normal text-ink-faint">safety</span></p>
           <p className="text-[11px] text-ink-faint mb-2">
             Select an allergen, then set how severe it is. Anaphylactic flags appear in red
             on every affected recipe and prep task.
@@ -171,7 +171,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
                               : 'bg-white text-ink-soft border-border hover:border-forest/30'
                           }`}
                         >
-                          {SEVERITY_LABELS[sev].split(' —')[0]}
+                          {SEVERITY_LABELS[sev].split(' -')[0]}
                         </button>
                       ))}
                     </div>
@@ -181,7 +181,7 @@ export function AddCamperModal({ editId }: { editId?: string }) {
             })}
           </div>
 
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint mt-3 mb-1.5">Dietary <span className="normal-case font-normal text-ink-faint">— accommodation, not a safety hazard</span></p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint mt-3 mb-1.5">Dietary <span className="normal-case font-normal text-ink-faint">accommodation, not a safety hazard</span></p>
           <div className="flex flex-wrap gap-1.5">
             {DIETARY_RESTRICTIONS.map((d) => (
               <button

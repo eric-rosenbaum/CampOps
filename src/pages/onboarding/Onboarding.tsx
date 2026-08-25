@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Check, ChevronRight, TreePine, Waves, ClipboardList,
+  Check, ChevronRight, Waves, ClipboardList,
   ShieldCheck, Truck, MapPin, X, Plus, Users, Upload,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -14,6 +14,7 @@ import { useLocationStore } from '@/store/locationStore';
 import { LocationPicker } from '@/components/shared/LocationPicker';
 import { generateId } from '@/lib/utils';
 import type { PoolType, SafetyItemType, SafetyFrequency, AssetCategory } from '@/lib/types';
+import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -100,14 +101,14 @@ function SheetPicker({ columns, nameCol, sizeCol, onNameCol, onSizeCol, onConfir
         <div>
           <label className="block text-[11px] text-ink-soft mb-1">Cabin / location name <span className="text-red-500">*</span></label>
           <select value={nameCol} onChange={e => onNameCol(e.target.value)} className={selectCls}>
-            <option value="">— select —</option>
+            <option value="">select</option>
             {columns.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-[11px] text-ink-soft mb-1">Size / capacity <span className="text-forest/30">(optional)</span></label>
           <select value={sizeCol} onChange={e => onSizeCol(e.target.value)} className={selectCls}>
-            <option value="">— none —</option>
+            <option value="">none</option>
             {columns.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
@@ -146,7 +147,7 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
   const [custom, setCustom] = useState('');
   const [extras, setExtras] = useState<string[]>([]);
 
-  // Cabins (dorms) — kept separate so we can flag them as dorms with bed counts.
+  // Cabins (dorms), kept separate so we can flag them as dorms with bed counts.
   const [cabins, setCabins] = useState<CabinEntry[]>([]);
   const [cabinInput, setCabinInput] = useState('');
   const [showCabinSection, setShowCabinSection] = useState(false);
@@ -247,7 +248,7 @@ function LocationsStep({ campType, onDone }: { campType: string | null; onDone: 
   return (
     <div className="space-y-6">
       <p className="text-[13px] text-ink leading-relaxed">
-        Choose the areas at your camp. These will appear when staff log issues or create tasks — use names your whole team will recognize. <span className="text-ink-soft">Major areas work better than specific rooms.</span>
+        Choose the areas at your camp. These will appear when staff log issues or create tasks. Use names your whole team will recognize. <span className="text-ink-soft">Major areas work better than specific rooms.</span>
       </p>
 
       <div>
@@ -657,7 +658,7 @@ function SafetyStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void
       const type: SafetyItemType = e.type;
       addItem({
         id: generateId(),
-        name: e.type === 'extinguisher' ? `Fire Extinguisher — ${e.location}` : `CO₂ Alarm — ${e.location}`,
+        name: e.type === 'extinguisher' ? `Fire Extinguisher · ${e.location}` : `CO₂ Alarm · ${e.location}`,
         category: 'fire', type, locationId: e.locationId || null, location: e.location,
         unitCount: 1, frequency: freq, frequencyDays: 365,
         lastInspected: null, nextDue: e.expiry || null,
@@ -711,7 +712,7 @@ function SafetyStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void
                   setFireEquip(prev => prev.map((x, idx) => idx === i ? { ...x, locationId: id, location: id ? (locationById(id)?.name ?? '') : '' } : x));
                 }}
                 placeholder="Select location…"
-                emptyHint="No locations yet — add them in the Locations step."
+                emptyHint="No locations yet. Add them in the Locations step."
               />
               <div>
                 <label className="block text-[10px] text-ink-faint mb-0.5">Expiry / next service</label>
@@ -888,10 +889,10 @@ function TeamStep({ onDone }: { onDone: () => void }) {
   return (
     <div className="space-y-5">
       <p className="text-[13px] text-ink leading-relaxed">
-        Invite your key operators — directors, maintenance leads, waterfront staff. They'll get a link to create their account and join your camp.
+        Invite your key operators, directors, maintenance leads, waterfront staff. They'll get a link to create their account and join your camp.
       </p>
       <p className="text-[12px] text-ink-soft bg-paper border border-border rounded-lg px-3 py-2.5">
-        💡 <strong>Tip:</strong> For staff who only need to appear in certification records (lifeguards, counselors), add them later in the Safety or other modules — they don't need app accounts.
+        <strong>Tip:</strong> For staff who only need to appear in certification records (lifeguards, counselors), add them later in the Safety or other modules. They don't need app accounts.
       </p>
 
       <div className="flex gap-2">
@@ -928,7 +929,7 @@ function TeamStep({ onDone }: { onDone: () => void }) {
 
       <div className="flex gap-3">
         <PrimaryButton onClick={onDone}>
-          {invites.length > 0 ? 'Done — go to dashboard' : 'Skip — go to dashboard'}
+          {invites.length > 0 ? 'Done, go to dashboard' : 'Skip, go to dashboard'}
         </PrimaryButton>
       </div>
     </div>
@@ -979,9 +980,7 @@ export function Onboarding() {
       {/* Left sidebar */}
       <div className="hidden lg:flex w-[260px] shrink-0 bg-forest flex-col p-8">
         <div className="flex items-center gap-2.5 mb-10">
-          <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center">
-            <TreePine className="w-4.5 h-4.5 text-cream" />
-          </div>
+          <CampCommandMark size={30} disc={CC_CREAM} ink={CC_GREEN} decorative />
           <span className="text-base font-semibold text-cream">CampCommand</span>
         </div>
 
@@ -1021,7 +1020,7 @@ export function Onboarding() {
       <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start bg-paper p-4 sm:p-6 sm:p-10">
         <div className="lg:hidden flex items-center justify-between w-full max-w-2xl mb-6">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-forest rounded-lg flex items-center justify-center"><TreePine className="w-3.5 h-3.5 text-cream" /></div>
+            <CampCommandMark size={32} decorative />
             <span className="text-sm font-semibold text-forest">CampCommand</span>
           </div>
           <button onClick={() => navigate('/', { replace: true })} className="text-[12px] text-ink-faint hover:text-forest">Skip →</button>
@@ -1039,7 +1038,7 @@ export function Onboarding() {
             ))}
           </div>
 
-          {/* All steps rendered — hidden when not active so state is preserved */}
+          {/* All steps rendered, hidden when not active so state is preserved */}
           {steps.map((key, idx) => {
             const active = idx === currentIdx;
             const Icon = STEP_META[key].icon;

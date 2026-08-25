@@ -39,7 +39,7 @@ function niceMax(v: number): number {
   return step * pow;
 }
 
-/** A rect with only its top two corners rounded — for the top segment of a stack. */
+/** A rect with only its top two corners rounded, for the top segment of a stack. */
 function topRoundedPath(x: number, y: number, w: number, h: number, r: number): string {
   const rr = Math.max(0, Math.min(r, w / 2, h));
   return `M${x},${y + h} L${x},${y + rr} Q${x},${y} ${x + rr},${y} L${x + w - rr},${y} Q${x + w},${y} ${x + w},${y + rr} L${x + w},${y + h} Z`;

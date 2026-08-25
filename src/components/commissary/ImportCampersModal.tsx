@@ -15,7 +15,7 @@ type Row = Record<string, string>;
 
 /**
  * Interpret a restriction cell. A blank/no/0 cell means the camper does not have it.
- * Anything else is a severity if we recognise it, otherwise a confirmed allergy — a
+ * Anything else is a severity if we recognise it, otherwise a confirmed allergy · a
  * roster that just puts an "x" in the peanut column should not be read as "no allergy".
  */
 function parseSeverity(raw: string): RestrictionSeverity | null {
@@ -191,13 +191,13 @@ Emma T.,Cabin 2,,anaphylactic,yes,yes`}
               )}
               {skipped > 0 && (
                 <p className="text-[11px] text-amber-text mt-1.5 flex items-center gap-1.5">
-                  <AlertTriangle className="w-3 h-3" /> {skipped} row{skipped === 1 ? '' : 's'} skipped — no name.
+                  <AlertTriangle className="w-3 h-3" /> {skipped} row{skipped === 1 ? '' : 's'} skipped · no name.
                 </p>
               )}
               {restrictionColumns.length === 0 && (
                 <p className="text-[11px] text-amber-text mt-1.5 flex items-start gap-1.5">
                   <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                  No restriction columns matched. Campers will import with no allergies —
+                  No restriction columns matched. Campers will import with no allergies -
                   check that your headers use names like "Peanut" or "Tree nut".
                 </p>
               )}
@@ -218,9 +218,9 @@ Emma T.,Cabin 2,,anaphylactic,yes,yes`}
                     return (
                       <tr key={i} className="border-t border-border">
                         <td className="px-3 py-1.5 text-[12px] text-forest">{String(r[nameKey])}</td>
-                        <td className="px-3 py-1.5 text-[12px] text-ink-soft">{cabinKey ? String(r[cabinKey] ?? '') : '—'}</td>
+                        <td className="px-3 py-1.5 text-[12px] text-ink-soft">{cabinKey ? String(r[cabinKey] ?? '') : '-'}</td>
                         <td className="px-3 py-1.5 text-[11px] text-ink-soft">
-                          {found.length ? found.map((c) => c.header).join(', ') : '—'}
+                          {found.length ? found.map((c) => c.header).join(', ') : '-'}
                         </td>
                       </tr>
                     );

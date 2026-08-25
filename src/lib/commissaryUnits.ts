@@ -4,7 +4,7 @@
 //
 // 1. PER-ITEM PACK FACTORS (stored on inventory_items, load-bearing).
 //    `stockUnitInBase` / `purchaseUnitInBase` convert an item's human-facing units
-//    into its base unit. A case of eggs is 360 each — that is a fact about eggs,
+//    into its base unit. A case of eggs is 360 each. That is a fact about eggs,
 //    not about cases, so no lookup table can know it. All stored quantities
 //    (onHandBase, parLevelBase, qtyInBase, deltaBase) are in base units.
 //
@@ -23,7 +23,7 @@ import { toDateStr, todayStr, parseDateStr } from './utils';
 export { toDateStr, todayStr, parseDateStr };
 
 // ─── Allergens ───────────────────────────────────────────────────────────────
-// Canonical set. Deliberately allergens only — dietary preferences (vegetarian,
+// Canonical set. Deliberately allergens only, dietary preferences (vegetarian,
 // vegan, kosher) are an accommodation, not a safety hazard, and arrive with the
 // camper model in the allergy-program phase.
 
@@ -46,7 +46,7 @@ export const ALLERGEN_LABELS: Record<Allergen, string> = {
 };
 
 // Item-side dietary flags. These live alongside allergens on an inventory item and flag on the
-// menu builder EXACTLY like allergens — a "contains meat" item warns against vegetarian/vegan
+// menu builder EXACTLY like allergens · a "contains meat" item warns against vegetarian/vegan
 // campers, "contains animal products" against vegans. (Replaces the old vegetarian/vegan/kosher/
 // halal item tags: an item states what it CONTAINS; the camper states what they avoid.)
 export const DIET_FLAGS = ['contains_meat', 'contains_animal_products'] as const;
@@ -110,7 +110,7 @@ export const MEASURE_UNITS: Record<UnitDimension, MeasureUnit[]> = {
 // What the Add Item form actually offers. The user picks how they COUNT a thing
 // ("by the loaf", "by the pound") and never sees the words "base unit" or a
 // conversion factor. Each option resolves to the (dimension, base unit, factor)
-// the engine needs — for most count units the factor is 1, so it is invisible.
+// the engine needs, for most count units the factor is 1, so it is invisible.
 //
 // Any pack complexity ("1 case = 24 cans") lives in the optional purchase-pack
 // section instead, which is where it belongs: you stock cans, you buy cases.
@@ -124,7 +124,7 @@ export interface StockUnitOption {
 }
 
 export const STOCK_UNIT_OPTIONS: StockUnitOption[] = [
-  // Count — 1 of the thing = 1 base "each". No conversion the user ever sees.
+  // Count, 1 of the thing = 1 base "each". No conversion the user ever sees.
   { value: 'each',    label: 'each / unit',  group: 'Count', dimension: 'count', inBase: 1 },
   { value: 'loaf',    label: 'loaf',         group: 'Count', dimension: 'count', inBase: 1 },
   { value: 'can',     label: 'can',          group: 'Count', dimension: 'count', inBase: 1 },
@@ -136,10 +136,10 @@ export const STOCK_UNIT_OPTIONS: StockUnitOption[] = [
   { value: 'head',    label: 'head',         group: 'Count', dimension: 'count', inBase: 1 },
   { value: 'bunch',   label: 'bunch',        group: 'Count', dimension: 'count', inBase: 1 },
   { value: 'dozen',   label: 'dozen',        group: 'Count', dimension: 'count', inBase: 12 },
-  // Weight — base is oz, factor comes from here, not from the user.
+  // Weight. Base is oz, factor comes from here, not from the user.
   { value: 'lb',      label: 'pound (lb)',   group: 'Weight', dimension: 'weight', inBase: 16 },
   { value: 'oz',      label: 'ounce (oz)',   group: 'Weight', dimension: 'weight', inBase: 1 },
-  // Volume — base is fl oz.
+  // Volume. Base is fl oz.
   { value: 'gallon',  label: 'gallon',       group: 'Volume', dimension: 'volume', inBase: 128 },
   { value: 'quart',   label: 'quart',        group: 'Volume', dimension: 'volume', inBase: 32 },
   { value: 'pint',    label: 'pint',         group: 'Volume', dimension: 'volume', inBase: 16 },
@@ -151,7 +151,7 @@ export const STOCK_UNIT_GROUPS: StockUnitOption['group'][] = ['Count', 'Weight',
 
 // Smart default for "Stocked by": guess how a thing is counted from its name, so the
 // form pre-fills "lb" for chicken and "gallon" for milk instead of always "each". Just a
-// convenience — the user can always change it, and a miss costs nothing.
+// convenience. The user can always change it, and a miss costs nothing.
 const STOCK_UNIT_KEYWORDS: [RegExp, string][] = [
   [/\b(egg|eggs)\b/i, 'dozen'],
   [/\b(bread|loaf|loaves|baguette)\b/i, 'loaf'],
@@ -223,7 +223,7 @@ export function pluralizeUnit(unit: string, n: number): string {
   return `${unit}s`;
 }
 
-/** "18 lb", "4 cases", "5.5 gallons" — pluralizes word units correctly. */
+/** "18 lb", "4 cases", "5.5 gallons"pluralizes word units correctly. */
 export function formatQty(qty: number, unit: string): string {
   const n = tidy(qty);
   return `${n.toLocaleString()} ${pluralizeUnit(unit, n)}`;
@@ -242,7 +242,7 @@ export function parInStockUnit(item: InventoryItem): number {
 }
 
 // ─── Stock status ────────────────────────────────────────────────────────────
-// The mock's fourth bucket ("Order soon — within 3 days of par") needs a
+// The mock's fourth bucket ("Order soon, within 3 days of par") needs a
 // consumption rate we do not have until production logging exists, so it is not
 // invented here. Three honest buckets instead.
 
@@ -305,7 +305,7 @@ export function scaledIngredientLabel(
   portions: number,
   item: InventoryItem | undefined,
 ): string {
-  if (!item || ing.qtyInBase == null) return ing.freeTextQty ?? '—';
+  if (!item || ing.qtyInBase == null) return ing.freeTextQty ?? '-';
   const base = scaledIngredientBase(ing, recipe, portions);
   return formatInStockUnit(item, base);
 }
@@ -349,11 +349,11 @@ export interface DemandRow {
 /**
  * Total base-unit demand per inventory item across a set of menu entries.
  *
- * `portionsFor` yields the head count each entry scales to — a constant for the whole
+ * `portionsFor` yields the head count each entry scales to, a constant for the whole
  * week, or a per-meal count when the session/date varies attendance (see #8). A chip
  * may drive demand two ways: a recipe (via its linked ingredients) OR a directly linked
  * inventory item with a per-portion quantity. Free-text chips and unlinked ingredients
- * contribute nothing — by design, and the UI marks them so the shortfall is visible.
+ * contribute nothing, by design, and the UI marks them so the shortfall is visible.
  */
 export function demandForEntries(
   entries: MenuEntry[],
@@ -395,7 +395,7 @@ export function demandForEntries(
 
 /**
  * Whole purchase units required to cover `neededBase`, given what is on hand.
- * Rounds UP — you cannot buy 1.82 cases of eggs.
+ * Rounds UP. You cannot buy 1.82 cases of eggs.
  */
 export function orderQtyInPurchaseUnits(item: InventoryItem, neededBase: number): number {
   const shortfall = Math.max(0, neededBase - item.onHandBase);
@@ -474,7 +474,7 @@ export const WASTE_CATEGORY_SHORT: Record<WasteCategory, string> = {
  *
  * `prep_loss` and `plate_waste` are deliberately excluded: trim loss is a property of the
  * ingredient, and ReFED puts roughly 70% of foodservice waste at the plate, which does not
- * respond to how you buy. `other` is excluded too — it is unknown, and counting unknowns
+ * respond to how you buy. `other` is excluded too. It is unknown, and counting unknowns
  * as reducible would inflate the only number on this tab anyone will quote.
  */
 export const REDUCIBLE_WASTE: ReadonlySet<WasteCategory> = new Set<WasteCategory>([
@@ -495,7 +495,7 @@ export const MEAL_PERIOD_LABELS: Record<MealPeriod, string> = {
 };
 
 // A session week runs from the session's OWN start date, so day 0 is whatever weekday the
-// session begins on — not Monday. Labelling the columns Mon–Sun produced impossible dates
+// session begins on, not Monday. Labelling the columns Mon–Sun produced impossible dates
 // ("Mon Aug 4" for a session starting Tuesday Aug 4) and put the menu a day out of step
 // with inventory, which reads real calendar dates. Weekday names must come from the date.
 //
@@ -525,7 +525,7 @@ export function dateStrForCell(startDate: string, weekNumber: number, dayIndex: 
   return toDateStr(dateForCell(startDate, weekNumber, dayIndex));
 }
 
-/** The real weekday of a cell — 'Tue' for a session that starts on a Tuesday. */
+/** The real weekday of a cell, 'Tue' for a session that starts on a Tuesday. */
 export function dayLabelForCell(startDate: string, weekNumber: number, dayIndex: number): string {
   return dateForCell(startDate, weekNumber, dayIndex).toLocaleDateString('en-US', { weekday: 'short' });
 }
@@ -536,7 +536,7 @@ export function dayLabelsForWeek(startDate: string, weekNumber: number): string[
 }
 
 // ─── Restrictions: allergens vs dietary ──────────────────────────────────────
-// The mock conflated these — its add-allergy modal listed Vegetarian/Vegan/Kosher
+// The mock conflated these, its add-allergy modal listed Vegetarian/Vegan/Kosher
 // alongside Peanut/Anaphylactic in one checkbox list, and used three mutually
 // inconsistent taxonomies across the matrix (8), the modal (12) and the summary (10).
 // One canonical set, with a `kind` that separates a safety hazard from an
@@ -565,7 +565,7 @@ export function restrictionKind(slug: string): 'allergen' | 'dietary' {
 export const SEVERITY_LABELS: Record<string, string> = {
   intolerance: 'Intolerance / sensitivity',
   confirmed: 'Confirmed allergy',
-  anaphylactic: 'Anaphylactic — EpiPen required',
+  anaphylactic: 'Anaphylactic · EpiPen required',
 };
 
 /** Rank for "worst severity wins" when summarising a camper or a conflict. */
@@ -588,7 +588,7 @@ export interface MenuConflict {
  *
  * Phase 1 could only say "this meal contains dairy" (composition). With the allergy
  * program present we can say "this meal conflicts with 22 campers, 3 anaphylactic"
- * — which is what the mock's ⚠ always claimed to mean and never computed.
+ *. Which is what the mock's warning icon always claimed to mean and never computed.
  *
  * Driven by the aggregate summary, so a kitchen user with no access to camper names
  * still gets the warning.
@@ -598,7 +598,7 @@ export function menuConflicts(
   summary: Map<string, { camperCount: number; anaphylacticCount: number }>,
 ): MenuConflict[] {
   // Conflicts are keyed by the CAMPER RESTRICTION, never by the item flag that implied it.
-  // A "contains meat" item does not conflict with "contains meat" — it conflicts with the
+  // A "contains meat" item does not conflict with "contains meat"it conflicts with the
   // vegetarians and vegans in camp. Reporting the flag slug here used to make replacement
   // meals unmatchable: a substitution is saved against a restriction ('vegetarian'), so
   // nothing ever matched 'contains_meat' and the chip stayed amber however many
@@ -700,7 +700,7 @@ export interface PrepScheduleSlot {
 
 /**
  * A fingerprint of a day's menu. Stored on the plan at generation; recomputed on
- * render. When they differ the menu changed and the plan is stale — the UI says so
+ * render. When they differ the menu changed and the plan is stale. The UI says so
  * and offers regeneration. Nothing regenerates on its own, because that would erase
  * a half-completed prep list.
  *
@@ -740,7 +740,7 @@ export interface DraftOrder {
 /**
  * Build one draft order per vendor from a set of items and their required base-unit
  * quantities. Items already at or above the requirement are dropped, not listed at
- * zero — the mock rendered a $0.00 flour line, which is noise on a purchase order.
+ * zero. The mock rendered a $0.00 flour line, which is noise on a purchase order.
  */
 export function buildDraftOrders(
   items: InventoryItem[],
@@ -860,11 +860,11 @@ export function orderToPrintHtml(order: ExportOrder, lines: ExportOrderLine[], d
     <tr>
       <td>${l.itemName}</td>
       <td class="num">${tidy(l.orderQty).toLocaleString()} ${l.purchaseUnit}</td>
-      <td class="num">${l.unitPrice == null ? '—' : formatCurrency(l.unitPrice)}</td>
-      <td class="num">${l.unitPrice == null ? '—' : formatCurrency(l.lineTotal)}</td>
+      <td class="num">${l.unitPrice == null ? '-' : formatCurrency(l.unitPrice)}</td>
+      <td class="num">${l.unitPrice == null ? '-' : formatCurrency(l.lineTotal)}</td>
     </tr>`).join('');
 
-  return `<!doctype html><html><head><meta charset="utf-8"><title>Order — ${order.vendorName}</title>
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Order · ${order.vendorName}</title>
   <style>
     body { font-family: -apple-system, system-ui, sans-serif; color: #1a2e1a; padding: 32px; }
     h1 { font-size: 18px; margin: 0 0 4px; }
@@ -876,7 +876,7 @@ export function orderToPrintHtml(order: ExportOrder, lines: ExportOrderLine[], d
     tfoot td { border: 0; padding-top: 6px; font-weight: 600; }
     .instr { margin-top: 20px; font-size: 12px; }
   </style></head><body>
-    <h1>Purchase order — ${order.vendorName}</h1>
+    <h1>Purchase order · ${order.vendorName}</h1>
     <div class="meta">${order.accountNumber ? `Account ${order.accountNumber} · ` : ''}${dateLabel}</div>
     <table>
       <thead><tr><th>Item</th><th class="num">Quantity</th><th class="num">Unit price</th><th class="num">Total</th></tr></thead>
@@ -891,7 +891,7 @@ export function orderToPrintHtml(order: ExportOrder, lines: ExportOrderLine[], d
   </body></html>`;
 }
 
-/** A printable receiving checklist — carry it to the dock and check items off as they arrive. */
+/** A printable receiving checklist, carry it to the dock and check items off as they arrive. */
 export function receivingSheetToPrintHtml(
   vendorName: string,
   dateLabel: string,
@@ -904,7 +904,7 @@ export function receivingSheetToPrintHtml(
       <td class="num"><span class="box"></span></td>
       <td><span class="line"></span></td>
     </tr>`).join('');
-  return `<!doctype html><html><head><meta charset="utf-8"><title>Receiving — ${vendorName}</title>
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Receiving · ${vendorName}</title>
   <style>
     body { font-family: -apple-system, system-ui, sans-serif; color: #1a2e1a; padding: 32px; }
     h1 { font-size: 18px; margin: 0 0 4px; }
@@ -916,7 +916,7 @@ export function receivingSheetToPrintHtml(
     .box { display: inline-block; width: 60px; border-bottom: 1px solid #999; }
     .line { display: inline-block; width: 100%; min-width: 120px; border-bottom: 1px solid #ccc; }
   </style></head><body>
-    <h1>Receiving checklist — ${vendorName}</h1>
+    <h1>Receiving checklist · ${vendorName}</h1>
     <div class="meta">${dateLabel} · received by ______________</div>
     <table>
       <thead><tr><th>Item (✓ as arrived)</th><th class="num">Ordered</th><th class="num">Received</th><th>Notes (short / sub)</th></tr></thead>
@@ -980,7 +980,7 @@ export function menuForecastCost(
 
 // ─── Head count with meal-level events ───────────────────────────────────────
 // bag_lunch events are their own separate meals (their own production task and their
-// own count) — they do NOT change the dining-hall count. An off-site trip is modeled
+// own count). They do NOT change the dining-hall count. An off-site trip is modeled
 // as a -N delta on the affected meal PLUS a +N bag_lunch.
 
 /**
@@ -1082,7 +1082,7 @@ export function nextWeekdayOnOrAfter(weekday: string | null, fromDateStr: string
 
 export interface ProjectionInput {
   onHandBase: number;
-  /** Deplete consumption from here forward — the last count date, or today if never counted. */
+  /** Deplete consumption from here forward. The last count date, or today if never counted. */
   anchorDate: string;
   today: string;
   /** This item's consumption per date (base units), from the menu. */
@@ -1095,7 +1095,7 @@ export interface ProjectionInput {
 export function projectedOnHandBase(inp: ProjectionInput, targetDate: string): number {
   let level = inp.onHandBase;
   // Menu consumption is never written to the book, so subtract all of it from the anchor
-  // (last count) through the target — that's the theoretical drawdown.
+  // (last count) through the target, that's the theoretical drawdown.
   for (const [d, base] of inp.consumptionByDate) {
     if (d >= inp.anchorDate && d <= targetDate) level -= base;
   }
@@ -1231,7 +1231,7 @@ export function productionPlanToPrintHtml(dayLabel: string, tasks: PrintTask[], 
     const arr = byMeal.get(t.mealLabel);
     if (arr) arr.push(t); else byMeal.set(t.mealLabel, [t]);
   }
-  let body = `<h1>Production plan — ${dayLabel}</h1><div class="meta">Prep sheet</div>`;
+  let body = `<h1>Production plan · ${dayLabel}</h1><div class="meta">Prep sheet</div>`;
   for (const [meal, list] of byMeal) {
     body += `<h2>${meal}</h2><table><thead><tr><th>Dish</th><th class="num">Portions</th><th>Ingredients</th><th>Times</th></tr></thead><tbody>`;
     for (const t of list) {
@@ -1244,19 +1244,19 @@ export function productionPlanToPrintHtml(dayLabel: string, tasks: PrintTask[], 
   if (worklist.length) {
     body += `<h2>Allergen & dietary substitutions</h2><ul>${worklist.map((w) => `<li>${w}</li>`).join('')}</ul>`;
   }
-  return printDoc(`Production — ${dayLabel}`, body);
+  return printDoc(`Production · ${dayLabel}`, body);
 }
 
 export interface PrintMenuCell { meal: string; day: string; items: string[]; }
 
 export function menuWeekToPrintHtml(weekLabel: string, days: string[], meals: string[], cells: PrintMenuCell[]): string {
   const at = (meal: string, day: string) => cells.find((c) => c.meal === meal && c.day === day)?.items ?? [];
-  let body = `<h1>Menu — ${weekLabel}</h1><table><thead><tr><th></th>${days.map((d) => `<th>${d}</th>`).join('')}</tr></thead><tbody>`;
+  let body = `<h1>Menu · ${weekLabel}</h1><table><thead><tr><th></th>${days.map((d) => `<th>${d}</th>`).join('')}</tr></thead><tbody>`;
   for (const meal of meals) {
     body += `<tr><td><strong>${meal}</strong></td>${days.map((d) => `<td>${at(meal, d).join('<br>')}</td>`).join('')}</tr>`;
   }
   body += `</tbody></table>`;
-  return printDoc(`Menu — ${weekLabel}`, body);
+  return printDoc(`Menu · ${weekLabel}`, body);
 }
 
 // ─── Recipe export (print) ───────────────────────────────────────────────────
@@ -1296,14 +1296,14 @@ export function recipesToPrintHtml(recipes: PrintRecipe[]): string {
       <h2>Method</h2>${steps}</section>`;
   };
   const title = recipes.length === 1 ? recipes[0].name : `Recipe book (${recipes.length})`;
-  return printDoc(`Recipe — ${title}`, recipes.map(one).join('<div class="pagebreak"></div>'));
+  return printDoc(`Recipe · ${title}`, recipes.map(one).join('<div class="pagebreak"></div>'));
 }
 
 export interface PrintCountGroup { location: string; items: { name: string; unit: string; reorderAt: string; onHand: string }[]; }
 
 // ─── CSV import ──────────────────────────────────────────────────────────────
 // A vendor order guide is a spreadsheet. Parse it into rows the import mapper can align
-// to our fields. Handles quoted cells, escaped quotes, and \r\n — enough for real
+// to our fields. Handles quoted cells, escaped quotes, and \r\n, enough for real
 // exports from Sysco/US Foods/Excel. Not a full RFC parser; it doesn't need to be.
 
 export function parseCsv(text: string): string[][] {
@@ -1336,7 +1336,7 @@ export function parseCsv(text: string): string[][] {
 
 /** The fields a CSV column can be mapped to. `skip` = ignore the column. */
 export const CSV_FIELDS = [
-  { value: 'skip', label: '— ignore —' },
+  { value: 'skip', label: 'ignore' },
   { value: 'name', label: 'Item name' },
   { value: 'category', label: 'Category' },
   { value: 'stockUnit', label: 'Stocked by (unit)' },

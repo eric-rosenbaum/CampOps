@@ -40,7 +40,7 @@ create index if not exists inventory_adjustments_waste_idx
 --
 -- The 5-arg signature is DROPPED on purpose rather than left in place as an overload.
 -- Because every argument after p_delta_base has a default, a 5-arg and a 6-arg version
--- would both be candidates for a 5-arg call — PostgREST would resolve it ambiguously and
+-- would both be candidates for a 5-arg call, PostgREST would resolve it ambiguously and
 -- could silently keep writing category-less waste rows forever. One signature, no doubt.
 -- Existing 5-arg callers still work: p_waste_category simply takes its DEFAULT.
 --

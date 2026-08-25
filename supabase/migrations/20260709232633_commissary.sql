@@ -1,4 +1,4 @@
--- Commissary — phase 1: inventory, vendors, recipes, menu.
+-- Commissary, phase 1: inventory, vendors, recipes, menu.
 -- (Production guide, allergy program and purchase ordering land in later phases.)
 --
 -- THE UNIT MODEL, because it drives every table here:
@@ -7,7 +7,7 @@
 -- pack factors that convert its human-facing units into that base:
 --   stock_unit_in_base    -- 1 case of eggs = 360 each
 --   purchase_unit_in_base -- 1 case of eggs = 360 each
--- Those factors are facts about the ITEM, not about units in general — no lookup
+-- Those factors are facts about the ITEM, not about units in general, no lookup
 -- table can know that a case holds 30 dozen. So every quantity that participates in
 -- arithmetic (on_hand, par_level, recipe ingredient qty, adjustments) is stored in
 -- BASE UNITS, and display converts at the edges.
@@ -85,7 +85,7 @@ CREATE TABLE inventory_items (
     CHECK (category IN ('protein','dairy','produce','dry_goods','pantry',
                         'frozen','snacks','beverage','other')),
   -- Soft link to the physical box. `safety_items` already logs walk-in fridge and
-  -- freezer temperatures twice a day — same box, different module.
+  -- freezer temperatures twice a day, same box, different module.
   storage_location text DEFAULT 'other'
     CHECK (storage_location IN ('walk_in_refrigerator','walk_in_freezer',
                                 'dry_storage','reach_in_refrigerator','other')),
@@ -180,7 +180,7 @@ CREATE POLICY "staff_manage_recipes"   ON recipes FOR ALL
 -- ─── Recipe ingredients ───────────────────────────────────────────────────────
 -- item_id NULL = an unlinked ingredient (salt, pepper, "1 bunch chives"). It shows
 -- on the recipe card via free_text_qty but contributes nothing to demand or to the
--- allergen union — the same bargain the menu strikes with free-text chips.
+-- allergen union. The same bargain the menu strikes with free-text chips.
 --
 -- allergen_override NULL = inherit the item's allergens. A non-null value (including
 -- an empty array) replaces them, which is how "GF buns, separate prep" is expressed
@@ -252,7 +252,7 @@ CREATE TABLE menu_entries (
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now(),
   -- A chip is either a recipe or a free-text label. If a recipe is deleted the FK
-  -- nulls out, and `label` is what keeps the chip readable — so it is always set.
+  -- nulls out, and `label` is what keeps the chip readable, so it is always set.
   CHECK (recipe_id IS NOT NULL OR label IS NOT NULL)
 );
 ALTER TABLE menu_entries ENABLE ROW LEVEL SECURITY;
@@ -275,7 +275,7 @@ CREATE POLICY "staff_manage_menu_entries"   ON menu_entries FOR ALL
 -- on_hand_base + p_delta_base` is evaluated against the current row under lock, so
 -- concurrent adjustments compose instead of clobbering.
 --
--- SECURITY INVOKER (the default) on purpose — the existing RLS policies on
+-- SECURITY INVOKER (the default) on purpose. The existing RLS policies on
 -- inventory_items and inventory_adjustments already say who may write, so this
 -- function needs no authorization logic of its own and cannot be used to bypass it.
 CREATE OR REPLACE FUNCTION public.adjust_inventory_item(

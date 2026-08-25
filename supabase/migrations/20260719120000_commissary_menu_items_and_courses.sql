@@ -10,7 +10,7 @@
 --    keeps the chip readable if a recipe/item is later deleted).
 --
 -- 2. Each chip may carry a COURSE ("Protein", "Side", "Dessert"), from a per-camp
---    customizable list (commissary_menu_courses). Optional — an unbucketed chip still
+--    customizable list (commissary_menu_courses). Optional, an unbucketed chip still
 --    works, consistent with the module's "free text is allowed" philosophy.
 
 ALTER TABLE menu_entries

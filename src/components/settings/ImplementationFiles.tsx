@@ -76,7 +76,7 @@ export function ImplementationDropzone({
       {status?.state === 'done' ? (
         <div className="flex flex-col items-center gap-1.5 text-sage">
           <Check className="w-5 h-5" />
-          <p className="text-[12px] font-medium">Got it — {status.fileName}</p>
+          <p className="text-[12px] font-medium">Got it · {status.fileName}</p>
           <p className="text-[11px] text-ink-faint">
             Our team will load it and follow up. <span className="underline">Send another</span>
           </p>
@@ -88,7 +88,7 @@ export function ImplementationDropzone({
           <Upload className={`w-5 h-5 ${dragOver ? 'text-sage' : 'text-ink-faint'}`} />
           <p className="text-[12px] font-semibold text-forest">{title}</p>
           <p className="text-[11px] text-ink-faint leading-snug">{blurb}</p>
-          {status?.state === 'error' && <p className="text-[11px] text-red">Upload failed — try again.</p>}
+          {status?.state === 'error' && <p className="text-[11px] text-red">Upload failed. Try again.</p>}
         </div>
       )}
     </div>
@@ -120,7 +120,7 @@ export function ImplementationFilesTab() {
         <h2 className="text-[13px] font-semibold text-forest mb-1">Send us your setup files</h2>
         <p className="text-[12px] text-ink-faint mb-4">
           Getting your camp set up? Send your existing spreadsheets and lists here and our team will
-          load them for you. This is the only place to send data — please don't email it.
+          load them for you. This is the only place to send data. Please don't email it.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-2.5 mb-3">
@@ -153,14 +153,14 @@ export function ImplementationFilesTab() {
           category={category}
           note={note}
           title="Drop your file here"
-          blurb="Spreadsheet, PDF, or document — whatever format you already have it in."
+          blurb="Spreadsheet, PDF, or document, whatever format you already have it in."
           onUploaded={() => { setNote(''); reload(); }}
         />
 
         <div className="mt-3 flex gap-2 text-[11px] text-ink-soft bg-cream/60 border border-border rounded-btn px-3 py-2.5 leading-relaxed">
           <ShieldCheck className="w-3.5 h-3.5 text-sage flex-shrink-0 mt-px" />
           <p>
-            Files land in your camp's own private storage — no other camp can reach them, and every
+            Files land in your camp's own private storage, no other camp can reach them, and every
             upload is recorded in your activity log. Uploads are kept permanently as a record of what
             you sent us.
           </p>

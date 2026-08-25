@@ -18,8 +18,8 @@ Together, the "Parties."
 Unless otherwise defined here, capitalized terms have the meaning given in the Agreement or in applicable Data Protection Law.
 
 - **"Applicable Data Protection Law"** means all laws and regulations relating to the processing of Personal Data that apply to the Parties, which may include the EU/UK General Data Protection Regulation (GDPR), the California Consumer Privacy Act as amended (CCPA/CPRA), the Children's Online Privacy Protection Act (COPPA), and applicable U.S. state privacy and student/child-data laws. This policy is written to be consistent with GDPR, CCPA/CPRA, COPPA, and applicable U.S. state privacy laws; the specific laws that apply depend on the Customer and its data subjects.
-- **"Controller"** means the entity that determines the purposes and means of the processing of Personal Data — here, the Customer.
-- **"Processor"** means the entity that processes Personal Data on behalf of the Controller — here, CampCommand.
+- **"Controller"** means the entity that determines the purposes and means of the processing of Personal Data, here, the Customer.
+- **"Processor"** means the entity that processes Personal Data on behalf of the Controller · here, CampCommand.
 - **"Personal Data"** means any information relating to an identified or identifiable natural person that is processed by CampCommand on behalf of the Customer under the Agreement.
 - **"Sensitive Data"** means Personal Data that requires heightened protection under Applicable Data Protection Law, including health/medical data and data concerning children.
 - **"Data Subject"** means the individual to whom Personal Data relates.
@@ -48,18 +48,18 @@ CampCommand does not sell Personal Data and does not process it for its own inde
 
 ### 4.1 Categories of data subjects
 
-- **Camp staff and administrators** — users of the platform.
-- **Campers, who are typically minors** — the children attending or registered at the camp.
-- **Retreat / guest-group representatives and guests** — external parties renting camp facilities and using the guest portal.
-- **Public reporters** — members of the public who submit information (for example, safety or incident reports) where that feature is used.
+- **Camp staff and administrators**, users of the platform.
+- **Campers, who are typically minors**. The children attending or registered at the camp.
+- **Retreat / guest-group representatives and guests**, external parties renting camp facilities and using the guest portal.
+- **Public reporters**, members of the public who submit information (for example, safety or incident reports) where that feature is used.
 
 ### 4.2 Categories of Personal Data
 
-- **Contact and identity data** — names, email addresses, phone numbers, and similar identifiers of staff, guardians, guests, and reporters.
-- **Health and medical data of minors** — camper allergies, medical restrictions, and nurse-uploaded health documents. (Sensitive Data.)
-- **Dietary data** — dietary needs and restrictions.
-- **Financial records** — operational financial data such as invoices, charges, and commissary/rental accounting. **Payment card numbers are excluded** — CampCommand records payment information (amounts, method, dates) but does NOT store credit-card numbers; card processing, if any, is handled by the Customer outside CampCommand.
-- **Operational data** — schedules, assignments, group memberships, roles and permissions, building/maintenance records, audit-log entries, and similar records generated in the course of running the camp.
+- **Contact and identity data**, names, email addresses, phone numbers, and similar identifiers of staff, guardians, guests, and reporters.
+- **Health and medical data of minors**, camper allergies, medical restrictions, and nurse-uploaded health documents. (Sensitive Data.)
+- **Dietary data**. Dietary needs and restrictions.
+- **Financial records**, operational financial data such as invoices, charges, and commissary/rental accounting. **Payment card numbers are excluded** - CampCommand records payment information (amounts, method, dates) but does NOT store credit-card numbers; card processing, if any, is handled by the Customer outside CampCommand.
+- **Operational data**, schedules, assignments, group memberships, roles and permissions, building/maintenance records, audit-log entries, and similar records generated in the course of running the camp.
 
 The Customer must not submit special categories of data beyond those the platform is designed to handle without first agreeing appropriate arrangements with CampCommand.
 
@@ -75,7 +75,7 @@ The Customer is the **Controller** and determines the purposes and means of proc
 
 CampCommand agrees to:
 
-1. **Process only on documented instructions.** Process Personal Data only on the Customer's documented instructions (including with regard to international transfers), which comprise the Agreement, this Addendum, and any subsequent written instructions, unless required to do otherwise by law — in which case CampCommand will inform the Customer of that legal requirement before processing, unless the law prohibits such notice.
+1. **Process only on documented instructions.** Process Personal Data only on the Customer's documented instructions (including with regard to international transfers), which comprise the Agreement, this Addendum, and any subsequent written instructions, unless required to do otherwise by law, in which case CampCommand will inform the Customer of that legal requirement before processing, unless the law prohibits such notice.
 2. **Confidentiality.** Ensure that personnel authorized to process Personal Data are bound by appropriate confidentiality obligations and access it only as needed to perform their duties.
 3. **Security measures.** Implement and maintain appropriate technical and organizational measures to protect Personal Data, as described in Section 10.
 4. **Assist with data-subject requests.** Taking into account the nature of the processing, provide reasonable assistance (including appropriate technical and organizational measures, insofar as possible) to help the Customer respond to requests from Data Subjects exercising their rights (access, rectification, erasure, restriction, portability, objection).
@@ -103,7 +103,7 @@ CampCommand agrees to:
 
 ## 8. AI features
 
-Certain optional features use AI to assist camp staff — specifically, reading pool test-strip photos to extract chemistry readings, and reading uploaded allergy/health documents to help populate records. When these features are used, the relevant image or document is transmitted to **Anthropic** for processing and a structured result is returned. As of the effective date, under Anthropic's commercial terms, submitted inputs and outputs are not used to train models and are retained only transiently to provide the feature. Customers who do not wish to use these features can simply refrain from using them, as they are optional and are invoked only when a staff member chooses to submit an image or document for AI-assisted reading.
+Certain optional features use AI to assist camp staff, specifically, reading pool test-strip photos to extract chemistry readings, and reading uploaded allergy/health documents to help populate records. When these features are used, the relevant image or document is transmitted to **Anthropic** for processing and a structured result is returned. As of the effective date, under Anthropic's commercial terms, submitted inputs and outputs are not used to train models and are retained only transiently to provide the feature. Customers who do not wish to use these features can simply refrain from using them, as they are optional and are invoked only when a staff member chooses to submit an image or document for AI-assisted reading.
 
 ---
 

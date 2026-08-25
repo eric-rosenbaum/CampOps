@@ -3,7 +3,7 @@
 -- Instead of an in-app roster parser, staff drop the source file (a parents' allergy
 -- spreadsheet, a nurse's PDF) here and it is stored; rosters are entered manually.
 -- These documents contain health information about minors, so BOTH the metadata table
--- and the storage objects are gated to has_camper_health_access — the same fail-closed
+-- and the storage objects are gated to has_camper_health_access. The same fail-closed
 -- rule as campers/camper_restrictions. Kitchen staff without health access cannot read
 -- or upload them.
 

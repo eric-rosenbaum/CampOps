@@ -9,7 +9,7 @@ import { generateId, todayStr } from '@/lib/utils';
 import { printInvoice } from '@/lib/invoiceHtml';
 import { sendEmail } from '@/lib/email';
 import type { Retreat, RetreatInvoice, RetreatInvoiceKind, RetreatInvoiceLine } from '@/lib/types';
-import { money, fmtRange, fmtDateFull, nights, pricingRate, inputClass, labelClass } from './retreatUi';
+import { money, fmtRange, fmtDateFull, nights, pricingRate, inputClass, labelClass, billableHeadcount } from './retreatUi';
 
 function invoiceEmailHtml(campName: string, inv: RetreatInvoice, portalUrl: string): string {
   const due = inv.dueDate ? ` by ${fmtDateFull(inv.dueDate)}` : '';
@@ -47,7 +47,9 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
   const [noteSaved, setNoteSaved] = useState(false);
   // Headcount to bill, defaults to the group's confirmed headcount but is editable per invoice.
   // Kept as a string so the field can be cleared to "" while typing (no forced 0).
-  const [headcount, setHeadcount] = useState(retreat ? String(retreat.headcount) : '');
+  // The confirmed number when the group has given one, so an invoice raised after they
+  // confirmed does not quietly bill the booking estimate.
+  const [headcount, setHeadcount] = useState(retreat ? String(billableHeadcount(retreat)) : '');
   const headcountNum = Math.max(0, Math.round(Number(headcount) || 0));
   const [dueDate, setDueDate] = useState('');
   const [emailToo, setEmailToo] = useState(true);

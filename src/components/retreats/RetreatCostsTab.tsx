@@ -5,7 +5,7 @@ import { StatCard } from '@/components/shared/StatCard';
 import { useRetreatStore, type RetreatFinancials } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { Retreat } from '@/lib/types';
-import { money, fmtRange, StatusBadge } from './retreatUi';
+import { money, fmtRange, StatusBadge, billableHeadcount } from './retreatUi';
 
 const currentYear = () => new Date().getFullYear();
 
@@ -136,7 +136,7 @@ function GroupFinanceCard({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="text-[14px] font-semibold text-forest truncate">{r.groupName}</p>
-            <p className="text-[11px] text-ink-soft mt-0.5">{fmtRange(r.arrivalDate, r.departureDate)} · {r.headcount} guests</p>
+            <p className="text-[11px] text-ink-soft mt-0.5">{fmtRange(r.arrivalDate, r.departureDate)} · {billableHeadcount(r)} guests</p>
           </div>
           <div className="flex-shrink-0"><StatusBadge status={r.status} /></div>
         </div>

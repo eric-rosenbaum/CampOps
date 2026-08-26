@@ -3,7 +3,7 @@ import { Button } from '@/components/shared/Button';
 import { StatCard } from '@/components/shared/StatCard';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
-import { money, fmtDate, fmtDateFull, StatusBadge } from './retreatUi';
+import { money, fmtDate, fmtDateFull, StatusBadge, billableHeadcount } from './retreatUi';
 
 /**
  * Money for the retreat you are currently inside.
@@ -28,6 +28,13 @@ export function RetreatCostsDetailTab() {
   const invoices = invoicesFor(r.id).slice().sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
   const charges = chargesFor(r.id);
 
+  // A balance invoice raised before the group confirmed a different number is out of date.
+  // Comparing timestamps rather than parsing the invoice's line text: the confirmation carries
+  // its own `at`, which is exactly the question being asked.
+  const staleInvoice = r.finalHeadcountAt && r.finalHeadcount !== r.headcount
+    ? invoices.find((i) => i.kind === 'balance' && i.status !== 'void' && i.issuedAt < r.finalHeadcountAt!)
+    : undefined;
+
   const depositReq = fin.depositRequired;
   const depositPaid = fin.depositReceived;
   const depositOk = depositPaid > 0 && depositPaid >= depositReq;
@@ -40,7 +47,7 @@ export function RetreatCostsDetailTab() {
         <div>
           <h2 className="text-[15px] font-semibold text-forest">{r.groupName} · money</h2>
           <p className="text-[12px] text-ink-soft mt-0.5">
-            {fmtDate(r.arrivalDate)}–{fmtDate(r.departureDate)} · {r.headcount} guests
+            {fmtDate(r.arrivalDate)}–{fmtDate(r.departureDate)} · {billableHeadcount(r)} guests
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -57,6 +64,28 @@ export function RetreatCostsDetailTab() {
           )}
         </div>
       </div>
+
+      {/* An issued invoice is a record of what was billed, so confirming a new headcount must
+          not silently rewrite it. That leaves a gap the camp cannot see: the group confirmed 55
+          and the outstanding invoice still says 50. Nothing else on the page would say so. */}
+      {staleInvoice && (
+        <div className="bg-amber-bg border border-amber/30 rounded-card px-5 py-4 mb-5">
+          <p className="text-[13px] font-semibold text-amber-text">
+            The headcount changed after this invoice went out
+          </p>
+          <p className="text-[12.5px] text-amber-text/85 mt-1 leading-relaxed">
+            {r.groupName} confirmed {r.finalHeadcount} guests
+            {r.finalHeadcountAt ? ` on ${fmtDateFull(r.finalHeadcountAt.slice(0, 10))}` : ''}, after
+            invoice {staleInvoice.number} was issued for {r.headcount}. The invoice is left exactly
+            as it was sent. Raise a new one to bill the confirmed number.
+          </p>
+          {canManage && (
+            <Button size="sm" className="mt-3" onClick={() => openModal({ kind: 'invoice', retreatId: r.id })}>
+              <FileText className="w-3.5 h-3.5" /> Re-issue at {r.finalHeadcount}
+            </Button>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-5">
         <StatCard

@@ -3,7 +3,7 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { Retreat, RetreatIssue } from '@/lib/types';
 import {
-  money, fmtDate, fmtRange, nights, Badge, GROUP_TYPE_LABELS, rateSummary, pricingRate, PhaseTracker, type BadgeTone,
+  money, fmtDate, fmtRange, nights, Badge, GROUP_TYPE_LABELS, rateSummary, pricingRate, PhaseTracker, type BadgeTone, billableHeadcount
 } from './retreatUi';
 import { todayStr } from '@/lib/utils';
 
@@ -207,7 +207,7 @@ export function ActiveRetreatTab() {
               <CardLabel>Financial</CardLabel>
               <Row k="Rate charged" v={rateSummary(r)} />
               {perPerson && rate != null && (
-                <Row k="Billed" v={<span className="font-mono text-ink-soft">{money(rate)} × {r.headcount} × {nightCount} night{nightCount === 1 ? '' : 's'}</span>} />
+                <Row k="Billed" v={<span className="font-mono text-ink-soft">{money(rate)} × {billableHeadcount(r)} × {nightCount} night{nightCount === 1 ? '' : 's'}</span>} />
               )}
               <Row k={fin.source === 'estimate' ? 'Estimated total' : 'Total billed'} v={<span className="font-mono text-green-muted-text">{money(fin.expected)}</span>} />
               <Row k="Deposit received" v={<span className="font-mono text-green-muted-text">{money(fin.depositReceived)}</span>} />

@@ -3,7 +3,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore, type RetreatTab } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
-import { fmtRange, GROUP_TYPE_LABELS } from '@/components/retreats/retreatUi';
+import { fmtRange, GROUP_TYPE_LABELS, billableHeadcount } from '@/components/retreats/retreatUi';
 
 import { OverviewTab } from '@/components/retreats/OverviewTab';
 import { ActiveRetreatTab } from '@/components/retreats/ActiveRetreatTab';
@@ -71,7 +71,7 @@ export function Retreats() {
   const currentTab = tabs.some((t) => t.id === activeTab) ? activeTab : tabs[0].id;
 
   const subtitle = inRetreat
-    ? `${fmtRange(retreat.arrivalDate, retreat.departureDate)} · ${retreat.headcount} guests · ${GROUP_TYPE_LABELS[retreat.groupType] ?? retreat.groupType}`
+    ? `${fmtRange(retreat.arrivalDate, retreat.departureDate)} · ${billableHeadcount(retreat)} guests · ${GROUP_TYPE_LABELS[retreat.groupType] ?? retreat.groupType}`
     : `${retreats.length} retreat${retreats.length === 1 ? '' : 's'} · ${byStatus.active.length} active · ${pending} pending request${pending === 1 ? '' : 's'}`;
 
   return (

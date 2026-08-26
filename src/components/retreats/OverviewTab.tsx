@@ -9,7 +9,7 @@ import type { Retreat } from '@/lib/types';
 import {
   money, fmtRange, fmtDate, nights, daysUntil,
   StatusBadge, Badge, PhaseTracker, statusAccent,
-  GROUP_TYPE_LABELS, type BadgeTone,
+  GROUP_TYPE_LABELS, type BadgeTone, billableHeadcount
 } from './retreatUi';
 import { todayStr } from '@/lib/utils';
 
@@ -161,7 +161,7 @@ export function OverviewTab() {
                       ? <span className="text-ink-faint">Departed</span>
                       : away != null && away >= 0
                         ? <span className="text-ink-soft">{away === 0 ? 'Arrives today' : `${away} day${away === 1 ? '' : 's'} away`}</span>
-                        : <span className="text-ink-soft">{r.headcount} guests</span>}
+                        : <span className="text-ink-soft">{billableHeadcount(r)} guests</span>}
                 </p>
               </button>
             );
@@ -218,7 +218,7 @@ export function OverviewTab() {
                       <p className="text-[13px] font-semibold text-forest">{r.groupName}</p>
                       <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-ink-faint group-hover:text-forest transition-colors" />
                     </div>
-                    <p className="text-[11px] text-ink-soft font-mono mt-0.5">{fmtRange(r.arrivalDate, r.departureDate)} · {r.headcount} people</p>
+                    <p className="text-[11px] text-ink-soft font-mono mt-0.5">{fmtRange(r.arrivalDate, r.departureDate)} · {billableHeadcount(r)} people</p>
                     <p className={`text-[11px] mt-1 ${NOTE_TEXT[d.noteTone]}`}>{d.note}</p>
                   </button>
                 );
@@ -246,7 +246,7 @@ export function OverviewTab() {
                 <div className="min-w-0">
                   <p className="text-[15px] font-semibold text-forest">{r.groupName}</p>
                   <p className="text-[11px] text-ink-soft mt-0.5">
-                    {GROUP_TYPE_LABELS[r.groupType] ?? r.groupType} · {fmtRange(r.arrivalDate, r.departureDate)} · {r.headcount} people · {nights(r.arrivalDate, r.departureDate)} nights
+                    {GROUP_TYPE_LABELS[r.groupType] ?? r.groupType} · {fmtRange(r.arrivalDate, r.departureDate)} · {billableHeadcount(r)} people · {nights(r.arrivalDate, r.departureDate)} nights
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">

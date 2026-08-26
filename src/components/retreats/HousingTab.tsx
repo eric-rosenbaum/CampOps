@@ -5,7 +5,7 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { useLocationStore } from '@/store/locationStore';
 import { useAuth } from '@/lib/auth';
 import type { Retreat, CampLocation, RetreatHousing, RetreatGuest } from '@/lib/types';
-import { fmtDate, fmtDateFull } from './retreatUi';
+import { fmtDate, fmtDateFull, billableHeadcount } from './retreatUi';
 import { BuildingAccordion, type BuildingVM } from '@/components/rooming/BuildingAccordion';
 
 /**
@@ -87,7 +87,7 @@ function exportMap(
       @media print{body{padding:12px}section{break-inside:avoid}}
     </style></head><body>
     <h1>${esc(retreat.groupName)} · rooming sheet</h1>
-    <h2>${fmtDateFull(retreat.arrivalDate)} – ${fmtDateFull(retreat.departureDate)} · ${totalPeople || retreat.headcount} people</h2>
+    <h2>${fmtDateFull(retreat.arrivalDate)} – ${fmtDateFull(retreat.departureDate)} · ${totalPeople || billableHeadcount(retreat)} people</h2>
     ${unplacedHtml}
     ${sections}
     </body></html>`;
@@ -229,7 +229,7 @@ export function HousingTab() {
 
           <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
             <h3 className="text-[14px] font-semibold text-forest">
-              Housing assignments · {retreat.groupName} · {assigned || retreat.headcount} people ·{' '}
+              Housing assignments · {retreat.groupName} · {assigned || billableHeadcount(retreat)} people ·{' '}
               <span className="font-mono text-ink-soft">{fmtDate(retreat.arrivalDate)}–{fmtDate(retreat.departureDate)}</span>
             </h3>
             <div className="flex gap-2 flex-wrap">

@@ -67,6 +67,19 @@ export function rateSummary(r: Retreat): string {
 }
 
 /**
+ * How many people this group is actually billed and catered for.
+ *
+ * `headcount` is what they guessed at booking; `finalHeadcount` is what their coordinator
+ * confirmed in the portal. Once confirmed, that is the real number and the estimate is
+ * history. Every money and occupancy figure reads through here rather than the raw field, so
+ * a group that grew from 50 to 55 cannot be shown as confirmed at 55 in one panel and billed
+ * for 50 in the next.
+ */
+export function billableHeadcount(r: Retreat): number {
+  return r.finalHeadcount ?? r.headcount;
+}
+
+/**
  * Estimated total revenue from the rate card (used before real charges exist).
  * per_cabin_night needs a cabin count, pass how many spaces are assigned; 0 → 0 until assigned.
  */
@@ -74,7 +87,7 @@ export function estimateRevenue(r: Retreat, cabinCount: number): number {
   const nightCount = nights(r.arrivalDate, r.departureDate);
   if (r.pricingModel === 'flat') return r.flatRate ?? 0;
   if (r.pricingModel === 'per_cabin_night') return (r.flatRate ?? 0) * cabinCount * nightCount;
-  return (r.ratePerPersonNight ?? 0) * r.headcount * nightCount;
+  return (r.ratePerPersonNight ?? 0) * billableHeadcount(r) * nightCount;
 }
 
 export type BadgeTone = 'ok' | 'warn' | 'alert' | 'neutral' | 'blue' | 'purple' | 'sage';

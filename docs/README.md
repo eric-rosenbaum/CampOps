@@ -1,5 +1,10 @@
 # CampCommand · Documentation
 
+## Start here
+- [Product Overview](PRODUCT_OVERVIEW.md) — what CampCommand is and does, module by module,
+  including what it deliberately does not do. The sheet to hand someone with no context.
+
+
 ## Security & privacy
 - [Security Overview](SECURITY.md) · public-facing "how we protect your data" / trust page. GitHub also surfaces this as the repository's security policy (responsible disclosure).
 - [Privacy Policy](legal/PRIVACY_POLICY.md), template reflecting the product's actual data practices.

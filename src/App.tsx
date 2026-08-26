@@ -70,6 +70,8 @@ import {
 import { startSupabaseHeartbeat, installWriteDebugHooks } from '@/lib/supabase';
 import { awaitWriteQuiet, beginSnapshot, shouldApplySnapshot, loadAndApply, markHydrated, resetHydration } from '@/lib/syncGuard';
 import { useHydrated } from '@/lib/useHydrated';
+import { MARKETING_HOSTS, APP_HOST } from '@/lib/env';
+import { EnvironmentBanner } from '@/components/shared/EnvironmentBanner';
 import { ModuleLoading } from '@/components/shared/ModuleLoading';
 import { campLog } from '@/lib/campLog';
 import { useIssuesStore, startIssueWriteQueue } from '@/store/issuesStore';
@@ -453,8 +455,6 @@ function CampDataLoader() {
 // and every authenticated route, lives on app.campcommand.app. Any app route requested on the
 // marketing host is redirected to the app subdomain. Non-marketing hosts (app.*, localhost,
 // Vercel previews) are unrestricted so dev/preview keep working.
-const MARKETING_HOSTS = ['campcommand.app', 'www.campcommand.app'];
-const APP_HOST = 'app.campcommand.app';
 function isPublicMarketingPath(p: string): boolean {
   return p === '/' || p === '/privacy' || p === '/security' || p === '/dpa'
     || p.startsWith('/portal/') || p.startsWith('/report/');
@@ -492,6 +492,7 @@ export default function App() {
     <BrowserRouter>
       <AppBootstrap>
         <HostGuard />
+        <EnvironmentBanner />
         <Routes>
           {/* Public */}
           <Route path="/" element={<LandingOrHome />} />

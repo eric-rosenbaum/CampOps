@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
 import { FullScreenLoading } from '@/components/shared/ModuleLoading';
+import { APP_HOST, MARKETING_ORIGIN } from '@/lib/env';
 
 const SUPPORT_EMAIL = 'prakash@campcommand.app';
 
@@ -14,7 +15,10 @@ async function signOutToMarketing() {
   try {
     await useAuthStore.getState().signOut();
   } finally {
-    window.location.href = window.location.hostname.startsWith('app.') ? 'https://campcommand.app' : '/';
+    // Compared against the configured app host rather than a "app." prefix test: the staging
+    // product lives on app-staging.<domain>, which fails that test and used to send staging
+    // sign-outs to the production marketing site.
+    window.location.href = window.location.hostname === APP_HOST ? MARKETING_ORIGIN : '/';
   }
 }
 

@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
 import type { StaffGroupModules } from '@/store/campStore';
+import { APP_HOST, MARKETING_ORIGIN } from '@/lib/env';
 
 type LucideIcon = React.ComponentType<{ className?: string }>;
 
@@ -106,11 +107,10 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
       await signOut();
     } finally {
       // Redirect in `finally`: leaving the app is the point, so it must happen even if the
-      // store's sign-out threw. Return to the public marketing site, on the app subdomain
-      // "/" is the login page, so send sign-outs to the marketing host; elsewhere
-      // (dev/preview) "/" is the landing page.
-      const onAppHost = window.location.hostname.startsWith('app.');
-      window.location.href = onAppHost ? 'https://campcommand.app' : '/';
+      // store's sign-out threw. On the product host "/" is the login page, so sign-outs go to
+      // the marketing site; everywhere else (staging, preview, local) "/" is the landing page.
+      // Matched against the configured host, so staging returns to staging.
+      window.location.href = window.location.hostname === APP_HOST ? MARKETING_ORIGIN : '/';
     }
   }
 

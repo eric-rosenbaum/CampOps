@@ -8,18 +8,22 @@ ALTER TABLE issues
 ALTER TABLE issues ALTER COLUMN reported_by_id DROP NOT NULL;
 
 -- Let the anon key read a camp by its slug (for the public report landing page)
-CREATE POLICY IF NOT EXISTS "anon read camp by slug"
-  ON camps
-  FOR SELECT
-  TO anon
-  USING (true);
+DO $$ BEGIN
+  CREATE POLICY "anon read camp by slug"
+    ON camps
+    FOR SELECT
+    TO anon
+    USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Let the anon key submit public issue reports
-CREATE POLICY IF NOT EXISTS "anon insert public reports"
-  ON issues
-  FOR INSERT
-  TO anon
-  WITH CHECK (is_public_report = true);
+DO $$ BEGIN
+  CREATE POLICY "anon insert public reports"
+    ON issues
+    FOR INSERT
+    TO anon
+    WITH CHECK (is_public_report = true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ─── Storage ──────────────────────────────────────────────────────────────────
 -- Create the public-report-photos bucket manually in Supabase:

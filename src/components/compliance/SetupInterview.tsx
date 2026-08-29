@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth';
 import type { ComplianceAnswers } from '@/lib/types';
 
 /**
- * The front door: about a dozen questions that decide which requirements a camp actually sees.
+ * The front door: the questions that decide which requirements a camp actually sees.
  *
  * It exists because the alternative is showing every camp every rule, which is how a compliance
  * product becomes something people close. A camp with no rifle range should never read a word
@@ -55,6 +55,9 @@ const QUESTIONS: Q[] = [
 
 export function SetupInterview({ onDone }: { onDone: () => void }) {
   const { answers, runSetup, busy } = useComplianceStore();
+  // Counted from the catalog rather than written into the copy, so seeding another county does
+  // not leave a stale number on the page.
+  const totalRequirements = useComplianceStore((s) => s.requirements.length);
   const { currentUser } = useAuth();
   const [draft, setDraft] = useState<ComplianceAnswers>(() => ({
     state: 'NY', county: 'WESTCHESTER', ...answers,
@@ -65,7 +68,7 @@ export function SetupInterview({ onDone }: { onDone: () => void }) {
 
   async function submit() {
     if (unanswered.length > 0) {
-      setError(`${unanswered.length} question${unanswered.length === 1 ? '' : 's'} still to answer. An unanswered question is treated as "does not apply", so the requirement would be hidden.`);
+      setError(`${unanswered.length} question${unanswered.length === 1 ? '' : 's'} still to answer. Anything you leave blank stays on your list marked "needs an answer", because we will not tell you a rule does not apply when we have not asked.`);
       return;
     }
     setError(null);
@@ -78,8 +81,10 @@ export function SetupInterview({ onDone }: { onDone: () => void }) {
     <div className="max-w-2xl">
       <h2 className="text-[18px] font-semibold text-forest">Set up your compliance profile</h2>
       <p className="text-[13.5px] text-ink-soft mt-1.5 leading-relaxed">
-        A dozen questions decide which of the 91 New York and Westchester requirements actually
-        apply to you. You will only ever see the ones that do. You can change these answers later.
+        These questions decide which of the {totalRequirements} New York and Westchester
+        requirements actually apply to you. You will only ever see the ones that do. Anything you
+        leave unanswered stays on your list until you answer it, because we will not tell you a
+        rule does not apply when we have not asked. You can change these answers later.
       </p>
 
       <div className="mt-6 space-y-1">
@@ -92,7 +97,7 @@ export function SetupInterview({ onDone }: { onDone: () => void }) {
                 ? [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }]
                 : q.options
               ).map((o) => {
-                const on = draft[q.key] === o.value;
+                const on = (draft[q.key] ?? '').toLowerCase() === o.value.toLowerCase();
                 return (
                   <button
                     key={o.value}

@@ -237,6 +237,7 @@ declare
   c record;
   v_got text;
   v_fail integer := 0;
+  v_ran  integer := 0;
 begin
   for c in
     select * from (values
@@ -253,9 +254,14 @@ begin
       ('a definite no outranks unknown','{"camp_type":"day"}','{"camp_type":"overnight","has_riflery":true}','no'),
       ('AND plus any_of both satisfied','{"camp_type":"overnight","has_pool":"true"}','{"camp_type":"overnight","any_of":{"has_pool":"true","has_waterfront":"true"}}','yes'),
       ('unknown AND survives an any_of hit','{"has_pool":"true"}','{"camp_type":"overnight","any_of":{"has_pool":"true"}}','unknown'),
-      ('failed AND outranks an any_of hit','{"camp_type":"day","has_pool":"true"}','{"camp_type":"overnight","any_of":{"has_pool":"true"}}','no')
+      ('failed AND outranks an any_of hit','{"camp_type":"day","has_pool":"true"}','{"camp_type":"overnight","any_of":{"has_pool":"true"}}','no'),
+      -- An answer that reached the table still JSON-quoted must not silently stop matching and
+      -- quietly excuse the camp from the rule.
+      ('a quoted answer still matches','{"has_pool":"\"true\""}','{"has_pool":true}','yes'),
+      ('a quoted answer still mismatches','{"has_pool":"\"false\""}','{"has_pool":true}','no')
     ) as t(name, answers, applies_when, expect)
   loop
+    v_ran := v_ran + 1;
     v_got := compliance_applicability(c.answers::jsonb, c.applies_when::jsonb);
     if v_got is distinct from c.expect then
       raise warning 'FAIL %: expected % got %', c.name, c.expect, v_got;
@@ -263,7 +269,7 @@ begin
     end if;
   end loop;
   if v_fail > 0 then raise exception 'compliance_applicability: % case(s) failed', v_fail; end if;
-  raise notice 'T12 ok: applicability is three-valued across 14 cases';
+  raise notice 'T12 ok: applicability is three-valued across % cases', v_ran;
 end $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────

@@ -55,6 +55,9 @@ export interface Camp {
   slug: string;
   logoUrl: string | null;
   campType: string | null;
+  /** Postal address. Needed on the New York permit forms; blank until Camp Info is filled in. */
+  addressLine1: string | null;
+  city: string | null;
   state: string | null;
   modules: Record<string, boolean>;
   locations: string[];
@@ -77,6 +80,8 @@ function rowToCamp(c: Record<string, unknown>): Camp {
     name: c.name as string,
     slug: c.slug as string,
     logoUrl: (c.logo_url as string) ?? null,
+    addressLine1: (c.address_line1 as string) ?? null,
+    city: (c.city as string) ?? null,
     campType: (c.camp_type as string) ?? null,
     state: (c.state as string) ?? null,
     modules: (c.modules as Record<string, boolean>) ?? {},
@@ -189,7 +194,7 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     const { data, error } = await supabase
       .from('camp_members')
-      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, state, modules, locations, dietary_defaults, retreat_payment_note, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
+      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, address_line1, city, state, modules, locations, dietary_defaults, retreat_payment_note, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
       .eq('user_id', user.id)
       .eq('is_active', true);
 

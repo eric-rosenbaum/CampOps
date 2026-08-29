@@ -26,3 +26,8 @@ dist-ssr
 # Supabase CLI local cache
 supabase/.temp/
 .aso-venv/
+
+# Local env files (staging/prod credentials live in Vercel, not the repo)
+.env
+.env.*
+!.env.example

@@ -34,6 +34,7 @@ import { PoolManagement } from '@/pages/PoolManagement';
 import { SafetyCompliance } from '@/pages/SafetyCompliance';
 import AssetVehicles from '@/pages/AssetVehicles';
 import { BuildingSystems } from '@/pages/BuildingSystems';
+import { Compliance } from '@/pages/Compliance';
 import { Commissary } from '@/pages/Commissary';
 import { Retreats } from '@/pages/Retreats';
 import { RetreatPortal } from '@/pages/portal/RetreatPortal';
@@ -70,6 +71,8 @@ import {
 import { startSupabaseHeartbeat, installWriteDebugHooks } from '@/lib/supabase';
 import { awaitWriteQuiet, beginSnapshot, shouldApplySnapshot, loadAndApply, markHydrated, resetHydration } from '@/lib/syncGuard';
 import { useHydrated } from '@/lib/useHydrated';
+import { loadCompliance } from '@/lib/complianceDb';
+import { useComplianceStore } from '@/store/complianceStore';
 import { MARKETING_HOSTS, APP_HOST } from '@/lib/env';
 import { EnvironmentBanner } from '@/components/shared/EnvironmentBanner';
 import { ModuleLoading } from '@/components/shared/ModuleLoading';
@@ -161,6 +164,7 @@ function CampDataLoader() {
     setIssues: setRetreatIssues, setChecklist, setScheduleItems, setFeedback, setReminders, setInvoices,
   } = useRetreatStore();
   const { setLocations, setCategories, setBuildingDetails } = useLocationStore();
+  const applyCompliance = useComplianceStore((s) => s.apply);
 
   useEffect(() => {
     if (!campId) return;
@@ -330,7 +334,6 @@ function CampDataLoader() {
       markHydrated('tasks');
     });
 
-    loadIssuesAndTasksTracked();
     loadAndApply('pool', () => loadPoolFromSupabase(campId), applyPool);
     loadAndApply('safety', () => loadSafetyFromSupabase(campId), applySafety);
     loadAndApply('assets', () => loadAssetsFromSupabase(campId), applyAssets);
@@ -348,6 +351,15 @@ function CampDataLoader() {
     // RLS design and only `summary` is populated. That is not an error state.
     loadAndApply('commissary-allergy', () => loadCommissaryAllergy(campId), applyCommAllergy);
     loadAndApply('retreats', () => loadRetreats(campId), applyRetreatData);
+
+    // Compliance depends on the active season, which arrives with the issues/tasks load. It is
+    // loaded after that resolves rather than in parallel, because a compliance picture without
+    // a season is a picture of nothing.
+    loadIssuesAndTasksTracked().then(() => {
+      const seasonId = useChecklistStore.getState().season?.id ?? null;
+      useComplianceStore.setState({ campId, seasonId });
+      return loadAndApply('compliance', () => loadCompliance(campId, seasonId), applyCompliance);
+    });
     loadAndApply('locations', () => loadLocations(campId), applyLocationData);
 
     // Refetch after the tab has been hidden long enough that the realtime subscription
@@ -545,6 +557,7 @@ export default function App() {
                 <Route path="/pre-post" element={<Gate of={['tasks', 'locations']} label="Opening pre/post camp"><PrePostCamp /></Gate>} />
                 <Route path="/pool" element={<Gate of={['pool']} label="Opening pool & waterfront"><PoolManagement /></Gate>} />
                 <Route path="/safety" element={<Gate of={['safety', 'locations']} label="Opening safety & compliance"><SafetyCompliance /></Gate>} />
+                <Route path="/compliance" element={<Gate of={['compliance', 'safety']} label="Opening compliance"><Compliance /></Gate>} />
                 <Route path="/assets" element={<Gate of={['assets', 'locations']} label="Opening assets & vehicles"><AssetVehicles /></Gate>} />
                 <Route path="/building" element={<Gate of={['building', 'locations']} label="Opening building systems"><BuildingSystems /></Gate>} />
                 <Route path="/commissary" element={<Gate of={COMMISSARY_DOMAINS} label="Opening the kitchen manager"><Commissary /></Gate>} />

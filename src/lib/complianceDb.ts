@@ -232,3 +232,23 @@ export async function dbAssignRequirement(
     .eq('camp_id', campId).eq('season_id', seasonId).eq('requirement_id', requirementId);
   if (error) campError('assign requirement', error.message);
 }
+
+// ─── Exports ──────────────────────────────────────────────────────────────────
+/**
+ * Notes that a packet was built, and for whom.
+ *
+ * The zip itself is assembled and saved in the browser, so bucket_path stays null: recording a
+ * storage path for a file we never stored would be a lie a camp might later rely on. What the
+ * row is for is the question "when did we last send the county something, and what was in
+ * force at the time".
+ */
+export async function dbRecordComplianceExport(
+  campId: string, seasonId: string, packageCode: string,
+  reader: string | null, generatedBy: string | null,
+) {
+  const { error } = await supabase.from('compliance_exports').insert({
+    camp_id: campId, season_id: seasonId, package_code: packageCode,
+    reader, generated_by: generatedBy,
+  });
+  if (error) campError('record compliance export', error.message);
+}

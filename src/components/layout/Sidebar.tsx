@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Wrench, ClipboardList,
   Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
+  ClipboardCheck,
 } from 'lucide-react';
 import { SidebarContours } from '@/components/shared/SidebarContours';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
@@ -63,6 +64,7 @@ const facilityItems: NavItem[] = [
   { path: '/issues', label: 'Issues & Repairs', icon: Wrench, end: false, module: 'issues_repairs' },
   { path: '/pre-post', label: 'Pre/Post Camp', icon: ClipboardList, end: false, module: 'pre_post' },
   { path: '/safety', label: 'Safety & Compliance', icon: ShieldCheck, end: false, module: 'safety' },
+  { path: '/compliance', label: 'Permit & Compliance', icon: ClipboardCheck, end: false, module: 'safety' },
   { path: '/assets', label: 'Assets & Vehicles', icon: Truck, end: false, module: 'assets' },
   { path: '/building', label: 'Building Systems', icon: Building2, end: false, module: 'building_systems' },
 ];

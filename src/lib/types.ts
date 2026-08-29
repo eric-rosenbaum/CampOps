@@ -1473,8 +1473,11 @@ export interface RetreatReminder {
 // compute_camp_compliance() and read here — never derived in the browser, because the client
 // hydrates asynchronously and a score built from half-loaded stores is not one to file on.
 
+// 'needs_answer' is deliberately distinct from 'not_applicable'. A camp that told us it has
+// no rifle range is off the hook; a camp we never asked is not, and saying otherwise would be
+// a claim the product cannot stand behind.
 export type ComplianceStatus =
-  | 'satisfied' | 'partial' | 'expiring' | 'missing' | 'not_applicable';
+  | 'satisfied' | 'partial' | 'expiring' | 'missing' | 'not_applicable' | 'needs_answer';
 
 export type EvidenceType =
   | 'document' | 'certification' | 'screening' | 'training' | 'inspection' | 'drill'

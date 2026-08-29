@@ -12,6 +12,12 @@ about rifle ranges. Today there are two packages, both New York:
 |---|---|---|
 | NY-STATE | 78 | 10 NYCRR Subpart 7-2, the children's camp code |
 | NY-WESTCHESTER | 13 | The Westchester County permit packet checklist |
+| NY-POOL | 36 | 10 NYCRR Subpart 6-1, swimming pools |
+| NY-BEACH | 28 | 10 NYCRR Subpart 6-2, bathing beaches |
+
+A camp with water is a regulated bathing facility as well as a camp. It does not file a
+separate permit for it: 6-1.3(b) and 6-2.3(b) exempt a children's camp facility from the permit
+sections, which is why the county application has pool and beach checkboxes on it.
 
 For each requirement the camp gets a status, a plain-language reason for that status, a link to
 the rule text where we have verified it, and somewhere to attach the evidence. They also get the
@@ -119,6 +125,24 @@ those records, and they sit next to an Upload button.
 and attach a confirmation instead. An inspector checks those records in the health office; a
 second copy in a general document store is pure downside. **If you add a requirement whose
 evidence names camper health data or a background check result, set this flag.**
+
+## Two plans, and why the row keys are data
+
+There are two written plans, both structured by the state's own checklist: the camp safety plan
+(76 components, DOH-2040) and the bathing facility safety plan (24 components, DOH-2286). In
+both cases the camp writes the sections here, we render the plan, and the checklist fills from
+it, including the page numbers, because we know what page each section landed on.
+
+**Which checklist row a component fills is stored, never derived.** It used to be computed by
+slugifying the component title, and that lost seven components whose titles contain an
+ampersand: the slugifier collapsed "&" to an underscore, the coordinate map spelled it out, and
+a camp that had *written* those sections printed blank rows on the form it files. Three of the
+bathing components would have been lost the same way. Two curated data sets joined on a guess
+will drift again, so `compliance_plan_templates.form_row_key` holds the link and the test suite
+fails if any component lacks one.
+
+The same episode removed ACT-18 "Waterfront Swimming Supervision", which is not a DOH-2040
+component at all. We had invented a plan section New York does not ask for.
 
 ## The forms
 

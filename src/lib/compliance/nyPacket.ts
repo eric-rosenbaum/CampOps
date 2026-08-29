@@ -123,7 +123,11 @@ const REVIEWER_ONLY_KEYS = new Set([
 
 function isReviewerOwned(key: string, disabled?: boolean): boolean {
   return disabled === true                 // office-use cells the maps already flag
-    || key.includes('_lhd_')               // DOH-2040 / DOH-2286 health-department columns
+    // DOH-2040 / DOH-2286 health-department columns. Both forms of the prefix: the column keys
+    // read `row_x_lhd_yes`, but the footer sign-off keys read `lhd_reviewed_by_1`, which the
+    // infix test misses. Those are currently caught only because the map also disables them,
+    // so a map author who forgets that flag would have us signing the reviewer's block.
+    || key.startsWith('lhd_') || key.includes('_lhd_')
     || key.endsWith('_remarks')            // the reviewer's notes column beside them
     || REVIEWER_ONLY_KEYS.has(key);
 }

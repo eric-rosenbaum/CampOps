@@ -1,0 +1,2875 @@
+{
+ "form_code": "DOH-2286",
+ "form_version": "3/06",
+ "page_count": 2,
+ "page_size": [
+  612,
+  792
+ ],
+ "coordinate_origin": "top-left",
+ "fields": [
+  {
+   "key": "name_of_facility",
+   "label_text": "Name of Facility",
+   "page": 0,
+   "x": 102.19,
+   "y": 114.12,
+   "max_width": 264.11,
+   "font_size": 10,
+   "align": "left",
+   "notes": "Clamped short of the 'Date of Checklist' label at x=372.3."
+  },
+  {
+   "key": "date_month",
+   "label_text": "Date of Checklist",
+   "page": 0,
+   "x": 462.05,
+   "y": 123.5,
+   "max_width": 43.5,
+   "font_size": 10,
+   "align": "center",
+   "notes": "Two-digit comb cell. A printed divider tick sits at x=462.1, so draw the two digits separately at the comb_cells centres rather than as one centred string.",
+   "comb_cells": [
+    450.7,
+    473.45
+   ]
+  },
+  {
+   "key": "date_day",
+   "label_text": "Date of Checklist",
+   "page": 0,
+   "x": 507.55,
+   "y": 123.5,
+   "max_width": 43.5,
+   "font_size": 10,
+   "align": "center",
+   "notes": "Two-digit comb cell. A printed divider tick sits at x=507.5, so draw the two digits separately at the comb_cells centres rather than as one centred string.",
+   "comb_cells": [
+    496.15,
+    518.9
+   ]
+  },
+  {
+   "key": "date_year",
+   "label_text": "Date of Checklist",
+   "page": 0,
+   "x": 553.05,
+   "y": 123.5,
+   "max_width": 43.5,
+   "font_size": 10,
+   "align": "center",
+   "notes": "Two-digit comb cell. A printed divider tick sits at x=553.0, so draw the two digits separately at the comb_cells centres rather than as one centred string.",
+   "comb_cells": [
+    541.65,
+    564.4
+   ]
+  },
+  {
+   "key": "county",
+   "label_text": "Location of Facility: County",
+   "page": 0,
+   "x": 141.7,
+   "y": 137.12,
+   "max_width": 164.3,
+   "font_size": 10,
+   "align": "left",
+   "notes": "Clamped short of the 'Town, Village or City' label at x=312."
+  },
+  {
+   "key": "town_village_or_city",
+   "label_text": "Town, Village or City",
+   "page": 0,
+   "x": 394.44,
+   "y": 137.12,
+   "max_width": 177.56,
+   "font_size": 10,
+   "align": "left",
+   "notes": "Clamped to the printed rule ending at x=576."
+  },
+  {
+   "key": "row_chain_of_command_outlined_yes",
+   "label_text": "Chain of Command Outlined",
+   "page": 0,
+   "x": 203.45,
+   "y": 235.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Chain of Command Outlined'.",
+   "section": "organization_and_management",
+   "mandated": false,
+   "row_band": [
+    218.1,
+    241.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_chain_of_command_outlined_no",
+   "label_text": "Chain of Command Outlined",
+   "page": 0,
+   "x": 226.25,
+   "y": 235.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Chain of Command Outlined'.",
+   "section": "organization_and_management",
+   "mandated": false,
+   "row_band": [
+    218.1,
+    241.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_chain_of_command_outlined_na",
+   "label_text": "Chain of Command Outlined",
+   "page": 0,
+   "x": 248.9,
+   "y": 235.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Chain of Command Outlined'.",
+   "section": "organization_and_management",
+   "mandated": false,
+   "row_band": [
+    218.1,
+    241.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_chain_of_command_outlined_lhd_yes",
+   "label_text": "Chain of Command Outlined",
+   "page": 0,
+   "x": 271.55,
+   "y": 235.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Chain of Command Outlined'. Local Health Department use only.",
+   "section": "organization_and_management",
+   "mandated": false,
+   "row_band": [
+    218.1,
+    241.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_chain_of_command_outlined_lhd_no",
+   "label_text": "Chain of Command Outlined",
+   "page": 0,
+   "x": 294.35,
+   "y": 235.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Chain of Command Outlined'. Local Health Department use only.",
+   "section": "organization_and_management",
+   "mandated": false,
+   "row_band": [
+    218.1,
+    241.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_chain_of_command_outlined_remarks",
+   "label_text": "Chain of Command Outlined",
+   "page": 0,
+   "x": 309.8,
+   "y": 235.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Chain of Command Outlined'.",
+   "section": "organization_and_management",
+   "row_band": [
+    218.1,
+    241.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_job_duties_and_descriptions_yes",
+   "label_text": "Job Duties & Descriptions",
+   "page": 0,
+   "x": 203.45,
+   "y": 258.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Job Duties & Descriptions'.",
+   "section": "organization_and_management",
+   "mandated": false,
+   "row_band": [
+    241.1,
+    264.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_job_duties_and_descriptions_no",
+   "label_text": "Job Duties & Descriptions",
+   "page": 0,
+   "x": 226.25,
+   "y": 258.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Job Duties & Descriptions'.",
+   "section": "organization_and_management",
+   "mandated": false,
+   "row_band": [
+    241.1,
+    264.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_job_duties_and_descriptions_na",
+   "label_text": "Job Duties & Descriptions",
+   "page": 0,
+   "x": 248.9,
+   "y": 258.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Job Duties & Descriptions'.",
+   "section": "organization_and_management",
+   "mandated": false,
+   "row_band": [
+    241.1,
+    264.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_job_duties_and_descriptions_lhd_yes",
+   "label_text": "Job Duties & Descriptions",
+   "page": 0,
+   "x": 271.55,
+   "y": 258.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Job Duties & Descriptions'. Local Health Department use only.",
+   "section": "organization_and_management",
+   "mandated": false,
+   "row_band": [
+    241.1,
+    264.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_job_duties_and_descriptions_lhd_no",
+   "label_text": "Job Duties & Descriptions",
+   "page": 0,
+   "x": 294.35,
+   "y": 258.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Job Duties & Descriptions'. Local Health Department use only.",
+   "section": "organization_and_management",
+   "mandated": false,
+   "row_band": [
+    241.1,
+    264.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_job_duties_and_descriptions_remarks",
+   "label_text": "Job Duties & Descriptions",
+   "page": 0,
+   "x": 309.8,
+   "y": 258.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Job Duties & Descriptions'.",
+   "section": "organization_and_management",
+   "row_band": [
+    241.1,
+    264.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_daily_inspection_yes",
+   "label_text": "Daily Inspection",
+   "page": 0,
+   "x": 203.45,
+   "y": 304.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Daily Inspection'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    287.1,
+    310.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_daily_inspection_no",
+   "label_text": "Daily Inspection",
+   "page": 0,
+   "x": 226.25,
+   "y": 304.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Daily Inspection'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    287.1,
+    310.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_daily_inspection_na",
+   "label_text": "Daily Inspection",
+   "page": 0,
+   "x": 248.9,
+   "y": 304.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Daily Inspection'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    287.1,
+    310.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_daily_inspection_lhd_yes",
+   "label_text": "Daily Inspection",
+   "page": 0,
+   "x": 271.55,
+   "y": 304.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Daily Inspection'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    287.1,
+    310.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_daily_inspection_lhd_no",
+   "label_text": "Daily Inspection",
+   "page": 0,
+   "x": 294.35,
+   "y": 304.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Daily Inspection'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    287.1,
+    310.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_daily_inspection_remarks",
+   "label_text": "Daily Inspection",
+   "page": 0,
+   "x": 309.8,
+   "y": 304.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Daily Inspection'.",
+   "section": "injury_prevention",
+   "row_band": [
+    287.1,
+    310.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_rules_and_regulations_yes",
+   "label_text": "Rules & Regulations",
+   "page": 0,
+   "x": 203.45,
+   "y": 327.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Rules & Regulations'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    310.1,
+    333.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_rules_and_regulations_no",
+   "label_text": "Rules & Regulations",
+   "page": 0,
+   "x": 226.25,
+   "y": 327.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Rules & Regulations'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    310.1,
+    333.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_rules_and_regulations_na",
+   "label_text": "Rules & Regulations",
+   "page": 0,
+   "x": 248.9,
+   "y": 327.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Rules & Regulations'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    310.1,
+    333.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_rules_and_regulations_lhd_yes",
+   "label_text": "Rules & Regulations",
+   "page": 0,
+   "x": 271.55,
+   "y": 327.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Rules & Regulations'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    310.1,
+    333.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_rules_and_regulations_lhd_no",
+   "label_text": "Rules & Regulations",
+   "page": 0,
+   "x": 294.35,
+   "y": 327.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Rules & Regulations'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    310.1,
+    333.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_rules_and_regulations_remarks",
+   "label_text": "Rules & Regulations",
+   "page": 0,
+   "x": 309.8,
+   "y": 327.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Rules & Regulations'.",
+   "section": "injury_prevention",
+   "row_band": [
+    310.1,
+    333.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_diving_safety_yes",
+   "label_text": "Diving Safety",
+   "page": 0,
+   "x": 203.45,
+   "y": 350.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Diving Safety'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    333.1,
+    356.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_diving_safety_no",
+   "label_text": "Diving Safety",
+   "page": 0,
+   "x": 226.25,
+   "y": 350.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Diving Safety'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    333.1,
+    356.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_diving_safety_na",
+   "label_text": "Diving Safety",
+   "page": 0,
+   "x": 248.9,
+   "y": 350.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Diving Safety'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    333.1,
+    356.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_diving_safety_lhd_yes",
+   "label_text": "Diving Safety",
+   "page": 0,
+   "x": 271.55,
+   "y": 350.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Diving Safety'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    333.1,
+    356.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_diving_safety_lhd_no",
+   "label_text": "Diving Safety",
+   "page": 0,
+   "x": 294.35,
+   "y": 350.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Diving Safety'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    333.1,
+    356.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_diving_safety_remarks",
+   "label_text": "Diving Safety",
+   "page": 0,
+   "x": 309.8,
+   "y": 350.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Diving Safety'.",
+   "section": "injury_prevention",
+   "row_band": [
+    333.1,
+    356.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_deck_slides_yes",
+   "label_text": "Deck Slides",
+   "page": 0,
+   "x": 203.45,
+   "y": 373.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Deck Slides'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    356.1,
+    379.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_deck_slides_no",
+   "label_text": "Deck Slides",
+   "page": 0,
+   "x": 226.25,
+   "y": 373.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Deck Slides'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    356.1,
+    379.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_deck_slides_na",
+   "label_text": "Deck Slides",
+   "page": 0,
+   "x": 248.9,
+   "y": 373.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Deck Slides'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    356.1,
+    379.1
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_deck_slides_lhd_yes",
+   "label_text": "Deck Slides",
+   "page": 0,
+   "x": 271.55,
+   "y": 373.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Deck Slides'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    356.1,
+    379.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_deck_slides_lhd_no",
+   "label_text": "Deck Slides",
+   "page": 0,
+   "x": 294.35,
+   "y": 373.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Deck Slides'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    356.1,
+    379.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_deck_slides_remarks",
+   "label_text": "Deck Slides",
+   "page": 0,
+   "x": 309.8,
+   "y": 373.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Deck Slides'.",
+   "section": "injury_prevention",
+   "row_band": [
+    356.1,
+    379.1
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_weather_water_quality_yes",
+   "label_text": "Weather/Water Quality",
+   "page": 0,
+   "x": 203.45,
+   "y": 396.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Weather/Water Quality'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    379.1,
+    402.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_weather_water_quality_no",
+   "label_text": "Weather/Water Quality",
+   "page": 0,
+   "x": 226.25,
+   "y": 396.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Weather/Water Quality'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    379.1,
+    402.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_weather_water_quality_na",
+   "label_text": "Weather/Water Quality",
+   "page": 0,
+   "x": 248.9,
+   "y": 396.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Weather/Water Quality'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    379.1,
+    402.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_weather_water_quality_lhd_yes",
+   "label_text": "Weather/Water Quality",
+   "page": 0,
+   "x": 271.55,
+   "y": 396.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Weather/Water Quality'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    379.1,
+    402.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_weather_water_quality_lhd_no",
+   "label_text": "Weather/Water Quality",
+   "page": 0,
+   "x": 294.35,
+   "y": 396.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Weather/Water Quality'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    379.1,
+    402.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_weather_water_quality_remarks",
+   "label_text": "Weather/Water Quality",
+   "page": 0,
+   "x": 309.8,
+   "y": 396.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Weather/Water Quality'.",
+   "section": "injury_prevention",
+   "row_band": [
+    379.1,
+    402.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_bather_capacity_yes",
+   "label_text": "Bather Capacity",
+   "page": 0,
+   "x": 203.45,
+   "y": 419.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Bather Capacity'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    402.0,
+    425.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_bather_capacity_no",
+   "label_text": "Bather Capacity",
+   "page": 0,
+   "x": 226.25,
+   "y": 419.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Bather Capacity'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    402.0,
+    425.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_bather_capacity_na",
+   "label_text": "Bather Capacity",
+   "page": 0,
+   "x": 248.9,
+   "y": 419.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Bather Capacity'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    402.0,
+    425.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_bather_capacity_lhd_yes",
+   "label_text": "Bather Capacity",
+   "page": 0,
+   "x": 271.55,
+   "y": 419.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Bather Capacity'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    402.0,
+    425.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_bather_capacity_lhd_no",
+   "label_text": "Bather Capacity",
+   "page": 0,
+   "x": 294.35,
+   "y": 419.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Bather Capacity'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    402.0,
+    425.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_bather_capacity_remarks",
+   "label_text": "Bather Capacity",
+   "page": 0,
+   "x": 309.8,
+   "y": 419.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Bather Capacity'.",
+   "section": "injury_prevention",
+   "row_band": [
+    402.0,
+    425.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_supervision_yes",
+   "label_text": "* Supervision",
+   "page": 0,
+   "x": 203.45,
+   "y": 442.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Supervision'.",
+   "section": "injury_prevention",
+   "mandated": true,
+   "row_band": [
+    425.0,
+    448.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_supervision_no",
+   "label_text": "* Supervision",
+   "page": 0,
+   "x": 226.25,
+   "y": 442.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Supervision'.",
+   "section": "injury_prevention",
+   "mandated": true,
+   "row_band": [
+    425.0,
+    448.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_supervision_na",
+   "label_text": "* Supervision",
+   "page": 0,
+   "x": 248.9,
+   "y": 442.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Supervision'.",
+   "section": "injury_prevention",
+   "mandated": true,
+   "row_band": [
+    425.0,
+    448.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_supervision_lhd_yes",
+   "label_text": "* Supervision",
+   "page": 0,
+   "x": 271.55,
+   "y": 442.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Supervision'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": true,
+   "row_band": [
+    425.0,
+    448.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_supervision_lhd_no",
+   "label_text": "* Supervision",
+   "page": 0,
+   "x": 294.35,
+   "y": 442.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Supervision'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": true,
+   "row_band": [
+    425.0,
+    448.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_supervision_remarks",
+   "label_text": "* Supervision",
+   "page": 0,
+   "x": 309.8,
+   "y": 442.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Supervision'.",
+   "section": "injury_prevention",
+   "row_band": [
+    425.0,
+    448.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_chemical_storage_and_handling_yes",
+   "label_text": "Chemical Storage and Handling",
+   "page": 0,
+   "x": 203.45,
+   "y": 465.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Chemical Storage and Handling'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    448.0,
+    471.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_chemical_storage_and_handling_no",
+   "label_text": "Chemical Storage and Handling",
+   "page": 0,
+   "x": 226.25,
+   "y": 465.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Chemical Storage and Handling'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    448.0,
+    471.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_chemical_storage_and_handling_na",
+   "label_text": "Chemical Storage and Handling",
+   "page": 0,
+   "x": 248.9,
+   "y": 465.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Chemical Storage and Handling'.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    448.0,
+    471.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_chemical_storage_and_handling_lhd_yes",
+   "label_text": "Chemical Storage and Handling",
+   "page": 0,
+   "x": 271.55,
+   "y": 465.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Chemical Storage and Handling'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    448.0,
+    471.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_chemical_storage_and_handling_lhd_no",
+   "label_text": "Chemical Storage and Handling",
+   "page": 0,
+   "x": 294.35,
+   "y": 465.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Chemical Storage and Handling'. Local Health Department use only.",
+   "section": "injury_prevention",
+   "mandated": false,
+   "row_band": [
+    448.0,
+    471.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_chemical_storage_and_handling_remarks",
+   "label_text": "Chemical Storage and Handling",
+   "page": 0,
+   "x": 309.8,
+   "y": 465.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Chemical Storage and Handling'.",
+   "section": "injury_prevention",
+   "row_band": [
+    448.0,
+    471.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_chain_of_command_flow_chart_yes",
+   "label_text": "* Chain of Command/Flow Chart",
+   "page": 0,
+   "x": 203.45,
+   "y": 511.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Chain of Command/Flow Chart'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    494.0,
+    517.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_chain_of_command_flow_chart_no",
+   "label_text": "* Chain of Command/Flow Chart",
+   "page": 0,
+   "x": 226.25,
+   "y": 511.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Chain of Command/Flow Chart'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    494.0,
+    517.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_chain_of_command_flow_chart_na",
+   "label_text": "* Chain of Command/Flow Chart",
+   "page": 0,
+   "x": 248.9,
+   "y": 511.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Chain of Command/Flow Chart'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    494.0,
+    517.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_chain_of_command_flow_chart_lhd_yes",
+   "label_text": "* Chain of Command/Flow Chart",
+   "page": 0,
+   "x": 271.55,
+   "y": 511.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Chain of Command/Flow Chart'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    494.0,
+    517.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_chain_of_command_flow_chart_lhd_no",
+   "label_text": "* Chain of Command/Flow Chart",
+   "page": 0,
+   "x": 294.35,
+   "y": 511.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Chain of Command/Flow Chart'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    494.0,
+    517.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_chain_of_command_flow_chart_remarks",
+   "label_text": "* Chain of Command/Flow Chart",
+   "page": 0,
+   "x": 309.8,
+   "y": 511.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Chain of Command/Flow Chart'.",
+   "section": "emergency_plan",
+   "row_band": [
+    494.0,
+    517.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_emergency_phone_numbers_yes",
+   "label_text": "* Emergency Phone Numbers",
+   "page": 0,
+   "x": 203.45,
+   "y": 534.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Emergency Phone Numbers'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    517.0,
+    540.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_emergency_phone_numbers_no",
+   "label_text": "* Emergency Phone Numbers",
+   "page": 0,
+   "x": 226.25,
+   "y": 534.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Emergency Phone Numbers'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    517.0,
+    540.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_emergency_phone_numbers_na",
+   "label_text": "* Emergency Phone Numbers",
+   "page": 0,
+   "x": 248.9,
+   "y": 534.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Emergency Phone Numbers'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    517.0,
+    540.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_emergency_phone_numbers_lhd_yes",
+   "label_text": "* Emergency Phone Numbers",
+   "page": 0,
+   "x": 271.55,
+   "y": 534.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Emergency Phone Numbers'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    517.0,
+    540.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_emergency_phone_numbers_lhd_no",
+   "label_text": "* Emergency Phone Numbers",
+   "page": 0,
+   "x": 294.35,
+   "y": 534.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Emergency Phone Numbers'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    517.0,
+    540.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_emergency_phone_numbers_remarks",
+   "label_text": "* Emergency Phone Numbers",
+   "page": 0,
+   "x": 309.8,
+   "y": 534.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Emergency Phone Numbers'.",
+   "section": "emergency_plan",
+   "row_band": [
+    517.0,
+    540.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_rescue_squad_consulted_yes",
+   "label_text": "Rescue Squad Consulted",
+   "page": 0,
+   "x": 203.45,
+   "y": 557.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Rescue Squad Consulted'.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    540.0,
+    563.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_rescue_squad_consulted_no",
+   "label_text": "Rescue Squad Consulted",
+   "page": 0,
+   "x": 226.25,
+   "y": 557.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Rescue Squad Consulted'.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    540.0,
+    563.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_rescue_squad_consulted_na",
+   "label_text": "Rescue Squad Consulted",
+   "page": 0,
+   "x": 248.9,
+   "y": 557.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Rescue Squad Consulted'.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    540.0,
+    563.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_rescue_squad_consulted_lhd_yes",
+   "label_text": "Rescue Squad Consulted",
+   "page": 0,
+   "x": 271.55,
+   "y": 557.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Rescue Squad Consulted'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    540.0,
+    563.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_rescue_squad_consulted_lhd_no",
+   "label_text": "Rescue Squad Consulted",
+   "page": 0,
+   "x": 294.35,
+   "y": 557.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Rescue Squad Consulted'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    540.0,
+    563.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_rescue_squad_consulted_remarks",
+   "label_text": "Rescue Squad Consulted",
+   "page": 0,
+   "x": 309.8,
+   "y": 557.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Rescue Squad Consulted'.",
+   "section": "emergency_plan",
+   "row_band": [
+    540.0,
+    563.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_emergency_access_yes",
+   "label_text": "* Emergency Access",
+   "page": 0,
+   "x": 203.45,
+   "y": 580.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Emergency Access'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    563.0,
+    586.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_emergency_access_no",
+   "label_text": "* Emergency Access",
+   "page": 0,
+   "x": 226.25,
+   "y": 580.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Emergency Access'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    563.0,
+    586.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_emergency_access_na",
+   "label_text": "* Emergency Access",
+   "page": 0,
+   "x": 248.9,
+   "y": 580.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Emergency Access'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    563.0,
+    586.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_emergency_access_lhd_yes",
+   "label_text": "* Emergency Access",
+   "page": 0,
+   "x": 271.55,
+   "y": 580.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Emergency Access'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    563.0,
+    586.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_emergency_access_lhd_no",
+   "label_text": "* Emergency Access",
+   "page": 0,
+   "x": 294.35,
+   "y": 580.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Emergency Access'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    563.0,
+    586.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_emergency_access_remarks",
+   "label_text": "* Emergency Access",
+   "page": 0,
+   "x": 309.8,
+   "y": 580.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Emergency Access'.",
+   "section": "emergency_plan",
+   "row_band": [
+    563.0,
+    586.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_evacuation_route_yes",
+   "label_text": "* Evacuation Route",
+   "page": 0,
+   "x": 203.45,
+   "y": 603.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Evacuation Route'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    586.0,
+    609.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_evacuation_route_no",
+   "label_text": "* Evacuation Route",
+   "page": 0,
+   "x": 226.25,
+   "y": 603.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Evacuation Route'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    586.0,
+    609.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_evacuation_route_na",
+   "label_text": "* Evacuation Route",
+   "page": 0,
+   "x": 248.9,
+   "y": 603.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Evacuation Route'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    586.0,
+    609.0
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_evacuation_route_lhd_yes",
+   "label_text": "* Evacuation Route",
+   "page": 0,
+   "x": 271.55,
+   "y": 603.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Evacuation Route'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    586.0,
+    609.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_evacuation_route_lhd_no",
+   "label_text": "* Evacuation Route",
+   "page": 0,
+   "x": 294.35,
+   "y": 603.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Evacuation Route'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    586.0,
+    609.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_evacuation_route_remarks",
+   "label_text": "* Evacuation Route",
+   "page": 0,
+   "x": 309.8,
+   "y": 603.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Evacuation Route'.",
+   "section": "emergency_plan",
+   "row_band": [
+    586.0,
+    609.0
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_first_aid_equipment_yes",
+   "label_text": "* First Aid Equipment",
+   "page": 0,
+   "x": 203.45,
+   "y": 626.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'First Aid Equipment'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    609.0,
+    631.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_first_aid_equipment_no",
+   "label_text": "* First Aid Equipment",
+   "page": 0,
+   "x": 226.25,
+   "y": 626.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'First Aid Equipment'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    609.0,
+    631.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_first_aid_equipment_na",
+   "label_text": "* First Aid Equipment",
+   "page": 0,
+   "x": 248.9,
+   "y": 626.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'First Aid Equipment'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    609.0,
+    631.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_first_aid_equipment_lhd_yes",
+   "label_text": "* First Aid Equipment",
+   "page": 0,
+   "x": 271.55,
+   "y": 626.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'First Aid Equipment'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    609.0,
+    631.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_first_aid_equipment_lhd_no",
+   "label_text": "* First Aid Equipment",
+   "page": 0,
+   "x": 294.35,
+   "y": 626.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'First Aid Equipment'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    609.0,
+    631.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_first_aid_equipment_remarks",
+   "label_text": "* First Aid Equipment",
+   "page": 0,
+   "x": 309.8,
+   "y": 626.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'First Aid Equipment'.",
+   "section": "emergency_plan",
+   "row_band": [
+    609.0,
+    631.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_first_aid_room_area_yes",
+   "label_text": "* First Aid Room/Area",
+   "page": 0,
+   "x": 203.45,
+   "y": 649.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'First Aid Room/Area'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    631.9,
+    654.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_first_aid_room_area_no",
+   "label_text": "* First Aid Room/Area",
+   "page": 0,
+   "x": 226.25,
+   "y": 649.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'First Aid Room/Area'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    631.9,
+    654.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_first_aid_room_area_na",
+   "label_text": "* First Aid Room/Area",
+   "page": 0,
+   "x": 248.9,
+   "y": 649.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'First Aid Room/Area'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    631.9,
+    654.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_first_aid_room_area_lhd_yes",
+   "label_text": "* First Aid Room/Area",
+   "page": 0,
+   "x": 271.55,
+   "y": 649.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'First Aid Room/Area'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    631.9,
+    654.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_first_aid_room_area_lhd_no",
+   "label_text": "* First Aid Room/Area",
+   "page": 0,
+   "x": 294.35,
+   "y": 649.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'First Aid Room/Area'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    631.9,
+    654.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_first_aid_room_area_remarks",
+   "label_text": "* First Aid Room/Area",
+   "page": 0,
+   "x": 309.8,
+   "y": 649.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'First Aid Room/Area'.",
+   "section": "emergency_plan",
+   "row_band": [
+    631.9,
+    654.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_clearing_water_emergency_yes",
+   "label_text": "* Clearing Water \u2013 Emergency",
+   "page": 0,
+   "x": 203.45,
+   "y": 672.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Clearing Water \u2013 Emergency'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    654.9,
+    677.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_clearing_water_emergency_no",
+   "label_text": "* Clearing Water \u2013 Emergency",
+   "page": 0,
+   "x": 226.25,
+   "y": 672.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Clearing Water \u2013 Emergency'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    654.9,
+    677.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_clearing_water_emergency_na",
+   "label_text": "* Clearing Water \u2013 Emergency",
+   "page": 0,
+   "x": 248.9,
+   "y": 672.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Clearing Water \u2013 Emergency'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    654.9,
+    677.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_clearing_water_emergency_lhd_yes",
+   "label_text": "* Clearing Water \u2013 Emergency",
+   "page": 0,
+   "x": 271.55,
+   "y": 672.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Clearing Water \u2013 Emergency'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    654.9,
+    677.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_clearing_water_emergency_lhd_no",
+   "label_text": "* Clearing Water \u2013 Emergency",
+   "page": 0,
+   "x": 294.35,
+   "y": 672.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Clearing Water \u2013 Emergency'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    654.9,
+    677.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_clearing_water_emergency_remarks",
+   "label_text": "* Clearing Water \u2013 Emergency",
+   "page": 0,
+   "x": 309.8,
+   "y": 672.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Clearing Water \u2013 Emergency'.",
+   "section": "emergency_plan",
+   "row_band": [
+    654.9,
+    677.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_communication_systems_yes",
+   "label_text": "* Communication Systems",
+   "page": 0,
+   "x": 203.45,
+   "y": 695.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Communication Systems'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    677.9,
+    700.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_communication_systems_no",
+   "label_text": "* Communication Systems",
+   "page": 0,
+   "x": 226.25,
+   "y": 695.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Communication Systems'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    677.9,
+    700.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_communication_systems_na",
+   "label_text": "* Communication Systems",
+   "page": 0,
+   "x": 248.9,
+   "y": 695.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Communication Systems'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    677.9,
+    700.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_communication_systems_lhd_yes",
+   "label_text": "* Communication Systems",
+   "page": 0,
+   "x": 271.55,
+   "y": 695.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Communication Systems'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    677.9,
+    700.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_communication_systems_lhd_no",
+   "label_text": "* Communication Systems",
+   "page": 0,
+   "x": 294.35,
+   "y": 695.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Communication Systems'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    677.9,
+    700.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_communication_systems_remarks",
+   "label_text": "* Communication Systems",
+   "page": 0,
+   "x": 309.8,
+   "y": 695.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Communication Systems'.",
+   "section": "emergency_plan",
+   "row_band": [
+    677.9,
+    700.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_search_procedures_yes",
+   "label_text": "* Search Procedures",
+   "page": 0,
+   "x": 203.45,
+   "y": 718.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Search Procedures'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    700.9,
+    723.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_search_procedures_no",
+   "label_text": "* Search Procedures",
+   "page": 0,
+   "x": 226.25,
+   "y": 718.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Search Procedures'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    700.9,
+    723.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_search_procedures_na",
+   "label_text": "* Search Procedures",
+   "page": 0,
+   "x": 248.9,
+   "y": 718.12,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Search Procedures'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    700.9,
+    723.9
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_search_procedures_lhd_yes",
+   "label_text": "* Search Procedures",
+   "page": 0,
+   "x": 271.55,
+   "y": 718.12,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Search Procedures'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    700.9,
+    723.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_search_procedures_lhd_no",
+   "label_text": "* Search Procedures",
+   "page": 0,
+   "x": 294.35,
+   "y": 718.12,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Search Procedures'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    700.9,
+    723.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_search_procedures_remarks",
+   "label_text": "* Search Procedures",
+   "page": 0,
+   "x": 309.8,
+   "y": 718.12,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Search Procedures'.",
+   "section": "emergency_plan",
+   "row_band": [
+    700.9,
+    723.9
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_epileptic_seizures_yes",
+   "label_text": "Epileptic Seizures",
+   "page": 1,
+   "x": 203.45,
+   "y": 76.62,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Epileptic Seizures'.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    60.5,
+    82.5
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_epileptic_seizures_no",
+   "label_text": "Epileptic Seizures",
+   "page": 1,
+   "x": 226.25,
+   "y": 76.62,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Epileptic Seizures'.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    60.5,
+    82.5
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_epileptic_seizures_na",
+   "label_text": "Epileptic Seizures",
+   "page": 1,
+   "x": 248.9,
+   "y": 76.62,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Epileptic Seizures'.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    60.5,
+    82.5
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_epileptic_seizures_lhd_yes",
+   "label_text": "Epileptic Seizures",
+   "page": 1,
+   "x": 271.55,
+   "y": 76.62,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Epileptic Seizures'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    60.5,
+    82.5
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_epileptic_seizures_lhd_no",
+   "label_text": "Epileptic Seizures",
+   "page": 1,
+   "x": 294.35,
+   "y": 76.62,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Epileptic Seizures'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    60.5,
+    82.5
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_epileptic_seizures_remarks",
+   "label_text": "Epileptic Seizures",
+   "page": 1,
+   "x": 309.8,
+   "y": 76.62,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Epileptic Seizures'.",
+   "section": "emergency_plan",
+   "row_band": [
+    60.5,
+    82.5
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_chlorine_gas_leaks_yes",
+   "label_text": "* Chlorine Gas Leaks",
+   "page": 1,
+   "x": 203.45,
+   "y": 98.62,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Chlorine Gas Leaks'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    82.5,
+    105.5
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_chlorine_gas_leaks_no",
+   "label_text": "* Chlorine Gas Leaks",
+   "page": 1,
+   "x": 226.25,
+   "y": 98.62,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Chlorine Gas Leaks'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    82.5,
+    105.5
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_chlorine_gas_leaks_na",
+   "label_text": "* Chlorine Gas Leaks",
+   "page": 1,
+   "x": 248.9,
+   "y": 98.62,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Chlorine Gas Leaks'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    82.5,
+    105.5
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_chlorine_gas_leaks_lhd_yes",
+   "label_text": "* Chlorine Gas Leaks",
+   "page": 1,
+   "x": 271.55,
+   "y": 98.62,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Chlorine Gas Leaks'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    82.5,
+    105.5
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_chlorine_gas_leaks_lhd_no",
+   "label_text": "* Chlorine Gas Leaks",
+   "page": 1,
+   "x": 294.35,
+   "y": 98.62,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Chlorine Gas Leaks'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    82.5,
+    105.5
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_chlorine_gas_leaks_remarks",
+   "label_text": "* Chlorine Gas Leaks",
+   "page": 1,
+   "x": 309.8,
+   "y": 98.62,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Chlorine Gas Leaks'.",
+   "section": "emergency_plan",
+   "row_band": [
+    82.5,
+    105.5
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_practice_drills_yes",
+   "label_text": "Practice Drills",
+   "page": 1,
+   "x": 203.45,
+   "y": 120.62,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Practice Drills'.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    105.5,
+    128.5
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_practice_drills_no",
+   "label_text": "Practice Drills",
+   "page": 1,
+   "x": 226.25,
+   "y": 120.62,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Practice Drills'.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    105.5,
+    128.5
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_practice_drills_na",
+   "label_text": "Practice Drills",
+   "page": 1,
+   "x": 248.9,
+   "y": 120.62,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Practice Drills'.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    105.5,
+    128.5
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_practice_drills_lhd_yes",
+   "label_text": "Practice Drills",
+   "page": 1,
+   "x": 271.55,
+   "y": 120.62,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Practice Drills'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    105.5,
+    128.5
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_practice_drills_lhd_no",
+   "label_text": "Practice Drills",
+   "page": 1,
+   "x": 294.35,
+   "y": 120.62,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Practice Drills'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": false,
+   "row_band": [
+    105.5,
+    128.5
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_practice_drills_remarks",
+   "label_text": "Practice Drills",
+   "page": 1,
+   "x": 309.8,
+   "y": 120.62,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Practice Drills'.",
+   "section": "emergency_plan",
+   "row_band": [
+    105.5,
+    128.5
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_incident_log_yes",
+   "label_text": "* Incident Log",
+   "page": 1,
+   "x": 203.45,
+   "y": 142.62,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the YES cell of row 'Incident Log'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    128.5,
+    151.5
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_incident_log_no",
+   "label_text": "* Incident Log",
+   "page": 1,
+   "x": 226.25,
+   "y": 142.62,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NO cell of row 'Incident Log'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    128.5,
+    151.5
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_incident_log_na",
+   "label_text": "* Incident Log",
+   "page": 1,
+   "x": 248.9,
+   "y": 142.62,
+   "max_width": 20.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the NA cell of row 'Incident Log'.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    128.5,
+    151.5
+   ],
+   "disabled": false
+  },
+  {
+   "key": "row_incident_log_lhd_yes",
+   "label_text": "* Incident Log",
+   "page": 1,
+   "x": 271.55,
+   "y": 142.62,
+   "max_width": 20.7,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD YES cell of row 'Incident Log'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    128.5,
+    151.5
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_incident_log_lhd_no",
+   "label_text": "* Incident Log",
+   "page": 1,
+   "x": 294.35,
+   "y": 142.62,
+   "max_width": 20.9,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark, centered in the LHD NO cell of row 'Incident Log'. Local Health Department use only.",
+   "section": "emergency_plan",
+   "mandated": true,
+   "row_band": [
+    128.5,
+    151.5
+   ],
+   "disabled": true
+  },
+  {
+   "key": "row_incident_log_remarks",
+   "label_text": "* Incident Log",
+   "page": 1,
+   "x": 309.8,
+   "y": 142.62,
+   "max_width": 262.0,
+   "font_size": 8,
+   "align": "left",
+   "notes": "Local Health Department remarks for row 'Incident Log'.",
+   "section": "emergency_plan",
+   "row_band": [
+    128.5,
+    151.5
+   ],
+   "disabled": true
+  },
+  {
+   "key": "facility_operator_name",
+   "label_text": "Facility Operator Name: (Print)",
+   "page": 1,
+   "x": 134,
+   "y": 208.2,
+   "max_width": 318,
+   "font_size": 10,
+   "align": "left",
+   "notes": "On the printed rule x 130.3-454.5 at y 210.2."
+  },
+  {
+   "key": "facility_operator_date",
+   "label_text": "Date (operator)",
+   "page": 1,
+   "x": 470,
+   "y": 208.2,
+   "max_width": 104,
+   "font_size": 10,
+   "align": "left",
+   "notes": "On the printed rule x 468-576 at y 210.2."
+  },
+  {
+   "key": "facility_operator_signature",
+   "label_text": "Signature:",
+   "page": 1,
+   "x": 82,
+   "y": 266.5,
+   "max_width": 368,
+   "font_size": 10,
+   "align": "left",
+   "notes": "On the printed rule x 78-454.5 at y 268.5."
+  },
+  {
+   "key": "plan_review_by",
+   "label_text": "Plan Review By: (Print)",
+   "page": 1,
+   "x": 134,
+   "y": 358.2,
+   "max_width": 318,
+   "font_size": 10,
+   "align": "left",
+   "notes": "FOR OFFICE USE ONLY. Local Health Department use."
+  },
+  {
+   "key": "plan_review_date",
+   "label_text": "Date (review)",
+   "page": 1,
+   "x": 470,
+   "y": 358.2,
+   "max_width": 104,
+   "font_size": 10,
+   "align": "left",
+   "notes": "FOR OFFICE USE ONLY. Local Health Department use."
+  },
+  {
+   "key": "plan_acceptable",
+   "label_text": "Plan Acceptable",
+   "page": 1,
+   "x": 120.0,
+   "y": 419.5,
+   "max_width": 11.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark inside the printed check box at [114.2,410.0,125.8,421.5]. LHD use only.",
+   "disabled": true
+  },
+  {
+   "key": "plan_unacceptable",
+   "label_text": "Plan Unacceptable",
+   "page": 1,
+   "x": 120.0,
+   "y": 570.3,
+   "max_width": 11.6,
+   "font_size": 10,
+   "align": "center",
+   "notes": "X mark inside the printed check box at [114.2,560.8,125.8,572.3]. LHD use only.",
+   "disabled": true
+  },
+  {
+   "key": "modification_line_1",
+   "label_text": "Although acceptable, the plan should be modified as follows:",
+   "page": 1,
+   "x": 40,
+   "y": 462.0,
+   "max_width": 532,
+   "font_size": 10,
+   "align": "left",
+   "notes": "Free-text rule 1 of 4. LHD use only.",
+   "disabled": true
+  },
+  {
+   "key": "modification_line_2",
+   "label_text": "Although acceptable, the plan should be modified as follows:",
+   "page": 1,
+   "x": 40,
+   "y": 485.0,
+   "max_width": 532,
+   "font_size": 10,
+   "align": "left",
+   "notes": "Free-text rule 2 of 4. LHD use only.",
+   "disabled": true
+  },
+  {
+   "key": "modification_line_3",
+   "label_text": "Although acceptable, the plan should be modified as follows:",
+   "page": 1,
+   "x": 40,
+   "y": 507.9,
+   "max_width": 532,
+   "font_size": 10,
+   "align": "left",
+   "notes": "Free-text rule 3 of 4. LHD use only.",
+   "disabled": true
+  },
+  {
+   "key": "modification_line_4",
+   "label_text": "Although acceptable, the plan should be modified as follows:",
+   "page": 1,
+   "x": 40,
+   "y": 530.9,
+   "max_width": 532,
+   "font_size": 10,
+   "align": "left",
+   "notes": "Free-text rule 4 of 4. LHD use only.",
+   "disabled": true
+  },
+  {
+   "key": "unacceptable_reason_line_1",
+   "label_text": "Reason plan is unacceptable:",
+   "page": 1,
+   "x": 40,
+   "y": 613.7,
+   "max_width": 532,
+   "font_size": 10,
+   "align": "left",
+   "notes": "Free-text rule 1 of 4. LHD use only.",
+   "disabled": true
+  },
+  {
+   "key": "unacceptable_reason_line_2",
+   "label_text": "Reason plan is unacceptable:",
+   "page": 1,
+   "x": 40,
+   "y": 636.7,
+   "max_width": 532,
+   "font_size": 10,
+   "align": "left",
+   "notes": "Free-text rule 2 of 4. LHD use only.",
+   "disabled": true
+  },
+  {
+   "key": "unacceptable_reason_line_3",
+   "label_text": "Reason plan is unacceptable:",
+   "page": 1,
+   "x": 40,
+   "y": 659.7,
+   "max_width": 532,
+   "font_size": 10,
+   "align": "left",
+   "notes": "Free-text rule 3 of 4. LHD use only.",
+   "disabled": true
+  },
+  {
+   "key": "unacceptable_reason_line_4",
+   "label_text": "Reason plan is unacceptable:",
+   "page": 1,
+   "x": 40,
+   "y": 682.7,
+   "max_width": 532,
+   "font_size": 10,
+   "align": "left",
+   "notes": "Free-text rule 4 of 4. LHD use only.",
+   "disabled": true
+  },
+  {
+   "key": "office_date_reviewed",
+   "label_text": "(Date Reviewed)",
+   "page": 1,
+   "x": 38,
+   "y": 720.1,
+   "max_width": 78,
+   "font_size": 10,
+   "align": "left",
+   "notes": "LHD use only.",
+   "disabled": true
+  },
+  {
+   "key": "office_signature",
+   "label_text": "(Signature)",
+   "page": 1,
+   "x": 134,
+   "y": 720.1,
+   "max_width": 318,
+   "font_size": 10,
+   "align": "left",
+   "notes": "LHD use only.",
+   "disabled": true
+  },
+  {
+   "key": "office_title",
+   "label_text": "(Title)",
+   "page": 1,
+   "x": 470,
+   "y": 720.1,
+   "max_width": 104,
+   "font_size": 10,
+   "align": "left",
+   "notes": "LHD use only.",
+   "disabled": true
+  }
+ ],
+ "unmapped_labels": [
+  "Page 1 blank table band y 723.9-746.9 - no printed subject text; left unmapped.",
+  "Section heading rows 'A. ORGANIZATION & MANAGEMENT', 'B. INJURY PREVENTION', 'C. * EMERGENCY PLAN' - headings only, no cells to fill; recorded as the 'section' property of the rows beneath them.",
+  "The leading '*' on some subjects marks items mandated by 6-1.23(c)/6-2.17(a)(4); captured as the 'mandated' property rather than as a separate field.",
+  "NOTE: this form has NO 'Page' column. The operator columns are Yes / No / N/A; the Local Health Department columns are Yes / No / Remarks."
+ ]
+}

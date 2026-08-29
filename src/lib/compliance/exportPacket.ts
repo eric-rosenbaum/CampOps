@@ -181,6 +181,8 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
 
 interface Writer {
   text: (s: string, opts?: { size?: number; bold?: boolean; color?: typeof INK; indent?: number }) => void;
+  /** The page the next block will land on, after making room for it. 1-based. */
+  pageForNext: (h?: number) => number;
   heading: (s: string) => void;
   gap: (h: number) => void;
   rule: () => void;
@@ -190,11 +192,14 @@ interface Writer {
 function makeWriter(pdf: PDFDocument, font: PDFFont, bold: PDFFont): Writer {
   let page: PDFPage = pdf.addPage([PAGE_W, PAGE_H]);
   let y = PAGE_H - MARGIN;
+  // 1-based, the way a person counts pages and the way DOH-2040 wants them written.
+  let pageNo = 1;
 
   function room(h: number) {
     if (y - h < MARGIN) {
       page = pdf.addPage([PAGE_W, PAGE_H]);
       y = PAGE_H - MARGIN;
+      pageNo += 1;
     }
   }
 
@@ -212,6 +217,14 @@ function makeWriter(pdf: PDFDocument, font: PDFFont, bold: PDFFont): Writer {
 
   return {
     text,
+    /**
+     * The page the next line will land on.
+     *
+     * This is what makes DOH-2040 fill itself. The checklist asks which page of the plan covers
+     * each component, and because we render the plan we can answer instead of asking the camp
+     * to count. Called before writing a section, so it reports where that section starts.
+     */
+    pageForNext: (h = 24) => { room(h); return pageNo; },
     heading: (s) => { room(30); y -= 8; text(s, { size: 12, bold: true }); y -= 2; },
     gap: (h) => { room(h); y -= h; },
     rule: () => {
@@ -363,7 +376,16 @@ async function coverSheet(
   return pdf.save();
 }
 
-async function writtenPlan(input: PacketExportInput, generatedOn: string): Promise<Uint8Array> {
+/**
+ * The plan document, and a map of which page each section starts on.
+ *
+ * The page map is the point. DOH-2040 asks the camp to write a page number against every one of
+ * seventy-three components, which is the kind of clerical work nobody finishes accurately. We
+ * render the plan, so we already know the answer.
+ */
+async function writtenPlan(
+  input: PacketExportInput, generatedOn: string,
+): Promise<{ bytes: Uint8Array; pageBySectionCode: Record<string, string> }> {
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -381,16 +403,21 @@ async function writtenPlan(input: PacketExportInput, generatedOn: string): Promi
     .map(([category, sections]) => ({ category, sections: [...sections].sort((a, b) => a.sortOrder - b.sortOrder) }))
     .sort((a, b) => (a.sections[0]?.sortOrder ?? 0) - (b.sections[0]?.sortOrder ?? 0));
 
+  const pageBySectionCode: Record<string, string> = {};
+
   if (ordered.length === 0) {
     w.gap(8);
     w.text('No plan sections have been laid down for this season.', { size: 10, color: SOFT });
-    return pdf.save();
+    return { bytes: await pdf.save(), pageBySectionCode };
   }
 
   for (const g of ordered) {
     w.heading(CATEGORY_LABEL[g.category] ?? g.category);
     for (const sec of g.sections) {
       w.gap(4);
+      // Ask before writing, with room for the heading and a line of body, so a section that
+      // would spill onto the next page is recorded on the page it actually starts.
+      pageBySectionCode[sec.sectionCode] = String(w.pageForNext(40));
       w.text(sec.title, { size: 11, bold: true });
       const meta = [
         PLAN_STATUS_LABEL[sec.status],
@@ -414,7 +441,7 @@ async function writtenPlan(input: PacketExportInput, generatedOn: string): Promi
     w.gap(6);
   }
 
-  return pdf.save();
+  return { bytes: await pdf.save(), pageBySectionCode };
 }
 
 // ─── The export ───────────────────────────────────────────────────────────────
@@ -445,12 +472,19 @@ export async function exportCompliancePacket(
     step('cover', 1);
 
     // ── forms ──
+    // The plan is rendered first even though it is written to the zip later: DOH-2040's page
+    // column is filled from where each section actually landed, so the forms cannot be built
+    // until the plan exists.
+    const plan = await writtenPlan(input, generatedOn);
+
     const forms = input.forms ?? NY_FORMS;
     const formsDir = forms.length > 0 ? zip.folder('forms') : null;
     for (let i = 0; i < forms.length; i++) {
       const form = forms[i];
       step('forms', i / Math.max(forms.length, 1));
-      const bytes = await generateForm(form, input.camp, input.planSections, input.answers);
+      const bytes = await generateForm(
+        form, input.camp, input.planSections, input.answers, plan.pageBySectionCode,
+      );
       formsDir?.file(`${form.code}.pdf`, bytes);
     }
     step('forms', 1);
@@ -482,7 +516,7 @@ export async function exportCompliancePacket(
 
     // ── written plan ──
     step('plan', 0);
-    zip.file('written-plan.pdf', await writtenPlan(input, generatedOn));
+    zip.file('written-plan.pdf', plan.bytes);
     step('plan', 1);
 
     // ── index ──

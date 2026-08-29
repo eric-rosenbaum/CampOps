@@ -229,6 +229,15 @@ export function poolSafetyChecklistValues(camp: PacketCamp): FormValues {
  */
 export function planChecklistValues(
   camp: PacketCamp, sections: CompliancePlanSection[], map: FormMap,
+  /**
+   * Where each section landed in the plan we rendered, keyed by section code.
+   *
+   * The checklist asks for a page number against every component. When we generate the plan we
+   * know the answer, so the camp is not asked to count pages across seventy-three rows. A camp
+   * keeping its own plan document has none of this, and its typed page reference is used
+   * instead.
+   */
+  pageBySectionCode: Record<string, string> = {},
 ): FormValues {
   const values: FormValues = headerValues(camp);
   const keys = new Set(map.fields.map((f) => f.key));
@@ -249,7 +258,9 @@ export function planChecklistValues(
       if (keys.has(`${base}_na`)) values[`${base}_na`] = true;
     } else if (sec.status === 'complete') {
       if (keys.has(`${base}_yes`)) values[`${base}_yes`] = true;
-      if (sec.pageRef && keys.has(`${base}_page`)) values[`${base}_page`] = sec.pageRef;
+      // Ours if we rendered the plan, theirs if they keep their own document.
+      const page = pageBySectionCode[sec.sectionCode] ?? sec.pageRef;
+      if (page && keys.has(`${base}_page`)) values[`${base}_page`] = page;
     }
   }
   return values;
@@ -258,10 +269,11 @@ export function planChecklistValues(
 /** Which builder a form uses. One place, so the download and the percentage cannot disagree. */
 function valuesFor(
   form: PacketForm, camp: PacketCamp, sections: CompliancePlanSection[], answers: ComplianceAnswers,
+  pageBySectionCode: Record<string, string> = {},
 ): FormValues {
   switch (form.code) {
     case 'DOH-367':  return facilityValues(camp, answers);
-    case 'DOH-2040': return planChecklistValues(camp, sections, form.map);
+    case 'DOH-2040': return planChecklistValues(camp, sections, form.map, pageBySectionCode);
     case 'DOH-2286': return poolSafetyChecklistValues(camp);
     default:         return headerValues(camp);
   }
@@ -270,9 +282,10 @@ function valuesFor(
 export async function generateForm(
   form: PacketForm, camp: PacketCamp, sections: CompliancePlanSection[],
   answers: ComplianceAnswers = {},
+  pageBySectionCode: Record<string, string> = {},
 ): Promise<Uint8Array> {
   const blank = await loadBlankForm(form.file);
-  const values = campOwnedOnly(form.map, valuesFor(form, camp, sections, answers));
+  const values = campOwnedOnly(form.map, valuesFor(form, camp, sections, answers, pageBySectionCode));
   return fillForm(blank, form.map, values);
 }
 

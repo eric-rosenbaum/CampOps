@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { Check, ChevronRight, Ban, Sparkles, ArrowRight, FileText } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useComplianceStore } from '@/store/complianceStore';
@@ -53,14 +53,13 @@ export function PlanBuilder() {
   // Flat order is the working order: next means the next section a person would write, across
   // category boundaries, not the next one inside this heading.
   const ordered = useMemo(() => groups.flatMap((g) => g.sections), [groups]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-
-  // Land on the first unwritten section rather than the top of the list, so returning to the
-  // page resumes the work instead of restarting it.
-  useEffect(() => {
-    if (activeId || ordered.length === 0) return;
-    setActiveId((ordered.find((s) => !DONE.includes(s.status)) ?? ordered[0]).id);
-  }, [ordered, activeId]);
+  // Only what the camp has actually clicked is state. The landing section is derived, so it
+  // follows the data instead of needing an effect to chase it.
+  const [pickedId, setPickedId] = useState<string | null>(null);
+  const activeId = pickedId
+    ?? (ordered.find((s) => !DONE.includes(s.status)) ?? ordered[0])?.id
+    ?? null;
+  const setActiveId = setPickedId;
 
   const active = ordered.find((s) => s.id === activeId) ?? null;
   const activeIndex = active ? ordered.findIndex((s) => s.id === active.id) : -1;

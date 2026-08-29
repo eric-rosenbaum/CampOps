@@ -324,7 +324,10 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
         let met = 0, outstanding = 0, notApplicable = 0, nextDue: string | null = null;
         for (const r of reqs) {
           const s = st.statusFor(r.id);
-          if (!s) continue;
+          // No computed row means the engine has not evaluated this one yet, which happens
+          // between seeding a requirement and the next recompute. Dropping it would quietly
+          // shrink the list a camp is working from. Silence counts as outstanding, never as met.
+          if (!s) { outstanding++; continue; }
           if (s.status === 'not_applicable') { notApplicable++; continue; }
           if (s.status === 'satisfied' || s.status === 'expiring') met++;
           else outstanding++;
@@ -352,7 +355,10 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
     for (const r of st.requirements) {
       if (r.authorityId !== authorityId || !enabled.has(r.profileId)) continue;
       const s = st.statusFor(r.id);
-      if (!s) continue;
+      // Not yet evaluated. It still belongs on the page: a requirement that vanishes because a
+      // recompute has not run is exactly the kind of gap this module cannot have. Documents is
+      // the safe home, because attaching a record satisfies anything.
+      if (!s) { work.documents.push(r); continue; }
       if (s.status === 'needs_answer') { work.unanswered.push(r); continue; }
       if (s.status === 'not_applicable') { work.notApplicable.push(r); continue; }
       if (r.evidenceType === 'plan_section') { work.plan.push(r); continue; }
@@ -370,6 +376,8 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
       const d = RANK[sa?.status ?? 'missing'] - RANK[sb?.status ?? 'missing'];
       return d !== 0 ? d : a.reqCode.localeCompare(b.reqCode);
     };
+    work.unanswered.sort(byStatus);
+    work.notApplicable.sort(byStatus);
     work.records.sort(byStatus);
     work.documents.sort(byStatus);
     work.plan.sort(byStatus);

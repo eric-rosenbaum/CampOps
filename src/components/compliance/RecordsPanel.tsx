@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ChevronDown, ClipboardCheck, Upload, FileEdit, HelpCircle, Ban } from 'lucide-react';
+import { ChevronDown, ClipboardCheck, Upload, FileEdit, HelpCircle, Ban, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useComplianceStore, type AuthoritySummary } from '@/store/complianceStore';
 import { useUIStore } from '@/store/uiStore';
 import { RequirementList } from './RequirementList';
+import { auditRecordsCoverage } from '@/store/complianceStore.audit';
 import type { ComplianceRequirement } from '@/lib/types';
 
 /**
@@ -52,6 +53,16 @@ const GROUP: Record<GroupKey, { label: string; blurb: string; icon: typeof Clipb
 export function RecordsPanel({ onGoToTab }: { onGoToTab: (tab: 'plan' | 'documents') => void }) {
   const st = useComplianceStore();
   const summaries = st.activeAuthorities();
+
+  /**
+   * This page claims to be the complete set of what the camp owes. Check it, rather than
+   * trusting the bucketing, because the failure mode is silent: a requirement that falls
+   * through every branch simply is not rendered and nobody notices until a reviewer does.
+   */
+  const enabled = new Set(st.enabledProfileIds);
+  const expected = st.requirements.filter((r) => enabled.has(r.profileId));
+  const rendered = new Map(summaries.map((s) => [s.authority.id, st.workForAuthority(s.authority.id)]));
+  const problems = auditRecordsCoverage(expected, rendered);
   const [openAuthority, setOpenAuthority] = useState<string | null>(
     summaries.find((s) => s.outstanding > 0)?.authority.id ?? summaries[0]?.authority.id ?? null,
   );
@@ -66,6 +77,21 @@ export function RecordsPanel({ onGoToTab }: { onGoToTab: (tab: 'plan' | 'documen
 
   return (
     <div className="space-y-3">
+      {/* Shown rather than logged. If the page is not showing everything, the camp is the one
+          who needs to know, not us. */}
+      {problems.length > 0 && (
+        <div className="rounded-card border border-amber/30 bg-amber-bg px-4 py-3">
+          <p className="text-[12.5px] text-amber-text inline-flex items-start gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+            <span>
+              {problems.length} requirement{problems.length === 1 ? ' is' : 's are'} not appearing
+              under any reviewer, so this page is not showing everything you owe. Send this list
+              to support: {problems.map((p) => p.reqCode).join(', ')}.
+            </span>
+          </p>
+        </div>
+      )}
+
       {summaries.map((summary) => (
         <AuthorityBlock
           key={summary.authority.id}

@@ -25,6 +25,12 @@ export interface FormFieldMap {
   max_width?: number;
   font_size?: number;
   align?: 'left' | 'center';
+  /**
+   * A comb field: the form prints a divider tick between character boxes, so the value has to
+   * be drawn one character per cell centre. Centring the whole string instead puts both digits
+   * either side of the divider and reads as "0|8".
+   */
+  comb_cells?: number[];
   notes?: string;
   disabled?: boolean;
 }
@@ -89,6 +95,26 @@ export async function fillForm(
     const text = checkbox ? 'X' : String(raw);
     const size = f.font_size ?? 9;
     const fitted = fit(text, f.max_width, size, width);
+
+    const pageH0 = page.getSize().height;
+    const pageW0 = page.getSize().width;
+
+    // Comb fields get one character per printed box, centred in the box. Anything longer than
+    // the comb falls through to the normal path rather than spilling past the last cell.
+    if (f.comb_cells && f.comb_cells.length >= fitted.text.length) {
+      for (let i = 0; i < fitted.text.length; i += 1) {
+        const ch = fitted.text[i];
+        const cx = f.comb_cells[i] - width(ch, fitted.size) / 2;
+        if (rotated) {
+          page.drawText(ch, {
+            x: f.y, y: pageW0 - cx, size: fitted.size, font, color: INK, rotate: degrees(90),
+          });
+        } else {
+          page.drawText(ch, { x: cx, y: pageH0 - f.y, size: fitted.size, font, color: INK });
+        }
+      }
+      continue;
+    }
 
     // For centred fields the map's x IS the cell centre (the maps state their column centres),
     // so the glyph is offset back by half its width. Left-aligned fields anchor at f.x.

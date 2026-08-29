@@ -3,7 +3,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf
 import { NY_FORMS, generateForm, type PacketCamp } from './nyPacket';
 import type {
   ComplianceProfile, ComplianceRequirement, RequirementStatus, ComplianceDocument,
-  CompliancePlanSection, ComplianceStatus, PlanSectionStatus,
+  CompliancePlanSection, ComplianceStatus, PlanSectionStatus, ComplianceAnswers,
 } from '@/lib/types';
 
 /**
@@ -251,6 +251,8 @@ export interface PacketExportInput {
   /** Everything the camp has attached, linked or not. All of it goes in the zip. */
   documents: ComplianceDocument[];
   planSections: CompliancePlanSection[];
+  /** The camp's setup answers; several forms are filled from them. */
+  answers: ComplianceAnswers;
   /** Signed read URL for a private compliance-files path. */
   signUrl: (bucketPath: string) => Promise<string | null>;
 }
@@ -381,7 +383,9 @@ async function writtenPlan(input: PacketExportInput, generatedOn: string): Promi
       w.text(sec.title, { size: 11, bold: true });
       const meta = [
         PLAN_STATUS_LABEL[sec.status],
-        sec.pageRef ? `page ${sec.pageRef}` : null,
+        // The camp types its own page reference, usually already carrying "p." or "page", so
+        // prefixing another one reads as "page p. 3-4".
+        sec.pageRef ? sec.pageRef : null,
       ].filter(Boolean).join(' · ');
       w.text(meta, { size: 9, color: SOFT });
       if (sec.status === 'not_applicable') {
@@ -434,7 +438,7 @@ export async function exportCompliancePacket(
     for (let i = 0; i < NY_FORMS.length; i++) {
       const form = NY_FORMS[i];
       step('forms', i / NY_FORMS.length);
-      const bytes = await generateForm(form, input.camp, input.planSections);
+      const bytes = await generateForm(form, input.camp, input.planSections, input.answers);
       formsDir?.file(`${form.code}.pdf`, bytes);
     }
     step('forms', 1);

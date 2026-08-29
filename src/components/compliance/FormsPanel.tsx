@@ -4,6 +4,7 @@ import { Button } from '@/components/shared/Button';
 import { useComplianceStore } from '@/store/complianceStore';
 import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
+import { useSafetyStore } from '@/store/safetyStore';
 import { useAuth } from '@/lib/auth';
 import { dbRecordComplianceExport } from '@/lib/complianceDb';
 import { NY_FORMS, generateForm, coverage, type PacketCamp, type PacketForm } from '@/lib/compliance/nyPacket';
@@ -19,24 +20,50 @@ import {
  * form it could populate, because handing someone a form that looks finished but is half empty
  * is worse than handing them a blank.
  */
+/**
+ * What is left to do by hand on each form, named rather than implied.
+ *
+ * A bare "N% auto-filled" reads as a grade on the product. It is more useful to say which part
+ * of the form we filled and which part nobody has the data for, so a director knows what they
+ * are sitting down to complete.
+ */
+const FORM_GAP: Record<string, string> = {
+  'DOH-367': 'Filled: camp description, dates and activity list. By hand: the per-session camper table and every staff qualification, which the platform does not hold.',
+  'DOH-367a': 'By hand: staff names, dates of birth, education and certification dates. The platform does not hold staff records at this depth.',
+  'DOH-2040': 'Filled from your written plan: the page number and Yes box for every section you have completed. Complete more sections and this fills itself.',
+  'DOH-2271': 'By hand: the director\u2019s own certified statement. This one is a personal attestation and is not ours to pre-answer.',
+  'DOH-2286': 'By hand: every question about your pool and beach safety plan, which is a separate document from your camp safety plan and is not tracked here yet.',
+};
+
 export function FormsPanel() {
   const {
     planSections, campId, seasonId, requirements, enabledProfileIds,
-    documents, statusFor, enabledProfiles, openDocument,
+    documents, statusFor, enabledProfiles, openDocument, answers,
   } = useComplianceStore();
   const { currentCamp } = useCampStore();
   const season = useChecklistStore((s) => s.season);
+  const safetyStaff = useSafetyStore((s) => s.staff);
   const { currentUser } = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<ExportStatus | null>(null);
   const [failures, setFailures] = useState<EvidenceFailure[]>([]);
 
+  // The forms ask for these three by name, and the safety roster already has them. Matched on
+  // title rather than a dedicated field, so a camp that has not filled its roster simply leaves
+  // the line blank for a person to write in, which is the correct outcome.
+  const byTitle = (re: RegExp) =>
+    safetyStaff.find((m) => m.isActive && re.test(m.title))?.name;
+
   const camp: PacketCamp = {
     campName: currentCamp?.name ?? 'Camp',
     county: 'Westchester',
     address: [currentCamp?.addressLine1, currentCamp?.city, currentCamp?.state]
       .filter(Boolean).join(', '),
+    town: currentCamp?.city ?? undefined,
+    directorName: byTitle(/^camp director$|^director$/i),
+    healthDirectorName: byTitle(/health director/i),
+    aquaticsDirectorName: byTitle(/aquatics? director/i),
     openDate: season?.openingDate,
     closeDate: season?.closingDate,
   };
@@ -48,7 +75,7 @@ export function FormsPanel() {
       let blob: Blob;
       let name: string;
       if (filled) {
-        const bytes = await generateForm(form, camp, planSections);
+        const bytes = await generateForm(form, camp, planSections, answers);
         blob = new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' });
         name = `${form.file}-${(camp.campName || 'camp').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf`;
       } else {
@@ -97,6 +124,7 @@ export function FormsPanel() {
         statusFor,
         documents,
         planSections,
+        answers,
         signUrl: openDocument,
       }, setProgress);
 
@@ -183,7 +211,7 @@ export function FormsPanel() {
 
       <div className="space-y-2">
         {NY_FORMS.map((form) => {
-          const pct = coverage(form, camp, planSections);
+          const pct = coverage(form, camp, planSections, answers);
           return (
             <div key={form.code} className="bg-white rounded-card border border-border px-4 py-3.5">
               <div className="flex items-start gap-3 flex-wrap">
@@ -213,12 +241,12 @@ export function FormsPanel() {
                 <div className="h-1.5 flex-1 rounded-full bg-cream-dark overflow-hidden">
                   <div className={`h-full rounded-full ${pct >= 60 ? 'bg-sage' : 'bg-amber'}`} style={{ width: `${pct}%` }} />
                 </div>
-                <span className="font-mono text-[11.5px] text-ink-soft">{pct}% auto-filled</span>
+                <span className="font-mono text-[11.5px] text-ink-soft">{pct}% of your fields</span>
               </div>
               {pct < 60 && (
                 <p className="text-[11.5px] text-amber-text mt-1.5 inline-flex items-start gap-1.5">
                   <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                  Most of this form still needs completing by hand. We fill what the platform holds.
+                  {FORM_GAP[form.code] ?? 'Most of this form still needs completing by hand. We fill what the platform holds.'}
                 </p>
               )}
             </div>

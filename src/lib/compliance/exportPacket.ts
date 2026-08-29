@@ -255,6 +255,16 @@ export interface PacketExportInput {
   answers: ComplianceAnswers;
   /** Signed read URL for a private compliance-files path. */
   signUrl: (bucketPath: string) => Promise<string | null>;
+  /**
+   * The party this packet is for, when it is for one.
+   *
+   * Handing the fire department the full county packet is the thing the reviewer-shaped
+   * structure exists to stop. When this is set, `requirements` is already filtered to that
+   * party by the caller, and the cover sheet and file name say who it is for.
+   */
+  authorityName?: string;
+  /** The forms that belong in this packet. Defaults to all of them. */
+  forms?: typeof NY_FORMS;
 }
 
 export interface EvidenceFailure {
@@ -297,7 +307,8 @@ async function coverSheet(
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const w = makeWriter(pdf, font, bold);
 
-  w.text('Compliance packet', { size: 20, bold: true });
+  w.text(input.authorityName ? `Compliance packet for ${input.authorityName}` : 'Compliance packet',
+         { size: 20, bold: true });
   w.gap(4);
   w.text(input.camp.campName, { size: 13, bold: true });
   if (input.camp.address) w.text(input.camp.address, { size: 10, color: SOFT });
@@ -434,10 +445,11 @@ export async function exportCompliancePacket(
     step('cover', 1);
 
     // ── forms ──
-    const formsDir = zip.folder('forms');
-    for (let i = 0; i < NY_FORMS.length; i++) {
-      const form = NY_FORMS[i];
-      step('forms', i / NY_FORMS.length);
+    const forms = input.forms ?? NY_FORMS;
+    const formsDir = forms.length > 0 ? zip.folder('forms') : null;
+    for (let i = 0; i < forms.length; i++) {
+      const form = forms[i];
+      step('forms', i / Math.max(forms.length, 1));
       const bytes = await generateForm(form, input.camp, input.planSections, input.answers);
       formsDir?.file(`${form.code}.pdf`, bytes);
     }
@@ -521,7 +533,9 @@ export async function exportCompliancePacket(
 
     return {
       blob,
-      fileName: `compliance-packet-${slug(input.camp.campName)}-${generatedOn}.zip`,
+      fileName: input.authorityName
+        ? `${slug(input.authorityName)}-packet-${slug(input.camp.campName)}-${generatedOn}.zip`
+        : `compliance-packet-${slug(input.camp.campName)}-${generatedOn}.zip`,
       failures,
       counts,
     };

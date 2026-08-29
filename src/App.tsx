@@ -556,8 +556,10 @@ export default function App() {
                 <Route path="/issues" element={<Gate of={['issues', 'locations']} label="Opening issues & repairs"><IssuesRepairs /></Gate>} />
                 <Route path="/pre-post" element={<Gate of={['tasks', 'locations']} label="Opening pre/post camp"><PrePostCamp /></Gate>} />
                 <Route path="/pool" element={<Gate of={['pool']} label="Opening pool & waterfront"><PoolManagement /></Gate>} />
+                {/* Folded into /compliance and removed from the nav. Kept so existing links,
+                    bookmarks and any deep link out of the new Records page still resolve. */}
                 <Route path="/safety" element={<Gate of={['safety', 'locations']} label="Opening safety & compliance"><SafetyCompliance /></Gate>} />
-                <Route path="/compliance" element={<Gate of={['compliance', 'safety']} label="Opening compliance"><Compliance /></Gate>} />
+                <Route path="/compliance" element={<Gate of={['compliance', 'safety']} label="Opening safety & compliance"><Compliance /></Gate>} />
                 <Route path="/assets" element={<Gate of={['assets', 'locations']} label="Opening assets & vehicles"><AssetVehicles /></Gate>} />
                 <Route path="/building" element={<Gate of={['building', 'locations']} label="Opening building systems"><BuildingSystems /></Gate>} />
                 <Route path="/commissary" element={<Gate of={COMMISSARY_DOMAINS} label="Opening the kitchen manager"><Commissary /></Gate>} />

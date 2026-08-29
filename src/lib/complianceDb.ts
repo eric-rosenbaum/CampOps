@@ -14,6 +14,7 @@ import type { UploadProgress } from './uploadProgress';
 import type {
   ComplianceProfile, ComplianceRequirement, RequirementStatus, ComplianceDocument,
   CompliancePlanSection, ComplianceAnswers, PlanSectionStatus,
+  ComplianceAuthority, ComplianceAuthorityForm,
 } from './types';
 
 type Row = Record<string, unknown>;
@@ -34,13 +35,36 @@ function toProfile(r: Row): ComplianceProfile {
 
 function toRequirement(r: Row): ComplianceRequirement {
   return {
-    id: r.id as string, profileId: r.profile_id as string, reqCode: r.req_code as string,
+    id: r.id as string, profileId: r.profile_id as string,
+    authorityId: s(r.authority_id), reqCode: r.req_code as string,
     label: r.label as string, summary: s(r.summary), category: r.category as string,
     evidenceType: r.evidence_type as ComplianceRequirement['evidenceType'],
     evidenceHint: s(r.evidence_hint), frequency: s(r.frequency),
     appliesWhen: (r.applies_when as Record<string, string>) ?? {},
     citation: s(r.citation), citationUrl: s(r.citation_url),
     verifyStatus: r.verify_status as ComplianceRequirement['verifyStatus'],
+    sortOrder: Number(r.sort_order ?? 0),
+  };
+}
+
+function toAuthority(r: Row): ComplianceAuthority {
+  return {
+    id: r.id as string, profileId: r.profile_id as string, code: r.code as string,
+    name: r.name as string, shortName: s(r.short_name),
+    level: r.level as ComplianceAuthority['level'],
+    visitsSite: Boolean(r.visits_site), visitSchedule: s(r.visit_schedule),
+    scope: s(r.scope), contactNote: s(r.contact_note), sourceUrl: s(r.source_url),
+    sortOrder: Number(r.sort_order ?? 0),
+  };
+}
+
+function toAuthorityForm(r: Row): ComplianceAuthorityForm {
+  return {
+    id: r.id as string, authorityId: r.authority_id as string,
+    designation: s(r.designation), title: r.title as string, revision: s(r.revision),
+    bundledPath: s(r.bundled_path), pageRef: s(r.page_ref),
+    issuedBy: s(r.issued_by), sourceUrl: s(r.source_url),
+    obtainNote: s(r.obtain_note), fillable: Boolean(r.fillable),
     sortOrder: Number(r.sort_order ?? 0),
   };
 }
@@ -68,6 +92,8 @@ function toPlanSection(r: Row): CompliancePlanSection {
 // ─── Bulk load ────────────────────────────────────────────────────────────────
 export interface ComplianceData {
   profiles: ComplianceProfile[];
+  authorities: ComplianceAuthority[];
+  authorityForms: ComplianceAuthorityForm[];
   requirements: ComplianceRequirement[];
   enabledProfileIds: string[];
   statuses: RequirementStatus[];
@@ -78,8 +104,10 @@ export interface ComplianceData {
 
 export async function loadCompliance(campId: string, seasonId: string | null): Promise<ComplianceData | null> {
   try {
-    const [prof, reqs, enabled, stat, docs, links, plan, ans] = await Promise.all([
+    const [prof, auth, authForms, reqs, enabled, stat, docs, links, plan, ans] = await Promise.all([
       supabase.from('compliance_profiles').select('*').eq('is_active', true).order('sort_order'),
+      supabase.from('compliance_authorities').select('*').eq('is_active', true).order('sort_order'),
+      supabase.from('compliance_authority_forms').select('*').order('sort_order'),
       supabase.from('compliance_requirements').select('*').order('sort_order'),
       seasonId ? supabase.from('camp_compliance_profiles').select('profile_id').eq('camp_id', campId).eq('season_id', seasonId)
                : Promise.resolve({ data: [], error: null }),
@@ -101,6 +129,8 @@ export async function loadCompliance(campId: string, seasonId: string | null): P
 
     return {
       profiles: ((prof.data ?? []) as Row[]).map(toProfile),
+      authorities: ((auth.data ?? []) as Row[]).map(toAuthority),
+      authorityForms: ((authForms.data ?? []) as Row[]).map(toAuthorityForm),
       requirements: ((reqs.data ?? []) as Row[]).map(toRequirement),
       enabledProfileIds: ((enabled.data ?? []) as Row[]).map((r) => r.profile_id as string),
       statuses: ((stat.data ?? []) as Row[]).map(toStatus),

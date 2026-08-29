@@ -63,8 +63,10 @@ const todayItems: NavItem[] = [
 const facilityItems: NavItem[] = [
   { path: '/issues', label: 'Issues & Repairs', icon: Wrench, end: false, module: 'issues_repairs' },
   { path: '/pre-post', label: 'Pre/Post Camp', icon: ClipboardList, end: false, module: 'pre_post' },
-  { path: '/safety', label: 'Safety & Compliance', icon: ShieldCheck, end: false, module: 'safety' },
-  { path: '/compliance', label: 'Permit & Compliance', icon: ClipboardCheck, end: false, module: 'safety' },
+  // Safety & Compliance was folded into Permit & Compliance: its records are now reached from
+  // "Your records", grouped by the party that asks for them, and its dialogs open in place. The
+  // /safety route still resolves so old links and bookmarks keep working.
+  { path: '/compliance', label: 'Safety & Compliance', icon: ClipboardCheck, end: false, module: 'safety' },
   { path: '/assets', label: 'Assets & Vehicles', icon: Truck, end: false, module: 'assets' },
   { path: '/building', label: 'Building Systems', icon: Building2, end: false, module: 'building_systems' },
 ];

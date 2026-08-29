@@ -7,6 +7,7 @@ import {
 import type {
   ComplianceProfile, ComplianceRequirement, RequirementStatus, ComplianceDocument,
   CompliancePlanSection, ComplianceAnswers, ComplianceStatus, PlanSectionStatus,
+  ComplianceAuthority, ComplianceAuthorityForm,
 } from '@/lib/types';
 import type { UploadProgress } from '@/lib/uploadProgress';
 
@@ -41,6 +42,8 @@ interface ComplianceState {
   seasonId: string | null;
 
   profiles: ComplianceProfile[];
+  authorities: ComplianceAuthority[];
+  authorityForms: ComplianceAuthorityForm[];
   requirements: ComplianceRequirement[];
   enabledProfileIds: string[];
   statuses: RequirementStatus[];
@@ -85,7 +88,56 @@ interface ComplianceState {
   documentsFor: (requirementId: string) => ComplianceDocument[];
   planByCategory: () => { category: string; sections: CompliancePlanSection[] }[];
   planProgress: () => { complete: number; total: number };
+
+  /** The parties reviewing this camp, in the order a director should think about them. */
+  activeAuthorities: () => AuthoritySummary[];
+  formsForAuthority: (authorityId: string) => ComplianceAuthorityForm[];
+  /** One authority's requirements, split by what the camp actually has to do about them. */
+  workForAuthority: (authorityId: string) => AuthorityWork;
 }
+
+/** An authority plus where this camp stands with it. */
+export interface AuthoritySummary {
+  authority: ComplianceAuthority;
+  total: number;
+  met: number;
+  outstanding: number;
+  notApplicable: number;
+  percent: number;
+  /** The soonest deadline among its outstanding requirements, if any carry one. */
+  nextDue: string | null;
+}
+
+/**
+ * A party's requirements grouped by the kind of work they represent.
+ *
+ * Grouping only by party gives one enormous county card. The second level is what makes the
+ * page workable: a camp reads down "records to keep current" in one frame of mind and
+ * "documents to attach" in another.
+ */
+export interface AuthorityWork {
+  /** Evidence the platform tracks from live operational data: certs, inspections, drills, logs. */
+  records: ComplianceRequirement[];
+  /** Things satisfied by attaching a file. */
+  documents: ComplianceRequirement[];
+  /** Sections of the written safety plan. */
+  plan: ComplianceRequirement[];
+  /** Blocked on a setup question nobody has answered. */
+  unanswered: ComplianceRequirement[];
+  /** Ruled out, kept visible because an inspector will ask why. */
+  notApplicable: ComplianceRequirement[];
+}
+
+/**
+ * Which bucket a requirement belongs in on the records page.
+ *
+ * Driven by evidence_type rather than by category, because the question the grouping answers
+ * is "what would I do to satisfy this", and that is exactly what evidence_type encodes.
+ */
+const RECORD_EVIDENCE = new Set([
+  'certification', 'inspection', 'drill', 'temp_log', 'pool_log', 'asset_expiry',
+  'water_sample', 'screening', 'training', 'roster',
+]);
 
 // needs_answer sorts first because answering one setup question can change everything below
 // it: until we know, we cannot tell the camp whether the rule is theirs to meet.
@@ -95,12 +147,14 @@ const RANK: Record<ComplianceStatus, number> = {
 
 export const useComplianceStore = create<ComplianceState>((set, get) => ({
   campId: null, seasonId: null,
-  profiles: [], requirements: [], enabledProfileIds: [], statuses: [],
+  profiles: [], authorities: [], authorityForms: [],
+  requirements: [], enabledProfileIds: [], statuses: [],
   documents: [], planSections: [], answers: {},
   loaded: false, busy: false,
 
   apply: (d) => set({
-    profiles: d.profiles, requirements: d.requirements,
+    profiles: d.profiles, authorities: d.authorities, authorityForms: d.authorityForms,
+    requirements: d.requirements,
     enabledProfileIds: d.enabledProfileIds, statuses: d.statuses,
     documents: d.documents, planSections: d.planSections, answers: d.answers,
     loaded: true,
@@ -255,6 +309,71 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
   },
 
   documentsFor: (requirementId) => get().documents.filter((d) => d.requirementIds.includes(requirementId)),
+
+  activeAuthorities: () => {
+    const st = get();
+    const enabled = new Set(st.enabledProfileIds);
+    return st.authorities
+      .filter((a) => enabled.has(a.profileId))
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((authority) => {
+        const reqs = st.requirements.filter(
+          (r) => r.authorityId === authority.id && enabled.has(r.profileId),
+        );
+        let met = 0, outstanding = 0, notApplicable = 0, nextDue: string | null = null;
+        for (const r of reqs) {
+          const s = st.statusFor(r.id);
+          if (!s) continue;
+          if (s.status === 'not_applicable') { notApplicable++; continue; }
+          if (s.status === 'satisfied' || s.status === 'expiring') met++;
+          else outstanding++;
+          if (s.status !== 'satisfied' && s.dueOn && (!nextDue || s.dueOn < nextDue)) nextDue = s.dueOn;
+        }
+        const tracked = met + outstanding;
+        return {
+          authority, total: reqs.length, met, outstanding, notApplicable,
+          percent: tracked === 0 ? 0 : Math.round((met / tracked) * 100),
+          nextDue,
+        };
+      });
+  },
+
+  formsForAuthority: (authorityId) => get().authorityForms
+    .filter((f) => f.authorityId === authorityId)
+    .sort((a, b) => a.sortOrder - b.sortOrder),
+
+  workForAuthority: (authorityId) => {
+    const st = get();
+    const enabled = new Set(st.enabledProfileIds);
+    const work: AuthorityWork = {
+      records: [], documents: [], plan: [], unanswered: [], notApplicable: [],
+    };
+    for (const r of st.requirements) {
+      if (r.authorityId !== authorityId || !enabled.has(r.profileId)) continue;
+      const s = st.statusFor(r.id);
+      if (!s) continue;
+      if (s.status === 'needs_answer') { work.unanswered.push(r); continue; }
+      if (s.status === 'not_applicable') { work.notApplicable.push(r); continue; }
+      if (r.evidenceType === 'plan_section') { work.plan.push(r); continue; }
+      // An unscoped record-type requirement cannot read the register, so in practice the camp
+      // satisfies it by attaching the record. It belongs with the documents, where the upload is.
+      const detail = s.detail as Record<string, unknown>;
+      if (RECORD_EVIDENCE.has(r.evidenceType) && !detail.unmapped && !detail.awaiting_feature) {
+        work.records.push(r);
+      } else {
+        work.documents.push(r);
+      }
+    }
+    const byStatus = (a: ComplianceRequirement, b: ComplianceRequirement) => {
+      const sa = st.statusFor(a.id), sb = st.statusFor(b.id);
+      const d = RANK[sa?.status ?? 'missing'] - RANK[sb?.status ?? 'missing'];
+      return d !== 0 ? d : a.reqCode.localeCompare(b.reqCode);
+    };
+    work.records.sort(byStatus);
+    work.documents.sort(byStatus);
+    work.plan.sort(byStatus);
+    return work;
+  },
 
   planByCategory: () => {
     const groups = new Map<string, CompliancePlanSection[]>();

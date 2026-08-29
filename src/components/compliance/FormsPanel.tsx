@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Download, FileText, Loader2, AlertTriangle, FolderDown } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
-import { useComplianceStore } from '@/store/complianceStore';
+import { useComplianceStore, type AuthoritySummary } from '@/store/complianceStore';
 import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useSafetyStore } from '@/store/safetyStore';
@@ -39,10 +39,12 @@ export function FormsPanel() {
   const {
     planSections, campId, seasonId, requirements, enabledProfileIds,
     documents, statusFor, enabledProfiles, openDocument, answers,
+    activeAuthorities, formsForAuthority,
   } = useComplianceStore();
   const { currentCamp } = useCampStore();
   const season = useChecklistStore((s) => s.season);
   const safetyStaff = useSafetyStore((s) => s.staff);
+  const authorities = activeAuthorities();
   const { currentUser } = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -106,26 +108,56 @@ export function FormsPanel() {
    * together. Built here rather than server-side because the evidence is already readable by
    * this user through signed URLs, and nothing has to be stored again to hand it over.
    */
-  async function downloadPacket() {
-    setBusy('packet');
+  /**
+   * One party's packet.
+   *
+   * Passing an authority filters the requirements, the evidence index and the forms down to
+   * what that party actually asked for. The fire department gets the fire safety plan, not
+   * three hundred pages of county paperwork, which is the point of organising any of this by
+   * reviewer.
+   */
+  async function downloadPacket(authority?: AuthoritySummary) {
+    setBusy(authority ? `packet-${authority.authority.id}` : 'packet');
     setError(null);
     setFailures([]);
     setProgress({ stage: 'cover', percent: 0, label: 'Building the cover sheet' });
     try {
       const profiles = enabledProfiles();
       const enabled = new Set(enabledProfileIds);
+      const scoped = requirements
+        .filter((r) => enabled.has(r.profileId))
+        .filter((r) => !authority || r.authorityId === authority.authority.id)
+        .sort((a, b) => a.reqCode.localeCompare(b.reqCode));
+
+      // Only the forms this party issues. A party with none gets a packet of records and the
+      // written plan, which is the whole of what they asked for.
+      const scopedForms = authority
+        ? NY_FORMS.filter((f) => formsForAuthority(authority.authority.id)
+            .some((af) => af.designation === f.code))
+        : NY_FORMS;
+
+      // A scoped packet carries only the evidence attached to that party's requirements. The
+      // fire department has no business receiving the camp's workers compensation certificate,
+      // and sending it anyway is the over-sharing this whole structure exists to prevent. The
+      // full packet still includes everything, unlinked files included, because that one is for
+      // the camp's own records.
+      const scopedIds = new Set(scoped.map((r) => r.id));
+      const scopedDocuments = authority
+        ? documents.filter((d) => d.requirementIds.some((id) => scopedIds.has(id)))
+        : documents;
+
       const result = await exportCompliancePacket({
         camp,
         seasonName: season?.name ?? null,
         profiles,
-        requirements: requirements
-          .filter((r) => enabled.has(r.profileId))
-          .sort((a, b) => a.reqCode.localeCompare(b.reqCode)),
+        requirements: scoped,
         statusFor,
-        documents,
+        documents: scopedDocuments,
         planSections,
         answers,
         signUrl: openDocument,
+        authorityName: authority?.authority.name,
+        forms: scopedForms,
       }, setProgress);
 
       save(result.blob, result.fileName);
@@ -152,23 +184,49 @@ export function FormsPanel() {
   return (
     <div>
       <div className="bg-white rounded-card border border-border px-5 py-4 mb-4">
-        <p className="text-[14px] font-semibold text-forest">Your Westchester permit packet</p>
-        <p className="text-[12.5px] text-ink-soft mt-1.5 leading-relaxed">
-          These are the official New York State forms, unmodified. We draw your data onto them at
-          the printed positions, so what your county receives is the form they expect. Check every
-          filled form before you submit it — some fields still need a wet signature.
+        <p className="text-[14px] font-semibold text-forest">Hand-off packets</p>
+        <p className="text-[12.5px] text-ink-soft mt-1.5 leading-relaxed max-w-[75ch]">
+          One zip per party, holding only what that party asked for: their forms filled from your
+          data, the files you attached against their requirements, an index of what covers what,
+          and your written plan. The forms are the official ones, unmodified, with your data drawn
+          at the printed positions. Check every one before you file it — some still need a wet
+          signature.
         </p>
 
-        <div className="flex items-center gap-2.5 mt-3.5 flex-wrap">
-          <Button size="sm" disabled={busy !== null} onClick={downloadPacket}>
+        <div className="mt-4 space-y-2">
+          {authorities.map((a) => (
+            <div key={a.authority.id}
+                 className="flex items-center gap-3 flex-wrap border border-border rounded-card px-3.5 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold text-forest">{a.authority.name}</p>
+                <p className="text-[11.5px] text-ink-faint">
+                  {a.met + a.outstanding === 0
+                    ? 'Nothing to hand over'
+                    : `${a.met + a.outstanding} requirement${a.met + a.outstanding === 1 ? '' : 's'}` +
+                      (a.outstanding > 0 ? ` · ${a.outstanding} still outstanding` : ' · all on record')}
+                </p>
+              </div>
+              <Button size="sm" variant="ghost"
+                      disabled={busy !== null || a.met + a.outstanding === 0}
+                      onClick={() => downloadPacket(a)}>
+                {busy === `packet-${a.authority.id}`
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <FolderDown className="w-3.5 h-3.5" />}
+                Their packet
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2.5 mt-4 pt-3.5 border-t border-cream-dark flex-wrap">
+          <Button size="sm" disabled={busy !== null} onClick={() => downloadPacket()}>
             {busy === 'packet'
               ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
               : <FolderDown className="w-3.5 h-3.5" />}
-            Whole packet as a zip
+            Everything in one zip
           </Button>
           <span className="text-[11.5px] text-ink-faint">
-            Every form, the files you have attached, an index of what covers what, and your
-            written plan.
+            For your own records, or when a reviewer asks for the lot.
           </span>
         </div>
 

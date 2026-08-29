@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react';
+import { addDays } from 'date-fns';
+import { todayStr, toDateStr, parseDateStr } from '@/lib/utils';
 import { Upload, FileText, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { UploadProgressBar } from '@/components/shared/UploadProgressBar';
@@ -31,8 +33,10 @@ export function DocumentsPanel() {
     .filter((r) => enabled.has(r.profileId))
     .sort((a, b) => a.reqCode.localeCompare(b.reqCode));
 
-  const today = new Date().toISOString().slice(0, 10);
-  const soon = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10);
+  // Camp-local calendar days. toISOString() would give UTC, which is the previous day for most
+  // of the US afternoon and would age a certificate out early.
+  const today = todayStr();
+  const soon = toDateStr(addDays(parseDateStr(today), 30));
 
   async function submit() {
     if (!file) return;

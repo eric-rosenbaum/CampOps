@@ -73,12 +73,29 @@ function explain(s: RequirementStatus): string {
   return 'On file';
 }
 
-export function RequirementList({ requirements }: { requirements: ComplianceRequirement[] }) {
+export function RequirementList({
+  requirements,
+  renderAction,
+  emptyLabel,
+}: {
+  requirements: ComplianceRequirement[];
+  /**
+   * An extra control for this requirement, shown alongside the built-in ones. Used by the
+   * records page to put "log a drill" next to the requirement a drill would satisfy, so the
+   * camp does the work where it reads about it rather than hunting for the right module.
+   */
+  renderAction?: (r: ComplianceRequirement) => React.ReactNode;
+  emptyLabel?: string;
+}) {
   const { statusFor } = useComplianceStore();
   const [open, setOpen] = useState<string | null>(null);
 
   if (requirements.length === 0) {
-    return <p className="text-[13px] text-ink-faint italic py-6">Nothing in this package applies to your camp.</p>;
+    return (
+      <p className="text-[13px] text-ink-faint italic py-6">
+        {emptyLabel ?? 'Nothing in this package applies to your camp.'}
+      </p>
+    );
   }
 
   return (
@@ -106,7 +123,9 @@ export function RequirementList({ requirements }: { requirements: ComplianceRequ
               </span>
               <ChevronDown className={`w-4 h-4 flex-shrink-0 text-ink-faint mt-0.5 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
             </button>
-            {isOpen && <RequirementDetail requirement={r} status={st} />}
+            {isOpen && (
+              <RequirementDetail requirement={r} status={st} extraAction={renderAction?.(r)} />
+            )}
           </div>
         );
       })}
@@ -114,8 +133,9 @@ export function RequirementList({ requirements }: { requirements: ComplianceRequ
   );
 }
 
-function RequirementDetail({ requirement: r, status: st }: {
+function RequirementDetail({ requirement: r, status: st, extraAction }: {
   requirement: ComplianceRequirement; status: RequirementStatus | undefined;
+  extraAction?: React.ReactNode;
 }) {
   const { documentsFor, documents, linkDocument, unlinkDocument, openDocument, markNotApplicable } = useComplianceStore();
   const { currentUser, can } = useAuth();
@@ -175,6 +195,7 @@ function RequirementDetail({ requirement: r, status: st }: {
 
       {canManage && (
         <div className="flex flex-wrap gap-2 mt-3">
+          {extraAction}
           {documents.length > 0 && (
             <select
               defaultValue=""

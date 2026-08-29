@@ -1498,9 +1498,52 @@ export interface ComplianceProfile {
   sortOrder: number;
 }
 
+/**
+ * A party that reviews the camp. Deliberately not called an inspector: of the six that touch a
+ * New York camp, only the county health department reliably attends. The rest receive filings.
+ */
+export interface ComplianceAuthority {
+  id: string;
+  profileId: string;
+  code: string;
+  name: string;
+  shortName: string | null;
+  level: 'federal' | 'state' | 'county' | 'municipal' | 'accreditor' | 'insurer' | 'internal';
+  /** True only for parties that physically attend. */
+  visitsSite: boolean;
+  /** Prose, not a computed schedule: the regulation says "before opening and at least once
+   *  during operation", and inventing a date from that would be a fabrication. */
+  visitSchedule: string | null;
+  scope: string | null;
+  contactNote: string | null;
+  sourceUrl: string | null;
+  sortOrder: number;
+}
+
+/** An official document a party issues or expects. */
+export interface ComplianceAuthorityForm {
+  id: string;
+  authorityId: string;
+  designation: string | null;
+  title: string;
+  revision: string | null;
+  /** A blank official PDF shipped with the app, or null when we do not hold the form. */
+  bundledPath: string | null;
+  /** Which pages of bundledPath hold this form, when the bundle is a multi-form packet. */
+  pageRef: string | null;
+  issuedBy: string | null;
+  sourceUrl: string | null;
+  /** Where to get it, when we do not bundle it. */
+  obtainNote: string | null;
+  fillable: boolean;
+  sortOrder: number;
+}
+
 export interface ComplianceRequirement {
   id: string;
   profileId: string;
+  /** Who receives or checks this. Null until a jurisdiction seeds its authorities. */
+  authorityId: string | null;
   reqCode: string;
   label: string;
   summary: string | null;

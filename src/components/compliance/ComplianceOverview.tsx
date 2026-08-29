@@ -1,4 +1,4 @@
-import { CalendarClock, ArrowRight, AlertTriangle } from 'lucide-react';
+import { CalendarClock, ArrowRight, AlertTriangle, FileEdit } from 'lucide-react';
 import { useComplianceStore } from '@/store/complianceStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { RequirementList } from './RequirementList';
@@ -21,6 +21,7 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
   const overall = st.overallPercent();
   const items = st.actionItems();
   const summaries = st.activeAuthorities();
+  const plan = st.planProgress();
   const today = todayStr();
 
   // Anything with a real deadline, soonest first. A requirement already met is not "upcoming"
@@ -131,6 +132,30 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
             })}
           </div>
         </section>
+      )}
+
+      {/* The written plan is the single biggest item in the packet and used to be reachable
+          only from inside a group on another tab. It gets its own way in. */}
+      {plan.total > 0 && (
+        <button
+          onClick={() => onGoToTab('plan')}
+          className="w-full bg-white rounded-card border border-border px-5 py-4 mb-6 text-left hover:border-sage transition-colors flex items-center gap-4"
+        >
+          <FileEdit className="w-5 h-5 text-ink-faint flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-semibold text-forest">Your written safety plan</p>
+            <p className="text-[12px] text-ink-soft mt-0.5">
+              {plan.complete === 0
+                ? `${plan.total} sections to write. We turn them into the plan document and fill the county's checklist from it.`
+                : `${plan.complete} of ${plan.total} sections written. Keep going and the checklist fills itself.`}
+            </p>
+            <div className="h-1.5 rounded-full bg-cream-dark overflow-hidden mt-2.5 max-w-md">
+              <div className="h-full bg-sage rounded-full"
+                   style={{ width: `${Math.round((plan.complete / plan.total) * 100)}%` }} />
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-ink-faint flex-shrink-0" />
+        </button>
       )}
 
       {items.length > 0 && (

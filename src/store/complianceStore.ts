@@ -7,7 +7,7 @@ import {
 import type {
   ComplianceProfile, ComplianceRequirement, RequirementStatus, ComplianceDocument,
   CompliancePlanSection, ComplianceAnswers, ComplianceStatus, PlanSectionStatus,
-  ComplianceAuthority, ComplianceAuthorityForm,
+  ComplianceAuthority, ComplianceAuthorityForm, CompliancePlanTemplate,
 } from '@/lib/types';
 import type { UploadProgress } from '@/lib/uploadProgress';
 
@@ -44,6 +44,7 @@ interface ComplianceState {
   profiles: ComplianceProfile[];
   authorities: ComplianceAuthority[];
   authorityForms: ComplianceAuthorityForm[];
+  planTemplates: CompliancePlanTemplate[];
   requirements: ComplianceRequirement[];
   enabledProfileIds: string[];
   statuses: RequirementStatus[];
@@ -147,14 +148,14 @@ const RANK: Record<ComplianceStatus, number> = {
 
 export const useComplianceStore = create<ComplianceState>((set, get) => ({
   campId: null, seasonId: null,
-  profiles: [], authorities: [], authorityForms: [],
+  profiles: [], authorities: [], authorityForms: [], planTemplates: [],
   requirements: [], enabledProfileIds: [], statuses: [],
   documents: [], planSections: [], answers: {},
   loaded: false, busy: false,
 
   apply: (d) => set({
     profiles: d.profiles, authorities: d.authorities, authorityForms: d.authorityForms,
-    requirements: d.requirements,
+    planTemplates: d.planTemplates, requirements: d.requirements,
     enabledProfileIds: d.enabledProfileIds, statuses: d.statuses,
     documents: d.documents, planSections: d.planSections, answers: d.answers,
     loaded: true,

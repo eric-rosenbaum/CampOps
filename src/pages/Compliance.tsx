@@ -36,7 +36,7 @@ type Tab = 'overview' | 'reviewers' | 'records' | 'export' | 'plan' | 'documents
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview',  label: 'Overview' },
-  { id: 'reviewers', label: 'Who reviews you' },
+  { id: 'reviewers', label: 'Reviewers' },
   { id: 'records',   label: 'Your records' },
   { id: 'export',    label: 'Hand-off' },
 ];
@@ -45,8 +45,14 @@ export function Compliance() {
   const st = useComplianceStore();
   const { can } = useAuth();
   const season = useChecklistStore((s) => s.season);
-  const [tab, setTab] = useState<Tab>('overview');
+  const [tab, setTabRaw] = useState<Tab>('overview');
+  const setTab = (next: Tab) => {
+    if (next !== 'documents') setUploadTitle(null);
+    setTabRaw(next);
+  };
   const [refreshing, setRefreshing] = useState(false);
+  /** Set when the camp clicked upload against a named form, so Documents opens pre-titled. */
+  const [uploadTitle, setUploadTitle] = useState<string | null>(null);
 
   const enabled = st.enabledProfiles();
   const items = st.actionItems();
@@ -142,7 +148,9 @@ export function Compliance() {
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-7 py-5">
         {tab === 'overview'  && <ComplianceOverview onGoToTab={setTab} />}
-        {tab === 'reviewers' && <ReviewersPanel />}
+        {tab === 'reviewers' && (
+          <ReviewersPanel onUpload={(t) => { setUploadTitle(t); setTab('documents'); }} />
+        )}
         {tab === 'records'   && <RecordsPanel onGoToTab={setTab} />}
         {tab === 'export'    && <FormsPanel />}
 
@@ -155,8 +163,9 @@ export function Compliance() {
         )}
         {tab === 'documents' && (
           <>
-            <BackToRecords onBack={() => setTab('records')} />
-            <DocumentsPanel />
+            <BackToRecords onBack={() => setTab(uploadTitle ? 'reviewers' : 'records')}
+                           label={uploadTitle ? 'Back to reviewers' : 'Back to your records'} />
+            <DocumentsPanel prefillTitle={uploadTitle ?? undefined} />
           </>
         )}
       </div>
@@ -174,11 +183,13 @@ export function Compliance() {
   );
 }
 
-function BackToRecords({ onBack }: { onBack: () => void }) {
+function BackToRecords({ onBack, label = 'Back to your records' }: {
+  onBack: () => void; label?: string;
+}) {
   return (
     <button onClick={onBack}
       className="text-[12.5px] text-sage hover:text-forest inline-flex items-center gap-1.5 mb-4">
-      <ArrowLeft className="w-3.5 h-3.5" /> Back to your records
+      <ArrowLeft className="w-3.5 h-3.5" /> {label}
     </button>
   );
 }

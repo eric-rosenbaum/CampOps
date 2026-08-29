@@ -1535,6 +1535,8 @@ export interface ComplianceAuthorityForm {
   sourceUrl: string | null;
   /** Where to get it, when we do not bundle it. */
   obtainNote: string | null;
+  /** The camp obtains this one itself, so the UI takes an upload rather than only explaining. */
+  campSupplied: boolean;
   fillable: boolean;
   sortOrder: number;
 }
@@ -1610,6 +1612,23 @@ export interface CompliancePlanSection {
   naReason: string | null;
   sortOrder: number;
   updatedAt: string;
+}
+
+/**
+ * A component of the written plan as the regulation defines it, with the guidance that turns a
+ * bare title into an answerable question. Catalog data, shared by every camp in the
+ * jurisdiction, joined onto a camp's sections at read time so improving the guidance does not
+ * require re-running setup.
+ */
+export interface CompliancePlanTemplate {
+  code: string;
+  category: string;
+  title: string;
+  /** What this section has to cover, in plain language. */
+  prompt: string | null;
+  /** Two to five concrete things the section should mention. */
+  checklist: string[] | null;
+  sortOrder: number;
 }
 
 /** The applicability interview. Keys match ComplianceRequirement.appliesWhen. */

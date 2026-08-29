@@ -15,14 +15,16 @@ import type { UploadStatus } from '@/lib/uploadProgress';
  * because it reads as done. The engine already refuses to count expired documents; this screen
  * is where a camp sees it coming.
  */
-export function DocumentsPanel() {
+export function DocumentsPanel({ prefillTitle }: { prefillTitle?: string }) {
   const { documents, requirements, enabledProfileIds, uploadDocument, openDocument } = useComplianceStore();
   const { currentUser, can } = useAuth();
   const canManage = can('manageSafetyItems');
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [title, setTitle] = useState('');
+  // Arriving from a form row on Reviewers, the title is already known, so the camp is not asked
+  // to retype the name of the document they just clicked upload on.
+  const [title, setTitle] = useState(prefillTitle ?? '');
   const [expiresOn, setExpiresOn] = useState('');
   const [reqId, setReqId] = useState('');
   const [progress, setProgress] = useState<UploadStatus | null>(null);

@@ -14,7 +14,7 @@ import type { UploadProgress } from './uploadProgress';
 import type {
   ComplianceProfile, ComplianceRequirement, RequirementStatus, ComplianceDocument,
   CompliancePlanSection, ComplianceAnswers, PlanSectionStatus,
-  ComplianceAuthority, ComplianceAuthorityForm,
+  ComplianceAuthority, ComplianceAuthorityForm, CompliancePlanTemplate,
 } from './types';
 
 type Row = Record<string, unknown>;
@@ -66,6 +66,16 @@ function toAuthorityForm(r: Row): ComplianceAuthorityForm {
     bundledPath: s(r.bundled_path), pageRef: s(r.page_ref),
     issuedBy: s(r.issued_by), sourceUrl: s(r.source_url),
     obtainNote: s(r.obtain_note), fillable: Boolean(r.fillable),
+    campSupplied: Boolean(r.camp_supplied),
+    sortOrder: Number(r.sort_order ?? 0),
+  };
+}
+
+function toPlanTemplate(r: Row): CompliancePlanTemplate {
+  return {
+    code: r.code as string, category: r.category as string, title: r.title as string,
+    prompt: s(r.prompt),
+    checklist: Array.isArray(r.checklist) ? (r.checklist as string[]) : null,
     sortOrder: Number(r.sort_order ?? 0),
   };
 }
@@ -95,6 +105,7 @@ export interface ComplianceData {
   profiles: ComplianceProfile[];
   authorities: ComplianceAuthority[];
   authorityForms: ComplianceAuthorityForm[];
+  planTemplates: CompliancePlanTemplate[];
   requirements: ComplianceRequirement[];
   enabledProfileIds: string[];
   statuses: RequirementStatus[];
@@ -105,10 +116,11 @@ export interface ComplianceData {
 
 export async function loadCompliance(campId: string, seasonId: string | null): Promise<ComplianceData | null> {
   try {
-    const [prof, auth, authForms, reqs, enabled, stat, docs, links, plan, ans] = await Promise.all([
+    const [prof, auth, authForms, planTpl, reqs, enabled, stat, docs, links, plan, ans] = await Promise.all([
       supabase.from('compliance_profiles').select('*').eq('is_active', true).order('sort_order'),
       supabase.from('compliance_authorities').select('*').eq('is_active', true).order('sort_order'),
       supabase.from('compliance_authority_forms').select('*').order('sort_order'),
+      supabase.from('compliance_plan_templates').select('*').order('sort_order'),
       supabase.from('compliance_requirements').select('*').order('sort_order'),
       seasonId ? supabase.from('camp_compliance_profiles').select('profile_id').eq('camp_id', campId).eq('season_id', seasonId)
                : Promise.resolve({ data: [], error: null }),
@@ -132,6 +144,7 @@ export async function loadCompliance(campId: string, seasonId: string | null): P
       profiles: ((prof.data ?? []) as Row[]).map(toProfile),
       authorities: ((auth.data ?? []) as Row[]).map(toAuthority),
       authorityForms: ((authForms.data ?? []) as Row[]).map(toAuthorityForm),
+      planTemplates: ((planTpl.data ?? []) as Row[]).map(toPlanTemplate),
       requirements: ((reqs.data ?? []) as Row[]).map(toRequirement),
       enabledProfileIds: ((enabled.data ?? []) as Row[]).map((r) => r.profile_id as string),
       statuses: ((stat.data ?? []) as Row[]).map(toStatus),

@@ -215,10 +215,42 @@ export function facilityValues(camp: PacketCamp, answers: ComplianceAnswers): Fo
  * So the twenty-four rows stay blank until the platform holds pool-plan sections of its own, and
  * this form fills only its header.
  */
-export function poolSafetyChecklistValues(camp: PacketCamp): FormValues {
+export function poolSafetyChecklistValues(
+  camp: PacketCamp, sections: CompliancePlanSection[], rowKeyBySectionCode: Record<string, string>,
+): FormValues {
   const values: FormValues = headerValues(camp);
   values.name_of_facility = camp.campName;
   values.town_village_or_city = camp.town ?? '';
+  return { ...values, ...checklistRows(sections, rowKeyBySectionCode) };
+}
+
+/**
+ * Tick the Yes or N/A cell for each written section, and write its page.
+ *
+ * The row a component fills is looked up, never derived. Slugifying the title used to be how
+ * this worked, and it silently lost seven components whose titles contain an ampersand: a camp
+ * that had WRITTEN those sections printed blank rows on the form it files. Two curated data sets
+ * joined by a guess will drift again, so the link is data now. A component with no row key fills
+ * nothing rather than guessing at one.
+ */
+function checklistRows(
+  sections: CompliancePlanSection[],
+  rowKeyBySectionCode: Record<string, string>,
+  pageBySectionCode: Record<string, string> = {},
+): FormValues {
+  const values: FormValues = {};
+  for (const sec of sections) {
+    const base = rowKeyBySectionCode[sec.sectionCode];
+    if (!base) continue;
+    if (sec.status === 'not_applicable') {
+      values[`${base}_na`] = true;
+    } else if (sec.status === 'complete') {
+      values[`${base}_yes`] = true;
+      // Ours if we rendered the plan, theirs if they keep their own document.
+      const page = pageBySectionCode[sec.sectionCode] ?? sec.pageRef;
+      if (page) values[`${base}_page`] = page;
+    }
+  }
   return values;
 }
 
@@ -228,7 +260,8 @@ export function poolSafetyChecklistValues(camp: PacketCamp): FormValues {
  * asks for.
  */
 export function planChecklistValues(
-  camp: PacketCamp, sections: CompliancePlanSection[], map: FormMap,
+  camp: PacketCamp, sections: CompliancePlanSection[],
+  rowKeyBySectionCode: Record<string, string>,
   /**
    * Where each section landed in the plan we rendered, keyed by section code.
    *
@@ -239,42 +272,25 @@ export function planChecklistValues(
    */
   pageBySectionCode: Record<string, string> = {},
 ): FormValues {
-  const values: FormValues = headerValues(camp);
-  const keys = new Set(map.fields.map((f) => f.key));
-
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-
-  for (const sec of sections) {
-    // Map keys are section-prefixed because component names repeat across categories
-    // ("Chain of Command" appears under both Personnel and Staff Training).
-    const candidates = [
-      `row_${norm(sec.category)}_${norm(sec.title)}`,
-      `row_${norm(sec.title)}`,
-    ];
-    const base = candidates.find((c) => keys.has(`${c}_yes`) || keys.has(`${c}_na`));
-    if (!base) continue;
-
-    if (sec.status === 'not_applicable') {
-      if (keys.has(`${base}_na`)) values[`${base}_na`] = true;
-    } else if (sec.status === 'complete') {
-      if (keys.has(`${base}_yes`)) values[`${base}_yes`] = true;
-      // Ours if we rendered the plan, theirs if they keep their own document.
-      const page = pageBySectionCode[sec.sectionCode] ?? sec.pageRef;
-      if (page && keys.has(`${base}_page`)) values[`${base}_page`] = page;
-    }
-  }
-  return values;
+  return {
+    ...headerValues(camp),
+    ...checklistRows(sections, rowKeyBySectionCode, pageBySectionCode),
+  };
 }
 
 /** Which builder a form uses. One place, so the download and the percentage cannot disagree. */
 function valuesFor(
   form: PacketForm, camp: PacketCamp, sections: CompliancePlanSection[], answers: ComplianceAnswers,
+  rowKeyBySectionCode: Record<string, string> = {},
   pageBySectionCode: Record<string, string> = {},
 ): FormValues {
   switch (form.code) {
     case 'DOH-367':  return facilityValues(camp, answers);
-    case 'DOH-2040': return planChecklistValues(camp, sections, form.map, pageBySectionCode);
-    case 'DOH-2286': return poolSafetyChecklistValues(camp);
+    case 'DOH-2040': return planChecklistValues(camp, sections, rowKeyBySectionCode, pageBySectionCode);
+    // The bathing-facility plan fills its own checklist exactly the way the camp plan does, now
+    // that its twenty-four components are real sections the camp writes rather than boxes it
+    // ticks to say it wrote them somewhere else.
+    case 'DOH-2286': return poolSafetyChecklistValues(camp, sections, rowKeyBySectionCode);
     default:         return headerValues(camp);
   }
 }
@@ -282,10 +298,13 @@ function valuesFor(
 export async function generateForm(
   form: PacketForm, camp: PacketCamp, sections: CompliancePlanSection[],
   answers: ComplianceAnswers = {},
+  rowKeyBySectionCode: Record<string, string> = {},
   pageBySectionCode: Record<string, string> = {},
 ): Promise<Uint8Array> {
   const blank = await loadBlankForm(form.file);
-  const values = campOwnedOnly(form.map, valuesFor(form, camp, sections, answers, pageBySectionCode));
+  const values = campOwnedOnly(
+    form.map, valuesFor(form, camp, sections, answers, rowKeyBySectionCode, pageBySectionCode),
+  );
   return fillForm(blank, form.map, values);
 }
 
@@ -300,8 +319,11 @@ export async function generateForm(
 export function coverage(
   form: PacketForm, camp: PacketCamp, sections: CompliancePlanSection[],
   answers: ComplianceAnswers = {},
+  rowKeyBySectionCode: Record<string, string> = {},
 ): number {
-  const values = campOwnedOnly(form.map, valuesFor(form, camp, sections, answers));
+  const values = campOwnedOnly(
+    form.map, valuesFor(form, camp, sections, answers, rowKeyBySectionCode),
+  );
   const ours = form.map.fields.filter((f) => !isReviewerOwned(f.key, f.disabled));
   const filled = ours.filter((f) => {
     const v = values[f.key];

@@ -76,6 +76,7 @@ function toPlanTemplate(r: Row): CompliancePlanTemplate {
     code: r.code as string, category: r.category as string, title: r.title as string,
     prompt: s(r.prompt),
     checklist: Array.isArray(r.checklist) ? (r.checklist as string[]) : null,
+    formRowKey: s(r.form_row_key),
     sortOrder: Number(r.sort_order ?? 0),
   };
 }

@@ -95,6 +95,13 @@ interface ComplianceState {
   formsForAuthority: (authorityId: string) => ComplianceAuthorityForm[];
   /** One authority's requirements, split by what the camp actually has to do about them. */
   workForAuthority: (authorityId: string) => AuthorityWork;
+  /**
+   * Section code to the checklist row it fills, from the catalog.
+   *
+   * Built here so the download and the coverage percentage read the same map, and so nothing in
+   * the form layer has to guess a row from a title.
+   */
+  planRowKeys: () => Record<string, string>;
 }
 
 /** An authority plus where this camp stands with it. */
@@ -341,6 +348,12 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
         };
       });
   },
+
+  planRowKeys: () => Object.fromEntries(
+    get().planTemplates
+      .filter((t) => t.formRowKey)
+      .map((t) => [t.code, t.formRowKey as string]),
+  ),
 
   formsForAuthority: (authorityId) => get().authorityForms
     .filter((f) => f.authorityId === authorityId)

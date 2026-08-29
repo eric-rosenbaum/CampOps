@@ -130,7 +130,7 @@ has **zero rows**. Treat this as a prefill hint, not a source of truth. See §5.
 ### 3.4 DOH-2040 — 18 fields blocked by an ampersand
 
 `planChecklistValues()` matches map rows by normalising `category` + `title` through
-`s.toLowerCase().replace(/[^a-z0-9]+/g,'_')`. Seven of the 77 plan templates contain `&` or a
+`s.toLowerCase().replace(/[^a-z0-9]+/g,'_')`. Seven of the 76 plan templates contain `&` or a
 comma, which normalises to a *single* underscore; the map author spelled the same conjunction
 out as `and`. The keys never meet, and the rows print blank on a camp that has completed those
 sections.
@@ -151,9 +151,12 @@ normalise `&` to `and` on both sides before slugifying**, or seed a `form_row_ke
 fuzzy join between curated data and a curated coordinate map is a bug waiting to recur every
 time a title is edited.
 
-One more template, `ACTIVITIES_SUPERVISION / Waterfront Swimming Supervision`, has no DOH-2040
-row at all. That is correct — it is a section the platform adds, not one the state's checklist
-lists — but it means the plan tab shows 77 sections for a 76-row form.
+Arithmetic, for the record: the form has 76 camp-owned rows and `compliance_plan_templates`
+has 76 rows. 68 currently match. Seven fail on the ampersand. One template,
+`ACTIVITIES_SUPERVISION / Waterfront Swimming Supervision`, has no DOH-2040 row at all — that
+is correct, it is a section the platform adds rather than one the state's checklist lists — and
+one form row, `row_blank_write_in`, is the state's blank write-in line with no template. 68 + 7
++ 1 = 76.
 
 ### 3.5 Filing facts and dates — 35 fields
 

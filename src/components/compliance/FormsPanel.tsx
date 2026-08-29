@@ -39,7 +39,7 @@ export function FormsPanel() {
   const {
     planSections, campId, seasonId, requirements, enabledProfileIds,
     documents, statusFor, enabledProfiles, openDocument, answers,
-    activeAuthorities, formsForAuthority,
+    activeAuthorities, formsForAuthority, planRowKeys,
   } = useComplianceStore();
   const { currentCamp } = useCampStore();
   const season = useChecklistStore((s) => s.season);
@@ -77,7 +77,7 @@ export function FormsPanel() {
       let blob: Blob;
       let name: string;
       if (filled) {
-        const bytes = await generateForm(form, camp, planSections, answers);
+        const bytes = await generateForm(form, camp, planSections, answers, planRowKeys());
         blob = new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' });
         name = `${form.file}-${(camp.campName || 'camp').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf`;
       } else {
@@ -155,6 +155,7 @@ export function FormsPanel() {
         documents: scopedDocuments,
         planSections,
         answers,
+        planRowKeys: planRowKeys(),
         signUrl: openDocument,
         authorityName: authority?.authority.name,
         forms: scopedForms,
@@ -269,7 +270,7 @@ export function FormsPanel() {
 
       <div className="space-y-2">
         {NY_FORMS.map((form) => {
-          const pct = coverage(form, camp, planSections, answers);
+          const pct = coverage(form, camp, planSections, answers, planRowKeys());
           return (
             <div key={form.code} className="bg-white rounded-card border border-border px-4 py-3.5">
               <div className="flex items-start gap-3 flex-wrap">

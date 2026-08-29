@@ -17,7 +17,7 @@ declare
   u_admin constant uuid := 'aaaaaaaa-0000-4000-8000-000000000001';
   u_view  constant uuid := 'aaaaaaaa-0000-4000-8000-000000000002';
   u_out   constant uuid := 'aaaaaaaa-0000-4000-8000-000000000003';
-  n int; st text; det jsonb; passed int := 0; expected_reqs int;
+  n int; st text; det jsonb; passed int := 0; expected_reqs int; expected_sections int;
 
 
   -- assertion helper
@@ -71,8 +71,26 @@ begin
   on conflict do nothing;
 
   -- ── T1 · applicability excludes activities the camp does not run ───────────
+  -- Derived from the catalog, so seeding another jurisdiction's plan components does not turn
+  -- this suite red. What must hold is that the laid-down set equals the applicable set exactly.
+  select count(*) into expected_sections
+    from compliance_plan_templates t,
+         lateral (select coalesce(jsonb_object_agg(key,value),'{}'::jsonb) a
+                    from camp_compliance_answers where camp_id=camp and season_id=season) ans
+   where compliance_applies(ans.a, t.applies_when);
   select count(*) into n from compliance_plan_sections where camp_id=camp;
-  if n <> 73 then raise exception 'T1 FAIL plan sections: expected 73, got %', n; end if;
+  if n <> expected_sections then
+    raise exception 'T1 FAIL plan sections: expected %, got %', expected_sections, n; end if;
+  passed := passed + 1;
+
+  -- Every component the camp will write must know which checklist row it fills. Deriving that
+  -- from the title silently dropped seven of them once already.
+  select count(*) into n
+    from compliance_plan_sections s
+    join compliance_plan_templates t on t.code = s.section_code
+   where s.camp_id = camp and t.form_row_key is null;
+  if n <> 0 then
+    raise exception 'T1 FAIL: % plan component(s) have no checklist row key', n; end if;
   passed := passed + 1;
 
   if exists (select 1 from compliance_plan_sections
@@ -154,8 +172,8 @@ begin
     join compliance_requirements r on r.id=s.requirement_id
    where s.camp_id=camp and r.req_code='WC-13';
   if st <> 'partial' then raise exception 'T7 FAIL WC-13: expected partial, got %', st; end if;
-  if (det->>'complete')::int <> 40 or (det->>'sections')::int <> 73 then
-    raise exception 'T7 FAIL WC-13 detail wrong: %', det; end if;
+  if (det->>'complete')::int <> 40 or (det->>'sections')::int <> expected_sections then
+    raise exception 'T7 FAIL WC-13 detail wrong (expected 40 of %): %', expected_sections, det; end if;
   passed := passed + 1;
 
   -- ── T8 · completing every section satisfies ───────────────────────────────

@@ -1628,6 +1628,8 @@ export interface CompliancePlanTemplate {
   prompt: string | null;
   /** Two to five concrete things the section should mention. */
   checklist: string[] | null;
+  /** The checklist row this component fills. Explicit, never derived from the title. */
+  formRowKey: string | null;
   sortOrder: number;
 }
 

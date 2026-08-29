@@ -266,6 +266,8 @@ export interface PacketExportInput {
   planSections: CompliancePlanSection[];
   /** The camp's setup answers; several forms are filled from them. */
   answers: ComplianceAnswers;
+  /** Section code to the checklist row it fills. Catalog data, never derived from a title. */
+  planRowKeys: Record<string, string>;
   /** Signed read URL for a private compliance-files path. */
   signUrl: (bucketPath: string) => Promise<string | null>;
   /**
@@ -483,7 +485,8 @@ export async function exportCompliancePacket(
       const form = forms[i];
       step('forms', i / Math.max(forms.length, 1));
       const bytes = await generateForm(
-        form, input.camp, input.planSections, input.answers, plan.pageBySectionCode,
+        form, input.camp, input.planSections, input.answers,
+        input.planRowKeys, plan.pageBySectionCode,
       );
       formsDir?.file(`${form.code}.pdf`, bytes);
     }

@@ -57,9 +57,15 @@ export function FormsPanel() {
   const byTitle = (re: RegExp) =>
     safetyStaff.find((m) => m.isActive && re.test(m.title))?.name;
 
+  // The county is the camp's own setup answer, not a constant. It was hardcoded, which printed
+  // "Westchester" on the packet of any camp that is not in Westchester, and printed it even for
+  // camps in Westchester without ever reading what they told us.
+  const county = (answers.county ?? '').trim();
+
   const camp: PacketCamp = {
     campName: currentCamp?.name ?? 'Camp',
-    county: 'Westchester',
+    // Stored uppercase as an applicability key; the form wants it written the way a person does.
+    county: county ? county.charAt(0) + county.slice(1).toLowerCase() : '',
     address: [currentCamp?.addressLine1, currentCamp?.city, currentCamp?.state]
       .filter(Boolean).join(', '),
     town: currentCamp?.city ?? undefined,

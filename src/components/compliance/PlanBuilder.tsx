@@ -31,6 +31,11 @@ const CATEGORY_LABEL: Record<string, string> = {
   ACTIVITIES_SUPERVISION: 'Activities and supervision',
   STAFF_TRAINING: 'Staff training',
   CAMPER_ORIENTATION: 'Camper orientation',
+  // The bathing-facility plan (DOH-2286). Prefixed because its components repeat the
+  // camp plan's names: both have a Chain of Command and both have an evacuation route.
+  BATHING_ORGANIZATION: 'Pool and beach: organisation',
+  BATHING_INJURY_PREVENTION: 'Pool and beach: preventing injury',
+  BATHING_EMERGENCY_PLAN: 'Pool and beach: emergencies',
 };
 
 const DONE: PlanSectionStatus[] = ['complete', 'not_applicable'];

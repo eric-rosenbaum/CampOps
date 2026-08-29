@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ExternalLink, Paperclip, Ban, FileText } from 'lucide-react';
+import { ChevronDown, ExternalLink, Paperclip, Ban, FileText, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useComplianceStore } from '@/store/complianceStore';
 import { useAuth } from '@/lib/auth';
@@ -151,6 +151,22 @@ function RequirementDetail({ requirement: r, status: st, extraAction }: {
       {r.evidenceHint && (
         <p className="text-[12.5px] text-ink-soft mt-2 leading-relaxed">
           <span className="font-semibold text-forest">What proves it: </span>{r.evidenceHint}
+        </p>
+      )}
+
+      {/*
+        The evidence here is other people's personal records. An inspector checks those where
+        the camp already keeps them; nobody needs a second copy in a general document store that
+        more staff can reach than the health office intended.
+      */}
+      {r.holdsPersonalRecords && (
+        <p className="text-[12px] text-amber-text mt-2 inline-flex items-start gap-1.5 max-w-[70ch] leading-relaxed">
+          <ShieldAlert className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+          <span>
+            These are personal records about campers or staff. Keep them where you keep them
+            now and attach only a summary or a signed confirmation that you hold them. Do not
+            upload the records themselves.
+          </span>
         </p>
       )}
 

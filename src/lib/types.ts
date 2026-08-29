@@ -1560,6 +1560,11 @@ export interface ComplianceRequirement {
    * The product does not present unconfirmed rule text as fact.
    */
   verifyStatus: 'verified' | 'needs_verification';
+  /**
+   * Evidence for this is other people's personal records: camper health files, staff register
+   * clearances. The camp confirms it holds them rather than uploading them here.
+   */
+  holdsPersonalRecords: boolean;
   sortOrder: number;
 }
 

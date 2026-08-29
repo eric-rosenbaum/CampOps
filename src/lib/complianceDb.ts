@@ -43,6 +43,7 @@ function toRequirement(r: Row): ComplianceRequirement {
     appliesWhen: (r.applies_when as Record<string, string>) ?? {},
     citation: s(r.citation), citationUrl: s(r.citation_url),
     verifyStatus: r.verify_status as ComplianceRequirement['verifyStatus'],
+    holdsPersonalRecords: Boolean(r.holds_personal_records),
     sortOrder: Number(r.sort_order ?? 0),
   };
 }

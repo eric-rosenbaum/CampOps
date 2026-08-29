@@ -88,6 +88,38 @@ percentage invites people to stop looking. In summary:
   a citation link, and counted out loud in the scope note. **Regulatory wording is never quoted,
   only linked, and only when verified.**
 
+## Who reviews a camp
+
+The module is organised twice over the same 91 requirements: by regulation (which package a
+rule comes from) and by **authority** (who receives or checks it). The second is what the tabs
+are built on, because it is the question a director actually asks.
+
+For a Westchester camp the honest shape is **one inspector and five recipients**:
+
+| Party | Attends? | What they get |
+|---|---|---|
+| Westchester County DOH | Yes, pre-opening and at least once operating | Everything: permit packet, plan, records |
+| Fire department | Municipality's choice | The fire safety plan section |
+| NYS DOH | No | Writes the code, publishes the forms; the county enforces |
+| State Central Register (OCFS) | No | LDSS-3370 clearances |
+| County Emergency Services | No | A camp contact form |
+| Justice Center | No | Staff exclusion checks, disability camps only |
+
+`visits_site` is a real column and the UI reads it, because calling five of those six an
+"inspection" would misrepresent them. **There is no federal camp inspector.**
+
+## Personal records stay where they are
+
+Nine requirements are satisfied by holding records that are somebody else's personal data:
+camper medical histories and care plans, immunisation responses, and staff clearances against
+the child abuse register and sex offender registry. Their evidence hints accurately describe
+those records, and they sit next to an Upload button.
+
+`holds_personal_records` marks them. The UI tells the camp to keep those where they keep them
+and attach a confirmation instead. An inspector checks those records in the health office; a
+second copy in a general document store is pure downside. **If you add a requirement whose
+evidence names camper health data or a background check result, set this flag.**
+
 ## The forms
 
 Eight of the nine New York forms carry no AcroForm fields — they are flat PDFs. So values are

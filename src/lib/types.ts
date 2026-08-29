@@ -1466,3 +1466,100 @@ export interface RetreatReminder {
   sentBy: string | null;
   sentAt: string;
 }
+
+// ─── Compliance & Evidence ────────────────────────────────────────────────────
+// A jurisdiction is data, not code: profiles and requirements are rows we curate, so adding a
+// county or a state is a seed rather than a migration. Status is computed in Postgres by
+// compute_camp_compliance() and read here — never derived in the browser, because the client
+// hydrates asynchronously and a score built from half-loaded stores is not one to file on.
+
+export type ComplianceStatus =
+  | 'satisfied' | 'partial' | 'expiring' | 'missing' | 'not_applicable';
+
+export type EvidenceType =
+  | 'document' | 'certification' | 'screening' | 'training' | 'inspection' | 'drill'
+  | 'temp_log' | 'pool_log' | 'water_sample' | 'asset_expiry' | 'plan_section'
+  | 'attestation' | 'roster' | 'manual';
+
+export type PlanSectionStatus = 'not_started' | 'drafted' | 'complete' | 'not_applicable';
+
+export interface ComplianceProfile {
+  id: string;
+  code: string;
+  name: string;
+  jurisdictionLevel: 'state' | 'county' | 'city' | 'accreditor' | 'insurer' | 'grant';
+  jurisdictionCode: string | null;
+  reader: 'lhd' | 'aca' | 'insurer' | 'grant' | 'internal';
+  description: string | null;
+  sourceUrl: string | null;
+  sortOrder: number;
+}
+
+export interface ComplianceRequirement {
+  id: string;
+  profileId: string;
+  reqCode: string;
+  label: string;
+  summary: string | null;
+  category: string;
+  evidenceType: EvidenceType;
+  evidenceHint: string | null;
+  frequency: string | null;
+  /** {} means it always applies; otherwise every key must match the camp's setup answers. */
+  appliesWhen: Record<string, string>;
+  citation: string | null;
+  citationUrl: string | null;
+  /**
+   * Regulatory wording is only ever shown when this is 'verified' and a source URL exists.
+   * The product does not present unconfirmed rule text as fact.
+   */
+  verifyStatus: 'verified' | 'needs_verification';
+  sortOrder: number;
+}
+
+export interface RequirementStatus {
+  requirementId: string;
+  status: ComplianceStatus;
+  /** What the evaluator found: counts, dates, what is missing. Drives the "why" in the UI. */
+  detail: Record<string, unknown>;
+  dueOn: string | null;
+  assignedTo: string | null;
+  naReason: string | null;
+  computedAt: string;
+}
+
+export interface ComplianceDocument {
+  id: string;
+  campId: string;
+  seasonId: string | null;
+  title: string;
+  docType: string | null;
+  bucketPath: string;
+  mime: string | null;
+  sizeBytes: number | null;
+  expiresOn: string | null;
+  uploadedBy: string | null;
+  uploaderName: string | null;
+  createdAt: string;
+  /** Requirement ids this document has been linked to. */
+  requirementIds: string[];
+}
+
+export interface CompliancePlanSection {
+  id: string;
+  campId: string;
+  seasonId: string;
+  sectionCode: string;
+  category: string;
+  title: string;
+  body: string | null;
+  /** DOH-2040 asks which page of the camp's plan covers each component. */
+  pageRef: string | null;
+  status: PlanSectionStatus;
+  naReason: string | null;
+  sortOrder: number;
+  updatedAt: string;
+}
+
+/** The applicability interview. Keys match ComplianceRequirement.appliesWhen. */
+export type ComplianceAnswers = Record<string, string>;

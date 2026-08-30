@@ -29,7 +29,12 @@ export function auditRecordsCoverage(
   const seen = new Map<string, number>();
 
   for (const work of byAuthority.values()) {
-    for (const bucket of [work.records, work.documents, work.plan, work.unanswered, work.notApplicable]) {
+    // Every bucket, or the audit reports a requirement missing that is on screen. `forms` was
+    // added after this list and left out of it, which is exactly the failure this check exists
+    // to catch -- it caught it. Adding a bucket to AuthorityWork means adding it here.
+    for (const bucket of [
+      work.records, work.forms, work.documents, work.plan, work.unanswered, work.notApplicable,
+    ]) {
       for (const r of bucket) seen.set(r.id, (seen.get(r.id) ?? 0) + 1);
     }
   }

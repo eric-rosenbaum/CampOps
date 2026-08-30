@@ -1662,7 +1662,7 @@ export interface ComplianceFormQuestion {
   groupLabel: string;
   label: string;
   helpText: string | null;
-  answerKind: 'text' | 'longtext' | 'integer' | 'date' | 'bool' | 'choice';
+  answerKind: 'text' | 'longtext' | 'integer' | 'date' | 'bool' | 'choice' | 'multi';
   choices: { value: string; label: string }[] | null;
   renders: Record<string, unknown>[];
   /** Only asked once this other question is answered. */

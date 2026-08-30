@@ -140,7 +140,35 @@ function QuestionField({ question: q, value, disabled, onSave }: {
       )}
 
       <div className="mt-1.5 max-w-lg">
-        {q.answerKind === 'longtext' ? (
+        {q.answerKind === 'multi' ? (
+          /* The grid the form prints, in the order it prints it. Twenty-three ticks in one
+             pass beats twenty-three yes/no prompts down a page. */
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 max-w-2xl">
+            {(q.choices ?? []).map((c) => {
+              const picked = draft.split(',').filter(Boolean);
+              const on = picked.includes(c.value);
+              return (
+                <label key={c.value}
+                  className={`flex items-center gap-2 text-[12.5px] cursor-pointer ${disabled ? 'opacity-60' : ''}`}>
+                  <input
+                    type="checkbox" checked={on} disabled={disabled}
+                    onChange={() => {
+                      const next = on ? picked.filter((v) => v !== c.value) : [...picked, c.value];
+                      // Kept in the catalog's own order so the stored value does not depend on
+                      // the order somebody happened to click.
+                      const ordered = (q.choices ?? [])
+                        .map((x) => x.value).filter((v) => next.includes(v)).join(',');
+                      setDraft(ordered);
+                      onSave(ordered);
+                    }}
+                    className="w-3.5 h-3.5 accent-forest flex-shrink-0"
+                  />
+                  <span className="text-ink-soft">{c.label}</span>
+                </label>
+              );
+            })}
+          </div>
+        ) : q.answerKind === 'longtext' ? (
           <textarea rows={3} value={draft} disabled={disabled}
             onChange={(e) => setDraft(e.target.value)} onBlur={commit}
             className={`${INPUT} resize-y leading-relaxed`} />

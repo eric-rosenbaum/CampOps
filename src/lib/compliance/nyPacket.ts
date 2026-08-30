@@ -726,6 +726,17 @@ export async function generateForm(
  * would report a form we have all but finished as barely started, because on the checklist forms
  * half of every row belongs to the reviewer.
  */
+/**
+ * How many cells on this form are the camp's to fill.
+ *
+ * Exported because the form detail page states it out loud. "This form has 280 cells, 240 of
+ * them are the health department's" is the sentence that stops a director reading a low
+ * percentage as the product failing them.
+ */
+export function campOwnedCount(form: PacketForm): number {
+  return form.map.fields.filter((f) => !isReviewerOwned(f.key, f.disabled)).length;
+}
+
 export function coverage(
   form: PacketForm, camp: PacketCamp, sections: CompliancePlanSection[],
   answers: ComplianceAnswers = {},

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, FileText, Loader2, AlertTriangle, FolderDown } from 'lucide-react';
+import { Download, FileText, Loader2, AlertTriangle, FolderDown, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useComplianceStore, type AuthoritySummary } from '@/store/complianceStore';
 import { useCampStore } from '@/store/campStore';
@@ -8,8 +8,11 @@ import { useSafetyStore } from '@/store/safetyStore';
 import { useAuth } from '@/lib/auth';
 import { dbRecordComplianceExport } from '@/lib/complianceDb';
 import {
-  NY_FORMS, generateForm, coverage, packetRoster, type PacketCamp, type PacketForm,
+  NY_FORMS, generateForm, coverage, campOwnedCount, packetRoster,
+  type PacketCamp, type PacketForm,
 } from '@/lib/compliance/nyPacket';
+import { doh367Readiness, type FormReadiness, type FormPart } from '@/lib/compliance/formReadiness';
+import { FormDetail } from './FormDetail';
 import {
   exportCompliancePacket, type ExportStatus, type EvidenceFailure,
 } from '@/lib/compliance/exportPacket';
@@ -37,7 +40,7 @@ const FORM_GAP: Record<string, string> = {
   'DOH-2286': 'Fills from your pool and beach safety plan, the same way DOH-2040 fills from your camp plan. Write those sections and this completes itself.',
 };
 
-export function FormsPanel() {
+export function FormsPanel({ onGoToTab }: { onGoToTab?: (tab: 'records' | 'plan' | 'documents') => void }) {
   const {
     planSections, campId, seasonId, requirements, enabledProfileIds,
     documents, statusFor, enabledProfiles, openDocument, answers,
@@ -49,6 +52,26 @@ export function FormsPanel() {
   const safetyStaff = useSafetyStore((s) => s.staff);
   const safetyCerts = useSafetyStore((s) => s.certifications);
   const authorities = activeAuthorities();
+  const [openForm, setOpenForm] = useState<string | null>(null);
+
+  /**
+   * Readiness for the forms that have a detail page.
+   *
+   * Only DOH-367 so far, deliberately: a form is worth describing block by block only once we
+   * can take it all the way to ready, and half-describing the others would be the same
+   * "mostly filled" problem one level up.
+   */
+  function readinessFor(form: PacketForm): FormReadiness | null {
+    if (form.code !== 'DOH-367') return null;
+    const ours = form.map.fields.length;
+    const pct = coverage(form, camp, planSections, answers, planRowKeys(), formQuestions, formAnswers, sessionCapacity);
+    return doh367Readiness({
+      camp, seasonName: season?.name ?? null, questions: formQuestions, answers: formAnswers,
+      sessions: sessionCapacity, planSections,
+      ours: campOwnedCount(form), filled: Math.round((pct / 100) * campOwnedCount(form)),
+      notOurs: ours - campOwnedCount(form),
+    });
+  }
   const { currentUser } = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +105,29 @@ export function FormsPanel() {
     // background. Both read the roster from here, in one fixed order.
     staff: packetRoster(safetyStaff, safetyCerts),
   };
+
+  /**
+   * Open the filled form in a tab instead of saving it.
+   *
+   * Checking should not leave a trail of downloads in someone's folder. A director will look at
+   * this several times before they are happy with it, and each look should cost nothing.
+   */
+  async function preview(form: PacketForm) {
+    setBusy(`${form.code}-preview`);
+    setError(null);
+    try {
+      const bytes = await generateForm(
+        form, camp, planSections, answers, planRowKeys(), {}, formQuestions, formAnswers, sessionCapacity,
+      );
+      const url = URL.createObjectURL(new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' }));
+      window.open(url, '_blank', 'noopener');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not build the preview.');
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function download(form: PacketForm, filled: boolean) {
     setBusy(`${form.code}-${filled}`);
@@ -198,6 +244,26 @@ export function FormsPanel() {
       setProgress(null);
     } finally {
       setBusy(null);
+    }
+  }
+
+  const opened = openForm ? NY_FORMS.find((f) => f.code === openForm) ?? null : null;
+  if (opened) {
+    const r = readinessFor(opened);
+    if (r) {
+      return (
+        <FormDetail
+          form={opened}
+          readiness={r}
+          busy={busy !== null}
+          onBack={() => setOpenForm(null)}
+          onPreview={() => void preview(opened)}
+          onDownload={() => void download(opened, true)}
+          onGoTo={(part: FormPart) => {
+            if (part.goTo && 'tab' in part.goTo) onGoToTab?.(part.goTo.tab);
+          }}
+        />
+      );
     }
   }
 
@@ -318,17 +384,38 @@ export function FormsPanel() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5 mt-3">
-                <div className="h-1.5 flex-1 rounded-full bg-cream-dark overflow-hidden">
-                  <div className={`h-full rounded-full ${pct >= 60 ? 'bg-sage' : 'bg-amber'}`} style={{ width: `${pct}%` }} />
+              {/* A form with a detail page says whether it is ready and offers the way in. The
+                  rest still show a percentage, until each gets the same treatment. */}
+              {readinessFor(form) ? (
+                <div className="flex items-center gap-3 mt-3 flex-wrap">
+                  <span className={`px-2.5 py-1 rounded-btn text-[11.5px] font-semibold ${
+                    readinessFor(form)!.ready
+                      ? 'bg-green-muted-bg text-green-muted-text'
+                      : 'bg-amber-bg text-amber-text'}`}>
+                    {readinessFor(form)!.ready
+                      ? 'Ready to file'
+                      : `${readinessFor(form)!.outstanding} thing${readinessFor(form)!.outstanding === 1 ? '' : 's'} still to do`}
+                  </span>
+                  <button onClick={() => setOpenForm(form.code)}
+                    className="text-[12.5px] text-sage hover:text-forest inline-flex items-center gap-1">
+                    See what fills it and from where <ArrowRight className="w-3 h-3" />
+                  </button>
                 </div>
-                <span className="font-mono text-[11.5px] text-ink-soft">{pct}% of your fields</span>
-              </div>
-              {pct < 60 && (
-                <p className="text-[11.5px] text-amber-text mt-1.5 inline-flex items-start gap-1.5">
-                  <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                  {FORM_GAP[form.code] ?? 'Most of this form still needs completing by hand. We fill what the platform holds.'}
-                </p>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2.5 mt-3">
+                    <div className="h-1.5 flex-1 rounded-full bg-cream-dark overflow-hidden">
+                      <div className={`h-full rounded-full ${pct >= 60 ? 'bg-sage' : 'bg-amber'}`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="font-mono text-[11.5px] text-ink-soft">{pct}% of your fields</span>
+                  </div>
+                  {pct < 60 && (
+                    <p className="text-[11.5px] text-amber-text mt-1.5 inline-flex items-start gap-1.5">
+                      <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      {FORM_GAP[form.code] ?? 'Most of this form still needs completing by hand. We fill what the platform holds.'}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           );

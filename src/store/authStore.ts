@@ -189,6 +189,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: {
+        // Without this, Supabase builds the email's link from the project's Site URL, which is
+        // per-environment config we can silently get wrong (staging's still points at localhost).
+        // Every other flow passes its own origin; this one used to be the exception.
+        emailRedirectTo: `${window.location.origin}/login`,
         shouldCreateUser: true,
         // Read by the handle_new_user trigger to populate profiles.full_name.
         ...(fullName ? { data: { full_name: fullName.trim() } } : {}),

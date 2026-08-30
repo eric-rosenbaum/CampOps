@@ -61,7 +61,16 @@ export function answerValues(formCode: string, questions: ComplianceFormQuestion
           // A tick is drawn only for the value it belongs to. Booleans arrive as the strings
           // "true" and "false", so a false answer ticks nothing, which is correct: these forms
           // mostly have no "no" box and a blank means the same thing.
-          if (r.when !== undefined && String(raw) === r.when) values[r.field] = true;
+          //
+          // A multi answer is a list, and each render is one box in the grid, so the test is
+          // membership rather than equality. This is what lets the twenty-three-box activity
+          // grid be one question instead of twenty-three.
+          if (r.when === undefined) break;
+          if (q.answerKind === 'multi') {
+            if (raw.split(',').includes(r.when)) values[r.field] = true;
+          } else if (String(raw) === r.when) {
+            values[r.field] = true;
+          }
           break;
       }
     }

@@ -53,7 +53,10 @@ const GROUP: Record<GroupKey, { label: string; blurb: string; icon: typeof Clipb
   },
 };
 
-export function RecordsPanel({ onGoToTab }: { onGoToTab: (tab: 'plan' | 'documents') => void }) {
+export function RecordsPanel({ onGoToTab, onOpenSetup }: {
+  onGoToTab: (tab: 'plan' | 'documents') => void;
+  onOpenSetup?: () => void;
+}) {
   const st = useComplianceStore();
   const summaries = st.activeAuthorities();
 
@@ -109,7 +112,7 @@ export function RecordsPanel({ onGoToTab }: { onGoToTab: (tab: 'plan' | 'documen
 
       {/* Ahead of the reviewer list, because these questions block form fields across several
           reviewers at once and there is no useful way to file them under one of them. */}
-      <DetailsPanel />
+      <DetailsPanel onOpenSetup={onOpenSetup} />
 
       {/* The camper capacity table. Same reason it sits above the reviewer list: it is one
           block of the county's own form, not evidence filed against a requirement. */}
@@ -125,8 +128,14 @@ export function RecordsPanel({ onGoToTab }: { onGoToTab: (tab: 'plan' | 'documen
       <div className="bg-white rounded-card border border-border px-5 py-4">
         <h3 className="text-[15px] font-semibold text-forest">What goes into the documents you file</h3>
         <p className="text-[12.5px] text-ink-soft mt-1.5 leading-relaxed max-w-[76ch]">
-          Everything on this page feeds a document you are filing, and every item says which one.
-          Fill something in here and it lands on that form under Hand-off.
+          This page is where the answers live. Everything here feeds a document you are filing,
+          every item says which one, and editing it here is what changes what prints. Your staff
+          records, your sessions and your camp details are all kept on this page.
+        </p>
+        <p className="text-[12px] text-ink-faint mt-2 leading-relaxed max-w-[76ch]">
+          Only obligations that appear on a document are shown. Your camp is also under rules
+          that are not printed on any form, which a reviewer checks on site. Those are held
+          separately, with the regulation each one comes from, and are not part of this page.
         </p>
       </div>
 
@@ -248,23 +257,6 @@ function AuthorityBlock({ summary, isOpen, onToggle, onGoToTab }: {
               </section>
             );
           })}
-          {(work.atInspection > 0 || work.onParkedDocuments > 0) && (
-            <div className="rounded-card border border-border bg-white px-4 py-3">
-              <p className="text-[11.5px] text-ink-soft leading-relaxed max-w-[74ch]">
-                <span className="font-semibold text-forest">Not on this page.</span>{' '}
-                {work.atInspection > 0 && (
-                  <>
-                    {work.atInspection} of this reviewer's rules are not printed on any form. The
-                    county checks those by walking the property and reading your logs, so they
-                    appear once the rest of the module is switched back on rather than here.{' '}
-                  </>
-                )}
-                {work.onParkedDocuments > 0 && (
-                  <>{work.onParkedDocuments} belong to documents that are currently switched off.</>
-                )}
-              </p>
-            </div>
-          )}
         </div>
       )}
     </div>

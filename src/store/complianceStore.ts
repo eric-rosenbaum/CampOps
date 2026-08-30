@@ -140,6 +140,15 @@ interface ComplianceState {
    */
   inScope: (formCodes: string[]) => 'on_a_form' | 'at_inspection' | 'other_document';
   /**
+   * The requirements this module is currently accounting for.
+   *
+   * Everything that counts anything reads this, so the header, the overview and the list can
+   * never disagree. The module shows form obligations only: a rule that is on no document is a
+   * real legal duty but a different kind of claim, and mixing the two left a camp with no way
+   * to tell which was which.
+   */
+  scopedRequirements: () => ComplianceRequirement[];
+  /**
    * When a document is owed, and what that date is measured from.
    *
    * The deadline lives on the requirement that asks for the document, so this walks the link
@@ -182,10 +191,6 @@ export interface AuthorityWork {
   unanswered: ComplianceRequirement[];
   /** Ruled out, kept visible because an inspector will ask why. */
   notApplicable: ComplianceRequirement[];
-  /** Real duties this party enforces that are on no form; the county checks them on site. */
-  atInspection: number;
-  /** Duties that belong to a document not currently being shown. */
-  onParkedDocuments: number;
 }
 
 /**
@@ -342,7 +347,8 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
   statusFor: (id) => get().statuses.find((s) => s.requirementId === id),
 
   requirementsForProfile: (profileId) =>
-    get().requirements.filter((r) => r.profileId === profileId).sort((a, b) => a.sortOrder - b.sortOrder),
+    get().scopedRequirements().filter((r) => r.profileId === profileId)
+      .sort((a, b) => a.sortOrder - b.sortOrder),
 
   enabledProfiles: () => {
     const { profiles, enabledProfileIds } = get();
@@ -397,9 +403,7 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
   /** Everything still needing attention, worst first, then by deadline. */
   actionItems: () => {
     const st = get();
-    const enabled = new Set(st.enabledProfileIds);
-    return st.requirements
-      .filter((r) => enabled.has(r.profileId))
+    return st.scopedRequirements()
       .map((r) => ({ requirement: r, status: st.statusFor(r.id) }))
       .filter((x): x is { requirement: ComplianceRequirement; status: RequirementStatus } =>
         !!x.status && x.status.status !== 'satisfied' && x.status.status !== 'not_applicable')
@@ -420,9 +424,7 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
       .filter((a) => enabled.has(a.profileId))
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((authority) => {
-        const reqs = st.requirements.filter(
-          (r) => r.authorityId === authority.id && enabled.has(r.profileId),
-        );
+        const reqs = st.scopedRequirements().filter((r) => r.authorityId === authority.id);
         let met = 0, outstanding = 0, notApplicable = 0, nextDue: string | null = null;
         for (const r of reqs) {
           const s = st.statusFor(r.id);
@@ -481,6 +483,14 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
       .map((f) => f.designation ?? f.title),
   ),
 
+  scopedRequirements: () => {
+    const st = get();
+    const enabled = new Set(st.enabledProfileIds);
+    return st.requirements.filter(
+      (r) => enabled.has(r.profileId) && st.inScope(r.formCodes) === 'on_a_form',
+    );
+  },
+
   inScope: (formCodes) => {
     if (formCodes.length === 0) return 'at_inspection';
     const active = get().activeFormCodes();
@@ -499,19 +509,11 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
 
   workForAuthority: (authorityId) => {
     const st = get();
-    const enabled = new Set(st.enabledProfileIds);
     const work: AuthorityWork = {
       records: [], documents: [], plan: [], unanswered: [], notApplicable: [],
-      atInspection: 0, onParkedDocuments: 0,
     };
-    for (const r of st.requirements) {
-      if (r.authorityId !== authorityId || !enabled.has(r.profileId)) continue;
-      // Only what feeds a document we are showing. A rule tagged with no document is a real
-      // duty checked at inspection, and a rule tagged with a parked document belongs with that
-      // document; neither is hidden, both are counted and reported by the page.
-      const scope = st.inScope(r.formCodes);
-      if (scope === 'at_inspection') { work.atInspection += 1; continue; }
-      if (scope === 'other_document') { work.onParkedDocuments += 1; continue; }
+    for (const r of st.scopedRequirements()) {
+      if (r.authorityId !== authorityId) continue;
       const s = st.statusFor(r.id);
       // Not yet evaluated. It still belongs on the page: a requirement that vanishes because a
       // recompute has not run is exactly the kind of gap this module cannot have. Documents is

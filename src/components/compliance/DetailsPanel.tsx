@@ -18,7 +18,7 @@ import type { ComplianceFormQuestion } from '@/lib/types';
  * director can finish one group in a few minutes and come back.
  */
 
-export function DetailsPanel() {
+export function DetailsPanel({ onOpenSetup }: { onOpenSetup?: () => void }) {
   const st = useComplianceStore();
   const { currentUser, can } = useAuth();
   const questions = useComplianceStore((s) => s.formQuestions);
@@ -105,6 +105,7 @@ export function DetailsPanel() {
                     disabled={!can('manageSafetyItems')}
                     onSave={(v) => st.saveFormAnswer(q.questionKey, v, currentUser.name || null)}
                     setupAnswers={setupAnswers}
+                    onOpenSetup={onOpenSetup}
                   />
                 ))}
               </div>
@@ -119,12 +120,13 @@ export function DetailsPanel() {
 const INPUT =
   'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-1.5 text-ink focus:outline-none focus:border-sage';
 
-function QuestionField({ question: q, value, disabled, onSave, setupAnswers }: {
+function QuestionField({ question: q, value, disabled, onSave, setupAnswers, onOpenSetup }: {
   question: ComplianceFormQuestion;
   value: string;
   disabled: boolean;
   onSave: (value: string) => void;
   setupAnswers: Record<string, string>;
+  onOpenSetup?: () => void;
 }) {
   const setupSaysYes = (key: string) =>
     (setupAnswers[key] ?? '').toLowerCase().replace(/^"|"$/g, '') === 'true';
@@ -176,7 +178,15 @@ function QuestionField({ question: q, value, disabled, onSave, setupAnswers }: {
                   <span className="text-ink-soft">
                     {c.label}
                     {locked && (
-                      <span className="block text-[10.5px] text-ink-faint">from setup</span>
+                      /* Naming the question and linking to it, because "from setup" on its own
+                         tells a camp the box is not theirs to click without telling them where
+                         it is theirs to change. */
+                      <button
+                        onClick={(e) => { e.preventDefault(); onOpenSetup?.(); }}
+                        className="block text-[10.5px] text-sage hover:text-forest text-left"
+                      >
+                        {c.fromLabel ?? 'Set in setup'} · change in setup
+                      </button>
                     )}
                   </span>
                 </label>

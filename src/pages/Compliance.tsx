@@ -167,7 +167,7 @@ export function Compliance() {
         {tab === 'reviewers' && (
           <ReviewersPanel onUpload={(t) => { setUploadTitle(t); setTab('documents'); }} />
         )}
-        {tab === 'records'   && <RecordsPanel onGoToTab={setTab} />}
+        {tab === 'records'   && <RecordsPanel onGoToTab={setTab} onOpenSetup={() => setTab('setup')} />}
         {tab === 'export'    && <FormsPanel onGoToTab={setTab} />}
 
         {/* Reached from Records, not the tab bar. Each is one job, not a place to browse. */}

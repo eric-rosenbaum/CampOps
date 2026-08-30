@@ -215,7 +215,11 @@ export function doh367Readiness(input: ReadinessInput): FormReadiness {
     },
   });
 
-  const opQs = groupProgress(questions, answers, 'operator');
+  // The typed signature is a convenience, not a requirement: left blank the form prints an
+  // empty rule for a wet signature, which is how this gets filed. Counting it would leave the
+  // block reading "to do" forever for a camp that has done everything asked of it.
+  const NOT_NEEDED_TO_PRINT = ['ny.operator.signature_text'];
+  const opQs = groupProgress(questions, answers, 'operator', NOT_NEEDED_TO_PRINT);
   parts.push({
     label: 'Operator name and title',
     source: 'Who signs the permit',
@@ -224,7 +228,7 @@ export function doh367Readiness(input: ReadinessInput): FormReadiness {
       : 'The legal permit holder, which is often not the camp director.',
     goTo: {
       tab: 'records', label: 'Say who signs', group: 'operator',
-      highlight: unansweredIn(questions, answers, 'operator'),
+      highlight: unansweredIn(questions, answers, 'operator', NOT_NEEDED_TO_PRINT),
     },
   });
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Check, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/shared/Button';
 import { useComplianceStore } from '@/store/complianceStore';
 import { useAuth } from '@/lib/auth';
 import { applicableQuestions } from '@/lib/compliance/formAnswers';
@@ -18,10 +19,12 @@ import type { ComplianceFormQuestion } from '@/lib/types';
  * director can finish one group in a few minutes and come back.
  */
 
-export function DetailsPanel({ onOpenSetup, focus }: {
+export function DetailsPanel({ onOpenSetup, focus, onOpenForm }: {
   onOpenSetup?: () => void;
   /** Sent by a "go and do this" link: open this group and point at these questions. */
-  focus?: { group?: string; highlight?: string[]; from?: string } | null;
+  focus?: { group?: string; highlight?: string[]; from?: string; formCode?: string } | null;
+  /** Takes the camp back to the form that sent them here. */
+  onOpenForm?: (formCode: string) => void;
 }) {
   const st = useComplianceStore();
   const { currentUser, can } = useAuth();
@@ -48,6 +51,9 @@ export function DetailsPanel({ onOpenSetup, focus }: {
       ...g,
       questions: g.questions.sort((a, b) => a.sortOrder - b.sortOrder),
       answered: g.questions.filter((q) => (answers[q.questionKey] ?? '') !== '').length,
+      // Only worth saying inside a group that also holds required questions. A group where
+      // nothing is required is not a group of optional extras, it is a set of plain questions.
+      hasRequired: g.questions.some((q) => q.required),
     }));
   }, [asked, answers]);
 
@@ -56,6 +62,9 @@ export function DetailsPanel({ onOpenSetup, focus }: {
   // thing the link was about rather than wherever the camp happened to be.
   const openGroup = focus?.group ?? open;
   const highlight = new Set(focus?.highlight ?? []);
+  // How much of what the form was waiting on is still blank, and where to go when it is not.
+  const stillOpen = [...highlight].filter((k) => (answers[k] ?? '') === '').length;
+  const backTo = onOpenForm ? focus?.formCode ?? null : null;
 
   useEffect(() => {
     if (!focus?.group) return;
@@ -93,12 +102,23 @@ export function DetailsPanel({ onOpenSetup, focus }: {
       {/* Arriving from a form. Say what sent you here and how many answers it is waiting on, so
           the amber rings below read as an instruction rather than as decoration. */}
       {focus?.from && highlight.size > 0 && (
-        <div className="px-5 py-3 bg-amber-bg/50 border-b border-amber-border/50 flex items-start gap-2">
-          <ArrowLeft className="w-3.5 h-3.5 text-amber-text mt-0.5 flex-shrink-0" />
-          <p className="text-[12px] text-ink leading-relaxed">
-            From <span className="font-medium">{focus.from}</span>. It is waiting on{' '}
-            {highlight.size === 1 ? 'the answer' : `the ${highlight.size} answers`} outlined below.
+        <div className="px-5 py-3 bg-amber-bg/50 border-b border-amber-border/50 flex items-center gap-3">
+          <p className="text-[12px] text-ink leading-relaxed flex-1 min-w-0">
+            From <span className="font-medium">{focus.from}</span>.{' '}
+            {stillOpen === 0
+              ? 'All answered.'
+              : `It is waiting on ${stillOpen === highlight.size ? '' : `${stillOpen} more of `}${
+                  highlight.size === 1 ? 'the answer' : `the ${highlight.size} answers`
+                } outlined below.`}
           </p>
+          {backTo && (
+            <button
+              onClick={() => onOpenForm?.(backTo)}
+              className="flex-shrink-0 inline-flex items-center gap-1.5 text-[12px] font-medium text-forest hover:text-forest-dark"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to {backTo}
+            </button>
+          )}
         </div>
       )}
 
@@ -132,6 +152,7 @@ export function DetailsPanel({ onOpenSetup, focus }: {
                          : undefined}>
                   <QuestionField
                     question={q}
+                    showOptional={g.hasRequired && !q.required}
                     value={answers[q.questionKey] ?? ''}
                     disabled={!can('manageSafetyItems')}
                     onSave={(v) => st.saveFormAnswer(q.questionKey, v, currentUser.name || null)}
@@ -141,6 +162,23 @@ export function DetailsPanel({ onOpenSetup, focus }: {
                   />
                   </div>
                 ))}
+
+                {/* The way back, at the end of the last answer rather than at the top of the
+                    page. Answers commit when the box loses focus, and pressing this takes the
+                    focus off the box, so there is nothing to save first. */}
+                {backTo && focus?.group === g.key && (
+                  <div className="pt-3 border-t border-cream-dark flex items-center gap-3">
+                    <p className="text-[11.5px] text-ink-faint flex-1 min-w-0">
+                      {stillOpen === 0
+                        ? `Everything ${backTo} was waiting on is answered.`
+                        : `${stillOpen} still blank. Each answer saves when you leave the box.`}
+                    </p>
+                    <Button size="sm" variant={stillOpen === 0 ? 'primary' : 'ghost'}
+                            onClick={() => onOpenForm?.(backTo)}>
+                      <ArrowLeft className="w-3.5 h-3.5" /> Back to {backTo}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -153,8 +191,9 @@ export function DetailsPanel({ onOpenSetup, focus }: {
 const INPUT =
   'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-1.5 text-ink focus:outline-none focus:border-sage';
 
-function QuestionField({ question: q, value, disabled, onSave, setupAnswers, onOpenSetup, activeForms }: {
+function QuestionField({ question: q, value, disabled, onSave, setupAnswers, onOpenSetup, activeForms, showOptional }: {
   question: ComplianceFormQuestion;
+  showOptional?: boolean;
   value: string;
   disabled: boolean;
   onSave: (value: string) => void;
@@ -182,6 +221,7 @@ function QuestionField({ question: q, value, disabled, onSave, setupAnswers, onO
       <label className="block text-[12.5px] font-medium text-ink">
         {q.label}
         {q.required && <span className="text-ink-faint font-normal"> · required</span>}
+        {showOptional && <span className="text-ink-faint font-normal"> · optional</span>}
       </label>
       {/* Which form this answer lands on. Whatever route a camp took to get here, they should
           not have to work out why the question is being asked. */}

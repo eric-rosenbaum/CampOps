@@ -56,7 +56,7 @@ const GROUP: Record<GroupKey, { label: string; blurb: string; icon: typeof Clipb
 export function RecordsPanel({ onGoToTab, onOpenSetup, focus, onOpenForm }: {
   onGoToTab: (tab: 'plan' | 'documents') => void;
   onOpenSetup?: () => void;
-  focus?: { group?: string; highlight?: string[] } | null;
+  focus?: { group?: string; highlight?: string[]; from?: string; formCode?: string } | null;
   onOpenForm?: (formCode: string) => void;
 }) {
   const st = useComplianceStore();
@@ -114,7 +114,7 @@ export function RecordsPanel({ onGoToTab, onOpenSetup, focus, onOpenForm }: {
 
       {/* Ahead of the reviewer list, because these questions block form fields across several
           reviewers at once and there is no useful way to file them under one of them. */}
-      <DetailsPanel onOpenSetup={onOpenSetup} focus={focus} />
+      <DetailsPanel onOpenSetup={onOpenSetup} focus={focus} onOpenForm={onOpenForm} />
 
       {/* The camper capacity table. Same reason it sits above the reviewer list: it is one
           block of the county's own form, not evidence filed against a requirement. */}

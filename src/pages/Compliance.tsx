@@ -66,7 +66,7 @@ export function Compliance() {
    * on another. Cleared on the next deliberate tab change, so the highlight is a hand pointing
    * at something once rather than a state the camp has to dismiss.
    */
-  const [focus, setFocus] = useState<{ group?: string; highlight?: string[]; from?: string } | null>(null);
+  const [focus, setFocus] = useState<{ group?: string; highlight?: string[]; from?: string; formCode?: string } | null>(null);
   /** Set when something elsewhere asks for a specific form's detail page. */
   const [openFormCode, setOpenFormCode] = useState<string | null>(null);
 

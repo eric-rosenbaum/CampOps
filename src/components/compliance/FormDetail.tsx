@@ -97,12 +97,17 @@ export function FormDetail({ form, readiness, busy, onBack, onPreview, onDownloa
           ))}
         </div>
 
-        {/* The honest denominator, at the bottom where it belongs rather than as a headline. */}
+        {/*
+          Was "of the 280 cells that are yours, we fill 56", which read as a shortfall on a form
+          that is ready to file. Most of those cells are the activity grid and the capacity
+          table, where an empty box is the answer: nothing offered, nobody in that band. Counting
+          them as unfilled measured the form, not the camp.
+        */}
         <div className="px-5 py-3 bg-cream/40 border-t border-cream-dark">
           <p className="text-[11.5px] text-ink-soft leading-relaxed">
-            This form has {readiness.ours + readiness.notOurs} cells. {readiness.notOurs} of them
-            belong to the health department or have no box to fill. Of the {readiness.ours} that
-            are yours, we fill {readiness.filled}.
+            This form has {readiness.ours + readiness.notOurs} boxes, most of them the activity
+            grid and the camper capacity table. A box left blank there is an answer — nothing
+            offered, nobody in that age band — so the list above is the accounting that matters.
           </p>
         </div>
       </div>

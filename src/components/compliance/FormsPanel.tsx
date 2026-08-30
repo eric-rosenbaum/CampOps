@@ -44,7 +44,7 @@ const FORM_GAP: Record<string, string> = {
 export function FormsPanel({ onGoToTab, onFocus, openFormCode, onFormOpened }: {
   onGoToTab?: (tab: 'records' | 'plan' | 'documents') => void;
   /** Sent when a part links somewhere specific, so the destination can point at it. */
-  onFocus?: (focus: { group?: string; highlight?: string[]; from?: string }) => void;
+  onFocus?: (focus: { group?: string; highlight?: string[]; from?: string; formCode?: string }) => void;
   /** A form another page asked us to open. */
   openFormCode?: string | null;
   onFormOpened?: () => void;
@@ -285,7 +285,7 @@ export function FormsPanel({ onGoToTab, onFocus, openFormCode, onFormOpened }: {
             // destination can open that group and point at them. Landing a camp on the right
             // tab and leaving them to hunt is barely better than not linking at all.
             if (group || highlight?.length) {
-              onFocus?.({ group, highlight, from: `${opened.code} \u2014 ${part.label}` });
+              onFocus?.({ group, highlight, from: `${opened.code} \u2014 ${part.label}`, formCode: opened.code });
             }
             else onGoToTab?.(tab);
 

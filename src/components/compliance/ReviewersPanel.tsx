@@ -42,11 +42,23 @@ export function ReviewersPanel({ onUpload }: { onUpload: (formTitle: string) => 
     <div className="space-y-3">
       <div className="bg-white rounded-card border border-border px-5 py-4">
         <h3 className="text-[15px] font-semibold text-forest">Who reviews your camp</h3>
+        {/* Worded from what is actually on screen. The line about parties who never visit only
+            makes sense when more than one is listed. */}
         <p className="text-[12.5px] text-ink-soft mt-1.5 leading-relaxed max-w-[75ch]">
-          Every party that will ask you for something this season, and the official form each one
-          uses. Your county health department is the one that comes to the property; the rest
-          receive paperwork, which is exactly why they are easy to forget. Anything we cannot
-          publish for you says who issues it and takes your copy.
+          {summaries.length > 1 ? (
+            <>
+              Every party that will ask you for something this season, and the official form each
+              one uses. Your county health department is the one that comes to the property; the
+              rest receive paperwork, which is exactly why they are easy to forget. Anything we
+              cannot publish for you says who issues it and takes your copy.
+            </>
+          ) : (
+            <>
+              Who will ask you for something this season, and the official form they use. Your
+              county health department holds your permit and is the one that comes to the
+              property. Anything we cannot publish for you says who issues it and takes your copy.
+            </>
+          )}
         </p>
       </div>
 

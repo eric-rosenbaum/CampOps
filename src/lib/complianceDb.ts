@@ -68,6 +68,7 @@ function toAuthorityForm(r: Row): ComplianceAuthorityForm {
     issuedBy: s(r.issued_by), sourceUrl: s(r.source_url),
     obtainNote: s(r.obtain_note), fillable: Boolean(r.fillable),
     campSupplied: Boolean(r.camp_supplied),
+    isActive: r.is_active !== false,
     sortOrder: Number(r.sort_order ?? 0),
   };
 }
@@ -182,7 +183,7 @@ export async function loadCompliance(campId: string, seasonId: string | null): P
     const [prof, auth, authForms, planTpl, formQ, formA, reqs, enabled, stat, docs, links, plan, ans, sess] = await Promise.all([
       supabase.from('compliance_profiles').select('*').eq('is_active', true).order('sort_order'),
       supabase.from('compliance_authorities').select('*').eq('is_active', true).order('sort_order'),
-      supabase.from('compliance_authority_forms').select('*').order('sort_order'),
+      supabase.from('compliance_authority_forms').select('*').eq('is_active', true).order('sort_order'),
       supabase.from('compliance_plan_templates').select('*').order('sort_order'),
       supabase.from('compliance_form_questions').select('*').order('sort_order'),
       seasonId ? supabase.from('camp_form_answers').select('question_key, value').eq('camp_id', campId).eq('season_id', seasonId)

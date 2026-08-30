@@ -124,6 +124,13 @@ interface ComplianceState {
    * the form layer has to guess a row from a title.
    */
   planRowKeys: () => Record<string, string>;
+  /**
+   * Which form codes are in scope right now.
+   *
+   * Read from the catalog rather than the bundled NY_FORMS list, so parking a document is a
+   * data change and not a code change. Everything the app shows or exports is filtered by it.
+   */
+  activeFormCodes: () => Set<string>;
 }
 
 /** An authority plus where this camp stands with it. */
@@ -413,6 +420,12 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
         };
       });
   },
+
+  activeFormCodes: () => new Set(
+    get().authorityForms
+      .filter((f) => f.isActive && f.designation)
+      .map((f) => f.designation as string),
+  ),
 
   planRowKeys: () => Object.fromEntries(
     get().planTemplates

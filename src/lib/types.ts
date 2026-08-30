@@ -1552,6 +1552,8 @@ export interface ComplianceAuthorityForm {
   obtainNote: string | null;
   /** The camp obtains this one itself, so the UI takes an upload rather than only explaining. */
   campSupplied: boolean;
+  /** False parks the document without deleting it. */
+  isActive: boolean;
   fillable: boolean;
   sortOrder: number;
 }

@@ -62,7 +62,13 @@ export function RecordsPanel({ onGoToTab }: { onGoToTab: (tab: 'plan' | 'documen
    * through every branch simply is not rendered and nobody notices until a reviewer does.
    */
   const enabled = new Set(st.enabledProfileIds);
-  const expected = st.requirements.filter((r) => enabled.has(r.profileId));
+  // A requirement belonging to a parked authority is parked with it, not missing. Without this
+  // the audit would report the fire department's one rule as a gap the moment that party is
+  // switched off, which is the opposite of what the check is for.
+  const inScope = new Set(st.authorities.map((a) => a.id));
+  const expected = st.requirements.filter(
+    (r) => enabled.has(r.profileId) && r.authorityId && inScope.has(r.authorityId),
+  );
   const rendered = new Map(summaries.map((s) => [s.authority.id, st.workForAuthority(s.authority.id)]));
   const problems = auditRecordsCoverage(expected, rendered);
   // Closed by default. The county has well over a hundred rows, and opening it on arrival buries

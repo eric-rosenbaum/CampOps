@@ -45,13 +45,16 @@ export function FormsPanel({ onGoToTab }: { onGoToTab?: (tab: 'records' | 'plan'
     planSections, campId, seasonId, requirements, enabledProfileIds,
     documents, statusFor, enabledProfiles, openDocument, answers,
     activeAuthorities, formsForAuthority, planRowKeys, formQuestions, formAnswers,
-    sessionCapacity,
+    sessionCapacity, activeFormCodes,
   } = useComplianceStore();
   const { currentCamp } = useCampStore();
   const season = useChecklistStore((s) => s.season);
   const safetyStaff = useSafetyStore((s) => s.staff);
   const safetyCerts = useSafetyStore((s) => s.certifications);
   const authorities = activeAuthorities();
+  // Only the documents currently in scope. Parking one is a row in the catalog, not an edit here.
+  const inScope = activeFormCodes();
+  const forms = NY_FORMS.filter((f) => inScope.has(f.code));
   const [openForm, setOpenForm] = useState<string | null>(null);
 
   /**
@@ -194,9 +197,9 @@ export function FormsPanel({ onGoToTab }: { onGoToTab?: (tab: 'records' | 'plan'
       // Only the forms this party issues. A party with none gets a packet of records and the
       // written plan, which is the whole of what they asked for.
       const scopedForms = authority
-        ? NY_FORMS.filter((f) => formsForAuthority(authority.authority.id)
+        ? forms.filter((f) => formsForAuthority(authority.authority.id)
             .some((af) => af.designation === f.code))
-        : NY_FORMS;
+        : forms;
 
       // A scoped packet carries only the evidence attached to that party's requirements. The
       // fire department has no business receiving the camp's workers compensation certificate,
@@ -247,7 +250,7 @@ export function FormsPanel({ onGoToTab }: { onGoToTab?: (tab: 'records' | 'plan'
     }
   }
 
-  const opened = openForm ? NY_FORMS.find((f) => f.code === openForm) ?? null : null;
+  const opened = openForm ? forms.find((f) => f.code === openForm) ?? null : null;
   if (opened) {
     const r = readinessFor(opened);
     if (r) {
@@ -354,7 +357,7 @@ export function FormsPanel({ onGoToTab }: { onGoToTab?: (tab: 'records' | 'plan'
       )}
 
       <div className="space-y-2">
-        {NY_FORMS.map((form) => {
+        {forms.map((form) => {
           const pct = coverage(
             form, camp, planSections, answers, planRowKeys(), formQuestions, formAnswers,
             sessionCapacity,

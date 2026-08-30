@@ -171,6 +171,14 @@ function RequirementDetail({ requirement: r, status: st, extraAction }: {
       )}
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-[11.5px] text-ink-faint">
+        {/* Which document this lands on. Nothing in this module should leave a camp guessing
+            whether an item is paperwork they file or something an inspector asks about. */}
+        <span className="inline-flex items-center gap-1.5 text-ink-soft">
+          <FileText className="w-3 h-3" />
+          {r.formCodes.length > 0
+            ? <>Prints on {r.formCodes.join(', ')}</>
+            : <>Not on a form. Checked at inspection.</>}
+        </span>
         {r.frequency && <span>Frequency: {r.frequency.replace(/_/g, ' ')}</span>}
         {st?.dueOn && <span>Due {st.dueOn}</span>}
         {/*

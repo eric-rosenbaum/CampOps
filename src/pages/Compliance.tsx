@@ -61,6 +61,17 @@ export function Compliance() {
 
   const enabled = st.enabledProfiles();
   const items = st.actionItems();
+
+  /**
+   * The written plan only earns a tab when the checklist it fills is in scope.
+   *
+   * The plan is not printed on DOH-367; it travels alongside it, and DOH-2040 is the checklist
+   * that indexes it. With DOH-2040 switched off, ninety-six sections of writing have no
+   * document to land on, and showing them would be asking a camp for work with no destination.
+   */
+  const activeForms = st.activeFormCodes();
+  const planHasADocument = activeForms.has('DOH-2040') || activeForms.has('DOH-2286');
+  const planTabVisible = (t: { id: Tab }) => t.id !== 'plan' || planHasADocument;
   const {
     isSafetyLogInspectionModalOpen, isSafetyAddItemModalOpen, isLogDrillModalOpen,
     isLogTempModalOpen, isSafetyAddStaffModalOpen, isStaffCertModalOpen,
@@ -136,7 +147,7 @@ export function Compliance() {
 
       <div className="bg-paper-raised border-b border-border px-4 sm:px-7 flex-shrink-0 overflow-x-auto no-scrollbar">
         <div className="flex">
-          {TABS.filter((t) => t.id !== 'setup').map((t) => (
+          {TABS.filter((t) => t.id !== 'setup').filter(planTabVisible).map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`-mb-px whitespace-nowrap border-b-[3px] px-4 pb-2.5 pt-3 text-[13px] font-semibold transition-colors ${
                 tab === t.id ? 'border-red text-forest' : 'border-transparent text-ink-soft hover:text-forest'}`}>
@@ -160,7 +171,7 @@ export function Compliance() {
         {tab === 'export'    && <FormsPanel onGoToTab={setTab} />}
 
         {/* Reached from Records, not the tab bar. Each is one job, not a place to browse. */}
-        {tab === 'plan' && <PlanBuilder />}
+        {tab === 'plan' && planHasADocument && <PlanBuilder />}
         {tab === 'documents' && (
           <>
             <BackToRecords onBack={() => setTab(uploadTitle ? 'reviewers' : 'records')}

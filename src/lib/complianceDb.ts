@@ -46,6 +46,7 @@ function toRequirement(r: Row): ComplianceRequirement {
     citation: s(r.citation), citationUrl: s(r.citation_url),
     verifyStatus: r.verify_status as ComplianceRequirement['verifyStatus'],
     holdsPersonalRecords: Boolean(r.holds_personal_records),
+    formCodes: Array.isArray(r.form_codes) ? (r.form_codes as string[]) : [],
     sortOrder: Number(r.sort_order ?? 0),
   };
 }
@@ -81,6 +82,7 @@ function toPlanTemplate(r: Row): CompliancePlanTemplate {
     prompt: s(r.prompt),
     checklist: Array.isArray(r.checklist) ? (r.checklist as string[]) : null,
     formRowKey: s(r.form_row_key),
+    formCodes: Array.isArray(r.form_codes) ? (r.form_codes as string[]) : [],
     sortOrder: Number(r.sort_order ?? 0),
   };
 }

@@ -66,9 +66,15 @@ export function RecordsPanel({ onGoToTab }: { onGoToTab: (tab: 'plan' | 'documen
   // A requirement belonging to a parked authority is parked with it, not missing. Without this
   // the audit would report the fire department's one rule as a gap the moment that party is
   // switched off, which is the opposite of what the check is for.
-  const inScope = new Set(st.authorities.map((a) => a.id));
+  const activeAuthorityIds = new Set(st.authorities.map((a) => a.id));
   const expected = st.requirements.filter(
-    (r) => enabled.has(r.profileId) && r.authorityId && inScope.has(r.authorityId),
+    (r) => enabled.has(r.profileId)
+      && r.authorityId && activeAuthorityIds.has(r.authorityId)
+      // ...and only what this page is claiming to show. A rule checked at inspection, or one
+      // belonging to a parked document, is accounted for in the footer note rather than being
+      // a gap. The audit exists to catch rows that fall through the bucketing, not rows the
+      // page is deliberately not listing.
+      && st.inScope(r.formCodes) === 'on_a_form',
   );
   const rendered = new Map(summaries.map((s) => [s.authority.id, st.workForAuthority(s.authority.id)]));
   const problems = auditRecordsCoverage(expected, rendered);
@@ -117,12 +123,10 @@ export function RecordsPanel({ onGoToTab }: { onGoToTab: (tab: 'plan' | 'documen
       {/* Said once at the top, because a camp arriving at a hundred and thirty-six rows under one
           heading has no way to know what they are looking at. */}
       <div className="bg-white rounded-card border border-border px-5 py-4">
-        <h3 className="text-[15px] font-semibold text-forest">Everything you owe, by who asks for it</h3>
+        <h3 className="text-[15px] font-semibold text-forest">What goes into the documents you file</h3>
         <p className="text-[12.5px] text-ink-soft mt-1.5 leading-relaxed max-w-[76ch]">
-          Every rule that applies to your camp, grouped under the party that will ask about it and
-          then by what you actually do: keep a record current, attach a document, or write a
-          section of your plan. Nothing here is a form. The forms are under Hand-off, and they
-          fill themselves from what is on this page.
+          Everything on this page feeds a document you are filing, and every item says which one.
+          Fill something in here and it lands on that form under Hand-off.
         </p>
       </div>
 
@@ -198,6 +202,15 @@ function AuthorityBlock({ summary, isOpen, onToggle, onGoToTab }: {
 
       {isOpen && (
         <div className="border-t border-border px-5 py-4 space-y-6 bg-cream/30">
+          {work.records.length + work.documents.length + work.plan.length
+            + work.unanswered.length + work.notApplicable.length === 0 && (
+            <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-[74ch]">
+              None of this reviewer's rules are printed on the documents currently in scope. What
+              they want from you for those documents is the camp details, sessions and staff
+              above.
+            </p>
+          )}
+
           {groups.filter((g) => g.items.length > 0).map(({ key, items }) => {
             const meta = GROUP[key];
             const Icon = meta.icon;
@@ -235,6 +248,23 @@ function AuthorityBlock({ summary, isOpen, onToggle, onGoToTab }: {
               </section>
             );
           })}
+          {(work.atInspection > 0 || work.onParkedDocuments > 0) && (
+            <div className="rounded-card border border-border bg-white px-4 py-3">
+              <p className="text-[11.5px] text-ink-soft leading-relaxed max-w-[74ch]">
+                <span className="font-semibold text-forest">Not on this page.</span>{' '}
+                {work.atInspection > 0 && (
+                  <>
+                    {work.atInspection} of this reviewer's rules are not printed on any form. The
+                    county checks those by walking the property and reading your logs, so they
+                    appear once the rest of the module is switched back on rather than here.{' '}
+                  </>
+                )}
+                {work.onParkedDocuments > 0 && (
+                  <>{work.onParkedDocuments} belong to documents that are currently switched off.</>
+                )}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

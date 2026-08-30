@@ -104,6 +104,7 @@ export function DetailsPanel() {
                     value={answers[q.questionKey] ?? ''}
                     disabled={!can('manageSafetyItems')}
                     onSave={(v) => st.saveFormAnswer(q.questionKey, v, currentUser.name || null)}
+                    setupAnswers={setupAnswers}
                   />
                 ))}
               </div>
@@ -118,12 +119,15 @@ export function DetailsPanel() {
 const INPUT =
   'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-1.5 text-ink focus:outline-none focus:border-sage';
 
-function QuestionField({ question: q, value, disabled, onSave }: {
+function QuestionField({ question: q, value, disabled, onSave, setupAnswers }: {
   question: ComplianceFormQuestion;
   value: string;
   disabled: boolean;
   onSave: (value: string) => void;
+  setupAnswers: Record<string, string>;
 }) {
+  const setupSaysYes = (key: string) =>
+    (setupAnswers[key] ?? '').toLowerCase().replace(/^"|"$/g, '') === 'true';
   // Local while typing, committed on blur. Writing on every keystroke would put a round trip
   // between the camp and their own text.
   const [draft, setDraft] = useState(value);
@@ -141,29 +145,40 @@ function QuestionField({ question: q, value, disabled, onSave }: {
 
       <div className="mt-1.5 max-w-lg">
         {q.answerKind === 'multi' ? (
-          /* The grid the form prints, in the order it prints it. Twenty-three ticks in one
-             pass beats twenty-three yes/no prompts down a page. */
+          /* The whole grid the form prints, in its order, including the boxes decided
+             elsewhere. Showing only the ones this question owns meant the screen and the
+             printed form disagreed, which is how a camp stops trusting the rest of the page. */
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 max-w-2xl">
             {(q.choices ?? []).map((c) => {
               const picked = draft.split(',').filter(Boolean);
-              const on = picked.includes(c.value);
+              const fromSetup = c.from ? setupSaysYes(c.from) : false;
+              const locked = Boolean(c.from);
+              const on = locked ? fromSetup : picked.includes(c.value);
               return (
                 <label key={c.value}
-                  className={`flex items-center gap-2 text-[12.5px] cursor-pointer ${disabled ? 'opacity-60' : ''}`}>
+                  title={locked ? `Set by your setup answer: ${c.fromLabel ?? c.from}` : undefined}
+                  className={`flex items-start gap-2 text-[12.5px] ${
+                    locked ? 'opacity-80' : 'cursor-pointer'} ${disabled ? 'opacity-60' : ''}`}>
                   <input
-                    type="checkbox" checked={on} disabled={disabled}
+                    type="checkbox" checked={on} disabled={disabled || locked}
                     onChange={() => {
                       const next = on ? picked.filter((v) => v !== c.value) : [...picked, c.value];
                       // Kept in the catalog's own order so the stored value does not depend on
                       // the order somebody happened to click.
                       const ordered = (q.choices ?? [])
+                        .filter((x) => !x.from)
                         .map((x) => x.value).filter((v) => next.includes(v)).join(',');
                       setDraft(ordered);
                       onSave(ordered);
                     }}
-                    className="w-3.5 h-3.5 accent-forest flex-shrink-0"
+                    className="w-3.5 h-3.5 accent-forest flex-shrink-0 mt-0.5"
                   />
-                  <span className="text-ink-soft">{c.label}</span>
+                  <span className="text-ink-soft">
+                    {c.label}
+                    {locked && (
+                      <span className="block text-[10.5px] text-ink-faint">from setup</span>
+                    )}
+                  </span>
                 </label>
               );
             })}

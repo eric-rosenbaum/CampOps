@@ -206,6 +206,7 @@ function SectionEditor({ section, guidance, categoryLabel, position, draft, canE
       <div className="px-5 py-4 border-b border-cream-dark">
         <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-ink-faint">
           {categoryLabel} · {position}
+          {guidance?.formCodes?.length ? <> · fills {guidance.formCodes.join(', ')}</> : null}
         </p>
         <h3 className="text-[17px] font-semibold text-forest mt-1">{section.title}</h3>
 

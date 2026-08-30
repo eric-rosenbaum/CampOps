@@ -23,6 +23,9 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
   const items = st.actionItems();
   const summaries = st.activeAuthorities();
   const plan = st.planProgress();
+  // Same rule as the tab: no checklist in scope, no reason to ask for the plan.
+  const activeForms = st.activeFormCodes();
+  const planHasADocument = activeForms.has('DOH-2040') || activeForms.has('DOH-2286');
   const details = detailsProgress(st.formQuestions, st.answers, st.formAnswers);
   const today = todayStr();
 
@@ -138,7 +141,7 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
 
       {/* The written plan is the single biggest item in the packet and used to be reachable
           only from inside a group on another tab. It gets its own way in. */}
-      {plan.total > 0 && (
+      {plan.total > 0 && planHasADocument && (
         <button
           onClick={() => onGoToTab('plan')}
           className="w-full bg-white rounded-card border border-border px-5 py-4 mb-6 text-left hover:border-sage transition-colors flex items-center gap-4"

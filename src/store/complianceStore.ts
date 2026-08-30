@@ -132,6 +132,14 @@ interface ComplianceState {
    */
   activeFormCodes: () => Set<string>;
   /**
+   * Is this item traceable to a document we are currently showing?
+   *
+   * Nothing appears in this module ungrounded. An item tagged with no document at all is not
+   * out of scope, it is verified at inspection, and that is reported separately rather than
+   * hidden, because it is still a duty the camp owes.
+   */
+  inScope: (formCodes: string[]) => 'on_a_form' | 'at_inspection' | 'other_document';
+  /**
    * When a document is owed, and what that date is measured from.
    *
    * The deadline lives on the requirement that asks for the document, so this walks the link
@@ -174,6 +182,10 @@ export interface AuthorityWork {
   unanswered: ComplianceRequirement[];
   /** Ruled out, kept visible because an inspector will ask why. */
   notApplicable: ComplianceRequirement[];
+  /** Real duties this party enforces that are on no form; the county checks them on site. */
+  atInspection: number;
+  /** Duties that belong to a document not currently being shown. */
+  onParkedDocuments: number;
 }
 
 /**
@@ -462,10 +474,18 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
   },
 
   activeFormCodes: () => new Set(
+    // Falls back to the title so a document with no printed designation, like the county's
+    // application packet, still matches the tag written against it.
     get().authorityForms
-      .filter((f) => f.isActive && f.designation)
-      .map((f) => f.designation as string),
+      .filter((f) => f.isActive)
+      .map((f) => f.designation ?? f.title),
   ),
+
+  inScope: (formCodes) => {
+    if (formCodes.length === 0) return 'at_inspection';
+    const active = get().activeFormCodes();
+    return formCodes.some((c) => active.has(c)) ? 'on_a_form' : 'other_document';
+  },
 
   planRowKeys: () => Object.fromEntries(
     get().planTemplates
@@ -482,9 +502,16 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
     const enabled = new Set(st.enabledProfileIds);
     const work: AuthorityWork = {
       records: [], documents: [], plan: [], unanswered: [], notApplicable: [],
+      atInspection: 0, onParkedDocuments: 0,
     };
     for (const r of st.requirements) {
       if (r.authorityId !== authorityId || !enabled.has(r.profileId)) continue;
+      // Only what feeds a document we are showing. A rule tagged with no document is a real
+      // duty checked at inspection, and a rule tagged with a parked document belongs with that
+      // document; neither is hidden, both are counted and reported by the page.
+      const scope = st.inScope(r.formCodes);
+      if (scope === 'at_inspection') { work.atInspection += 1; continue; }
+      if (scope === 'other_document') { work.onParkedDocuments += 1; continue; }
       const s = st.statusFor(r.id);
       // Not yet evaluated. It still belongs on the page: a requirement that vanishes because a
       // recompute has not run is exactly the kind of gap this module cannot have. Documents is

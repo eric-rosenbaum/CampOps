@@ -1592,6 +1592,11 @@ export interface ComplianceRequirement {
    * clearances. The camp confirms it holds them rather than uploading them here.
    */
   holdsPersonalRecords: boolean;
+  /**
+   * The documents this rule appears on. Empty means it is on no form at all and the county
+   * checks it by walking the property, which is a real answer and is said out loud.
+   */
+  formCodes: string[];
   sortOrder: number;
 }
 
@@ -1655,6 +1660,8 @@ export interface CompliancePlanTemplate {
   checklist: string[] | null;
   /** The checklist row this component fills. Explicit, never derived from the title. */
   formRowKey: string | null;
+  /** The checklist this component fills. */
+  formCodes: string[];
   sortOrder: number;
 }
 
@@ -1673,7 +1680,11 @@ export interface ComplianceFormQuestion {
   label: string;
   helpText: string | null;
   answerKind: 'text' | 'longtext' | 'integer' | 'date' | 'bool' | 'choice' | 'multi';
-  choices: { value: string; label: string }[] | null;
+  /**
+   * `from` marks a choice the setup interview already decided: it renders ticked and locked,
+   * and `fromLabel` is the question that decides it, so a camp can see why and where to change it.
+   */
+  choices: { value: string; label: string; from?: string; fromLabel?: string }[] | null;
   renders: Record<string, unknown>[];
   /** Only asked once this other question is answered. */
   dependsOn: string | null;

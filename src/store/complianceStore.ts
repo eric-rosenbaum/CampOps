@@ -13,6 +13,7 @@ import type {
   ComplianceFormQuestion, FormAnswers, SessionCapacity,
 } from '@/lib/types';
 import type { UploadProgress } from '@/lib/uploadProgress';
+import { generatedFormFor } from '@/lib/compliance/generatedForms';
 
 /**
  * Compliance module state.
@@ -33,6 +34,8 @@ export interface PackageSummary {
   notApplicable: number;
   /** Questions we have not asked yet, so we cannot say whether the rule is theirs. */
   needsAnswer: number;
+  /** Forms we prepare, which are outside the percentage because filing happens on paper. */
+  forms: number;
   /**
    * Out of what actually applies. Only a requirement the camp has ruled out leaves the
    * denominator; one we simply have not asked about stays in it, unmet.
@@ -114,6 +117,16 @@ interface ComplianceState {
 
   /** The parties reviewing this camp, in the order a director should think about them. */
   activeAuthorities: () => AuthoritySummary[];
+  /**
+   * The forms this camp has to file that the product prepares.
+   *
+   * Held apart from the scored requirements: filing is a paper act we never see, so these are
+   * never met or outstanding. They still have to be visible, or the one job the camp actually
+   * has disappears from the page along with its score.
+   */
+  formsToFile: () => { requirement: ComplianceRequirement; formCode: string }[];
+  /** How many requirements the percentage is actually computed over. */
+  trackedCount: () => number;
   formsForAuthority: (authorityId: string) => ComplianceAuthorityForm[];
   /** One authority's requirements, split by what the camp actually has to do about them. */
   workForAuthority: (authorityId: string) => AuthorityWork;
@@ -168,6 +181,8 @@ export interface AuthoritySummary {
   met: number;
   outstanding: number;
   notApplicable: number;
+  /** Forms this party wants that we prepare; outside met/outstanding, see AuthorityWork.forms. */
+  forms: number;
   percent: number;
   /** The soonest deadline among its outstanding requirements, if any carry one. */
   nextDue: string | null;
@@ -183,6 +198,14 @@ export interface AuthoritySummary {
 export interface AuthorityWork {
   /** Evidence the platform tracks from live operational data: certs, inspections, drills, logs. */
   records: ComplianceRequirement[];
+  /**
+   * Forms the product fills in, which the camp prints, signs and posts.
+   *
+   * Kept apart from `documents` because nothing about them is on record here: filing happens
+   * on paper. Counting them as met or outstanding claimed knowledge we do not have, and while
+   * they sat among the documents any attached file could satisfy one.
+   */
+  forms: ComplianceRequirement[];
   /** Things satisfied by attaching a file. */
   documents: ComplianceRequirement[];
   /** Sections of the written safety plan. */
@@ -362,9 +385,13 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
     const reqs = st.requirementsForProfile(profileId);
     const counts = {
       satisfied: 0, partial: 0, expiring: 0, missing: 0, notApplicable: 0, needsAnswer: 0,
+      forms: 0,
     };
     let tracked = 0;
     for (const r of reqs) {
+      // Forms we generate are filed on paper and never reported back to us, so they are neither
+      // met nor missing. See the note in activeAuthorities.
+      if (generatedFormFor(r.formCodes)) { counts.forms++; continue; }
       const s = st.statusFor(r.id);
       if (!s) { counts.missing++; tracked++; continue; }
       // Only a requirement the camp has ruled out leaves the denominator. A requirement we
@@ -401,9 +428,29 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
   },
 
   /** Everything still needing attention, worst first, then by deadline. */
+  formsToFile: () => {
+    const st = get();
+    return st.scopedRequirements()
+      .map((r) => ({ requirement: r, formCode: generatedFormFor(r.formCodes) }))
+      .filter((x): x is { requirement: ComplianceRequirement; formCode: string } => !!x.formCode)
+      .filter((x) => st.statusFor(x.requirement.id)?.status !== 'not_applicable')
+      .sort((a, b) => a.formCode.localeCompare(b.formCode));
+  },
+
+  trackedCount: () => {
+    const st = get();
+    let tracked = 0;
+    for (const id of st.enabledProfileIds) {
+      const s = st.packageSummary(id);
+      if (s) tracked += s.total - s.notApplicable - s.forms;
+    }
+    return tracked;
+  },
+
   actionItems: () => {
     const st = get();
     return st.scopedRequirements()
+      .filter((r) => !generatedFormFor(r.formCodes))
       .map((r) => ({ requirement: r, status: st.statusFor(r.id) }))
       .filter((x): x is { requirement: ComplianceRequirement; status: RequirementStatus } =>
         !!x.status && x.status.status !== 'satisfied' && x.status.status !== 'not_applicable')
@@ -425,8 +472,12 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((authority) => {
         const reqs = st.scopedRequirements().filter((r) => r.authorityId === authority.id);
-        let met = 0, outstanding = 0, notApplicable = 0, nextDue: string | null = null;
+        let met = 0, outstanding = 0, notApplicable = 0, forms = 0, nextDue: string | null = null;
         for (const r of reqs) {
+          // A form we generate is filed in an envelope. Whether it went in is not something we
+          // can see, so it is neither met nor outstanding -- scoring it would put a permanent
+          // red mark against a camp that had done everything the product asked of them.
+          if (generatedFormFor(r.formCodes)) { forms++; continue; }
           const s = st.statusFor(r.id);
           // No computed row means the engine has not evaluated this one yet, which happens
           // between seeding a requirement and the next recompute. Dropping it would quietly
@@ -439,7 +490,7 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
         }
         const tracked = met + outstanding;
         return {
-          authority, total: reqs.length, met, outstanding, notApplicable,
+          authority, total: reqs.length, met, outstanding, notApplicable, forms,
           percent: tracked === 0 ? 0 : Math.round((met / tracked) * 100),
           nextDue,
         };
@@ -510,7 +561,7 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
   workForAuthority: (authorityId) => {
     const st = get();
     const work: AuthorityWork = {
-      records: [], documents: [], plan: [], unanswered: [], notApplicable: [],
+      records: [], forms: [], documents: [], plan: [], unanswered: [], notApplicable: [],
     };
     for (const r of st.scopedRequirements()) {
       if (r.authorityId !== authorityId) continue;
@@ -521,6 +572,7 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
       if (!s) { work.documents.push(r); continue; }
       if (s.status === 'needs_answer') { work.unanswered.push(r); continue; }
       if (s.status === 'not_applicable') { work.notApplicable.push(r); continue; }
+      if (generatedFormFor(r.formCodes)) { work.forms.push(r); continue; }
       if (r.evidenceType === 'plan_section') { work.plan.push(r); continue; }
       // An unscoped record-type requirement cannot read the register, so in practice the camp
       // satisfies it by attaching the record. It belongs with the documents, where the upload is.

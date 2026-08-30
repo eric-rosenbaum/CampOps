@@ -5,6 +5,7 @@ import { RequirementList } from './RequirementList';
 import { ScopeNote } from './ScopeNote';
 import { detailsProgress } from '@/lib/compliance/detailsProgress';
 import { todayStr } from '@/lib/utils';
+import { useFormIsReady } from '@/lib/compliance/usePacketCamp';
 
 /**
  * Where the camp stands, and what is coming.
@@ -20,6 +21,10 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
   const st = useComplianceStore();
   const season = useChecklistStore((s) => s.season);
   const overall = st.overallPercent();
+  const tracked = st.trackedCount();
+  const forms = st.formsToFile();
+  const formIsReady = useFormIsReady();
+  const timing = st.formTiming;
   const items = st.actionItems();
   const summaries = st.activeAuthorities();
   const plan = st.planProgress();
@@ -43,14 +48,34 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 mb-5">
         <div className="bg-white rounded-card border border-border px-5 py-4">
           <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Overall</p>
-          <p className="text-[34px] font-semibold text-forest leading-none mt-2 font-mono">{overall}%</p>
-          <div className="h-1.5 rounded-full bg-cream-dark overflow-hidden mt-3">
-            <div className="h-full bg-sage rounded-full transition-all" style={{ width: `${overall}%` }} />
-          </div>
-          <p className="text-[11.5px] text-ink-soft mt-2">
-            {items.length === 0 ? 'Everything that applies to you is met.'
-              : `${items.length} item${items.length === 1 ? '' : 's'} still to deal with`}
-          </p>
+          {/*
+            A percentage over nothing is not zero.
+
+            The forms we prepare are not scored -- filing happens on paper and never reaches us
+            -- so a camp whose only obligation is one of those has an empty denominator. Showing
+            0% there read as total failure to a camp with nothing left to do.
+          */}
+          {tracked === 0 ? (
+            <>
+              <p className="text-[34px] font-semibold text-forest leading-none mt-2 font-mono">—</p>
+              <p className="text-[11.5px] text-ink-soft mt-3">
+                Nothing here is scored by percentage. What you owe your reviewers is
+                {forms.length === 1 ? ' one form' : ` ${forms.length} forms`} you prepare and post
+                yourself.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-[34px] font-semibold text-forest leading-none mt-2 font-mono">{overall}%</p>
+              <div className="h-1.5 rounded-full bg-cream-dark overflow-hidden mt-3">
+                <div className="h-full bg-sage rounded-full transition-all" style={{ width: `${overall}%` }} />
+              </div>
+              <p className="text-[11.5px] text-ink-soft mt-2">
+                {items.length === 0 ? 'Everything that applies to you is met.'
+                  : `${items.length} item${items.length === 1 ? '' : 's'} still to deal with`}
+              </p>
+            </>
+          )}
           {season && (
             <p className="text-[11px] text-ink-faint mt-2.5 pt-2.5 border-t border-cream-dark">
               {season.name}
@@ -82,9 +107,11 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
                   "nothing to do", so those say what is true instead. */}
               {s.met + s.outstanding === 0 ? (
                 <p className="text-[11.5px] text-ink-soft mt-2.5 leading-relaxed">
-                  {s.total === 0
-                    ? 'Sets the rules your county enforces. Nothing is filed with them directly.'
-                    : 'Nothing here applies to your camp.'}
+                  {s.forms > 0
+                    ? `${s.forms} form${s.forms === 1 ? '' : 's'} to file. Nothing else here is outstanding.`
+                    : s.total === 0
+                      ? 'Sets the rules your county enforces. Nothing is filed with them directly.'
+                      : 'Nothing here applies to your camp.'}
                 </p>
               ) : (
                 <>
@@ -183,6 +210,55 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
           </div>
           <ArrowRight className="w-4 h-4 text-ink-faint flex-shrink-0" />
         </button>
+      )}
+
+      {/*
+        The forms are the job. They are outside the percentage because we cannot see whether a
+        camp posted an envelope, and when they were excluded from the score they vanished from
+        this page along with it -- which left a camp's only actual task invisible on the tab
+        they land on. They get their own section instead.
+      */}
+      {forms.length > 0 && (
+        <section className="mb-6">
+          <h3 className="text-[14px] font-semibold text-forest mb-2.5">Forms to file</h3>
+          <div className="space-y-1.5">
+            {forms.map(({ requirement, formCode }) => {
+              const ready = formIsReady(formCode);
+              return (
+                <button
+                  key={requirement.id}
+                  onClick={() => onGoToTab('export')}
+                  className="w-full bg-white rounded-card border border-border px-4 py-3 text-left hover:border-sage transition-colors flex items-center gap-3"
+                >
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ready ? 'bg-sage' : 'bg-amber'}`} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13.5px] font-medium text-ink">{requirement.label}</span>
+                    <span className="block text-[12px] text-ink-soft mt-0.5">
+                      {ready
+                        ? `Everything ${formCode} needs is answered. Print it, sign it and send it to your county.`
+                        : `${formCode} is not ready yet.`}
+                    </span>
+                    {/* The deadline used to reach this page through the action list. Excluding
+                        forms from that list took the date with it, and the date is the part a
+                        director plans around. */}
+                    {timing(requirement.reqCode)?.dueOn && (
+                      <span className={`block text-[11.5px] mt-1 font-mono ${
+                        (timing(requirement.reqCode)?.dueOn ?? '') < today ? 'text-red' : 'text-ink-faint'}`}>
+                        Due {timing(requirement.reqCode)?.dueOn}
+                        {(timing(requirement.reqCode)?.dueOn ?? '') < today && ' · past due'}
+                      </span>
+                    )}
+                  </span>
+                  <span className={`flex-shrink-0 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-tag ${
+                    ready ? 'bg-green-muted text-green-muted-text' : 'bg-amber-bg text-amber-text'}`}>
+                    {ready ? 'Ready to file' : 'Not ready'}
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-ink-faint flex-shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {items.length > 0 && (

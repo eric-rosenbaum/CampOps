@@ -2,21 +2,16 @@ import { useState } from 'react';
 import { Download, FileText, Loader2, AlertTriangle, FolderDown, ArrowRight, Eye } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useComplianceStore, type AuthoritySummary } from '@/store/complianceStore';
-import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
-import { useSafetyStore } from '@/store/safetyStore';
 import { useAuth } from '@/lib/auth';
 import { dbRecordComplianceExport } from '@/lib/complianceDb';
-import {
-  NY_FORMS, generateForm, coverage, campOwnedCount, packetRoster,
-  type PacketCamp, type PacketForm,
-} from '@/lib/compliance/nyPacket';
-import { doh367Readiness, type FormReadiness, type FormPart } from '@/lib/compliance/formReadiness';
-import { applicableQuestions } from '@/lib/compliance/formAnswers';
+import { NY_FORMS, generateForm, coverage, type PacketForm } from '@/lib/compliance/nyPacket';
+import { type FormPart } from '@/lib/compliance/formReadiness';
 import { FormDetail } from './FormDetail';
 import {
   exportCompliancePacket, type ExportStatus, type EvidenceFailure,
 } from '@/lib/compliance/exportPacket';
+import { usePacketCamp, useReadinessFor } from '@/lib/compliance/usePacketCamp';
 
 /**
  * Blank forms to download, and the same forms filled with the camp's data.
@@ -55,72 +50,22 @@ export function FormsPanel({ onGoToTab, onFocus, openFormCode, onFormOpened }: {
     activeAuthorities, formsForAuthority, planRowKeys, formQuestions, formAnswers,
     sessionCapacity, activeFormCodes,
   } = useComplianceStore();
-  const { currentCamp } = useCampStore();
   const season = useChecklistStore((s) => s.season);
-  const safetyStaff = useSafetyStore((s) => s.staff);
-  const safetyCerts = useSafetyStore((s) => s.certifications);
   const authorities = activeAuthorities();
   // Only the documents currently in scope. Parking one is a row in the catalog, not an edit here.
   const inScope = activeFormCodes();
   const forms = NY_FORMS.filter((f) => inScope.has(f.code));
   const [openForm, setOpenForm] = useState<string | null>(null);
 
-  /**
-   * Readiness for the forms that have a detail page.
-   *
-   * Only DOH-367 so far, deliberately: a form is worth describing block by block only once we
-   * can take it all the way to ready, and half-describing the others would be the same
-   * "mostly filled" problem one level up.
-   */
-  function readinessFor(form: PacketForm): FormReadiness | null {
-    if (form.code !== 'DOH-367') return null;
-    const ours = form.map.fields.length;
-    const pct = coverage(form, camp, planSections, answers, planRowKeys(), formQuestions, formAnswers, sessionCapacity);
-    return doh367Readiness({
-      camp, seasonName: season?.name ?? null,
-      // Only the questions actually being asked. Counting a question that setup ruled out, or one
-      // that prints on a form we are not showing, would make a block look unfinished with nothing
-      // on the records page to finish it.
-      questions: applicableQuestions(formQuestions, answers, formAnswers, inScope),
-      answers: formAnswers,
-      sessions: sessionCapacity, planSections,
-      ours: campOwnedCount(form), filled: Math.round((pct / 100) * campOwnedCount(form)),
-      notOurs: ours - campOwnedCount(form),
-    });
-  }
+  const readinessFor = useReadinessFor();
+
   const { currentUser } = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<ExportStatus | null>(null);
   const [failures, setFailures] = useState<EvidenceFailure[]>([]);
 
-  // The forms ask for these three by name, and the safety roster already has them. Matched on
-  // title rather than a dedicated field, so a camp that has not filled its roster simply leaves
-  // the line blank for a person to write in, which is the correct outcome.
-  const byTitle = (re: RegExp) =>
-    safetyStaff.find((m) => m.isActive && re.test(m.title))?.name;
-
-  // The county is the camp's own setup answer, not a constant. It was hardcoded, which printed
-  // "Westchester" on the packet of any camp that is not in Westchester, and printed it even for
-  // camps in Westchester without ever reading what they told us.
-  const county = (answers.county ?? '').trim();
-
-  const camp: PacketCamp = {
-    campName: currentCamp?.name ?? 'Camp',
-    // Stored uppercase as an applicability key; the form wants it written the way a person does.
-    county: county ? county.charAt(0) + county.slice(1).toLowerCase() : '',
-    address: [currentCamp?.addressLine1, currentCamp?.city, currentCamp?.state]
-      .filter(Boolean).join(', '),
-    town: currentCamp?.city ?? undefined,
-    directorName: byTitle(/^camp director$|^director$/i),
-    healthDirectorName: byTitle(/health director/i),
-    aquaticsDirectorName: byTitle(/aquatics? director/i),
-    openDate: season?.openingDate,
-    closeDate: season?.closingDate,
-    // DOH-367a is three tables of certified staff, and DOH-367 asks after each director's
-    // background. Both read the roster from here, in one fixed order.
-    staff: packetRoster(safetyStaff, safetyCerts),
-  };
+  const camp = usePacketCamp();
 
   /**
    * Open the filled form in a tab instead of saving it.

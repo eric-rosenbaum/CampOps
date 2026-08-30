@@ -5,6 +5,7 @@ import { useComplianceStore } from '@/store/complianceStore';
 import { useAuth } from '@/lib/auth';
 import type { ComplianceRequirement, RequirementStatus, ComplianceStatus } from '@/lib/types';
 import { generatedFormFor } from '@/lib/compliance/generatedForms';
+import { useFormIsReady } from '@/lib/compliance/usePacketCamp';
 
 /** The documents this product prepares, rather than merely asks a camp to hold. */
 
@@ -49,11 +50,10 @@ const questionLabel = (key: string): string => QUESTION[key] ?? '';
 /**
  * Turn the engine's detail object into a sentence. Never show a raw status with no reason.
  *
- * `generatedForm` changes the wording rather than the status: for a document the product
- * prepares, "attach a document for this requirement" reads as though uploading any file is the
- * job, when the job is to prepare the form, file it, and keep the copy.
+ * Forms the product generates do not come through here: they are not satisfied by a document
+ * on record, so the row states the form's own readiness instead.
  */
-function explain(s: RequirementStatus, generatedForm?: string | null): string {
+function explain(s: RequirementStatus): string {
   const d = s.detail as Record<string, unknown>;
   if (s.status === 'not_applicable') return (s.naReason || (d.reason as string)) ?? 'Does not apply to your camp';
   if (s.status === 'needs_answer') {
@@ -63,9 +63,6 @@ function explain(s: RequirementStatus, generatedForm?: string | null): string {
       return `We cannot tell yet whether this applies to you. Answer ${asked.join(' and ')} in setup.`;
     }
     return 'We cannot tell yet whether this applies to you. Finish the setup questions.';
-  }
-  if (generatedForm && typeof d.need === 'string') {
-    return `Not filed yet. Prepare ${generatedForm} under Hand-off, then keep your filed copy here.`;
   }
   if (typeof d.need === 'string') {
     if (typeof d.awaiting_feature === 'string') {
@@ -77,13 +74,11 @@ function explain(s: RequirementStatus, generatedForm?: string | null): string {
   if (d.held !== undefined) return `${d.held} current certification${d.held === 1 ? '' : 's'} on file`;
   if (d.overdue !== undefined && Number(d.overdue) > 0) return `${d.overdue} of ${d.items} items overdue`;
   if (d.expires_on) {
-    return generatedForm ? 'Filed. Your copy is on record.' : `On file, expires ${d.expires_on}`;
+    return `On file, expires ${d.expires_on}`;
   }
   if (d.next_due) return `On file, next due ${d.next_due}`;
   if (d.documents !== undefined) {
-    return generatedForm
-      ? `Filed. Your copy is on record${d.expires_on ? `, expires ${d.expires_on}` : ''}.`
-      : `${d.documents} document${d.documents === 1 ? '' : 's'} attached`;
+    return `${d.documents} document${d.documents === 1 ? '' : 's'} attached`;
   }
   if (d.completed !== undefined) return `${d.completed} completed`;
   if (d.entries !== undefined) return `${d.entries} entries logged`;
@@ -110,6 +105,7 @@ export function RequirementList({
   onOpenForm?: (formCode: string) => void;
 }) {
   const { statusFor } = useComplianceStore();
+  const formIsReady = useFormIsReady();
   const [open, setOpen] = useState<string | null>(null);
 
   if (requirements.length === 0) {
@@ -124,7 +120,23 @@ export function RequirementList({
     <div className="space-y-1.5">
       {requirements.map((r) => {
         const st = statusFor(r.id);
-        const tone = TONE[st?.status ?? 'missing'];
+        const genForm = generatedFormFor(r.formCodes);
+        /*
+          A form we generate is not something we can mark met.
+
+          Filing happens in an envelope: the camp prints it, signs it in ink and posts it, and
+          nothing about that reaches us. Showing MET or NOT MET here claimed knowledge we do
+          not have -- and, while a file could be attached, let an unrelated certificate supply
+          it. What we do know is whether the form has everything it needs to be printed, so
+          that is what the badge says.
+        */
+        const ruledOut = st?.status === 'not_applicable';
+        const ready = genForm && !ruledOut ? formIsReady(genForm) : null;
+        const tone = genForm && !ruledOut
+          ? (ready
+              ? { label: 'Ready to file', cls: 'bg-green-muted text-green-muted-text', dot: 'bg-sage' }
+              : { label: 'Not ready', cls: 'bg-amber-bg text-amber-text', dot: 'bg-amber' })
+          : TONE[st?.status ?? 'missing'];
         const isOpen = open === r.id;
         return (
           <div key={r.id} className="bg-white rounded-card border border-border overflow-hidden">
@@ -137,9 +149,11 @@ export function RequirementList({
               <span className="min-w-0 flex-1">
                 <span className="block text-[13.5px] font-medium text-ink">{r.label}</span>
                 <span className="block text-[12px] text-ink-soft mt-0.5">
-                  {st
-                    ? explain(st, generatedFormFor(r.formCodes))
-                    : 'Not yet evaluated'}
+                  {genForm && !ruledOut
+                    ? (ready
+                        ? `Everything ${genForm} needs is answered. Print it from Hand-off, sign it and send it to your county.`
+                        : `${genForm} is not ready yet. Finish it under Hand-off.`)
+                    : st ? explain(st) : 'Not yet evaluated'}
                 </span>
               </span>
               <span className={`flex-shrink-0 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-tag ${tone.cls}`}>
@@ -185,11 +199,8 @@ function RequirementDetail({ requirement: r, status: st, extraAction, onOpenForm
 
       {/*
         A requirement that IS a form we produce needs a different story from a requirement
-        satisfied by any old file. The old row read as a generic upload slot, so attaching an
-        unrelated certificate turned it green, and a camp saw "met" here while the form itself
-        still had unanswered questions. Two true things that looked like a contradiction.
-
-        The sequence is: prepare it, file it, then keep your filed copy. This row says that.
+        satisfied by a file the camp holds. There is nothing to upload here: they print it,
+        sign it in ink and post it. All this row can usefully do is say so and open the form.
       */}
       {generatedForm && (
         <div className="mt-2.5 rounded-card border border-border bg-cream/50 px-4 py-3">
@@ -197,9 +208,8 @@ function RequirementDetail({ requirement: r, status: st, extraAction, onOpenForm
             This one is a form we prepare for you.
           </p>
           <p className="text-[12px] text-ink-soft mt-1 leading-relaxed max-w-[70ch]">
-            Fill it in under Hand-off, print it, sign it and send it to your county. Once it is
-            filed, keep your signed copy here so you have a record of exactly what you sent.
-            Attaching a file here does not fill the form in.
+            Fill it in under Hand-off, print it, sign it and send it to your county. Filing
+            happens on paper, so nothing about it is tracked here.
           </p>
           {onOpenForm && (
             <Button size="sm" variant="ghost" className="mt-2"
@@ -273,15 +283,16 @@ function RequirementDetail({ requirement: r, status: st, extraAction, onOpenForm
         </div>
       )}
 
-      {/* Only where the upload control is actually rendered. On Overview this row is a summary
-          with no actions, and an instruction with nothing to press is a dead end. */}
-      {canManage && generatedForm && extraAction && linked.length === 0 && (
-        <p className="text-[12px] text-ink-soft mt-3">
-          Once you have posted it, keep your signed copy here.
-        </p>
-      )}
+      {/*
+        No upload, no attach, no document picker on a form we generate.
 
-      {canManage && (
+        The camp prints this, signs it in ink and posts it. Asking them to scan it back in was
+        busywork for a record nobody reads, and while the slot existed any file dropped into it
+        turned the row green -- which is how a workers' compensation certificate came to stand
+        in for DOH-367. What we can honestly say is whether the form is ready to print, and that
+        is what the row says now.
+      */}
+      {canManage && !generatedForm && (
         <div className="flex flex-wrap gap-2 mt-3">
           {extraAction}
           {/*
@@ -302,6 +313,20 @@ function RequirementDetail({ requirement: r, status: st, extraAction, onOpenForm
               ))}
             </select>
           )}
+          {st?.status !== 'not_applicable' ? (
+            <Button size="sm" variant="ghost" onClick={() => setNaOpen((v) => !v)}>
+              <Ban className="w-3.5 h-3.5" /> Not applicable
+            </Button>
+          ) : (
+            <Button size="sm" variant="ghost" onClick={() => markNotApplicable(r.id, null, currentUser.name || null)}>
+              This does apply after all
+            </Button>
+          )}
+        </div>
+      )}
+
+      {canManage && generatedForm && (
+        <div className="flex flex-wrap gap-2 mt-3">
           {st?.status !== 'not_applicable' ? (
             <Button size="sm" variant="ghost" onClick={() => setNaOpen((v) => !v)}>
               <Ban className="w-3.5 h-3.5" /> Not applicable

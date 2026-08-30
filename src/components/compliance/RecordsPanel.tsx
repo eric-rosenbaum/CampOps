@@ -24,13 +24,18 @@ import type { ComplianceRequirement } from '@/lib/types';
  * log in order to record that they ran a drill.
  */
 
-type GroupKey = 'records' | 'documents' | 'plan' | 'unanswered' | 'notApplicable';
+type GroupKey = 'records' | 'forms' | 'documents' | 'plan' | 'unanswered' | 'notApplicable';
 
 const GROUP: Record<GroupKey, { label: string; blurb: string; icon: typeof ClipboardCheck }> = {
   records: {
     label: 'Records to keep current',
     blurb: 'Rules this reviewer enforces that you satisfy by keeping something up to date rather than by filing a document: extinguisher checks, drills, staff certifications, kitchen temperatures. The status reads from what your staff have already logged, so adding an entry here updates it.',
     icon: ClipboardCheck,
+  },
+  forms: {
+    label: 'Forms we prepare for you',
+    blurb: 'You fill these in here, print them, sign them and send them to the reviewer. Filing happens on paper, so nothing about it is tracked here and none of these count towards the percentage.',
+    icon: FileEdit,
   },
   documents: {
     label: 'Documents to attach',
@@ -171,6 +176,7 @@ function AuthorityBlock({ summary, isOpen, onToggle, onGoToTab, onOpenForm }: {
 
   const groups: { key: GroupKey; items: ComplianceRequirement[] }[] = [
     { key: 'records', items: work.records },
+    { key: 'forms', items: work.forms },
     { key: 'documents', items: work.documents },
     { key: 'plan', items: work.plan },
     { key: 'unanswered', items: work.unanswered },
@@ -187,10 +193,14 @@ function AuthorityBlock({ summary, isOpen, onToggle, onGoToTab, onOpenForm }: {
         <div className="min-w-0 flex-1">
           <p className="text-[14.5px] font-semibold text-forest">{a.name}</p>
           <p className="text-[11.5px] text-ink-faint mt-0.5">
+            {/* Forms sit outside met/outstanding, so a party who only wants a form we prepare
+                used to read "nothing here applies to your camp". */}
             {summary.met + summary.outstanding === 0
-              ? (summary.total === 0
-                  ? 'Nothing is filed with them directly'
-                  : `Nothing here applies to your camp · ${summary.notApplicable} ruled out`)
+              ? (summary.forms > 0
+                  ? `${summary.forms} form${summary.forms === 1 ? '' : 's'} to file · nothing else outstanding`
+                  : summary.total === 0
+                    ? 'Nothing is filed with them directly'
+                    : `Nothing here applies to your camp · ${summary.notApplicable} ruled out`)
               : (
                   <>
                     {summary.outstanding === 0
@@ -216,7 +226,7 @@ function AuthorityBlock({ summary, isOpen, onToggle, onGoToTab, onOpenForm }: {
 
       {isOpen && (
         <div className="border-t border-border px-5 py-4 space-y-6 bg-cream/30">
-          {work.records.length + work.documents.length + work.plan.length
+          {work.records.length + work.forms.length + work.documents.length + work.plan.length
             + work.unanswered.length + work.notApplicable.length === 0 && (
             <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-[74ch]">
               None of this reviewer's rules are printed on the documents currently in scope. What

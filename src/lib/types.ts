@@ -1554,6 +1554,8 @@ export interface ComplianceAuthorityForm {
   campSupplied: boolean;
   /** False parks the document without deleting it. */
   isActive: boolean;
+  /** The requirement whose deadline governs this document. */
+  requirementCode: string | null;
   fillable: boolean;
   sortOrder: number;
 }
@@ -1570,6 +1572,12 @@ export interface ComplianceRequirement {
   evidenceType: EvidenceType;
   evidenceHint: string | null;
   frequency: string | null;
+  /**
+   * When it is owed. {"type":"relative_to_opening","days":-60} for a duty measured from the
+   * camp's own opening day, {"type":"fixed","month":M,"day":D} for a calendar date, or a
+   * {"note":"..."} for real timing the engine cannot model, like a 24-hour incident clock.
+   */
+  deadlineRule: Record<string, unknown> | null;
   /** {} means it always applies; otherwise every key must match the camp's setup answers. */
   appliesWhen: Record<string, string>;
   citation: string | null;

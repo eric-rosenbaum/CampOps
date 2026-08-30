@@ -176,7 +176,13 @@ function QuestionField({ question: q, value, disabled, onSave }: {
           <div className="flex flex-wrap gap-2">
             {(q.choices ?? []).map((c) => (
               <button key={c.value} disabled={disabled}
-                onClick={() => { setDraft(c.value); onSave(c.value); }}
+                onClick={() => {
+                  // Clicking the selected answer clears it. Without this a question answered by
+                  // mistake can be changed but never unanswered, and on these forms an unticked
+                  // box is a real answer.
+                  const next = draft === c.value ? '' : c.value;
+                  setDraft(next); onSave(next);
+                }}
                 className={`text-[12.5px] font-semibold rounded-btn px-3 py-1.5 border transition-colors ${
                   draft === c.value ? 'bg-forest border-forest text-white'
                                     : 'bg-white border-border text-ink-soft hover:border-sage'}`}>
@@ -188,7 +194,10 @@ function QuestionField({ question: q, value, disabled, onSave }: {
           <div className="flex gap-2">
             {[['true', 'Yes'], ['false', 'No']].map(([v, label]) => (
               <button key={v} disabled={disabled}
-                onClick={() => { setDraft(v); onSave(v); }}
+                onClick={() => {
+                  const next = draft === v ? '' : v;
+                  setDraft(next); onSave(next);
+                }}
                 className={`text-[12.5px] font-semibold rounded-btn px-3.5 py-1.5 border transition-colors ${
                   draft === v ? 'bg-forest border-forest text-white'
                               : 'bg-white border-border text-ink-soft hover:border-sage'}`}>
@@ -204,6 +213,10 @@ function QuestionField({ question: q, value, disabled, onSave }: {
             className={INPUT} />
         )}
       </div>
+
+      {(q.answerKind === 'bool' || q.answerKind === 'choice') && draft !== '' && !disabled && (
+        <p className="text-[11px] text-ink-faint mt-1">Click your answer again to clear it.</p>
+      )}
 
       {q.derivesFrom && (
         <p className="text-[11px] text-ink-faint mt-1">From {q.derivesFrom} when we have it.</p>

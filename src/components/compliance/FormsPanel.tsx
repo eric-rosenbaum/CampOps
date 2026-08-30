@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, FileText, Loader2, AlertTriangle, FolderDown, ArrowRight } from 'lucide-react';
+import { Download, FileText, Loader2, AlertTriangle, FolderDown, ArrowRight, Eye } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useComplianceStore, type AuthoritySummary } from '@/store/complianceStore';
 import { useCampStore } from '@/store/campStore';
@@ -263,7 +263,21 @@ export function FormsPanel({ onGoToTab }: { onGoToTab?: (tab: 'records' | 'plan'
           onPreview={() => void preview(opened)}
           onDownload={() => void download(opened, true)}
           onGoTo={(part: FormPart) => {
-            if (part.goTo && 'tab' in part.goTo) onGoToTab?.(part.goTo.tab);
+            if (!part.goTo || !('tab' in part.goTo)) return;
+            onGoToTab?.(part.goTo.tab);
+            // Some parts of a form are filled from one section of a long tab, and dropping the
+            // camp at the top of it leaves them hunting for the thing they just clicked. The
+            // tab has not rendered yet at this point, so the scroll waits for the paint that
+            // puts the anchor on the page.
+            const anchor = part.goTo.anchor;
+            if (!anchor) return;
+            // Twice: once as soon as the section exists, and again once the rest of the tab
+            // has finished rendering under it, because a list that grows after the first
+            // scroll leaves the camp looking at the wrong part of the page.
+            const bring = () =>
+              document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            requestAnimationFrame(() => requestAnimationFrame(bring));
+            setTimeout(bring, 250);
           }}
         />
       );
@@ -378,11 +392,21 @@ export function FormsPanel({ onGoToTab }: { onGoToTab?: (tab: 'records' | 'plan'
                   <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => download(form, false)}>
                     Blank
                   </Button>
+                  {readinessFor(form) && (
+                    <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => void preview(form)}>
+                      {busy === `${form.code}-preview`
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Eye className="w-3.5 h-3.5" />}
+                      Preview
+                    </Button>
+                  )}
                   <Button size="sm" disabled={busy !== null} onClick={() => download(form, true)}>
                     {busy === `${form.code}-true`
                       ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       : <Download className="w-3.5 h-3.5" />}
-                    Filled
+                    {/* "Filled" on a form with gaps in it is a small lie the camp finds out
+                        about after they have opened the PDF. */}
+                    {readinessFor(form) && !readinessFor(form)!.ready ? 'Partly filled' : 'Filled'}
                   </Button>
                 </div>
               </div>

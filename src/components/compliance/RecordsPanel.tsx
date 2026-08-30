@@ -7,6 +7,7 @@ import { RequirementList } from './RequirementList';
 import { auditRecordsCoverage } from '@/store/complianceStore.audit';
 import { DetailsPanel } from './DetailsPanel';
 import { SessionsPanel } from './SessionsPanel';
+import { RosterPanel } from './RosterPanel';
 import type { ComplianceRequirement } from '@/lib/types';
 
 /**
@@ -27,17 +28,17 @@ type GroupKey = 'records' | 'documents' | 'plan' | 'unanswered' | 'notApplicable
 const GROUP: Record<GroupKey, { label: string; blurb: string; icon: typeof ClipboardCheck }> = {
   records: {
     label: 'Records to keep current',
-    blurb: 'Tracked from what your staff log. Add an entry here and the status updates.',
+    blurb: 'Rules this reviewer enforces that you satisfy by keeping something up to date rather than by filing a document: extinguisher checks, drills, staff certifications, kitchen temperatures. The status reads from what your staff have already logged, so adding an entry here updates it.',
     icon: ClipboardCheck,
   },
   documents: {
     label: 'Documents to attach',
-    blurb: 'Satisfied by putting a file on record. Upload under Documents, or attach one you already have.',
+    blurb: 'Rules you satisfy by putting a file on record, either because the reviewer wants a copy or because nothing in the platform can prove it for you.',
     icon: Upload,
   },
   plan: {
     label: 'Your written plan',
-    blurb: 'Sections of the safety plan. Write them under Safety plan and these fill in.',
+    blurb: 'Rules satisfied by what your safety plan says. Write those sections under Safety plan and these turn green on their own.',
     icon: FileEdit,
   },
   unanswered: {
@@ -107,6 +108,23 @@ export function RecordsPanel({ onGoToTab }: { onGoToTab: (tab: 'plan' | 'documen
       {/* The camper capacity table. Same reason it sits above the reviewer list: it is one
           block of the county's own form, not evidence filed against a requirement. */}
       <SessionsPanel />
+
+      {/* The people the forms name. Same reason again: a director's name on DOH-367 is not
+          evidence filed against a requirement, it is the roster the form reads from, and until
+          this was here there was nowhere in the product to see or change it. */}
+      <RosterPanel />
+
+      {/* Said once at the top, because a camp arriving at a hundred and thirty-six rows under one
+          heading has no way to know what they are looking at. */}
+      <div className="bg-white rounded-card border border-border px-5 py-4">
+        <h3 className="text-[15px] font-semibold text-forest">Everything you owe, by who asks for it</h3>
+        <p className="text-[12.5px] text-ink-soft mt-1.5 leading-relaxed max-w-[76ch]">
+          Every rule that applies to your camp, grouped under the party that will ask about it and
+          then by what you actually do: keep a record current, attach a document, or write a
+          section of your plan. Nothing here is a form. The forms are under Hand-off, and they
+          fill themselves from what is on this page.
+        </p>
+      </div>
 
       {summaries.map((summary) => (
         <AuthorityBlock

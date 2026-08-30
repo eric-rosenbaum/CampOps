@@ -70,7 +70,10 @@ export function FormDetail({ form, readiness, busy, onBack, onPreview, onDownloa
             Preview it filled
           </Button>
           <Button size="sm" variant="ghost" disabled={busy} onClick={onDownload}>
-            <Download className="w-3.5 h-3.5" /> Download filled
+            <Download className="w-3.5 h-3.5" />
+            {/* Do not call it filled when it is not. The camp finds out either way, and finding
+                out from the button is better than finding out from the PDF. */}
+            {readiness.ready ? 'Download filled' : 'Download partly filled'}
           </Button>
           <a href={`/forms/ny/${form.file}.pdf`} download>
             <Button size="sm" variant="ghost"><Download className="w-3.5 h-3.5" /> Blank</Button>

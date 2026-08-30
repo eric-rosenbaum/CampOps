@@ -131,6 +131,17 @@ interface ComplianceState {
    * data change and not a code change. Everything the app shows or exports is filtered by it.
    */
   activeFormCodes: () => Set<string>;
+  /**
+   * When a document is owed, and what that date is measured from.
+   *
+   * The deadline lives on the requirement that asks for the document, so this walks the link
+   * and reports both the date and the rule behind it. A camp seeing "28 April" needs to know it
+   * is sixty days before their own opening day, not a fixed calendar date, or they will not
+   * understand why it moves when the season does.
+   */
+  formTiming: (requirementCode: string | null) => {
+    dueOn: string | null; basis: string; met: boolean;
+  } | null;
 }
 
 /** An authority plus where this camp stands with it. */
@@ -419,6 +430,35 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
           nextDue,
         };
       });
+  },
+
+  formTiming: (requirementCode) => {
+    if (!requirementCode) return null;
+    const st = get();
+    const req = st.requirements.find((r) => r.reqCode === requirementCode);
+    if (!req) return null;
+    const status = st.statusFor(req.id);
+    const rule = req.deadlineRule;
+
+    let basis = req.frequency ? `Filed ${req.frequency.replace(/_/g, ' ')}.` : 'No fixed date.';
+    const days = Number(rule?.days);
+    if (rule?.type === 'relative_to_opening' && Number.isFinite(days)) {
+      basis = days === 0
+        ? 'Due by your opening day, so it moves with your season.'
+        : days < 0
+          ? `Due ${Math.abs(days)} days before your opening day, so it moves with your season.`
+          : `Due ${days} days after your opening day.`;
+    } else if (rule?.type === 'fixed') {
+      basis = 'A fixed calendar date each year.';
+    } else if (typeof rule?.note === 'string') {
+      basis = rule.note as string;
+    }
+
+    return {
+      dueOn: status?.dueOn ?? null,
+      basis,
+      met: status?.status === 'satisfied',
+    };
   },
 
   activeFormCodes: () => new Set(

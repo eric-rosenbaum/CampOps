@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useComplianceStore, type AuthoritySummary } from '@/store/complianceStore';
+import { todayStr } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import type { ComplianceAuthority, ComplianceAuthorityForm } from '@/lib/types';
 
@@ -170,6 +171,8 @@ function FormRow({ form: f, onUpload }: {
   onUpload: (formTitle: string) => void;
 }) {
   const documents = useComplianceStore((s) => s.documents);
+  const timing = useComplianceStore((s) => s.formTiming)(f.requirementCode);
+  const today = todayStr();
   const { can } = useAuth();
 
   // A loose title match is the honest signal available: these forms are not requirements, so
@@ -191,6 +194,22 @@ function FormRow({ form: f, onUpload }: {
           {f.issuedBy && <>Published by {f.issuedBy}</>}
           {f.pageRef && <> · {f.pageRef} of the county packet</>}
         </p>
+
+        {/* When it is owed, and what the date is measured from. A date on its own is not enough:
+            these deadlines move with the camp's own opening day, and a director who does not
+            know that will not understand why the date changed when they edited their season. */}
+        {timing && (
+          <p className={`text-[11.5px] mt-1 inline-flex items-start gap-1.5 ${
+            timing.dueOn && timing.dueOn < today && !timing.met ? 'text-red-text' : 'text-ink-soft'}`}>
+            <CalendarClock className="w-3 h-3 mt-0.5 flex-shrink-0" />
+            <span>
+              {timing.dueOn
+                ? <><span className="font-semibold">Due {timing.dueOn}</span>
+                    {timing.dueOn < today && !timing.met && ' · past due'} · {timing.basis}</>
+                : timing.basis}
+            </span>
+          </p>
+        )}
         {f.campSupplied && (
           <p className="text-[11.5px] text-ink-soft mt-1 leading-relaxed max-w-[70ch]">
             {f.obtainNote ?? 'We cannot publish this one. Obtain it from the issuing office and upload your copy.'}

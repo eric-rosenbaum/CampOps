@@ -25,8 +25,16 @@ export interface FormPart {
   status: PartStatus;
   /** Shown when there is something to do. */
   detail?: string;
-  /** Where to go and do it. */
-  goTo?: { tab: 'records' | 'plan' | 'documents'; label: string } | { href: string; label: string };
+  /**
+   * Where to go and do it.
+   *
+   * `anchor` is the id of the section on that tab that holds the thing, for the parts whose
+   * source is one block of a long page. Without it the camp lands at the top of Your records
+   * and has to find the roster themselves, which is the gap this whole list exists to close.
+   */
+  goTo?:
+    | { tab: 'records' | 'plan' | 'documents'; label: string; anchor?: string }
+    | { href: string; label: string };
 }
 
 export interface FormReadiness {
@@ -77,7 +85,7 @@ function groupProgress(
  * holding it sees it. "The activity grid" is one thing to them; it is thirty-six cells to us.
  */
 export function doh367Readiness(input: ReadinessInput): FormReadiness {
-  const { camp, seasonName, questions, answers, sessions } = input;
+  const { camp, seasonName, questions, answers, sessions, planSections } = input;
   const parts: FormPart[] = [];
 
   parts.push({
@@ -141,7 +149,7 @@ export function doh367Readiness(input: ReadinessInput): FormReadiness {
       : dirQs.done < dirQs.total
         ? `${dirQs.total - dirQs.done} of ${dirQs.total} details still to add: dates of birth, education, qualifying experience.`
         : undefined,
-    goTo: { tab: 'records', label: 'Add director details' },
+    goTo: { tab: 'records', label: 'Add director details', anchor: 'compliance-roster' },
   });
 
   parts.push({
@@ -152,13 +160,32 @@ export function doh367Readiness(input: ReadinessInput): FormReadiness {
     goTo: { href: '/compliance', label: 'Staff and certs' },
   });
 
-  const filingQs = groupProgress(questions, answers, 'filing', ['ny.filing.facility_code']);
+  const planStatus = answers['ny.safety_plan.previously_submitted'] ?? '';
+  const planDone = planSections.filter((x) => x.status === 'complete' || x.status === 'not_applicable').length;
   parts.push({
-    label: 'Safety plan, facility changes and trips',
+    label: 'Written safety plan',
+    source: planStatus === 'previously'
+      ? 'A plan already on file with the county'
+      : 'The plan you are writing in CampCommand',
+    status: planStatus ? 'done' : 'todo',
+    detail: !planStatus
+      ? 'The form asks which of three situations you are in: the plan is attached, it went in a previous year and is still current, or an update is attached. Answer that and the right box ticks.'
+      : planStatus === 'previously'
+        ? 'Ticked as already on file. Nothing from the plan builder goes with this application.'
+        : `Ticked as attached. ${planDone} of ${planSections.length} sections written, and the plan downloads with your packet.`,
+    goTo: planStatus === 'previously'
+      ? { tab: 'records', label: 'Change this' }
+      : { tab: 'plan', label: 'Open the plan' },
+  });
+
+  const filingQs = groupProgress(questions, answers, 'filing',
+    ['ny.filing.facility_code', 'ny.safety_plan.previously_submitted', 'ny.safety_plan.previously_submitted_on']);
+  parts.push({
+    label: 'Facility changes, trips and the parents’ brochure',
     source: 'This year’s filing questions',
     status: filingQs.done === filingQs.total ? 'done' : 'todo',
     detail: filingQs.done === filingQs.total ? undefined
-      : `${filingQs.total - filingQs.done} of ${filingQs.total} to answer: whether the plan is attached or already on file, what changed at the camp, and whether you run trips.`,
+      : `${filingQs.total - filingQs.done} of ${filingQs.total} to answer: what changed at the camp since last season, whether you take campers on trips, and which camper rights brochure you give parents.`,
     goTo: { tab: 'records', label: 'Answer them' },
   });
 

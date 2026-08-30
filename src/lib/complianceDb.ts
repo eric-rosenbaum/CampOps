@@ -41,6 +41,7 @@ function toRequirement(r: Row): ComplianceRequirement {
     label: r.label as string, summary: s(r.summary), category: r.category as string,
     evidenceType: r.evidence_type as ComplianceRequirement['evidenceType'],
     evidenceHint: s(r.evidence_hint), frequency: s(r.frequency),
+    deadlineRule: (r.deadline_rule as Record<string, unknown>) ?? null,
     appliesWhen: (r.applies_when as Record<string, string>) ?? {},
     citation: s(r.citation), citationUrl: s(r.citation_url),
     verifyStatus: r.verify_status as ComplianceRequirement['verifyStatus'],
@@ -69,6 +70,7 @@ function toAuthorityForm(r: Row): ComplianceAuthorityForm {
     obtainNote: s(r.obtain_note), fillable: Boolean(r.fillable),
     campSupplied: Boolean(r.camp_supplied),
     isActive: r.is_active !== false,
+    requirementCode: s(r.requirement_code),
     sortOrder: Number(r.sort_order ?? 0),
   };
 }

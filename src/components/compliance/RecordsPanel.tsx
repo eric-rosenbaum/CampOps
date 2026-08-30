@@ -33,7 +33,7 @@ const GROUP: Record<GroupKey, { label: string; blurb: string; icon: typeof Clipb
   },
   documents: {
     label: 'Documents to attach',
-    blurb: 'Rules you satisfy by putting a file on record, either because the reviewer wants a copy or because nothing in the platform can prove it for you.',
+    blurb: 'Rules you satisfy by putting a file on record: the reviewer wants a copy, or nothing in the platform can prove it for you.',
     icon: Upload,
   },
   plan: {
@@ -48,7 +48,7 @@ const GROUP: Record<GroupKey, { label: string; blurb: string; icon: typeof Clipb
   },
   notApplicable: {
     label: 'Ruled out',
-    blurb: 'Kept visible with the reason, because an inspector will ask why it is not in your packet.',
+    blurb: 'Kept visible, with the reason you gave.',
     icon: Ban,
   },
 };

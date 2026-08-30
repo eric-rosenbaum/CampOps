@@ -284,8 +284,7 @@ function SectionEditor({ section, guidance, categoryLabel, position, draft, canE
             {naOpen && canEdit && (
               <div className="mt-3 rounded-card border border-border bg-cream/50 px-4 py-3">
                 <p className="text-[12px] text-ink-soft">
-                  Why does this not apply? The reason prints on the checklist, because the
-                  reviewer will ask.
+                  Why does this not apply? The reason prints on the checklist.
                 </p>
                 <div className="flex gap-2 mt-2">
                   <input

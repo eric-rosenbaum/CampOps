@@ -302,8 +302,7 @@ function RequirementDetail({ requirement: r, status: st, extraAction, onOpenForm
       {naOpen && st?.status !== 'not_applicable' && (
         <div className="mt-3 bg-white border border-border rounded-card p-3">
           <p className="text-[12.5px] text-ink-soft mb-2">
-            Why does this not apply? The reason is recorded and appears in your exports, because an
-            inspector will ask.
+            Why does this not apply? The reason is recorded and appears in your exports.
           </p>
           <div className="flex gap-2">
             <input

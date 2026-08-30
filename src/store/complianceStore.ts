@@ -189,7 +189,7 @@ export interface AuthorityWork {
   plan: ComplianceRequirement[];
   /** Blocked on a setup question nobody has answered. */
   unanswered: ComplianceRequirement[];
-  /** Ruled out, kept visible because an inspector will ask why. */
+  /** Ruled out, kept visible with the reason. */
   notApplicable: ComplianceRequirement[];
 }
 

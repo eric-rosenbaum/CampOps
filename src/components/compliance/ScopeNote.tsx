@@ -35,8 +35,7 @@ export function ScopeNote() {
         <p>
           Your camp is also under rules that are not printed on any document, which a reviewer
           checks by walking the property and reading your logs. Those are not shown here. When
-          they are, each one will carry the regulation it comes from, because a claim that
-          something is legally required is only worth making with the source attached.
+          they are, each one will carry the regulation it comes from.
         </p>
         <p>
           Rules that sit outside these packages entirely are not tracked at all. Swimming pools
@@ -45,7 +44,7 @@ export function ScopeNote() {
         </p>
         <p>
           What is filled comes from what your staff have recorded in CampCommand. A value prints
-          because a record exists, which is not the same as the underlying work having been done
+          when a record exists, which is not the same as the work behind it having been done
           correctly. Check every form before you file it.
         </p>
         {unverified > 0 && (

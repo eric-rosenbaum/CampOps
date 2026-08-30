@@ -179,7 +179,7 @@ export function RosterPanel() {
                   <p className="text-[11.5px] text-amber-text mt-0.5">
                     {r.alsoMatching.map((m) => m.name).join(', ')} also{' '}
                     {r.alsoMatching.length === 1 ? 'matches' : 'match'} this role. {r.printed.name}{' '}
-                    is the one that prints, because they come first on the roster.
+                    is the one that prints, as the first match on the roster.
                   </p>
                 )}
               </div>

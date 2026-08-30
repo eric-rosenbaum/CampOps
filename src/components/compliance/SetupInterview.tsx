@@ -68,7 +68,7 @@ export function SetupInterview({ onDone }: { onDone: () => void }) {
 
   async function submit() {
     if (unanswered.length > 0) {
-      setError(`${unanswered.length} question${unanswered.length === 1 ? '' : 's'} still to answer. Anything you leave blank stays on your list marked "needs an answer", because we will not tell you a rule does not apply when we have not asked.`);
+      setError(`${unanswered.length} question${unanswered.length === 1 ? '' : 's'} still to answer. Anything you leave blank stays on your list marked "needs an answer". We will not tell you a rule does not apply when we have not asked.`);
       return;
     }
     setError(null);
@@ -83,8 +83,8 @@ export function SetupInterview({ onDone }: { onDone: () => void }) {
       <p className="text-[13.5px] text-ink-soft mt-1.5 leading-relaxed">
         These questions decide which of the {totalRequirements} New York and Westchester
         requirements actually apply to you. You will only ever see the ones that do. Anything you
-        leave unanswered stays on your list until you answer it, because we will not tell you a
-        rule does not apply when we have not asked. You can change these answers later.
+        leave unanswered stays on your list until you answer it: we will not tell you a rule does
+        not apply when we have not asked. You can change these answers later.
       </p>
 
       <div className="mt-6 space-y-1">

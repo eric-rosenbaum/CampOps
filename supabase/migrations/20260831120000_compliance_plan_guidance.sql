@@ -210,7 +210,7 @@ update compliance_plan_templates set
 where code = 'ACT-01';
 
 update compliance_plan_templates set
-  prompt = $p$List the passive activities you run, because Subpart 7-2.5(b)(1) requires them to be described in the approved plan before you may use the reduced ratio. That ratio is no greater than 1:25, and it applies only to an activity in a defined area where campers are spectators or have limited mobility and use no tools or equipment other than computers. Normal ratios come back the moment the passive activity ends.$p$,
+  prompt = $p$List the passive activities you run. Subpart 7-2.5(b)(1) requires them to be described in the approved plan before you may use the reduced ratio. That ratio is no greater than 1:25, and it applies only to an activity in a defined area where campers are spectators or have limited mobility and use no tools or equipment other than computers. Normal ratios come back the moment the passive activity ends.$p$,
   checklist = $c$["which of your activities are passive, named individually","the defined area each one happens in","the 1:25 ratio and who counts","that code ratios resume when the activity ends","which activities you deliberately do not treat as passive"]$c$::jsonb
 where code = 'ACT-02';
 

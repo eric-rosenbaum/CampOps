@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
-import { Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2, LogOut, Users, ChevronDown, ChevronRight, Link as LinkIcon } from 'lucide-react';
+import { Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2, LogOut, Users, ChevronDown, ChevronRight, KeyRound, Link as LinkIcon } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useAdminStore, type AdminCamp, type CampAccount } from '@/store/adminStore';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
+import { PasswordSection } from '@/components/settings/PasswordSection';
 
 const TYPE_STYLE: Record<string, string> = {
   customer: 'bg-green-muted-bg text-green-muted-text',
@@ -22,6 +23,29 @@ const TYPE_LABEL: Record<string, string> = {
   demo: 'showcase',
   internal: 'internal',
 };
+
+
+// Founder super-admins often hold no camp membership, so /settings/security (which lives inside
+// ProtectedRoute and needs a currentCamp) is unreachable for them. This is their way in.
+// Self-service only: there is no path here to change anyone else's password.
+function YourAccount() {
+  const [open, setOpen] = useState(false);
+  const email = useAuthStore((s) => s.user?.email);
+
+  if (open) return <div className="mb-4"><PasswordSection /></div>;
+
+  return (
+    <div className="mb-4 bg-white rounded-card border border-border px-4 py-3 flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <h2 className="text-[13px] font-semibold text-forest">Your account</h2>
+        <p className="text-[12px] text-ink-soft mt-0.5 truncate">{email}</p>
+      </div>
+      <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
+        <KeyRound className="w-3.5 h-3.5" /> Change password
+      </Button>
+    </div>
+  );
+}
 const STATUS_STYLE: Record<string, string> = {
   active: 'bg-green-muted-bg text-green-muted-text',
   suspended: 'bg-red-bg text-red',
@@ -89,6 +113,7 @@ export function AdminConsole() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-4 sm:py-6">
+        <YourAccount />
         <PlatformAdmins />
         <OrgQuickAdd />
         {loading ? (

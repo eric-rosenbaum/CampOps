@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { useCampStore } from '@/store/campStore';
 import { LoadingBlock } from '@/components/shared/ModuleLoading';
+import { PasswordSection } from '@/components/settings/PasswordSection';
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint mb-2 mt-2">{children}</p>;
@@ -286,12 +287,9 @@ export function SecuritySettings() {
       <Topbar title="Security & privacy" subtitle="Protect your account and manage your camp's information" />
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="max-w-2xl mx-auto space-y-4">
-          {MFA_ENABLED && (
-            <>
-              <SectionLabel>Your account</SectionLabel>
-              <MfaSection />
-            </>
-          )}
+          <SectionLabel>Your account</SectionLabel>
+          <PasswordSection />
+          {MFA_ENABLED && <MfaSection />}
 
           {isAdmin && currentCamp && (
             <>

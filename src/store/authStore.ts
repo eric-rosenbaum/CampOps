@@ -42,6 +42,9 @@ interface AuthState {
   verifyEmailOtp: (email: string, token: string) => Promise<string | null>;
   requestPasswordReset: (email: string) => Promise<string | null>;
   updatePassword: (password: string) => Promise<string | null>;
+  /** Does this account have a password to confirm, or is it magic-link-only? */
+  hasUsablePassword: () => Promise<boolean>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<string | null>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -231,6 +234,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (e) {
       return e instanceof Error ? e.message : 'Could not update your password.';
     }
+  },
+
+  hasUsablePassword: async () => {
+    // auth.users isn't readable from the client, so a SECURITY DEFINER RPC answers this.
+    // Fail closed: if we can't tell, ask for the current password rather than letting an
+    // open session set a new one unchallenged.
+    const { data, error } = await supabase.rpc('has_usable_password');
+    if (error) return true;
+    return data === true;
+  },
+
+  changePassword: async (currentPassword, newPassword) => {
+    const email = get().user?.email;
+    if (!email) return 'You need to be signed in to change your password.';
+
+    // updateUser() never checks the old password, so an unattended logged-in session could
+    // otherwise be taken over silently. Re-authenticate first. This returns a fresh session
+    // for the same user, which is harmless.
+    const { error: reauth } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
+    if (reauth) {
+      return /invalid/i.test(reauth.message)
+        ? 'That current password isn’t right.'
+        : reauth.message;
+    }
+
+    return get().updatePassword(newPassword);
   },
 
   refreshProfile: async () => {

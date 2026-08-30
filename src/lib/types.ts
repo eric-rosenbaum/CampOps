@@ -319,6 +319,21 @@ export interface SafetyStaff {
   name: string;
   title: string;
   isActive: boolean;
+  /**
+   * The details New York's permit forms ask for about a named person. All optional, because
+   * most of them are only ever asked about a handful of the roster: DOH-367a wants a date of
+   * birth beside every certified lifeguard and first-aid holder, and DOH-367 wants the camp
+   * director's and health director's background. A kitchen porter has none of it, and a blank
+   * on the form is the correct outcome for them.
+   */
+  /** YYYY-MM-DD, a calendar day. Personal data about an employee; see the staff modal. */
+  dateOfBirth: string | null;
+  /** 'male' or 'female', the only two columns the counselor-data table on DOH-367a prints. */
+  sex: string | null;
+  education: string | null;
+  qualifyingExperience: string | null;
+  /** DOH-367 prints this as the health director's NYS license number. */
+  professionalLicenseNumber: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1633,5 +1648,77 @@ export interface CompliancePlanTemplate {
   sortOrder: number;
 }
 
+/**
+ * One thing a form asks the camp, as a question rather than as a cell.
+ *
+ * Catalog data. `renders` says where the answer lands on the page, so a date asked once fills
+ * the three boxes the form splits it into.
+ */
+export interface ComplianceFormQuestion {
+  id: string;
+  questionKey: string;
+  formCode: string;
+  groupKey: string;
+  groupLabel: string;
+  label: string;
+  helpText: string | null;
+  answerKind: 'text' | 'longtext' | 'integer' | 'date' | 'bool' | 'choice';
+  choices: { value: string; label: string }[] | null;
+  renders: Record<string, unknown>[];
+  /** Only asked once this other question is answered. */
+  dependsOn: string | null;
+  dependsOnValue: string | null;
+  /** Set when the platform could answer this itself; a note, not a promise. */
+  derivesFrom: string | null;
+  appliesWhen: Record<string, string>;
+  required: boolean;
+  sortOrder: number;
+}
+
+/** questionKey to the camp's answer, as typed. */
+export type FormAnswers = Record<string, string>;
+
 /** The applicability interview. Keys match ComplianceRequirement.appliesWhen. */
 export type ComplianceAnswers = Record<string, string>;
+
+/**
+ * One row of DOH-367's camper capacity table.
+ *
+ * The form prints ten session rows and no more, which is why `sessionIndex` is 1 to 10 and the
+ * database checks it: the index is not an ordering hint, it is which printed row this is.
+ *
+ * The counts are what the camp actually enrolled last season, split the way New York splits it.
+ * They are stored as plain numbers because the column is NOT NULL — so a band left blank in the
+ * editor is held as 0, and a 0 prints nothing on the page rather than a printed zero the camp
+ * did not write.
+ */
+export interface SessionCapacity {
+  id: string;
+  campId: string;
+  seasonId: string;
+  /** Which of the form's ten rows this is. 1-based. */
+  sessionIndex: number;
+  /** The camp's own name for the session. The form has no cell for it; it is here to work with. */
+  sessionName: string | null;
+  /** Day or overnight, one tick per row on the form. Null means neither box is ticked. */
+  campType: 'day' | 'overnight' | null;
+  numberOfDays: number | null;
+  age1To5Male: number;
+  age1To5Female: number;
+  /** The form's "6 & 7" band; the column is age_6_7_* in the database. */
+  age6And7Male: number;
+  age6And7Female: number;
+  age8To12Male: number;
+  age8To12Female: number;
+  age13To15Male: number;
+  age13To15Female: number;
+  /** The form's "16 & 17" band; the column is age_16_17_* in the database. */
+  age16And17Male: number;
+  age16And17Female: number;
+  /** Counselors in training. A CIT must be 15 or over, so this band overlaps the two above it. */
+  citsMale: number;
+  citsFemale: number;
+  /** The commissary session a prefill copied the name and dates from, when one did. */
+  sourceSessionId: string | null;
+  updatedAt: string;
+}

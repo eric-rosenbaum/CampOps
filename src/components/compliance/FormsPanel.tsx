@@ -7,7 +7,9 @@ import { useChecklistStore } from '@/store/checklistStore';
 import { useSafetyStore } from '@/store/safetyStore';
 import { useAuth } from '@/lib/auth';
 import { dbRecordComplianceExport } from '@/lib/complianceDb';
-import { NY_FORMS, generateForm, coverage, type PacketCamp, type PacketForm } from '@/lib/compliance/nyPacket';
+import {
+  NY_FORMS, generateForm, coverage, packetRoster, type PacketCamp, type PacketForm,
+} from '@/lib/compliance/nyPacket';
 import {
   exportCompliancePacket, type ExportStatus, type EvidenceFailure,
 } from '@/lib/compliance/exportPacket';
@@ -28,22 +30,24 @@ import {
  * are sitting down to complete.
  */
 const FORM_GAP: Record<string, string> = {
-  'DOH-367': 'Filled: camp description, dates and activity list. By hand: the per-session camper table and every staff qualification, which the platform does not hold.',
-  'DOH-367a': 'By hand: staff names, dates of birth, education and certification dates. The platform does not hold staff records at this depth.',
-  'DOH-2040': 'Filled from your written plan: the page number and Yes box for every section you have completed. Complete more sections and this fills itself.',
-  'DOH-2271': 'By hand: the director\u2019s own certified statement. This one is a personal attestation and is not ours to pre-answer.',
-  'DOH-2286': 'By hand: every question about your pool and beach safety plan, which is a separate document from your camp safety plan and is not tracked here yet.',
+  'DOH-367': 'Fills from your setup answers, your directors, your staff roster and your sessions table. Still yours: the facility code your county assigns you, and the signatures.',
+  'DOH-367a': 'Fills from your staff roster and their certification records. Anyone missing a date of birth leaves their row blank, so completing the roster completes the form.',
+  'DOH-2040': 'Fills from your written plan: the Yes box and the page number for every section you have completed. The page numbers are worked out from the plan we render, so you never count them.',
+  'DOH-2271': 'Fills from the certified statement questions under Your records. The signature and the date are the director\u2019s own and are not ours to pre-answer.',
+  'DOH-2286': 'Fills from your pool and beach safety plan, the same way DOH-2040 fills from your camp plan. Write those sections and this completes itself.',
 };
 
 export function FormsPanel() {
   const {
     planSections, campId, seasonId, requirements, enabledProfileIds,
     documents, statusFor, enabledProfiles, openDocument, answers,
-    activeAuthorities, formsForAuthority, planRowKeys,
+    activeAuthorities, formsForAuthority, planRowKeys, formQuestions, formAnswers,
+    sessionCapacity,
   } = useComplianceStore();
   const { currentCamp } = useCampStore();
   const season = useChecklistStore((s) => s.season);
   const safetyStaff = useSafetyStore((s) => s.staff);
+  const safetyCerts = useSafetyStore((s) => s.certifications);
   const authorities = activeAuthorities();
   const { currentUser } = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
@@ -74,6 +78,9 @@ export function FormsPanel() {
     aquaticsDirectorName: byTitle(/aquatics? director/i),
     openDate: season?.openingDate,
     closeDate: season?.closingDate,
+    // DOH-367a is three tables of certified staff, and DOH-367 asks after each director's
+    // background. Both read the roster from here, in one fixed order.
+    staff: packetRoster(safetyStaff, safetyCerts),
   };
 
   async function download(form: PacketForm, filled: boolean) {
@@ -83,7 +90,10 @@ export function FormsPanel() {
       let blob: Blob;
       let name: string;
       if (filled) {
-        const bytes = await generateForm(form, camp, planSections, answers, planRowKeys());
+        const bytes = await generateForm(
+          form, camp, planSections, answers, planRowKeys(), {}, formQuestions, formAnswers,
+          sessionCapacity,
+        );
         blob = new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' });
         name = `${form.file}-${(camp.campName || 'camp').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf`;
       } else {
@@ -162,6 +172,9 @@ export function FormsPanel() {
         planSections,
         answers,
         planRowKeys: planRowKeys(),
+        formQuestions,
+        formAnswers,
+        sessionCapacity,
         signUrl: openDocument,
         authorityName: authority?.authority.name,
         forms: scopedForms,
@@ -276,7 +289,10 @@ export function FormsPanel() {
 
       <div className="space-y-2">
         {NY_FORMS.map((form) => {
-          const pct = coverage(form, camp, planSections, answers, planRowKeys());
+          const pct = coverage(
+            form, camp, planSections, answers, planRowKeys(), formQuestions, formAnswers,
+            sessionCapacity,
+          );
           return (
             <div key={form.code} className="bg-white rounded-card border border-border px-4 py-3.5">
               <div className="flex items-start gap-3 flex-wrap">

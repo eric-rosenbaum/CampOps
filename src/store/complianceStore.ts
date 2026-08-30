@@ -2,12 +2,15 @@ import { create } from 'zustand';
 import {
   loadCompliance, dbSetupCompliance, dbRecompute, dbUploadComplianceDocument,
   dbLinkDocument, dbUnlinkDocument, dbSignComplianceDocument, dbUpdatePlanSection,
-  dbSetRequirementNa, dbAssignRequirement, type ComplianceData,
+  dbSetRequirementNa, dbAssignRequirement, dbSaveFormAnswer,
+  dbLoadSessionCapacity, dbSaveSessionCapacity, dbDeleteSessionCapacity,
+  type ComplianceData, type SessionCapacityInput,
 } from '@/lib/complianceDb';
 import type {
   ComplianceProfile, ComplianceRequirement, RequirementStatus, ComplianceDocument,
   CompliancePlanSection, ComplianceAnswers, ComplianceStatus, PlanSectionStatus,
   ComplianceAuthority, ComplianceAuthorityForm, CompliancePlanTemplate,
+  ComplianceFormQuestion, FormAnswers, SessionCapacity,
 } from '@/lib/types';
 import type { UploadProgress } from '@/lib/uploadProgress';
 
@@ -45,12 +48,16 @@ interface ComplianceState {
   authorities: ComplianceAuthority[];
   authorityForms: ComplianceAuthorityForm[];
   planTemplates: CompliancePlanTemplate[];
+  formQuestions: ComplianceFormQuestion[];
+  formAnswers: FormAnswers;
   requirements: ComplianceRequirement[];
   enabledProfileIds: string[];
   statuses: RequirementStatus[];
   documents: ComplianceDocument[];
   planSections: CompliancePlanSection[];
   answers: ComplianceAnswers;
+  /** DOH-367's camper capacity table, in printed-row order. */
+  sessionCapacity: SessionCapacity[];
 
   loaded: boolean;
   busy: boolean;
@@ -75,7 +82,22 @@ interface ComplianceState {
     actor: string | null,
   ) => Promise<void>;
 
+  /**
+   * Write one row of the capacity table. Optimistic, for the same reason the form answers are:
+   * this is numeric data entry and a round trip per cell would make it feel broken.
+   */
+  saveSessionCapacity: (row: SessionCapacityInput, actor: string | null) => Promise<void>;
+  /**
+   * Drop a session and close the gap it leaves.
+   *
+   * The index is which row of the form this is, not a sort key, so the rows below have to move
+   * up. Leaving a hole would print session 3 on the form's fourth line.
+   */
+  removeSessionCapacity: (sessionIndex: number, actor: string | null) => Promise<void>;
+
   markNotApplicable: (requirementId: string, reason: string | null, actor: string | null) => Promise<void>;
+  /** Answer one of the questions a form asks. Optimistic, because typing must not feel laggy. */
+  saveFormAnswer: (questionKey: string, value: string, actor: string | null) => Promise<void>;
   assign: (requirementId: string, assignee: string | null) => Promise<void>;
 
   // ── selectors ──
@@ -156,15 +178,19 @@ const RANK: Record<ComplianceStatus, number> = {
 export const useComplianceStore = create<ComplianceState>((set, get) => ({
   campId: null, seasonId: null,
   profiles: [], authorities: [], authorityForms: [], planTemplates: [],
+  formQuestions: [], formAnswers: {},
   requirements: [], enabledProfileIds: [], statuses: [],
-  documents: [], planSections: [], answers: {},
+  documents: [], planSections: [], answers: {}, sessionCapacity: [],
   loaded: false, busy: false,
 
   apply: (d) => set({
     profiles: d.profiles, authorities: d.authorities, authorityForms: d.authorityForms,
-    planTemplates: d.planTemplates, requirements: d.requirements,
+    planTemplates: d.planTemplates,
+    formQuestions: d.formQuestions, formAnswers: d.formAnswers,
+    requirements: d.requirements,
     enabledProfileIds: d.enabledProfileIds, statuses: d.statuses,
     documents: d.documents, planSections: d.planSections, answers: d.answers,
+    sessionCapacity: d.sessionCapacity,
     loaded: true,
   }),
 
@@ -223,6 +249,45 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
     }));
     await dbUpdatePlanSection(id, patch, actor);
     await get().recompute();
+  },
+
+  saveFormAnswer: async (questionKey, value, actor) => {
+    const { campId, seasonId } = get();
+    if (!campId || !seasonId) return;
+    // Applied locally first: these are typed answers and waiting on a round trip per keystroke
+    // group would make the form feel broken. A failed write logs and the next load corrects it.
+    set({ formAnswers: { ...get().formAnswers, [questionKey]: value } });
+    await dbSaveFormAnswer(campId, seasonId, questionKey, value, actor);
+  },
+
+  saveSessionCapacity: async (row, actor) => {
+    const { campId, seasonId } = get();
+    if (!campId || !seasonId) return;
+    const saved = await dbSaveSessionCapacity(campId, seasonId, row, actor);
+    if (!saved) return;
+    set((st) => ({
+      sessionCapacity: [
+        ...st.sessionCapacity.filter((r) => r.sessionIndex !== saved.sessionIndex), saved,
+      ].sort((a, b) => a.sessionIndex - b.sessionIndex),
+    }));
+  },
+
+  removeSessionCapacity: async (sessionIndex, actor) => {
+    const { campId, seasonId, sessionCapacity } = get();
+    if (!campId || !seasonId) return;
+    const kept = sessionCapacity
+      .filter((r) => r.sessionIndex !== sessionIndex)
+      .sort((a, b) => a.sessionIndex - b.sessionIndex);
+    // Ascending, so each row is written into the slot the row above it has already left.
+    for (let i = 0; i < kept.length; i++) {
+      if (kept[i].sessionIndex === i + 1) continue;
+      await dbSaveSessionCapacity(campId, seasonId, { ...kept[i], sessionIndex: i + 1 }, actor);
+    }
+    const highest = Math.max(0, ...sessionCapacity.map((r) => r.sessionIndex));
+    for (let i = kept.length + 1; i <= highest; i++) {
+      await dbDeleteSessionCapacity(campId, seasonId, i);
+    }
+    set({ sessionCapacity: await dbLoadSessionCapacity(campId, seasonId) });
   },
 
   markNotApplicable: async (requirementId, reason, actor) => {

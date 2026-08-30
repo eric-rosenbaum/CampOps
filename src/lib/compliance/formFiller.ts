@@ -97,7 +97,6 @@ export async function fillForm(
     const fitted = fit(text, f.max_width, size, width);
 
     const pageH0 = page.getSize().height;
-    const pageW0 = page.getSize().width;
 
     // Comb fields get one character per printed box, centred in the box. Anything longer than
     // the comb falls through to the normal path rather than spilling past the last cell.
@@ -106,9 +105,7 @@ export async function fillForm(
         const ch = fitted.text[i];
         const cx = f.comb_cells[i] - width(ch, fitted.size) / 2;
         if (rotated) {
-          page.drawText(ch, {
-            x: f.y, y: pageW0 - cx, size: fitted.size, font, color: INK, rotate: degrees(90),
-          });
+          page.drawText(ch, { x: f.y, y: cx, size: fitted.size, font, color: INK, rotate: degrees(90) });
         } else {
           page.drawText(ch, { x: cx, y: pageH0 - f.y, size: fitted.size, font, color: INK });
         }
@@ -124,13 +121,21 @@ export async function fillForm(
 
     // Top-left (map) → bottom-left (pdf-lib). The single place this conversion happens.
     const pageH = page.getSize().height;
-    const pageW = page.getSize().width;
 
     if (rotated) {
-      // Display space → raw space for a /Rotate 90 page: (X,Y)display → (Y, pageH−X)raw,
-      // with the glyphs turned 90°.
+      /*
+       * Display space → raw space for a /Rotate 90 page, where the raw page is portrait and the
+       * reader sees it landscape. The map's own note gives it: display (X,Y) → raw TOP-left
+       * (Y, rawH−X), which in pdf-lib's BOTTOM-left space is simply (Y, X). Glyphs turned 90°
+       * counter-clockwise so they read along the display's x axis.
+       *
+       * This used to subtract the display x from the raw page WIDTH, which is neither the right
+       * axis nor the right length: every value on DOH-367a came out mirrored across the page,
+       * landing a row's staff name in the CPR column two cells to its right. Vertically it was
+       * always correct, which is exactly why it survived a glance at the output.
+       */
       page.drawText(fitted.text, {
-        x: f.y, y: pageW - x, size: fitted.size, font, color: INK, rotate: degrees(90),
+        x: f.y, y: x, size: fitted.size, font, color: INK, rotate: degrees(90),
       });
     } else {
       page.drawText(fitted.text, {

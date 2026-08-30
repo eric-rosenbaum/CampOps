@@ -823,6 +823,11 @@ function rowToSafetyStaff(r: Record<string, unknown>): SafetyStaff {
     name: r.name as string,
     title: (r.title as string) ?? '',
     isActive: (r.is_active as boolean) ?? true,
+    dateOfBirth: (r.date_of_birth as string) ?? null,
+    sex: (r.sex as string) ?? null,
+    education: (r.education as string) ?? null,
+    qualifyingExperience: (r.qualifying_experience as string) ?? null,
+    professionalLicenseNumber: (r.professional_license_number as string) ?? null,
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
@@ -877,18 +882,31 @@ async function loadSafetyData(campId: string): Promise<SafetyData> {
     supabase.from('safety_items').select('*').eq('camp_id', campId).order('created_at', { ascending: true }),
     supabase.from('safety_inspection_log').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
     supabase.from('safety_drills').select('*').eq('camp_id', campId).order('scheduled_date', { ascending: true }),
-    supabase.from('safety_staff').select('*').eq('camp_id', campId).order('name', { ascending: true }),
+    // Explicit column list, not select('*'): the personal columns are revoked from authenticated
+    // and asking for them would fail the whole query. Admins fetch those separately.
+    supabase.from('safety_staff')
+      .select('id, camp_id, name, title, is_active, created_at, updated_at')
+      .eq('camp_id', campId).order('name', { ascending: true }),
     supabase.from('staff_certifications').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
     supabase.from('safety_temp_logs').select('*').eq('camp_id', campId).order('log_date', { ascending: false }),
     supabase.from('safety_licenses').select('*').eq('camp_id', campId).order('name', { ascending: true }),
   ]);
   assertLoaded('safety', itemsRes, logRes, drillsRes, staffRes, certsRes, tempRes, licRes);
 
+  // Refused for anyone who is not an admin, and that refusal is not an error worth surfacing:
+  // a counselor opening the safety module simply does not get their colleagues' birthdays.
+  const personal = await dbLoadStaffPersonal(campId);
+
   return {
     items: (itemsRes.data ?? []).map((r) => rowToSafetyItem(r as Record<string, unknown>)),
     inspectionLog: (logRes.data ?? []).map((r) => rowToSafetyLog(r as Record<string, unknown>)),
     drills: (drillsRes.data ?? []).map((r) => rowToDrill(r as Record<string, unknown>)),
-    staff: (staffRes.data ?? []).map((r) => rowToSafetyStaff(r as Record<string, unknown>)),
+    // Personal details are merged in only when the caller is an admin; for everybody else the
+    // fetch is refused and these stay null, which is the point.
+    staff: (staffRes.data ?? []).map((r) => ({
+      ...rowToSafetyStaff(r as Record<string, unknown>),
+      ...(personal[(r as Record<string, unknown>).id as string] ?? {}),
+    })),
     certifications: (certsRes.data ?? []).map((r) => rowToCert(r as Record<string, unknown>)),
     tempLogs: (tempRes.data ?? []).map((r) => rowToTempLog(r as Record<string, unknown>)),
     licenses: (licRes.data ?? []).map((r) => rowToLicense(r as Record<string, unknown>)),
@@ -1007,7 +1025,11 @@ export async function dbDeleteSafetyStaff(id: string) {
 export async function dbAddSafetyStaff(staff: SafetyStaff) {
   const { error } = await supabase.from('safety_staff').insert({
     id: staff.id, camp_id: _campId, name: staff.name, title: staff.title,
-    is_active: staff.isActive, created_at: staff.createdAt, updated_at: staff.updatedAt,
+    is_active: staff.isActive,
+    date_of_birth: staff.dateOfBirth, sex: staff.sex, education: staff.education,
+    qualifying_experience: staff.qualifyingExperience,
+    professional_license_number: staff.professionalLicenseNumber,
+    created_at: staff.createdAt, updated_at: staff.updatedAt,
   });
   if (error) console.error('dbAddSafetyStaff error:', error.message);
 }
@@ -1017,6 +1039,13 @@ export async function dbUpdateSafetyStaff(id: string, patch: Partial<SafetyStaff
   if (patch.name !== undefined) row.name = patch.name;
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.isActive !== undefined) row.is_active = patch.isActive;
+  if (patch.dateOfBirth !== undefined) row.date_of_birth = patch.dateOfBirth;
+  if (patch.sex !== undefined) row.sex = patch.sex;
+  if (patch.education !== undefined) row.education = patch.education;
+  if (patch.qualifyingExperience !== undefined) row.qualifying_experience = patch.qualifyingExperience;
+  if (patch.professionalLicenseNumber !== undefined) {
+    row.professional_license_number = patch.professionalLicenseNumber;
+  }
   const { error } = await supabase.from('safety_staff').update(row).eq('id', id);
   if (error) console.error('dbUpdateSafetyStaff error:', error.message);
 }
@@ -3177,4 +3206,31 @@ export async function dbSignCommissaryFile(path: string): Promise<string | null>
   const { data, error } = await supabase.storage.from(COMMISSARY_FILE_BUCKET).createSignedUrl(path, 300);
   if (error) { console.error('dbSignCommissaryFile error:', error.message); return null; }
   return data?.signedUrl ?? null;
+}
+
+
+/**
+ * Staff personal details for the permit forms: dates of birth, education, licence numbers.
+ *
+ * Separate from the roster load because these columns are revoked from `authenticated` and
+ * reachable only through an admin-gated function. A non-admin calling this gets an error, which
+ * is the correct outcome and is why the caller treats failure as "no details" rather than
+ * surfacing it: a counselor opening the safety module has not done anything wrong.
+ */
+export async function dbLoadStaffPersonal(
+  campId: string,
+): Promise<Record<string, Partial<SafetyStaff>>> {
+  const { data, error } = await supabase.rpc('get_camp_staff_personal', { p_camp_id: campId });
+  if (error) return {};
+  const out: Record<string, Partial<SafetyStaff>> = {};
+  for (const r of (data ?? []) as Record<string, unknown>[]) {
+    out[r.id as string] = {
+      dateOfBirth: (r.date_of_birth as string) ?? null,
+      sex: (r.sex as string) ?? null,
+      education: (r.education as string) ?? null,
+      qualifyingExperience: (r.qualifying_experience as string) ?? null,
+      professionalLicenseNumber: (r.professional_license_number as string) ?? null,
+    };
+  }
+  return out;
 }

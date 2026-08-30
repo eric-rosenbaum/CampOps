@@ -458,7 +458,14 @@ function PoolStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }
     // Add lifeguards + certs
     guards.filter(g => g.name.trim()).forEach(g => {
       const staffId = generateId();
-      addStaff({ id: staffId, name: g.name.trim(), title: 'Lifeguard', isActive: true, createdAt: now, updatedAt: now });
+      // Onboarding asks for a name and a certification, nothing more. The permit-form details
+      // start empty and are filled in later from the staff roster, never guessed at here.
+      addStaff({
+        id: staffId, name: g.name.trim(), title: 'Lifeguard', isActive: true,
+        dateOfBirth: null, sex: null, education: null,
+        qualifyingExperience: null, professionalLicenseNumber: null,
+        createdAt: now, updatedAt: now,
+      });
       if (g.cert) {
         addCert({
           id: generateId(), staffId, certType: g.cert as never,

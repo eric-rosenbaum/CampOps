@@ -4,6 +4,7 @@ import { NY_FORMS, generateForm, type PacketCamp } from './nyPacket';
 import type {
   ComplianceProfile, ComplianceRequirement, RequirementStatus, ComplianceDocument,
   CompliancePlanSection, ComplianceStatus, PlanSectionStatus, ComplianceAnswers,
+  ComplianceFormQuestion, FormAnswers, SessionCapacity,
 } from '@/lib/types';
 
 /**
@@ -273,6 +274,11 @@ export interface PacketExportInput {
   answers: ComplianceAnswers;
   /** Section code to the checklist row it fills. Catalog data, never derived from a title. */
   planRowKeys: Record<string, string>;
+  /** The questions the forms ask directly, and what the camp answered. */
+  formQuestions: ComplianceFormQuestion[];
+  formAnswers: FormAnswers;
+  /** Last season's attendance, one row per session. Fills DOH-367's camper capacity table. */
+  sessionCapacity: SessionCapacity[];
   /** Signed read URL for a private compliance-files path. */
   signUrl: (bucketPath: string) => Promise<string | null>;
   /**
@@ -492,6 +498,7 @@ export async function exportCompliancePacket(
       const bytes = await generateForm(
         form, input.camp, input.planSections, input.answers,
         input.planRowKeys, plan.pageBySectionCode,
+        input.formQuestions, input.formAnswers, input.sessionCapacity,
       );
       formsDir?.file(`${form.code}.pdf`, bytes);
     }

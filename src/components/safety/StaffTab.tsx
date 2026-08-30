@@ -4,6 +4,7 @@ import { useSafetyStore, certExpiryStatus, CERT_TYPE_LABELS } from '@/store/safe
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/shared/Button';
+import { RosterCompleteness } from './RosterCompleteness';
 import type { CertType } from '@/lib/types';
 
 const ALL_CERT_TYPES: CertType[] = ['cpr_aed', 'mandatory_reporter', 'lifeguard', 'first_aid', 'wsi'];
@@ -154,6 +155,9 @@ export function StaffTab() {
           <p className="text-meta text-ink-faint mt-0.5">Within 30 days</p>
         </div>
       </div>
+
+      {/* What the permit forms are still missing from these records. */}
+      <RosterCompleteness />
 
       {/* Staff roster */}
       <div className="flex items-center justify-between mb-3 mt-2">

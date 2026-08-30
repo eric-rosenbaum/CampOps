@@ -23,14 +23,15 @@ import { useUIStore } from '@/store/uiStore';
 /**
  * Four tabs, in the order a camp director works:
  *
- *   Overview   where do we stand and what is about to be late
- *   Reviewers  who is going to ask, when, and what official forms they use
- *   Records    everything to do, grouped by who asks for it, with the entry right there
- *   Hand-off   the finished packets, one per party
+ *   Overview    where do we stand and what is about to be late
+ *   Reviewers   who is going to ask, when, and what official forms they use
+ *   Records     everything to do, grouped by who asks for it, with the entry right there
+ *   Safety plan the written plan itself, which is most of what a permit packet is
+ *   Hand-off    the finished packets, one per party
  *
- * Safety plan and Documents are still real pages, reached from Records rather than from the
- * tab bar, because they are places you go to do one specific thing rather than places you
- * browse. Keeping them out of the top level is what makes the four tabs above legible.
+ * Documents stays off the tab bar, reached from Records and from a form row on Reviewers,
+ * because uploading a file is something you arrive at holding a specific document rather than
+ * somewhere you browse.
  */
 type Tab = 'overview' | 'reviewers' | 'records' | 'export' | 'plan' | 'documents' | 'setup';
 
@@ -38,6 +39,10 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'overview',  label: 'Overview' },
   { id: 'reviewers', label: 'Reviewers' },
   { id: 'records',   label: 'Your records' },
+  // The written plan is ninety-six sections of writing and the single largest item in the
+  // packet. It was reachable only from a card on Overview and a group inside Records, which is
+  // not where anyone would look for the biggest job on the page.
+  { id: 'plan',      label: 'Safety plan' },
   { id: 'export',    label: 'Hand-off' },
 ];
 
@@ -155,12 +160,7 @@ export function Compliance() {
         {tab === 'export'    && <FormsPanel />}
 
         {/* Reached from Records, not the tab bar. Each is one job, not a place to browse. */}
-        {tab === 'plan' && (
-          <>
-            <BackToRecords onBack={() => setTab('records')} />
-            <PlanBuilder />
-          </>
-        )}
+        {tab === 'plan' && <PlanBuilder />}
         {tab === 'documents' && (
           <>
             <BackToRecords onBack={() => setTab(uploadTitle ? 'reviewers' : 'records')}

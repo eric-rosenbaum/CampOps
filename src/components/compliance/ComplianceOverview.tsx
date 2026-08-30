@@ -1,8 +1,9 @@
-import { CalendarClock, ArrowRight, AlertTriangle, FileEdit } from 'lucide-react';
+import { CalendarClock, ArrowRight, AlertTriangle, FileEdit, ClipboardList } from 'lucide-react';
 import { useComplianceStore } from '@/store/complianceStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { RequirementList } from './RequirementList';
 import { ScopeNote } from './ScopeNote';
+import { detailsProgress } from '@/lib/compliance/detailsProgress';
 import { todayStr } from '@/lib/utils';
 
 /**
@@ -22,6 +23,7 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
   const items = st.actionItems();
   const summaries = st.activeAuthorities();
   const plan = st.planProgress();
+  const details = detailsProgress(st.formQuestions, st.answers, st.formAnswers);
   const today = todayStr();
 
   // Anything with a real deadline, soonest first. A requirement already met is not "upcoming"
@@ -152,6 +154,28 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
             <div className="h-1.5 rounded-full bg-cream-dark overflow-hidden mt-2.5 max-w-md">
               <div className="h-full bg-sage rounded-full"
                    style={{ width: `${Math.round((plan.complete / plan.total) * 100)}%` }} />
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-ink-faint flex-shrink-0" />
+        </button>
+      )}
+
+      {details.total > 0 && details.done < details.total && (
+        <button
+          onClick={() => onGoToTab('records')}
+          className="w-full bg-white rounded-card border border-border px-5 py-4 mb-6 text-left hover:border-sage transition-colors flex items-center gap-4"
+        >
+          <ClipboardList className="w-5 h-5 text-ink-faint flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-semibold text-forest">Details your forms ask for</p>
+            <p className="text-[12px] text-ink-soft mt-0.5">
+              {details.total - details.done} question{details.total - details.done === 1 ? '' : 's'} still
+              to answer. These are the ones nothing else in the platform can work out for you, and
+              they are what stands between a part-filled packet and one you can file.
+            </p>
+            <div className="h-1.5 rounded-full bg-cream-dark overflow-hidden mt-2.5 max-w-md">
+              <div className="h-full bg-sage rounded-full"
+                   style={{ width: `${Math.round((details.done / details.total) * 100)}%` }} />
             </div>
           </div>
           <ArrowRight className="w-4 h-4 text-ink-faint flex-shrink-0" />

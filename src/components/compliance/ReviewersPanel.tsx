@@ -26,7 +26,9 @@ export function ReviewersPanel({ onUpload }: { onUpload: (formTitle: string) => 
   const authorities = useComplianceStore((s) => s.authorities);
   const enabledProfileIds = useComplianceStore((s) => s.enabledProfileIds);
   const summaries = st.activeAuthorities();
-  const [open, setOpen] = useState<string | null>(summaries[0]?.authority.id ?? null);
+  // Everything starts closed. Opening one for the camp guesses which reviewer they came here
+  // about, and lands them mid-list when they switch tabs.
+  const [open, setOpen] = useState<string | null>(null);
 
   if (authorities.length === 0 || enabledProfileIds.length === 0) {
     return (

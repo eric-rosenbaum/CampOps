@@ -5,6 +5,8 @@ import { useComplianceStore, type AuthoritySummary } from '@/store/complianceSto
 import { useUIStore } from '@/store/uiStore';
 import { RequirementList } from './RequirementList';
 import { auditRecordsCoverage } from '@/store/complianceStore.audit';
+import { DetailsPanel } from './DetailsPanel';
+import { SessionsPanel } from './SessionsPanel';
 import type { ComplianceRequirement } from '@/lib/types';
 
 /**
@@ -63,9 +65,9 @@ export function RecordsPanel({ onGoToTab }: { onGoToTab: (tab: 'plan' | 'documen
   const expected = st.requirements.filter((r) => enabled.has(r.profileId));
   const rendered = new Map(summaries.map((s) => [s.authority.id, st.workForAuthority(s.authority.id)]));
   const problems = auditRecordsCoverage(expected, rendered);
-  const [openAuthority, setOpenAuthority] = useState<string | null>(
-    summaries.find((s) => s.outstanding > 0)?.authority.id ?? summaries[0]?.authority.id ?? null,
-  );
+  // Closed by default. The county has well over a hundred rows, and opening it on arrival buries
+  // the five other reviewers below a wall the camp did not ask to see.
+  const [openAuthority, setOpenAuthority] = useState<string | null>(null);
 
   if (summaries.length === 0) {
     return (
@@ -91,6 +93,14 @@ export function RecordsPanel({ onGoToTab }: { onGoToTab: (tab: 'plan' | 'documen
           </p>
         </div>
       )}
+
+      {/* Ahead of the reviewer list, because these questions block form fields across several
+          reviewers at once and there is no useful way to file them under one of them. */}
+      <DetailsPanel />
+
+      {/* The camper capacity table. Same reason it sits above the reviewer list: it is one
+          block of the county's own form, not evidence filed against a requirement. */}
+      <SessionsPanel />
 
       {summaries.map((summary) => (
         <AuthorityBlock

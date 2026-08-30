@@ -15,6 +15,7 @@ import type {
   ComplianceProfile, ComplianceRequirement, RequirementStatus, ComplianceDocument,
   CompliancePlanSection, ComplianceAnswers, PlanSectionStatus,
   ComplianceAuthority, ComplianceAuthorityForm, CompliancePlanTemplate,
+  ComplianceFormQuestion, FormAnswers, SessionCapacity,
 } from './types';
 
 type Row = Record<string, unknown>;
@@ -81,6 +82,21 @@ function toPlanTemplate(r: Row): CompliancePlanTemplate {
   };
 }
 
+function toFormQuestion(r: Row): ComplianceFormQuestion {
+  return {
+    id: r.id as string, questionKey: r.question_key as string, formCode: r.form_code as string,
+    groupKey: r.group_key as string, groupLabel: r.group_label as string,
+    label: r.label as string, helpText: s(r.help_text),
+    answerKind: r.answer_kind as ComplianceFormQuestion['answerKind'],
+    choices: Array.isArray(r.choices) ? (r.choices as { value: string; label: string }[]) : null,
+    renders: Array.isArray(r.renders) ? (r.renders as Record<string, unknown>[]) : [],
+    dependsOn: s(r.depends_on), dependsOnValue: s(r.depends_on_value),
+    derivesFrom: s(r.derives_from),
+    appliesWhen: (r.applies_when as Record<string, string>) ?? {},
+    required: Boolean(r.required), sortOrder: Number(r.sort_order ?? 0),
+  };
+}
+
 function toStatus(r: Row): RequirementStatus {
   return {
     requirementId: r.requirement_id as string,
@@ -101,27 +117,76 @@ function toPlanSection(r: Row): CompliancePlanSection {
   };
 }
 
+/**
+ * The twelve camper-count cells of one session row, as [interface property, database column].
+ *
+ * One table, read by the mapper and by the writer, so a read and a write can never disagree
+ * about which band a number belongs to. The form's own key names are a third spelling again
+ * ("6 & 7" is `age_6_and_7` there, `age_6_7` here) and are kept in the form layer, where the
+ * page is drawn.
+ */
+type CapacityCount =
+  | 'age1To5Male' | 'age1To5Female' | 'age6And7Male' | 'age6And7Female'
+  | 'age8To12Male' | 'age8To12Female' | 'age13To15Male' | 'age13To15Female'
+  | 'age16And17Male' | 'age16And17Female' | 'citsMale' | 'citsFemale';
+
+const CAPACITY_COLUMNS: [CapacityCount, string][] = [
+  ['age1To5Male', 'age_1_to_5_male'],
+  ['age1To5Female', 'age_1_to_5_female'],
+  ['age6And7Male', 'age_6_7_male'],
+  ['age6And7Female', 'age_6_7_female'],
+  ['age8To12Male', 'age_8_to_12_male'],
+  ['age8To12Female', 'age_8_to_12_female'],
+  ['age13To15Male', 'age_13_to_15_male'],
+  ['age13To15Female', 'age_13_to_15_female'],
+  ['age16And17Male', 'age_16_17_male'],
+  ['age16And17Female', 'age_16_17_female'],
+  ['citsMale', 'cits_male'],
+  ['citsFemale', 'cits_female'],
+];
+
+function toSessionCapacity(r: Row): SessionCapacity {
+  const counts = {} as Record<CapacityCount, number>;
+  for (const [prop, column] of CAPACITY_COLUMNS) counts[prop] = Number(r[column] ?? 0);
+  return {
+    id: r.id as string, campId: r.camp_id as string, seasonId: r.season_id as string,
+    sessionIndex: Number(r.session_index), sessionName: s(r.session_name),
+    campType: (r.camp_type as SessionCapacity['campType']) ?? null,
+    numberOfDays: r.number_of_days == null ? null : Number(r.number_of_days),
+    sourceSessionId: s(r.source_session_id),
+    updatedAt: r.updated_at as string,
+    ...counts,
+  };
+}
+
 // ─── Bulk load ────────────────────────────────────────────────────────────────
 export interface ComplianceData {
   profiles: ComplianceProfile[];
   authorities: ComplianceAuthority[];
   authorityForms: ComplianceAuthorityForm[];
   planTemplates: CompliancePlanTemplate[];
+  formQuestions: ComplianceFormQuestion[];
+  formAnswers: FormAnswers;
   requirements: ComplianceRequirement[];
   enabledProfileIds: string[];
   statuses: RequirementStatus[];
   documents: ComplianceDocument[];
   planSections: CompliancePlanSection[];
   answers: ComplianceAnswers;
+  /** DOH-367's camper capacity table, one row per session. */
+  sessionCapacity: SessionCapacity[];
 }
 
 export async function loadCompliance(campId: string, seasonId: string | null): Promise<ComplianceData | null> {
   try {
-    const [prof, auth, authForms, planTpl, reqs, enabled, stat, docs, links, plan, ans] = await Promise.all([
+    const [prof, auth, authForms, planTpl, formQ, formA, reqs, enabled, stat, docs, links, plan, ans, sess] = await Promise.all([
       supabase.from('compliance_profiles').select('*').eq('is_active', true).order('sort_order'),
       supabase.from('compliance_authorities').select('*').eq('is_active', true).order('sort_order'),
       supabase.from('compliance_authority_forms').select('*').order('sort_order'),
       supabase.from('compliance_plan_templates').select('*').order('sort_order'),
+      supabase.from('compliance_form_questions').select('*').order('sort_order'),
+      seasonId ? supabase.from('camp_form_answers').select('question_key, value').eq('camp_id', campId).eq('season_id', seasonId)
+               : Promise.resolve({ data: [], error: null }),
       supabase.from('compliance_requirements').select('*').order('sort_order'),
       seasonId ? supabase.from('camp_compliance_profiles').select('profile_id').eq('camp_id', campId).eq('season_id', seasonId)
                : Promise.resolve({ data: [], error: null }),
@@ -132,6 +197,8 @@ export async function loadCompliance(campId: string, seasonId: string | null): P
       seasonId ? supabase.from('compliance_plan_sections').select('*').eq('camp_id', campId).eq('season_id', seasonId).order('sort_order')
                : Promise.resolve({ data: [], error: null }),
       seasonId ? supabase.from('camp_compliance_answers').select('key, value').eq('camp_id', campId).eq('season_id', seasonId)
+               : Promise.resolve({ data: [], error: null }),
+      seasonId ? supabase.from('compliance_session_capacity').select('*').eq('camp_id', campId).eq('season_id', seasonId).order('session_index')
                : Promise.resolve({ data: [], error: null }),
     ]);
 
@@ -146,6 +213,10 @@ export async function loadCompliance(campId: string, seasonId: string | null): P
       authorities: ((auth.data ?? []) as Row[]).map(toAuthority),
       authorityForms: ((authForms.data ?? []) as Row[]).map(toAuthorityForm),
       planTemplates: ((planTpl.data ?? []) as Row[]).map(toPlanTemplate),
+      formQuestions: ((formQ.data ?? []) as Row[]).map(toFormQuestion),
+      formAnswers: Object.fromEntries(
+        ((formA.data ?? []) as Row[]).map((r) => [r.question_key as string, r.value as string]),
+      ),
       requirements: ((reqs.data ?? []) as Row[]).map(toRequirement),
       enabledProfileIds: ((enabled.data ?? []) as Row[]).map((r) => r.profile_id as string),
       statuses: ((stat.data ?? []) as Row[]).map(toStatus),
@@ -159,6 +230,7 @@ export async function loadCompliance(campId: string, seasonId: string | null): P
       })),
       planSections: ((plan.data ?? []) as Row[]).map(toPlanSection),
       answers: Object.fromEntries(((ans.data ?? []) as Row[]).map((r) => [r.key as string, r.value as string])),
+      sessionCapacity: ((sess.data ?? []) as Row[]).map(toSessionCapacity),
     };
   } catch (e) {
     campError('[Compliance] load threw', e);
@@ -296,4 +368,75 @@ export async function dbRecordComplianceExport(
     reader, generated_by: generatedBy,
   });
   if (error) campError('record compliance export', error.message);
+}
+
+/**
+ * Record one answer to a form question.
+ *
+ * Upsert on the natural key rather than insert-then-update, so a director correcting a typo
+ * replaces the answer instead of adding a second one the projection would then have to choose
+ * between.
+ */
+export async function dbSaveFormAnswer(
+  campId: string, seasonId: string, questionKey: string, value: string, actor: string | null,
+) {
+  const { error } = await supabase.from('camp_form_answers').upsert({
+    camp_id: campId, season_id: seasonId, question_key: questionKey,
+    row_index: 0, value, answered_by: actor, answered_at: new Date().toISOString(),
+  }, { onConflict: 'camp_id,season_id,question_key,row_index' });
+  if (error) campError('save form answer', error.message);
+  return !error;
+}
+
+// ─── Session capacity (DOH-367) ───────────────────────────────────────────────
+/** One row of the capacity table as the editor holds it, before it has been saved. */
+export type SessionCapacityInput = Omit<SessionCapacity, 'id' | 'campId' | 'seasonId' | 'updatedAt'>;
+
+/** The ten rows DOH-367 prints. Also loaded in bulk; this is for reloading after a write. */
+export async function dbLoadSessionCapacity(campId: string, seasonId: string): Promise<SessionCapacity[]> {
+  const { data, error } = await supabase.from('compliance_session_capacity')
+    .select('*').eq('camp_id', campId).eq('season_id', seasonId).order('session_index');
+  if (error) { campError('load session capacity', error.message); return []; }
+  return ((data ?? []) as Row[]).map(toSessionCapacity);
+}
+
+/**
+ * Write one session row.
+ *
+ * Upsert on camp, season and index rather than insert-then-update, because the index is the
+ * printed row: saving the same row twice must replace it, not add an eleventh the table has
+ * nowhere to print. The index is checked here as well as in the database, so a bug produces a
+ * logged error rather than a constraint violation the camp sees as a failed save.
+ */
+export async function dbSaveSessionCapacity(
+  campId: string, seasonId: string, row: SessionCapacityInput, actor: string | null,
+): Promise<SessionCapacity | null> {
+  if (!Number.isInteger(row.sessionIndex) || row.sessionIndex < 1 || row.sessionIndex > 10) {
+    campError('save session capacity', `session index ${row.sessionIndex} is outside the form's ten rows`);
+    return null;
+  }
+  const payload: Row = {
+    camp_id: campId, season_id: seasonId, session_index: row.sessionIndex,
+    session_name: row.sessionName?.trim() || null,
+    camp_type: row.campType,
+    number_of_days: row.numberOfDays,
+    source_session_id: row.sourceSessionId,
+    updated_by: actor, updated_at: new Date().toISOString(),
+  };
+  for (const [prop, column] of CAPACITY_COLUMNS) {
+    const n = Number(row[prop] ?? 0);
+    payload[column] = Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+  }
+  const { data, error } = await supabase.from('compliance_session_capacity')
+    .upsert(payload, { onConflict: 'camp_id,season_id,session_index' })
+    .select('*').single();
+  if (error) { campError('save session capacity', error.message); return null; }
+  return toSessionCapacity(data as Row);
+}
+
+/** Remove one session row. Keyed by index, the same way the row is written. */
+export async function dbDeleteSessionCapacity(campId: string, seasonId: string, sessionIndex: number) {
+  const { error } = await supabase.from('compliance_session_capacity').delete()
+    .eq('camp_id', campId).eq('season_id', seasonId).eq('session_index', sessionIndex);
+  if (error) campError('delete session capacity', error.message);
 }

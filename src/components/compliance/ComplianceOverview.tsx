@@ -163,7 +163,7 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
         </button>
       )}
 
-      {details.total > 0 && details.done < details.total && (
+      {details.requiredLeft > 0 && (
         <button
           onClick={() => onGoToTab('records')}
           className="w-full bg-white rounded-card border border-border px-5 py-4 mb-6 text-left hover:border-sage transition-colors flex items-center gap-4"
@@ -172,9 +172,9 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-forest">Details your forms ask for</p>
             <p className="text-[12px] text-ink-soft mt-0.5">
-              {details.total - details.done} question{details.total - details.done === 1 ? '' : 's'} still
-              to answer. These are the ones nothing else in the platform can work out for you, and
-              they are what stands between a part-filled packet and one you can file.
+              {details.requiredLeft} question{details.requiredLeft === 1 ? '' : 's'} your forms
+              will not print without. These are the ones nothing else in the platform can work out
+              for you.
             </p>
             <div className="h-1.5 rounded-full bg-cream-dark overflow-hidden mt-2.5 max-w-md">
               <div className="h-full bg-sage rounded-full"

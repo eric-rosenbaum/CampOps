@@ -4,9 +4,10 @@ import { Button } from '@/components/shared/Button';
 import { useComplianceStore } from '@/store/complianceStore';
 import { useAuth } from '@/lib/auth';
 import type { ComplianceRequirement, RequirementStatus, ComplianceStatus } from '@/lib/types';
+import { generatedFormFor } from '@/lib/compliance/generatedForms';
 
 /** The documents this product prepares, rather than merely asks a camp to hold. */
-const GENERATED_FORMS = new Set(['DOH-367', 'DOH-367a', 'DOH-2040', 'DOH-2271', 'DOH-2286']);
+
 
 /** The word a camp reads, and the colour it reads it in. */
 const TONE: Record<ComplianceStatus, { label: string; cls: string; dot: string }> = {
@@ -137,7 +138,7 @@ export function RequirementList({
                 <span className="block text-[13.5px] font-medium text-ink">{r.label}</span>
                 <span className="block text-[12px] text-ink-soft mt-0.5">
                   {st
-                    ? explain(st, r.formCodes.find((c) => GENERATED_FORMS.has(c)) ?? null)
+                    ? explain(st, generatedFormFor(r.formCodes))
                     : 'Not yet evaluated'}
                 </span>
               </span>
@@ -168,7 +169,7 @@ function RequirementDetail({ requirement: r, status: st, extraAction, onOpenForm
   const linked = documentsFor(r.id);
   // The forms the product generates. A requirement tagged with one of these is a document we
   // produce, not a file the camp happens to hold, and it needs a different story.
-  const generatedForm = r.formCodes.find((c) => GENERATED_FORMS.has(c)) ?? null;
+  const generatedForm = generatedFormFor(r.formCodes);
   const [naOpen, setNaOpen] = useState(false);
   const [naReason, setNaReason] = useState('');
 
@@ -272,10 +273,24 @@ function RequirementDetail({ requirement: r, status: st, extraAction, onOpenForm
         </div>
       )}
 
+      {/* Only where the upload control is actually rendered. On Overview this row is a summary
+          with no actions, and an instruction with nothing to press is a dead end. */}
+      {canManage && generatedForm && extraAction && linked.length === 0 && (
+        <p className="text-[12px] text-ink-soft mt-3">
+          Once you have posted it, keep your signed copy here.
+        </p>
+      )}
+
       {canManage && (
         <div className="flex flex-wrap gap-2 mt-3">
           {extraAction}
-          {documents.length > 0 && (
+          {/*
+            No "attach an existing document" picker on a form we generate. This is the exact
+            path by which a workers' compensation certificate came to satisfy DOH-367: the
+            picker offers every file the camp holds, and any one of them turns the row green.
+            The only thing that belongs here is the copy they filed, which has to be uploaded.
+          */}
+          {documents.length > 0 && !generatedForm && (
             <select
               defaultValue=""
               onChange={(e) => { if (e.target.value) { linkDocument(r.id, e.target.value); e.target.value = ''; } }}

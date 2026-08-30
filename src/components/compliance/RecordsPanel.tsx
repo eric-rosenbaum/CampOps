@@ -4,6 +4,7 @@ import { Button } from '@/components/shared/Button';
 import { useComplianceStore, type AuthoritySummary } from '@/store/complianceStore';
 import { useUIStore } from '@/store/uiStore';
 import { RequirementList } from './RequirementList';
+import { generatedFormFor } from '@/lib/compliance/generatedForms';
 import { auditRecordsCoverage } from '@/store/complianceStore.audit';
 import { DetailsPanel } from './DetailsPanel';
 import { SessionsPanel } from './SessionsPanel';
@@ -251,11 +252,18 @@ function AuthorityBlock({ summary, isOpen, onToggle, onGoToTab, onOpenForm }: {
                             </Button>
                           )
                         : key === 'documents'
-                          ? () => (
-                              <Button size="sm" variant="ghost" onClick={() => onGoToTab('documents')}>
-                                <Upload className="w-3.5 h-3.5" /> Upload a file
-                              </Button>
-                            )
+                          ? (r) => {
+                              // On a form we produce, the only file that belongs is the copy
+                              // the camp filed. Name the button after that, so it cannot be
+                              // read as "upload something and this goes green".
+                              const form = generatedFormFor(r.formCodes);
+                              return (
+                                <Button size="sm" variant="ghost" onClick={() => onGoToTab('documents')}>
+                                  <Upload className="w-3.5 h-3.5" />
+                                  {form ? `Attach your filed ${form}` : 'Upload a file'}
+                                </Button>
+                              );
+                            }
                           : undefined}
                   />
                 </div>

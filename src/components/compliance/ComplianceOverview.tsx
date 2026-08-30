@@ -26,7 +26,7 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
   // Same rule as the tab: no checklist in scope, no reason to ask for the plan.
   const activeForms = st.activeFormCodes();
   const planHasADocument = activeForms.has('DOH-2040') || activeForms.has('DOH-2286');
-  const details = detailsProgress(st.formQuestions, st.answers, st.formAnswers);
+  const details = detailsProgress(st.formQuestions, st.answers, st.formAnswers, activeForms);
   const today = todayStr();
 
   // Anything with a real deadline, soonest first. A requirement already met is not "upcoming"

@@ -12,8 +12,9 @@ export function detailsProgress(
   questions: ComplianceFormQuestion[],
   setupAnswers: Record<string, string>,
   answers: Record<string, string>,
+  activeForms?: Set<string>,
 ): { done: number; total: number } {
-  const asked = applicableQuestions(questions, setupAnswers, answers);
+  const asked = applicableQuestions(questions, setupAnswers, answers, activeForms);
   return {
     done: asked.filter((q) => (answers[q.questionKey] ?? '') !== '').length,
     total: asked.length,

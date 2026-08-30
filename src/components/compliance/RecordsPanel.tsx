@@ -53,9 +53,11 @@ const GROUP: Record<GroupKey, { label: string; blurb: string; icon: typeof Clipb
   },
 };
 
-export function RecordsPanel({ onGoToTab, onOpenSetup }: {
+export function RecordsPanel({ onGoToTab, onOpenSetup, focus, onOpenForm }: {
   onGoToTab: (tab: 'plan' | 'documents') => void;
   onOpenSetup?: () => void;
+  focus?: { group?: string; highlight?: string[] } | null;
+  onOpenForm?: (formCode: string) => void;
 }) {
   const st = useComplianceStore();
   const summaries = st.activeAuthorities();
@@ -112,7 +114,7 @@ export function RecordsPanel({ onGoToTab, onOpenSetup }: {
 
       {/* Ahead of the reviewer list, because these questions block form fields across several
           reviewers at once and there is no useful way to file them under one of them. */}
-      <DetailsPanel onOpenSetup={onOpenSetup} />
+      <DetailsPanel onOpenSetup={onOpenSetup} focus={focus} />
 
       {/* The camper capacity table. Same reason it sits above the reviewer list: it is one
           block of the county's own form, not evidence filed against a requirement. */}
@@ -148,17 +150,19 @@ export function RecordsPanel({ onGoToTab, onOpenSetup }: {
             openAuthority === summary.authority.id ? null : summary.authority.id,
           )}
           onGoToTab={onGoToTab}
+          onOpenForm={onOpenForm}
         />
       ))}
     </div>
   );
 }
 
-function AuthorityBlock({ summary, isOpen, onToggle, onGoToTab }: {
+function AuthorityBlock({ summary, isOpen, onToggle, onGoToTab, onOpenForm }: {
   summary: AuthoritySummary;
   isOpen: boolean;
   onToggle: () => void;
   onGoToTab: (tab: 'plan' | 'documents') => void;
+  onOpenForm?: (formCode: string) => void;
 }) {
   const workForAuthority = useComplianceStore((s) => s.workForAuthority);
   const work = workForAuthority(summary.authority.id);
@@ -237,6 +241,7 @@ function AuthorityBlock({ summary, isOpen, onToggle, onGoToTab }: {
                 <div className="mt-2.5">
                   <RequirementList
                     requirements={items}
+                    onOpenForm={onOpenForm}
                     renderAction={key === 'records'
                       ? (r) => <RecordAction requirement={r} />
                       : key === 'plan'

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Check, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, Check, ChevronRight } from 'lucide-react';
 import { useComplianceStore } from '@/store/complianceStore';
 import { useAuth } from '@/lib/auth';
 import { applicableQuestions } from '@/lib/compliance/formAnswers';
@@ -18,16 +18,22 @@ import type { ComplianceFormQuestion } from '@/lib/types';
  * director can finish one group in a few minutes and come back.
  */
 
-export function DetailsPanel({ onOpenSetup }: { onOpenSetup?: () => void }) {
+export function DetailsPanel({ onOpenSetup, focus }: {
+  onOpenSetup?: () => void;
+  /** Sent by a "go and do this" link: open this group and point at these questions. */
+  focus?: { group?: string; highlight?: string[]; from?: string } | null;
+}) {
   const st = useComplianceStore();
   const { currentUser, can } = useAuth();
   const questions = useComplianceStore((s) => s.formQuestions);
   const answers = useComplianceStore((s) => s.formAnswers);
   const setupAnswers = useComplianceStore((s) => s.answers);
 
+  const activeForms = st.activeFormCodes();
   const asked = useMemo(
-    () => applicableQuestions(questions, setupAnswers, answers),
-    [questions, setupAnswers, answers],
+    () => applicableQuestions(questions, setupAnswers, answers, activeForms),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [questions, setupAnswers, answers, [...activeForms].sort().join(',')],
   );
 
   const groups = useMemo(() => {
@@ -46,6 +52,16 @@ export function DetailsPanel({ onOpenSetup }: { onOpenSetup?: () => void }) {
   }, [asked, answers]);
 
   const [open, setOpen] = useState<string | null>(null);
+  // The focused group wins over whatever was open, so arriving from a link always lands on the
+  // thing the link was about rather than wherever the camp happened to be.
+  const openGroup = focus?.group ?? open;
+  const highlight = new Set(focus?.highlight ?? []);
+
+  useEffect(() => {
+    if (!focus?.group) return;
+    const el = document.getElementById(`details-group-${focus.group}`);
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }, [focus?.group]);
 
   const total = asked.length;
   const done = asked.filter((q) => (answers[q.questionKey] ?? '') !== '').length;
@@ -74,15 +90,27 @@ export function DetailsPanel({ onOpenSetup }: { onOpenSetup?: () => void }) {
         </div>
       </div>
 
+      {/* Arriving from a form. Say what sent you here and how many answers it is waiting on, so
+          the amber rings below read as an instruction rather than as decoration. */}
+      {focus?.from && highlight.size > 0 && (
+        <div className="px-5 py-3 bg-amber-bg/50 border-b border-amber-border/50 flex items-start gap-2">
+          <ArrowLeft className="w-3.5 h-3.5 text-amber-text mt-0.5 flex-shrink-0" />
+          <p className="text-[12px] text-ink leading-relaxed">
+            From <span className="font-medium">{focus.from}</span>. It is waiting on{' '}
+            {highlight.size === 1 ? 'the answer' : `the ${highlight.size} answers`} outlined below.
+          </p>
+        </div>
+      )}
+
       <div>
         {groups.map((g) => (
-          <div key={g.key} className="border-b border-cream-dark last:border-0">
+          <div key={g.key} id={`details-group-${g.key}`} className="border-b border-cream-dark last:border-0 scroll-mt-4">
             <button
-              onClick={() => setOpen(open === g.key ? null : g.key)}
-              aria-expanded={open === g.key}
+              onClick={() => setOpen(openGroup === g.key ? null : g.key)}
+              aria-expanded={openGroup === g.key}
               className="w-full px-5 py-3 flex items-center gap-3 hover:bg-cream transition-colors text-left"
             >
-              <ChevronRight className={`w-3.5 h-3.5 text-ink-faint flex-shrink-0 transition-transform ${open === g.key ? 'rotate-90' : ''}`} />
+              <ChevronRight className={`w-3.5 h-3.5 text-ink-faint flex-shrink-0 transition-transform ${openGroup === g.key ? 'rotate-90' : ''}`} />
               <span className="text-[13.5px] font-medium text-ink flex-1 min-w-0">{g.label}</span>
               {g.answered === g.questions.length ? (
                 <span className="text-[11.5px] text-green-muted-text inline-flex items-center gap-1">
@@ -95,18 +123,23 @@ export function DetailsPanel({ onOpenSetup }: { onOpenSetup?: () => void }) {
               )}
             </button>
 
-            {open === g.key && (
+            {openGroup === g.key && (
               <div className="px-5 pb-4 pt-1 space-y-4 bg-cream/30">
                 {g.questions.map((q) => (
+                  <div key={q.questionKey}
+                       className={highlight.has(q.questionKey)
+                         ? 'rounded-card ring-2 ring-amber/60 bg-amber-bg/40 -mx-2 px-2 py-2'
+                         : undefined}>
                   <QuestionField
-                    key={q.questionKey}
                     question={q}
                     value={answers[q.questionKey] ?? ''}
                     disabled={!can('manageSafetyItems')}
                     onSave={(v) => st.saveFormAnswer(q.questionKey, v, currentUser.name || null)}
                     setupAnswers={setupAnswers}
                     onOpenSetup={onOpenSetup}
+                    activeForms={activeForms}
                   />
+                  </div>
                 ))}
               </div>
             )}
@@ -120,14 +153,23 @@ export function DetailsPanel({ onOpenSetup }: { onOpenSetup?: () => void }) {
 const INPUT =
   'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-1.5 text-ink focus:outline-none focus:border-sage';
 
-function QuestionField({ question: q, value, disabled, onSave, setupAnswers, onOpenSetup }: {
+function QuestionField({ question: q, value, disabled, onSave, setupAnswers, onOpenSetup, activeForms }: {
   question: ComplianceFormQuestion;
   value: string;
   disabled: boolean;
   onSave: (value: string) => void;
   setupAnswers: Record<string, string>;
   onOpenSetup?: () => void;
+  activeForms: Set<string>;
 }) {
+  // Only the forms currently in scope. Naming a parked document invites the camp to go looking
+  // for one they cannot see.
+  const printsOn = [...new Set(
+    (q.renders ?? [])
+      .map((r) => (r as { form?: string }).form)
+      .filter((f): f is string => Boolean(f) && activeForms.has(f as string)),
+  )];
+
   const setupSaysYes = (key: string) =>
     (setupAnswers[key] ?? '').toLowerCase().replace(/^"|"$/g, '') === 'true';
   // Local while typing, committed on blur. Writing on every keystroke would put a round trip
@@ -141,6 +183,11 @@ function QuestionField({ question: q, value, disabled, onSave, setupAnswers, onO
         {q.label}
         {q.required && <span className="text-ink-faint font-normal"> · required</span>}
       </label>
+      {/* Which form this answer lands on. Whatever route a camp took to get here, they should
+          not have to work out why the question is being asked. */}
+      {printsOn.length > 0 && (
+        <p className="text-[11px] text-ink-faint mt-0.5">Prints on {printsOn.join(', ')}</p>
+      )}
       {q.helpText && (
         <p className="text-[11.5px] text-ink-soft mt-0.5 leading-relaxed max-w-[70ch]">{q.helpText}</p>
       )}
@@ -243,9 +290,9 @@ function QuestionField({ question: q, value, disabled, onSave, setupAnswers, onO
         <p className="text-[11px] text-ink-faint mt-1">Click your answer again to clear it.</p>
       )}
 
-      {q.derivesFrom && (
-        <p className="text-[11px] text-ink-faint mt-1">From {q.derivesFrom} when we have it.</p>
-      )}
+      {/* `derivesFrom` is an engineering note about where the answer should eventually live
+          ("Move to safety_staff.education once that column exists"). It was being printed to
+          camps as provenance, which it is not. It stays in the database for us. */}
     </div>
   );
 }

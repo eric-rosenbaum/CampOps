@@ -87,12 +87,23 @@ export function applicableQuestions(
   questions: ComplianceFormQuestion[],
   setupAnswers: Record<string, string>,
   formAnswers: FormAnswers,
+  /** The documents in scope. A question that prints only on a parked form is not asked. */
+  activeForms?: Set<string>,
 ): ComplianceFormQuestion[] {
   const matches = (when: Record<string, string>) =>
     Object.entries(when).every(([k, v]) =>
       (setupAnswers[k] ?? '').toLowerCase().replace(/^"|"$/g, '') === String(v).toLowerCase());
 
   return questions.filter((q) => {
+    // Only ask what lands on a document we are showing. "If the plan was revised, who added the
+    // revisions?" is a DOH-2040 question, and asking it while that form is switched off is
+    // asking for an answer with nowhere to print.
+    if (activeForms) {
+      const targets = new Set(
+        (q.renders ?? []).map((r) => (r as { form?: string }).form).filter(Boolean) as string[],
+      );
+      if (targets.size > 0 && ![...targets].some((f) => activeForms.has(f))) return false;
+    }
     if (Object.keys(q.appliesWhen ?? {}).length > 0 && !matches(q.appliesWhen)) return false;
     // A follow-up only exists once its parent has been answered. "If other, what qualification?"
     // is not an outstanding question for a camp whose health director is a nurse.

@@ -32,8 +32,16 @@ export interface FormPart {
    * source is one block of a long page. Without it the camp lands at the top of Your records
    * and has to find the roster themselves, which is the gap this whole list exists to close.
    */
+  /**
+   * Where to go and do it. `group` opens that question group and scrolls to it, `highlight`
+   * names the exact questions still unanswered so the page can point at them. Landing a camp
+   * on the right tab and leaving them to hunt is barely better than not linking at all.
+   */
   goTo?:
-    | { tab: 'records' | 'plan' | 'documents'; label: string; anchor?: string }
+    | {
+        tab: 'records' | 'plan' | 'documents'; label: string;
+        anchor?: string; group?: string; highlight?: string[];
+      }
     | { href: string; label: string };
 }
 
@@ -78,6 +86,17 @@ function groupProgress(
   return { done: qs.filter((q) => answered(answers, q.questionKey)).length, total: qs.length };
 }
 
+/** The questions in a group this camp has not answered yet, so the page can point at them. */
+function unansweredIn(
+  questions: ComplianceFormQuestion[], answers: FormAnswers, groupKey: string,
+  except: string[] = [],
+): string[] {
+  return questions
+    .filter((q) => q.groupKey === groupKey && !except.includes(q.questionKey))
+    .filter((q) => !answered(answers, q.questionKey))
+    .map((q) => q.questionKey);
+}
+
 /**
  * DOH-367, block by block, in the order the form prints them.
  *
@@ -111,7 +130,7 @@ export function doh367Readiness(input: ReadinessInput): FormReadiness {
     status: code ? 'done' : 'by_hand',
     detail: code ? undefined
       : 'Leave blank if this is your first application. The county fills it in when they issue your permit.',
-    goTo: { tab: 'records', label: 'Enter it' },
+    goTo: { tab: 'records', label: 'Enter it', group: 'filing', highlight: ['ny.filing.facility_code'] },
   });
 
   const acts = (answers['ny.activity.offered'] ?? '').split(',').filter(Boolean).length;
@@ -122,7 +141,7 @@ export function doh367Readiness(input: ReadinessInput): FormReadiness {
     detail: acts > 0
       ? `${acts} extra ${acts === 1 ? 'activity' : 'activities'} ticked on top of what setup already told us.`
       : 'Tick the activities you offer. Archery, boating and the rest come from setup already.',
-    goTo: { tab: 'records', label: 'Tick your activities' },
+    goTo: { tab: 'records', label: 'Tick your activities', group: 'activities' },
   });
 
   const rows = sessions.filter((s) => s.sessionName || s.numberOfDays);
@@ -133,7 +152,7 @@ export function doh367Readiness(input: ReadinessInput): FormReadiness {
     detail: rows.length > 0
       ? `${rows.length} ${rows.length === 1 ? 'session' : 'sessions'} on record.`
       : 'The form wants last season’s actual attendance by age and sex. Fill it once here.',
-    goTo: { tab: 'records', label: 'Fill in your sessions' },
+    goTo: { tab: 'records', label: 'Fill in your sessions', anchor: 'compliance-sessions' },
   });
 
   const directorOnRoster = Boolean(camp.directorName);
@@ -149,7 +168,10 @@ export function doh367Readiness(input: ReadinessInput): FormReadiness {
       : dirQs.done < dirQs.total
         ? `${dirQs.total - dirQs.done} of ${dirQs.total} details still to add: dates of birth, education, qualifying experience.`
         : undefined,
-    goTo: { tab: 'records', label: 'Add director details', anchor: 'compliance-roster' },
+    goTo: {
+      tab: 'records', label: 'Add director details', anchor: 'compliance-roster',
+      group: 'key_staff', highlight: unansweredIn(questions, answers, 'key_staff'),
+    },
   });
 
   parts.push({
@@ -173,9 +195,9 @@ export function doh367Readiness(input: ReadinessInput): FormReadiness {
       : planStatus === 'previously'
         ? 'Ticked as already on file. Nothing from the plan builder goes with this application.'
         : `Ticked as attached. ${planDone} of ${planSections.length} sections written, and the plan downloads with your packet.`,
-    goTo: planStatus === 'previously'
-      ? { tab: 'records', label: 'Change this' }
-      : { tab: 'plan', label: 'Open the plan' },
+    goTo: planStatus
+      ? { tab: 'records', label: 'Change this', group: 'filing', highlight: ['ny.safety_plan.previously_submitted'] }
+      : { tab: 'records', label: 'Answer this', group: 'filing', highlight: ['ny.safety_plan.previously_submitted'] },
   });
 
   const filingQs = groupProgress(questions, answers, 'filing',
@@ -186,7 +208,11 @@ export function doh367Readiness(input: ReadinessInput): FormReadiness {
     status: filingQs.done === filingQs.total ? 'done' : 'todo',
     detail: filingQs.done === filingQs.total ? undefined
       : `${filingQs.total - filingQs.done} of ${filingQs.total} to answer: what changed at the camp since last season, whether you take campers on trips, and which camper rights brochure you give parents.`,
-    goTo: { tab: 'records', label: 'Answer them' },
+    goTo: {
+      tab: 'records', label: 'Answer them', group: 'filing',
+      highlight: unansweredIn(questions, answers, 'filing',
+        ['ny.filing.facility_code', 'ny.safety_plan.previously_submitted', 'ny.safety_plan.previously_submitted_on']),
+    },
   });
 
   const opQs = groupProgress(questions, answers, 'operator');
@@ -196,7 +222,10 @@ export function doh367Readiness(input: ReadinessInput): FormReadiness {
     status: opQs.done === opQs.total ? 'done' : 'todo',
     detail: opQs.done === opQs.total ? undefined
       : 'The legal permit holder, which is often not the camp director.',
-    goTo: { tab: 'records', label: 'Say who signs' },
+    goTo: {
+      tab: 'records', label: 'Say who signs', group: 'operator',
+      highlight: unansweredIn(questions, answers, 'operator'),
+    },
   });
 
   parts.push({

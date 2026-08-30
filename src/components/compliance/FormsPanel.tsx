@@ -12,6 +12,7 @@ import {
   type PacketCamp, type PacketForm,
 } from '@/lib/compliance/nyPacket';
 import { doh367Readiness, type FormReadiness, type FormPart } from '@/lib/compliance/formReadiness';
+import { applicableQuestions } from '@/lib/compliance/formAnswers';
 import { FormDetail } from './FormDetail';
 import {
   exportCompliancePacket, type ExportStatus, type EvidenceFailure,
@@ -40,7 +41,14 @@ const FORM_GAP: Record<string, string> = {
   'DOH-2286': 'Fills from your pool and beach safety plan, the same way DOH-2040 fills from your camp plan. Write those sections and this completes itself.',
 };
 
-export function FormsPanel({ onGoToTab }: { onGoToTab?: (tab: 'records' | 'plan' | 'documents') => void }) {
+export function FormsPanel({ onGoToTab, onFocus, openFormCode, onFormOpened }: {
+  onGoToTab?: (tab: 'records' | 'plan' | 'documents') => void;
+  /** Sent when a part links somewhere specific, so the destination can point at it. */
+  onFocus?: (focus: { group?: string; highlight?: string[]; from?: string }) => void;
+  /** A form another page asked us to open. */
+  openFormCode?: string | null;
+  onFormOpened?: () => void;
+}) {
   const {
     planSections, campId, seasonId, requirements, enabledProfileIds,
     documents, statusFor, enabledProfiles, openDocument, answers,
@@ -69,7 +77,12 @@ export function FormsPanel({ onGoToTab }: { onGoToTab?: (tab: 'records' | 'plan'
     const ours = form.map.fields.length;
     const pct = coverage(form, camp, planSections, answers, planRowKeys(), formQuestions, formAnswers, sessionCapacity);
     return doh367Readiness({
-      camp, seasonName: season?.name ?? null, questions: formQuestions, answers: formAnswers,
+      camp, seasonName: season?.name ?? null,
+      // Only the questions actually being asked. Counting a question that setup ruled out, or one
+      // that prints on a form we are not showing, would make a block look unfinished with nothing
+      // on the records page to finish it.
+      questions: applicableQuestions(formQuestions, answers, formAnswers, inScope),
+      answers: formAnswers,
       sessions: sessionCapacity, planSections,
       ours: campOwnedCount(form), filled: Math.round((pct / 100) * campOwnedCount(form)),
       notOurs: ours - campOwnedCount(form),
@@ -250,7 +263,9 @@ export function FormsPanel({ onGoToTab }: { onGoToTab?: (tab: 'records' | 'plan'
     }
   }
 
-  const opened = openForm ? forms.find((f) => f.code === openForm) ?? null : null;
+  // A request from elsewhere wins once, then hands control back to this panel's own state.
+  const wanted = openFormCode ?? openForm;
+  const opened = wanted ? forms.find((f) => f.code === wanted) ?? null : null;
   if (opened) {
     const r = readinessFor(opened);
     if (r) {
@@ -259,21 +274,25 @@ export function FormsPanel({ onGoToTab }: { onGoToTab?: (tab: 'records' | 'plan'
           form={opened}
           readiness={r}
           busy={busy !== null}
-          onBack={() => setOpenForm(null)}
+          onBack={() => { setOpenForm(null); onFormOpened?.(); }}
           onPreview={() => void preview(opened)}
           onDownload={() => void download(opened, true)}
           onGoTo={(part: FormPart) => {
             if (!part.goTo || !('tab' in part.goTo)) return;
-            onGoToTab?.(part.goTo.tab);
-            // Some parts of a form are filled from one section of a long tab, and dropping the
-            // camp at the top of it leaves them hunting for the thing they just clicked. The
-            // tab has not rendered yet at this point, so the scroll waits for the paint that
-            // puts the anchor on the page.
-            const anchor = part.goTo.anchor;
+            const { tab, anchor, group, highlight } = part.goTo;
+
+            // When we know which group and which questions the part is about, say so, so the
+            // destination can open that group and point at them. Landing a camp on the right
+            // tab and leaving them to hunt is barely better than not linking at all.
+            if (group || highlight?.length) {
+              onFocus?.({ group, highlight, from: `${opened.code} \u2014 ${part.label}` });
+            }
+            else onGoToTab?.(tab);
+
             if (!anchor) return;
-            // Twice: once as soon as the section exists, and again once the rest of the tab
-            // has finished rendering under it, because a list that grows after the first
-            // scroll leaves the camp looking at the wrong part of the page.
+            // Twice: once as soon as the section exists, and again once the rest of the tab has
+            // finished rendering under it, because a list that grows after the first scroll
+            // leaves the camp looking at the wrong part of the page.
             const bring = () =>
               document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             requestAnimationFrame(() => requestAnimationFrame(bring));

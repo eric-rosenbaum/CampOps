@@ -5,6 +5,9 @@ import { useComplianceStore } from '@/store/complianceStore';
 import { useAuth } from '@/lib/auth';
 import type { ComplianceRequirement, RequirementStatus, ComplianceStatus } from '@/lib/types';
 
+/** The documents this product prepares, rather than merely asks a camp to hold. */
+const GENERATED_FORMS = new Set(['DOH-367', 'DOH-367a', 'DOH-2040', 'DOH-2271', 'DOH-2286']);
+
 /** The word a camp reads, and the colour it reads it in. */
 const TONE: Record<ComplianceStatus, { label: string; cls: string; dot: string }> = {
   satisfied:      { label: 'Met',            cls: 'bg-green-muted-bg text-green-muted-text', dot: 'bg-sage' },
@@ -42,8 +45,14 @@ const QUESTION: Record<string, string> = {
 
 const questionLabel = (key: string): string => QUESTION[key] ?? '';
 
-/** Turn the engine's detail object into a sentence. Never show a raw status with no reason. */
-function explain(s: RequirementStatus): string {
+/**
+ * Turn the engine's detail object into a sentence. Never show a raw status with no reason.
+ *
+ * `generatedForm` changes the wording rather than the status: for a document the product
+ * prepares, "attach a document for this requirement" reads as though uploading any file is the
+ * job, when the job is to prepare the form, file it, and keep the copy.
+ */
+function explain(s: RequirementStatus, generatedForm?: string | null): string {
   const d = s.detail as Record<string, unknown>;
   if (s.status === 'not_applicable') return (s.naReason || (d.reason as string)) ?? 'Does not apply to your camp';
   if (s.status === 'needs_answer') {
@@ -54,6 +63,9 @@ function explain(s: RequirementStatus): string {
     }
     return 'We cannot tell yet whether this applies to you. Finish the setup questions.';
   }
+  if (generatedForm && typeof d.need === 'string') {
+    return `Not filed yet. Prepare ${generatedForm} under Hand-off, then keep your filed copy here.`;
+  }
   if (typeof d.need === 'string') {
     if (typeof d.awaiting_feature === 'string') {
       return `${d.need}. (Automatic tracking for this is not built yet.)`;
@@ -63,9 +75,15 @@ function explain(s: RequirementStatus): string {
   if (d.complete !== undefined && d.sections !== undefined) return `${d.complete} of ${d.sections} sections written`;
   if (d.held !== undefined) return `${d.held} current certification${d.held === 1 ? '' : 's'} on file`;
   if (d.overdue !== undefined && Number(d.overdue) > 0) return `${d.overdue} of ${d.items} items overdue`;
-  if (d.expires_on) return `On file, expires ${d.expires_on}`;
+  if (d.expires_on) {
+    return generatedForm ? 'Filed. Your copy is on record.' : `On file, expires ${d.expires_on}`;
+  }
   if (d.next_due) return `On file, next due ${d.next_due}`;
-  if (d.documents !== undefined) return `${d.documents} document${d.documents === 1 ? '' : 's'} attached`;
+  if (d.documents !== undefined) {
+    return generatedForm
+      ? `Filed. Your copy is on record${d.expires_on ? `, expires ${d.expires_on}` : ''}.`
+      : `${d.documents} document${d.documents === 1 ? '' : 's'} attached`;
+  }
   if (d.completed !== undefined) return `${d.completed} completed`;
   if (d.entries !== undefined) return `${d.entries} entries logged`;
   if (d.readings !== undefined) return `${d.readings} readings logged`;
@@ -77,6 +95,7 @@ export function RequirementList({
   requirements,
   renderAction,
   emptyLabel,
+  onOpenForm,
 }: {
   requirements: ComplianceRequirement[];
   /**
@@ -86,6 +105,8 @@ export function RequirementList({
    */
   renderAction?: (r: ComplianceRequirement) => React.ReactNode;
   emptyLabel?: string;
+  /** Opens the form this requirement is, when the product generates it. */
+  onOpenForm?: (formCode: string) => void;
 }) {
   const { statusFor } = useComplianceStore();
   const [open, setOpen] = useState<string | null>(null);
@@ -115,7 +136,9 @@ export function RequirementList({
               <span className="min-w-0 flex-1">
                 <span className="block text-[13.5px] font-medium text-ink">{r.label}</span>
                 <span className="block text-[12px] text-ink-soft mt-0.5">
-                  {st ? explain(st) : 'Not yet evaluated'}
+                  {st
+                    ? explain(st, r.formCodes.find((c) => GENERATED_FORMS.has(c)) ?? null)
+                    : 'Not yet evaluated'}
                 </span>
               </span>
               <span className={`flex-shrink-0 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-tag ${tone.cls}`}>
@@ -124,7 +147,8 @@ export function RequirementList({
               <ChevronDown className={`w-4 h-4 flex-shrink-0 text-ink-faint mt-0.5 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
             </button>
             {isOpen && (
-              <RequirementDetail requirement={r} status={st} extraAction={renderAction?.(r)} />
+              <RequirementDetail requirement={r} status={st} extraAction={renderAction?.(r)}
+                                 onOpenForm={onOpenForm} />
             )}
           </div>
         );
@@ -133,14 +157,18 @@ export function RequirementList({
   );
 }
 
-function RequirementDetail({ requirement: r, status: st, extraAction }: {
+function RequirementDetail({ requirement: r, status: st, extraAction, onOpenForm }: {
   requirement: ComplianceRequirement; status: RequirementStatus | undefined;
   extraAction?: React.ReactNode;
+  onOpenForm?: (formCode: string) => void;
 }) {
   const { documentsFor, documents, linkDocument, unlinkDocument, openDocument, markNotApplicable } = useComplianceStore();
   const { currentUser, can } = useAuth();
   const canManage = can('manageSafetyItems');
   const linked = documentsFor(r.id);
+  // The forms the product generates. A requirement tagged with one of these is a document we
+  // produce, not a file the camp happens to hold, and it needs a different story.
+  const generatedForm = r.formCodes.find((c) => GENERATED_FORMS.has(c)) ?? null;
   const [naOpen, setNaOpen] = useState(false);
   const [naReason, setNaReason] = useState('');
 
@@ -148,10 +176,37 @@ function RequirementDetail({ requirement: r, status: st, extraAction }: {
     <div className="border-t border-cream-dark bg-cream/40 px-4 py-3.5">
       {r.summary && <p className="text-[13px] text-ink leading-relaxed">{r.summary}</p>}
 
-      {r.evidenceHint && (
+      {r.evidenceHint && !generatedForm && (
         <p className="text-[12.5px] text-ink-soft mt-2 leading-relaxed">
           <span className="font-semibold text-forest">What proves it: </span>{r.evidenceHint}
         </p>
+      )}
+
+      {/*
+        A requirement that IS a form we produce needs a different story from a requirement
+        satisfied by any old file. The old row read as a generic upload slot, so attaching an
+        unrelated certificate turned it green, and a camp saw "met" here while the form itself
+        still had unanswered questions. Two true things that looked like a contradiction.
+
+        The sequence is: prepare it, file it, then keep your filed copy. This row says that.
+      */}
+      {generatedForm && (
+        <div className="mt-2.5 rounded-card border border-border bg-cream/50 px-4 py-3">
+          <p className="text-[12.5px] text-forest font-semibold">
+            This one is a form we prepare for you.
+          </p>
+          <p className="text-[12px] text-ink-soft mt-1 leading-relaxed max-w-[70ch]">
+            Fill it in under Hand-off, print it, sign it and send it to your county. Once it is
+            filed, keep your signed copy here so you have a record of exactly what you sent.
+            Attaching a file here does not fill the form in.
+          </p>
+          {onOpenForm && (
+            <Button size="sm" variant="ghost" className="mt-2"
+                    onClick={() => onOpenForm(generatedForm)}>
+              <FileText className="w-3.5 h-3.5" /> Open {generatedForm}
+            </Button>
+          )}
+        </div>
       )}
 
       {/*

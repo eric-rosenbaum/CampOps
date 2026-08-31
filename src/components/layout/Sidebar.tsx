@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Wrench, ClipboardList,
   Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
-  ClipboardCheck,
+  ClipboardCheck, Users,
 } from 'lucide-react';
 import { SidebarContours } from '@/components/shared/SidebarContours';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
@@ -86,6 +86,10 @@ const retreatItems: NavItem[] = [
 const settingsItems: NavItem[] = [
   { path: '/settings', label: 'Camp Info', icon: Settings, end: true },
   { path: '/settings/team', label: 'Team', icon: Settings, end: false },
+  // The camp's people and their certifications. Reference data read by Safety, Compliance and
+  // Pool alike, so it sits with the rest of the camp's settings rather than inside the one
+  // module that happened to still have a screen after the safety pages were folded in.
+  { path: '/settings/staff', label: 'Staff & Certifications', icon: Users, end: false },
   { path: '/settings/security', label: 'Security & Privacy', icon: ShieldCheck, end: false },
 ];
 

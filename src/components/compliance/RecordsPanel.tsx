@@ -6,9 +6,6 @@ import { useUIStore } from '@/store/uiStore';
 import { RequirementList } from './RequirementList';
 import { generatedFormFor } from '@/lib/compliance/generatedForms';
 import { auditRecordsCoverage } from '@/store/complianceStore.audit';
-import { DetailsPanel } from './DetailsPanel';
-import { SessionsPanel } from './SessionsPanel';
-import { RosterPanel } from './RosterPanel';
 import type { ComplianceRequirement } from '@/lib/types';
 
 /**
@@ -59,10 +56,8 @@ const GROUP: Record<GroupKey, { label: string; blurb: string; icon: typeof Clipb
   },
 };
 
-export function RecordsPanel({ onGoToTab, onOpenSetup, focus, onOpenForm }: {
+export function RecordsPanel({ onGoToTab, onOpenForm }: {
   onGoToTab: (tab: 'plan' | 'documents') => void;
-  onOpenSetup?: () => void;
-  focus?: { group?: string; highlight?: string[]; from?: string; formCode?: string } | null;
   onOpenForm?: (formCode: string) => void;
 }) {
   const st = useComplianceStore();
@@ -118,27 +113,21 @@ export function RecordsPanel({ onGoToTab, onOpenSetup, focus, onOpenForm }: {
         </div>
       )}
 
-      {/* Ahead of the reviewer list, because these questions block form fields across several
-          reviewers at once and there is no useful way to file them under one of them. */}
-      <DetailsPanel onOpenSetup={onOpenSetup} focus={focus} onOpenForm={onOpenForm} />
-
-      {/* The camper capacity table. Same reason it sits above the reviewer list: it is one
-          block of the county's own form, not evidence filed against a requirement. */}
-      <SessionsPanel />
-
-      {/* The people the forms name. Same reason again: a director's name on DOH-367 is not
-          evidence filed against a requirement, it is the roster the form reads from, and until
-          this was here there was nowhere in the product to see or change it. */}
-      <RosterPanel />
+      {/*
+        The questions, the session grid and the printed-role list used to sit here, above the
+        reviewer list. They are all part of one document, so they are now answered on that
+        document's own page, block by block in the order it prints them. This page is what is
+        left when the filling-in moves to the form: who wants what of you, and where you stand.
+      */}
 
       {/* Said once at the top, because a camp arriving at a hundred and thirty-six rows under one
           heading has no way to know what they are looking at. */}
       <div className="bg-white rounded-card border border-border px-5 py-4">
-        <h3 className="text-[15px] font-semibold text-forest">What goes into the documents you file</h3>
+        <h3 className="text-[15px] font-semibold text-forest">Where you stand with each reviewer</h3>
         <p className="text-[12.5px] text-ink-soft mt-1.5 leading-relaxed max-w-[76ch]">
-          This page is where the answers live. Everything here feeds a document you are filing,
-          every item says which one, and editing it here is what changes what prints. Your staff
-          records, your sessions and your camp details are all kept on this page.
+          What each party wants of you, and what you have on record against it. The forms
+          themselves are filled in under Hand-off, where each block of the document holds the
+          questions it is made of.
         </p>
         <p className="text-[12px] text-ink-faint mt-2 leading-relaxed max-w-[76ch]">
           Only obligations that appear on a document are shown. Your camp is also under rules

@@ -16,12 +16,48 @@ import type { FormValues } from './formFiller';
 
 interface Render {
   form: string;
-  field: string;
+  field?: string;
   /** Which piece of the answer this cell takes. */
-  part: 'text' | 'month' | 'day' | 'year' | 'check';
+  part: 'text' | 'month' | 'day' | 'year' | 'check' | 'flow';
   /** For check parts: the answer value that ticks this box. */
   when?: string;
+  /** For flow parts: the printed rules to fill, in order. */
+  fields?: string[];
+  /** For flow parts: how many characters fit on one of those rules. */
+  chars?: number;
 }
+
+/**
+ * Lay prose across a fixed run of short printed rules.
+ *
+ * DOH-367 gives six rules of about 22 characters beside the activity grid, shared between every
+ * starred activity a camp ticked. The camp writes what they run; deciding which words land on
+ * rule four is the renderer's job. Breaks on spaces, and only splits a word that could not fit
+ * on a rule of its own.
+ */
+export function flowIntoRules(text: string, chars: number, rules: number): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    if (line === '') {
+      line = word;
+    } else if (line.length + 1 + word.length <= chars) {
+      line = `${line} ${word}`;
+    } else {
+      lines.push(line);
+      line = word;
+    }
+    while (line.length > chars) {
+      lines.push(line.slice(0, chars));
+      line = line.slice(chars);
+    }
+  }
+  if (line !== '') lines.push(line);
+  return lines.slice(0, rules);
+}
+
+/** How the camp's starred-activity answers are joined before they are laid out. */
+export const FLOW_JOIN = '; ';
 
 /**
  * Blanks on these forms are ~18pt wide, so the maps ask for a two-digit year.
@@ -39,12 +75,27 @@ function datePart(iso: string, part: 'month' | 'day' | 'year'): string {
 export function answerValues(formCode: string, questions: ComplianceFormQuestion[], answers: FormAnswers): FormValues {
   const values: FormValues = {};
 
-  for (const q of questions) {
+  // Flow answers are pooled before they are placed: several questions share one run of printed
+  // rules, so no one of them knows where its own text starts. Collected in question order so the
+  // layout does not change with the order rows came back from the database.
+  const flows = new Map<string, { fields: string[]; chars: number; parts: string[] }>();
+
+  for (const q of [...questions].sort((a, b) => a.sortOrder - b.sortOrder)) {
     const raw = answers[q.questionKey];
     if (raw === undefined || raw === null || raw === '') continue;
 
     for (const r of (q.renders ?? []) as unknown as Render[]) {
       if (r.form !== formCode) continue;
+
+      if (r.part === 'flow') {
+        if (!r.fields?.length) continue;
+        const key = r.fields.join('|');
+        const pool = flows.get(key) ?? { fields: r.fields, chars: r.chars ?? 24, parts: [] };
+        pool.parts.push(raw.trim());
+        flows.set(key, pool);
+        continue;
+      }
+      if (!r.field) continue;
 
       switch (r.part) {
         case 'text':
@@ -74,6 +125,11 @@ export function answerValues(formCode: string, questions: ComplianceFormQuestion
           break;
       }
     }
+  }
+
+  for (const { fields, chars, parts } of flows.values()) {
+    const lines = flowIntoRules(parts.join(FLOW_JOIN), chars, fields.length);
+    lines.forEach((line, i) => { values[fields[i]] = line; });
   }
 
   return values;
@@ -110,7 +166,16 @@ export function applicableQuestions(
     if (q.dependsOn) {
       const parent = formAnswers[q.dependsOn];
       if (!parent) return false;
-      if (q.dependsOnValue && parent !== q.dependsOnValue) return false;
+      if (q.dependsOnValue) {
+        // A multi parent holds a list, so "ask this when they ticked high adventure" is a
+        // membership test. Without it, "Which high adventure activities do you run?" would only
+        // appear for a camp that ticked high adventure and nothing else.
+        const parentQ = questions.find((x) => x.questionKey === q.dependsOn);
+        const hit = parentQ?.answerKind === 'multi'
+          ? parent.split(',').includes(q.dependsOnValue)
+          : parent === q.dependsOnValue;
+        if (!hit) return false;
+      }
     }
     return true;
   });

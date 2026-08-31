@@ -1,10 +1,16 @@
 import { useState } from 'react';
 import {
-  ArrowLeft, Check, Circle, Download, Eye, ExternalLink, Loader2, PenLine, ArrowRight,
+  ArrowLeft, Check, ChevronRight, Circle, Download, Eye, ExternalLink, Loader2, PenLine,
 } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
+import { useComplianceStore } from '@/store/complianceStore';
+import { useAuth } from '@/lib/auth';
+import { applicableQuestions } from '@/lib/compliance/formAnswers';
 import type { FormPart, FormReadiness } from '@/lib/compliance/formReadiness';
 import type { PacketForm } from '@/lib/compliance/nyPacket';
+import { QuestionField } from './QuestionField';
+import { SessionsPanel } from './SessionsPanel';
+import { FormNamesCard } from './FormNamesCard';
 
 /**
  * One form, and everything a director needs to trust it enough to sign it.
@@ -17,19 +23,30 @@ import type { PacketForm } from '@/lib/compliance/nyPacket';
  *
  * Ready or not ready, never a percentage. A percentage on a government form invites "close
  * enough", and the honest answer is binary: either every part is filled or a named list is not.
+ *
+ * The blocks are also where the questions get answered. They used to link out to a separate
+ * page of question groups, which meant the thing being filled in and the place you filled it in
+ * were never on screen together: the camp had to hold "2 things still to do" in their head while
+ * reading a page of boxes that did not say which two. A block that is not done opens where it
+ * sits, holds its own questions in printed order, and closes when they are answered.
  */
 
-export function FormDetail({ form, readiness, busy, onBack, onPreview, onDownload, onGoTo }: {
+export function FormDetail({ form, readiness, busy, onBack, onPreview, onDownload, onOpenPlan }: {
   form: PacketForm;
   readiness: FormReadiness;
   busy: boolean;
   onBack: () => void;
   onPreview: () => void;
   onDownload: () => void;
-  onGoTo: (part: FormPart) => void;
+  onOpenPlan: () => void;
 }) {
   const [previewing, setPreviewing] = useState(false);
   const done = readiness.parts.filter((p) => p.status === 'done').length;
+
+  // Open on the first block that still needs something. A camp arriving from "not ready" should
+  // land on the reason, not on a list of closed rows they have to open one at a time.
+  const firstOpen = readiness.parts.find((p) => p.status === 'todo')?.label ?? null;
+  const [openPart, setOpenPart] = useState<string | null>(firstOpen);
 
   return (
     <div>
@@ -93,7 +110,13 @@ export function FormDetail({ form, readiness, busy, onBack, onPreview, onDownloa
 
         <div className="divide-y divide-cream-dark">
           {readiness.parts.map((p) => (
-            <PartRow key={p.label} part={p} onGoTo={() => onGoTo(p)} />
+            <PartRow
+              key={p.label}
+              part={p}
+              isOpen={openPart === p.label}
+              onToggle={() => setOpenPart(openPart === p.label ? null : p.label)}
+              onOpenPlan={onOpenPlan}
+            />
           ))}
         </div>
 
@@ -123,12 +146,34 @@ const TONE: Record<FormPart['status'], string> = {
   done: 'text-sage', todo: 'text-amber-text', by_hand: 'text-ink-faint',
 };
 
-function PartRow({ part, onGoTo }: { part: FormPart; onGoTo: () => void }) {
-  const Icon = ICON[part.status];
-  const isLink = part.goTo && 'href' in part.goTo;
+function PartRow({ part, isOpen, onToggle, onOpenPlan }: {
+  part: FormPart;
+  isOpen: boolean;
+  onToggle: () => void;
+  onOpenPlan: () => void;
+}) {
+  const st = useComplianceStore();
+  const { currentUser, can } = useAuth();
+  const questions = useComplianceStore((s) => s.formQuestions);
+  const answers = useComplianceStore((s) => s.formAnswers);
+  const setupAnswers = useComplianceStore((s) => s.answers);
+  const activeForms = st.activeFormCodes();
 
-  return (
-    <div className="px-5 py-3 flex items-start gap-3">
+  const Icon = ICON[part.status];
+  const keys = part.questionKeys ?? [];
+
+  // Only the questions this camp is actually being asked. A block whose questions are all ruled
+  // out by setup has nothing to open, and should not pretend otherwise.
+  const asked = keys.length === 0 ? [] : applicableQuestions(
+    questions.filter((q) => keys.includes(q.questionKey)), setupAnswers, answers, activeForms,
+  ).sort((a, b) => keys.indexOf(a.questionKey) - keys.indexOf(b.questionKey));
+
+  const hasRequired = asked.some((q) => q.required);
+  const expandable = asked.length > 0 || Boolean(part.panel);
+  const href = part.goTo && 'href' in part.goTo ? part.goTo.href : null;
+
+  const head = (
+    <>
       <Icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${TONE[part.status]}`} />
       <div className="min-w-0 flex-1">
         <p className="text-[13.5px] font-medium text-ink">{part.label}</p>
@@ -137,19 +182,61 @@ function PartRow({ part, onGoTo }: { part: FormPart; onGoTo: () => void }) {
           <p className="text-[12px] text-ink-faint mt-1 leading-relaxed max-w-[70ch]">{part.detail}</p>
         )}
       </div>
+    </>
+  );
 
-      {part.status !== 'done' && part.goTo && (
-        isLink ? (
-          <a href={(part.goTo as { href: string }).href} className="flex-shrink-0">
-            <Button size="sm" variant="ghost">
+  return (
+    <div>
+      {expandable ? (
+        <button onClick={onToggle} aria-expanded={isOpen}
+                className="w-full text-left px-5 py-3 flex items-start gap-3 hover:bg-cream transition-colors">
+          {head}
+          <ChevronRight className={`w-4 h-4 mt-0.5 flex-shrink-0 text-ink-faint transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+        </button>
+      ) : (
+        <div className="px-5 py-3 flex items-start gap-3">
+          {head}
+          {part.status !== 'done' && href && (
+            <a href={href} className="flex-shrink-0">
+              <Button size="sm" variant="ghost">
+                {part.goTo!.label} <ExternalLink className="w-3 h-3" />
+              </Button>
+            </a>
+          )}
+        </div>
+      )}
+
+      {expandable && isOpen && (
+        <div className="px-5 pb-4 pt-1 bg-cream/30 space-y-4">
+          {part.panel === 'roles' && <FormNamesCard />}
+          {part.panel === 'sessions' && <SessionsPanel />}
+
+          {asked.map((q) => (
+            <QuestionField
+              key={q.questionKey}
+              question={q}
+              showOptional={hasRequired && !q.required}
+              value={answers[q.questionKey] ?? ''}
+              disabled={!can('manageSafetyItems')}
+              onSave={(v) => st.saveFormAnswer(q.questionKey, v, currentUser.name || null)}
+              setupAnswers={setupAnswers}
+              activeForms={activeForms}
+            />
+          ))}
+
+          {part.goTo && 'tab' in part.goTo && (
+            <Button size="sm" variant="ghost" onClick={onOpenPlan}>
               {part.goTo.label} <ExternalLink className="w-3 h-3" />
             </Button>
-          </a>
-        ) : (
-          <Button size="sm" variant="ghost" onClick={onGoTo} className="flex-shrink-0">
-            {part.goTo.label} <ArrowRight className="w-3 h-3" />
-          </Button>
-        )
+          )}
+          {href && (
+            <a href={href} className="inline-block">
+              <Button size="sm" variant="ghost">
+                {part.goTo!.label} <ExternalLink className="w-3 h-3" />
+              </Button>
+            </a>
+          )}
+        </div>
       )}
     </div>
   );

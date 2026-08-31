@@ -6,7 +6,6 @@ import { useChecklistStore } from '@/store/checklistStore';
 import { useAuth } from '@/lib/auth';
 import { dbRecordComplianceExport } from '@/lib/complianceDb';
 import { NY_FORMS, generateForm, coverage, type PacketForm } from '@/lib/compliance/nyPacket';
-import { type FormPart } from '@/lib/compliance/formReadiness';
 import { FormDetail } from './FormDetail';
 import {
   exportCompliancePacket, type ExportStatus, type EvidenceFailure,
@@ -36,10 +35,8 @@ const FORM_GAP: Record<string, string> = {
   'DOH-2286': 'Fills from your pool and beach safety plan, the same way DOH-2040 fills from your camp plan. Write those sections and this completes itself.',
 };
 
-export function FormsPanel({ onGoToTab, onFocus, openFormCode, onFormOpened }: {
+export function FormsPanel({ onGoToTab, openFormCode, onFormOpened }: {
   onGoToTab?: (tab: 'records' | 'plan' | 'documents') => void;
-  /** Sent when a part links somewhere specific, so the destination can point at it. */
-  onFocus?: (focus: { group?: string; highlight?: string[]; from?: string; formCode?: string }) => void;
   /** A form another page asked us to open. */
   openFormCode?: string | null;
   onFormOpened?: () => void;
@@ -222,27 +219,7 @@ export function FormsPanel({ onGoToTab, onFocus, openFormCode, onFormOpened }: {
           onBack={() => { setOpenForm(null); onFormOpened?.(); }}
           onPreview={() => void preview(opened)}
           onDownload={() => void download(opened, true)}
-          onGoTo={(part: FormPart) => {
-            if (!part.goTo || !('tab' in part.goTo)) return;
-            const { tab, anchor, group, highlight } = part.goTo;
-
-            // When we know which group and which questions the part is about, say so, so the
-            // destination can open that group and point at them. Landing a camp on the right
-            // tab and leaving them to hunt is barely better than not linking at all.
-            if (group || highlight?.length) {
-              onFocus?.({ group, highlight, from: `${opened.code} \u2014 ${part.label}`, formCode: opened.code });
-            }
-            else onGoToTab?.(tab);
-
-            if (!anchor) return;
-            // Twice: once as soon as the section exists, and again once the rest of the tab has
-            // finished rendering under it, because a list that grows after the first scroll
-            // leaves the camp looking at the wrong part of the page.
-            const bring = () =>
-              document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            requestAnimationFrame(() => requestAnimationFrame(bring));
-            setTimeout(bring, 250);
-          }}
+          onOpenPlan={() => onGoToTab?.('plan')}
         />
       );
     }
@@ -266,15 +243,22 @@ export function FormsPanel({ onGoToTab, onFocus, openFormCode, onFormOpened }: {
                  className="flex items-center gap-3 flex-wrap border border-border rounded-card px-3.5 py-2.5">
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-semibold text-forest">{a.authority.name}</p>
+                {/* Forms sit outside met/outstanding, so a party whose only item is a form we
+                    prepare was reading "nothing to hand over" next to the form we had just
+                    filled in for them. */}
                 <p className="text-[11.5px] text-ink-faint">
-                  {a.met + a.outstanding === 0
+                  {a.met + a.outstanding + a.forms === 0
                     ? 'Nothing to hand over'
-                    : `${a.met + a.outstanding} requirement${a.met + a.outstanding === 1 ? '' : 's'}` +
-                      (a.outstanding > 0 ? ` · ${a.outstanding} still outstanding` : ' · all on record')}
+                    : [
+                        a.forms > 0 && `${a.forms} form${a.forms === 1 ? '' : 's'}`,
+                        (a.met + a.outstanding) > 0
+                          && `${a.met + a.outstanding} requirement${a.met + a.outstanding === 1 ? '' : 's'}`
+                          + (a.outstanding > 0 ? `, ${a.outstanding} still outstanding` : ', all on record'),
+                      ].filter(Boolean).join(' · ')}
                 </p>
               </div>
               <Button size="sm" variant="ghost"
-                      disabled={busy !== null || a.met + a.outstanding === 0}
+                      disabled={busy !== null || a.met + a.outstanding + a.forms === 0}
                       onClick={() => downloadPacket(a)}>
                 {busy === `packet-${a.authority.id}`
                   ? <Loader2 className="w-3.5 h-3.5 animate-spin" />

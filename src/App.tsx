@@ -51,6 +51,7 @@ import { MyTasks } from '@/pages/MyTasks';
 import { Team } from '@/pages/settings/Team';
 import { CampSettings } from '@/pages/settings/CampSettings';
 import { SecuritySettings } from '@/pages/settings/SecuritySettings';
+import { StaffRegister } from '@/pages/settings/StaffRegister';
 
 // Data loading
 import {
@@ -566,6 +567,7 @@ export default function App() {
                 <Route path="/retreats" element={<Gate of={['retreats', 'locations']} label="Opening the retreat manager"><Retreats /></Gate>} />
                 <Route path="/settings" element={<CampSettings />} />
                 <Route path="/settings/team" element={<Team />} />
+                <Route path="/settings/staff" element={<StaffRegister />} />
                 <Route path="/settings/security" element={<SecuritySettings />} />
               </Route>
             </Route>

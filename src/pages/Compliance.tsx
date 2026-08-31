@@ -53,20 +53,11 @@ export function Compliance() {
   const [tab, setTabRaw] = useState<Tab>('overview');
   const setTab = (next: Tab) => {
     if (next !== 'documents') setUploadTitle(null);
-    setFocus(null);
     setTabRaw(next);
   };
   const [refreshing, setRefreshing] = useState(false);
   /** Set when the camp clicked upload against a named form, so Documents opens pre-titled. */
   const [uploadTitle, setUploadTitle] = useState<string | null>(null);
-  /**
-   * What a "go and do this" link was about.
-   *
-   * Held here because the link is pressed on one tab and acted on by a panel two levels down
-   * on another. Cleared on the next deliberate tab change, so the highlight is a hand pointing
-   * at something once rather than a state the camp has to dismiss.
-   */
-  const [focus, setFocus] = useState<{ group?: string; highlight?: string[]; from?: string; formCode?: string } | null>(null);
   /** Set when something elsewhere asks for a specific form's detail page. */
   const [openFormCode, setOpenFormCode] = useState<string | null>(null);
 
@@ -181,15 +172,12 @@ export function Compliance() {
         {tab === 'records'   && (
           <RecordsPanel
             onGoToTab={setTab}
-            onOpenSetup={() => setTab('setup')}
-            focus={focus}
             onOpenForm={(code) => { setOpenFormCode(code); setTab('export'); }}
           />
         )}
         {tab === 'export'    && (
           <FormsPanel
             onGoToTab={setTab}
-            onFocus={(f) => { setTabRaw('records'); setUploadTitle(null); setFocus(f); }}
             openFormCode={openFormCode}
             onFormOpened={() => setOpenFormCode(null)}
           />

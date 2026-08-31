@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  ExternalLink, Download, FileText, CalendarClock, Mail, Upload, Check, ChevronDown,
+  ExternalLink, Download, FileText, CalendarClock, Upload, Check, ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useComplianceStore, type AuthoritySummary } from '@/store/complianceStore';
@@ -42,25 +42,9 @@ export function ReviewersPanel({ onUpload }: { onUpload: (formTitle: string) => 
   return (
     <div className="space-y-3">
       <div className="bg-white rounded-card border border-border px-5 py-4">
-        <h3 className="text-[15px] font-semibold text-forest">Who reviews your camp</h3>
-        {/* Worded from what is actually on screen. The line about parties who never visit only
-            makes sense when more than one is listed. */}
-        <p className="text-[12.5px] text-ink-soft mt-1.5 leading-relaxed max-w-[75ch]">
-          {summaries.length > 1 ? (
-            <>
-              Every party that will ask you for something this season, and the official form each
-              one uses. Your county health department is the one that comes to the property; the
-              rest receive paperwork, which is exactly why they are easy to forget. Anything we
-              cannot publish for you says who issues it and takes your copy.
-            </>
-          ) : (
-            <>
-              Who will ask you for something this season, and the official form they use. Your
-              county health department holds your permit and is the one that comes to the
-              property. Anything we cannot publish for you says who issues it and takes your copy.
-            </>
-          )}
-        </p>
+        <h3 className="text-[15px] font-semibold text-forest">
+          Parties that require compliance documentation or inspection
+        </h3>
       </div>
 
       {summaries.map((s) => (
@@ -118,24 +102,9 @@ function AuthorityCard({ summary, isOpen, onToggle, onUpload }: {
         <div className="border-t border-border">
           <div className="px-5 py-4">
             {a.scope && (
-              <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-[72ch]">{a.scope}</p>
+              <p className="text-[12.5px] text-ink-soft leading-relaxed">{a.scope}</p>
             )}
             <div className="mt-3 space-y-1.5">
-              <p className="text-[12.5px] text-ink-soft flex items-start gap-2">
-                <CalendarClock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-ink-faint" />
-                <span>
-                  <span className="font-semibold text-forest">
-                    {a.visitsSite ? 'When they come: ' : 'How they review you: '}
-                  </span>
-                  {a.visitSchedule ?? 'Not recorded.'}
-                </span>
-              </p>
-              {a.contactNote && (
-                <p className="text-[12.5px] text-ink-soft flex items-start gap-2">
-                  <Mail className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-ink-faint" />
-                  <span>{a.contactNote}</span>
-                </p>
-              )}
               {a.sourceUrl && (
                 <a href={a.sourceUrl} target="_blank" rel="noopener noreferrer"
                    className="text-[12.5px] text-sage hover:text-forest inline-flex items-center gap-1.5">

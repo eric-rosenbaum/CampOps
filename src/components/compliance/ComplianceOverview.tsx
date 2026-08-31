@@ -25,6 +25,7 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
   const forms = st.formsToFile();
   const formIsReady = useFormIsReady();
   const timing = st.formTiming;
+  const formsReady = forms.filter((f) => formIsReady(f.formCode)).length;
   const items = st.actionItems();
   const summaries = st.activeAuthorities();
   const plan = st.planProgress();
@@ -47,25 +48,33 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
     <>
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 mb-5">
         <div className="bg-white rounded-card border border-border px-5 py-4">
-          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Overall</p>
           {/*
-            A percentage over nothing is not zero.
+            Say what this camp has, not what the module declines to measure.
 
-            The forms we prepare are not scored -- filing happens on paper and never reaches us
-            -- so a camp whose only obligation is one of those has an empty denominator. Showing
-            0% there read as total failure to a camp with nothing left to do.
+            This read "Nothing here is scored by percentage", which is a fact about us. A camp
+            opening this card wants to know where they stand, so it leads with the forms they
+            owe and how many are ready, and falls back to the percentage only where there is
+            something we can genuinely score.
           */}
           {tracked === 0 ? (
             <>
-              <p className="text-[34px] font-semibold text-forest leading-none mt-2 font-mono">—</p>
-              <p className="text-[11.5px] text-ink-soft mt-3">
-                Nothing here is scored by percentage. What you owe your reviewers is
-                {forms.length === 1 ? ' one form' : ` ${forms.length} forms`} you prepare and post
-                yourself.
+              <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">
+                Forms to file
+              </p>
+              <p className="text-[34px] font-semibold text-forest leading-none mt-2 font-mono">
+                {formsReady}<span className="text-ink-faint">/{forms.length}</span>
+              </p>
+              <p className="text-[11.5px] text-ink-soft mt-2.5">
+                {forms.length === 0
+                  ? 'Nothing is owed to a reviewer this season.'
+                  : formsReady === forms.length
+                    ? `Ready to print and send. ${forms.length === 1 ? 'It is' : 'They are'} filed on paper, so mark your own copy when ${forms.length === 1 ? 'it goes' : 'they go'} out.`
+                    : `${forms.length - formsReady} still to finish under Hand-off.`}
               </p>
             </>
           ) : (
             <>
+              <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Overall</p>
               <p className="text-[34px] font-semibold text-forest leading-none mt-2 font-mono">{overall}%</p>
               <div className="h-1.5 rounded-full bg-cream-dark overflow-hidden mt-3">
                 <div className="h-full bg-sage rounded-full transition-all" style={{ width: `${overall}%` }} />
@@ -74,6 +83,12 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
                 {items.length === 0 ? 'Everything that applies to you is met.'
                   : `${items.length} item${items.length === 1 ? '' : 's'} still to deal with`}
               </p>
+              {forms.length > 0 && (
+                <p className="text-[11.5px] text-ink-soft mt-1">
+                  {formsReady} of {forms.length} form{forms.length === 1 ? '' : 's'} ready to file,
+                  which are counted separately.
+                </p>
+              )}
             </>
           )}
           {season && (

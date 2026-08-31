@@ -7,6 +7,12 @@
  *
  *   STAGING_DB_URL='postgresql://...' node scripts/runsql.js supabase/tests/compliance_engine_test.sql
  *
+ * The direct host (db.<ref>.supabase.co) resolves to IPv6 only. On a network without working
+ * IPv6 it does not fail fast, it hangs until the TCP timeout, which reads like a broken test
+ * run rather than a broken route. The pooler is dual-stack, so reach for it instead:
+ *
+ *   postgresql://postgres.<ref>:<password>@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+ *
  * Exits non-zero if the SQL raises, so it works in CI.
  */
 import fs from 'node:fs';

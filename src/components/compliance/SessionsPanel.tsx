@@ -236,7 +236,7 @@ export function SessionsPanel() {
               Campers by session{' '}
               <span className="font-mono text-[11px] text-ink-faint">{rows.length}/{MAX_SESSIONS}</span>
             </h4>
-            <p className="text-[11.5px] text-ink-soft leading-relaxed max-w-[76ch] mt-0.5">
+            <p className="text-[11.5px] text-ink-soft leading-relaxed mt-0.5">
               DOH-367 asks for every session you ran, how long it was, and how many campers were
               in it by age and sex. Fill it once here and it prints on the form. Use last
               season's actual attendance; if you did not operate last season, use your best
@@ -247,7 +247,7 @@ export function SessionsPanel() {
 
         {prefill.length > 0 && canPrefill && (
           <div className="mt-3 rounded-card bg-cream/70 px-3.5 py-3">
-            <p className="text-[11.5px] text-ink-soft leading-relaxed max-w-[76ch]">
+            <p className="text-[11.5px] text-ink-soft leading-relaxed">
               Your kitchen already has {prefill.length} session{prefill.length === 1 ? '' : 's'}
               {' '}on file. We can copy the names and work out the length of each one as a
               starting point. Camper numbers are not copied: those are this season's forecast for
@@ -402,7 +402,7 @@ export function SessionsPanel() {
               <Plus className="w-3.5 h-3.5" /> Add a session
             </Button>
           )}
-          <p className="text-[11px] text-ink-faint leading-relaxed max-w-[70ch]">
+          <p className="text-[11px] text-ink-faint leading-relaxed">
             {rows.length >= MAX_SESSIONS
               ? 'DOH-367 prints ten session rows and there is no eleventh line, so ten is as many as this form can carry. If you ran more, combine the shortest ones into one row or attach a separate sheet listing them.'
               : 'Totals are here for you to check against your own records. The form has no total row, so nothing in the totals line is printed. A band left blank prints blank.'}

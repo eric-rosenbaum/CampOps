@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Wrench, ClipboardList,
   Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
-  ClipboardCheck, Users,
+  ClipboardCheck,
 } from 'lucide-react';
 import { SidebarContours } from '@/components/shared/SidebarContours';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
@@ -63,10 +63,13 @@ const todayItems: NavItem[] = [
 const facilityItems: NavItem[] = [
   { path: '/issues', label: 'Issues & Repairs', icon: Wrench, end: false, module: 'issues_repairs' },
   { path: '/pre-post', label: 'Pre/Post Camp', icon: ClipboardList, end: false, module: 'pre_post' },
-  // Safety & Compliance was folded into Permit & Compliance: its records are now reached from
-  // "Your records", grouped by the party that asks for them, and its dialogs open in place. The
-  // /safety route still resolves so old links and bookmarks keep working.
-  { path: '/compliance', label: 'Safety & Compliance', icon: ClipboardCheck, end: false, module: 'safety' },
+  // The old Safety module was folded in here: its records are reached from the Requirements tab,
+  // grouped by the party that asks for them, and its dialogs open in place. The /safety route
+  // still resolves so old links and bookmarks keep working.
+  //
+  // Named just "Compliance". It absorbed Safety rather than sitting beside it, and a camp opening
+  // this looks for the thing the county asks about, not for two words joined by an ampersand.
+  { path: '/compliance', label: 'Compliance', icon: ClipboardCheck, end: false, module: 'safety' },
   { path: '/assets', label: 'Assets & Vehicles', icon: Truck, end: false, module: 'assets' },
   { path: '/building', label: 'Building Systems', icon: Building2, end: false, module: 'building_systems' },
 ];
@@ -89,7 +92,6 @@ const settingsItems: NavItem[] = [
   // The camp's people and their certifications. Reference data read by Safety, Compliance and
   // Pool alike, so it sits with the rest of the camp's settings rather than inside the one
   // module that happened to still have a screen after the safety pages were folded in.
-  { path: '/settings/staff', label: 'Staff & Certifications', icon: Users, end: false },
   { path: '/settings/security', label: 'Security & Privacy', icon: ShieldCheck, end: false },
 ];
 

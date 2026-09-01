@@ -16,7 +16,11 @@ import type { UploadStatus } from '@/lib/uploadProgress';
  * is where a camp sees it coming.
  */
 export function DocumentsPanel({ prefillTitle }: { prefillTitle?: string }) {
-  const { documents, requirements, enabledProfileIds, uploadDocument, openDocument } = useComplianceStore();
+  const { evidenceDocuments, requirements, enabledProfileIds, uploadDocument, openDocument } = useComplianceStore();
+  // The camp's own safety plan is a document, but it is not evidence: it has its own card on the
+  // plan page and its own slot in the packet. Listing it here too would offer it a second set of
+  // controls that mean something different.
+  const documents = evidenceDocuments();
   const { currentUser, can } = useAuth();
   const canManage = can('manageSafetyItems');
 

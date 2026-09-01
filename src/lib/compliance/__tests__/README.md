@@ -23,3 +23,20 @@ Two bugs were caught this way that all other checks passed:
    Semantics now come from the value's **type**: boolean → tick, string → literal.
 2. Centred fields were offset by half a text width, because the maps give the column **centre**
    as `x` while the code treated it as a left edge.
+
+## Checking a whole form, through the real code path
+
+`fillForm.manual.mjs` above mirrors the renderer by hand, which is right for testing geometry but
+cannot catch a builder putting the correct value in the wrong cell. `renderForm.manual.ts` imports
+`generateForm` itself, so what you look at is what a camp downloads:
+
+```bash
+node_modules/.bin/rolldown src/lib/compliance/__tests__/renderForm.manual.ts \
+  --format esm --platform node -o /tmp/render.mjs
+node /tmp/render.mjs /tmp/doh-367a-filled.pdf
+pdftoppm -png -r 110 /tmp/doh-367a-filled.pdf /tmp/367a   # then open /tmp/367a-*.png
+```
+
+It carries a fixture per form, built to hit the branches awkward data reaches: a table filled
+exactly to its row count, a table overflowing it, a lifeguard with no CPR card. Every form brought
+back out of the parked set gets one before it is switched on — see `docs/compliance/scope-restore.md`.

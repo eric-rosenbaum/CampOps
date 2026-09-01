@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, ExternalLink, Paperclip, Ban, FileText, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useComplianceStore } from '@/store/complianceStore';
+import { SourceLink } from './SourceLink';
 import { useAuth } from '@/lib/auth';
 import type { ComplianceRequirement, RequirementStatus, ComplianceStatus } from '@/lib/types';
 import { generatedFormFor } from '@/lib/compliance/generatedForms';
@@ -177,10 +178,12 @@ function RequirementDetail({ requirement: r, status: st, extraAction, onOpenForm
   extraAction?: React.ReactNode;
   onOpenForm?: (formCode: string) => void;
 }) {
-  const { documentsFor, documents, linkDocument, unlinkDocument, openDocument, markNotApplicable } = useComplianceStore();
+  const { documentsFor, documents, linkDocument, unlinkDocument, openDocument, markNotApplicable,
+          sourceFor } = useComplianceStore();
   const { currentUser, can } = useAuth();
   const canManage = can('manageSafetyItems');
   const linked = documentsFor(r.id);
+  const source = sourceFor(r.id);
   // The forms the product generates. A requirement tagged with one of these is a document we
   // produce, not a file the camp happens to hold, and it needs a different story.
   const generatedForm = generatedFormFor(r.formCodes);
@@ -207,7 +210,7 @@ function RequirementDetail({ requirement: r, status: st, extraAction, onOpenForm
           <p className="text-[12.5px] text-forest font-semibold">
             This one is a form we prepare for you.
           </p>
-          <p className="text-[12px] text-ink-soft mt-1 leading-relaxed max-w-[70ch]">
+          <p className="text-[12px] text-ink-soft mt-1 leading-relaxed">
             Fill it in under Hand-off, print it, sign it and send it to your county. Filing
             happens on paper, so nothing about it is tracked here.
           </p>
@@ -226,7 +229,7 @@ function RequirementDetail({ requirement: r, status: st, extraAction, onOpenForm
         more staff can reach than the health office intended.
       */}
       {r.holdsPersonalRecords && (
-        <p className="text-[12px] text-amber-text mt-2 inline-flex items-start gap-1.5 max-w-[70ch] leading-relaxed">
+        <p className="text-[12px] text-amber-text mt-2 inline-flex items-start gap-1.5 leading-relaxed">
           <ShieldAlert className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
           <span>
             These are personal records about campers or staff. Keep them where you keep them
@@ -260,6 +263,12 @@ function RequirementDetail({ requirement: r, status: st, extraAction, onOpenForm
         {r.verifyStatus === 'needs_verification' && (
           <span className="text-amber-text">Wording not yet confirmed against the current rule</span>
         )}
+        {/*
+          The document this rule was read from, as distinct from the citation above. A citation
+          names the rule; this opens the thing we actually read, and says when we last read it —
+          which is the only way a camp can tell whether we are current.
+        */}
+        <SourceLink source={source} checkedOn={r.sourceCheckedOn} />
       </div>
 
       {linked.length > 0 && (

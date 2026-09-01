@@ -51,6 +51,9 @@ const QUESTIONS: Q[] = [
   { key: 'enrolls_campers_with_disabilities', kind: 'bool',
     label: 'Do you enrol campers with developmental disabilities?',
     help: 'Adds the New York safety-plan addendum and additional supervision ratios.' },
+  { key: 'is_dd_camp', kind: 'bool',
+    label: 'Are 20% or more of your campers children with developmental disabilities?',
+    help: 'At 20% New York calls you a camp for children with developmental disabilities (7-2.2), which adds the Justice Center regime: staff screened against three registries, mandated reporter training, a code of conduct signed every year, and incident reporting on a clock. Below 20% none of that applies. This also fills the question DOH-367 asks.' },
 ];
 
 export function SetupInterview({ onDone }: { onDone: () => void }) {
@@ -78,7 +81,7 @@ export function SetupInterview({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div>
       <h2 className="text-[18px] font-semibold text-forest">Set up your compliance profile</h2>
       <p className="text-[13.5px] text-ink-soft mt-1.5 leading-relaxed">
         These questions decide which of the {totalRequirements} New York and Westchester

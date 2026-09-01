@@ -25,7 +25,7 @@ export function ScopeNote() {
       <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">
         What this covers
       </p>
-      <div className="text-[11.5px] text-ink-soft mt-2 space-y-2 leading-relaxed max-w-[70ch]">
+      <div className="text-[11.5px] text-ink-soft mt-2 space-y-2 leading-relaxed">
         <p>
           This page covers the documents you file with your county and what goes into them. It is
           a working record of what you have on file, not a legal opinion and not a clearance to

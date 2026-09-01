@@ -1,5 +1,6 @@
 import type { ComplianceFormQuestion, FormAnswers } from '@/lib/types';
 import type { FormValues } from './formFiller';
+import { applicability } from './applicability';
 
 /**
  * Turns the camp's answers into the cells they fill on a form.
@@ -146,9 +147,6 @@ export function applicableQuestions(
   /** The documents in scope. A question that prints only on a parked form is not asked. */
   activeForms?: Set<string>,
 ): ComplianceFormQuestion[] {
-  const matches = (when: Record<string, string>) =>
-    Object.entries(when).every(([k, v]) =>
-      (setupAnswers[k] ?? '').toLowerCase().replace(/^"|"$/g, '') === String(v).toLowerCase());
 
   return questions.filter((q) => {
     // Only ask what lands on a document we are showing. "If the plan was revised, who added the
@@ -160,7 +158,9 @@ export function applicableQuestions(
       );
       if (targets.size > 0 && ![...targets].some((f) => activeForms.has(f))) return false;
     }
-    if (Object.keys(q.appliesWhen ?? {}).length > 0 && !matches(q.appliesWhen)) return false;
+    // Shared with the engine: `applicability()` mirrors compliance_applicability() in Postgres,
+    // including the `any_of` branch this used to read as a literal setup key.
+    if (applicability(setupAnswers, q.appliesWhen) !== 'yes') return false;
     // A follow-up only exists once its parent has been answered. "If other, what qualification?"
     // is not an outstanding question for a camp whose health director is a nurse.
     if (q.dependsOn) {

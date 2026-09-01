@@ -123,7 +123,7 @@ function headerValues(camp: PacketCamp): FormValues {
  * here, once, keeps every comparison below to a plain equality, and tolerates a value that some
  * other writer JSON-encoded before storing it rather than silently reading `"true"` as no.
  */
-function answerOf(answers: ComplianceAnswers, key: string): string | undefined {
+export function answerOf(answers: ComplianceAnswers, key: string): string | undefined {
   const raw = answers[key];
   if (raw === undefined || raw === null) return undefined;
   const v = String(raw).trim().replace(/^"|"$/g, '').trim().toLowerCase();
@@ -135,7 +135,7 @@ function answerOf(answers: ComplianceAnswers, key: string): string | undefined {
  * must stay `undefined` all the way to the page, because collapsing it to `false` would let a
  * blank interview print a signed statement that the camp does none of these things.
  */
-function askedYes(answers: ComplianceAnswers, key: string): boolean | undefined {
+export function askedYes(answers: ComplianceAnswers, key: string): boolean | undefined {
   const v = answerOf(answers, key);
   if (v === 'true' || v === 'yes') return true;
   if (v === 'false' || v === 'no') return false;
@@ -327,13 +327,47 @@ function fillRows(
  * copy of a real certification with one blank on it — whereas a row invented to look complete
  * is a false statement on a form the operator signs.
  */
+/**
+ * The fixed grid DOH-367a prints: three swimming instructors, eleven lifeguards, seven first-aid
+ * staff. Row counts come from the form, so a camp with more puts the rest on an attached sheet.
+ */
+export const DOH367A_ROWS = { psi: 3, lifeguard: 11, firstAid: 7 } as const;
+
+/**
+ * Who lands in each of DOH-367a's three tables.
+ *
+ * Exported as one function because the form's page and the readiness block that describes it
+ * must select the same people. Computed twice, they drift, and the drift is invisible: a screen
+ * saying eleven lifeguards will print above a form printing nine is exactly the class of
+ * disagreement this module keeps having to design out.
+ */
+export function doh367aRoster(camp: PacketCamp): {
+  psi: PacketStaffMember[]; guards: PacketStaffMember[]; firstAiders: PacketStaffMember[];
+} {
+  const roster = rosterOf(camp);
+  const psi = roster.filter((m) => certOf(m, 'wsi'));
+  const guards = roster.filter((m) => certOf(m, 'lifeguard'));
+  // "Additional" is relative to the table above it, so a lifeguard already listed is not
+  // repeated here.
+  const guardIds = new Set(guards.map((m) => m.id));
+  const firstAiders = roster.filter(
+    (m) => !guardIds.has(m.id) && (certOf(m, 'first_aid') || certOf(m, 'cpr_aed')),
+  );
+  return { psi, guards, firstAiders };
+}
+
+/** Lifeguards with no CPR card on file. The form requires each lifeguard to hold one. */
+export function lifeguardsWithoutCpr(camp: PacketCamp): PacketStaffMember[] {
+  return doh367aRoster(camp).guards.filter((m) => !certOf(m, 'cpr_aed'));
+}
+
 export function staffQualificationValues(camp: PacketCamp): FormValues {
   const values: FormValues = headerValues(camp);
-  const roster = rosterOf(camp);
+  const { psi, guards, firstAiders } = doh367aRoster(camp);
 
   // ── Progressive Swimming Instructor, 3 rows ──
   // WSI is the certification this section is asking about; the module already names it that.
-  fillRows(values, 'psi', 3, roster.filter((m) => certOf(m, 'wsi')), (v, base, m) => {
+  fillRows(values, 'psi', DOH367A_ROWS.psi, psi, (v, base, m) => {
     const c = certOf(m, 'wsi');
     if (!c) return;
     v[`${base}_staff_name`] = m.name;
@@ -346,8 +380,7 @@ export function staffQualificationValues(camp: PacketCamp): FormValues {
   // The CPR column beside it is the same person's CPR card, which the form requires each
   // lifeguard to hold separately. Blank when they have none on file, which is the honest
   // answer and the one that tells the camp what to go and fix.
-  const guards = roster.filter((m) => certOf(m, 'lifeguard'));
-  fillRows(values, 'lifeguard', 11, guards, (v, base, m) => {
+  fillRows(values, 'lifeguard', DOH367A_ROWS.lifeguard, guards, (v, base, m) => {
     const lg = certOf(m, 'lifeguard');
     if (!lg) return;
     v[`${base}_staff_name`] = m.name;
@@ -364,14 +397,9 @@ export function staffQualificationValues(camp: PacketCamp): FormValues {
   });
 
   // ── Additional First Aid and CPR Staff, 7 rows ──
-  // "Additional" is relative to the table above it, so a lifeguard already listed there is not
-  // repeated here. Anyone holding either card qualifies for a row; the column they do not hold
-  // stays empty rather than borrowing the other one's provider.
-  const guardIds = new Set(guards.map((m) => m.id));
-  const firstAiders = roster.filter(
-    (m) => !guardIds.has(m.id) && (certOf(m, 'first_aid') || certOf(m, 'cpr_aed')),
-  );
-  fillRows(values, 'first_aid_cpr_staff', 7, firstAiders, (v, base, m) => {
+  // Anyone holding either card qualifies for a row; the column they do not hold stays empty
+  // rather than borrowing the other one's provider.
+  fillRows(values, 'first_aid_cpr_staff', DOH367A_ROWS.firstAid, firstAiders, (v, base, m) => {
     v[`${base}_staff_name`] = m.name;
     writeDate(v, `${base}_date_of_birth`, m.dateOfBirth);
     const fa = certOf(m, 'first_aid');
@@ -497,16 +525,23 @@ export function facilityValues(camp: PacketCamp, answers: ComplianceAnswers): Fo
   //  · Hiking, Sports, Nature Study and the rest are simply never asked.
 
   // ── Camper population ──
-  // The form asks whether 20% or more of campers are developmentally disabled; the interview
-  // asks whether the camp enrols any at all. A camp that enrols none is certainly under 20%, so
-  // a no answers the form's No box. A yes does not answer it — enrolling some says nothing about
-  // the threshold — so it ticks nothing and the director decides.
-  if (askedYes(answers, 'enrolls_campers_with_disabilities') === false) {
+  // The 20% threshold is a setup answer, because it decides a whole regulatory regime: at 20% or
+  // more the camp is a "camp for children with developmental disabilities" under 7-2.2 and owes
+  // the Justice Center rules in 7-2.25(b). It used to be asked again as a DOH-367 question, which
+  // let the form and the regime disagree about the same camp.
+  //
+  // The fallback below stands: a camp that enrols nobody with a disability is certainly under
+  // 20%, so a no there answers the form's No box even before the threshold question is reached.
+  // The reverse does not hold — enrolling some says nothing about the threshold.
+  const ddThreshold = askedYes(answers, 'is_dd_camp');
+  if (ddThreshold === true) values.developmentally_disabled_yes = true;
+  else if (ddThreshold === false) values.developmentally_disabled_no = true;
+  else if (askedYes(answers, 'enrolls_campers_with_disabilities') === false) {
     values.developmentally_disabled_no = true;
   }
 
   // The camper-capacity table is filled by sessionCapacityValues below, from what the camp
-  // entered under Your records. Nothing about it is inferred from the season or from the
+  // entered on the Requirements tab. Nothing about it is inferred from the season or from the
   // camp-wide camper count.
 
   // ── Attachments ──

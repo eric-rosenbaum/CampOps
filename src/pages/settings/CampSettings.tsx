@@ -7,21 +7,26 @@ import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useLocationStore } from '@/store/locationStore';
 import { ImplementationDropzone, ImplementationFilesTab } from '@/components/settings/ImplementationFiles';
+import { StaffRosterTab } from '@/pages/settings/StaffRegister';
 import { usePoolStore, POOL_TYPE_LABELS } from '@/store/poolStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { AddEditPoolModal } from '@/components/pool/AddEditPoolModal';
 import { Modal } from '@/components/shared/Modal';
 import type { Season, CampLocation } from '@/lib/types';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
-type TabId = 'profile' | 'season' | 'locations' | 'pools' | 'files';
+type TabId = 'profile' | 'season' | 'staff' | 'locations' | 'pools' | 'files';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'profile',   label: 'Profile' },
   { id: 'season',    label: 'Season' },
+  // Reference data every module reads -- drills and certifications in Safety, the three named
+  // directors on the permit forms, lifeguard cover in Pool Manager. It was its own sidebar entry,
+  // which made one consumer look like the owner.
+  { id: 'staff',     label: 'Staff' },
   { id: 'locations', label: 'Locations' },
   { id: 'pools',     label: 'Pools & Waterfront' },
   { id: 'files',     label: 'Setup Files' },
@@ -49,7 +54,7 @@ const MODULE_OPTIONS = [
   { key: 'issues',     label: 'Issues & Repairs',    desc: 'Track and assign maintenance issues' },
   { key: 'checklists', label: 'Pre/Post Checklists',  desc: 'Opening and closing task lists' },
   { key: 'pool',       label: 'Pool & Waterfront',    desc: 'Chemical readings, inspections, equipment' },
-  { key: 'safety',     label: 'Safety & Compliance',  desc: 'Fire safety, drills, staff certifications' },
+  { key: 'safety',     label: 'Compliance',  desc: 'Permit, safety plan, inspections, staff certifications' },
   { key: 'assets',     label: 'Assets & Vehicles',    desc: 'Fleet, equipment, checkouts, service records' },
   { key: 'building',   label: 'Building Systems',     desc: 'Electrical & plumbing infrastructure by room' },
   // NOTE: camp.modules uses short keys; StaffGroupModules uses long ones
@@ -296,7 +301,7 @@ function SeasonTab() {
             <div>
               <label className={labelCls}>ACA inspection date <span className="text-forest/30 font-normal">(optional)</span></label>
               <input type="date" {...register('acaInspectionDate')} className={inputCls} />
-              <p className="text-[11px] text-ink-faint mt-1">Used to track your ACA accreditation visit in Safety &amp; Compliance.</p>
+              <p className="text-[11px] text-ink-faint mt-1">Used to track your ACA accreditation visit in Compliance.</p>
             </div>
 
             <div className="flex gap-2 pt-1">
@@ -926,7 +931,15 @@ function PoolsTab() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function CampSettings() {
-  const [activeTab, setActiveTab] = useState<TabId>('profile');
+  // /settings/staff is a real deep link, not a redirect: Compliance sends people here
+  // to edit the roster, and they need a URL that lands on the right tab.
+  const [params] = useSearchParams();
+  const { pathname } = useLocation();
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    if (pathname.endsWith('/staff')) return 'staff';
+    const wanted = params.get('tab');
+    return TABS.some((t) => t.id === wanted) ? wanted as TabId : 'profile';
+  });
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
@@ -934,7 +947,7 @@ export function CampSettings() {
       <div className="px-4 sm:px-7 pt-7 pb-0 border-b border-border bg-white flex-shrink-0 overflow-x-auto">
         <h1 className="text-[20px] font-bold text-forest">Camp Info</h1>
         <p className="text-[12px] text-ink-faint mt-0.5">
-          Manage your camp's profile, season, locations, and pools
+          Your camp's profile, season, people, locations and pools
         </p>
         <div className="flex mt-5">
           {TABS.map(tab => (
@@ -957,6 +970,7 @@ export function CampSettings() {
       <div className="flex-1 overflow-y-auto bg-paper">
         {activeTab === 'profile'   && <ProfileTab />}
         {activeTab === 'season'    && <SeasonTab />}
+        {activeTab === 'staff'     && <StaffRosterTab />}
         {activeTab === 'locations' && <LocationsTab />}
         {activeTab === 'pools'     && <PoolsTab />}
         {activeTab === 'files'     && <ImplementationFilesTab />}

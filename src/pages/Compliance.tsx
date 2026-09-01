@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ShieldCheck, RefreshCw, Settings2, ArrowLeft } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { Button } from '@/components/shared/Button';
@@ -9,9 +10,15 @@ import { SetupInterview } from '@/components/compliance/SetupInterview';
 import { ComplianceOverview } from '@/components/compliance/ComplianceOverview';
 import { ReviewersPanel } from '@/components/compliance/ReviewersPanel';
 import { RecordsPanel } from '@/components/compliance/RecordsPanel';
+import { RequirementsPanel } from '@/components/compliance/RequirementsPanel';
 import { PlanBuilder } from '@/components/compliance/PlanBuilder';
 import { FormsPanel } from '@/components/compliance/FormsPanel';
 import { DocumentsPanel } from '@/components/compliance/DocumentsPanel';
+import { FormsLibrary } from '@/components/compliance/FormsLibrary';
+import { StaffClearancePanel } from '@/components/compliance/StaffClearancePanel';
+import { IncidentsPanel } from '@/components/compliance/IncidentsPanel';
+import { InspectionPanel } from '@/components/compliance/InspectionPanel';
+import { WhatsNewPanel } from '@/components/compliance/WhatsNewPanel';
 import { LogInspectionModal } from '@/components/safety/LogInspectionModal';
 import { LogDrillModal } from '@/components/safety/LogDrillModal';
 import { LogTempModal } from '@/components/safety/LogTempModal';
@@ -33,12 +40,20 @@ import { useUIStore } from '@/store/uiStore';
  * because uploading a file is something you arrive at holding a specific document rather than
  * somewhere you browse.
  */
-type Tab = 'overview' | 'reviewers' | 'records' | 'export' | 'plan' | 'documents' | 'setup';
+type Tab = 'overview' | 'reviewers' | 'records' | 'byparty' | 'forms' | 'staff' | 'incidents'
+  | 'inspection' | 'whatsnew' | 'export' | 'plan' | 'documents' | 'setup';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview',  label: 'Overview' },
+  { id: 'records',   label: 'Requirements' },
+  // Camps asked for this before anything else: which pieces of paper am I supposed to have, and
+  // where do I get a blank. It needs no evidence engine at all.
+  { id: 'forms',     label: 'Forms' },
+  { id: 'staff',     label: 'Staff clearance' },
+  { id: 'incidents', label: 'Incidents' },
+  { id: 'inspection', label: 'Inspection' },
+  { id: 'whatsnew',  label: "What's new" },
   { id: 'reviewers', label: 'Reviewers' },
-  { id: 'records',   label: 'Your records' },
   // The written plan is ninety-six sections of writing and the single largest item in the
   // packet. It was reachable only from a card on Overview and a group inside Records, which is
   // not where anyone would look for the biggest job on the page.
@@ -50,7 +65,13 @@ export function Compliance() {
   const st = useComplianceStore();
   const { can } = useAuth();
   const season = useChecklistStore((s) => s.season);
-  const [tab, setTabRaw] = useState<Tab>('overview');
+  // Deep-linkable, so another page can send someone straight to a tab -- the staff roster in
+  // Camp Info links back here with ?tab=staff. Read once for the initial value rather than
+  // driven from the URL, because the tab bar itself should not push history entries.
+  const [params] = useSearchParams();
+  const [tab, setTabRaw] = useState<Tab>(
+    () => (TABS.some((t) => t.id === params.get('tab')) ? params.get('tab') as Tab : 'overview'),
+  );
   const setTab = (next: Tab) => {
     if (next !== 'documents') setUploadTitle(null);
     setTabRaw(next);
@@ -100,7 +121,7 @@ export function Compliance() {
   if (!season) {
     return (
       <div className="flex flex-col h-full min-h-0">
-        <Topbar title="Safety & Compliance" subtitle="Permit, plan and evidence" />
+        <Topbar title="Compliance" subtitle="Permit, plan and evidence" />
         <div className="flex-1 grid place-items-center px-6">
           <div className="text-center max-w-sm">
             <ShieldCheck className="w-8 h-8 text-ink-faint mx-auto mb-3" />
@@ -118,7 +139,7 @@ export function Compliance() {
   if (!st.isSetUp() || tab === 'setup') {
     return (
       <div className="flex flex-col h-full min-h-0">
-        <Topbar title="Safety & Compliance" subtitle="Permit, plan and evidence"
+        <Topbar title="Compliance" subtitle="Permit, plan and evidence"
           actions={st.isSetUp() ? <Button size="sm" variant="ghost" onClick={() => setTab('overview')}>Back</Button> : undefined} />
         <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-5">
           <SetupInterview onDone={() => setTab('overview')} />
@@ -130,7 +151,7 @@ export function Compliance() {
   return (
     <div className="flex flex-col h-full min-h-0">
       <Topbar
-        title="Safety & Compliance"
+        title="Compliance"
         subtitle={`${enabled.map((p) => p.name).join(' · ')} · ${season.name}`}
         actions={
           <div className="flex gap-2">
@@ -169,12 +190,22 @@ export function Compliance() {
         {tab === 'reviewers' && (
           <ReviewersPanel onUpload={(t) => { setUploadTitle(t); setTab('documents'); }} />
         )}
-        {tab === 'records'   && (
+        {tab === 'byparty'   && (
           <RecordsPanel
             onGoToTab={setTab}
             onOpenForm={(code) => { setOpenFormCode(code); setTab('export'); }}
           />
         )}
+        {tab === 'records'   && (
+          <RequirementsPanel onOpenForm={(code) => { setOpenFormCode(code); setTab('export'); }} />
+        )}
+        {tab === 'forms'      && (
+          <FormsLibrary onOpenForm={(code) => { setOpenFormCode(code); setTab('export'); }} />
+        )}
+        {tab === 'staff'      && <StaffClearancePanel />}
+        {tab === 'incidents'  && <IncidentsPanel />}
+        {tab === 'inspection' && <InspectionPanel />}
+        {tab === 'whatsnew'   && <WhatsNewPanel />}
         {tab === 'export'    && (
           <FormsPanel
             onGoToTab={setTab}
@@ -183,12 +214,25 @@ export function Compliance() {
           />
         )}
 
-        {/* Reached from Records, not the tab bar. Each is one job, not a place to browse. */}
-        {tab === 'plan' && planHasADocument && <PlanBuilder />}
+        {/* Reached from Records, not the tab bar. Each is one job, not a place to browse.
+
+            The plan renders whether or not its checklist is in scope. Gating the *content* on
+            `planHasADocument` while other pages still offered "Open the plan" landed the camp on
+            an empty pane with no tab lit up and no way back — a page that exists enough to be
+            linked to has to exist enough to render. The tab bar stays gated; the way out is the
+            link above the plan. */}
+        {tab === 'plan' && (
+          <>
+            {!planHasADocument && (
+              <BackToRecords onBack={() => setTab('overview')} label="Back to overview" />
+            )}
+            <PlanBuilder />
+          </>
+        )}
         {tab === 'documents' && (
           <>
             <BackToRecords onBack={() => setTab(uploadTitle ? 'reviewers' : 'records')}
-                           label={uploadTitle ? 'Back to reviewers' : 'Back to your records'} />
+                           label={uploadTitle ? 'Back to reviewers' : 'Back to requirements'} />
             <DocumentsPanel prefillTitle={uploadTitle ?? undefined} />
           </>
         )}
@@ -207,7 +251,7 @@ export function Compliance() {
   );
 }
 
-function BackToRecords({ onBack, label = 'Back to your records' }: {
+function BackToRecords({ onBack, label = 'Back to requirements' }: {
   onBack: () => void; label?: string;
 }) {
   return (

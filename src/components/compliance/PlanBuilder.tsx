@@ -7,6 +7,8 @@ import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useAuth } from '@/lib/auth';
 import { draftFor, type DraftContext } from '@/lib/compliance/planDrafts';
+import { PlanSourceCard } from './PlanSourceCard';
+import { PlanQuestions } from './PlanQuestions';
 import type { CompliancePlanSection, PlanSectionStatus, CompliancePlanTemplate } from '@/lib/types';
 
 /**
@@ -61,6 +63,10 @@ export function PlanBuilder() {
   // Only what the camp has actually clicked is state. The landing section is derived, so it
   // follows the data instead of needing an effect to chase it.
   const [pickedId, setPickedId] = useState<string | null>(null);
+  // The reviewer's checklist, not the camp's writing surface. Collapsed by default: it is the
+  // document a sanitarian marks up while reading the plan, and the requirement engine still cites
+  // its section codes as evidence, but a camp writing a plan works from the state's template.
+  const [showChecklist, setShowChecklist] = useState(false);
   const activeId = pickedId
     ?? (ordered.find((s) => !DONE.includes(s.status)) ?? ordered[0])?.id
     ?? null;
@@ -83,11 +89,31 @@ export function PlanBuilder() {
 
   return (
     <div>
+      {/* First, because "do I have to write this at all" comes before "which section next". */}
+      <div className="mb-4"><PlanSourceCard /></div>
+
+      {/* The state's own template. This is where a camp writes. */}
+      <PlanQuestions />
+
+      <button
+        onClick={() => setShowChecklist((v) => !v)}
+        aria-expanded={showChecklist}
+        className="mt-6 mb-3 flex items-center gap-2 text-[12.5px] font-semibold text-forest hover:underline"
+      >
+        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showChecklist ? 'rotate-90' : ''}`} />
+        DOH-2040 checklist
+        <span className="font-mono text-[11px] text-ink-faint font-normal">
+          {progress.complete}/{progress.total}
+        </span>
+      </button>
+      {!showChecklist ? null : (
+      <div>
+
       <div className="bg-white rounded-card border border-border px-5 py-4 mb-4">
         <div className="flex items-baseline justify-between gap-3 flex-wrap">
           <div>
             <p className="text-[14px] font-semibold text-forest">Written safety plan</p>
-            <p className="text-[12px] text-ink-soft mt-1 leading-relaxed max-w-[74ch]">
+            <p className="text-[12px] text-ink-soft mt-1 leading-relaxed">
               These are the components New York's DOH-2040 checklist requires. Write each one here
               and we produce the plan itself, with a contents page, so the page numbers on the
               checklist are ours to work out rather than yours.
@@ -122,6 +148,8 @@ export function PlanBuilder() {
           />
         ) : null}
       </div>
+      </div>
+      )}
     </div>
   );
 }
@@ -213,7 +241,7 @@ function SectionEditor({ section, guidance, categoryLabel, position, draft, canE
         {/* What New York expects here. Without this the page is a title and a blank box, which
             is the reason it does not get finished. */}
         {guidance?.prompt && (
-          <p className="text-[12.5px] text-ink-soft mt-2.5 leading-relaxed max-w-[72ch]">
+          <p className="text-[12.5px] text-ink-soft mt-2.5 leading-relaxed">
             {guidance.prompt}
           </p>
         )}

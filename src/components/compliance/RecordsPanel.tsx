@@ -124,12 +124,12 @@ export function RecordsPanel({ onGoToTab, onOpenForm }: {
           heading has no way to know what they are looking at. */}
       <div className="bg-white rounded-card border border-border px-5 py-4">
         <h3 className="text-[15px] font-semibold text-forest">Where you stand with each reviewer</h3>
-        <p className="text-[12.5px] text-ink-soft mt-1.5 leading-relaxed max-w-[76ch]">
+        <p className="text-[12.5px] text-ink-soft mt-1.5 leading-relaxed">
           What each party wants of you, and what you have on record against it. The forms
           themselves are filled in under Hand-off, where each block of the document holds the
           questions it is made of.
         </p>
-        <p className="text-[12px] text-ink-faint mt-2 leading-relaxed max-w-[76ch]">
+        <p className="text-[12px] text-ink-faint mt-2 leading-relaxed">
           Only obligations that appear on a document are shown. Your camp is also under rules
           that are not printed on any form, which a reviewer checks on site. Those are held
           separately, with the regulation each one comes from, and are not part of this page.
@@ -217,7 +217,7 @@ function AuthorityBlock({ summary, isOpen, onToggle, onGoToTab, onOpenForm }: {
         <div className="border-t border-border px-5 py-4 space-y-6 bg-cream/30">
           {work.records.length + work.forms.length + work.documents.length + work.plan.length
             + work.unanswered.length + work.notApplicable.length === 0 && (
-            <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-[74ch]">
+            <p className="text-[12.5px] text-ink-soft leading-relaxed">
               None of this reviewer's rules are printed on the documents currently in scope. What
               they want from you for those documents is the camp details, sessions and staff
               above.
@@ -235,7 +235,7 @@ function AuthorityBlock({ summary, isOpen, onToggle, onGoToTab, onOpenForm }: {
                     <h4 className="text-[13px] font-semibold text-forest">
                       {meta.label} <span className="font-mono text-[11px] text-ink-faint">{items.length}</span>
                     </h4>
-                    <p className="text-[11.5px] text-ink-soft leading-relaxed max-w-[70ch]">{meta.blurb}</p>
+                    <p className="text-[11.5px] text-ink-soft leading-relaxed">{meta.blurb}</p>
                   </div>
                 </div>
                 <div className="mt-2.5">

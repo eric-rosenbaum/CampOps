@@ -88,7 +88,7 @@ export function SeasonModal() {
             {...register('acaInspectionDate')}
             className={inputClass}
           />
-          <p className="text-[11px] text-ink-faint mt-1">If your camp has an upcoming ACA accreditation visit, enter the date to track it in Safety & Compliance.</p>
+          <p className="text-[11px] text-ink-faint mt-1">If your camp has an upcoming ACA accreditation visit, enter the date to track it in Compliance.</p>
         </div>
 
         <div className="flex gap-2 pt-2">

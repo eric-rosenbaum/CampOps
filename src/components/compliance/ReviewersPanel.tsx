@@ -121,7 +121,7 @@ function AuthorityCard({ summary, isOpen, onToggle, onUpload }: {
             {forms.length === 0 ? (
               <p className="text-[12.5px] text-ink-soft mt-2 leading-relaxed">
                 No form of their own. What they want is covered by your written plan and records,
-                which you will find under Your records.
+                which you will find on the Requirements tab.
               </p>
             ) : (
               <div className="mt-2.5 space-y-2">
@@ -180,7 +180,7 @@ function FormRow({ form: f, onUpload }: {
           </p>
         )}
         {f.campSupplied && (
-          <p className="text-[11.5px] text-ink-soft mt-1 leading-relaxed max-w-[70ch]">
+          <p className="text-[11.5px] text-ink-soft mt-1 leading-relaxed">
             {f.obtainNote ?? 'We cannot publish this one. Obtain it from the issuing office and upload your copy.'}
           </p>
         )}

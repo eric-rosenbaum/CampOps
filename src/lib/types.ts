@@ -1554,6 +1554,14 @@ export interface ComplianceAuthorityForm {
   campSupplied: boolean;
   /** False parks the document without deleting it. */
   isActive: boolean;
+  /**
+   * An incident form is filed in season on a 24-hour clock, not with the permit packet. Grouping
+   * it with the application would put it in the wrong envelope and the wrong month.
+   */
+  isIncidentForm: boolean;
+  /** False when the published URL carries a revision date and will break. */
+  urlStable: boolean;
+  sourceCheckedOn: string | null;
   /** The requirement whose deadline governs this document. */
   requirementCode: string | null;
   fillable: boolean;
@@ -1571,6 +1579,12 @@ export interface ComplianceRequirement {
   category: string;
   evidenceType: EvidenceType;
   evidenceHint: string | null;
+  /**
+   * Part of the annual permit application envelope, rather than something produced on site.
+   * The inspection screen excludes these: a sanitarian walking the property does not ask for
+   * the application fee.
+   */
+  inPermitPackage: boolean;
   frequency: string | null;
   /**
    * When it is owed. {"type":"relative_to_opening","days":-60} for a duty measured from the
@@ -1586,6 +1600,9 @@ export interface ComplianceRequirement {
    * Regulatory wording is only ever shown when this is 'verified' and a source URL exists.
    * The product does not present unconfirmed rule text as fact.
    */
+  /** The document this rule was read from, and the day we last read it. */
+  sourceId: string | null;
+  sourceCheckedOn: string | null;
   verifyStatus: 'verified' | 'needs_verification';
   /**
    * Evidence for this is other people's personal records: camper health files, staff register
@@ -1626,6 +1643,160 @@ export interface ComplianceDocument {
   createdAt: string;
   /** Requirement ids this document has been linked to. */
   requirementIds: string[];
+}
+
+/**
+ * A reportable incident, and the clock it was reported on.
+ *
+ * 10 NYCRR 7-2.8(d) gives a camp 24 hours to report a specific list of injuries and illnesses,
+ * and there are eight forms it lands on. What this record deliberately does NOT hold is who was
+ * hurt: the named medical log belongs to the health director and stays in the health office.
+ * This exists to prove a reportable incident was reported before its deadline, which is the
+ * question an inspector actually asks.
+ */
+export type IncidentKind =
+  | 'injury' | 'illness_outbreak' | 'abuse_allegation' | 'fire' | 'multiple_victim'
+  | 'rabies_exposure' | 'epinephrine' | 'vaccine_preventable' | 'water_contamination'
+  | 'amusement_device' | 'other';
+
+export interface ComplianceIncident {
+  id: string;
+  campId: string;
+  seasonId: string | null;
+  occurredAt: string | null;
+  /** The clock runs from when the camp knew, not when it happened. */
+  discoveredAt: string;
+  kind: IncidentKind;
+  subject: 'camper' | 'staff' | 'volunteer' | 'visitor' | 'multiple' | 'none' | null;
+  /** Which of 7-2.8(d)'s criteria this meets. Drives `reportable`. */
+  severity: string[];
+  formCode: string | null;
+  reportable: boolean;
+  reportDueAt: string | null;
+  reportedAt: string | null;
+  reportedTo: string | null;
+  reportMethod: string | null;
+  reportedBy: string | null;
+  narrative: string | null;
+  locationId: string | null;
+  followUp: string | null;
+  closedAt: string | null;
+  /** 7-2.25(b) clocks, only for a camp at the 20% developmental-disability threshold. */
+  investigationStartedAt: string | null;
+  writtenReportAt: string | null;
+  correctivePlanAt: string | null;
+  correctiveImplementedAt: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+/** One row of 7-2.8(d), kept as data so the reportability test and the UI read the same list. */
+export interface IncidentCriterion {
+  code: string;
+  label: string;
+  appliesTo: 'any' | 'camper' | 'staff';
+  sortOrder: number;
+}
+
+/**
+ * That a background check was run, when, and by what method — never its result.
+ *
+ * The DCJS response letter, the LDSS-3370 household and the DOH-2271 criminal-history statement
+ * stay in the camp's own files, which is where the regulation puts them. `cleared` is the
+ * operator's attestation, not a stored registry response.
+ */
+export type ScreeningKind =
+  | 'dcjs_sor' | 'nsopw' | 'scr_ldss3370' | 'justice_center_sel' | 'reference_check'
+  | 'employment_certificate';
+
+export interface ComplianceScreening {
+  id: string;
+  campId: string;
+  seasonId: string | null;
+  staffId: string | null;
+  /** For somebody not on the roster — "persons who frequent the camp" under the county rule. */
+  subjectLabel: string | null;
+  kind: ScreeningKind;
+  performedOn: string;
+  method: 'fax' | 'mail' | 'email' | 'cd' | 'telephone' | 'portal' | 'in_person' | null;
+  /** DCJS issues a screener ID on telephone screenings and the fact sheet requires recording it. */
+  referenceId: string | null;
+  cleared: boolean | null;
+  expiresOn: string | null;
+  note: string | null;
+  recordedBy: string | null;
+}
+
+export type TrainingKind =
+  | 'staff_orientation' | 'camper_orientation' | 'mandated_reporter' | 'code_of_conduct'
+  | 'activity_specific' | 'skills_verification' | 'other';
+
+export interface ComplianceTraining {
+  id: string;
+  campId: string;
+  seasonId: string | null;
+  staffId: string | null;
+  kind: TrainingKind;
+  title: string | null;
+  deliveredOn: string;
+  deliveredBy: string | null;
+  minutes: number | null;
+  /** The Justice Center code of conduct is acknowledged, not merely attended. */
+  acknowledgedOn: string | null;
+  note: string | null;
+}
+
+export interface ComplianceInsurance {
+  id: string;
+  campId: string;
+  seasonId: string | null;
+  kind: 'workers_comp' | 'disability' | 'amusement_device_liability' | 'general_liability'
+    | 'vehicle' | 'other';
+  carrier: string | null;
+  policyNumber: string | null;
+  /** C-105.2, U-26.3, SI-12, GSI-105.2, CE-200, DB-120.1, DB-155. */
+  formCode: string | null;
+  perOccurrenceCents: number | null;
+  aggregateCents: number | null;
+  effectiveOn: string | null;
+  expiresOn: string | null;
+  documentId: string | null;
+  /** Amusement device cover must be proved to the county annually before use. */
+  filedWith: string | null;
+  filedOn: string | null;
+  note: string | null;
+}
+
+/**
+ * Where an obligation came from, and whether that address will still work next season.
+ *
+ * `urlStable` is false when the URL carries a date or revision and will break — the county
+ * publishes its sanitary code as "CHAPTER 873 FINAL VERSION APPROVED 8-5-25.pdf". For those the
+ * archived copy is the durable artefact and the UI links to it instead.
+ */
+export interface ComplianceSource {
+  id: string;
+  sourceKey: string;
+  title: string;
+  issuer: string | null;
+  kind: 'regulation' | 'form' | 'packet' | 'guidance' | 'code' | 'factsheet';
+  url: string | null;
+  urlStable: boolean;
+  archivedPath: string | null;
+}
+
+/** One reading of a source. The sha256 is what makes "what's new" a diff rather than a memory. */
+export interface ComplianceSourceVersion {
+  id: string;
+  sourceId: string;
+  sha256: string | null;
+  retrievedAt: string;
+  effectiveDate: string | null;
+  revisionLabel: string | null;
+  changeSummary: string | null;
+  /** { req_codes: [...], applies_when: {...} } — decides whether a given camp cares. */
+  affects: { req_codes?: string[]; applies_when?: Record<string, unknown> };
+  isCurrent: boolean;
 }
 
 export interface CompliancePlanSection {
@@ -1743,3 +1914,19 @@ export interface SessionCapacity {
   sourceSessionId: string | null;
   updatedAt: string;
 }
+
+/**
+ * One answer to the state's 92-question safety plan template.
+ *
+ * Three shapes because the template has three: boxes to tick, an "Enter text here" rule, and ten
+ * questions asked as a table. A question can carry both `checked` and `text` — the template
+ * routinely puts "Other (specify): Enter text here." after its checkboxes.
+ */
+export interface PlanAnswerValue {
+  checked?: string[];
+  text?: string;
+  rows?: string[][];
+}
+
+/** Plan answers for one camp and season, keyed by PlanQuestion.key. */
+export type PlanAnswers = Record<string, PlanAnswerValue>;

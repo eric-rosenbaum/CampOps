@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 import {
   loadCompliance, dbSetupCompliance, dbRecompute, dbUploadComplianceDocument,
+  dbSetPlanDocument, dbClearPlanDocument,
   dbLinkDocument, dbUnlinkDocument, dbSignComplianceDocument, dbUpdatePlanSection,
   dbSetRequirementNa, dbAssignRequirement, dbSaveFormAnswer,
   dbLoadSessionCapacity, dbSaveSessionCapacity, dbDeleteSessionCapacity,
+  dbSaveIncident, dbMarkIncidentReported, dbSaveScreening, dbDeleteScreening,
+  dbSaveTraining, dbSaveInsurance, dbSavePlanAnswer,
   type ComplianceData, type SessionCapacityInput,
 } from '@/lib/complianceDb';
 import type {
@@ -11,9 +14,20 @@ import type {
   CompliancePlanSection, ComplianceAnswers, ComplianceStatus, PlanSectionStatus,
   ComplianceAuthority, ComplianceAuthorityForm, CompliancePlanTemplate,
   ComplianceFormQuestion, FormAnswers, SessionCapacity,
+  ComplianceIncident, ComplianceScreening, ComplianceTraining, ComplianceInsurance,
+  ComplianceSource, ComplianceSourceVersion, IncidentCriterion,
+  PlanAnswers, PlanAnswerValue,
 } from '@/lib/types';
 import type { UploadProgress } from '@/lib/uploadProgress';
 import { generatedFormFor } from '@/lib/compliance/generatedForms';
+import {
+  PLAN_STATUS_QUESTION, planDocumentIn, planSourceOf, type PlanSource,
+} from '@/lib/compliance/planSource';
+import { applicability } from '@/lib/compliance/applicability';
+import {
+  PLAN_QUESTIONS, PLAN_ADDENDA, type PlanQuestion, type PlanAddendum,
+} from '@/lib/compliance/planTemplate';
+import { todayStr } from '@/lib/utils';
 
 /**
  * Compliance module state.
@@ -57,6 +71,13 @@ interface ComplianceState {
   enabledProfileIds: string[];
   statuses: RequirementStatus[];
   documents: ComplianceDocument[];
+  incidents: ComplianceIncident[];
+  screenings: ComplianceScreening[];
+  trainings: ComplianceTraining[];
+  insurance: ComplianceInsurance[];
+  incidentCriteria: IncidentCriterion[];
+  sources: ComplianceSource[];
+  sourceVersions: ComplianceSourceVersion[];
   planSections: CompliancePlanSection[];
   answers: ComplianceAnswers;
   /** DOH-367's camper capacity table, in printed-row order. */
@@ -75,6 +96,21 @@ interface ComplianceState {
     file: File, title: string, requirementIds: string[], expiresOn: string | null,
     uploader: { id: string | null; name: string | null }, onProgress?: UploadProgress,
   ) => Promise<void>;
+  /**
+   * Take the camp's own safety plan as a file.
+   *
+   * The alternative to writing ninety-six sections. The file becomes the plan this season's
+   * packet carries, and -- only when the camp has not already answered it -- DOH-367's plan
+   * question is set to "attached with this application", because that is now what is true of
+   * the packet. An existing answer is never overwritten: a camp that said the county already
+   * holds their plan has told us something we did not work out for ourselves.
+   */
+  uploadPlanDocument: (
+    file: File, uploader: { id: string | null; name: string | null },
+    actor: string | null, onProgress?: UploadProgress,
+  ) => Promise<void>;
+  /** Stop treating the uploaded file as the plan. The file stays, as ordinary evidence. */
+  removePlanDocument: () => Promise<void>;
   linkDocument: (requirementId: string, documentId: string) => Promise<void>;
   unlinkDocument: (requirementId: string, documentId: string) => Promise<void>;
   openDocument: (path: string) => Promise<string | null>;
@@ -98,6 +134,26 @@ interface ComplianceState {
    */
   removeSessionCapacity: (sessionIndex: number, actor: string | null) => Promise<void>;
 
+  /**
+   * File an incident. The 24-hour clock is computed in the data layer, not here and not in the
+   * form, so a camp gets the same verdict whichever screen files it.
+   */
+  saveIncident: (
+    patch: Partial<ComplianceIncident> & { kind: string; discoveredAt: string; severity: string[] },
+    actor: string | null,
+  ) => Promise<void>;
+  markIncidentReported: (id: string, reportedTo: string, method: string, actor: string | null) => Promise<void>;
+  saveScreening: (
+    patch: Partial<ComplianceScreening> & { kind: string; performedOn: string }, actor: string | null,
+  ) => Promise<void>;
+  removeScreening: (id: string) => Promise<void>;
+  saveTraining: (
+    patch: Partial<ComplianceTraining> & { kind: string; deliveredOn: string }, actor: string | null,
+  ) => Promise<void>;
+  saveInsurance: (
+    patch: Partial<ComplianceInsurance> & { kind: string }, actor: string | null,
+  ) => Promise<void>;
+
   markNotApplicable: (requirementId: string, reason: string | null, actor: string | null) => Promise<void>;
   /** Answer one of the questions a form asks. Optimistic, because typing must not feel laggy. */
   saveFormAnswer: (questionKey: string, value: string, actor: string | null) => Promise<void>;
@@ -112,8 +168,51 @@ interface ComplianceState {
   overallPercent: () => number;
   actionItems: () => { requirement: ComplianceRequirement; status: RequirementStatus }[];
   documentsFor: (requirementId: string) => ComplianceDocument[];
+  /** The camp's own safety plan, when they uploaded one instead of writing it here. */
+  planDocument: () => ComplianceDocument | null;
+  /**
+   * Attached evidence, which is every document except the one that IS the plan.
+   *
+   * The plan has its own home on screen and its own slot in the packet. Left in this list it
+   * would also appear in the evidence locker and a second time inside `evidence/` in the zip,
+   * so a reviewer would find two copies and have to work out whether they differ.
+   */
+  evidenceDocuments: () => ComplianceDocument[];
+  /** Where this camp's plan comes from: their upload, the builder, or nowhere yet. */
+  planSource: () => PlanSource;
+  /** Reportable incidents still unreported, soonest deadline first. */
+  openIncidents: () => ComplianceIncident[];
+  /** The screening and training picture for one person, for the clearance table. */
+  clearanceFor: (staffId: string) => StaffClearance;
+  /** The source a requirement came from, for the citation link. */
+  sourceFor: (requirementId: string) => ComplianceSource | null;
+  /**
+   * Source changes that touch this camp.
+   *
+   * A change is only shown when its `affects.applies_when` matches the camp's own setup answers,
+   * or when it names a requirement that is in scope. A camp with no rifle range does not need to
+   * hear that the riflery form was revised.
+   */
+  changesForCamp: () => { version: ComplianceSourceVersion; source: ComplianceSource; affectsYou: boolean }[];
   planByCategory: () => { category: string; sections: CompliancePlanSection[] }[];
   planProgress: () => { complete: number; total: number };
+
+  /** Answers to the state's 92-question template, keyed by PlanQuestion.key. */
+  planAnswers: PlanAnswers;
+  savePlanAnswer: (questionKey: string, value: PlanAnswerValue | null, actor: string | null) => Promise<void>;
+  /**
+   * The template questions this camp is actually asked, in the state's own order.
+   *
+   * Drops a question whose gate is answered anything but Yes -- the template's own skip logic
+   * ("Does the camp have an on-site sewage treatment system? No: skip to question 16"). A gate
+   * nobody has answered yet leaves its dependants hidden, which is what the paper form does too:
+   * you do not reach question 14 until you have answered 13.
+   */
+  planQuestionsAsked: () => PlanQuestion[];
+  /** Answered / asked, over the questions this camp is actually asked. */
+  planAnswerProgress: () => { answered: number; total: number };
+  /** The activity-specific state plans this camp owes, from its setup answers. */
+  planAddenda: () => PlanAddendum[];
 
   /** The parties reviewing this camp, in the order a director should think about them. */
   activeAuthorities: () => AuthoritySummary[];
@@ -172,6 +271,24 @@ interface ComplianceState {
   formTiming: (requirementCode: string | null) => {
     dueOn: string | null; basis: string; met: boolean;
   } | null;
+}
+
+/**
+ * Whether one person is clear to work on day one.
+ *
+ * Six things attach to hiring somebody at a New York camp and they all reset every season, which
+ * is why this is the largest single surface an inspector can ask about.
+ */
+export interface StaffClearance {
+  staffId: string;
+  dcjs: ComplianceScreening | null;
+  nsopw: ComplianceScreening | null;
+  references: number;
+  workingPapers: ComplianceScreening | null;
+  codeOfConduct: ComplianceTraining | null;
+  /** null when nobody has recorded anything either way. */
+  clear: boolean | null;
+  blockers: string[];
 }
 
 /** An authority plus where this camp stands with it. */
@@ -238,7 +355,9 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
   profiles: [], authorities: [], authorityForms: [], planTemplates: [],
   formQuestions: [], formAnswers: {},
   requirements: [], enabledProfileIds: [], statuses: [],
-  documents: [], planSections: [], answers: {}, sessionCapacity: [],
+  documents: [], planSections: [], answers: {}, planAnswers: {}, sessionCapacity: [],
+  incidents: [], screenings: [], trainings: [], insurance: [],
+  incidentCriteria: [], sources: [], sourceVersions: [],
   loaded: false, busy: false,
 
   apply: (d) => set({
@@ -248,6 +367,10 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
     requirements: d.requirements,
     enabledProfileIds: d.enabledProfileIds, statuses: d.statuses,
     documents: d.documents, planSections: d.planSections, answers: d.answers,
+    planAnswers: d.planAnswers,
+    incidents: d.incidents, screenings: d.screenings, trainings: d.trainings,
+    insurance: d.insurance, incidentCriteria: d.incidentCriteria,
+    sources: d.sources, sourceVersions: d.sourceVersions,
     sessionCapacity: d.sessionCapacity,
     loaded: true,
   }),
@@ -283,6 +406,28 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
     await get().recompute();
   },
 
+  uploadPlanDocument: async (file, uploader, actor, onProgress) => {
+    const { campId, seasonId } = get();
+    if (!campId || !seasonId) throw new Error('No season selected');
+    // Uploaded as an ordinary document first, then promoted. Inserting it as the plan directly
+    // would collide with the one-live-plan index while the previous plan is still live.
+    const doc = await dbUploadComplianceDocument(
+      file, campId, seasonId, file.name, [], null, uploader, onProgress,
+    );
+    await dbSetPlanDocument(campId, seasonId, doc.id);
+    if (!get().formAnswers[PLAN_STATUS_QUESTION]) {
+      await dbSaveFormAnswer(campId, seasonId, PLAN_STATUS_QUESTION, 'attached', actor);
+    }
+    await get().recompute();
+  },
+
+  removePlanDocument: async () => {
+    const doc = get().planDocument();
+    if (!doc) return;
+    await dbClearPlanDocument(doc.id);
+    await get().recompute();
+  },
+
   linkDocument: async (requirementId, documentId) => {
     const { campId, seasonId } = get();
     if (!campId || !seasonId) return;
@@ -306,6 +451,23 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
       planSections: s.planSections.map((p) => (p.id === id ? { ...p, ...patch } as CompliancePlanSection : p)),
     }));
     await dbUpdatePlanSection(id, patch, actor);
+    await get().recompute();
+  },
+
+  savePlanAnswer: async (questionKey, value, actor) => {
+    const { campId, seasonId } = get();
+    if (!campId || !seasonId) return;
+    // Applied locally first, like form answers: a checkbox that waits on a round trip reads as
+    // broken. `null` and an emptied answer both clear the row, so the local copy drops the key
+    // rather than holding an empty object that would count as written.
+    const next = { ...get().planAnswers };
+    const empty = !value
+      || ((value.checked ?? []).length === 0
+          && !(value.text ?? '').trim()
+          && (value.rows ?? []).every((r) => r.every((c) => !c.trim())));
+    if (empty) delete next[questionKey]; else next[questionKey] = value;
+    set({ planAnswers: next });
+    await dbSavePlanAnswer(campId, seasonId, questionKey, value, actor);
     await get().recompute();
   },
 
@@ -346,6 +508,44 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
       await dbDeleteSessionCapacity(campId, seasonId, i);
     }
     set({ sessionCapacity: await dbLoadSessionCapacity(campId, seasonId) });
+  },
+
+  saveIncident: async (patch, actor) => {
+    const { campId, seasonId } = get();
+    if (!campId) return;
+    await dbSaveIncident(campId, seasonId, patch, actor);
+    await get().recompute();
+  },
+
+  markIncidentReported: async (id, reportedTo, method, actor) => {
+    await dbMarkIncidentReported(id, reportedTo, method, actor);
+    await get().recompute();
+  },
+
+  saveScreening: async (patch, actor) => {
+    const { campId, seasonId } = get();
+    if (!campId) return;
+    await dbSaveScreening(campId, seasonId, patch, actor);
+    await get().recompute();
+  },
+
+  removeScreening: async (id) => {
+    await dbDeleteScreening(id);
+    await get().recompute();
+  },
+
+  saveTraining: async (patch, actor) => {
+    const { campId, seasonId } = get();
+    if (!campId) return;
+    await dbSaveTraining(campId, seasonId, patch, actor);
+    await get().recompute();
+  },
+
+  saveInsurance: async (patch, actor) => {
+    const { campId, seasonId } = get();
+    if (!campId) return;
+    await dbSaveInsurance(campId, seasonId, patch, actor);
+    await get().recompute();
   },
 
   markNotApplicable: async (requirementId, reason, actor) => {
@@ -462,7 +662,16 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
       });
   },
 
-  documentsFor: (requirementId) => get().documents.filter((d) => d.requirementIds.includes(requirementId)),
+  documentsFor: (requirementId) => get().evidenceDocuments().filter((d) => d.requirementIds.includes(requirementId)),
+
+  planDocument: () => planDocumentIn(get().documents),
+
+  evidenceDocuments: () => {
+    const plan = get().planDocument();
+    return plan ? get().documents.filter((d) => d.id !== plan.id) : get().documents;
+  },
+
+  planSource: () => planSourceOf(get().documents, get().planSections, get().planAnswers),
 
   activeAuthorities: () => {
     const st = get();
@@ -596,6 +805,78 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
     return work;
   },
 
+  openIncidents: () => get().incidents
+    .filter((i) => i.reportable && !i.reportedAt)
+    .sort((a, b) => (a.reportDueAt ?? '').localeCompare(b.reportDueAt ?? '')),
+
+  clearanceFor: (staffId) => {
+    const today = todayStr();
+    const live = (k: string) => get().screenings.find(
+      (x) => x.staffId === staffId && x.kind === k
+        && (x.expiresOn === null || x.expiresOn >= today)
+        && x.cleared !== false,
+    ) ?? null;
+
+    const dcjs = live('dcjs_sor');
+    const nsopw = live('nsopw');
+    const workingPapers = live('employment_certificate');
+    const references = get().screenings.filter(
+      (x) => x.staffId === staffId && x.kind === 'reference_check' && x.cleared !== false,
+    ).length;
+    const codeOfConduct = get().trainings.find(
+      (t) => t.staffId === staffId && t.kind === 'code_of_conduct' && t.acknowledgedOn,
+    ) ?? null;
+
+    const blockers: string[] = [];
+    if (!dcjs) blockers.push('Registry check not run');
+    // Chapter 873 §873.1804 wants two, and wants them before employment begins.
+    if (references < 2) blockers.push(`${2 - references} reference${references === 1 ? '' : 's'} short`);
+
+    const anythingRecorded = Boolean(dcjs || nsopw || workingPapers || references || codeOfConduct);
+    return {
+      staffId, dcjs, nsopw, references, workingPapers, codeOfConduct,
+      clear: !anythingRecorded ? null : blockers.length === 0,
+      blockers,
+    };
+  },
+
+  sourceFor: (requirementId) => {
+    const req = get().requirements.find((r) => r.id === requirementId);
+    if (!req?.sourceId) return null;
+    return get().sources.find((x) => x.id === req.sourceId) ?? null;
+  },
+
+  changesForCamp: () => {
+    const st = get();
+    const enabled = new Set(st.enabledProfileIds);
+    // Which requirement codes this camp actually carries. Deliberately NOT scopedRequirements(),
+    // which narrows to rules printed on an active form — a duty checked at inspection is still a
+    // duty, and a change to it still matters. What does drop out is anything setup ruled out.
+    const mine = new Set(
+      st.requirements
+        .filter((r) => enabled.has(r.profileId) && st.statusFor(r.id)?.status !== 'not_applicable')
+        .map((r) => r.reqCode),
+    );
+
+    return st.sourceVersions
+      .filter((v) => v.changeSummary)
+      .map((v) => {
+        const source = st.sources.find((x) => x.id === v.sourceId);
+        const codes = v.affects.req_codes ?? [];
+        const when = (v.affects.applies_when ?? {}) as Record<string, unknown>;
+
+        // Three ways a change can matter, and one way it cannot. A version naming no
+        // requirements and no conditions is a reading that found nothing moved — saying it
+        // affects the camp would make the count on this page meaningless.
+        const byCode = codes.length > 0 && codes.some((c) => mine.has(c));
+        const byCondition = Object.keys(when).length > 0
+          && applicability(st.answers, when) === 'yes';
+
+        return { version: v, source: source as ComplianceSource, affectsYou: byCode || byCondition };
+      })
+      .filter((x) => x.source)
+      .sort((a, b) => b.version.retrievedAt.localeCompare(a.version.retrievedAt));
+  },
   planByCategory: () => {
     const groups = new Map<string, CompliancePlanSection[]>();
     for (const s of get().planSections) {
@@ -609,5 +890,27 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
   planProgress: () => {
     const p = get().planSections;
     return { complete: p.filter((x) => x.status === 'complete' || x.status === 'not_applicable').length, total: p.length };
+  },
+
+  planQuestionsAsked: () => {
+    const answers = get().planAnswers;
+    // A gate is passed only by an explicit Yes. Unanswered hides its dependants, which is what
+    // the paper form does: you do not reach 14 until you have answered 13.
+    const passed = (key: string) => (answers[key]?.checked ?? []).some((c) => c.toLowerCase() === 'yes');
+    return PLAN_QUESTIONS.filter((q) => !q.dependsOn || passed(q.dependsOn));
+  },
+
+  planAnswerProgress: () => {
+    const asked = get().planQuestionsAsked();
+    const answers = get().planAnswers;
+    return { answered: asked.filter((q) => answers[q.key] !== undefined).length, total: asked.length };
+  },
+
+  planAddenda: () => {
+    const answers = get().answers;
+    // An addendum with no gate is one the state offers to any camp -- Sports, Spray Grounds and
+    // the Generic Activity plan. Those are listed for every camp; the rest turn on setup.
+    return PLAN_ADDENDA.filter((a) => Object.keys(a.appliesWhen).length === 0
+      || applicability(answers, a.appliesWhen) === 'yes');
   },
 }));

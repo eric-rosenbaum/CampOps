@@ -731,11 +731,11 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* ── Safety & compliance ──────────────────────────────────────── */}
+        {/* ── Compliance ───────────────────────────────────────────────── */}
         <div>
           <SectionHeader
             icon={<Shield className="w-4 h-4 text-ink-faint" />}
-            title="Safety & compliance"
+            title="Compliance"
             badge={safetyStats.overdue + failedDevices.length + expiredCerts}
             badgeRed
             to="/safety"

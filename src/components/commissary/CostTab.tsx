@@ -43,7 +43,7 @@ function ComplianceStrip() {
       <div className="flex items-center gap-2 mb-3">
         <ShieldCheck className="w-4 h-4 text-ink-soft" />
         <p className="text-[13px] font-semibold text-forest">Kitchen compliance</p>
-        <span className="text-[11px] text-ink-faint">from Safety &amp; Compliance</span>
+        <span className="text-[11px] text-ink-faint">from Compliance</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>

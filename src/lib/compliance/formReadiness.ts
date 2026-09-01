@@ -1,7 +1,11 @@
 import type {
-  ComplianceFormQuestion, FormAnswers, SessionCapacity, CompliancePlanSection,
+  ComplianceFormQuestion, FormAnswers, SessionCapacity, CompliancePlanSection, PlanAnswers,
 } from '@/lib/types';
-import type { PacketCamp } from './nyPacket';
+import type { ComplianceAnswers } from '@/lib/types';
+import {
+  DOH367A_ROWS, askedYes, doh367aRoster, lifeguardsWithoutCpr, type PacketCamp,
+} from './nyPacket';
+import { PLAN_STATUS_QUESTION, planIsWritten } from './planSource';
 
 /**
  * What a form is made of, where each part comes from, and whether it is done.
@@ -35,7 +39,7 @@ export interface FormPart {
    */
   questionKeys?: string[];
   /** An editor that is not a list of questions: the session grid, the printed-role list. */
-  panel?: 'sessions' | 'roles';
+  panel?: 'sessions' | 'roles' | 'plan';
   /**
    * Somewhere else entirely, for the blocks fed by data this module does not own: the camp
    * record, the season, the written plan.
@@ -60,6 +64,18 @@ export interface ReadinessInput {
   answers: FormAnswers;
   sessions: SessionCapacity[];
   planSections: CompliancePlanSection[];
+  /** Answers to the state's 92-question template, the other way a plan gets written. */
+  planAnswers?: PlanAnswers;
+  /**
+   * The setup interview's answers.
+   *
+   * Needed to tell "this section does not apply to you" from "this section is empty". A camp
+   * with no rifle range and a camp that has one and has told us nothing about its instructor
+   * both print a blank riflery block, and only one of them has something to do.
+   */
+  setupAnswers: ComplianceAnswers;
+  /** The camp's own plan file, when they uploaded one instead of writing the sections. */
+  planDocumentTitle?: string | null;
   /** Camp-owned and filled cell counts, from coverage(). */
   ours: number;
   filled: number;
@@ -94,12 +110,13 @@ function groupProgress(
 /** Filing-group questions that print in a different block of the form, so they are asked there. */
 const FILING_ELSEWHERE = [
   'ny.filing.facility_code',
-  'ny.safety_plan.previously_submitted',
+  PLAN_STATUS_QUESTION,
   'ny.safety_plan.previously_submitted_on',
 ];
 
 export function doh367Readiness(input: ReadinessInput): FormReadiness {
-  const { camp, seasonName, questions, answers, sessions, planSections } = input;
+  const { camp, seasonName, questions, answers, sessions, planSections, planAnswers } = input;
+  const planDocumentTitle = input.planDocumentTitle ?? null;
   const parts: FormPart[] = [];
 
   parts.push({
@@ -178,20 +195,33 @@ export function doh367Readiness(input: ReadinessInput): FormReadiness {
     goTo: { href: '/settings/staff', label: 'Staff and certs' },
   });
 
-  const planStatus = answers['ny.safety_plan.previously_submitted'] ?? '';
+  const planStatus = answers[PLAN_STATUS_QUESTION] ?? '';
   const planDone = planSections.filter((x) => x.status === 'complete' || x.status === 'not_applicable').length;
+  // What the packet would actually carry, decided by the same rule the packet uses.
+  const planExists = planDocumentTitle !== null || planIsWritten(planSections, planAnswers);
+  // A box saying the plan is attached, with nothing to attach, is the one state on this form
+  // that is worse than an unanswered question: it reads as done and files as incomplete. So it
+  // is not "done" here, and the block says which of the two things to fix.
+  const planClaimUnbacked = (planStatus === 'attached' || planStatus === 'update') && !planExists;
   parts.push({
     label: 'Written safety plan',
     source: planStatus === 'previously'
       ? 'A plan already on file with the county'
-      : 'The plan you are writing in CampCommand',
-    status: planStatus ? 'done' : 'todo',
-    detail: !planStatus
-      ? 'The form asks which of three situations you are in: the plan is attached, it went in a previous year and is still current, or an update is attached. Answer that and the right box ticks.'
-      : planStatus === 'previously'
-        ? 'Ticked as already on file. Nothing from the plan builder goes with this application.'
-        : `Ticked as attached. ${planDone} of ${planSections.length} sections written, and the plan downloads with your packet.`,
-    questionKeys: ['ny.safety_plan.previously_submitted', 'ny.safety_plan.previously_submitted_on'],
+      : planDocumentTitle
+        ? 'The plan you uploaded'
+        : 'The plan you are writing in CampCommand',
+    status: !planStatus || planClaimUnbacked ? 'todo' : 'done',
+    detail: planClaimUnbacked
+      ? 'This says your plan goes with the application, but there is no plan in CampCommand to send. Upload the one you already have, write it here, or say it went in a previous year.'
+      : !planStatus
+        ? 'The form asks which of three situations you are in: the plan is attached, it went in a previous year and is still current, or an update is attached. Answer that and the right box ticks.'
+        : planStatus === 'previously'
+          ? 'Ticked as already on file. No plan goes with this application.'
+          : planDocumentTitle
+            ? `Ticked as attached. ${planDocumentTitle} goes with your packet exactly as you uploaded it.`
+            : `Ticked as attached. ${planDone} of ${planSections.length} sections written, and the plan downloads with your packet.`,
+    questionKeys: [PLAN_STATUS_QUESTION, 'ny.safety_plan.previously_submitted_on'],
+    panel: 'plan',
     goTo: { tab: 'plan', label: 'Open the plan' },
   });
 
@@ -227,6 +257,159 @@ export function doh367Readiness(input: ReadinessInput): FormReadiness {
     source: 'Wet ink, after you print it',
     status: 'by_hand',
     detail: 'Not ours to fill. Print the form and sign it.',
+  });
+
+  const outstanding = parts.filter((p) => p.status === 'todo').length;
+  return {
+    parts, outstanding, ready: outstanding === 0,
+    ours: input.ours, filled: input.filled, notOurs: input.notOurs,
+  };
+}
+
+/**
+ * DOH-367a, block by block.
+ *
+ * The continuation sheet of DOH-367: three tables of certified staff, a counselor headcount, and
+ * a riflery instructor. It is the first form unparked, and the reason it is first is that almost
+ * all of it is already on file — the tables are drawn from the safety roster and its
+ * certifications, not from anything a camp has to retype here.
+ *
+ * So the blocks describing those tables report rather than ask. They say who will print and what
+ * will be blank, because on this form a blank is usually a real gap in the camp's records rather
+ * than a question nobody answered: a lifeguard with no CPR card on file prints as a lifeguard
+ * with an empty CPR column, and that is the county's cue to ask about it.
+ */
+export function doh367aReadiness(input: ReadinessInput): FormReadiness {
+  const { camp, seasonName, questions, answers, setupAnswers } = input;
+  const parts: FormPart[] = [];
+
+  // The header of every NY form, filled from the camp record and the season. Named here because
+  // this form is filed on its own as often as it is filed behind DOH-367, and a camp looking at
+  // it needs to know these three lines are not theirs to type.
+  parts.push({
+    label: 'Facility name and season dates',
+    source: seasonName ? `Your camp record and your ${seasonName} season` : 'Your camp record and season',
+    status: camp.campName && camp.openDate && camp.closeDate ? 'done' : 'todo',
+    detail: camp.campName && camp.openDate && camp.closeDate ? undefined
+      : 'The form prints your camp name and the dates you open and close. Set your season dates under Pre/Post Camp.',
+    goTo: { href: '/pre-post', label: 'Pre/Post Camp' },
+  });
+
+  // The same question DOH-367 asks, deliberately. One answer, both forms: a camp that typed
+  // their code once should never be asked for it again because a second sheet also prints it.
+  const code = answered(answers, 'ny.filing.facility_code');
+  parts.push({
+    label: 'Facility code',
+    source: 'Your county assigns this',
+    status: code ? 'done' : 'by_hand',
+    detail: code ? 'The same code DOH-367 prints; answered once, it fills both.'
+      : 'Leave blank if this is your first application. The county fills it in when they issue your permit.',
+    questionKeys: ['ny.filing.facility_code'],
+  });
+
+  const { psi, guards, firstAiders } = doh367aRoster(camp);
+  const noCpr = lifeguardsWithoutCpr(camp);
+  const hasWater = askedYes(setupAnswers, 'has_pool') === true
+    || askedYes(setupAnswers, 'has_waterfront') === true;
+
+  /** A table that reports the roster: how many rows print, and what the form does with the rest. */
+  const table = (
+    label: string, people: number, rows: number, cert: string, extra?: string,
+  ): FormPart => ({
+    label,
+    source: 'The certifications on your staff records',
+    // Never "to do": nobody can answer this block here. What it can do is say what will print.
+    status: 'done',
+    detail: people === 0
+      ? `Nobody on your roster holds ${cert}, so this table prints blank.`
+      : people > rows
+        // The form's own note says to attach a sheet, so this is the camp's cue to do that
+        // rather than a fault in what we drew.
+        ? `${rows} of ${people} print here — the form has ${rows} rows. Attach a sheet for the other ${people - rows}.`
+        : `${people} of ${rows} rows fill${extra ? `. ${extra}` : '.'}`,
+    goTo: { href: '/settings/staff', label: 'Staff and certs' },
+  });
+
+  parts.push(table(
+    'Progressive swimming instructors', psi.length, DOH367A_ROWS.psi,
+    'a water safety instructor certification',
+  ));
+
+  const guardTable = table(
+    'Lifeguards', guards.length, DOH367A_ROWS.lifeguard, 'a lifeguard certification',
+    noCpr.length > 0
+      ? `${noCpr.length} of them ${noCpr.length === 1 ? 'has' : 'have'} no CPR card on file, and the form asks each lifeguard for one, so that column prints blank for ${noCpr.length === 1 ? 'them' : 'those rows'}.`
+      : undefined,
+  );
+  // The one case on this form where an empty table is something to fix rather than to report:
+  // the camp has told us it has water, and nobody on the roster is certified to guard it.
+  parts.push(guards.length === 0 && hasWater
+    ? {
+        ...guardTable,
+        status: 'todo',
+        detail: 'You told us you have a pool or waterfront, and nobody on your roster holds a lifeguard certification, so this table prints blank. Add their certifications under Staff and certs.',
+      }
+    : guardTable);
+
+  parts.push(table(
+    'Additional first aid and CPR staff', firstAiders.length, DOH367A_ROWS.firstAid,
+    'a first aid or CPR certification',
+    'Lifeguards already listed above are not repeated here.',
+  ));
+
+  // The counselor table is the one block on this form that is neither on the roster nor
+  // derivable from it: who counts as a counselor is a judgement the camp makes, and reading it
+  // out of a free-text job title would silently miss a unit head and silently count a
+  // counselor-in-training. Its first row is day-camps-only, which is why an overnight camp is
+  // asked four questions here and a day camp six.
+  const counselorQs = groupProgress(questions, answers, 'counselors');
+  parts.push({
+    label: 'Counselor headcount',
+    source: 'Counted by you',
+    status: counselorQs.done === counselorQs.total ? 'done' : 'todo',
+    detail: counselorQs.done === counselorQs.total
+      ? undefined
+      : `${counselorQs.total - counselorQs.done} of ${counselorQs.total} cells to fill: your counselors by age and sex.`,
+    questionKeys: questions.filter((q) => q.groupKey === 'counselors')
+      .sort((a, b) => a.sortOrder - b.sortOrder).map((q) => q.questionKey),
+  });
+
+  // Ruled out by setup, this group is empty and reads as done, which is correct: there is
+  // nothing to do and nothing will print. Said out loud, because a silently complete block on a
+  // government form invites the question "did it not ask me something?".
+  const riflery = askedYes(setupAnswers, 'has_riflery');
+  const rifleQs = groupProgress(questions, answers, 'riflery');
+  parts.push({
+    label: 'Riflery instructor',
+    source: riflery === false ? 'Your setup answers' : 'Named by you',
+    status: rifleQs.done === rifleQs.total ? 'done' : 'todo',
+    detail: riflery === false
+      ? 'You told us you do not run riflery, so this section prints blank.'
+      : rifleQs.done === rifleQs.total
+        ? undefined
+        : `${rifleQs.total - rifleQs.done} of ${rifleQs.total} to answer. Nothing on your staff roster says who runs the range, so the form asks for them by name.`,
+    questionKeys: questions.filter((q) => q.groupKey === 'riflery')
+      .sort((a, b) => a.sortOrder - b.sortOrder).map((q) => q.questionKey),
+  });
+
+  const NOT_NEEDED_TO_PRINT = ['ny.operator.signature_text'];
+  const opQs = groupProgress(questions, answers, 'operator', NOT_NEEDED_TO_PRINT);
+  parts.push({
+    label: 'Operator name and title',
+    source: 'Who signs the permit',
+    status: opQs.done === opQs.total ? 'done' : 'todo',
+    detail: opQs.done === opQs.total
+      ? 'The same answers DOH-367 prints.'
+      : 'The legal permit holder, which is often not the camp director. Answering here fills DOH-367 too.',
+    questionKeys: questions.filter((q) => q.groupKey === 'operator')
+      .sort((a, b) => a.sortOrder - b.sortOrder).map((q) => q.questionKey),
+  });
+
+  parts.push({
+    label: 'Signature and date',
+    source: 'Wet ink, after you print it',
+    status: 'by_hand',
+    detail: 'Not ours to fill. This form carries its own attestation, so it is signed separately from DOH-367.',
   });
 
   const outstanding = parts.filter((p) => p.status === 'todo').length;

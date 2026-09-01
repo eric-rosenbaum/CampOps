@@ -8,6 +8,7 @@
 // deriving it from whatever stores happen to have hydrated, and this is a number a camp files a
 // permit on.
 import { supabase } from './supabase';
+import { parseDateStr, toDateStr } from './utils';
 import { campError } from './campLog';
 import { uploadToBucket } from './storageUpload';
 import type { UploadProgress } from './uploadProgress';
@@ -16,6 +17,9 @@ import type {
   CompliancePlanSection, ComplianceAnswers, PlanSectionStatus,
   ComplianceAuthority, ComplianceAuthorityForm, CompliancePlanTemplate,
   ComplianceFormQuestion, FormAnswers, SessionCapacity,
+  ComplianceIncident, ComplianceScreening, ComplianceTraining, ComplianceInsurance,
+  ComplianceSource, ComplianceSourceVersion, IncidentCriterion,
+  PlanAnswers, PlanAnswerValue,
 } from './types';
 
 type Row = Record<string, unknown>;
@@ -41,8 +45,10 @@ function toRequirement(r: Row): ComplianceRequirement {
     label: r.label as string, summary: s(r.summary), category: r.category as string,
     evidenceType: r.evidence_type as ComplianceRequirement['evidenceType'],
     evidenceHint: s(r.evidence_hint), frequency: s(r.frequency),
+    inPermitPackage: Boolean(r.in_permit_package),
     deadlineRule: (r.deadline_rule as Record<string, unknown>) ?? null,
     appliesWhen: (r.applies_when as Record<string, string>) ?? {},
+    sourceId: s(r.source_id), sourceCheckedOn: s(r.source_checked_on),
     citation: s(r.citation), citationUrl: s(r.citation_url),
     verifyStatus: r.verify_status as ComplianceRequirement['verifyStatus'],
     holdsPersonalRecords: Boolean(r.holds_personal_records),
@@ -70,6 +76,8 @@ function toAuthorityForm(r: Row): ComplianceAuthorityForm {
     issuedBy: s(r.issued_by), sourceUrl: s(r.source_url),
     obtainNote: s(r.obtain_note), fillable: Boolean(r.fillable),
     campSupplied: Boolean(r.camp_supplied),
+    isIncidentForm: Boolean(r.is_incident_form), urlStable: r.url_stable !== false,
+    sourceCheckedOn: s(r.source_checked_on),
     isActive: r.is_active !== false,
     requirementCode: s(r.requirement_code),
     sortOrder: Number(r.sort_order ?? 0),
@@ -109,6 +117,75 @@ function toStatus(r: Row): RequirementStatus {
     detail: (r.detail as Record<string, unknown>) ?? {},
     dueOn: s(r.due_on), assignedTo: s(r.assigned_to), naReason: s(r.na_reason),
     computedAt: r.computed_at as string,
+  };
+}
+
+const n = (v: unknown) => (v == null ? null : Number(v));
+
+function toIncident(r: Row): ComplianceIncident {
+  return {
+    id: r.id as string, campId: r.camp_id as string, seasonId: s(r.season_id),
+    occurredAt: s(r.occurred_at), discoveredAt: r.discovered_at as string,
+    kind: r.kind as ComplianceIncident['kind'],
+    subject: (r.subject ?? null) as ComplianceIncident['subject'],
+    severity: (r.severity as string[]) ?? [],
+    formCode: s(r.form_code), reportable: Boolean(r.reportable),
+    reportDueAt: s(r.report_due_at), reportedAt: s(r.reported_at), reportedTo: s(r.reported_to),
+    reportMethod: s(r.report_method), reportedBy: s(r.reported_by), narrative: s(r.narrative),
+    locationId: s(r.location_id), followUp: s(r.follow_up), closedAt: s(r.closed_at),
+    investigationStartedAt: s(r.investigation_started_at), writtenReportAt: s(r.written_report_at),
+    correctivePlanAt: s(r.corrective_plan_at), correctiveImplementedAt: s(r.corrective_implemented_at),
+    createdBy: s(r.created_by), createdAt: r.created_at as string,
+  };
+}
+
+function toScreening(r: Row): ComplianceScreening {
+  return {
+    id: r.id as string, campId: r.camp_id as string, seasonId: s(r.season_id),
+    staffId: s(r.staff_id), subjectLabel: s(r.subject_label),
+    kind: r.kind as ComplianceScreening['kind'], performedOn: r.performed_on as string,
+    method: (r.method ?? null) as ComplianceScreening['method'],
+    referenceId: s(r.reference_id),
+    cleared: r.cleared == null ? null : Boolean(r.cleared),
+    expiresOn: s(r.expires_on), note: s(r.note), recordedBy: s(r.recorded_by),
+  };
+}
+
+function toTraining(r: Row): ComplianceTraining {
+  return {
+    id: r.id as string, campId: r.camp_id as string, seasonId: s(r.season_id),
+    staffId: s(r.staff_id), kind: r.kind as ComplianceTraining['kind'], title: s(r.title),
+    deliveredOn: r.delivered_on as string, deliveredBy: s(r.delivered_by),
+    minutes: n(r.minutes), acknowledgedOn: s(r.acknowledged_on), note: s(r.note),
+  };
+}
+
+function toInsurance(r: Row): ComplianceInsurance {
+  return {
+    id: r.id as string, campId: r.camp_id as string, seasonId: s(r.season_id),
+    kind: r.kind as ComplianceInsurance['kind'], carrier: s(r.carrier),
+    policyNumber: s(r.policy_number), formCode: s(r.form_code),
+    perOccurrenceCents: n(r.per_occurrence_cents), aggregateCents: n(r.aggregate_cents),
+    effectiveOn: s(r.effective_on), expiresOn: s(r.expires_on), documentId: s(r.document_id),
+    filedWith: s(r.filed_with), filedOn: s(r.filed_on), note: s(r.note),
+  };
+}
+
+function toSource(r: Row): ComplianceSource {
+  return {
+    id: r.id as string, sourceKey: r.source_key as string, title: r.title as string,
+    issuer: s(r.issuer), kind: r.kind as ComplianceSource['kind'], url: s(r.url),
+    urlStable: Boolean(r.url_stable), archivedPath: s(r.archived_path),
+  };
+}
+
+function toSourceVersion(r: Row): ComplianceSourceVersion {
+  return {
+    id: r.id as string, sourceId: r.source_id as string, sha256: s(r.sha256),
+    retrievedAt: r.retrieved_at as string, effectiveDate: s(r.effective_date),
+    revisionLabel: s(r.revision_label), changeSummary: s(r.change_summary),
+    affects: (r.affects as ComplianceSourceVersion['affects']) ?? {},
+    isCurrent: Boolean(r.is_current),
   };
 }
 
@@ -177,14 +254,24 @@ export interface ComplianceData {
   statuses: RequirementStatus[];
   documents: ComplianceDocument[];
   planSections: CompliancePlanSection[];
+  /** Answers to the state's 92-question safety plan template. Keyed by PlanQuestion.key. */
+  planAnswers: PlanAnswers;
   answers: ComplianceAnswers;
   /** DOH-367's camper capacity table, one row per session. */
   sessionCapacity: SessionCapacity[];
+  incidents: ComplianceIncident[];
+  screenings: ComplianceScreening[];
+  trainings: ComplianceTraining[];
+  insurance: ComplianceInsurance[];
+  incidentCriteria: IncidentCriterion[];
+  sources: ComplianceSource[];
+  sourceVersions: ComplianceSourceVersion[];
 }
 
 export async function loadCompliance(campId: string, seasonId: string | null): Promise<ComplianceData | null> {
   try {
-    const [prof, auth, authForms, planTpl, formQ, formA, reqs, enabled, stat, docs, links, plan, ans, sess] = await Promise.all([
+    const [prof, auth, authForms, planTpl, formQ, formA, reqs, enabled, stat, docs, links, plan, ans, sess,
+           inc, scr, trn, ins, crit, src, srcv, planAns] = await Promise.all([
       supabase.from('compliance_profiles').select('*').eq('is_active', true).order('sort_order'),
       supabase.from('compliance_authorities').select('*').eq('is_active', true).order('sort_order'),
       supabase.from('compliance_authority_forms').select('*').eq('is_active', true).order('sort_order'),
@@ -204,6 +291,17 @@ export async function loadCompliance(campId: string, seasonId: string | null): P
       seasonId ? supabase.from('camp_compliance_answers').select('key, value').eq('camp_id', campId).eq('season_id', seasonId)
                : Promise.resolve({ data: [], error: null }),
       seasonId ? supabase.from('compliance_session_capacity').select('*').eq('camp_id', campId).eq('season_id', seasonId).order('session_index')
+               : Promise.resolve({ data: [], error: null }),
+      supabase.from('compliance_incidents').select('*').eq('camp_id', campId).order('discovered_at', { ascending: false }),
+      // Screenings and trainings are admin-only at the RLS layer. A non-admin gets an empty list
+      // rather than an error, which is the right outcome: the staff tab simply has nothing in it.
+      supabase.from('compliance_screenings').select('*').eq('camp_id', campId).order('performed_on', { ascending: false }),
+      supabase.from('compliance_trainings').select('*').eq('camp_id', campId).order('delivered_on', { ascending: false }),
+      supabase.from('compliance_insurance').select('*').eq('camp_id', campId),
+      supabase.from('compliance_incident_criteria').select('*').order('sort_order'),
+      supabase.from('compliance_sources').select('*').order('sort_order'),
+      supabase.from('compliance_source_versions').select('*').eq('is_current', true).order('retrieved_at', { ascending: false }),
+      seasonId ? supabase.from('camp_plan_answers').select('question_key, value').eq('camp_id', campId).eq('season_id', seasonId)
                : Promise.resolve({ data: [], error: null }),
     ]);
 
@@ -234,8 +332,22 @@ export async function loadCompliance(campId: string, seasonId: string | null): P
         requirementIds: byDoc.get(r.id as string) ?? [],
       })),
       planSections: ((plan.data ?? []) as Row[]).map(toPlanSection),
+      planAnswers: Object.fromEntries(
+        ((planAns.data ?? []) as Row[]).map((r) => [r.question_key as string, r.value as PlanAnswerValue]),
+      ),
       answers: Object.fromEntries(((ans.data ?? []) as Row[]).map((r) => [r.key as string, r.value as string])),
       sessionCapacity: ((sess.data ?? []) as Row[]).map(toSessionCapacity),
+      incidents: ((inc.data ?? []) as Row[]).map(toIncident),
+      screenings: ((scr.data ?? []) as Row[]).map(toScreening),
+      trainings: ((trn.data ?? []) as Row[]).map(toTraining),
+      insurance: ((ins.data ?? []) as Row[]).map(toInsurance),
+      incidentCriteria: ((crit.data ?? []) as Row[]).map((r) => ({
+        code: r.code as string, label: r.label as string,
+        appliesTo: r.applies_to as IncidentCriterion['appliesTo'],
+        sortOrder: Number(r.sort_order ?? 0),
+      })),
+      sources: ((src.data ?? []) as Row[]).map(toSource),
+      sourceVersions: ((srcv.data ?? []) as Row[]).map(toSourceVersion),
     };
   } catch (e) {
     campError('[Compliance] load threw', e);
@@ -312,10 +424,181 @@ export async function dbUnlinkDocument(seasonId: string, requirementId: string, 
   if (error) campError('unlink document', error.message);
 }
 
+/**
+ * Make an already-uploaded document this season's written safety plan.
+ *
+ * Two writes -- retire the incumbent, mark the newcomer -- that a unique index makes
+ * order-dependent and that a failure between would leave in a state the camp cannot see or fix.
+ * They belong in one transaction, which on Supabase means one function.
+ */
+export async function dbSetPlanDocument(campId: string, seasonId: string, documentId: string) {
+  const { error } = await supabase.rpc('set_compliance_plan_document', {
+    p_camp_id: campId, p_season_id: seasonId, p_document_id: documentId,
+  });
+  if (error) throw new Error(`The file uploaded but it was not set as your plan. ${error.message}`);
+}
+
+/**
+ * Stop treating a document as the written plan.
+ *
+ * The row and the file stay: the camp uploaded it deliberately, and a click that says "this is
+ * not my plan" is not a click that says "destroy it". It reverts to ordinary evidence and shows
+ * up in the documents list, which is where a file with no other home belongs.
+ */
+export async function dbClearPlanDocument(documentId: string) {
+  const { error } = await supabase.from('compliance_documents')
+    .update({ doc_type: null }).eq('id', documentId);
+  if (error) throw new Error(`The plan was not removed. ${error.message}`);
+}
+
 export async function dbSignComplianceDocument(path: string): Promise<string | null> {
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 30);
   if (error) { campError('sign compliance doc', error.message); return null; }
   return data?.signedUrl ?? null;
+}
+
+// ─── Incidents ────────────────────────────────────────────────────────────────
+
+/**
+ * Which of 7-2.8(d)'s criteria make an incident reportable, and by when.
+ *
+ * Kept beside the writer rather than in the UI because the answer is a legal one: a camp should
+ * get the same verdict whichever screen files the incident. The three "immediate" kinds are the
+ * ones the regulation does not give 24 hours for.
+ */
+const IMMEDIATE: string[] = ['rabies_exposure', 'vaccine_preventable', 'abuse_allegation'];
+
+export function incidentReportDeadline(
+  kind: string, severity: string[], discoveredAt: string,
+): { reportable: boolean; dueAt: string | null; immediate: boolean } {
+  const reportable = severity.length > 0 || IMMEDIATE.includes(kind);
+  if (!reportable) return { reportable: false, dueAt: null, immediate: false };
+  const immediate = IMMEDIATE.includes(kind) || severity.includes('rabies_exposure')
+    || severity.includes('abuse_allegation');
+  const from = new Date(discoveredAt);
+  return {
+    reportable: true,
+    immediate,
+    // An immediate duty still gets a deadline so the UI can show a clock; it is simply now.
+    dueAt: immediate ? from.toISOString() : new Date(from.getTime() + 24 * 3600 * 1000).toISOString(),
+  };
+}
+
+export async function dbSaveIncident(
+  campId: string, seasonId: string | null,
+  patch: Partial<ComplianceIncident> & { kind: string; discoveredAt: string; severity: string[] },
+  actor: string | null,
+): Promise<ComplianceIncident | null> {
+  const clock = incidentReportDeadline(patch.kind, patch.severity, patch.discoveredAt);
+  const row: Row = {
+    camp_id: campId, season_id: seasonId,
+    kind: patch.kind, discovered_at: patch.discoveredAt, occurred_at: patch.occurredAt ?? null,
+    subject: patch.subject ?? null, severity: patch.severity,
+    form_code: patch.formCode ?? null,
+    reportable: clock.reportable, report_due_at: clock.dueAt,
+    reported_at: patch.reportedAt ?? null, reported_to: patch.reportedTo ?? null,
+    report_method: patch.reportMethod ?? null, reported_by: patch.reportedBy ?? null,
+    narrative: patch.narrative ?? null, location_id: patch.locationId ?? null,
+    follow_up: patch.followUp ?? null, closed_at: patch.closedAt ?? null,
+    updated_at: new Date().toISOString(),
+  };
+  if (patch.id) {
+    const { data, error } = await supabase.from('compliance_incidents')
+      .update(row).eq('id', patch.id).select('*').single();
+    if (error) { campError('save incident', error.message); return null; }
+    return toIncident(data as Row);
+  }
+  row.created_by = actor;
+  const { data, error } = await supabase.from('compliance_incidents').insert(row).select('*').single();
+  if (error) { campError('create incident', error.message); return null; }
+  return toIncident(data as Row);
+}
+
+export async function dbMarkIncidentReported(
+  id: string, reportedTo: string, method: string, actor: string | null,
+) {
+  const { error } = await supabase.from('compliance_incidents').update({
+    reported_at: new Date().toISOString(), reported_to: reportedTo,
+    report_method: method, reported_by: actor, updated_at: new Date().toISOString(),
+  }).eq('id', id);
+  if (error) throw new Error(`The report was not recorded. ${error.message}`);
+}
+
+// ─── Screenings, trainings, insurance ─────────────────────────────────────────
+
+/** Annual checks expire a year after they were run: 7-2.5(l) wants one before each arrival. */
+const ANNUAL_KINDS = ['dcjs_sor', 'nsopw', 'justice_center_sel'];
+
+export async function dbSaveScreening(
+  campId: string, seasonId: string | null, patch: Partial<ComplianceScreening> & {
+    kind: string; performedOn: string;
+  }, actor: string | null,
+): Promise<ComplianceScreening | null> {
+  let expires = patch.expiresOn ?? null;
+  if (!expires && ANNUAL_KINDS.includes(patch.kind)) {
+    const d = parseDateStr(patch.performedOn);
+    expires = toDateStr(new Date(d.getFullYear() + 1, d.getMonth(), d.getDate()));
+  }
+  const row: Row = {
+    camp_id: campId, season_id: seasonId, staff_id: patch.staffId ?? null,
+    subject_label: patch.subjectLabel ?? null, kind: patch.kind,
+    performed_on: patch.performedOn, method: patch.method ?? null,
+    reference_id: patch.referenceId ?? null, cleared: patch.cleared ?? null,
+    expires_on: expires, note: patch.note ?? null, recorded_by: actor,
+    updated_at: new Date().toISOString(),
+  };
+  const q = patch.id
+    ? supabase.from('compliance_screenings').update(row).eq('id', patch.id).select('*').single()
+    : supabase.from('compliance_screenings').insert(row).select('*').single();
+  const { data, error } = await q;
+  if (error) { campError('save screening', error.message); return null; }
+  return toScreening(data as Row);
+}
+
+export async function dbDeleteScreening(id: string) {
+  const { error } = await supabase.from('compliance_screenings').delete().eq('id', id);
+  if (error) campError('delete screening', error.message);
+}
+
+export async function dbSaveTraining(
+  campId: string, seasonId: string | null, patch: Partial<ComplianceTraining> & {
+    kind: string; deliveredOn: string;
+  }, actor: string | null,
+): Promise<ComplianceTraining | null> {
+  const row: Row = {
+    camp_id: campId, season_id: seasonId, staff_id: patch.staffId ?? null,
+    kind: patch.kind, title: patch.title ?? null, delivered_on: patch.deliveredOn,
+    delivered_by: patch.deliveredBy ?? null, minutes: patch.minutes ?? null,
+    acknowledged_on: patch.acknowledgedOn ?? null, note: patch.note ?? null, recorded_by: actor,
+  };
+  const q = patch.id
+    ? supabase.from('compliance_trainings').update(row).eq('id', patch.id).select('*').single()
+    : supabase.from('compliance_trainings').insert(row).select('*').single();
+  const { data, error } = await q;
+  if (error) { campError('save training', error.message); return null; }
+  return toTraining(data as Row);
+}
+
+export async function dbSaveInsurance(
+  campId: string, seasonId: string | null, patch: Partial<ComplianceInsurance> & { kind: string },
+  actor: string | null,
+): Promise<ComplianceInsurance | null> {
+  const row: Row = {
+    camp_id: campId, season_id: seasonId, kind: patch.kind, carrier: patch.carrier ?? null,
+    policy_number: patch.policyNumber ?? null, form_code: patch.formCode ?? null,
+    per_occurrence_cents: patch.perOccurrenceCents ?? null,
+    aggregate_cents: patch.aggregateCents ?? null,
+    effective_on: patch.effectiveOn ?? null, expires_on: patch.expiresOn ?? null,
+    document_id: patch.documentId ?? null, filed_with: patch.filedWith ?? null,
+    filed_on: patch.filedOn ?? null, note: patch.note ?? null, created_by: actor,
+    updated_at: new Date().toISOString(),
+  };
+  const q = patch.id
+    ? supabase.from('compliance_insurance').update(row).eq('id', patch.id).select('*').single()
+    : supabase.from('compliance_insurance').insert(row).select('*').single();
+  const { data, error } = await q;
+  if (error) { campError('save insurance', error.message); return null; }
+  return toInsurance(data as Row);
 }
 
 // ─── Plan sections ────────────────────────────────────────────────────────────
@@ -444,4 +727,37 @@ export async function dbDeleteSessionCapacity(campId: string, seasonId: string, 
   const { error } = await supabase.from('compliance_session_capacity').delete()
     .eq('camp_id', campId).eq('season_id', seasonId).eq('session_index', sessionIndex);
   if (error) campError('delete session capacity', error.message);
+}
+
+// ─── Safety plan answers ──────────────────────────────────────────────────────
+
+/**
+ * Write one answer to the state's plan template.
+ *
+ * Upserted on (camp, season, question) so a camp editing the same box repeatedly leaves one row,
+ * not an audit trail nobody asked for. An answer emptied back out is deleted rather than stored as
+ * an empty object, because "no answer" and "answered with nothing" have to look the same to
+ * `planIsWritten` — otherwise clicking into a question and back out would make a camp look like
+ * it had started writing a plan.
+ */
+export async function dbSavePlanAnswer(
+  campId: string, seasonId: string, questionKey: string,
+  value: PlanAnswerValue | null, actor: string | null,
+): Promise<boolean> {
+  const empty = !value
+    || ((value.checked ?? []).length === 0
+        && !(value.text ?? '').trim()
+        && (value.rows ?? []).every((r) => r.every((c) => !c.trim())));
+  if (empty) {
+    const { error } = await supabase.from('camp_plan_answers').delete()
+      .eq('camp_id', campId).eq('season_id', seasonId).eq('question_key', questionKey);
+    if (error) { campError('clear plan answer', error.message); return false; }
+    return true;
+  }
+  const { error } = await supabase.from('camp_plan_answers').upsert({
+    camp_id: campId, season_id: seasonId, question_key: questionKey,
+    value, updated_by: actor, updated_at: new Date().toISOString(),
+  }, { onConflict: 'camp_id,season_id,question_key' });
+  if (error) { campError('save plan answer', error.message); return false; }
+  return true;
 }

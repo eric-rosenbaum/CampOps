@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { dbRecordComplianceExport } from '@/lib/complianceDb';
 import { NY_FORMS, generateForm, coverage, type PacketForm } from '@/lib/compliance/nyPacket';
 import { FormDetail } from './FormDetail';
+import { EnvelopePanel } from './EnvelopePanel';
 import {
   exportCompliancePacket, type ExportStatus, type EvidenceFailure,
 } from '@/lib/compliance/exportPacket';
@@ -31,7 +32,7 @@ const FORM_GAP: Record<string, string> = {
   'DOH-367': 'Fills from your setup answers, your directors, your staff roster and your sessions table. Still yours: the facility code your county assigns you, and the signatures.',
   'DOH-367a': 'Fills from your staff roster and their certification records. Anyone missing a date of birth leaves their row blank, so completing the roster completes the form.',
   'DOH-2040': 'Fills from your written plan: the Yes box and the page number for every section you have completed. The page numbers are worked out from the plan we render, so you never count them.',
-  'DOH-2271': 'Fills from the certified statement questions under Your records. The signature and the date are the director\u2019s own and are not ours to pre-answer.',
+  'DOH-2271': 'Fills from the certified statement questions on the Requirements tab. The signature and the date are the director\u2019s own and are not ours to pre-answer.',
   'DOH-2286': 'Fills from your pool and beach safety plan, the same way DOH-2040 fills from your camp plan. Write those sections and this completes itself.',
 };
 
@@ -43,10 +44,13 @@ export function FormsPanel({ onGoToTab, openFormCode, onFormOpened }: {
 }) {
   const {
     planSections, campId, seasonId, requirements, enabledProfileIds,
-    documents, statusFor, enabledProfiles, openDocument, answers,
+    statusFor, enabledProfiles, openDocument, answers,
     activeAuthorities, formsForAuthority, planRowKeys, formQuestions, formAnswers,
-    sessionCapacity, activeFormCodes,
+    sessionCapacity, activeFormCodes, evidenceDocuments, planDocument, planAnswers,
   } = useComplianceStore();
+  // The packet's evidence folder, which is every attached file except the one that IS the plan.
+  // The plan has its own slot in the zip; leaving it here would put it in twice.
+  const documents = evidenceDocuments();
   const season = useChecklistStore((s) => s.season);
   const authorities = activeAuthorities();
   // Only the documents currently in scope. Parking one is a row in the catalog, not an edit here.
@@ -174,6 +178,8 @@ export function FormsPanel({ onGoToTab, openFormCode, onFormOpened }: {
         statusFor,
         documents: scopedDocuments,
         planSections,
+        planAnswers,
+        planDocument: planDocument(),
         answers,
         planRowKeys: planRowKeys(),
         formQuestions,
@@ -227,9 +233,13 @@ export function FormsPanel({ onGoToTab, openFormCode, onFormOpened }: {
 
   return (
     <div>
+      {/* The envelope first: what to assemble, in county order. The packets below are how it
+          leaves the building. */}
+      <EnvelopePanel onOpenForm={(code) => setOpenForm(code)} />
+
       <div className="bg-white rounded-card border border-border px-5 py-4 mb-4">
         <p className="text-[14px] font-semibold text-forest">Hand-off packets</p>
-        <p className="text-[12.5px] text-ink-soft mt-1.5 leading-relaxed max-w-[75ch]">
+        <p className="text-[12.5px] text-ink-soft mt-1.5 leading-relaxed">
           One zip per party, holding only what that party asked for: their forms filled from your
           data, the files you attached against their requirements, an index of what covers what,
           and your written plan. The forms are the official ones, unmodified, with your data drawn
@@ -353,8 +363,11 @@ export function FormsPanel({ onGoToTab, openFormCode, onFormOpened }: {
                       ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       : <Download className="w-3.5 h-3.5" />}
                     {/* "Filled" on a form with gaps in it is a small lie the camp finds out
-                        about after they have opened the PDF. */}
-                    {readinessFor(form) && !readinessFor(form)!.ready ? 'Partly filled' : 'Filled'}
+                        about after they have opened the PDF. A form with no readiness model has
+                        to fall back on its coverage, not on the word "Filled" -- that is how
+                        DOH-2040 came to offer a "Filled" download beside a bar reading 16%. */}
+                    {(readinessFor(form) ? readinessFor(form)!.ready : pct >= 100)
+                      ? 'Filled' : 'Partly filled'}
                   </Button>
                 </div>
               </div>

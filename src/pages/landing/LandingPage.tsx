@@ -357,7 +357,7 @@ export function LandingPage() {
             <button className="tab" role="tab" aria-selected={tab === 'ret'} onClick={() => setTab('ret')}>
               <span className="dot" style={{ background: 'var(--sage)' }} />Retreats</button>
             <button className="tab" role="tab" aria-selected={tab === 'saf'} onClick={() => setTab('saf')}>
-              <span className="dot" style={{ background: '#7B6BA8' }} />Safety &amp; compliance</button>
+              <span className="dot" style={{ background: '#7B6BA8' }} />Compliance</button>
           </div>
 
           {/* ── FACILITIES ── */}
@@ -715,7 +715,7 @@ export function LandingPage() {
 
                 <div className="flow" style={{ gridTemplateColumns: "1fr" }}>
                   <div className="ui">
-                    <div className="uibar"><span className="t">Safety &amp; Compliance</span>
+                    <div className="uibar"><span className="t">Compliance</span>
                       <span className="meta">38% · 8 overdue</span></div>
                     <div className="uibody">
                       <div className="grid2" style={{ marginBottom: "10px" }}>

@@ -22,7 +22,7 @@ const CATEGORY_LABELS: Record<ImplementationCategory, string> = {
   campers:   'Camper roster & allergies',
   prepost:   'Opening & closing checklists',
   pool:      'Pool & waterfront',
-  safety:    'Safety & compliance',
+  safety:    'Compliance',
   assets:    'Vehicles & equipment',
   building:  'Electrical & plumbing',
   inventory: 'Kitchen inventory & recipes',

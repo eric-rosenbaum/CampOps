@@ -66,7 +66,7 @@ function exportComplianceReport(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Safety & Compliance Report</title>
+  <title>Safety Report</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; font-size: 12px; color: #1a2e1a; padding: 32px; }
@@ -83,7 +83,7 @@ function exportComplianceReport(
   </style>
 </head>
 <body>
-  <h1>Safety &amp; Compliance Report</h1>
+  <h1>Safety Report</h1>
   <p class="sub">Generated ${today}</p>
 
   <h2>Fire Safety</h2>
@@ -191,7 +191,7 @@ export function SafetyCompliance() {
   return (
     <div className="flex flex-col h-full min-h-0">
       <Topbar
-        title="Safety & compliance"
+        title="Safety"
         subtitle={subtitleParts.join(' · ')}
         actions={
           <div className="flex gap-2">

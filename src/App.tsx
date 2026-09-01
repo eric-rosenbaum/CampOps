@@ -38,6 +38,7 @@ import { Compliance } from '@/pages/Compliance';
 import { Commissary } from '@/pages/Commissary';
 import { Retreats } from '@/pages/Retreats';
 import { RetreatPortal } from '@/pages/portal/RetreatPortal';
+import { StaffIntake } from '@/pages/StaffIntake';
 import { Support } from '@/pages/legal/Support';
 import { PrivacyPolicy } from '@/pages/legal/PrivacyPolicy';
 import { SecurityOverview } from '@/pages/legal/SecurityOverview';
@@ -51,7 +52,6 @@ import { MyTasks } from '@/pages/MyTasks';
 import { Team } from '@/pages/settings/Team';
 import { CampSettings } from '@/pages/settings/CampSettings';
 import { SecuritySettings } from '@/pages/settings/SecuritySettings';
-import { StaffRegister } from '@/pages/settings/StaffRegister';
 
 // Data loading
 import {
@@ -522,6 +522,8 @@ export default function App() {
           <Route path="/join" element={<JoinCamp />} />
           <Route path="/report/:camp" element={<PublicReportForm />} />
           <Route path="/portal/:token" element={<RetreatPortal />} />
+          {/* A camp's staff member filling in their own permit details. No login, no camp data. */}
+          <Route path="/staff-intake/:token" element={<StaffIntake />} />
 
           {/* Public legal / trust pages */}
           <Route path="/support" element={<Support />} />
@@ -559,15 +561,16 @@ export default function App() {
                 <Route path="/pool" element={<Gate of={['pool']} label="Opening pool & waterfront"><PoolManagement /></Gate>} />
                 {/* Folded into /compliance and removed from the nav. Kept so existing links,
                     bookmarks and any deep link out of the new Records page still resolve. */}
-                <Route path="/safety" element={<Gate of={['safety', 'locations']} label="Opening safety & compliance"><SafetyCompliance /></Gate>} />
-                <Route path="/compliance" element={<Gate of={['compliance', 'safety']} label="Opening safety & compliance"><Compliance /></Gate>} />
+                <Route path="/safety" element={<Gate of={['safety', 'locations']} label="Opening safety"><SafetyCompliance /></Gate>} />
+                <Route path="/compliance" element={<Gate of={['compliance', 'safety']} label="Opening compliance"><Compliance /></Gate>} />
                 <Route path="/assets" element={<Gate of={['assets', 'locations']} label="Opening assets & vehicles"><AssetVehicles /></Gate>} />
                 <Route path="/building" element={<Gate of={['building', 'locations']} label="Opening building systems"><BuildingSystems /></Gate>} />
                 <Route path="/commissary" element={<Gate of={COMMISSARY_DOMAINS} label="Opening the kitchen manager"><Commissary /></Gate>} />
                 <Route path="/retreats" element={<Gate of={['retreats', 'locations']} label="Opening the retreat manager"><Retreats /></Gate>} />
                 <Route path="/settings" element={<CampSettings />} />
                 <Route path="/settings/team" element={<Team />} />
-                <Route path="/settings/staff" element={<StaffRegister />} />
+                {/* Staff is a Camp Info tab now; this path deep-links straight to it. */}
+                <Route path="/settings/staff" element={<CampSettings />} />
                 <Route path="/settings/security" element={<SecuritySettings />} />
               </Route>
             </Route>

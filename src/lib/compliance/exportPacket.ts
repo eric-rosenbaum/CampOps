@@ -1,10 +1,11 @@
 import JSZip from 'jszip';
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { NY_FORMS, generateForm, type PacketCamp } from './nyPacket';
+import { PLAN_DOC_TYPE, PLAN_STATUS_QUESTION, planFileName, planIsWritten } from './planSource';
 import type {
   ComplianceProfile, ComplianceRequirement, RequirementStatus, ComplianceDocument,
   CompliancePlanSection, ComplianceStatus, PlanSectionStatus, ComplianceAnswers,
-  ComplianceFormQuestion, FormAnswers, SessionCapacity,
+  ComplianceFormQuestion, FormAnswers, SessionCapacity, PlanAnswers,
 } from '@/lib/types';
 
 /**
@@ -267,9 +268,19 @@ export interface PacketExportInput {
   /** Every requirement belonging to those packages. */
   requirements: ComplianceRequirement[];
   statusFor: (requirementId: string) => RequirementStatus | undefined;
-  /** Everything the camp has attached, linked or not. All of it goes in the zip. */
+  /** Everything the camp has attached as evidence, linked or not. All of it goes in the zip. */
   documents: ComplianceDocument[];
   planSections: CompliancePlanSection[];
+  /** Answers to the state's 92-question template, the other way a plan gets written. */
+  planAnswers?: PlanAnswers;
+  /**
+   * The camp's own safety plan, when they uploaded one instead of writing it here.
+   *
+   * Carried unchanged, in place of the plan we would have rendered. Most camps have a plan that
+   * predates us by years, and the document the county has already seen is the one that should
+   * arrive again.
+   */
+  planDocument?: ComplianceDocument | null;
   /** The camp's setup answers; several forms are filled from them. */
   answers: ComplianceAnswers;
   /** Section code to the checklist row it fills. Catalog data, never derived from a title. */
@@ -327,6 +338,8 @@ function csvCell(v: string): string {
 
 async function coverSheet(
   input: PacketExportInput, counts: Record<ComplianceStatus, number>, generatedOn: string,
+  /** The plan actually going in this zip, or null when the packet carries none. */
+  plan: PacketPlan | null,
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
@@ -384,7 +397,28 @@ async function coverSheet(
   w.text('forms, the New York State forms filled from camp data. Check each one before filing it.', { size: 10, indent: 10 });
   w.text('evidence, every file attached in CampCommand, under its original name.', { size: 10, indent: 10 });
   w.text('evidence-index.csv, one row per requirement, with the files attached to it.', { size: 10, indent: 10 });
-  w.text('written-plan.pdf, the written safety plan section by section.', { size: 10, indent: 10 });
+  if (plan) {
+    w.text(
+      input.planDocument
+        ? `${plan.fileName}, the camp's own written safety plan as supplied.`
+        : `${plan.fileName}, the written safety plan section by section.`,
+      { size: 10, indent: 10 },
+    );
+  }
+
+  // A packet with no plan is normal — the county may already hold it, and DOH-367 has a box
+  // that says so. A packet with no plan whose own DOH-367 says one is attached is not normal,
+  // and the person who needs to know is the director, before they file it, not the reviewer
+  // after. Said here because the cover sheet is the one page of this zip anybody reads.
+  const planClaim = input.formAnswers[PLAN_STATUS_QUESTION];
+  if (!plan && (planClaim === 'attached' || planClaim === 'update')) {
+    w.gap(6);
+    w.text(
+      'This packet contains no written safety plan, but the application in it is marked as '
+      + 'having the plan attached. Either attach your plan before filing, or change that answer.',
+      { size: 10 },
+    );
+  }
 
   return pdf.save();
 }
@@ -457,6 +491,63 @@ async function writtenPlan(
   return { bytes: await pdf.save(), pageBySectionCode };
 }
 
+/**
+ * The plan this packet carries, if it carries one.
+ *
+ * Three outcomes, and the third is the one that was missing: a camp that has uploaded nothing
+ * and written nothing gets no plan file at all. The packet used to render one unconditionally,
+ * so a camp eleven sections into ninety-six handed a reviewer a document that said "Not written
+ * yet" eighty-five times — while DOH-367, in the same zip, said a plan was attached.
+ */
+interface PacketPlan {
+  fileName: string;
+  bytes: Uint8Array;
+  /**
+   * Where each section landed, for DOH-2040's page column.
+   *
+   * Empty for an uploaded plan: we have not read inside the camp's document and do not know
+   * what is on page nine of it. The checklist then falls back to the page reference the camp
+   * typed, and prints nothing where they typed none, which is the honest outcome — a page
+   * number we invented would send a sanitarian to the wrong page.
+   */
+  pageBySectionCode: Record<string, string>;
+}
+
+async function resolvePlan(
+  input: PacketExportInput, generatedOn: string, onFailure: (failure: EvidenceFailure) => void,
+): Promise<PacketPlan | null> {
+  const uploaded = input.planDocument ?? null;
+
+  if (uploaded) {
+    const fileName = planFileName(uploaded);
+    try {
+      const url = await input.signUrl(uploaded.bucketPath);
+      if (!url) throw new Error('no download link was issued');
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`the download failed (${res.status})`);
+      return { fileName, bytes: new Uint8Array(await res.arrayBuffer()), pageBySectionCode: {} };
+    } catch (e) {
+      // Reported, never quietly replaced with our own rendering. Substituting a document the
+      // camp has never read into a filing they sign is worse than handing them a packet with a
+      // named gap in it.
+      onFailure({
+        title: uploaded.title, fileName,
+        reason: e instanceof Error ? e.message : 'the download failed',
+      });
+      return null;
+    }
+  }
+
+  if (!planIsWritten(input.planSections, input.planAnswers)) return null;
+
+  const generated = await writtenPlan(input, generatedOn);
+  return {
+    fileName: 'written-plan.pdf',
+    bytes: generated.bytes,
+    pageBySectionCode: generated.pageBySectionCode,
+  };
+}
+
 // ─── The export ───────────────────────────────────────────────────────────────
 
 export async function exportCompliancePacket(
@@ -480,16 +571,20 @@ export async function exportCompliancePacket(
       counts[st?.status ?? 'missing']++;
     }
 
+    const failures: EvidenceFailure[] = [];
+
+    // ── the plan ──
+    // Resolved before anything else is built, for two reasons. DOH-2040's page column is filled
+    // from where each section landed in the plan we render, so the forms cannot be built until
+    // the plan exists; and the cover sheet has to name what is actually in the zip rather than
+    // what we assume will be.
     step('cover', 0);
-    zip.file('00-cover-sheet.pdf', await coverSheet(input, counts, generatedOn));
+    const plan = await resolvePlan(input, generatedOn, (f) => failures.push(f));
+
+    zip.file('00-cover-sheet.pdf', await coverSheet(input, counts, generatedOn, plan));
     step('cover', 1);
 
     // ── forms ──
-    // The plan is rendered first even though it is written to the zip later: DOH-2040's page
-    // column is filled from where each section actually landed, so the forms cannot be built
-    // until the plan exists.
-    const plan = await writtenPlan(input, generatedOn);
-
     const forms = input.forms ?? NY_FORMS;
     const formsDir = forms.length > 0 ? zip.folder('forms') : null;
     for (let i = 0; i < forms.length; i++) {
@@ -497,7 +592,7 @@ export async function exportCompliancePacket(
       step('forms', i / Math.max(forms.length, 1));
       const bytes = await generateForm(
         form, input.camp, input.planSections, input.answers,
-        input.planRowKeys, plan.pageBySectionCode,
+        input.planRowKeys, plan?.pageBySectionCode ?? {},
         input.formQuestions, input.formAnswers, input.sessionCapacity,
       );
       formsDir?.file(`${form.code}.pdf`, bytes);
@@ -506,13 +601,17 @@ export async function exportCompliancePacket(
 
     // ── evidence ──
     const evidenceDir = zip.folder('evidence');
-    const failures: EvidenceFailure[] = [];
     /** documentId → the name it ended up under in the zip, or the note that it is not there. */
     const placed = new Map<string, string>();
 
-    for (let i = 0; i < input.documents.length; i++) {
-      const doc = input.documents[i];
-      step('evidence', input.documents.length === 0 ? 1 : i / input.documents.length);
+    // The plan has its own slot above. Filtered here too rather than trusting every caller to
+    // do it, because the failure is silent: a reviewer finds the plan twice, under two names,
+    // and has to work out whether the copies differ.
+    const evidence = input.documents.filter((d) => d.docType !== PLAN_DOC_TYPE);
+
+    for (let i = 0; i < evidence.length; i++) {
+      const doc = evidence[i];
+      step('evidence', evidence.length === 0 ? 1 : i / evidence.length);
       const name = `${String(i + 1).padStart(3, '0')}-${originalName(doc)}`;
       try {
         const url = await input.signUrl(doc.bucketPath);
@@ -529,9 +628,9 @@ export async function exportCompliancePacket(
     }
     step('evidence', 1);
 
-    // ── written plan ──
+    // ── the plan file ──
     step('plan', 0);
-    zip.file('written-plan.pdf', plan.bytes);
+    if (plan) zip.file(plan.fileName, plan.bytes);
     step('plan', 1);
 
     // ── index ──
@@ -554,7 +653,7 @@ export async function exportCompliancePacket(
 
     // Files nobody linked to a requirement are still in the zip, so they are still named here.
     // An unexplained file in evidence/ is a question the reviewer has to ask.
-    const unattached = input.documents.filter((d) => d.requirementIds.length === 0);
+    const unattached = evidence.filter((d) => d.requirementIds.length === 0);
     for (const d of unattached) {
       rows.push([
         '', d.title, 'Not linked to a requirement', '',

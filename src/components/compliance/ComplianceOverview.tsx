@@ -196,7 +196,7 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
                 ? `${plan.total} sections to write. We turn them into the plan document and fill the county's checklist from it.`
                 : `${plan.complete} of ${plan.total} sections written. Keep going and the checklist fills itself.`}
             </p>
-            <div className="h-1.5 rounded-full bg-cream-dark overflow-hidden mt-2.5 max-w-md">
+            <div className="h-1.5 rounded-full bg-cream-dark overflow-hidden mt-2.5">
               <div className="h-full bg-sage rounded-full"
                    style={{ width: `${Math.round((plan.complete / plan.total) * 100)}%` }} />
             </div>
@@ -218,7 +218,7 @@ export function ComplianceOverview({ onGoToTab }: { onGoToTab: (tab: Tab) => voi
               will not print without. These are the ones nothing else in the platform can work out
               for you.
             </p>
-            <div className="h-1.5 rounded-full bg-cream-dark overflow-hidden mt-2.5 max-w-md">
+            <div className="h-1.5 rounded-full bg-cream-dark overflow-hidden mt-2.5">
               <div className="h-full bg-sage rounded-full"
                    style={{ width: `${Math.round((details.done / details.total) * 100)}%` }} />
             </div>

@@ -11,6 +11,7 @@ import type { PacketForm } from '@/lib/compliance/nyPacket';
 import { QuestionField } from './QuestionField';
 import { SessionsPanel } from './SessionsPanel';
 import { FormNamesCard } from './FormNamesCard';
+import { PlanSourceCard } from './PlanSourceCard';
 
 /**
  * One form, and everything a director needs to trust it enough to sign it.
@@ -74,7 +75,7 @@ export function FormDetail({ form, readiness, busy, onBack, onPreview, onDownloa
           </div>
         </div>
 
-        <p className="text-[12.5px] text-ink-soft mt-3 leading-relaxed max-w-[76ch]">
+        <p className="text-[12.5px] text-ink-soft mt-3 leading-relaxed">
           This is the state's own form, unmodified. We draw your data onto it at the printed
           positions, so what your county receives is the form they expect. Check it before you
           file it: you are the one signing it.
@@ -179,7 +180,7 @@ function PartRow({ part, isOpen, onToggle, onOpenPlan }: {
         <p className="text-[13.5px] font-medium text-ink">{part.label}</p>
         <p className="text-[12px] text-ink-soft mt-0.5">{part.source}</p>
         {part.detail && (
-          <p className="text-[12px] text-ink-faint mt-1 leading-relaxed max-w-[70ch]">{part.detail}</p>
+          <p className="text-[12px] text-ink-faint mt-1 leading-relaxed">{part.detail}</p>
         )}
       </div>
     </>
@@ -210,6 +211,10 @@ function PartRow({ part, isOpen, onToggle, onOpenPlan }: {
         <div className="px-5 pb-4 pt-1 bg-cream/30 space-y-4">
           {part.panel === 'roles' && <FormNamesCard />}
           {part.panel === 'sessions' && <SessionsPanel />}
+          {/* The plan block is where a camp decides whether they are writing a plan at all, so
+              the choice belongs here rather than only on a plan page they may never open — and
+              with DOH-2040 parked, that page is not even in the tab bar. */}
+          {part.panel === 'plan' && <PlanSourceCard onOpenPlan={onOpenPlan} />}
 
           {asked.map((q) => (
             <QuestionField
@@ -224,7 +229,10 @@ function PartRow({ part, isOpen, onToggle, onOpenPlan }: {
             />
           ))}
 
-          {part.goTo && 'tab' in part.goTo && (
+          {/* A `tab` destination with no panel of its own still needs its own way there. The
+              plan panel carries the link inside the card, so offering a second one below the
+              questions would be two buttons to the same page. */}
+          {part.goTo && 'tab' in part.goTo && !part.panel && (
             <Button size="sm" variant="ghost" onClick={onOpenPlan}>
               {part.goTo.label} <ExternalLink className="w-3 h-3" />
             </Button>

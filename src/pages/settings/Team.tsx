@@ -18,7 +18,7 @@ const MODULE_LABELS: Record<keyof StaffGroupModules, string> = {
   issues_repairs: 'Issues & Repairs',
   pre_post: 'Pre/Post Camp',
   pool: 'Pool Management',
-  safety: 'Safety & Compliance',
+  safety: 'Compliance',
   assets: 'Assets & Vehicles',
   building_systems: 'Building Systems',
   commissary: 'Commissary',

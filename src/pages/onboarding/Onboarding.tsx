@@ -24,7 +24,7 @@ const STEP_META: Record<StepKey, { icon: React.ElementType; label: string }> = {
   locations:  { icon: MapPin,        label: 'Camp Locations' },
   pool:       { icon: Waves,         label: 'Pool & Waterfront' },
   checklists: { icon: ClipboardList, label: 'Pre/Post Checklists' },
-  safety:     { icon: ShieldCheck,   label: 'Safety & Compliance' },
+  safety:     { icon: ShieldCheck,   label: 'Compliance' },
   assets:     { icon: Truck,         label: 'Assets & Vehicles' },
   team:       { icon: Users,         label: 'Invite Your Team' },
 };

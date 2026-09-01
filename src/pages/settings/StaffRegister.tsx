@@ -1,10 +1,14 @@
-import { useMemo } from 'react';
-import { Topbar } from '@/components/layout/Topbar';
+import { useMemo, useState } from 'react';
+import { Upload, ArrowLeft } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/shared/Button';
 import { CERT_TYPE_LABELS, useSafetyStore } from '@/store/safetyStore';
 import { useUIStore } from '@/store/uiStore';
+import { AddStaffModal } from '@/components/safety/AddStaffModal';
 import { useAuth } from '@/lib/auth';
 import { RosterCompleteness } from '@/components/safety/RosterCompleteness';
+import { StaffImportModal } from '@/components/safety/StaffImportModal';
+import { StaffIntakePanel } from '@/components/settings/StaffIntakePanel';
 import { FORM_ROLES, CERTS_ON_367A } from '@/lib/compliance/formRoles';
 import type { SafetyStaff, StaffCertification } from '@/lib/types';
 
@@ -14,17 +18,26 @@ import type { SafetyStaff, StaffCertification } from '@/lib/types';
  * Reference data, not a compliance record. Safety reads it for drills and certifications, the
  * permit forms read it for the three directors they name, and the pool module reads it for
  * lifeguards -- so it belongs next to the rest of the camp's settings rather than inside any one
- * of the modules that consume it. It lived inside Safety & Compliance because that was the last
- * module standing after the safety pages were folded in, which made one consumer look like the
- * owner.
+ * of the modules that consume it. It lived inside the Safety module because that was the last
+ * one standing after those pages were folded into Compliance, which made one consumer look like
+ * the owner.
  *
  * What stays behind in Compliance is the part that is genuinely about the forms: which person
  * each printed role resolves to, and why. See FormNamesCard.
  */
-export function StaffRegister() {
+export function StaffRosterTab() {
   const staff = useSafetyStore((s) => s.staff);
   const certifications = useSafetyStore((s) => s.certifications);
   const openSafetyAddStaffModal = useUIStore((s) => s.openSafetyAddStaffModal);
+  // The modal is opened from a store flag, so the page that raises the flag has to be the page
+  // that renders it. This one raised it and never rendered it, which made every "Add a person"
+  // and "Edit" on this page do nothing at all.
+  const isSafetyAddStaffModalOpen = useUIStore((s) => s.isSafetyAddStaffModalOpen);
+  const [importing, setImporting] = useState(false);
+  // Only shown to somebody who arrived from Compliance. A camp that came here from the
+  // sidebar has no "back" to offer, and a link to a tab they were not on reads as a detour.
+  const [params] = useSearchParams();
+  const cameFromCompliance = params.get('from') === 'compliance';
   const { can } = useAuth();
 
   // The permit columns are readable only by a camp admin, through an admin-gated function.
@@ -74,13 +87,14 @@ export function StaffRegister() {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <Topbar
-        title="Staff & certifications"
-        subtitle="The people at your camp, and what they are qualified to do"
-      />
-      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
-        <div className="max-w-3xl mx-auto space-y-4">
+    <div className="px-4 sm:px-7 py-4 sm:py-6">
+      <div className="max-w-3xl mx-auto space-y-4">
+        {cameFromCompliance && (
+          <Link to="/compliance?tab=staff"
+            className="text-[12.5px] font-semibold text-sage hover:text-forest inline-flex items-center gap-1.5">
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to staff clearance
+          </Link>
+        )}
           <div className="bg-white rounded-card border border-border overflow-hidden">
             <div className="px-5 py-4 border-b border-cream-dark flex items-start justify-between gap-4">
               <p className="text-[12.5px] text-ink-soft leading-relaxed min-w-0">
@@ -89,10 +103,14 @@ export function StaffRegister() {
                 Pool Manager. Change someone once and they change everywhere.
               </p>
               {canManage && (
-                <Button size="sm" variant="ghost" className="flex-shrink-0"
-                        onClick={() => openSafetyAddStaffModal()}>
-                  Add a person
-                </Button>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Button size="sm" variant="ghost" onClick={() => setImporting(true)}>
+                    <Upload className="w-3.5 h-3.5" /> Import a roster
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => openSafetyAddStaffModal()}>
+                    Add a person
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -158,9 +176,12 @@ export function StaffRegister() {
                 for camp admins only, so they are not shown here.
               </p>
             )}
-          </div>
         </div>
+
+        {canManage && <StaffIntakePanel />}
       </div>
+      {isSafetyAddStaffModalOpen && <AddStaffModal />}
+      {importing && <StaffImportModal onClose={() => setImporting(false)} />}
     </div>
   );
 }

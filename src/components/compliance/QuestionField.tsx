@@ -50,15 +50,15 @@ export function QuestionField({ question: q, value, disabled, onSave, setupAnswe
         <p className="text-[11px] text-ink-faint mt-0.5">Prints on {printsOn.join(', ')}</p>
       )}
       {q.helpText && (
-        <p className="text-[11.5px] text-ink-soft mt-0.5 leading-relaxed max-w-[70ch]">{q.helpText}</p>
+        <p className="text-[11.5px] text-ink-soft mt-0.5 leading-relaxed">{q.helpText}</p>
       )}
 
-      <div className="mt-1.5 max-w-lg">
+      <div className="mt-1.5">
         {q.answerKind === 'multi' ? (
           /* The whole grid the form prints, in its order, including the boxes decided
              elsewhere. Showing only the ones this question owns meant the screen and the
              printed form disagreed, which is how a camp stops trusting the rest of the page. */
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 max-w-2xl">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-1.5">
             {(q.choices ?? []).map((c) => {
               const picked = draft.split(',').filter(Boolean);
               const fromSetup = c.from ? setupSaysYes(c.from) : false;
@@ -143,7 +143,9 @@ export function QuestionField({ question: q, value, disabled, onSave, setupAnswe
             type={q.answerKind === 'date' ? 'date' : q.answerKind === 'integer' ? 'number' : 'text'}
             value={draft} disabled={disabled}
             onChange={(e) => setDraft(e.target.value)} onBlur={commit}
-            className={INPUT} />
+            /* A date or a count is a short answer, and stretching its box the width of the card
+               makes it read as a long one. Text keeps the full width. */
+            className={`${INPUT} ${q.answerKind === 'date' || q.answerKind === 'integer' ? 'sm:max-w-[220px]' : ''}`} />
         )}
       </div>
 

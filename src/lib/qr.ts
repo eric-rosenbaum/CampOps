@@ -437,7 +437,7 @@ function getPenaltyScore(modules: readonly boolean[][], size: number): number {
         else if (runLen > 5) result++;
       } else {
         finderPenaltyAddHistory(runLen, history, size);
-        if (!runColor) result += finderPenaltyCountPatterns(history, size) * PENALTY_N3;
+        if (!runColor) result += finderPenaltyCountPatterns(history) * PENALTY_N3;
         runColor = modules[y][x];
         runLen = 1;
       }
@@ -455,7 +455,7 @@ function getPenaltyScore(modules: readonly boolean[][], size: number): number {
         else if (runLen > 5) result++;
       } else {
         finderPenaltyAddHistory(runLen, history, size);
-        if (!runColor) result += finderPenaltyCountPatterns(history, size) * PENALTY_N3;
+        if (!runColor) result += finderPenaltyCountPatterns(history) * PENALTY_N3;
         runColor = modules[y][x];
         runLen = 1;
       }
@@ -490,7 +490,7 @@ function finderPenaltyAddHistory(currentRunLength: number, history: number[], si
 }
 
 /** Count occurrences of the dark:light 1:1:3:1:1 ratio with a wide light margin on either side. */
-function finderPenaltyCountPatterns(history: readonly number[], size: number): number {
+function finderPenaltyCountPatterns(history: readonly number[]): number {
   const n = history[1];
   const core = n > 0 && history[2] === n && history[3] === n * 3 && history[4] === n && history[5] === n;
   return (
@@ -512,5 +512,5 @@ function finderPenaltyTerminateAndCount(
   }
   currentRunLength += size;
   finderPenaltyAddHistory(currentRunLength, history, size);
-  return finderPenaltyCountPatterns(history, size);
+  return finderPenaltyCountPatterns(history);
 }

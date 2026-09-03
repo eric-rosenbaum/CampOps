@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
+import * as XLSX from 'xlsx';
 import {
   Users, UserPlus, Trash2, Loader2, Search, Accessibility, Lock,
-  UploadCloud, AlertTriangle, Check, Wand2,
+  UploadCloud, AlertTriangle, Check, Wand2, Undo2, FileSpreadsheet, X,
 } from 'lucide-react';
 import {
   supabasePublic, cardClass, inputClass, labelClass, btnPrimary, btnGhost,
@@ -9,6 +10,9 @@ import {
   type PortalRetreat, type PortalSpace, type PortalGuest, type PortalHousing, type ParsedGuest,
 } from './portalShared';
 import { BuildingAccordion, type BuildingVM } from '@/components/rooming/BuildingAccordion';
+import {
+  planArrangement, summariseArrangement, type PlannerGuest, type PlannerRoom,
+} from '@/components/rooming/autoArrange';
 
 /**
  * Roster entry and per-person room assignment.
@@ -21,6 +25,23 @@ import { BuildingAccordion, type BuildingVM } from '@/components/rooming/Buildin
  * Every placement saves immediately. Someone who seats eighty people and loses it does not
  * come back; the explicit "send to camp" step further down is about meaning, not safety.
  */
+
+/**
+ * A room's service status, if the camp's portal payload carries one.
+ *
+ * `get_portal_data` does not publish it today, so this is read defensively rather than
+ * assumed: when it appears, out-of-service cabins grey out here exactly as they do on the
+ * camp's own board; until then nothing changes and nothing breaks.
+ */
+type ServiceAwarePortalSpace = PortalSpace & {
+  service_status?: string | null;
+  out_of_service_reason?: string | null;
+  expected_back?: string | null;
+};
+
+const outOfService = (s: PortalSpace) =>
+  (s as ServiceAwarePortalSpace).service_status === 'out_of_service';
+
 export function RoomingBoard({
   retreat, spaces, guests, housing, token, refetch, locked, deadlinePassed,
 }: {
@@ -38,6 +59,7 @@ export function RoomingBoard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [plan, setPlan] = useState<{ notes: string[]; before: { guestId: string; roomId: string | null }[] } | null>(null);
   const lastClicked = useRef<string | null>(null);
 
   const unassigned = useMemo(
@@ -94,12 +116,31 @@ export function RoomingBoard({
       capacity: room.bed_capacity ?? 0,
       accessible: room.accessible ?? false,
       heldByOther: room.taken_by_other,
+      outOfService: outOfService(room),
+      outOfServiceReason: (room as ServiceAwarePortalSpace).out_of_service_reason ?? null,
+      expectedBack: (room as ServiceAwarePortalSpace).expected_back ?? null,
       unnamed: unnamedCounts.get(room.id) ?? 0,
       occupants: (byRoom.get(room.id) ?? []).map((g) => ({
-        id: g.id, name: g.full_name, needsAccessible: g.needs_accessible,
+        id: g.id, name: g.full_name, needsAccessible: g.needs_accessible, subgroup: g.subgroup,
       })),
     })),
   })), [buildings, byRoom, unnamedCounts]);
+
+  // ── The planner's view of the same board ─────────────────────────────────
+  const plannerGuests: PlannerGuest[] = useMemo(() => guests.map((g) => ({
+    id: g.id, name: g.full_name, subgroup: g.subgroup, gender: g.gender,
+    needsAccessible: g.needs_accessible, roomId: g.location_id,
+  })), [guests]);
+  const plannerRooms: PlannerRoom[] = useMemo(() => spaces.map((s) => ({
+    id: s.id, name: s.name, capacity: s.bed_capacity ?? 0,
+    accessible: s.accessible ?? false,
+    unnamed: unnamedCounts.get(s.id) ?? 0,
+    blocked: !!s.taken_by_other || outOfService(s),
+  })), [spaces, unnamedCounts]);
+  const progress = useMemo(
+    () => summariseArrangement(plannerGuests, plannerRooms),
+    [plannerGuests, plannerRooms],
+  );
 
   const subgroups = useMemo(() => {
     const set = new Set<string>();
@@ -168,7 +209,7 @@ export function RoomingBoard({
     if (people.length === 0) return;
 
     const open = spaces
-      .filter((s) => !s.taken_by_other)
+      .filter((s) => !s.taken_by_other && !outOfService(s))
       .map((s) => ({
         s,
         // Beds already spoken for include people booked by count, with no name attached.
@@ -211,6 +252,46 @@ export function RoomingBoard({
     setSelected(new Set());
   }
 
+  /**
+   * One click for a first draft of the whole list.
+   *
+   * A blank grid of forty rooms is the point at which a coordinator closes the tab and emails
+   * the camp a spreadsheet instead. A draft that keeps families together and respects the
+   * gender and step-free answers they already gave is wrong in a handful of places, and
+   * fixing a handful of places is a five-minute job.
+   */
+  async function autoArrange() {
+    const result = planArrangement(plannerGuests, plannerRooms);
+    if (result.placements.length === 0) {
+      setPlan({ notes: result.notes, before: [] });
+      return;
+    }
+    const before = guests.map((g) => ({ guestId: g.id, roomId: g.location_id }));
+    const byTarget = new Map<string, string[]>();
+    for (const p of result.placements) {
+      (byTarget.get(p.roomId) ?? byTarget.set(p.roomId, []).get(p.roomId)!).push(p.guestId);
+    }
+    for (const [roomId, ids] of byTarget) {
+      const res = await call('portal_assign_guests', { p_token: token, p_guest_ids: ids, p_location_id: roomId });
+      if (!res) return;
+    }
+    setPlan({ notes: result.notes, before });
+    setSelected(new Set());
+  }
+
+  async function undoArrange() {
+    if (!plan) return;
+    const byTarget = new Map<string | null, string[]>();
+    for (const b of plan.before) {
+      (byTarget.get(b.roomId) ?? byTarget.set(b.roomId, []).get(b.roomId)!).push(b.guestId);
+    }
+    for (const [roomId, ids] of byTarget) {
+      const res = await call('portal_assign_guests', { p_token: token, p_guest_ids: ids, p_location_id: roomId });
+      if (!res) return;
+    }
+    setPlan(null);
+  }
+
   const selectedIds = Array.from(selected);
 
   return (
@@ -225,7 +306,7 @@ export function RoomingBoard({
         </div>
       )}
       {!locked && deadlinePassed && (
-        <div className="flex items-start gap-2.5 bg-amber-pale border border-amber/30 rounded-xl px-4 py-3">
+        <div className="flex items-start gap-2.5 bg-amber-bg border border-amber/30 rounded-xl px-4 py-3">
           <AlertTriangle className="w-4 h-4 text-amber-text flex-shrink-0 mt-0.5" />
           <p className="text-[13px] text-amber-text">
             The housing deadline has passed. You can still make changes, but please tell the
@@ -241,18 +322,42 @@ export function RoomingBoard({
             <p className="text-[15px] font-bold text-forest">
               {guests.length} {guests.length === 1 ? 'name' : 'names'} on your list
             </p>
+            {/* Not a percentage: name what is blocking, don't just count it. */}
             <p className="text-[12.5px] text-ink-soft mt-0.5">
-              {unassigned.length === 0 && guests.length > 0
-                ? 'Everyone has a room'
-                : `${unassigned.length} still to place`}
+              {guests.length === 0 ? 'Nothing on the list yet' : progress.line}
             </p>
           </div>
-          {editable && (
-            <button onClick={() => setAdding((v) => !v)} className={btnGhost}>
-              <UserPlus className="w-4 h-4" /> Add names
-            </button>
-          )}
+          <div className="flex gap-2 flex-wrap">
+            {editable && guests.length > 0 && unassigned.length > 0 && (
+              <button onClick={autoArrange} disabled={busy} className={btnGhost}>
+                <Wand2 className="w-4 h-4" /> Auto-arrange
+              </button>
+            )}
+            {editable && (
+              <button onClick={() => setAdding((v) => !v)} className={btnGhost}>
+                <UserPlus className="w-4 h-4" /> Add names
+              </button>
+            )}
+          </div>
         </div>
+
+        {plan && (
+          <div className="mt-3 pt-3 border-t border-cream-dark">
+            <div className="flex items-start justify-between gap-3">
+              <ul className="text-[12.5px] text-ink-soft space-y-0.5">
+                {plan.notes.map((n, i) => <li key={i}>{n}</li>)}
+              </ul>
+              {plan.before.length > 0 && editable && (
+                <button onClick={undoArrange} disabled={busy} className={`${btnGhost} flex-shrink-0`}>
+                  <Undo2 className="w-4 h-4" /> Undo
+                </button>
+              )}
+            </div>
+            <p className="text-[11.5px] text-ink-faint mt-2">
+              It's a draft — move anyone it got wrong. That's quicker than starting from empty.
+            </p>
+          </div>
+        )}
 
         {adding && editable && (
           <AddNamesPanel
@@ -268,10 +373,9 @@ export function RoomingBoard({
       {guests.length === 0 && !adding && (
         <div className={`${cardClass} p-8 text-center`}>
           <Users className="w-8 h-8 text-ink-faint mx-auto mb-3" />
-          <p className="text-[15px] font-semibold text-forest">Start with your guest list</p>
+          <p className="text-[15px] font-semibold text-forest">Nobody's placed yet</p>
           <p className="text-[13px] text-ink-soft mt-1.5 max-w-sm mx-auto leading-relaxed">
-            Paste a list of names (straight from a spreadsheet column is fine) and you can
-            sort everyone into rooms afterwards.
+            Paste your list or drop a spreadsheet and we'll give you a first draft to fix up.
           </p>
           {editable && (
             <button onClick={() => setAdding(true)} className={`${btnPrimary} mt-4`}>
@@ -282,7 +386,7 @@ export function RoomingBoard({
       )}
 
       {error && (
-        <div className="flex items-start gap-2.5 bg-red-pale border border-red/30 rounded-xl px-4 py-3">
+        <div className="flex items-start gap-2.5 bg-red-bg border border-red/30 rounded-xl px-4 py-3">
           <AlertTriangle className="w-4 h-4 text-red flex-shrink-0 mt-0.5" />
           <p className="text-[13px] text-red">{error}</p>
         </div>
@@ -431,6 +535,197 @@ function GuestChip({
   );
 }
 
+// ─── Spreadsheet import ──────────────────────────────────────────────────────
+/** The fields a sheet can supply. `first`/`last` exist because half of all lists split them. */
+type Field = 'full_name' | 'first' | 'last' | 'subgroup' | 'gender' | 'dietary' | 'notes' | '';
+
+const FIELD_LABELS: Record<Exclude<Field, ''>, string> = {
+  full_name: 'Name', first: 'First name', last: 'Last name',
+  subgroup: 'Family / group', gender: 'Gender', dietary: 'Dietary', notes: 'Notes',
+};
+
+const HEADER_GUESSES: { field: Exclude<Field, ''>; words: string[] }[] = [
+  { field: 'full_name', words: ['full name', 'fullname', 'name', 'guest', 'guest name', 'person', 'attendee', 'camper', 'participant'] },
+  { field: 'first', words: ['first', 'first name', 'firstname', 'given', 'given name', 'forename'] },
+  { field: 'last', words: ['last', 'last name', 'lastname', 'surname', 'family name'] },
+  { field: 'subgroup', words: ['subgroup', 'group', 'family', 'team', 'bus', 'unit', 'cohort', 'cabin group'] },
+  { field: 'gender', words: ['gender', 'sex', 'm/f'] },
+  { field: 'dietary', words: ['dietary', 'diet', 'allergies', 'allergy', 'dietary needs', 'food'] },
+  { field: 'notes', words: ['notes', 'note', 'comment', 'comments', 'other'] },
+];
+
+/**
+ * Guess what each column is, then SHOW the guess.
+ *
+ * A silent import is the one that puts "Room 4" in the dietary column and is discovered by a
+ * cook on the Friday. Guessing is worth doing — most sheets are labelled sensibly — but the
+ * guess is a suggestion presented for correction, never a decision taken on the user's behalf.
+ */
+function guessColumns(headers: string[]): Field[] {
+  const used = new Set<Field>();
+  return headers.map((h) => {
+    const norm = h.trim().toLowerCase();
+    for (const { field, words } of HEADER_GUESSES) {
+      if (used.has(field)) continue;
+      if (words.includes(norm) || words.some((w) => norm === w || norm.startsWith(`${w} `))) {
+        used.add(field);
+        return field;
+      }
+    }
+    return '' as Field;
+  });
+}
+
+interface SheetData { headers: string[]; rows: string[][]; fileName: string }
+
+function readSheet(file: File): Promise<SheetData> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('That file could not be read.'));
+    reader.onload = (ev) => {
+      try {
+        const wb = XLSX.read(ev.target?.result, { type: 'binary' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        // header:1 keeps the sheet as a grid, so a file whose first row is NOT a header (just
+        // eighty names in column A) is still readable — the user says so with the checkbox.
+        const grid = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: '', blankrows: false });
+        const cells = grid.map((r) => (r as unknown[]).map((c) => String(c ?? '').trim()));
+        const nonEmpty = cells.filter((r) => r.some((c) => c !== ''));
+        if (nonEmpty.length === 0) { reject(new Error('That sheet looks empty.')); return; }
+        const width = Math.max(...nonEmpty.map((r) => r.length));
+        const padded = nonEmpty.map((r) => Array.from({ length: width }, (_, i) => r[i] ?? ''));
+        resolve({ headers: padded[0], rows: padded.slice(1), fileName: file.name });
+      } catch {
+        reject(new Error('Could not read that file. A .xlsx or .csv exported from your spreadsheet works best.'));
+      }
+    };
+    reader.readAsBinaryString(file);
+  });
+}
+
+function SheetMapper({
+  sheet, retreat, onCancel, onImport, busy,
+}: {
+  sheet: SheetData;
+  retreat: PortalRetreat;
+  onCancel: () => void;
+  onImport: (guests: ParsedGuest[]) => void;
+  busy: boolean;
+}) {
+  const [hasHeader, setHasHeader] = useState(true);
+  const [cols, setCols] = useState<Field[]>(() => guessColumns(sheet.headers));
+
+  // Memoised because it feeds the parse below: a fresh array on every render would re-parse the
+  // whole sheet on every keystroke elsewhere in the panel.
+  const dataRows = useMemo(
+    () => (hasHeader ? sheet.rows : [sheet.headers, ...sheet.rows]),
+    [hasHeader, sheet],
+  );
+
+  const parsed = useMemo(() => {
+    const out: ParsedGuest[] = [];
+    for (const row of dataRows) {
+      const pick = (f: Field) => {
+        const i = cols.indexOf(f);
+        return i >= 0 ? (row[i] ?? '').trim() : '';
+      };
+      const full = pick('full_name');
+      const first = pick('first');
+      const last = pick('last');
+      const name = full || [first, last].filter(Boolean).join(' ').trim();
+      if (!name) continue;
+      out.push({
+        full_name: name,
+        subgroup: pick('subgroup') || null,
+        gender: retreat.collect_gender ? pick('gender') || null : null,
+        dietary: retreat.collect_dietary ? pick('dietary') || null : null,
+        notes: pick('notes') || null,
+      });
+    }
+    return out;
+  }, [dataRows, cols, retreat.collect_gender, retreat.collect_dietary]);
+
+  const haveName = cols.includes('full_name') || cols.includes('first') || cols.includes('last');
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[13px] font-semibold text-forest inline-flex items-center gap-2">
+          <FileSpreadsheet className="w-4 h-4 text-sage" /> {sheet.fileName}
+        </p>
+        <button onClick={onCancel} className="text-ink-faint hover:text-forest" aria-label="Discard this file">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <p className="text-[12.5px] text-ink-soft leading-relaxed">
+        Here's what we think each column is. Change anything we got wrong before importing —
+        nothing is saved until you press the button.
+      </p>
+
+      <label className="inline-flex items-center gap-2 text-[13px] text-ink cursor-pointer">
+        <input type="checkbox" checked={hasHeader} onChange={(e) => {
+          setHasHeader(e.target.checked);
+        }} className="accent-sage" />
+        The first row is column headings
+      </label>
+
+      <div className="overflow-x-auto -mx-1 px-1">
+        <table className="min-w-full text-[12.5px]">
+          <thead>
+            <tr>
+              {sheet.headers.map((h, i) => (
+                <th key={i} className="text-left pb-2 pr-3 align-bottom">
+                  <span className="block text-[11px] text-ink-faint truncate max-w-[9rem]">
+                    {hasHeader ? h || `Column ${i + 1}` : `Column ${i + 1}`}
+                  </span>
+                  <select
+                    value={cols[i] ?? ''}
+                    onChange={(e) => setCols((prev) => prev.map((c, j) => (j === i ? e.target.value as Field : c)))}
+                    className="mt-1 text-[12.5px] bg-white border border-border rounded-lg px-2 py-1.5 max-w-[9rem]"
+                  >
+                    <option value="">Skip this column</option>
+                    {(Object.keys(FIELD_LABELS) as Exclude<Field, ''>[]).map((f) => (
+                      <option key={f} value={f}>{FIELD_LABELS[f]}</option>
+                    ))}
+                  </select>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {dataRows.slice(0, 4).map((row, r) => (
+              <tr key={r} className="border-t border-cream-dark">
+                {sheet.headers.map((_, i) => (
+                  <td key={i} className="py-1.5 pr-3 text-ink truncate max-w-[9rem]">{row[i]}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {!haveName && (
+        <p className="text-[12.5px] text-amber-text">
+          Tell us which column holds the names and we can bring this list in.
+        </p>
+      )}
+
+      <div className="flex gap-2">
+        <button
+          onClick={() => onImport(parsed)}
+          disabled={busy || parsed.length === 0}
+          className={`${btnPrimary} flex-1`}
+        >
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+          {busy ? 'Importing…' : `Import ${parsed.length} ${parsed.length === 1 ? 'name' : 'names'}`}
+        </button>
+        <button onClick={onCancel} disabled={busy} className={btnGhost}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Adding names ────────────────────────────────────────────────────────────
 function AddNamesPanel({
   token, retreat, hasGuests, onDone, onCancel,
@@ -446,6 +741,8 @@ function AddNamesPanel({
   const [replace, setReplace] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<SheetData | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const parsed = useMemo(() => parseNames(raw, { lastFirst }), [raw, lastFirst]);
@@ -464,14 +761,35 @@ function AddNamesPanel({
     setLastFirst(looksLastFirst(text));
   }
 
-  async function readFile(file: File) {
-    const text = await file.text();
-    onPaste(text);
+  async function takeFile(file: File) {
+    setError(null);
+    // A .txt is a paste in a file, and pasting is the shorter road. Anything a spreadsheet
+    // produced goes through the column mapper instead.
+    if (/\.(txt)$/i.test(file.name)) { onPaste(await file.text()); return; }
+    try {
+      setSheet(await readSheet(file));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not read that file.');
+    }
+  }
+
+  async function send(payload: ParsedGuest[], replaceUnplaced: boolean) {
+    if (payload.length === 0) { setError('Nothing to add yet.'); return; }
+    setBusy(true); setError(null);
+    const { data, error: err } = await supabasePublic.rpc('portal_save_roster', {
+      p_token: token, p_guests: payload,
+      p_submitted_by: retreat.coordinator_name ?? null, p_replace: replaceUnplaced,
+      p_access: readPortalSession(token),
+    });
+    setBusy(false);
+    const res = data as { ok: boolean; error?: string } | null;
+    if (err || !res?.ok) { setError(res?.error ?? 'Could not save your list. Please try again.'); return; }
+    setRaw('');
+    setSheet(null);
+    await onDone();
   }
 
   async function save() {
-    if (parsed.length === 0) { setError('Paste at least one name.'); return; }
-    setBusy(true); setError(null);
     const payload: ParsedGuest[] = parsed.map((g) => ({
       full_name: g.full_name,
       subgroup: g.subgroup ?? null,
@@ -479,20 +797,35 @@ function AddNamesPanel({
       dietary: retreat.collect_dietary ? g.dietary ?? null : null,
       notes: g.notes ?? null,
     }));
-    const { data, error: err } = await supabasePublic.rpc('portal_save_roster', {
-      p_token: token, p_guests: payload,
-      p_submitted_by: retreat.coordinator_name ?? null, p_replace: replace,
-      p_access: readPortalSession(token),
-    });
-    setBusy(false);
-    const res = data as { ok: boolean; error?: string } | null;
-    if (err || !res?.ok) { setError(res?.error ?? 'Could not save your list. Please try again.'); return; }
-    setRaw('');
-    await onDone();
+    await send(payload, replace);
+  }
+
+  if (sheet) {
+    return (
+      <div className="mt-4 pt-4 border-t border-cream-dark">
+        <SheetMapper
+          sheet={sheet}
+          retreat={retreat}
+          busy={busy}
+          onCancel={() => { setSheet(null); setError(null); }}
+          onImport={(guests) => void send(guests, replace)}
+        />
+        {error && <p className="text-[12.5px] text-red mt-2">{error}</p>}
+      </div>
+    );
   }
 
   return (
-    <div className="mt-4 pt-4 border-t border-cream-dark space-y-3">
+    <div
+      className="mt-4 pt-4 border-t border-cream-dark space-y-3"
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault(); setDragOver(false);
+        const f = e.dataTransfer.files?.[0];
+        if (f) void takeFile(f);
+      }}
+    >
       <div>
         <label className={labelClass}>Paste your list</label>
         <textarea
@@ -509,17 +842,34 @@ function AddNamesPanel({
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <button onClick={() => fileRef.current?.click()} className={btnGhost} disabled={busy}>
-          <UploadCloud className="w-4 h-4" /> Upload a file
-        </button>
+      <div
+        className={`rounded-xl border border-dashed px-4 py-4 text-center transition-colors ${
+          dragOver ? 'border-sage bg-sage-pale' : 'border-border bg-cream'
+        }`}
+      >
+        <p className="text-[13px] text-ink">
+          …or drop a spreadsheet here.{' '}
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            className="font-semibold text-forest underline underline-offset-2"
+          >
+            Choose a file
+          </button>
+        </p>
+        <p className="text-[11.5px] text-ink-soft mt-1">
+          .xlsx or .csv. We'll show you which column we think is which before anything is saved.
+        </p>
         <input
           ref={fileRef}
           type="file"
-          accept=".csv,.txt,text/csv,text/plain"
+          accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) void readFile(f); e.target.value = ''; }}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) void takeFile(f); e.target.value = ''; }}
         />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <label className="inline-flex items-center gap-2 text-[13px] text-ink cursor-pointer">
           <input type="checkbox" checked={lastFirst} onChange={(e) => setLastFirst(e.target.checked)} className="accent-sage" />
           Names are “Last, First”
@@ -568,4 +918,3 @@ function AddNamesPanel({
     </div>
   );
 }
-

@@ -9,8 +9,7 @@ import type { Retreat } from '@/lib/types';
 import {
   money, fmtRange, fmtDate, nights, daysUntil,
   StatusBadge, Badge, PhaseTracker, statusAccent,
-  GROUP_TYPE_LABELS, type BadgeTone, billableHeadcount
-} from './retreatUi';
+  GROUP_TYPE_LABELS, type BadgeTone, billableHeadcount, byArrival } from './retreatUi';
 import { todayStr } from '@/lib/utils';
 
 const ACTIVEISH: Retreat['status'][] = ['confirmed', 'ready', 'active'];
@@ -113,15 +112,15 @@ export function OverviewTab() {
 
   const seasonList = [...retreats]
     .filter((r) => r.status !== 'cancelled')
-    .sort((a, b) => a.arrivalDate.localeCompare(b.arrivalDate));
+    .sort(byArrival);
 
   // Whoever is on property comes first, then whoever arrives soonest. Groups that have
   // already left stay reachable but sink to the end.
   const today = todayStr();
   const pickList = [...seasonList].sort((a, b) => {
     const rank = (r: Retreat) =>
-      r.status === 'active' ? 0 : r.departureDate >= today ? 1 : 2;
-    return rank(a) - rank(b) || a.arrivalDate.localeCompare(b.arrivalDate);
+      r.status === 'active' ? 0 : (r.departureDate ?? '9999-99-99') >= today ? 1 : 2;
+    return rank(a) - rank(b) || byArrival(a, b);
   });
 
   return (
@@ -138,7 +137,7 @@ export function OverviewTab() {
         <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
           {pickList.map((r) => {
             const away = daysUntil(r.arrivalDate);
-            const gone = r.departureDate < today;
+            const gone = !!r.departureDate && r.departureDate < today;
             return (
               <button
                 key={r.id}

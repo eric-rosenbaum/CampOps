@@ -1,12 +1,23 @@
 import { useMemo, useState } from 'react';
-import { Home, Lock, Unlock, History, Download, Plus, Settings2, Users } from 'lucide-react';
+import {
+  Home, Lock, Unlock, History, Download, Plus, Settings2, Users, Wand2, Undo2, DoorClosed,
+  RotateCcw, Save,
+} from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useLocationStore } from '@/store/locationStore';
+import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
+import { qrToSvg } from '@/lib/qr';
+// One source of truth for what a CampCommand QR points at: the same URL the printed
+// location stickers carry, so a door sign and a sticker on the same cabin resolve identically.
+import { stickerUrl } from '@/components/qr/QrPreview';
 import type { Retreat, CampLocation, RetreatHousing, RetreatGuest } from '@/lib/types';
 import { fmtDate, fmtDateFull, billableHeadcount } from './retreatUi';
 import { BuildingAccordion, type BuildingVM } from '@/components/rooming/BuildingAccordion';
+import {
+  planArrangement, summariseArrangement, type PlannerGuest, type PlannerRoom,
+} from '@/components/rooming/autoArrange';
 
 /**
  * 1 nothing yet · 2 the group is still working · 2.5 the group says they are done · 3 the camp
@@ -26,6 +37,74 @@ function derivePhase(rows: RetreatHousing[], submittedAt: string | null | undefi
   return 2;
 }
 
+const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+
+/**
+ * A saved arrangement, written so a person and a parser can both read it.
+ *
+ * `retreat_housing_versions` stores a text summary and nothing else — no placement payload —
+ * so a restorable snapshot has to live inside that text. Rather than hiding a blob in there,
+ * the summary IS the arrangement, in the form "Cedar 1: Dana Reyes, Sam Okafor · Cedar 2:
+ * Priya Nair". It reads fine in the history modal and parses back by name.
+ *
+ * Matching by name rather than id is deliberate: a name is what survives in a text column, and
+ * a guest who has since been removed from the roster should be reported as missing rather than
+ * silently resurrected. Restores are always partial and always say so.
+ */
+function snapshotSummary(guests: RetreatGuest[], locById: Map<string, CampLocation>): string {
+  const byRoom = new Map<string, string[]>();
+  for (const g of guests) {
+    if (!g.locationId) continue;
+    const name = locById.get(g.locationId)?.name ?? g.locationId;
+    (byRoom.get(name) ?? byRoom.set(name, []).get(name)!).push(g.fullName);
+  }
+  return Array.from(byRoom.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([room, names]) => `${room}: ${names.join(', ')}`)
+    .join(' · ');
+}
+
+interface ParsedSnapshot {
+  /** roomId → guest ids to seat there. */
+  seats: Map<string, string[]>;
+  /** Guests named in the snapshot who are no longer on the roster, or whose room is gone. */
+  missing: string[];
+  /** Guests on the roster today that the snapshot never mentioned; they end up unplaced. */
+  clearing: string[];
+}
+
+function parseSnapshot(
+  summary: string | null, guests: RetreatGuest[], rooms: CampLocation[],
+): ParsedSnapshot | null {
+  if (!summary || !summary.includes(':')) return null;
+  const roomByName = new Map(rooms.map((r) => [r.name.toLowerCase(), r.id]));
+  const guestByName = new Map(guests.map((g) => [g.fullName.toLowerCase(), g.id]));
+
+  const seats = new Map<string, string[]>();
+  const missing: string[] = [];
+  const named = new Set<string>();
+  let parsedAnything = false;
+
+  for (const chunk of summary.split(' · ')) {
+    const at = chunk.indexOf(': ');
+    if (at < 0) continue;
+    const roomName = chunk.slice(0, at).trim();
+    const roomId = roomByName.get(roomName.toLowerCase());
+    for (const raw of chunk.slice(at + 2).split(',')) {
+      const name = raw.trim();
+      if (!name) continue;
+      parsedAnything = true;
+      const gid = guestByName.get(name.toLowerCase());
+      if (!gid || !roomId) { missing.push(name); continue; }
+      named.add(gid);
+      (seats.get(roomId) ?? seats.set(roomId, []).get(roomId)!).push(gid);
+    }
+  }
+  if (!parsedAnything) return null;
+
+  const clearing = guests.filter((g) => g.locationId && !named.has(g.id)).map((g) => g.fullName);
+  return { seats, missing, clearing };
+}
 
 function exportMap(
   retreat: Retreat,
@@ -33,7 +112,6 @@ function exportMap(
   locById: Map<string, CampLocation>,
   guests: RetreatGuest[],
 ) {
-  const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
   const byRoom = new Map<string, RetreatGuest[]>();
   guests.forEach((g) => {
     if (!g.locationId) return;
@@ -92,10 +170,81 @@ function exportMap(
     ${sections}
     </body></html>`;
 
+  openPrintWindow(html);
+}
+
+/**
+ * One printable sign per room.
+ *
+ * Two options that matter, both of them about what a piece of paper on a door means. Some
+ * groups will not put surnames where a stranger can read them, so last names are optional.
+ * And the room's own QR code goes on the sign because that is the seam from the other
+ * direction: a guest sees a broken lamp, scans the sheet already taped to their door, and the
+ * report lands in the same queue the housekeeping crew is working from.
+ */
+function printDoorSigns(
+  retreat: Retreat,
+  rooms: { loc: CampLocation; building: string | null; occupants: RetreatGuest[]; unnamed: number }[],
+  campName: string,
+  logoUrl: string | null,
+  opts: { lastNames: boolean; qr: boolean },
+) {
+  const displayName = (g: RetreatGuest) => {
+    if (opts.lastNames) return g.fullName;
+    const first = g.fullName.trim().split(/\s+/)[0];
+    return first || g.fullName;
+  };
+
+  const pages = rooms.map(({ loc, building, occupants, unnamed }) => {
+    const qrSvg = opts.qr && loc.qrToken
+      ? `<div class="qr">${qrToSvg(stickerUrl(loc.qrToken), { dark: '#1D3A2E' })}
+           <p>Something broken or missing?<br/>Scan to tell the camp.</p></div>`
+      : '';
+    const names = occupants.length > 0
+      ? `<ul>${occupants.map((g) => `<li>${esc(displayName(g))}</li>`).join('')}</ul>`
+      : '<p class="none">&nbsp;</p>';
+    return `<article>
+      <header>
+        ${logoUrl ? `<img class="logo" src="${esc(logoUrl)}" alt=""/>` : ''}
+        <div><p class="camp">${esc(campName)}</p>
+        <p class="group">${esc(retreat.groupName)} · ${esc(fmtDateFull(retreat.arrivalDate))} – ${esc(fmtDateFull(retreat.departureDate))}</p></div>
+      </header>
+      <h1>${esc(loc.name)}</h1>
+      ${building ? `<h2>${esc(building)}</h2>` : ''}
+      ${names}
+      ${unnamed > 0 ? `<p class="none">+ ${unnamed} more</p>` : ''}
+      ${qrSvg}
+    </article>`;
+  }).join('');
+
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Door signs · ${esc(retreat.groupName)}</title>
+    <style>
+      @page{size:portrait;margin:14mm}
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#23201B;margin:0}
+      article{page-break-after:always;break-after:page;min-height:245mm;display:flex;flex-direction:column;padding:6mm 0}
+      article:last-child{page-break-after:auto;break-after:auto}
+      header{display:flex;align-items:center;gap:10px;border-bottom:2px solid #DED3BB;padding-bottom:8px}
+      .logo{height:34px;width:auto}
+      .camp{font-size:13px;font-weight:700;color:#1D3A2E;margin:0}
+      .group{font-size:12px;color:#6B6357;margin:2px 0 0}
+      h1{font-size:64px;line-height:1.02;margin:26px 0 0;color:#1D3A2E;letter-spacing:-0.5px}
+      h2{font-size:20px;font-weight:400;color:#6B6357;margin:6px 0 0}
+      ul{list-style:none;padding:0;margin:26px 0 0;font-size:26px;line-height:1.55;color:#23201B}
+      li{border-bottom:1px dotted #DED3BB;padding:2px 0}
+      .none{color:#9AA98F;font-size:16px;margin:14px 0 0}
+      .qr{margin-top:auto;display:flex;align-items:center;gap:14px;padding-top:16px;border-top:1px solid #DED3BB}
+      .qr svg{width:34mm;height:34mm}
+      .qr p{font-size:13px;color:#6B6357;margin:0;line-height:1.45}
+    </style></head><body>${pages}</body></html>`;
+
+  openPrintWindow(html);
+}
+
+function openPrintWindow(html: string) {
   const w = window.open('', '_blank');
-  if (!w) { alert('Enable pop-ups to print the rooming sheet.'); return; }
+  if (!w) { alert('Enable pop-ups to print.'); return; }
   w.document.write(html); w.document.close(); w.focus();
-  setTimeout(() => w.print(), 250);
+  setTimeout(() => w.print(), 300);
 }
 
 export function HousingTab() {
@@ -106,11 +255,19 @@ export function HousingTab() {
   // Subscribe to the stable `locations` array, then derive, returning a fresh array
   // straight from a selector infinite-loops under React 19 + zustand v5.
   const locations = useLocationStore((s) => s.locations);
+  const versionsAll = useRetreatStore((s) => s.housingVersions);
+  const currentCamp = useCampStore((s) => s.currentCamp);
   const dorms = useMemo(
     () => locations.filter((l) => l.isDorm && l.retreatAvailable && l.isActive && l.parentId == null).sort((a, b) => a.name.localeCompare(b.name)),
     [locations],
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [plan, setPlan] = useState<{ notes: string[]; before: { guestId: string; roomId: string | null }[] } | null>(null);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [restoreResult, setRestoreResult] = useState<string | null>(null);
+  const [signsOpen, setSignsOpen] = useState(false);
+  const [signLastNames, setSignLastNames] = useState(true);
+  const [signQr, setSignQr] = useState(true);
   const { can, currentUser } = useAuth();
   const canManage = can('manageRetreats');
 
@@ -132,8 +289,9 @@ export function HousingTab() {
     );
   }
 
-  const rows = retreat ? housingFor(retreat.id) : [];
-  const guests = retreat ? guestsFor(retreat.id) : [];
+  const rows = housingFor(retreat.id);
+  const guests = guestsFor(retreat.id);
+  const versions = versionsAll.filter((v) => v.retreatId === retreat.id).sort((a, b) => b.version - a.version);
   const guestsByRoom = new Map<string, RetreatGuest[]>();
   guests.forEach((g) => {
     if (!g.locationId) return;
@@ -146,11 +304,13 @@ export function HousingTab() {
 
   // Rooms grouped under their building, with the housing row's own notes folded in.
   const rowByLocation = new Map(rows.filter((h) => h.locationId).map((h) => [h.locationId as string, h]));
+  const roomLocations: CampLocation[] = [];
   const buildingVMs: BuildingVM[] = dorms.map((b) => {
     const rms = locations
       .filter((l) => l.parentId === b.id && l.retreatAvailable && l.isActive)
       .sort((a, c) => a.sortOrder - c.sortOrder || a.name.localeCompare(c.name));
     const asRooms = rms.length > 0 ? rms : [b];
+    roomLocations.push(...asRooms);
     return {
       id: b.id,
       name: b.name,
@@ -161,20 +321,38 @@ export function HousingTab() {
           name: rm.name,
           capacity: rm.bedCapacity ?? 0,
           accessible: rm.accessible ?? false,
+          // A cabin that has been shut since June must not quietly accept twelve guests.
+          outOfService: rm.serviceStatus === 'out_of_service',
+          outOfServiceReason: rm.outOfServiceReason,
+          expectedBack: rm.expectedBack,
           unnamed: h?.unnamedCount ?? 0,
           note: h?.notes ?? null,
           subgroup: h?.subgroupName ?? null,
           occupants: (guestsByRoom.get(rm.id) ?? []).map((g) => ({
-            id: g.id, name: g.fullName, needsAccessible: g.needsAccessible,
+            id: g.id, name: g.fullName, needsAccessible: g.needsAccessible, subgroup: g.subgroup,
           })),
         };
       }),
     };
   }).filter((b) => b.rooms.length > 0);
 
+  // ── The planner's view of the same data ──────────────────────────────────
+  const plannerGuests: PlannerGuest[] = guests.map((g) => ({
+    id: g.id, name: g.fullName, subgroup: g.subgroup, gender: g.gender,
+    needsAccessible: g.needsAccessible, roomId: g.locationId,
+  }));
+  const plannerRooms: PlannerRoom[] = roomLocations.map((rm) => ({
+    id: rm.id, name: rm.name, capacity: rm.bedCapacity ?? 0,
+    accessible: rm.accessible ?? false,
+    unnamed: rowByLocation.get(rm.id)?.unnamedCount ?? 0,
+    blocked: rm.serviceStatus === 'out_of_service',
+  }));
+  const progress = summariseArrangement(plannerGuests, plannerRooms);
+
   const phase = derivePhase(rows, retreat?.housingSubmittedAt);
   const allLocked = phase === 3;
   const assigned = rows.reduce((sum, h) => sum + h.peopleCount, 0);
+  const editable = canManage && !allLocked;
 
   const banner = {
     1: {
@@ -211,127 +389,296 @@ export function HousingTab() {
     if (!retreat) return;
     const next = !allLocked;
     setHousingLocked(retreat.id, next);
-    if (next) {
-      const summary = rows.map((h) => `${h.spaceName}: ${h.subgroupName ?? 'group'} (${h.peopleCount})`).join(' · ');
-      saveHousingVersion(retreat.id, 'Locked', summary || 'Housing finalized', currentUser.name || null);
+    // The snapshot is the arrangement itself, so a locked plan can be brought back later.
+    if (next) saveHousingVersion(retreat.id, 'Locked', snapshotSummary(guests, locById) || 'Housing finalized', currentUser.name || null);
+  }
+
+  function saveSnapshot() {
+    if (!retreat) return;
+    const summary = snapshotSummary(guests, locById);
+    if (!summary) return;
+    saveHousingVersion(retreat.id, 'Saved', summary, currentUser.name || null);
+    setRestoreResult('Saved. You can bring this arrangement back from the list below.');
+  }
+
+  /** A first draft you edit beats an empty grid. Applied immediately, undoable in one click. */
+  function autoArrange() {
+    const before = guests.map((g) => ({ guestId: g.id, roomId: g.locationId }));
+    const result = planArrangement(plannerGuests, plannerRooms);
+    if (result.placements.length === 0) {
+      setPlan({ notes: result.notes, before: [] });
+      return;
     }
+    const byRoom = new Map<string, string[]>();
+    for (const p of result.placements) {
+      (byRoom.get(p.roomId) ?? byRoom.set(p.roomId, []).get(p.roomId)!).push(p.guestId);
+    }
+    byRoom.forEach((ids, roomId) => assignGuests(ids, roomId));
+    setPlan({ notes: result.notes, before });
+    setSelected(new Set());
+  }
+
+  function undoArrange() {
+    if (!plan) return;
+    const byRoom = new Map<string | null, string[]>();
+    for (const b of plan.before) {
+      (byRoom.get(b.roomId) ?? byRoom.set(b.roomId, []).get(b.roomId)!).push(b.guestId);
+    }
+    byRoom.forEach((ids, roomId) => assignGuests(ids, roomId));
+    setPlan(null);
+  }
+
+  function restore(summary: string | null) {
+    const parsed = parseSnapshot(summary, guests, roomLocations);
+    if (!parsed) {
+      setRestoreResult('That version was saved before arrangements were snapshotted, so there is nothing to restore from it.');
+      return;
+    }
+    parsed.seats.forEach((ids, roomId) => assignGuests(ids, roomId));
+    const clearIds = guests
+      .filter((g) => g.locationId && !Array.from(parsed.seats.values()).some((ids) => ids.includes(g.id)))
+      .map((g) => g.id);
+    if (clearIds.length > 0) assignGuests(clearIds, null);
+
+    const bits = [`Restored ${Array.from(parsed.seats.values()).reduce((n, ids) => n + ids.length, 0)} placements.`];
+    if (parsed.missing.length > 0) bits.push(`${parsed.missing.length} name${parsed.missing.length === 1 ? '' : 's'} in that version ${parsed.missing.length === 1 ? 'is' : 'are'} no longer on the roster (${parsed.missing.slice(0, 4).join(', ')}${parsed.missing.length > 4 ? '…' : ''}).`);
+    if (parsed.clearing.length > 0) bits.push(`${parsed.clearing.length} newer ${parsed.clearing.length === 1 ? 'name was' : 'names were'} put back on the list to place.`);
+    setRestoreResult(bits.join(' '));
+    setPlan(null);
+  }
+
+  function doorSigns() {
+    if (!retreat) return;
+    const sheets = roomLocations
+      .map((loc) => ({
+        loc,
+        building: loc.parentId ? locById.get(loc.parentId)?.name ?? null : null,
+        occupants: guestsByRoom.get(loc.id) ?? [],
+        unnamed: rowByLocation.get(loc.id)?.unnamedCount ?? 0,
+      }))
+      // Only rooms this group is actually in. A sign for an empty cabin is paper nobody wants.
+      .filter((r) => r.occupants.length > 0 || r.unnamed > 0);
+    if (sheets.length === 0) { alert('Nobody is in a room yet, so there are no signs to print.'); return; }
+    printDoorSigns(retreat, sheets, currentCamp?.name ?? 'Camp', currentCamp?.logoUrl ?? null,
+      { lastNames: signLastNames, qr: signQr });
   }
 
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
+      <div className={`rounded-card border px-5 py-4 mb-5 ${banner.wrap}`}>
+        <p className={`text-[13px] font-semibold mb-1 ${banner.title}`}>{banner.titleText}</p>
+        <p className={`text-[12px] leading-relaxed ${banner.body}`}>{banner.bodyText}</p>
+      </div>
 
-      {retreat && (
-        <>
-          <div className={`rounded-card border px-5 py-4 mb-5 ${banner.wrap}`}>
-            <p className={`text-[13px] font-semibold mb-1 ${banner.title}`}>{banner.titleText}</p>
-            <p className={`text-[12px] leading-relaxed ${banner.body}`}>{banner.bodyText}</p>
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <h3 className="text-[14px] font-semibold text-forest">
+          Housing assignments · {retreat.groupName} · {assigned || billableHeadcount(retreat)} people ·{' '}
+          <span className="font-mono text-ink-soft">{fmtDate(retreat.arrivalDate)}–{fmtDate(retreat.departureDate)}</span>
+        </h3>
+        <div className="flex gap-2 flex-wrap">
+          <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'housingHistory', retreatId: retreat.id })}>
+            <History className="w-3.5 h-3.5" /> View version history
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => exportMap(retreat, rows, locById, guests)}>
+            <Download className="w-3.5 h-3.5" /> Rooming sheet
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSignsOpen((v) => !v)}>
+            <DoorClosed className="w-3.5 h-3.5" /> Door signs
+          </Button>
+          {canManage && (
+            <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'spaces' })}>
+              <Settings2 className="w-3.5 h-3.5" /> Manage spaces
+            </Button>
+          )}
+          {canManage && rows.length > 0 && (
+            <Button size="sm" variant={allLocked ? 'ghost' : 'primary'} onClick={toggleLock}>
+              {allLocked ? <><Unlock className="w-3.5 h-3.5" /> Unlock</> : <><Lock className="w-3.5 h-3.5" /> Lock housing</>}
+            </Button>
+          )}
+          {canManage && (
+            <Button size="sm" onClick={() => openModal({ kind: 'housingAssign', retreatId: retreat.id })}>
+              <Plus className="w-3.5 h-3.5" /> Assign
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Door signs ── */}
+      {signsOpen && (
+        <div className="rounded-card border border-border bg-white px-5 py-4 mb-4">
+          <p className="text-[13px] font-semibold text-forest">One printable sign per room</p>
+          <p className="text-[12px] text-ink-soft mt-0.5 leading-relaxed max-w-2xl">
+            Big room name, who's in it, and your camp's name. The QR code is this room's own —
+            a guest who finds a broken lamp scans the sheet on their door and it lands in the
+            same queue the crew is already working from.
+          </p>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-3">
+            <label className="inline-flex items-center gap-2 text-[12.5px] text-ink cursor-pointer">
+              <input type="checkbox" checked={signLastNames} onChange={(e) => setSignLastNames(e.target.checked)} className="accent-sage" />
+              Print last names
+            </label>
+            <label className="inline-flex items-center gap-2 text-[12.5px] text-ink cursor-pointer">
+              <input type="checkbox" checked={signQr} onChange={(e) => setSignQr(e.target.checked)} className="accent-sage" />
+              Include this room's QR code
+            </label>
+            <Button size="sm" onClick={doorSigns}>Print signs</Button>
           </div>
+          {!signLastNames && (
+            <p className="text-[11.5px] text-ink-faint mt-2">
+              First names only. Some groups will not put a full name where anybody walking past
+              can read it.
+            </p>
+          )}
+        </div>
+      )}
 
-          <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-            <h3 className="text-[14px] font-semibold text-forest">
-              Housing assignments · {retreat.groupName} · {assigned || billableHeadcount(retreat)} people ·{' '}
-              <span className="font-mono text-ink-soft">{fmtDate(retreat.arrivalDate)}–{fmtDate(retreat.departureDate)}</span>
-            </h3>
+      {/* ── Where this plan actually stands ── */}
+      {guests.length > 0 && (
+        <div className="rounded-card border border-border bg-white px-5 py-4 mb-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-[13px] font-semibold text-forest inline-flex items-center gap-2">
+              <Users className="w-4 h-4 text-sage" />
+              {/* Not a percentage. A percentage tells nobody which thing to fix. */}
+              {progress.line}
+            </p>
             <div className="flex gap-2 flex-wrap">
-              <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'housingHistory', retreatId: retreat.id })}>
-                <History className="w-3.5 h-3.5" /> View version history
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => exportMap(retreat, rows, locById, guests)}>
-                <Download className="w-3.5 h-3.5" /> Rooming sheet
-              </Button>
-              {canManage && (
-                <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'spaces' })}>
-                  <Settings2 className="w-3.5 h-3.5" /> Manage spaces
+              {editable && unplaced.length > 0 && (
+                <Button size="sm" variant="ghost" onClick={autoArrange}>
+                  <Wand2 className="w-3.5 h-3.5" /> Auto-arrange
                 </Button>
               )}
-              {canManage && rows.length > 0 && (
-                <Button size="sm" variant={allLocked ? 'ghost' : 'primary'} onClick={toggleLock}>
-                  {allLocked ? <><Unlock className="w-3.5 h-3.5" /> Unlock</> : <><Lock className="w-3.5 h-3.5" /> Lock housing</>}
+              {editable && guests.some((g) => g.locationId) && (
+                <Button size="sm" variant="ghost" onClick={saveSnapshot}>
+                  <Save className="w-3.5 h-3.5" /> Save this arrangement
                 </Button>
               )}
-              {canManage && (
-                <Button size="sm" onClick={() => openModal({ kind: 'housingAssign', retreatId: retreat.id })}>
-                  <Plus className="w-3.5 h-3.5" /> Assign
+              {versions.length > 0 && (
+                <Button size="sm" variant="ghost" onClick={() => setRestoreOpen((v) => !v)}>
+                  <RotateCcw className="w-3.5 h-3.5" /> Earlier arrangements
                 </Button>
               )}
             </div>
           </div>
 
-          {guests.length > 0 && (
-            <div className="rounded-card border border-border bg-white px-5 py-4 mb-4">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-[13px] font-semibold text-forest inline-flex items-center gap-2">
-                  <Users className="w-4 h-4 text-sage" />
-                  {guests.length} {guests.length === 1 ? 'name' : 'names'} submitted by the group
-                </p>
-                <span className={`text-[12px] font-semibold ${unplaced.length > 0 ? 'text-amber-text' : 'text-green-muted-text'}`}>
-                  {unplaced.length > 0 ? `${unplaced.length} not yet in a room` : 'Everyone has a bed'}
-                </span>
+          {plan && (
+            <div className="mt-3 pt-3 border-t border-cream-dark">
+              <div className="flex items-start justify-between gap-3">
+                <ul className="text-[12.5px] text-ink-soft space-y-0.5">
+                  {plan.notes.map((n, i) => <li key={i}>{n}</li>)}
+                </ul>
+                {plan.before.length > 0 && (
+                  <Button size="sm" variant="ghost" onClick={undoArrange}>
+                    <Undo2 className="w-3.5 h-3.5" /> Undo
+                  </Button>
+                )}
               </div>
-
-              {/* Staging tray. Pick people here, then open a building and drop them in a room.
-                  The same select-then-place model the group uses in their portal, so a room
-                  swap the camp makes and one the coordinator makes work identically. */}
-              {canManage && !allLocked && (unplaced.length > 0 || selected.size > 0) && (
-                <>
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {unplaced.map((g) => {
-                      const on = selected.has(g.id);
-                      return (
-                        <button
-                          key={g.id}
-                          onClick={() => setSelected((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(g.id)) next.delete(g.id); else next.add(g.id);
-                            return next;
-                          })}
-                          className={`text-[11.5px] rounded-full px-2.5 py-1 border transition-colors ${
-                            on ? 'bg-forest text-white border-forest' : 'bg-cream-dark text-ink border-transparent hover:border-sage'
-                          }`}
-                        >
-                          {g.fullName}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {unplaced.length > 1 && (
-                    <button
-                      onClick={() => setSelected(new Set(unplaced.map((g) => g.id)))}
-                      className="text-[12px] font-semibold text-forest hover:text-forest-mid mt-2"
-                    >
-                      Select all {unplaced.length}
-                    </button>
-                  )}
-                </>
-              )}
-
-              {selected.size > 0 && (
-                <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-cream-dark">
-                  <p className="text-[12.5px] font-semibold text-forest">
-                    {selected.size} selected. Open a building below and pick a room.
-                  </p>
-                  <button onClick={() => setSelected(new Set())} className="text-[12px] text-ink-soft hover:text-forest">
-                    Clear
-                  </button>
-                </div>
-              )}
+              <p className="text-[11.5px] text-ink-faint mt-2">
+                It's a draft. Move anybody it got wrong — that is faster than starting from an
+                empty grid.
+              </p>
             </div>
           )}
 
-          <BuildingAccordion
-            buildings={buildingVMs}
-            selectedCount={selected.size}
-            editable={canManage && !allLocked}
-            onPlace={(roomId) => {
-              assignGuests(Array.from(selected), roomId);
-              setSelected(new Set());
-            }}
-            onRemove={(guestId) => assignGuests([guestId], null)}
-            emptyMessage="No cabins defined yet. Add your camp's spaces first, then assign this group."
-          />
+          {restoreOpen && (
+            <div className="mt-3 pt-3 border-t border-cream-dark space-y-1.5">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint">
+                Saved arrangements
+              </p>
+              {versions.map((v) => (
+                <div key={v.id} className="flex items-center gap-3 rounded-btn border border-border bg-cream px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12.5px] text-forest font-medium">
+                      v{v.version}{v.label ? ` · ${v.label}` : ''}
+                      <span className="text-ink-faint font-normal"> · {fmtDateFull(v.createdAt.slice(0, 10))}{v.createdBy ? ` · ${v.createdBy}` : ''}</span>
+                    </p>
+                    <p className="text-[11.5px] text-ink-soft truncate">{v.summary}</p>
+                  </div>
+                  {editable && (
+                    <button
+                      onClick={() => restore(v.summary)}
+                      className="flex-shrink-0 text-[12px] font-semibold text-forest hover:opacity-70"
+                    >
+                      Restore
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
-        </>
+          {restoreResult && <p className="text-[12.5px] text-green-muted-text mt-2">{restoreResult}</p>}
+
+          {/* Staging tray. Pick people here, then open a building and drop them in a room.
+              The same select-then-place model the group uses in their portal, so a room
+              swap the camp makes and one the coordinator makes work identically. */}
+          {editable && (unplaced.length > 0 || selected.size > 0) && (
+            <>
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {unplaced.map((g) => {
+                  const on = selected.has(g.id);
+                  return (
+                    <button
+                      key={g.id}
+                      onClick={() => setSelected((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(g.id)) next.delete(g.id); else next.add(g.id);
+                        return next;
+                      })}
+                      className={`text-[11.5px] rounded-full px-2.5 py-1 border transition-colors ${
+                        on ? 'bg-forest text-white border-forest' : 'bg-cream-dark text-ink border-transparent hover:border-sage'
+                      }`}
+                    >
+                      {g.fullName}
+                    </button>
+                  );
+                })}
+              </div>
+              {unplaced.length > 1 && (
+                <button
+                  onClick={() => setSelected(new Set(unplaced.map((g) => g.id)))}
+                  className="text-[12px] font-semibold text-forest hover:text-forest-mid mt-2"
+                >
+                  Select all {unplaced.length}
+                </button>
+              )}
+            </>
+          )}
+
+          {selected.size > 0 && (
+            <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-cream-dark">
+              <p className="text-[12.5px] font-semibold text-forest">
+                {selected.size} selected. Open a building below and pick a room.
+              </p>
+              <button onClick={() => setSelected(new Set())} className="text-[12px] text-ink-soft hover:text-forest">
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
       )}
+
+      {guests.length === 0 && (
+        <div className="rounded-card border border-border bg-white px-5 py-8 text-center mb-4">
+          <Users className="w-7 h-7 text-ink-faint mx-auto mb-2.5" />
+          <p className="text-[14px] font-semibold text-forest">Nobody's placed yet</p>
+          <p className="text-[13px] text-ink-soft mt-1.5 max-w-md mx-auto leading-relaxed">
+            The group hasn't sent their guest list. They can paste it or drop a spreadsheet into
+            their portal, and then either of you can sort people into rooms.
+          </p>
+        </div>
+      )}
+
+      <BuildingAccordion
+        buildings={buildingVMs}
+        selectedCount={selected.size}
+        editable={editable}
+        onPlace={(roomId) => {
+          assignGuests(Array.from(selected), roomId);
+          setSelected(new Set());
+        }}
+        onRemove={(guestId) => assignGuests([guestId], null)}
+        emptyMessage="No cabins defined yet. Add your camp's spaces first, then assign this group."
+      />
     </div>
   );
 }

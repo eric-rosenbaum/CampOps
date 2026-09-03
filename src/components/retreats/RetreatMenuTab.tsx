@@ -38,7 +38,8 @@ function MenuTable({ retreat }: { retreat: Retreat }) {
   const { retreatEntriesFor, recipesById, itemsById } = useCommissaryStore();
   const recById = recipesById();
   const itById = itemsById();
-  const days = retreatDays(retreat.arrivalDate, retreat.departureDate);
+  const days = retreat.arrivalDate && retreat.departureDate
+    ? retreatDays(retreat.arrivalDate, retreat.departureDate) : [];
   const dishName = (e: RetreatMenuEntry) =>
     e.label || (e.recipeId ? recById.get(e.recipeId)?.name : null) || (e.itemId ? itById.get(e.itemId)?.name : null) || 'Untitled';
 

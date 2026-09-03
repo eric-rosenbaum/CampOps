@@ -15,10 +15,12 @@ import { AddEditPoolModal } from '@/components/pool/AddEditPoolModal';
 import { Modal } from '@/components/shared/Modal';
 import type { Season, CampLocation } from '@/lib/types';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { PaymentsCard } from '@/components/settings/PaymentsCard';
+import { PrintLabelsModal } from '@/components/qr/PrintLabelsModal';
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
-type TabId = 'profile' | 'season' | 'staff' | 'locations' | 'pools' | 'files';
+type TabId = 'profile' | 'season' | 'staff' | 'locations' | 'pools' | 'payments' | 'files';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'profile',   label: 'Profile' },
@@ -29,6 +31,9 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'staff',     label: 'Staff' },
   { id: 'locations', label: 'Locations' },
   { id: 'pools',     label: 'Pools & Waterfront' },
+  // Stripe Connect. Sits in camp settings rather than inside Retreats because connecting an
+  // account is a thing the camp does once, about itself, not about any one group.
+  { id: 'payments',  label: 'Payments' },
   { id: 'files',     label: 'Setup Files' },
 ];
 
@@ -580,6 +585,7 @@ function LocationsTab() {
   const [newCat, setNewCat] = useState('');
   const [showCats, setShowCats] = useState(false);
   const [detailLoc, setDetailLoc] = useState<CampLocation | null>(null);
+  const [printingLabels, setPrintingLabels] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<{ rows: ParsedRow[]; fileName: string } | null>(null);
@@ -687,9 +693,21 @@ function LocationsTab() {
   return (
     <div className="p-7 max-w-3xl space-y-5">
       {detailLoc && <LocationDetailModal key={detailLoc.id} loc={detailLoc} onClose={() => setDetailLoc(null)} onOpen={setDetailLoc} />}
+      <PrintLabelsModal open={printingLabels} onClose={() => setPrintingLabels(false)} />
       {/* Locations tree */}
       <div className={cardCls}>
-        <h2 className="text-[13px] font-semibold text-forest mb-1">Camp locations</h2>
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <h2 className="text-[13px] font-semibold text-forest">Camp locations</h2>
+          {/* Putting a code on a door is what turns this list from an inventory into a way for
+              anyone standing anywhere on the property to report what they are looking at. */}
+          <button
+            type="button"
+            onClick={() => setPrintingLabels(true)}
+            className="text-[12px] font-semibold text-forest hover:text-forest-mid whitespace-nowrap"
+          >
+            Print QR labels
+          </button>
+        </div>
         <p className="text-[12px] text-ink-faint mb-4">
           The unified place inventory, used across the app to tag issues, tasks, assets, dorms, and retreats.
         </p>
@@ -973,6 +991,9 @@ export function CampSettings() {
         {activeTab === 'staff'     && <StaffRosterTab />}
         {activeTab === 'locations' && <LocationsTab />}
         {activeTab === 'pools'     && <PoolsTab />}
+        {activeTab === 'payments'  && (
+          <div className="px-4 py-4 sm:px-7 sm:py-6"><PaymentsCard /></div>
+        )}
         {activeTab === 'files'     && <ImplementationFilesTab />}
       </div>
     </div>

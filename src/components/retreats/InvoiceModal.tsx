@@ -185,6 +185,10 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
     if (!canManage || busy || !retreat) return;
     setBusy(true); setBanner(null);
     const inv: RetreatInvoice = {
+      // Payment state is written by the Stripe webhook with the service role, never from this
+      // form. A camp must not be able to declare its own invoice paid by editing it.
+      stripeSessionId: null, paymentLinkUrl: null, paymentLinkExpiresAt: null,
+      paidAt: null, amountPaid: 0,
       id: generateId(), campId: '', retreatId, kind, number: nextNumber(kind),
       amount, note: note.trim() || null, dueDate: effectiveDue || null, status: 'sent',
       discount: discountValue, discountNote: discountValue > 0 ? (discount?.note ?? 'Discount') : null,

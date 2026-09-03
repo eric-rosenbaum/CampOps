@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Retreat } from '@/lib/types';
-import { fmtRange } from './retreatUi';
+import { fmtRange, byArrival } from './retreatUi';
 
 // Availability at a glance: any day inside a retreat's arrival→departure (inclusive) is
 // booked, everything else is open.
@@ -46,7 +46,7 @@ export function AvailabilityCalendar({ retreats }: { retreats: Retreat[] }) {
   // overlap on a changeover day, and the old map silently kept whichever was written last.
   const { booked, colourOf } = useMemo(() => {
     const live = retreats.filter((r) => r.status !== 'cancelled');
-    const order = live.slice().sort((a, b) => a.arrivalDate.localeCompare(b.arrivalDate));
+    const order = live.slice().sort(byArrival);
     const colour = new Map<string, typeof BAND[number]>();
     order.forEach((r, i) => colour.set(r.id, BAND[i % BAND.length]));
 
@@ -157,7 +157,7 @@ function MonthKey({
   for (let d = 1; d <= days; d++) {
     for (const r of booked.get(iso(y, m, d)) ?? []) if (!seen.has(r.id)) seen.set(r.id, r);
   }
-  const groups = [...seen.values()].sort((a, b) => a.arrivalDate.localeCompare(b.arrivalDate));
+  const groups = [...seen.values()].sort(byArrival);
 
   if (groups.length === 0) {
     return <p className="mt-2.5 text-[11px] text-ink-faint italic">Nothing booked this month.</p>;

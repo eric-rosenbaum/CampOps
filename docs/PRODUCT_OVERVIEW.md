@@ -8,6 +8,13 @@ Verified against the codebase on 2026-08-26.
 
 ---
 
+> **Updated 2026-09-02.** The product has been reshaped into **two products, not eight modules**:
+> **Campground** (the work that keeps the property running) and **Rentals** (the groups you rent
+> it to), joined at the work order. The other six modules are unchanged and stay switchable; they
+> are the property's other systems, sold when they match a pain point rather than led with.
+> The module-by-module detail below still describes them accurately — see
+> [`campground/README.md`](campground/README.md) for the two that changed.
+
 ## What it is
 
 **CampCommand** (repo `CampOps`, package `campcommand`) is a multi-tenant operations platform
@@ -33,15 +40,36 @@ resolved, with a record that survives the season.
 
 Each is independently switchable per camp: a camp may buy two or all eight. Routes are web.
 
-### 1 · Issues & Repairs — `/issues`
-The spine of the product; almost everything else can create one.
+### 1 · Campground — `/campground` (was Issues & Repairs, `/issues`)
+The spine of the product; almost everything else can create one. Renamed in the UI only — the
+table is still `issues` and `/issues` still redirects.
 
-- Log with photo, location, priority, assignee.
-- States: unassigned → assigned → in progress → resolved.
-- Estimated vs actual cost.
-- Public intake at `/report/:camp-slug` — unauthenticated, no account needed, lands tagged as a
-  public report. Camps print it as a QR code for bathhouses and dining halls.
-- Flagging a building component or returning an asset in bad condition creates a real issue here.
+Two crews in one queue: `trade` marks a work order as maintenance, housekeeping, grounds, kitchen
+or tech. It is a filter default and a colour, never a permission. `work_routing` sends each
+trade's work to a default owner so nothing waits on an admin to triage it.
+
+Work arrives five ways: a QR sticker on a door, a routine coming due, a rental group's approved
+request, a person (typed, photographed or spoken), or another module flagging something.
+
+- **Routines** (`work_schedules`) replaced a recurring checkbox that generated nothing.
+  Occurrences are real work orders, and only one is open per routine at a time — a routine that
+  falls behind is bumped and counted, not duplicated.
+- **Checklists** turn "turn over Cabin 7" into eleven checkable steps; six templates ship seeded.
+- **Comments with photos** render in one timeline with the activity events, never a second tab.
+- **Vendors** (`service_vendors`): the septic pumper, the well contractor, the elevator inspector.
+  A work order can be dispatched to one, and `waiting_on_vendor` is a real status.
+- **Assets**: a work order can name the thing it is about, which is what makes cost and days-out
+  per vehicle possible.
+- **Season Review**: the September page a director forwards to a board.
+- Cost *estimates* were removed. `actual_cost` stays, admin-only.
+
+States: unassigned → assigned → in progress → resolved, plus two honest waiting states —
+`waiting_on_vendor` and `waiting_on_part` — which are open but explicitly not being worked.
+
+Public intake at `/report/:camp-slug` and, per location or asset, at `/l/:token`. That second URL
+is one sticker serving two audiences: the location hub for a signed-in member, the public report
+form for everyone else. Camps print the codes on Avery 5163 labels for cabin doors, bathhouses and
+the fleet. A public reporter gets a receipt link and can see what happened.
 
 ### 2 · Pre/Post Camp — `/pre-post`
 Opening and closing checklists, scheduled relative to opening day rather than to fixed dates.
@@ -106,7 +134,22 @@ Tabs: chemical · equipment · inspections · seasonal.
 - Waterfront locations get a variant with no chemistry.
 
 ### 8 · Retreat Manager — `/retreats`
-External group rentals — the only revenue-generating module. Tabs: overview and costs are
+External group rentals — the only revenue-generating module. Now covers the whole funnel, not
+just the stay:
+
+- **Pipeline** — leads with a stage, a source, an owner and a next action. An enquiry may have no
+  dates yet ("any weekend in October"); they become required the moment it is confirmed.
+- **Proposals** — the document that wins the booking, accepted in the guest portal. `viewed_at`
+  is the point: knowing they opened it on Tuesday changes the follow-up call.
+- **Add-ons** — linens, boat rental, AV, campfire wood. Offered in the portal.
+- **Program spaces** — the group picks meeting rooms per day and says how they want them set up.
+  Approving one generates housekeeping work: a set-up *and* a strike.
+- **Turnovers** — one work order per assigned room when a group departs.
+- **Online payment** — Stripe Connect, so the money settles to the camp's own account.
+- **Automated reminders** — an outbox that plans nightly and cancels anything whose condition
+  stopped being true.
+- **Rentals Review** — bed-nights sold against available, revenue, conversion, and what each group
+  cost to host. Tabs: overview and costs are
 season-wide; the rest require entering a specific retreat.
 
 - Booking lifecycle across seven tracked phases: contract, deposit, headcount, housing, menu,
@@ -140,6 +183,18 @@ code emailed to the coordinator address already on the retreat record. The sessi
 hours in sessionStorage. Links expire 14 days after departure.
 
 ---
+
+## The seam
+
+The two halves are one product because **a rental group's request becomes the property team's
+work order.** A coordinator asks for the Lodge with three benches; the camp approves; a set-up
+work order lands on the housekeeping lead's phone that morning, carrying the group's words
+verbatim; they tap Done; the group walks into a set room, and the status travels back to their
+portal without anyone retyping anything.
+
+The same crossing runs the other way: a location taken out of service by a work order becomes
+unbookable by a rental group, and a guest scanning the QR on their own door sign files into the
+queue the crew is already working.
 
 ## Cross-cutting concepts
 
@@ -223,7 +278,9 @@ Worth stating plainly, because these are the assumptions people bring:
   outside the product.
 - **No payroll, scheduling or HR** beyond staff certifications.
 - **No accounting integration.**
-- **No offline mode.** iOS was specced for one; it was never built.
+- **Offline mode is now partial on iOS.** A persisted mutation queue and a cached snapshot cover
+  the actions a crew does while walking — closing a work order, commenting, ticking a checklist
+  step. Pools, assets and building writes are still online-only.
 - **Pool chemical target ranges are fixed in code**, not configurable per camp.
 
 ---

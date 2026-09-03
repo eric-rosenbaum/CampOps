@@ -84,8 +84,17 @@ function issueToRow(issue: Issue) {
     reporter_name: issue.reporterName,
     reporter_contact: issue.reporterContact,
     source: issue.source,
+    trade: issue.trade,
+    asset_id: issue.assetId,
+    vendor_id: issue.vendorId,
+    schedule_id: issue.scheduleId,
+    retreat_space_request_id: issue.retreatSpaceRequestId,
+    retreat_id: issue.retreatId,
+    minutes_spent: issue.minutesSpent,
     created_at: issue.createdAt,
     updated_at: issue.updatedAt,
+    // assigned_at / resolved_at are stamped by a database trigger, never written from here.
+    // A client clock is the wrong source for a number the season review reports as fact.
   };
 }
 
@@ -111,6 +120,16 @@ function rowToIssue(row: Record<string, unknown>, activityLog: ActivityEntry[]):
     reporterName: (row.reporter_name as string) ?? null,
     reporterContact: (row.reporter_contact as string) ?? null,
     source: (row.source as Issue['source']) ?? null,
+    trade: ((row.trade as Issue['trade']) ?? 'maintenance'),
+    assetId: (row.asset_id as string) ?? null,
+    vendorId: (row.vendor_id as string) ?? null,
+    scheduleId: (row.schedule_id as string) ?? null,
+    retreatSpaceRequestId: (row.retreat_space_request_id as string) ?? null,
+    retreatId: (row.retreat_id as string) ?? null,
+    minutesSpent: (row.minutes_spent as number) ?? null,
+    assignedAt: (row.assigned_at as string) ?? null,
+    resolvedAt: (row.resolved_at as string) ?? null,
+    reporterToken: (row.reporter_token as string) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
     activityLog,
@@ -1179,6 +1198,7 @@ function rowToAsset(r: Record<string, unknown>): CampAsset {
     currentHours: (r.current_hours as number) ?? null,
     tracksOdometer: (r.tracks_odometer as boolean) ?? false,
     tracksHours: (r.tracks_hours as boolean) ?? false,
+    qrToken: (r.qr_token as string) ?? null,
     notes: (r.notes as string) ?? null,
     isActive: (r.is_active as boolean) ?? true,
     hullId: (r.hull_id as string) ?? null,

@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:compliance": "node scripts/runsql.js supabase/tests/compliance_engine_test.sql"
+    "test:compliance": "node scripts/runsql.js supabase/tests/compliance_engine_test.sql",
+    "test:campground": "node scripts/runsql.js supabase/tests/campground_rentals_test.sql"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",

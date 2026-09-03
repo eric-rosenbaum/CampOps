@@ -199,6 +199,21 @@ export interface PortalData {
   meals: PortalMeal[];
   change_requests: PortalChangeRequest[];
   feedback_submitted: boolean;
+
+  // ── Composed on by get_portal_data_v2 ──────────────────────────────────────
+  // Flags and counts, not payloads: each new section fetches its own detail when it opens. The
+  // portal only needs to know whether to OFFER the step, because a camp with no bookable spaces
+  // must not be shown an empty step asking it to choose from nothing.
+  proposal?: {
+    id: string; version: number; total: number;
+    valid_until: string | null; status: string; accepted_at: string | null;
+  } | null;
+  has_program_spaces?: boolean;
+  space_request_count?: number;
+  has_addons?: boolean;
+  /** How the camp says to pay when it has not connected Stripe. */
+  payment_note?: string | null;
+  payments_enabled?: boolean;
 }
 
 // ─── Name parsing ────────────────────────────────────────────────────────────

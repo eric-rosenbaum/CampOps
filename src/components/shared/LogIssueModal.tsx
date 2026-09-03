@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Modal } from './Modal';
 import { Button } from './Button';
@@ -6,13 +7,23 @@ import { useUIStore } from '@/store/uiStore';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useCampStore } from '@/store/campStore';
 import { useLocationStore } from '@/store/locationStore';
+import { useAssetStore } from '@/store/assetStore';
 import { LocationPicker } from '@/components/shared/LocationPicker';
+import { CaptureSheet } from '@/components/campground/CaptureSheet';
 import { useAuth } from '@/lib/auth';
 import { dbUploadPhoto, dbDeletePhoto } from '@/lib/db';
-import type { Issue, Priority, RecurringInterval } from '@/lib/types';
+import { TRADES, TRADE_LABELS } from '@/lib/types';
+import type { ActivityEntry, Priority, Trade, WorkOrderDraft } from '@/lib/types';
+import { newWorkOrder } from '@/lib/workOrder';
 import { generateId } from '@/lib/utils';
-import { Camera, X } from 'lucide-react';
+import { Camera, Repeat, Sparkles, X } from 'lucide-react';
 
+
+/**
+ * Where the routine editor lives. The module is Campground in the product and `issues` in the
+ * database; the route follows the product, so this is the path the sidebar links to.
+ */
+const ROUTINES_PATH = '/campground?tab=routines';
 
 interface FormValues {
   title: string;
@@ -20,37 +31,48 @@ interface FormValues {
   description: string;
   assigneeId: string;
   dueDate: string;
-  costEstimate: string;
-  isRecurring: boolean;
-  recurringInterval: RecurringInterval;
+  /** Which crew. A filter default and a colour, never a permission. */
+  trade: Trade;
+  /** Work against a *thing*, so cost and days-out roll up to the vehicle or the mower. */
+  assetId: string;
 }
 
 export function LogIssueModal() {
+  const navigate = useNavigate();
   const { isLogIssueModalOpen, editingIssueId, closeAllModals } = useUIStore();
   const { addIssue, updateIssue, addActivityEntry, selectIssue, issues } = useIssuesStore();
   const { currentUser, can } = useAuth();
   const members = useCampStore((s) => s.members);
+  const assets = useAssetStore((s) => s.assets);
   const editingIssue = editingIssueId ? issues.find((i) => i.id === editingIssueId) : null;
 
   const [locationIds, setLocationIds] = useState<string[]>([]);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [removeExistingPhoto, setRemoveExistingPhoto] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
+  /** What the capture actually saw and heard, kept on screen beside the fields it filled in. */
+  const [draftReading, setDraftReading] = useState<
+    { notes: string; questions: string[]; confidence: number } | null
+  >(null);
 
-  const { register, handleSubmit, watch, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
-    defaultValues: {
-      priority: 'normal',
-      isRecurring: false,
-      recurringInterval: 'weekly',
-    },
-  });
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } =
+    useForm<FormValues>({
+      defaultValues: {
+        priority: 'normal',
+        trade: 'maintenance',
+        assetId: '',
+      },
+    });
 
-  const isRecurring = watch('isRecurring');
+  const trade = watch('trade');
 
   useEffect(() => {
     setPhotoFile(null);
     setPhotoPreview(null);
     setRemoveExistingPhoto(false);
+    setCaptureOpen(false);
+    setDraftReading(null);
 
     if (editingIssue) {
       setLocationIds(editingIssue.locationIds ?? []);
@@ -60,21 +82,19 @@ export function LogIssueModal() {
         description: editingIssue.description,
         assigneeId: editingIssue.assigneeId ?? '',
         dueDate: editingIssue.dueDate ?? '',
-        costEstimate: editingIssue.estimatedCostDisplay ?? '',
-        isRecurring: editingIssue.isRecurring,
-        recurringInterval: editingIssue.recurringInterval ?? 'weekly',
+        trade: editingIssue.trade,
+        assetId: editingIssue.assetId ?? '',
       });
     } else {
       setLocationIds([]);
       reset({
         priority: 'normal',
-        isRecurring: false,
-        recurringInterval: 'weekly',
         title: '',
         description: '',
         assigneeId: '',
         dueDate: '',
-        costEstimate: '',
+        trade: 'maintenance',
+        assetId: '',
       });
     }
   }, [editingIssue, reset, isLogIssueModalOpen]);
@@ -95,31 +115,26 @@ export function LogIssueModal() {
     setRemoveExistingPhoto(true);
   }
 
-  function parseCost(raw: string): { display: string | null; value: number | null } {
-    if (!raw.trim()) return { display: null, value: null };
-    const cleaned = raw.replace(/[$,]/g, '');
-    if (cleaned.includes('–') || cleaned.includes('-')) {
-      const parts = cleaned.split(/[-–]/).map((p) => parseFloat(p.trim()));
-      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-        const avg = (parts[0] + parts[1]) / 2;
-        return {
-          display: `$${parts[0].toLocaleString()}–${parts[1].toLocaleString()}`,
-          value: avg,
-        };
-      }
-    }
-    const num = parseFloat(cleaned);
-    if (!isNaN(num)) {
-      return { display: `$${num.toLocaleString()}`, value: num };
-    }
-    return { display: raw, value: null };
+  /** A capture never files anything. It fills this form in, and a person reads it. */
+  function applyDraft(draft: WorkOrderDraft) {
+    setValue('title', draft.title);
+    setValue('description', draft.description);
+    setValue('trade', draft.trade);
+    if (draft.priority) setValue('priority', draft.priority);
+    if (draft.assigneeId) setValue('assigneeId', draft.assigneeId);
+    if (draft.assetId) setValue('assetId', draft.assetId);
+    if (draft.locationId) setLocationIds([draft.locationId]);
+    setDraftReading({
+      notes: draft.notes,
+      questions: draft.questions,
+      confidence: draft.confidence,
+    });
   }
 
   async function onSubmit(data: FormValues) {
     const now = new Date().toISOString();
     const assigneeId = data.assigneeId || null;
     const assigneeName = assigneeId ? (members.find((m) => m.userId === assigneeId)?.fullName ?? null) : null;
-    const { display, value } = parseCost(data.costEstimate);
     const locations = useLocationStore.getState().namesFor(locationIds);
 
     if (editingIssue) {
@@ -136,6 +151,9 @@ export function LogIssueModal() {
         photoUrl = null;
       }
 
+      // The deprecated estimate and recurrence columns are deliberately absent from this patch
+      // rather than nulled: nothing writes them any more, and an old row's value is history
+      // that an edit to the title has no business erasing.
       updateIssue(editingIssue.id, {
         title: data.title,
         locationIds,
@@ -143,40 +161,29 @@ export function LogIssueModal() {
         priority: data.priority,
         description: data.description,
         assigneeId,
-        status: assigneeId ? (editingIssue.status === 'unassigned' ? 'assigned' : editingIssue.status) : editingIssue.status,
+        status: assigneeId
+          ? (editingIssue.status === 'unassigned' ? 'assigned' : editingIssue.status)
+          : editingIssue.status,
         dueDate: data.dueDate || null,
-        estimatedCostDisplay: display,
-        estimatedCostValue: value,
-        isRecurring: data.isRecurring,
-        recurringInterval: data.isRecurring ? data.recurringInterval : null,
+        trade: data.trade,
+        assetId: data.assetId || null,
         photoUrl,
       });
       addActivityEntry(editingIssue.id, {
         id: generateId(),
         userId: currentUser.id,
         userName: currentUser.name,
-        action: `Issue edited by ${currentUser.name}`,
+        action: `Edited by ${currentUser.name}`,
         timestamp: now,
       });
     } else {
-      const id = generateId();
-
-      // Upload photo for new issue
-      let photoUrl: string | null = null;
-      if (photoFile) {
-        const url = await dbUploadPhoto(photoFile, id);
-        if (url) photoUrl = url;
-      }
-
-      const activityLog = [
-        {
-          id: generateId(),
-          userId: currentUser.id,
-          userName: currentUser.name,
-          action: `Issue logged by ${currentUser.name}`,
-          timestamp: now,
-        },
-      ];
+      const activityLog: ActivityEntry[] = [{
+        id: generateId(),
+        userId: currentUser.id,
+        userName: currentUser.name,
+        action: `Logged by ${currentUser.name}`,
+        timestamp: now,
+      }];
       if (assigneeId && assigneeName) {
         activityLog.push({
           id: generateId(),
@@ -187,34 +194,29 @@ export function LogIssueModal() {
         });
       }
 
-      const newIssue: Issue = {
-        id,
+      // Built by the shared factory rather than as a literal here, so a new column is one edit
+      // in workOrder.ts instead of ten call sites that each have to remember it.
+      const workOrder = newWorkOrder({
         title: data.title,
         description: data.description,
         locationIds,
         locations,
         priority: data.priority,
-        status: assigneeId ? 'assigned' : 'unassigned',
         assigneeId,
         reportedById: currentUser.id,
-        estimatedCostDisplay: display,
-        estimatedCostValue: value,
-        actualCost: null,
-        photoUrl,
+        trade: data.trade,
+        assetId: data.assetId || null,
         dueDate: data.dueDate || null,
-        isRecurring: data.isRecurring,
-        recurringInterval: data.isRecurring ? data.recurringInterval : null,
-        isPublicReport: false,
-        reporterName: null,
-        reporterContact: null,
-        source: 'web',
-        createdAt: now,
-        updatedAt: now,
         activityLog,
-      };
+      });
 
-      addIssue(newIssue);
-      selectIssue(id);
+      if (photoFile) {
+        const url = await dbUploadPhoto(photoFile, workOrder.id);
+        if (url) workOrder.photoUrl = url;
+      }
+
+      addIssue(workOrder);
+      selectIssue(workOrder.id);
     }
 
     closeAllModals();
@@ -223,28 +225,111 @@ export function LogIssueModal() {
   if (!isLogIssueModalOpen) return null;
 
   const displayPhoto = photoPreview ?? (editingIssue?.photoUrl && !removeExistingPhoto ? editingIssue.photoUrl : null);
+  const activeAssets = assets.filter((a) => a.isActive || a.id === editingIssue?.assetId);
 
   const inputClass = 'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
   const labelClass = 'block text-[12px] font-medium text-ink mb-1';
   const errorClass = 'text-[11px] text-red mt-0.5';
 
   return (
-    <Modal title={editingIssue ? 'Edit issue' : 'Log new issue'} onClose={closeAllModals}>
+    <Modal title={editingIssue ? 'Edit work order' : 'Log work'} onClose={closeAllModals}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {/* Capture first, because the fastest way to fill this form in is to not type. */}
+        {!editingIssue && (
+          <button
+            type="button"
+            onClick={() => setCaptureOpen(true)}
+            className="flex w-full items-center gap-2 rounded-card border border-dashed border-border
+                       bg-cream px-3 py-2.5 text-left transition-colors hover:border-sage"
+          >
+            <Sparkles className="h-4 w-4 flex-none text-sage" />
+            <span className="text-[12.5px] font-semibold text-forest">Capture</span>
+            <span className="text-[11.5px] text-ink-soft">Photo or voice — you edit what comes back</span>
+          </button>
+        )}
+
+        {draftReading && (
+          <div className="rounded-card border border-border bg-paper px-3 py-2.5">
+            <div className="flex items-start gap-2">
+              <p className="flex-1 text-[11.5px] leading-relaxed text-ink-soft">
+                <span className="font-semibold">Filled in from your capture. </span>
+                {draftReading.notes}
+              </p>
+              <span
+                className={`flex-none rounded-tag border px-[5px] py-px text-[9.5px] font-bold uppercase
+                            tracking-[0.1em] ${draftReading.confidence < 0.5
+                              ? 'border-amber text-amber-text'
+                              : 'border-sage text-sage'}`}
+              >
+                {Math.round(draftReading.confidence * 100)}% sure
+              </span>
+            </div>
+            {draftReading.confidence < 0.5 && (
+              <p className="mt-1 text-[11.5px] font-semibold text-amber-text">
+                This is a guess. Check every field.
+              </p>
+            )}
+            {draftReading.questions.length > 0 && (
+              <ul className="mt-1 space-y-0.5">
+                {draftReading.questions.map((q) => (
+                  <li key={q} className="text-[11.5px] text-ink-soft">• {q}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         <div>
           <label className={labelClass}>Title *</label>
           <input
             {...register('title', { required: 'Title is required' })}
             className={inputClass}
-            placeholder="Brief description of the issue"
+            placeholder="What is wrong, in a few words"
           />
           {errors.title && <p className={errorClass}>{errors.title.message}</p>}
+        </div>
+
+        {/* Trade decides which lane this lands in and who it routes to by default. Never a
+            permission: everyone can see and take everything. */}
+        <div>
+          <label className={labelClass}>Crew</label>
+          <div className="flex flex-wrap gap-1">
+            {TRADES.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setValue('trade', t, { shouldDirty: true })}
+                aria-pressed={trade === t}
+                className={`rounded-btn border px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
+                  trade === t
+                    ? 'border-forest bg-forest text-paper'
+                    : 'border-border bg-white text-ink hover:border-sage'
+                }`}
+              >
+                {TRADE_LABELS[t]}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div>
           <label className={labelClass}>Location</label>
           <LocationPicker value={locationIds} onChange={setLocationIds} />
         </div>
+
+        {/* Work against a *thing*. It is what lets the season review say what the Gator cost
+            across nine work orders, which is the argument for replacing it. */}
+        {activeAssets.length > 0 && (
+          <div>
+            <label className={labelClass}>Vehicle or equipment</label>
+            <select {...register('assetId')} className={inputClass}>
+              <option value="">Not about a specific one</option>
+              {activeAssets.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -263,7 +348,7 @@ export function LogIssueModal() {
             {...register('description')}
             className={`${inputClass} resize-none`}
             rows={3}
-            placeholder="Additional details about the issue"
+            placeholder="Anything else worth knowing"
           />
         </div>
 
@@ -283,15 +368,6 @@ export function LogIssueModal() {
             <label className={labelClass}>Due date</label>
             <input type="date" {...register('dueDate')} className={inputClass} />
           </div>
-        </div>
-
-        <div>
-          <label className={labelClass}>Cost estimate</label>
-          <input
-            {...register('costEstimate')}
-            className={inputClass}
-            placeholder="e.g. $380 or 600-1200"
-          />
         </div>
 
         {/* Photo */}
@@ -338,39 +414,35 @@ export function LogIssueModal() {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="isRecurring"
-            {...register('isRecurring')}
-            className="w-3.5 h-3.5 accent-sage"
-          />
-          <label htmlFor="isRecurring" className="text-[13px] text-ink cursor-pointer">
-            Recurring issue
-          </label>
-        </div>
-
-        {isRecurring && (
-          <div>
-            <label className={labelClass}>Recurrence interval</label>
-            <select {...register('recurringInterval')} className={inputClass}>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-              <option value="annually">Annually</option>
-            </select>
-          </div>
-        )}
+        {/*
+          Recurrence is not a checkbox on an event any more.
+          An issue is something that HAPPENED; a recurrence is a TEMPLATE, and the old boolean
+          could not say "every third Tuesday, housekeeping, only between June and August, with
+          these eleven steps" — which is why it generated nothing for its entire life. It lives
+          in Routines now, and this points there rather than pretending otherwise.
+        */}
+        <button
+          type="button"
+          onClick={() => { closeAllModals(); navigate(ROUTINES_PATH); }}
+          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-ink-soft hover:text-forest"
+        >
+          <Repeat className="h-3.5 w-3.5" />
+          This happens on a schedule — make it a routine
+        </button>
 
         <div className="flex gap-2 pt-2">
           <Button type="submit" className="flex-1 justify-center" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving…' : (editingIssue ? 'Save changes' : 'Log issue')}
+            {isSubmitting ? 'Saving…' : (editingIssue ? 'Save changes' : 'Log it')}
           </Button>
           <Button type="button" variant="ghost" onClick={closeAllModals} disabled={isSubmitting}>
             Cancel
           </Button>
         </div>
       </form>
+
+      {captureOpen && (
+        <CaptureSheet onClose={() => setCaptureOpen(false)} onDraft={applyDraft} />
+      )}
     </Modal>
   );
 }

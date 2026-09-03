@@ -28,7 +28,10 @@ import { StaffHome } from '@/pages/home/StaffHome';
 import { ViewerHome } from '@/pages/home/ViewerHome';
 
 // Existing app pages
-import { IssuesRepairs } from '@/pages/IssuesRepairs';
+import { Campground } from '@/pages/Campground';
+import { ScanTarget } from '@/pages/qr/ScanTarget';
+import { LocationHub } from '@/pages/qr/LocationHub';
+import { ReportReceipt } from '@/pages/report/ReportReceipt';
 import { PrePostCamp } from '@/pages/PrePostCamp';
 import { PoolManagement } from '@/pages/PoolManagement';
 import { SafetyCompliance } from '@/pages/SafetyCompliance';
@@ -86,10 +89,18 @@ import { useAssetStore } from '@/store/assetStore';
 import { useBuildingStore } from '@/store/buildingStore';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { loadRetreats, subscribeToRetreats } from '@/lib/retreatsDb';
+import { loadCampground, subscribeToCampground, dbGenerateScheduledWork } from '@/lib/campgroundDb';
+import { useCampgroundStore } from '@/store/campgroundStore';
 import { useRetreatStore } from '@/store/retreatStore';
 import { loadLocations, subscribeToLocations } from '@/lib/locationsDb';
 import { useLocationStore } from '@/store/locationStore';
 import { useCampStore as useCamp } from '@/store/campStore';
+
+/** The old Issues route. Kept forever: stickers and bookmarks outlive a rename. */
+function LegacyIssuesRedirect() {
+  const location = useLocation();
+  return <Navigate to={`/campground${location.search}${location.hash}`} replace />;
+}
 
 function HomeRouter() {
   const { currentMember } = useCampStore();
@@ -163,7 +174,13 @@ function CampDataLoader() {
     setRetreats, setSpaces, setHousing, setHousingVersions, setGuests: setRetreatGuests, setDocuments: setRetreatDocs,
     setMeals: setRetreatMeals, setChangeRequests, setCosts: setRetreatCosts, setCharges, setPayments,
     setIssues: setRetreatIssues, setChecklist, setScheduleItems, setFeedback, setReminders, setInvoices,
+    setSpaceRequests, setContacts, setTouchpoints, setProposals, setAddons, setOutbox,
   } = useRetreatStore();
+  const {
+    setVendors: setServiceVendors, setRouting: setWorkRouting,
+    setSchedules: setWorkSchedules, setTemplates: setChecklistTemplates,
+    setChecklistItems, setComments: setIssueComments, setSessions: setCampSessions,
+  } = useCampgroundStore();
   const { setLocations, setCategories, setBuildingDetails } = useLocationStore();
   const applyCompliance = useComplianceStore((s) => s.apply);
 
@@ -188,6 +205,7 @@ function CampDataLoader() {
     let unsubCommAllergy: (() => void) | null = null;
     let unsubRetreats: (() => void) | null = null;
     let unsubLocations: (() => void) | null = null;
+    let unsubCampground: (() => void) | null = null;
 
     // Start the Supabase keep-alive heartbeat.  Pings every 30 s while visible to
     // keep the TCP socket from going stale and to refresh the JWT before expiry.
@@ -301,8 +319,20 @@ function CampDataLoader() {
       setRetreatCosts(d.costs); setCharges(d.charges); setPayments(d.payments); setRetreatIssues(d.issues);
       setChecklist(d.checklist); setScheduleItems(d.scheduleItems); setFeedback(d.feedback); setReminders(d.reminders);
       setInvoices(d.invoices);
+      setSpaceRequests(d.spaceRequests); setContacts(d.contacts); setTouchpoints(d.touchpoints);
+      setProposals(d.proposals); setAddons(d.addons); setOutbox(d.outbox);
     };
     unsubRetreats = subscribeToRetreats(campId, applyRetreatData);
+
+    // Campground: the furniture around a work order (routines, checklists, comments, vendors,
+    // routing). Its own domain so it loads and re-subscribes independently of `issues`, which
+    // has its own optimistic write queue and must not be reloaded by a comment landing.
+    const applyCampground = (d: import('@/lib/campgroundDb').CampgroundData) => {
+      setServiceVendors(d.vendors); setWorkRouting(d.routing); setWorkSchedules(d.schedules);
+      setChecklistTemplates(d.templates); setChecklistItems(d.checklistItems);
+      setIssueComments(d.comments); setCampSessions(d.sessions);
+    };
+    unsubCampground = subscribeToCampground(campId, applyCampground);
 
     // Unified locations tree (camp-wide reference data).
     const applyLocationData = (d: import('@/lib/locationsDb').LocationData) => {
@@ -352,6 +382,12 @@ function CampDataLoader() {
     // RLS design and only `summary` is populated. That is not an error state.
     loadAndApply('commissary-allergy', () => loadCommissaryAllergy(campId), applyCommAllergy);
     loadAndApply('retreats', () => loadRetreats(campId), applyRetreatData);
+    loadAndApply('campground', () => loadCampground(campId), applyCampground)
+      // Materialize any routine occurrences now due. pg_cron does this nightly across every
+      // camp; this opportunistic call is what keeps a demo or a staging camp showing today's
+      // work instead of an empty list while waiting for 6am.
+      .then(() => dbGenerateScheduledWork())
+      .then((n) => { if (n > 0) campLog(`[CampOps] generated ${n} routine occurrence(s)`); });
 
     // Compliance depends on the active season, which arrives with the issues/tasks load. It is
     // loaded after that resolves rather than in parallel, because a compliance picture without
@@ -389,6 +425,7 @@ function CampDataLoader() {
         loadAndApply('commissary-production', () => loadCommissaryProduction(campId), applyCommProduction).then((ok) => ok && 'comm-production'),
         loadAndApply('commissary-allergy', () => loadCommissaryAllergy(campId), applyCommAllergy).then((ok) => ok && 'comm-allergy'),
         loadAndApply('retreats', () => loadRetreats(campId), applyRetreatData).then((ok) => ok && 'retreats'),
+        loadAndApply('campground', () => loadCampground(campId), applyCampground).then((ok) => ok && 'campground'),
         loadAndApply('locations', () => loadLocations(campId), applyLocationData).then((ok) => ok && 'locations'),
       ]);
       const applied = results.filter(Boolean);
@@ -451,6 +488,7 @@ function CampDataLoader() {
       unsubCommProduction?.();
       unsubCommAllergy?.();
       unsubRetreats?.();
+      unsubCampground?.();
       unsubLocations?.();
       stopHeartbeat();
       stopWriteQueue();
@@ -521,6 +559,14 @@ export default function App() {
           {/* Public, handles auth inline */}
           <Route path="/join" element={<JoinCamp />} />
           <Route path="/report/:camp" element={<PublicReportForm />} />
+          {/* One sticker, two audiences. /l/:token renders the location hub for a signed-in
+              member of that camp and the public report form for everyone else — a camp cannot
+              manage two sticker types per door. Deliberately OUTSIDE ProtectedRoute: the whole
+              point is that a counsellor with no account can scan it. */}
+          <Route path="/l/:token" element={<ScanTarget />} />
+          {/* The receipt a public reporter is handed on the success screen, so the person who
+              reported a broken door can find out what happened to it. */}
+          <Route path="/report/receipt/:token" element={<ReportReceipt />} />
           <Route path="/portal/:token" element={<RetreatPortal />} />
           {/* A camp's staff member filling in their own permit details. No login, no camp data. */}
           <Route path="/staff-intake/:token" element={<StaffIntake />} />
@@ -556,7 +602,30 @@ export default function App() {
                     order. See <Gate> for why an empty state is the wrong thing to show. */}
                 <Route path="/home" element={<Gate of={['issues', 'tasks']} label="Building your dashboard"><HomeRouter /></Gate>} />
                 <Route path="/my-tasks" element={<Gate of={['tasks']} label="Loading your tasks"><MyTasks /></Gate>} />
-                <Route path="/issues" element={<Gate of={['issues', 'locations']} label="Opening issues & repairs"><IssuesRepairs /></Gate>} />
+                <Route
+                  path="/campground"
+                  element={(
+                    <Gate of={['issues', 'locations', 'campground']} label="Opening the campground">
+                      <Campground />
+                    </Gate>
+                  )}
+                />
+                {/* Renamed 2026-09-02. Every old link, bookmark and printed QR keeps working, and
+                    the query string survives — /issues?tab=routines has to land on the tab it
+                    names, not on the board. */}
+                <Route path="/issues" element={<LegacyIssuesRedirect />} />
+                {/* Where a signed-in scan lands. /l/:token has to stay public — that is the whole
+                    point of one sticker serving two audiences — so it sits outside the data
+                    loader with every store empty, and hands off to here once it knows the
+                    scanner is a member of this camp. */}
+                <Route
+                  path="/hub/:token"
+                  element={(
+                    <Gate of={['issues', 'locations', 'assets', 'campground']} label="Opening this spot">
+                      <LocationHub />
+                    </Gate>
+                  )}
+                />
                 <Route path="/pre-post" element={<Gate of={['tasks', 'locations']} label="Opening pre/post camp"><PrePostCamp /></Gate>} />
                 <Route path="/pool" element={<Gate of={['pool']} label="Opening pool & waterfront"><PoolManagement /></Gate>} />
                 {/* Folded into /compliance and removed from the nav. Kept so existing links,

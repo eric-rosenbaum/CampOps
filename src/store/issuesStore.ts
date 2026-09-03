@@ -12,6 +12,7 @@ import {
 import { enqueueIssue, dequeueIssue, getQueuedIssues, loadInitialPending } from '@/lib/writeQueue';
 import { useCampStore } from '@/store/campStore';
 import { toDateStr } from '@/lib/utils';
+import { newWorkOrder } from '@/lib/workOrder';
 
 type FilterType = 'all' | 'urgent' | 'unassigned' | 'in_progress' | 'resolved' | 'public';
 
@@ -45,7 +46,11 @@ const statusOrder: Record<IssueStatus, number> = {
   unassigned: 0,
   assigned: 1,
   in_progress: 2,
-  resolved: 3,
+  // Open, but explicitly not being worked. They sort after work in progress and before done,
+  // because a camp scanning its list wants "nobody is on this" above "somebody is waiting".
+  waiting_on_vendor: 3,
+  waiting_on_part: 4,
+  resolved: 5,
 };
 
 function computeNextDueDate(dueDate: string | null, interval: Issue['recurringInterval']): string | null {
@@ -334,32 +339,11 @@ export function startIssueWriteQueue(): () => void {
     campLogObj?.clear?.();
     campLog(`[TEST] runTest START hangMs=${hangMs}`);
 
-    const now = new Date().toISOString();
-    const testIssue: Issue = {
-      id: crypto.randomUUID(),
+    const testIssue: Issue = newWorkOrder({
       title: `[AUTO-TEST] ${new Date().toLocaleTimeString()}`,
       description: 'Automated stale-TCP write test',
-      locationIds: [],
-      locations: [],
-      priority: 'normal',
-      status: 'unassigned',
-      assigneeId: null,
       reportedById: userId,
-      estimatedCostDisplay: null,
-      estimatedCostValue: null,
-      actualCost: null,
-      photoUrl: null,
-      dueDate: null,
-      isRecurring: false,
-      recurringInterval: null,
-      isPublicReport: false,
-      reporterName: null,
-      reporterContact: null,
-      source: 'web',
-      createdAt: now,
-      updatedAt: now,
-      activityLog: [],
-    };
+    });
 
     (debug.simulateStaleFetch as (ms: number) => void)(hangMs);
     campLog('[TEST] stale simulation active · calling addIssue');

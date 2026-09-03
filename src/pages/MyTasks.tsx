@@ -40,7 +40,7 @@ export function MyTasks() {
           ) : (
             <div className="space-y-2 max-w-2xl">
               {myIssues.map((issue) => (
-                <Link key={issue.id} to="/issues" onClick={() => selectIssue(issue.id)}>
+                <Link key={issue.id} to="/campground" onClick={() => selectIssue(issue.id)}>
                   <IssueCard
                     issue={issue}
                     selected={false}

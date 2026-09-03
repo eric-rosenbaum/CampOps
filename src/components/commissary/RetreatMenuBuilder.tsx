@@ -6,7 +6,7 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { MealPeriod, RetreatMenuEntry } from '@/lib/types';
 import { MEAL_PERIOD_LABELS } from '@/lib/commissaryUnits';
-import { fmtRange } from '@/components/retreats/retreatUi';
+import { fmtRange, isBooked, byArrival } from '@/components/retreats/retreatUi';
 
 const MEALS: MealPeriod[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 
@@ -35,7 +35,7 @@ export function RetreatMenuBuilder() {
   const canManage = can('manageCommissary');
 
   const list = useMemo(
-    () => retreats.filter((r) => r.status !== 'cancelled').sort((a, b) => a.arrivalDate.localeCompare(b.arrivalDate)),
+    () => retreats.filter((r) => r.status !== 'cancelled' && isBooked(r)).sort(byArrival),
     [retreats],
   );
   // Nothing is selected by default. Landing on whichever retreat happened to sort first is
@@ -81,7 +81,7 @@ export function RetreatMenuBuilder() {
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {list.map((r) => {
-            const d = daysBetween(r.arrivalDate, r.departureDate);
+            const d = daysBetween(r.arrivalDate ?? '', r.departureDate ?? '');
             const count = retreatEntriesFor(r.id).length;
             return (
               <button
@@ -111,7 +111,7 @@ export function RetreatMenuBuilder() {
     );
   }
 
-  const days = daysBetween(retreat.arrivalDate, retreat.departureDate);
+  const days = daysBetween(retreat.arrivalDate ?? '', retreat.departureDate ?? '');
   const gridCols = { gridTemplateColumns: `110px repeat(${days.length}, minmax(150px, 1fr))` };
   // A published menu is what the group is reading in their portal, so it is read-only until
   // someone deliberately unpublishes it.

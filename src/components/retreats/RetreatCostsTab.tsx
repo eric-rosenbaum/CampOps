@@ -5,7 +5,7 @@ import { StatCard } from '@/components/shared/StatCard';
 import { useRetreatStore, type RetreatFinancials } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { Retreat } from '@/lib/types';
-import { money, fmtRange, StatusBadge, billableHeadcount } from './retreatUi';
+import { money, fmtRange, StatusBadge, billableHeadcount, byArrival } from './retreatUi';
 
 const currentYear = () => new Date().getFullYear();
 
@@ -18,18 +18,19 @@ export function RetreatCostsTab() {
 
   // Years present in the data (by arrival date), newest first.
   const years = useMemo(() => {
-    const set = new Set(retreats.map((r) => r.arrivalDate.slice(0, 4)));
+    const set = new Set(retreats.flatMap((r) => (r.arrivalDate ? [r.arrivalDate.slice(0, 4)] : [])));
     return Array.from(set).sort((a, b) => b.localeCompare(a));
   }, [retreats]);
 
   const [year, setYear] = useState<string>(() => {
     const cy = String(currentYear());
-    const set = new Set(retreats.map((r) => r.arrivalDate.slice(0, 4)));
+    const set = new Set(retreats.flatMap((r) => (r.arrivalDate ? [r.arrivalDate.slice(0, 4)] : [])));
     return set.has(cy) ? cy : (Array.from(set).sort((a, b) => b.localeCompare(a))[0] ?? cy);
   });
 
   const yearRetreats = useMemo(
-    () => retreats.filter((r) => r.arrivalDate.slice(0, 4) === year).sort((a, b) => a.arrivalDate.localeCompare(b.arrivalDate)),
+    // A costs view is per-year, so an enquiry with no dates belongs to no year yet.
+    () => retreats.filter((r) => r.arrivalDate?.slice(0, 4) === year).sort(byArrival),
     [retreats, year],
   );
 

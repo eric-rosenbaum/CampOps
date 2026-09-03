@@ -32,7 +32,8 @@ export function AddMealModal({
 
   const retreat = retreatById(retreatId);
   const existing = mealId ? mealsFor(retreatId).find((m) => m.id === mealId) ?? null : null;
-  const days = retreat ? retreatDays(retreat.arrivalDate, retreat.departureDate) : [];
+  const days = retreat?.arrivalDate && retreat.departureDate
+    ? retreatDays(retreat.arrivalDate, retreat.departureDate) : [];
 
   const [day, setDay] = useState(existing?.dayDate ?? dayDate ?? days[0] ?? '');
   const [period, setPeriod] = useState<MealPeriod>(existing?.mealPeriod ?? mealPeriod ?? 'breakfast');

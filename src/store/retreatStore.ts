@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { useCommissaryStore } from './commissaryStore';
 import type {
+  RetreatSpaceRequest, RetreatContact, RetreatTouchpoint, RetreatProposal,
+  RetreatAddon, ScheduledMessage,
   Retreat, RetreatStatus, RetreatSpace, RetreatHousing, RetreatHousingVersion, RetreatGuest, RetreatDocument,
   RetreatDocType, RetreatMeal, RetreatChangeRequest, RetreatRequestStatus, RetreatCost, RetreatCharge,
   RetreatPayment, RetreatIssue, RetreatChecklistItem, RetreatChecklistPhase, RetreatScheduleItem,
@@ -28,7 +30,12 @@ import { generateId, todayStr } from '@/lib/utils';
 import { stagePercent, STAGE_LABEL, type UploadProgress } from '@/lib/uploadProgress';
 import { estimateRevenue } from '@/components/retreats/retreatUi';
 
-export type RetreatTab = 'overview' | 'active' | 'documents' | 'housing' | 'menu' | 'requests' | 'costs' | 'retreatCosts' | 'portal' | 'feedback';
+export type RetreatTab =
+  // Season-wide: these answer questions about the whole year, not about one group.
+  | 'overview' | 'pipeline' | 'costs' | 'rentalsReview' | 'calendar' | 'outbox' | 'addons'
+  // Per-retreat: only meaningful once you have said which group you mean.
+  | 'active' | 'documents' | 'housing' | 'spaces' | 'menu' | 'relationship'
+  | 'retreatCosts' | 'requests' | 'portal' | 'feedback';
 
 /** The 5-phase readiness tracker shown on the overview cards. */
 export type PhaseState = 'done' | 'active' | 'locked';
@@ -80,6 +87,15 @@ interface RetreatState {
   modal: RetreatModal | null;
 
   retreats: Retreat[];
+  // ── The seam and the pipeline ─────────────────────────────────────────────
+  spaceRequests: RetreatSpaceRequest[];
+  contacts: RetreatContact[];
+  touchpoints: RetreatTouchpoint[];
+  proposals: RetreatProposal[];
+  addons: RetreatAddon[];
+  /** What is queued to go out. Nothing sends silently; the camp can see and cancel it. */
+  outbox: ScheduledMessage[];
+
   spaces: RetreatSpace[];
   housing: RetreatHousing[];
   housingVersions: RetreatHousingVersion[];
@@ -105,6 +121,12 @@ interface RetreatState {
   closeModal: () => void;
 
   setRetreats: (r: Retreat[]) => void;
+  setSpaceRequests: (x: RetreatSpaceRequest[]) => void;
+  setContacts: (x: RetreatContact[]) => void;
+  setTouchpoints: (x: RetreatTouchpoint[]) => void;
+  setProposals: (x: RetreatProposal[]) => void;
+  setAddons: (x: RetreatAddon[]) => void;
+  setOutbox: (x: ScheduledMessage[]) => void;
   setSpaces: (r: RetreatSpace[]) => void;
   setHousing: (r: RetreatHousing[]) => void;
   setGuests: (r: RetreatGuest[]) => void;
@@ -249,6 +271,7 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   modal: null,
 
   retreats: [], spaces: [], housing: [], housingVersions: [], guests: [], documents: [], meals: [],
+  spaceRequests: [], contacts: [], touchpoints: [], proposals: [], addons: [], outbox: [],
   changeRequests: [], costs: [], charges: [], payments: [], issues: [], checklist: [],
   scheduleItems: [], feedback: [], reminders: [], invoices: [],
 
@@ -284,6 +307,12 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
       ? st.activeRetreatId
       : null,
   })),
+  setSpaceRequests: (rows) => set({ spaceRequests: rows }),
+  setContacts: (rows) => set({ contacts: rows }),
+  setTouchpoints: (rows) => set({ touchpoints: rows }),
+  setProposals: (rows) => set({ proposals: rows }),
+  setAddons: (rows) => set({ addons: rows }),
+  setOutbox: (rows) => set({ outbox: rows }),
   setSpaces: (rows) => set({ spaces: rows }),
   setHousing: (rows) => set({ housing: rows }),
   setGuests: (rows) => set({ guests: rows }),
@@ -440,7 +469,9 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   activeRetreat: () => {
     const t = today();
     return get().retreats.find((r) => r.status === 'active')
-      ?? get().retreats.find((r) => r.arrivalDate <= t && r.departureDate >= t)
+      // An enquiry has no dates yet, so it cannot be the retreat happening right now.
+      ?? get().retreats.find((r) => !!r.arrivalDate && !!r.departureDate
+                                    && r.arrivalDate <= t && r.departureDate >= t)
       ?? null;
   },
   retreatsByStatus: () => {

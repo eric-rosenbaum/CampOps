@@ -46,6 +46,11 @@ export function ChargeModal({ retreatId, chargeId }: { retreatId: string; charge
         qty: q,
         unitRate: rate,
         amount: amt,
+        // A charge typed here is the camp's own line, not one the group picked from the catalogue.
+
+        addonId: null,
+
+        requestedByGuest: false,
         sortOrder: chargesFor(retreatId).length,
         createdAt: now(),
         updatedAt: now(),

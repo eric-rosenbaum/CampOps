@@ -61,7 +61,12 @@ const todayItems: NavItem[] = [
 ];
 
 const facilityItems: NavItem[] = [
-  { path: '/issues', label: 'Issues & Repairs', icon: Wrench, end: false, module: 'issues_repairs' },
+  // Renamed from "Issues & Repairs" 2026-09-02. Once housekeeping, retreat set-ups, turnovers and
+  // routines all land here, "repairs" describes a quarter of the content — and "Campground" is
+  // the camp's own word for the physical place. The TABLE is still `issues` and the module key is
+  // still `issues_repairs`: the word on the screen is the product, the word in Postgres is
+  // plumbing, and renaming a table thirteen surfaces read from buys nothing.
+  { path: '/campground', label: 'Campground', icon: Wrench, end: false, module: 'issues_repairs' },
   { path: '/pre-post', label: 'Pre/Post Camp', icon: ClipboardList, end: false, module: 'pre_post' },
   // The old Safety module was folded in here: its records are reached from the Requirements tab,
   // grouped by the party that asks for them, and its dialogs open in place. The /safety route

@@ -85,6 +85,11 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
       updateRetreat(updated);
     } else {
       const r: Retreat = {
+        // A retreat created from this form is a real booking, not a lead. Enquiries come in
+        // through the pipeline (or the intake paste) and start at 'new'.
+        leadStage: 'won', leadSource: null, lostReason: null,
+        nextAction: null, nextActionOn: null, ownerId: null,
+        estimatedValue: null, dateFlexibility: null, intakeNotes: null,
         id: generateId(),
         campId: '',
         groupName: groupName.trim(),

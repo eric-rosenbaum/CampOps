@@ -28,6 +28,9 @@ struct ContentView: View {
             } else {
                 mainTabView
                     .task(id: authManager.currentCamp?.id) {
+                        if let campId = authManager.currentCamp?.id {
+                            SyncEngine.shared.start(campId: campId)
+                        }
                         await loadCampData()
                     }
                     .onChange(of: scenePhase) { _, phase in
@@ -37,6 +40,13 @@ struct ContentView: View {
                     }
             }
         }
+        // Stop the timers when the session goes away. Note this deliberately does NOT clear the
+        // mutation queue: a token expiring mid-shift is not a reason to throw away work somebody
+        // has already been told was saved. `SyncEngine.signOut(campId:)` is the explicit path
+        // for actually discarding it.
+        .onChange(of: authManager.isAuthenticated) { _, isAuthenticated in
+            if !isAuthenticated { SyncEngine.shared.stop() }
+        }
         .environmentObject(authManager)
         .environmentObject(issueVM)
         .environmentObject(checklistVM)
@@ -45,28 +55,36 @@ struct ContentView: View {
         .environmentObject(buildingVM)
     }
 
+    // `syncStatusBar()` goes on each tab rather than on the TabView, so the pill sits above the
+    // tab bar instead of behind it. It is the offline layer's only visible surface.
     private var mainTabView: some View {
         TabView {
             HomeView()
+                .syncStatusBar()
                 .tabItem { Label("Home", systemImage: "house") }
             if authManager.canAccessModule("issues_repairs") {
                 IssueListView()
+                    .syncStatusBar()
                     .tabItem { Label("Issues", systemImage: "wrench.adjustable") }
             }
             if authManager.canAccessModule("pre_post") {
                 ChecklistView()
+                    .syncStatusBar()
                     .tabItem { Label("Pre/Post", systemImage: "checklist") }
             }
             if authManager.canAccessModule("pool") {
                 PoolView()
+                    .syncStatusBar()
                     .tabItem { Label("Pool", systemImage: "drop.fill") }
             }
             if authManager.canAccessModule("assets") {
                 AssetView()
+                    .syncStatusBar()
                     .tabItem { Label("Assets", systemImage: "car.fill") }
             }
             if authManager.canAccessModule("building_systems") {
                 BuildingView()
+                    .syncStatusBar()
                     .tabItem { Label("Building", systemImage: "building.2.fill") }
             }
         }

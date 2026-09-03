@@ -97,6 +97,14 @@
 		FE7503186813BBBBBBBBBBBB /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7503186813FFFFFFFFFFFF /* Theme.swift */; };
 		FE9388992182BBBBBBBBBBBB /* ForgotPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9388992182FFFFFFFFFFFF /* ForgotPasswordView.swift */; };
 		FE9407152289BBBBBBBBBBBB /* AccessGateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9407152289FFFFFFFFFFFF /* AccessGateViews.swift */; };
+		0FF11E0000000000000B0001 /* SyncTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0001 /* SyncTypes.swift */; };
+		0FF11E0000000000000B0002 /* OfflineCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0002 /* OfflineCache.swift */; };
+		0FF11E0000000000000B0003 /* MutationQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0003 /* MutationQueue.swift */; };
+		0FF11E0000000000000B0004 /* SyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0004 /* SyncEngine.swift */; };
+		0FF11E0000000000000B0005 /* OfflineWrites.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0005 /* OfflineWrites.swift */; };
+		0FF11E0000000000000B0006 /* IssueThread.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0006 /* IssueThread.swift */; };
+		0FF11E0000000000000B0007 /* IssueThreadViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0007 /* IssueThreadViewModel.swift */; };
+		0FF11E0000000000000B0008 /* SyncStatusBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0008 /* SyncStatusBanner.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -185,6 +193,14 @@
 		FE7503186813FFFFFFFFFFFF /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		FE9388992182FFFFFFFFFFFF /* ForgotPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordView.swift; sourceTree = "<group>"; };
 		FE9407152289FFFFFFFFFFFF /* AccessGateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessGateViews.swift; sourceTree = "<group>"; };
+		0FF11E0000000000000A0001 /* SyncTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncTypes.swift; sourceTree = "<group>"; };
+		0FF11E0000000000000A0002 /* OfflineCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineCache.swift; sourceTree = "<group>"; };
+		0FF11E0000000000000A0003 /* MutationQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MutationQueue.swift; sourceTree = "<group>"; };
+		0FF11E0000000000000A0004 /* SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEngine.swift; sourceTree = "<group>"; };
+		0FF11E0000000000000A0005 /* OfflineWrites.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineWrites.swift; sourceTree = "<group>"; };
+		0FF11E0000000000000A0006 /* IssueThread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueThread.swift; sourceTree = "<group>"; };
+		0FF11E0000000000000A0007 /* IssueThreadViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueThreadViewModel.swift; sourceTree = "<group>"; };
+		0FF11E0000000000000A0008 /* SyncStatusBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusBanner.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -291,6 +307,7 @@
 				AAAA1111BBBB2222CCCC3301 /* BuildingModels.swift */,
 				49E5A7602F81A74E007122C8 /* Season.swift */,
 				49E5A7612F81A74E007122C8 /* User.swift */,
+				0FF11E0000000000000A0006 /* IssueThread.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -304,6 +321,7 @@
 				49E5A7652F81A74E007122C8 /* SupabaseService.swift */,
 				49E5A7662F81A74E007122C8 /* SyncService.swift */,
 				FB1C2D3E4F5A0B1C2D3E4F5A /* TestStripService.swift */,
+				0FF11E0000000000000C0001 /* Offline */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -318,6 +336,7 @@
 				BFFDB5F5149246DBA7B89BE2 /* PoolViewModel.swift */,
 				A2B3C4D5E6F7A8B9C0D1E2F3 /* AssetViewModel.swift */,
 				AAAA1111BBBB2222CCCC3302 /* BuildingViewModel.swift */,
+				0FF11E0000000000000A0007 /* IssueThreadViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -375,6 +394,7 @@
 				49E5A7822F81A74E007122C8 /* UserPickerRow.swift */,
 				49E5A7BC2F81A74E007122C8 /* LocationPickerView.swift */,
 				DA0CA71000000000000000A5 /* LocationTreePicker.swift */,
+				0FF11E0000000000000A0008 /* SyncStatusBanner.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -461,6 +481,18 @@
 			path = Auth;
 			sourceTree = "<group>";
 		};
+		0FF11E0000000000000C0001 /* Offline */ = {
+			isa = PBXGroup;
+			children = (
+				0FF11E0000000000000A0001 /* SyncTypes.swift */,
+				0FF11E0000000000000A0002 /* OfflineCache.swift */,
+				0FF11E0000000000000A0003 /* MutationQueue.swift */,
+				0FF11E0000000000000A0004 /* SyncEngine.swift */,
+				0FF11E0000000000000A0005 /* OfflineWrites.swift */,
+			);
+			path = Offline;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -544,6 +576,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0FF11E0000000000000B0001 /* SyncTypes.swift in Sources */,
+				0FF11E0000000000000B0002 /* OfflineCache.swift in Sources */,
+				0FF11E0000000000000B0003 /* MutationQueue.swift in Sources */,
+				0FF11E0000000000000B0004 /* SyncEngine.swift in Sources */,
+				0FF11E0000000000000B0005 /* OfflineWrites.swift in Sources */,
+				0FF11E0000000000000B0006 /* IssueThread.swift in Sources */,
+				0FF11E0000000000000B0007 /* IssueThreadViewModel.swift in Sources */,
+				0FF11E0000000000000B0008 /* SyncStatusBanner.swift in Sources */,
 				49E5A7852F81A74E007122C8 /* AvatarCircle.swift in Sources */,
 				CA11F1E0000000000000FB02 /* CampCommandMark.swift in Sources */,
 				49E5A7862F81A74E007122C8 /* ActivityFeed.swift in Sources */,

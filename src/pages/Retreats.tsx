@@ -15,6 +15,16 @@ import { RetreatCostsTab } from '@/components/retreats/RetreatCostsTab';
 import { RetreatCostsDetailTab } from '@/components/retreats/RetreatCostsDetailTab';
 import { PortalTab } from '@/components/retreats/PortalTab';
 import { FeedbackTab } from '@/components/retreats/FeedbackTab';
+import { PipelineTab } from '@/components/retreats/PipelineTab';
+import { SpacesTab } from '@/components/retreats/SpacesTab';
+import { TurnoverCard } from '@/components/retreats/TurnoverCard';
+import { ContactsPanel } from '@/components/retreats/ContactsPanel';
+import { TouchpointsPanel } from '@/components/retreats/TouchpointsPanel';
+import { ProposalsPanel } from '@/components/retreats/ProposalsPanel';
+import { AddonsPanel } from '@/components/retreats/AddonsPanel';
+import { OutboxPanel } from '@/components/retreats/OutboxPanel';
+import { RentalsReview } from '@/components/retreats/RentalsReview';
+import { PropertyCalendar } from '@/components/campground/PropertyCalendar';
 
 import { RetreatFormModal } from '@/components/retreats/RetreatFormModal';
 import { RespondRequestModal } from '@/components/retreats/RespondRequestModal';
@@ -38,13 +48,29 @@ import { FeedbackModal } from '@/components/retreats/FeedbackModal';
 // quietly editing a different retreat than the one they thought they were looking at.
 const SEASON_TABS: { id: RetreatTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
+  // The half of the job that happens before a booking exists. It sits second because a season
+  // with nothing in the pipeline is the problem you want to notice in February, not in June.
+  { id: 'pipeline', label: 'Pipeline' },
   { id: 'costs', label: 'Costs & invoice' },
+  { id: 'rentalsReview', label: 'Occupancy & revenue' },
+  // The one screen where both halves of the product are visibly the same product: sessions,
+  // groups, space bookings, out-of-service rooms and the turnover days where a departure and an
+  // arrival meet. It lives here because "who is here this week, and what is free in October" is
+  // a rentals question that only has an honest answer if you can also see the work.
+  { id: 'calendar', label: 'Property calendar' },
+  { id: 'outbox', label: 'Reminders' },
+  { id: 'addons', label: 'Extras' },
 ];
 
 const RETREAT_TABS: { id: RetreatTab; label: string }[] = [
   { id: 'active', label: 'Active retreat' },
   { id: 'documents', label: 'Documents & compliance' },
   { id: 'housing', label: 'Housing' },
+  // Everything this group turns into work for the property team: the spaces they asked for, and
+  // the cabins somebody has to turn over after they leave. Grouped together on purpose — it is
+  // one question ("what does hosting them actually cost us in labour"), not two.
+  { id: 'spaces', label: 'Spaces & set-up' },
+  { id: 'relationship', label: 'Contacts & proposals' },
   { id: 'menu', label: 'Menu & dining' },
   { id: 'retreatCosts', label: 'Costs & invoice' },
   { id: 'requests', label: 'Requests' },
@@ -125,11 +151,31 @@ export function Retreats() {
 
       <div className="flex-1 min-h-0 flex flex-col">
         {currentTab === 'overview' && <OverviewTab />}
+        {currentTab === 'pipeline' && <PipelineTab />}
+        {currentTab === 'rentalsReview' && <RentalsReview />}
+        {currentTab === 'calendar' && <PropertyCalendar />}
+        {currentTab === 'outbox' && <OutboxPanel />}
+        {currentTab === 'addons' && <AddonsPanel />}
         {currentTab === 'costs' && <RetreatCostsTab />}
         {currentTab === 'retreatCosts' && <RetreatCostsDetailTab />}
         {currentTab === 'active' && <ActiveRetreatTab />}
         {currentTab === 'documents' && <DocumentsTab />}
         {currentTab === 'housing' && <HousingTab />}
+        {currentTab === 'spaces' && retreat && (
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <SpacesTab retreatId={retreat.id} />
+            <div className="px-4 pb-6 sm:px-7">
+              <TurnoverCard retreatId={retreat.id} />
+            </div>
+          </div>
+        )}
+        {currentTab === 'relationship' && retreat && (
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-7 sm:py-6 flex flex-col gap-6">
+            <ProposalsPanel retreatId={retreat.id} />
+            <ContactsPanel retreatId={retreat.id} />
+            <TouchpointsPanel retreatId={retreat.id} />
+          </div>
+        )}
         {currentTab === 'menu' && <RetreatMenuTab />}
         {currentTab === 'requests' && <ChangeRequestsTab />}
         {currentTab === 'portal' && <PortalTab />}

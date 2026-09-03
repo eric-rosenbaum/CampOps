@@ -4,13 +4,18 @@ struct IssueDetailView: View {
     @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var listVM: IssueListViewModel
     @StateObject private var vm: IssueDetailViewModel
+    @StateObject private var thread: IssueThreadViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var draftComment = ""
     @State private var showingEdit = false
     @State private var showingAssignPicker = false
     @State private var showingResolveSheet = false
     @State private var showingDeleteConfirm = false
 
-    init(issue: Issue) { _vm = StateObject(wrappedValue: IssueDetailViewModel(issue: issue)) }
+    init(issue: Issue) {
+        _vm = StateObject(wrappedValue: IssueDetailViewModel(issue: issue))
+        _thread = StateObject(wrappedValue: IssueThreadViewModel(issueId: issue.id))
+    }
 
     var body: some View {
         ScrollView {
@@ -101,12 +106,20 @@ struct IssueDetailView: View {
                         }.buttonStyle(.borderedProminent).tint(.sage)
                     }
                 }
+                checklistSection
+                commentsSection
                 ActivityFeed(activity: vm.issue.activity)
             }
             .padding(Spacing.lg)
         }
-        .task { await vm.refresh() }
-        .refreshable { await vm.refresh() }
+        .task {
+            await vm.refresh()
+            await thread.load()
+        }
+        .refreshable {
+            await vm.refresh()
+            await thread.refresh()
+        }
         .navigationTitle("Issue").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if authManager.can.createIssue {
@@ -150,6 +163,111 @@ struct IssueDetailView: View {
         .alert("Error", isPresented: .constant(vm.errorMessage != nil)) {
             Button("OK") { vm.errorMessage = nil }
         } message: { Text(vm.errorMessage ?? "") }
+    }
+
+    // MARK: - Steps
+
+    /// Ticking a step is one of the two actions this whole offline layer was built for, so the
+    /// tap has to land the same way with or without signal. It does: `IssueThreadViewModel`
+    /// updates the row here and hands the write to the mutation queue.
+    @ViewBuilder
+    private var checklistSection: some View {
+        if thread.hasChecklist {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                HStack {
+                    Text("Steps").font(.campBodySemibold).foregroundStyle(Color.forest)
+                    Spacer()
+                    Text("\(thread.doneCount) of \(thread.checklist.count)")
+                        .font(.campMeta).foregroundStyle(Color.forest.opacity(0.5))
+                }
+                ForEach(thread.checklist) { item in
+                    Button {
+                        Task { await thread.toggle(item, by: authManager.currentUser) }
+                    } label: {
+                        HStack(alignment: .top, spacing: Spacing.sm) {
+                            Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 19))
+                                .foregroundStyle(item.isDone ? Color.sage : Color.forest.opacity(0.3))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.text)
+                                    .font(.campBody)
+                                    .foregroundStyle(Color.forest.opacity(item.isDone ? 0.45 : 1))
+                                    .strikethrough(item.isDone, color: Color.forest.opacity(0.35))
+                                    .multilineTextAlignment(.leading)
+                                if item.isDone, let who = item.doneByName {
+                                    Text("\(who)\(item.doneAt.map { " · " + $0.relativeDisplay } ?? "")")
+                                        .font(.campMicro).foregroundStyle(Color.forest.opacity(0.45))
+                                }
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.vertical, Spacing.xs)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    // MARK: - Notes
+
+    private var commentsSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            HStack {
+                Text("Notes").font(.campBodySemibold).foregroundStyle(Color.forest)
+                Spacer()
+                if thread.isShowingCachedCopy {
+                    PendingSyncMark(label: "Showing saved copy")
+                }
+            }
+
+            if thread.comments.isEmpty {
+                Text("No notes yet.")
+                    .font(.campMeta).foregroundStyle(Color.forest.opacity(0.5))
+            } else {
+                ForEach(thread.comments) { comment in
+                    HStack(alignment: .top, spacing: Spacing.sm) {
+                        AvatarCircle(initials: comment.initials, size: 22)
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 4) {
+                                Text(comment.authorName).font(.campMetaSemibold)
+                                Text(comment.createdAt.relativeDisplay)
+                                    .font(.campMeta).foregroundStyle(Color.forest.opacity(0.5))
+                            }
+                            Text(comment.body)
+                                .font(.campSmall)
+                                .foregroundStyle(Color.forest.opacity(0.75))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                    .padding(.vertical, Spacing.xs)
+                }
+            }
+
+            HStack(spacing: Spacing.sm) {
+                TextField("Add a note…", text: $draftComment, axis: .vertical)
+                    .font(.campBody)
+                    .lineLimit(1...4)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    .background(Color.surfaceRaised, in: .rect(cornerRadius: Radius.sm))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Radius.sm)
+                            .strokeBorder(Color.border, lineWidth: 1)
+                    )
+                Button {
+                    let text = draftComment
+                    draftComment = ""
+                    Task { await thread.postComment(text, by: authManager.currentUser) }
+                } label: {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 26))
+                        .foregroundStyle(draftComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                         ? Color.forest.opacity(0.25) : Color.sage)
+                }
+                .disabled(draftComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
     }
 }
 

@@ -14,6 +14,10 @@ import { monotonic, stagePercent, STAGE_LABEL, type UploadStatus } from '@/lib/u
 import { FullScreenLoading } from '@/components/shared/ModuleLoading';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
 import { RoomingBoard } from './RoomingBoard';
+import { ProgramSpacesSection } from '@/components/portal/ProgramSpacesSection';
+import { ProposalSection } from '@/components/portal/ProposalSection';
+import { AddonsSection } from '@/components/portal/AddonsSection';
+import { PaySection } from '@/components/portal/PaySection';
 import {
   supabasePublic, SUPABASE_URL, portalFnHeaders, portalFnPost,
   readPortalSession, writePortalSession, clearPortalSession,
@@ -69,6 +73,13 @@ const STATUS_LABELS: Record<string, string> = {
   inquiry: 'Inquiry', confirmed: 'Confirmed', ready: 'Ready to go', active: 'Active now',
   complete: 'Complete', cancelled: 'Cancelled',
 };
+
+/** Nights between two calendar days, tolerating a booking that has not got dates yet. */
+function nightsBetween(a: string | null, b: string | null): number {
+  if (!a || !b) return 1;
+  const ms = new Date(`${b}T00:00:00`).getTime() - new Date(`${a}T00:00:00`).getTime();
+  return Math.max(1, Math.round(ms / 86_400_000));
+}
 
 // ─── Reusable atoms ──────────────────────────────────────────────────────────
 function Section({ id, icon, title, subtitle, children }: {
@@ -181,7 +192,7 @@ export function RetreatPortal() {
 
   const fetchData = useCallback(async () => {
     if (!token) { setPageState('not_found'); return; }
-    const { data: res, error } = await supabasePublic.rpc('get_portal_data', { p_token: token, p_session: readPortalSession(token) });
+    const { data: res, error } = await supabasePublic.rpc('get_portal_data_v2', { p_token: token, p_session: readPortalSession(token) });
     if (error || !res) { setPageState('not_found'); return; }
     if ((res as { expired?: boolean }).expired) { setPageState('expired'); return; }
     setData(res as PortalData);
@@ -192,7 +203,7 @@ export function RetreatPortal() {
     if (!token) return;
     let active = true;
     (async () => {
-      const { data: res, error } = await supabasePublic.rpc('get_portal_data', { p_token: token, p_session: readPortalSession(token) });
+      const { data: res, error } = await supabasePublic.rpc('get_portal_data_v2', { p_token: token, p_session: readPortalSession(token) });
       if (!active) return;
       if (error || !res) { setPageState('not_found'); return; }
       if ((res as { expired?: boolean }).expired) { setPageState('expired'); return; }
@@ -278,6 +289,16 @@ function buildSteps(data: PortalData): Step[] {
 
   const steps: Step[] = [];
 
+  // 0, Proposal. Sits above everything because until a group has accepted, none of the rest of
+  // this list is theirs to do. Disappears once accepted rather than lingering as a done row.
+  if (data.proposal && data.proposal.status !== 'accepted') {
+    steps.push({
+      key: 'proposal', label: 'Review your proposal',
+      hint: data.proposal.valid_until ? `Valid until ${fmtDateFull(data.proposal.valid_until)}` : 'Ready for you to look at',
+      state: 'todo', dueDate: data.proposal.valid_until ?? null, sectionId: 'documents', counts: true,
+    });
+  }
+
   // 1, Agreement (only if the camp has shared one)
   if (agreementDoc) {
     const signed = agreementDoc.status === 'signed' || agreementDoc.status === 'approved' || !!agreementDoc.signed_at;
@@ -345,6 +366,31 @@ function buildSteps(data: PortalData): Step[] {
         : answered > 0 ? `${answered} answered`
         : 'Program spaces, dietary, childcare & more',
       state: 'todo', dueDate: null, sectionId: 'requests', counts: false,
+    });
+  }
+
+  // Program spaces. Only offered when the camp actually has bookable spaces — a camp with none
+  // should not be shown an empty step asking it to choose from nothing.
+  if (data.has_program_spaces) {
+    const asked = data.space_request_count ?? 0;
+    const spacesDue = addDays(arrival, -7);
+    steps.push({
+      key: 'spaces',
+      label: 'Choose your meeting spaces',
+      hint: asked > 0
+        ? `${asked} space${asked === 1 ? '' : 's'} requested`
+        : 'Tell us where you want to meet, and how to set it up',
+      state: asked > 0 ? 'done' : urgency(spacesDue), dueDate: spacesDue, sectionId: 'spaces', counts: true,
+    });
+  }
+
+  // Extras never block anything, so they never count toward the checklist — a group that wants
+  // no linens has not left something undone.
+  if (data.has_addons) {
+    steps.push({
+      key: 'addons', label: 'Anything else you need?',
+      hint: 'Linens, boats, AV, firewood',
+      state: 'todo', dueDate: null, sectionId: 'addons', counts: false,
     });
   }
 
@@ -614,10 +660,15 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
     switch (key) {
       case 'agreement':
         return <DocumentsBlock documents={documents.filter((d) => d.doc_type !== 'coi')} token={token} refetch={refetch} unlocked={unlocked} hint={data.verify_email_hint} />;
+      case 'proposal':
+        return <ProposalSection token={token} onAccepted={refetch} />;
       case 'deposit':
         return (
           <div className="space-y-3">
             <DepositCard retreat={retreat} />
+            {/* Paying online lives inside the deposit step rather than beside it: money is one
+                question, and a second "Pay" step would just be a place to miss. */}
+            <PaySection token={token} paymentNote={data.payment_note ?? null} />
             {invoices.length > 0 && <InvoicesBlock retreat={retreat} invoices={invoices} />}
           </div>
         );
@@ -645,6 +696,17 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
             defaultName={retreat.coordinator_name}
             token={token}
             refetch={refetch}
+          />
+        );
+      case 'spaces':
+        return <ProgramSpacesSection token={token} retreat={retreat} onChanged={refetch} />;
+      case 'addons':
+        return (
+          <AddonsSection
+            token={token}
+            headcount={retreat.final_headcount ?? retreat.headcount ?? 0}
+            nights={nightsBetween(retreat.arrival_date, retreat.departure_date)}
+            onChanged={refetch}
           />
         );
       default:

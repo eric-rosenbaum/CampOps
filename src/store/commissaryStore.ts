@@ -1455,8 +1455,8 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       let end = state.retreatCoverageEnd;
       if (!end) {
         const departures = useRetreatStore.getState().retreats
-          .filter((r) => r.status !== 'cancelled' && r.departureDate >= today)
-          .map((r) => r.departureDate).sort();
+          .filter((r) => r.status !== 'cancelled' && !!r.departureDate && r.departureDate >= today)
+          .map((r) => r.departureDate as string).sort();
         end = departures[departures.length - 1] ?? addDaysStr(today, 14);
       }
       return { today: start, nextDelivery: start, windowEnd: end, frequency: 7, deliveryDay: null as string | null };

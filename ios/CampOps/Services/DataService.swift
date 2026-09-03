@@ -63,6 +63,24 @@ final class DataService {
         try await supabase.from("issue_activity").insert(row).execute()
     }
 
+    // MARK: - Issue thread (comments + checklist steps)
+    //
+    // Both tables are `sync_push`-able, so the WRITES for them go through MutationQueue rather
+    // than through this service. These reads stay here because a fetch is a fetch.
+
+    func fetchIssueComments(issueId: String) async throws -> [IssueComment] {
+        let rows: [IssueComment] = try await supabase.from("issue_comments")
+            .select().eq("issue_id", value: issueId)
+            .order("created_at", ascending: true).execute().value
+        return rows.filter { $0.deletedAt == nil }
+    }
+
+    func fetchIssueChecklist(issueId: String) async throws -> [IssueChecklistItem] {
+        try await supabase.from("issue_checklist_items")
+            .select().eq("issue_id", value: issueId)
+            .order("position", ascending: true).execute().value
+    }
+
     // MARK: - Tasks
 
     func fetchTasks() async throws -> [ChecklistTask] {

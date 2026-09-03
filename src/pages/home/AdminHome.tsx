@@ -444,7 +444,7 @@ export function AdminHome() {
   // ── Alert pills ──────────────────────────────────────────────────────────
   type AlertPill = { id: string; label: string; to: string; red: boolean };
   const alertPills: AlertPill[] = [];
-  if (urgentCount() > 0)       alertPills.push({ id: 'urgent',    label: `${urgentCount()} urgent issue${urgentCount() !== 1 ? 's' : ''}`,         to: '/issues', red: true });
+  if (urgentCount() > 0)       alertPills.push({ id: 'urgent',    label: `${urgentCount()} urgent issue${urgentCount() !== 1 ? 's' : ''}`,         to: '/campground', red: true });
   if (closedPools.length > 0)  alertPills.push({ id: 'closed-pools', label: `${closedPools.length} pool${closedPools.length !== 1 ? 's' : ''} closed`, to: '/pool',   red: true });
   if (safetyStats.overdue > 0) alertPills.push({ id: 'safety',    label: `${safetyStats.overdue} safety item${safetyStats.overdue !== 1 ? 's' : ''} overdue`, to: '/safety', red: true });
   if (expiredCerts > 0)        alertPills.push({ id: 'certs',     label: `${expiredCerts} staff cert${expiredCerts !== 1 ? 's' : ''} expired`,         to: '/safety', red: true });
@@ -458,7 +458,7 @@ export function AdminHome() {
   const actionItems: ActionItem[] = [];
 
   issues.filter(i => i.status !== 'resolved' && i.priority === 'urgent').slice(0, 3).forEach(issue =>
-    actionItems.push({ id: `iss-${issue.id}`, priority: 'critical', module: 'Issue', label: `Urgent: ${issue.title}`, to: '/issues' })
+    actionItems.push({ id: `iss-${issue.id}`, priority: 'critical', module: 'Issue', label: `Urgent: ${issue.title}`, to: '/campground' })
   );
   closedPools.forEach(p =>
     actionItems.push({ id: `pool-${p.id}`, priority: 'critical', module: 'Pool', label: `${p.name} is closed, corrective action needed`, to: '/pool' })
@@ -477,7 +477,7 @@ export function AdminHome() {
     actionItems.push({ id: `cert-${cert.id}`, priority: 'critical', module: 'Cert', label: `Expired cert: ${CERT_TYPE_LABELS[cert.certType as keyof typeof CERT_TYPE_LABELS]}, renew staff cert`, to: '/safety' })
   );
   issues.filter(i => i.status !== 'resolved' && i.priority === 'high').slice(0, 3).forEach(issue =>
-    actionItems.push({ id: `iss-h-${issue.id}`, priority: 'warning', module: 'Issue', label: issue.title, to: '/issues' })
+    actionItems.push({ id: `iss-h-${issue.id}`, priority: 'warning', module: 'Issue', label: issue.title, to: '/campground' })
   );
   maintOverdue.slice(0, 2).forEach(({ asset, record }) =>
     actionItems.push({ id: `maint-${record.id}`, priority: 'warning', module: 'Fleet', label: `${asset.name} · ${SERVICE_TYPE_LABELS[record.serviceType] ?? 'Service'} overdue`, to: '/assets' })
@@ -610,14 +610,14 @@ export function AdminHome() {
             value={urgCount}
             sub={urgCount > 0 ? 'Needs immediate action' : 'None pending'}
             variant={urgCount > 0 ? 'red' : 'green'}
-            to="/issues"
+            to="/campground"
           />
           <StatTile
             label="Open issues"
             value={opCount}
             sub={opCount > 0 ? `${issues.filter(i => i.priority === 'high' && i.status !== 'resolved').length} high priority` : 'All resolved'}
             variant={opCount > 0 ? 'default' : 'green'}
-            to="/issues"
+            to="/campground"
           />
           <StatTile
             label="Safety compliance"
@@ -653,7 +653,7 @@ export function AdminHome() {
               label="Repair costs"
               value={formatCost(totalCosts())}
               sub="This season"
-              to="/issues"
+              to="/campground"
             />
           )}
         </div>
@@ -681,7 +681,7 @@ export function AdminHome() {
             <div className="mt-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-[12px] font-semibold text-ink-soft">Normal priority issues</h3>
-                <Link to="/issues" className="text-[11px] text-sage hover:text-sage-light flex items-center gap-0.5 transition-colors">
+                <Link to="/campground" className="text-[11px] text-sage hover:text-sage-light flex items-center gap-0.5 transition-colors">
                   All issues <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
@@ -692,7 +692,7 @@ export function AdminHome() {
                   .map((issue, i, arr) => (
                     <Link
                       key={issue.id}
-                      to="/issues"
+                      to="/campground"
                       onClick={() => selectIssue(issue.id)}
                       className={`flex items-center gap-3 px-4 py-2.5 hover:bg-cream-dark transition-colors group ${i < arr.length - 1 ? 'border-b border-border' : ''}`}
                     >

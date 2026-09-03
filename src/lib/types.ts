@@ -9,7 +9,12 @@ export interface User {
 
 export type Priority = 'urgent' | 'high' | 'normal';
 
-export type IssueStatus = 'unassigned' | 'assigned' | 'in_progress' | 'resolved';
+export type IssueStatus =
+  | 'unassigned' | 'assigned' | 'in_progress'
+  // "Waiting on the septic guy since June" used to render as in_progress, which is how a
+  // queue stops meaning anything. Both are open but explicitly not being worked.
+  | 'waiting_on_vendor' | 'waiting_on_part'
+  | 'resolved';
 
 export type ChecklistStatus = 'pending' | 'in_progress' | 'complete';
 
@@ -27,9 +32,27 @@ export interface CampLocation {
   sortOrder: number;
   isActive: boolean;
   notes: string | null;
+  /**
+   * Read by rental availability and the rooming board, not merely displayed.
+   *
+   * Assets already had a status; locations did not — which meant a coordinator could put twelve
+   * guests in a cabin that had been out of service since June, because the board had no way to
+   * know. This is the second place the two halves of the product touch.
+   */
+  serviceStatus: LocationServiceStatus;
+  outOfServiceReason: string | null;
+  outOfServiceSince: string | null;
+  expectedBack: string | null;
+  /** Bookable by a rental group as a meeting/activity space. Beside isDorm, not overloading it. */
+  programSpace: boolean;
+  /** A room's program capacity is not its bed capacity: the Lodge sleeps nobody and seats eighty. */
+  capacitySeated: number | null;
+  /** Server-assigned by a column default, so absent on a locally-built object. */
+  qrToken?: string | null;
   createdAt: string;
   updatedAt: string;
 }
+export type LocationServiceStatus = 'in_service' | 'out_of_service' | 'limited';
 export interface LocationCategory {
   id: string;
   campId: string;
@@ -47,7 +70,28 @@ export interface BuildingDetail {
   yearBuilt: number | null;
 }
 
+/** @deprecated The recurring checkbox never generated anything. See {@link WorkSchedule}. */
 export type RecurringInterval = 'daily' | 'weekly' | 'monthly' | 'annually';
+
+/**
+ * Which crew owns a piece of work.
+ *
+ * A column rather than a module: housekeeping is "the same as maintenance just coloured
+ * differently", which is an enum. It is a filter default and a colour, NEVER a permission —
+ * gating work by trade would rebuild the staff-visibility trap that once hid a reporter's own
+ * issue from them.
+ */
+export type Trade = 'maintenance' | 'housekeeping' | 'grounds' | 'kitchen' | 'it';
+
+export const TRADES: Trade[] = ['maintenance', 'housekeeping', 'grounds', 'kitchen', 'it'];
+
+export const TRADE_LABELS: Record<Trade, string> = {
+  maintenance: 'Maintenance',
+  housekeeping: 'Housekeeping',
+  grounds: 'Grounds',
+  kitchen: 'Kitchen',
+  it: 'Tech',
+};
 
 export interface ActivityEntry {
   id: string;
@@ -57,8 +101,14 @@ export interface ActivityEntry {
   timestamp: string;
 }
 
-/** Where an issue came in from. Null means unknown, not web. */
-export type IssueSource = 'web' | 'ios' | 'public';
+/**
+ * Where a piece of work came in from. Null means unknown, not web.
+ *
+ * Five sources now, and the season review counts by this — which is what proves the sticker
+ * programme worked, or that it did not.
+ */
+export type IssueSource =
+  | 'web' | 'ios' | 'public' | 'qr' | 'routine' | 'retreat' | 'session' | 'module';
 
 export interface Issue {
   id: string;
@@ -70,18 +120,45 @@ export interface Issue {
   status: IssueStatus;
   assigneeId: string | null;
   reportedById: string | null;
+  /** @deprecated 2026-09-02. Not written, not shown — an estimate typed under time pressure is fiction. */
   estimatedCostDisplay: string | null;
+  /** @deprecated 2026-09-02. See estimatedCostDisplay. */
   estimatedCostValue: number | null;
+  /** The only real money figure in the module. Optional, admin-only, and what lets the season
+   *  review say "the Gator cost $2,340 across nine work orders" — a replace-it argument. */
   actualCost: number | null;
   photoUrl: string | null;
   dueDate: string | null;
+  /** @deprecated 2026-09-02. Migrated into WorkSchedule; the checkbox never generated anything. */
   isRecurring: boolean;
+  /** @deprecated 2026-09-02. See isRecurring. */
   recurringInterval: RecurringInterval | null;
   isPublicReport: boolean;
   reporterName: string | null;
   reporterContact: string | null;
   /** Which client logged this. Null on rows predating the column, show nothing, don't guess. */
   source: IssueSource | null;
+
+  // ── Campground ─────────────────────────────────────────────────────────────
+  trade: Trade;
+  /** Work against a *thing*. The central idea of a CMMS and what makes repair-vs-replace possible. */
+  assetId: string | null;
+  /** Dispatched out. Camps do not fix the commercial dishwasher themselves. */
+  vendorId: string | null;
+  /** Set when this is one occurrence of a routine rather than a one-off. */
+  scheduleId: string | null;
+  /** Set when a rental group's approved space request generated this. The seam. */
+  retreatSpaceRequestId: string | null;
+  retreatId: string | null;
+  /** Optional, off by default. A salaried summer crew does not clock in. */
+  minutesSpent: number | null;
+  /** First assignment only — measures the queue, not the churn. Stamped by a DB trigger. */
+  assignedAt: string | null;
+  /** Stamped by a DB trigger, and cleared on reopen because it was then never closed. */
+  resolvedAt: string | null;
+  /** Handed to a public reporter on the success screen so they can see what happened. */
+  reporterToken: string | null;
+
   createdAt: string;
   updatedAt: string;
   activityLog: ActivityEntry[];
@@ -430,6 +507,8 @@ export interface CampAsset {
   lifejacketCount: number | null;
   createdAt: string;
   updatedAt: string;
+  /** Opaque token on this asset's sticker. Server-assigned, so absent on a locally-built object. */
+  qrToken?: string | null;
 }
 
 export interface AssetCheckout {
@@ -1170,8 +1249,9 @@ export interface Retreat {
   campId: string;
   groupName: string;
   groupType: string;               // synagogue | corporate | youth | alumni | family | school | other
-  arrivalDate: string;
-  departureDate: string;
+  /** Null only while status is 'inquiry'. A DB check constraint enforces that. */
+  arrivalDate: string | null;
+  departureDate: string | null;
   headcount: number;
   pricingModel: RetreatPricingModel;
   ratePerPersonNight: number | null;
@@ -1196,6 +1276,22 @@ export interface Retreat {
   /** Aggregate counts, e.g. { vegetarian: 4, gluten_free: 2, kosher: 0, nut_allergy: 1 }. */
   dietaryFlags: Record<string, number> | null;
   notes: string | null;
+
+  // ── Pipeline ───────────────────────────────────────────────────────────────
+  // Deliberately not a separate CRM: a camp has fifteen to forty groups a year, not four
+  // thousand leads, and a kanban with next-actions plus a contact log is the entire job.
+  leadStage: LeadStage;
+  leadSource: string | null;
+  lostReason: string | null;
+  /** The single most important field in any small pipeline. Without it, a CRM is just a list. */
+  nextAction: string | null;
+  nextActionOn: string | null;
+  ownerId: string | null;
+  estimatedValue: number | null;
+  /** "Any weekend in October." Free text on purpose — parsing it discards what they said. */
+  dateFlexibility: string | null;
+  /** The raw paste an intake draft was extracted from, kept so provenance survives. */
+  intakeNotes: string | null;
   /** Secret token for the guest portal link (no password). */
   portalToken: string;
   menuPublished: boolean;
@@ -1350,6 +1446,11 @@ export interface RetreatCharge {
   qty: number;
   unitRate: number;
   amount: number;
+  /** Which catalogue extra this came from, when it came from one. Joining on the description
+   *  works only until a camp renames "Linen service", so the review reads this instead. */
+  addonId: string | null;
+  /** The group asked for it in the portal rather than the camp adding it. */
+  requestedByGuest: boolean;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -1390,6 +1491,12 @@ export interface RetreatInvoice {
   lineItems: RetreatInvoiceLine[];
   issuedAt: string;
   createdBy: string | null;
+  /** Stripe Checkout session. The money is the CAMP's — Connect, so it settles to them. */
+  stripeSessionId: string | null;
+  paymentLinkUrl: string | null;
+  paymentLinkExpiresAt: string | null;
+  paidAt: string | null;
+  amountPaid: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -1930,3 +2037,508 @@ export interface PlanAnswerValue {
 
 /** Plan answers for one camp and season, keyed by PlanQuestion.key. */
 export type PlanAnswers = Record<string, PlanAnswerValue>;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Campground
+// ═══════════════════════════════════════════════════════════════════════════════
+// The work half: one queue, two crews, five ways in. Everything below hangs off `issues`,
+// which is deliberately still called that in the database — the module was renamed in the UI
+// only, because renaming a table thirteen surfaces and an iOS app read from is pure risk.
+
+/** A contractor the camp dispatches work to. */
+export interface ServiceVendor {
+  id: string;
+  campId: string;
+  name: string;
+  trade: string | null;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  accountNumber: string | null;
+  /** Compliance reads this: several obligations are satisfied by a third party's annual visit. */
+  insuranceExpiry: string | null;
+  notes: string | null;
+  lastUsedOn: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Where a trade's work lands by default.
+ *
+ * The highest-value row in the whole module. An untriaged queue is why CMMS rollouts die: a
+ * housekeeping report that sits unassigned until an admin notices it is a report nobody acts on.
+ */
+export interface WorkRouting {
+  campId: string;
+  trade: Trade;
+  defaultStaffGroupId: string | null;
+  defaultAssigneeId: string | null;
+  updatedAt: string;
+}
+
+export type Cadence =
+  | 'daily' | 'weekly' | 'monthly' | 'annually'
+  | 'season_relative' | 'on_turnover' | 'meter';
+
+export const CADENCE_LABELS: Record<Cadence, string> = {
+  daily: 'Every day',
+  weekly: 'Every week',
+  monthly: 'Every month',
+  annually: 'Every year',
+  season_relative: 'Relative to opening day',
+  on_turnover: 'On every turnover',
+  meter: 'By hours or miles',
+};
+
+/**
+ * A routine: recurring work, done properly this time.
+ *
+ * An issue is an EVENT; a recurrence is a TEMPLATE. The old boolean on the event could not say
+ * "every third Tuesday, housekeeping, only between June and August, with these eleven steps" —
+ * which is why it generated nothing for its entire life.
+ *
+ * Occurrences are materialized as real issues rather than computed, because a virtual occurrence
+ * cannot be assigned, photographed, commented on, checklisted or counted in the season review.
+ */
+export interface WorkSchedule {
+  id: string;
+  campId: string;
+  title: string;
+  description: string | null;
+  trade: Trade;
+  priority: Priority;
+  locationIds: string[];
+  locations: string[];
+  assetId: string | null;
+  assigneeId: string | null;
+  staffGroupId: string | null;
+  vendorId: string | null;
+  checklistTemplateId: string | null;
+
+  cadence: Cadence;
+  intervalCount: number;
+  /** 0 = Sunday. Weekly only. */
+  byWeekday: number[] | null;
+  byMonthday: number | null;
+  anchorDate: string | null;
+  daysRelativeToOpening: number | null;
+  meterInterval: number | null;
+  meterLastAt: number | null;
+  /** Which existing reading this counts against — camp_assets already tracks both. */
+  meterKind: 'hours' | 'odometer';
+
+  /** Without a window, a daily routine runs in January and the whole queue stops being trusted. */
+  activeFrom: string | null;
+  activeUntil: string | null;
+  generateAheadDays: number;
+  rescheduleFrom: 'due_date' | 'completed_at';
+
+  lastGeneratedOn: string | null;
+  /**
+   * How many cycles this routine is behind.
+   *
+   * Only ONE open occurrence exists per schedule at a time: if last week's is still open when
+   * this week's comes due, the open one is bumped and this counter goes up. Stacking duplicates
+   * is how every recurring-task system earns itself a mute inside a month.
+   */
+  missedCount: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChecklistTemplateItem {
+  text: string;
+  note?: string;
+  /** Use sparingly. "Beds made" on a rental turnover earns one; "took out the trash" does not. */
+  requiresPhoto?: boolean;
+}
+
+export interface WorkChecklistTemplate {
+  id: string;
+  campId: string;
+  name: string;
+  trade: Trade;
+  items: ChecklistTemplateItem[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One checkable step on a work order. Rows, not jsonb, because each is done by a named person. */
+export interface IssueChecklistItem {
+  id: string;
+  campId: string;
+  issueId: string;
+  position: number;
+  text: string;
+  note: string | null;
+  requiresPhoto: boolean;
+  isDone: boolean;
+  doneBy: string | null;
+  doneByName: string | null;
+  doneAt: string | null;
+  photoUrl: string | null;
+  createdAt: string;
+}
+
+/**
+ * A human message on a work order.
+ *
+ * Rendered in ONE timeline with the activity events, never in a second tab — a "History" tab
+ * beside a "Comments" tab is exactly the interface where messages go to be missed.
+ */
+export interface IssueComment {
+  id: string;
+  campId: string;
+  issueId: string;
+  /** Null means the public reporter, who has no account. */
+  authorId: string | null;
+  authorName: string;
+  body: string;
+  photoUrls: string[];
+  /** Off by default: a camp talking to itself must not accidentally publish that to a scanner. */
+  visibleToReporter: boolean;
+  createdAt: string;
+  editedAt: string | null;
+  deletedAt: string | null;
+}
+
+/** What a QR scan resolves to. Returned by an anon RPC that exposes display fields only. */
+export interface QrTarget {
+  campId: string;
+  campName: string;
+  campSlug: string;
+  logoUrl: string | null;
+  kind: 'location' | 'asset';
+  targetId: string;
+  targetName: string;
+  targetPath: string | null;
+}
+
+/** The draft that comes back from a photo, a voice transcript, or both. Never filed unseen. */
+export interface WorkOrderDraft {
+  readable: boolean;
+  confidence: number;
+  title: string;
+  description: string;
+  trade: Trade;
+  priority: Priority | null;
+  locationId: string | null;
+  assetId: string | null;
+  assigneeId: string | null;
+  notes: string;
+  questions: string[];
+  error?: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Rentals
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export type SpaceRequestStatus = 'requested' | 'approved' | 'declined' | 'countered';
+export type SpaceLayout = 'theater' | 'rounds' | 'classroom' | 'open' | 'other';
+
+export const LAYOUT_LABELS: Record<SpaceLayout, string> = {
+  theater: 'Theater rows',
+  rounds: 'Rounds',
+  classroom: 'Classroom',
+  open: 'Open floor',
+  other: 'Something else',
+};
+
+/**
+ * A group asking for a room, and the work that follows from saying yes.
+ *
+ * One row per space PER DAY rather than a date range, for two reasons: a reset between a Friday
+ * session and a Saturday session is two jobs, and conflicts are per-day. Times are text, because
+ * camps run on "after dinner", not on ISO timestamps.
+ */
+export interface RetreatSpaceRequest {
+  id: string;
+  campId: string;
+  retreatId: string;
+  locationId: string;
+  dayDate: string;
+  startLabel: string | null;
+  endLabel: string | null;
+  purpose: string | null;
+  expectedCount: number | null;
+  layout: SpaceLayout;
+  layoutOther: string | null;
+  /** The group's words, verbatim. The camp adds beside it, never edits it. */
+  setupNotes: string | null;
+  campNotes: string | null;
+  status: SpaceRequestStatus;
+  responseMessage: string | null;
+  respondedBy: string | null;
+  respondedAt: string | null;
+  /** The set-up work order approval generated. */
+  workOrderId: string | null;
+  /** The strike. Camps forget it every time, so the system creates it with the set-up. */
+  strikeOrderId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** What the camp sees at the moment of approving. Warnings, plus exactly one hard stop. */
+export interface SpaceRequestConflicts {
+  doubleBooked: { retreat: string; purpose: string | null; start: string | null }[];
+  alsoADorm: boolean;
+  housedThatNight: string[];
+  buildingHousingOthers: string[];
+  outOfService: boolean;
+  outOfServiceReason: string | null;
+  expectedBack: string | null;
+  overCapacity: boolean;
+  capacitySeated: number | null;
+}
+
+export type LeadStage = 'new' | 'qualifying' | 'proposal' | 'contract_out' | 'won' | 'lost';
+
+export const LEAD_STAGES: LeadStage[] = ['new', 'qualifying', 'proposal', 'contract_out', 'won', 'lost'];
+
+export const LEAD_STAGE_LABELS: Record<LeadStage, string> = {
+  new: 'New enquiry',
+  qualifying: 'Qualifying',
+  proposal: 'Proposal out',
+  contract_out: 'Contract out',
+  won: 'Booked',
+  lost: 'Lost',
+};
+
+export interface RetreatContact {
+  id: string;
+  campId: string;
+  retreatId: string;
+  name: string;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
+  isPrimary: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TouchpointKind = 'call' | 'email' | 'meeting' | 'site_visit' | 'note';
+
+export interface RetreatTouchpoint {
+  id: string;
+  campId: string;
+  retreatId: string;
+  kind: TouchpointKind;
+  occurredAt: string;
+  summary: string;
+  byUserId: string | null;
+  byName: string | null;
+  createdAt: string;
+}
+
+export type AddonUnit = 'per_person' | 'per_night' | 'per_person_night' | 'per_unit' | 'flat';
+
+export const ADDON_UNIT_LABELS: Record<AddonUnit, string> = {
+  per_person: 'Per person',
+  per_night: 'Per night',
+  per_person_night: 'Per person, per night',
+  per_unit: 'Each',
+  flat: 'Flat fee',
+};
+
+/** The only upsell surface in the product. */
+export interface RetreatAddon {
+  id: string;
+  campId: string;
+  name: string;
+  description: string | null;
+  unit: AddonUnit;
+  rate: number;
+  /** Whether the guest portal offers it, or it is camp-side only. */
+  guestSelectable: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ProposalStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined' | 'expired';
+
+/**
+ * The document that wins the booking.
+ *
+ * `viewedAt` alone justifies this table — knowing they opened it on Tuesday changes the
+ * follow-up call.
+ */
+export interface RetreatProposal {
+  id: string;
+  campId: string;
+  retreatId: string;
+  version: number;
+  lineItems: RetreatInvoiceLine[];
+  total: number;
+  validUntil: string | null;
+  terms: string | null;
+  intro: string | null;
+  status: ProposalStatus;
+  sentAt: string | null;
+  viewedAt: string | null;
+  acceptedAt: string | null;
+  acceptedByName: string | null;
+  declinedAt: string | null;
+  declineReason: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** What the intake endpoint returns from pasted call notes or an email thread. */
+export interface RetreatIntakeDraft {
+  groupName: string | null;
+  groupType: string | null;
+  contacts: { name: string; role?: string; email?: string; phone?: string }[];
+  arrivalDate: string | null;
+  departureDate: string | null;
+  dateFlexibility: string | null;
+  headcount: number | null;
+  mealsWanted: string | null;
+  spacesMentioned: string[];
+  specialRequests: string | null;
+  estimatedValue: number | null;
+  leadSource: string | null;
+  /** What the notes do not answer. Output, not failure — it becomes the follow-up email. */
+  questions: string[];
+  /** The exact sentence each field came from. Without it, people re-read the email anyway. */
+  provenance: Record<string, string>;
+  replyDraft: string | null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Notifications, sessions, reviews
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export type MessageState = 'scheduled' | 'sending' | 'sent' | 'cancelled' | 'failed';
+
+/**
+ * One queued automated message.
+ *
+ * An outbox rather than a cron job that sends, because the planner re-runs nightly and CANCELS
+ * anything whose condition stopped being true. The worst email this product could send is
+ * "please submit your rooming" the morning after they submitted it.
+ */
+export interface ScheduledMessage {
+  id: string;
+  campId: string;
+  subjectType: 'retreat' | 'work_order' | 'compliance';
+  subjectId: string;
+  ruleKey: string;
+  recipientKind: 'guest' | 'camp' | 'assignee' | 'admin';
+  toEmail: string;
+  toName: string | null;
+  replyTo: string | null;
+  subject: string;
+  bodyHtml: string;
+  sendAfter: string;
+  state: MessageState;
+  suppressedReason: string | null;
+  sentAt: string | null;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Camp-wide sessions. Mirrored from commissary_sessions until that module moves onto this. */
+export interface CampSession {
+  id: string;
+  campId: string;
+  sourceId: string | null;
+  name: string;
+  startDate: string;
+  endDate: string;
+  camperCount: number;
+  staffCount: number;
+  isActive: boolean;
+}
+
+/** The shapes the two review RPCs return. Computed in Postgres, never in the browser. */
+export interface SeasonReview {
+  from: string;
+  to: string;
+  volume: {
+    reported: number; closed: number; open: number;
+    by_trade: Record<string, number>;
+    by_week: { week: string; reported: number; closed: number }[];
+  };
+  timing: {
+    trade: string; priority: string;
+    median_hours_to_assign: number | null;
+    median_hours_to_close: number | null;
+    sample: number;
+  }[];
+  locations: { location: string; count: number; open_days: number; cost: number }[];
+  assets: { asset: string; count: number; cost: number; days_out: number }[];
+  workload: {
+    name: string; closed: number; still_open: number;
+    median_hours_to_close: number | null; minutes_logged: number;
+  }[];
+  sources: Record<string, number>;
+  routines: { active: number; generated: number; behind: { title: string; cycles: number }[] };
+  carry_over: {
+    id: string; title: string; trade: string; priority: string;
+    location: string | null; age_days: number; status: string;
+  }[];
+  money: { recorded_cost: number; with_cost: number };
+}
+
+export interface RentalsReview {
+  from: string;
+  to: string;
+  occupancy: {
+    beds_available: number; nights: number;
+    bed_nights_available: number; bed_nights_sold: number;
+    by_month: { month: string; bed_nights: number }[];
+    out_of_service_beds: number;
+  };
+  revenue: {
+    invoiced: number; collected: number; outstanding: number;
+    addons: { name: string; times_sold: number; revenue: number }[];
+    by_group: { group: string; invoiced: number; people: number }[];
+  };
+  pipeline: {
+    inquiries: number; proposals_sent: number; won: number; lost: number;
+    median_days_to_win: number | null;
+    lost_reasons: Record<string, number>;
+  };
+  where_groups_come_from: {
+    by_source: Record<string, number>; returning: number; total: number;
+  };
+  cost_to_host: {
+    group: string; budgeted: number; actual: number;
+    work_orders: number; work_minutes: number; work_cost: number;
+  }[];
+  feedback: {
+    average_overall: number | null; responses: number;
+    would_not_return: { group: string; comment: string | null; overall: number | null }[];
+  };
+}
+
+/** One screen where both products are visibly the same product. */
+export interface PropertyCalendar {
+  sessions: { id: string; name: string; start: string; end: string; people: number }[];
+  retreats: {
+    id: string; group: string; start: string; end: string;
+    people: number; status: string; lead_stage: string;
+  }[];
+  space_bookings: {
+    id: string; space: string; day: string; group: string;
+    status: string; purpose: string | null;
+  }[];
+  out_of_service: {
+    id: string; name: string; reason: string | null;
+    since: string | null; expected_back: string | null; kind: string;
+  }[];
+  /** A departure and an arrival on the same day with eleven cabins to turn is a staffing call. */
+  turnover_days: { day: string; departing: number; arriving: number; rooms_to_turn: number }[];
+}

@@ -13,6 +13,8 @@ import type {
   RetreatChangeRequest, RetreatCost, RetreatCharge, RetreatPayment, RetreatIssue,
   RetreatChecklistItem, RetreatScheduleItem, RetreatFeedback, RetreatReminder, MealPeriod,
   RetreatInvoice, RetreatInvoiceLine,
+  RetreatSpaceRequest, RetreatContact, RetreatTouchpoint, RetreatProposal, RetreatAddon,
+  ScheduledMessage, SpaceRequestConflicts, RetreatIntakeDraft,
 } from './types';
 
 type Row = Record<string, unknown>;
@@ -24,7 +26,7 @@ export function rowToRetreat(r: Row): Retreat {
   return {
     id: r.id as string, campId: r.camp_id as string,
     groupName: r.group_name as string, groupType: (r.group_type as string) ?? 'other',
-    arrivalDate: r.arrival_date as string, departureDate: r.departure_date as string,
+    arrivalDate: s(r.arrival_date), departureDate: s(r.departure_date),
     headcount: Number(r.headcount ?? 0),
     pricingModel: (r.pricing_model as Retreat['pricingModel']) ?? 'per_person_night',
     ratePerPersonNight: n(r.rate_per_person_night), flatRate: n(r.flat_rate),
@@ -38,6 +40,13 @@ export function rowToRetreat(r: Row): Retreat {
     housingSubmittedAt: s(r.housing_submitted_at), housingSubmittedBy: s(r.housing_submitted_by),
     dietaryFlags: (r.dietary_flags as Record<string, number>) ?? null,
     notes: s(r.notes), portalToken: r.portal_token as string,
+    // Pipeline. Rows written before these columns existed are real bookings, not leads, so an
+    // absent stage reads as 'won' rather than dropping every existing retreat into a funnel.
+    leadStage: (r.lead_stage as Retreat['leadStage']) ?? 'won',
+    leadSource: s(r.lead_source), lostReason: s(r.lost_reason),
+    nextAction: s(r.next_action), nextActionOn: s(r.next_action_on),
+    ownerId: s(r.owner_id), estimatedValue: n(r.estimated_value),
+    dateFlexibility: s(r.date_flexibility), intakeNotes: s(r.intake_notes),
     menuPublished: Boolean(r.menu_published), changeRequestsEnabled: Boolean(r.change_requests_enabled),
     feedbackOpens: s(r.feedback_opens),
     createdAt: r.created_at as string, updatedAt: r.updated_at as string,
@@ -71,7 +80,7 @@ function rowToCost(r: Row): RetreatCost {
   return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, category: r.category as string, budgeted: Number(r.budgeted ?? 0), actual: n(r.actual), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
 }
 function rowToCharge(r: Row): RetreatCharge {
-  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, description: r.description as string, qty: Number(r.qty ?? 1), unitRate: Number(r.unit_rate ?? 0), amount: Number(r.amount ?? 0), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, description: r.description as string, qty: Number(r.qty ?? 1), unitRate: Number(r.unit_rate ?? 0), amount: Number(r.amount ?? 0), addonId: s(r.addon_id), requestedByGuest: Boolean(r.requested_by_guest), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
 }
 function rowToPayment(r: Row): RetreatPayment {
   return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, paidOn: r.paid_on as string, amount: Number(r.amount ?? 0), method: s(r.method), kind: (r.kind as RetreatPayment['kind']) ?? 'payment', note: s(r.note), createdAt: r.created_at as string };
@@ -100,6 +109,79 @@ function rowToInvoice(r: Row): RetreatInvoice {
     discount: Number(r.discount ?? 0), discountNote: s(r.discount_note),
     lineItems: Array.isArray(r.line_items) ? (r.line_items as RetreatInvoiceLine[]) : [],
     issuedAt: (r.issued_at as string) ?? (r.created_at as string), createdBy: s(r.created_by),
+    stripeSessionId: s(r.stripe_session_id), paymentLinkUrl: s(r.payment_link_url),
+    paymentLinkExpiresAt: s(r.payment_link_expires_at), paidAt: s(r.paid_at),
+    amountPaid: Number(r.amount_paid ?? 0),
+    createdAt: r.created_at as string, updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToSpaceRequest(r: Row): RetreatSpaceRequest {
+  return {
+    id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string,
+    locationId: r.location_id as string, dayDate: r.day_date as string,
+    startLabel: s(r.start_label), endLabel: s(r.end_label), purpose: s(r.purpose),
+    expectedCount: n(r.expected_count),
+    layout: (r.layout as RetreatSpaceRequest['layout']) ?? 'open',
+    layoutOther: s(r.layout_other),
+    setupNotes: s(r.setup_notes), campNotes: s(r.camp_notes),
+    status: (r.status as RetreatSpaceRequest['status']) ?? 'requested',
+    responseMessage: s(r.response_message), respondedBy: s(r.responded_by),
+    respondedAt: s(r.responded_at),
+    workOrderId: s(r.work_order_id), strikeOrderId: s(r.strike_order_id),
+    createdAt: r.created_at as string, updatedAt: r.updated_at as string,
+  };
+}
+function rowToContact(r: Row): RetreatContact {
+  return {
+    id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string,
+    name: r.name as string, role: s(r.role), email: s(r.email), phone: s(r.phone),
+    isPrimary: Boolean(r.is_primary), notes: s(r.notes),
+    createdAt: r.created_at as string, updatedAt: r.updated_at as string,
+  };
+}
+function rowToTouchpoint(r: Row): RetreatTouchpoint {
+  return {
+    id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string,
+    kind: (r.kind as RetreatTouchpoint['kind']) ?? 'note',
+    occurredAt: r.occurred_at as string, summary: r.summary as string,
+    byUserId: s(r.by_user_id), byName: s(r.by_name), createdAt: r.created_at as string,
+  };
+}
+function rowToProposal(r: Row): RetreatProposal {
+  return {
+    id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string,
+    version: Number(r.version ?? 1),
+    lineItems: Array.isArray(r.line_items) ? (r.line_items as RetreatInvoiceLine[]) : [],
+    total: Number(r.total ?? 0), validUntil: s(r.valid_until),
+    terms: s(r.terms), intro: s(r.intro),
+    status: (r.status as RetreatProposal['status']) ?? 'draft',
+    sentAt: s(r.sent_at), viewedAt: s(r.viewed_at), acceptedAt: s(r.accepted_at),
+    acceptedByName: s(r.accepted_by_name), declinedAt: s(r.declined_at),
+    declineReason: s(r.decline_reason), createdBy: s(r.created_by),
+    createdAt: r.created_at as string, updatedAt: r.updated_at as string,
+  };
+}
+function rowToAddon(r: Row): RetreatAddon {
+  return {
+    id: r.id as string, campId: r.camp_id as string, name: r.name as string,
+    description: s(r.description), unit: (r.unit as RetreatAddon['unit']) ?? 'per_person',
+    rate: Number(r.rate ?? 0), guestSelectable: Boolean(r.guest_selectable),
+    isActive: r.is_active !== false, sortOrder: Number(r.sort_order ?? 0),
+    createdAt: r.created_at as string, updatedAt: r.updated_at as string,
+  };
+}
+function rowToScheduledMessage(r: Row): ScheduledMessage {
+  return {
+    id: r.id as string, campId: r.camp_id as string,
+    subjectType: (r.subject_type as ScheduledMessage['subjectType']) ?? 'retreat',
+    subjectId: r.subject_id as string, ruleKey: r.rule_key as string,
+    recipientKind: (r.recipient_kind as ScheduledMessage['recipientKind']) ?? 'guest',
+    toEmail: r.to_email as string, toName: s(r.to_name), replyTo: s(r.reply_to),
+    subject: r.subject as string, bodyHtml: r.body_html as string,
+    sendAfter: r.send_after as string,
+    state: (r.state as ScheduledMessage['state']) ?? 'scheduled',
+    suppressedReason: s(r.suppressed_reason), sentAt: s(r.sent_at), error: s(r.error),
     createdAt: r.created_at as string, updatedAt: r.updated_at as string,
   };
 }
@@ -112,18 +194,27 @@ export interface RetreatData {
   costs: RetreatCost[]; charges: RetreatCharge[]; payments: RetreatPayment[]; issues: RetreatIssue[];
   checklist: RetreatChecklistItem[]; scheduleItems: RetreatScheduleItem[]; feedback: RetreatFeedback[]; reminders: RetreatReminder[];
   invoices: RetreatInvoice[];
+  spaceRequests: RetreatSpaceRequest[];
+  contacts: RetreatContact[];
+  touchpoints: RetreatTouchpoint[];
+  proposals: RetreatProposal[];
+  addons: RetreatAddon[];
+  /** What is queued to go out. Nothing sends silently — the camp can see and cancel it. */
+  outbox: ScheduledMessage[];
 }
 
 const RETREAT_TABLES = [
   'retreats', 'retreat_spaces', 'retreat_housing', 'retreat_housing_versions', 'retreat_guests', 'retreat_documents',
   'retreat_meals', 'retreat_change_requests', 'retreat_costs', 'retreat_charges', 'retreat_payments',
   'retreat_issues', 'retreat_checklist', 'retreat_schedule_items', 'retreat_feedback', 'retreat_reminders',
-  'retreat_invoices',
+  'retreat_invoices', 'retreat_space_requests', 'retreat_contacts', 'retreat_touchpoints',
+  'retreat_proposals', 'retreat_addon_catalog', 'scheduled_messages',
 ];
 
 async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
   const q = (t: string) => supabase.from(t).select('*').eq('camp_id', campId);
-  const [re, sp, ho, hv, gst, docs, meals, cr, costs, charges, pays, iss, chk, sched, fb, rem, inv] = await Promise.all([
+  const [re, sp, ho, hv, gst, docs, meals, cr, costs, charges, pays, iss, chk, sched, fb, rem, inv,
+         sreq, cont, touch, props, addons, obox] = await Promise.all([
     q('retreats').order('arrival_date', { ascending: true }),
     q('retreat_spaces').order('sort_order', { ascending: true }),
     q('retreat_housing').order('sort_order', { ascending: true }),
@@ -141,8 +232,15 @@ async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
     q('retreat_feedback').order('received_at', { ascending: false }),
     q('retreat_reminders').order('sent_at', { ascending: false }),
     q('retreat_invoices').order('issued_at', { ascending: false }),
+    q('retreat_space_requests').order('day_date', { ascending: true }),
+    q('retreat_contacts').order('created_at', { ascending: true }),
+    q('retreat_touchpoints').order('occurred_at', { ascending: false }),
+    q('retreat_proposals').order('version', { ascending: false }),
+    q('retreat_addon_catalog').order('sort_order', { ascending: true }),
+    q('scheduled_messages').order('send_after', { ascending: true }),
   ]);
-  assertLoaded('retreats', re, sp, ho, hv, gst, docs, meals, cr, costs, charges, pays, iss, chk, sched, fb, rem, inv);
+  assertLoaded('retreats', re, sp, ho, hv, gst, docs, meals, cr, costs, charges, pays, iss, chk,
+               sched, fb, rem, inv, sreq, cont, touch, props, addons, obox);
   return {
     retreats: (re.data ?? []).map((r) => rowToRetreat(r as Row)),
     spaces: (sp.data ?? []).map((r) => rowToSpace(r as Row)),
@@ -161,6 +259,12 @@ async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
     feedback: (fb.data ?? []).map((r) => rowToFeedback(r as Row)),
     reminders: (rem.data ?? []).map((r) => rowToReminder(r as Row)),
     invoices: (inv.data ?? []).map((r) => rowToInvoice(r as Row)),
+    spaceRequests: (sreq.data ?? []).map((r) => rowToSpaceRequest(r as Row)),
+    contacts: (cont.data ?? []).map((r) => rowToContact(r as Row)),
+    touchpoints: (touch.data ?? []).map((r) => rowToTouchpoint(r as Row)),
+    proposals: (props.data ?? []).map((r) => rowToProposal(r as Row)),
+    addons: (addons.data ?? []).map((r) => rowToAddon(r as Row)),
+    outbox: (obox.data ?? []).map((r) => rowToScheduledMessage(r as Row)),
   };
 }
 
@@ -206,6 +310,10 @@ export function retreatToRow(r: Retreat): Row {
     final_headcount: r.finalHeadcount, final_headcount_at: r.finalHeadcountAt, final_headcount_by: r.finalHeadcountBy,
     housing_submitted_at: r.housingSubmittedAt, housing_submitted_by: r.housingSubmittedBy,
     dietary_flags: r.dietaryFlags, notes: r.notes, portal_token: r.portalToken,
+    lead_stage: r.leadStage, lead_source: r.leadSource, lost_reason: r.lostReason,
+    next_action: r.nextAction, next_action_on: r.nextActionOn, owner_id: r.ownerId,
+    estimated_value: r.estimatedValue, date_flexibility: r.dateFlexibility,
+    intake_notes: r.intakeNotes,
     menu_published: r.menuPublished, change_requests_enabled: r.changeRequestsEnabled, feedback_opens: r.feedbackOpens,
     created_at: r.createdAt, updated_at: r.updatedAt,
   };
@@ -252,8 +360,8 @@ export const dbAddCost = (x: RetreatCost) => ins('retreat_costs', { id: x.id, ca
 export const dbUpdateCost = (x: RetreatCost) => upd('retreat_costs', x.id, { category: x.category, budgeted: x.budgeted, actual: x.actual, sort_order: x.sortOrder });
 export const dbDeleteCost = (id: string) => del('retreat_costs', id);
 
-export const dbAddCharge = (x: RetreatCharge) => ins('retreat_charges', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, description: x.description, qty: x.qty, unit_rate: x.unitRate, amount: x.amount, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
-export const dbUpdateCharge = (x: RetreatCharge) => upd('retreat_charges', x.id, { description: x.description, qty: x.qty, unit_rate: x.unitRate, amount: x.amount, sort_order: x.sortOrder });
+export const dbAddCharge = (x: RetreatCharge) => ins('retreat_charges', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, description: x.description, qty: x.qty, unit_rate: x.unitRate, amount: x.amount, addon_id: x.addonId, requested_by_guest: x.requestedByGuest, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbUpdateCharge = (x: RetreatCharge) => upd('retreat_charges', x.id, { description: x.description, qty: x.qty, unit_rate: x.unitRate, amount: x.amount, addon_id: x.addonId, sort_order: x.sortOrder });
 export const dbDeleteCharge = (id: string) => del('retreat_charges', id);
 
 export const dbAddPayment = (x: RetreatPayment) => ins('retreat_payments', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, paid_on: x.paidOn, amount: x.amount, method: x.method, kind: x.kind, note: x.note, created_at: x.createdAt });
@@ -278,6 +386,8 @@ export const dbDeleteFeedback = (id: string) => del('retreat_feedback', id);
 
 export const dbAddReminder = (x: RetreatReminder) => ins('retreat_reminders', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, reminder_type: x.reminderType, message: x.message, sent_by: x.sentBy, sent_at: x.sentAt });
 
+// amount_paid / paid_at / stripe_session_id are written by the Stripe webhook with the service
+// role, never from a form. A camp editing an invoice must not be able to declare it paid.
 export const dbAddInvoice = (x: RetreatInvoice) => ins('retreat_invoices', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, kind: x.kind, number: x.number, amount: x.amount, note: x.note, due_date: x.dueDate, status: x.status, discount: x.discount, discount_note: x.discountNote, line_items: x.lineItems, issued_at: x.issuedAt, created_by: x.createdBy, created_at: x.createdAt, updated_at: x.updatedAt });
 export const dbUpdateInvoice = (x: RetreatInvoice) => upd('retreat_invoices', x.id, { kind: x.kind, number: x.number, amount: x.amount, note: x.note, due_date: x.dueDate, status: x.status, discount: x.discount, discount_note: x.discountNote, line_items: x.lineItems });
 export const dbDeleteInvoice = (id: string) => del('retreat_invoices', id);
@@ -320,4 +430,208 @@ export async function dbRegeneratePortalToken(retreatId: string): Promise<string
   const { data, error } = await supabase.rpc('regenerate_portal_token', { p_retreat_id: retreatId });
   if (error) { campError('regenerate portal token', error.message); return null; }
   return (data as string) ?? null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// The seam: a group's request becomes the property team's work
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const spaceRequestRow = (x: RetreatSpaceRequest): Row => ({
+  location_id: x.locationId, day_date: x.dayDate,
+  start_label: x.startLabel, end_label: x.endLabel, purpose: x.purpose,
+  expected_count: x.expectedCount, layout: x.layout, layout_other: x.layoutOther,
+  setup_notes: x.setupNotes, camp_notes: x.campNotes, status: x.status,
+  response_message: x.responseMessage,
+  // work_order_id / strike_order_id are set by approve_space_request(), never from a form. A
+  // work order that lost its link would be work nobody could trace back to a group.
+});
+
+export const dbAddSpaceRequest = (x: RetreatSpaceRequest) =>
+  ins('retreat_space_requests', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, ...spaceRequestRow(x) });
+export const dbUpdateSpaceRequest = (x: RetreatSpaceRequest) =>
+  upd('retreat_space_requests', x.id, spaceRequestRow(x));
+export const dbDeleteSpaceRequest = (id: string) => del('retreat_space_requests', id);
+
+/**
+ * What the camp needs to see before saying yes.
+ *
+ * Warnings, plus exactly one hard stop (the space is out of service). Approval is a judgement
+ * call — some camps genuinely do run two groups through the Lodge on the same afternoon — so the
+ * system's job is to surface the collision, not to refuse it.
+ */
+export async function fetchSpaceRequestConflicts(id: string): Promise<SpaceRequestConflicts | null> {
+  const { data, error } = await supabase.rpc('space_request_conflicts', { p_request_id: id });
+  if (error) { campError('space request conflicts', error.message); return null; }
+  const d = data as Record<string, unknown> | null;
+  if (!d) return null;
+  return {
+    doubleBooked: (d.double_booked as SpaceRequestConflicts['doubleBooked']) ?? [],
+    alsoADorm: Boolean(d.also_a_dorm),
+    housedThatNight: (d.housed_that_night as string[]) ?? [],
+    buildingHousingOthers: (d.building_housing_others as string[]) ?? [],
+    outOfService: Boolean(d.out_of_service),
+    outOfServiceReason: (d.out_of_service_reason as string) ?? null,
+    expectedBack: (d.expected_back as string) ?? null,
+    overCapacity: Boolean(d.over_capacity),
+    capacitySeated: (d.capacity_seated as number) ?? null,
+  };
+}
+
+/**
+ * Approve, and generate the work.
+ *
+ * TWO work orders, not one: set-up before, strike after. Camps forget the strike every time, and
+ * a rental turnover is set-up plus tear-down without exception. Returns the ids so the UI can
+ * link straight through to the work it just created.
+ */
+export async function dbApproveSpaceRequest(
+  id: string, campNotes: string | null, message: string | null,
+): Promise<{ setupId: string; strikeId: string | null } | string> {
+  const { data, error } = await supabase.rpc('approve_space_request',
+    { p_request_id: id, p_camp_notes: campNotes, p_message: message });
+  if (error) { campError('approve space request', error.message); return error.message; }
+  const d = data as Record<string, unknown>;
+  return { setupId: d.setup_id as string, strikeId: (d.strike_id as string) ?? null };
+}
+
+export async function dbDeclineSpaceRequest(id: string, message: string | null) {
+  const { error } = await supabase.from('retreat_space_requests')
+    .update({ status: 'declined', response_message: message, responded_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) campError('decline space request', error.message);
+}
+
+/**
+ * The bigger job: one housekeeping work order per assigned room when a group departs.
+ *
+ * The same generator as the program-space seam, pointed at retreat_housing instead. Idempotent,
+ * so running it twice for one departure does not double the crew's list.
+ */
+export async function dbGenerateTurnover(retreatId: string, scope: 'room' | 'building' = 'room'): Promise<number> {
+  const { data, error } = await supabase.rpc('generate_turnover_work',
+    { p_retreat_id: retreatId, p_scope: scope });
+  if (error) { campError('generate turnover', error.message); return 0; }
+  return (data as number) ?? 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Pipeline
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const contactRow = (x: RetreatContact): Row => ({
+  name: x.name, role: x.role, email: x.email, phone: x.phone,
+  is_primary: x.isPrimary, notes: x.notes,
+});
+export const dbAddContact = (x: RetreatContact) =>
+  ins('retreat_contacts', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, ...contactRow(x) });
+export const dbUpdateContact = (x: RetreatContact) => upd('retreat_contacts', x.id, contactRow(x));
+export const dbDeleteContact = (id: string) => del('retreat_contacts', id);
+
+export const dbAddTouchpoint = (x: RetreatTouchpoint) => ins('retreat_touchpoints', {
+  id: x.id, camp_id: CID(), retreat_id: x.retreatId, kind: x.kind,
+  occurred_at: x.occurredAt, summary: x.summary, by_user_id: x.byUserId, by_name: x.byName,
+});
+export const dbDeleteTouchpoint = (id: string) => del('retreat_touchpoints', id);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Proposals and add-ons
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const proposalRow = (x: RetreatProposal): Row => ({
+  version: x.version, line_items: x.lineItems, total: x.total, valid_until: x.validUntil,
+  terms: x.terms, intro: x.intro, status: x.status, sent_at: x.sentAt,
+  created_by: x.createdBy,
+  // viewed_at / accepted_at are written when the GROUP acts, through the portal RPC. A camp
+  // marking its own proposal "viewed" would destroy the one signal this table exists for.
+});
+export const dbAddProposal = (x: RetreatProposal) =>
+  ins('retreat_proposals', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, ...proposalRow(x) });
+export const dbUpdateProposal = (x: RetreatProposal) => upd('retreat_proposals', x.id, proposalRow(x));
+export const dbDeleteProposal = (id: string) => del('retreat_proposals', id);
+
+/** Build the lines from the rate card and existing charges, rather than asking anyone to retype them. */
+export async function fetchProposalLines(retreatId: string): Promise<RetreatInvoiceLine[]> {
+  const { data, error } = await supabase.rpc('build_proposal_lines', { p_retreat_id: retreatId });
+  if (error) { campError('build proposal lines', error.message); return []; }
+  return (data as RetreatInvoiceLine[]) ?? [];
+}
+
+const addonRow = (x: RetreatAddon): Row => ({
+  name: x.name, description: x.description, unit: x.unit, rate: x.rate,
+  guest_selectable: x.guestSelectable, is_active: x.isActive, sort_order: x.sortOrder,
+});
+export const dbAddAddon = (x: RetreatAddon) => ins('retreat_addon_catalog', { id: x.id, camp_id: CID(), ...addonRow(x) });
+export const dbUpdateAddon = (x: RetreatAddon) => upd('retreat_addon_catalog', x.id, addonRow(x));
+export const dbDeleteAddon = (id: string) => del('retreat_addon_catalog', id);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Payments (Stripe Connect — the money is the camp's, not ours)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function fetchPaymentsStatus(): Promise<{ connected: boolean; chargesEnabled: boolean } | null> {
+  const { data, error } = await supabase.rpc('camp_payments_status', { p_camp_id: CID() });
+  if (error) { campError('payments status', error.message); return null; }
+  const d = data as Record<string, unknown> | null;
+  if (!d) return null;
+  return { connected: Boolean(d.connected), chargesEnabled: Boolean(d.charges_enabled) };
+}
+
+/** Start (or resume) Stripe onboarding. Returns a URL to send the camp admin to. */
+export async function startStripeOnboarding(): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke('stripe-connect', { body: { action: 'onboard' } });
+  if (error) { campError('stripe onboard', error.message); return null; }
+  return (data as { url?: string })?.url ?? null;
+}
+
+export async function refreshStripeStatus(): Promise<void> {
+  const { error } = await supabase.functions.invoke('stripe-connect', { body: { action: 'status' } });
+  if (error) campError('stripe status', error.message);
+}
+
+/** Mint a Checkout link for one invoice. Funds settle to the camp's own connected account. */
+export async function createPaymentLink(invoiceId: string): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke('stripe-connect',
+    { body: { action: 'payment_link', invoiceId } });
+  if (error) { campError('payment link', error.message); return null; }
+  return (data as { url?: string })?.url ?? null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Intake and the outbox
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Turn pasted call notes or an email thread into a draft retreat.
+ *
+ * Never auto-creates. Every field comes back with the sentence it was taken from, because
+ * without that people re-read the email to check and the feature has saved nothing.
+ */
+export async function draftRetreatFromNotes(text: string, campName: string): Promise<RetreatIntakeDraft | null> {
+  const { data, error } = await supabase.functions.invoke('retreat-intake', {
+    body: { text, today: new Date().toISOString().slice(0, 10), campName },
+  });
+  if (error) { campError('retreat intake', error.message); return null; }
+  return (data as RetreatIntakeDraft) ?? null;
+}
+
+/** Re-plan the outbox now rather than waiting for tonight. Used after a deadline changes. */
+export async function dbReplanMessages(): Promise<number> {
+  const { data, error } = await supabase.rpc('plan_retreat_messages', { p_camp_id: CID() });
+  if (error) { campError('plan messages', error.message); return 0; }
+  return (data as number) ?? 0;
+}
+
+/** Cancel one queued message. Nothing sends silently, and nothing is unstoppable. */
+export async function dbCancelMessage(id: string, reason = 'cancelled by the camp') {
+  const { error } = await supabase.from('scheduled_messages')
+    .update({ state: 'cancelled', suppressed_reason: reason, updated_at: new Date().toISOString() })
+    .eq('id', id).eq('state', 'scheduled');
+  if (error) campError('cancel message', error.message);
+}
+
+export async function dbEditQueuedMessage(id: string, subject: string, bodyHtml: string) {
+  const { error } = await supabase.from('scheduled_messages')
+    .update({ subject, body_html: bodyHtml, updated_at: new Date().toISOString() })
+    .eq('id', id).eq('state', 'scheduled');
+  if (error) campError('edit queued message', error.message);
 }

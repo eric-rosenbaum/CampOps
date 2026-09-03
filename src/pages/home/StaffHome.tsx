@@ -75,7 +75,7 @@ export function StaffHome() {
       <div className="bg-white rounded-xl border border-border mb-5">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 className="text-[14px] font-semibold text-forest">Assigned to me</h2>
-          <Link to="/issues" className="text-[12px] text-ink-soft hover:text-forest flex items-center gap-1">
+          <Link to="/campground" className="text-[12px] text-ink-soft hover:text-forest flex items-center gap-1">
             All issues <ChevronRight className="w-3 h-3" />
           </Link>
         </div>

@@ -16,6 +16,16 @@ export function rowToLocation(r: Row): CampLocation {
     bedCapacity: r.bed_capacity == null ? null : Number(r.bed_capacity),
     accessible: Boolean(r.accessible), sortOrder: Number(r.sort_order ?? 0),
     isActive: Boolean(r.is_active), notes: (r.notes as string) ?? null,
+    // Out of service is read by rental availability and the rooming board, not merely displayed:
+    // a cabin down for repairs must not be bookable. Defaults to in_service so a row written
+    // before the column existed reads as usable rather than mysteriously unavailable.
+    serviceStatus: (r.service_status as CampLocation['serviceStatus']) ?? 'in_service',
+    outOfServiceReason: (r.out_of_service_reason as string) ?? null,
+    outOfServiceSince: (r.out_of_service_since as string) ?? null,
+    expectedBack: (r.expected_back as string) ?? null,
+    programSpace: Boolean(r.program_space),
+    capacitySeated: r.capacity_seated == null ? null : Number(r.capacity_seated),
+    qrToken: (r.qr_token as string) ?? null,
     createdAt: r.created_at as string, updatedAt: r.updated_at as string,
   };
 }
@@ -35,6 +45,11 @@ function locationToRow(l: CampLocation): Row {
     id: l.id, camp_id: getCampId(), parent_id: l.parentId, name: l.name, category_id: l.categoryId,
     is_dorm: l.isDorm, retreat_available: l.retreatAvailable, bed_capacity: l.bedCapacity,
     accessible: l.accessible, sort_order: l.sortOrder, is_active: l.isActive, notes: l.notes,
+    service_status: l.serviceStatus, out_of_service_reason: l.outOfServiceReason,
+    out_of_service_since: l.outOfServiceSince, expected_back: l.expectedBack,
+    program_space: l.programSpace, capacity_seated: l.capacitySeated,
+    // qr_token is deliberately absent: the database mints it on insert and it must never be
+    // overwritten by a client, or every printed sticker for that location stops resolving.
   };
 }
 

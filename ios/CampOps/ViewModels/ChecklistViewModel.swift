@@ -11,11 +11,27 @@ final class ChecklistViewModel: ObservableObject {
     var preTasks:  [ChecklistTask] { tasks.filter { $0.phase == .pre } }
     var postTasks: [ChecklistTask] { tasks.filter { $0.phase == .post } }
 
+    /// True when the list on screen came off the disk rather than the server.
+    @Published private(set) var isShowingCachedCopy = false
+
     func load() async {
         isLoading = true; errorMessage = nil
         async let t = DataService.shared.fetchTasks()
         async let s = DataService.shared.fetchLatestSeason()
-        if let fetched = try? await t { tasks = fetched }
+        if let fetched = try? await t {
+            tasks = fetched
+            isShowingCachedCopy = false
+            await SyncEngine.shared.cacheFetched(fetched, table: SyncTable.checklistTasks)
+        } else {
+            // Same reasoning as the issues list: "we could not ask" must not be drawn as
+            // "there is nothing to do".
+            let campId = AuthManager.shared.currentCamp?.id ?? ""
+            let cached = campId.isEmpty ? [] : await OfflineReads.tasks(campId: campId)
+            if !cached.isEmpty {
+                tasks = cached
+                isShowingCachedCopy = true
+            }
+        }
         if let fetched = try? await s { season = fetched }
         isLoading = false
     }
@@ -27,20 +43,20 @@ final class ChecklistViewModel: ObservableObject {
         if let s = await s { season = s }
     }
 
+    /// Ticking off an opening/closing task. Queued, because half the pre-season list happens in
+    /// cabins and boat houses at the edge of the property.
+    ///
+    /// The activity row is NOT queued alongside it: `checklist_activity` is not one of the
+    /// tables `sync_push` accepts, so it is written directly and allowed to fail. Losing an
+    /// audit line while keeping the status change is the right way round; the reverse is not.
     func updateTaskStatus(_ task: ChecklistTask, to status: ChecklistStatus, by user: CampUser) async {
         guard let idx = tasks.firstIndex(where: { $0.id == task.id }) else { return }
-        let old = tasks[idx].status
         tasks[idx].status = status; tasks[idx].updatedAt = Date()
         let entry = ActivityEntry(id: UUID().uuidString, userId: user.id,
                                   userName: user.name, action: "Changed status to \(status.displayName)")
         tasks[idx].activity.append(entry)
-        do {
-            try await DataService.shared.updateTask(tasks[idx])
-            try await DataService.shared.insertTaskActivity(entry, taskId: task.id)
-        } catch {
-            tasks[idx].status = old; tasks[idx].activity.removeLast()
-            errorMessage = error.localizedDescription
-        }
+        await SyncEngine.shared.queueTaskStatus(taskId: task.id, title: task.title, status: status)
+        try? await DataService.shared.insertTaskActivity(entry, taskId: task.id)
     }
 
     func assign(task: ChecklistTask, to assignee: CampUser?, by actor: CampUser) async {
@@ -100,20 +116,16 @@ final class ChecklistViewModel: ObservableObject {
 
     func takeTask(_ task: ChecklistTask, by user: CampUser) async {
         guard let idx = tasks.firstIndex(where: { $0.id == task.id }) else { return }
-        let old = tasks[idx]
         tasks[idx].assigneeId = user.id
         tasks[idx].status = .inProgress
         tasks[idx].updatedAt = Date()
         let entry = ActivityEntry(id: UUID().uuidString, userId: user.id, userName: user.name,
                                   action: "\(user.name) took this task")
         tasks[idx].activity.append(entry)
-        do {
-            try await DataService.shared.updateTask(tasks[idx])
-            try await DataService.shared.insertTaskActivity(entry, taskId: task.id)
-        } catch {
-            tasks[idx] = old
-            errorMessage = error.localizedDescription
-        }
+        await SyncEngine.shared.queueTaskAssignment(
+            taskId: task.id, title: task.title, assigneeId: user.id, status: .inProgress
+        )
+        try? await DataService.shared.insertTaskActivity(entry, taskId: task.id)
     }
 
     func upsertSeason(_ season: Season) async {

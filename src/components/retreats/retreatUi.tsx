@@ -23,11 +23,41 @@ export function fmtDateFull(d: string | null): string {
   if (!d) return '-';
   return new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
-export function fmtRange(a: string, b: string): string {
+/**
+ * A date range, tolerating an enquiry that does not have one yet.
+ *
+ * A lead says "some weekend in October" before it says October 10th, so `arrivalDate` and
+ * `departureDate` are null until it becomes a real booking (a check constraint enforces that
+ * they are present the moment it does). Every formatter here accepts null rather than making
+ * fifty call sites each decide what to do about it — and "Dates TBC" is the honest rendering,
+ * not a dash that looks like a bug.
+ */
+export function fmtRange(a: string | null, b: string | null): string {
+  if (!a && !b) return 'Dates TBC';
   return `${fmtDate(a)} – ${fmtDate(b)}`;
 }
-export function nights(a: string, b: string): number {
+export function nights(a: string | null, b: string | null): number {
+  if (!a || !b) return 0;
   return Math.max(0, Math.round((new Date(`${b}T00:00:00`).getTime() - new Date(`${a}T00:00:00`).getTime()) / 86_400_000));
+}
+
+/**
+ * Sort by arrival, with undated enquiries last.
+ *
+ * They are not "earliest"; they are unscheduled, and putting them at the top of a season view
+ * would bury the groups actually arriving.
+ */
+export function byArrival(a: { arrivalDate: string | null }, b: { arrivalDate: string | null }): number {
+  if (!a.arrivalDate && !b.arrivalDate) return 0;
+  if (!a.arrivalDate) return 1;
+  if (!b.arrivalDate) return -1;
+  return a.arrivalDate.localeCompare(b.arrivalDate);
+}
+
+/** A retreat far enough along to have dates. Narrows the type for date-dependent screens. */
+export type BookedRetreat = Retreat & { arrivalDate: string; departureDate: string };
+export function isBooked(r: Retreat): r is BookedRetreat {
+  return Boolean(r.arrivalDate && r.departureDate);
 }
 export function daysUntil(d: string | null): number | null {
   if (!d) return null;

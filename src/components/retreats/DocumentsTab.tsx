@@ -83,7 +83,7 @@ function overallBadge(docs: RetreatDocument[], retreat: Retreat) {
   const coi = docs.find((d) => d.docType === 'coi');
   const coiMissing = !coi || coi.status === 'missing';
   if (coiMissing) {
-    return <Badge tone="alert">COI missing, due {fmtDate(coiDueDate(retreat.arrivalDate))}</Badge>;
+    return <Badge tone="alert">COI missing, due {fmtDate(retreat.arrivalDate ? coiDueDate(retreat.arrivalDate) : null)}</Badge>;
   }
   if (docs.some((d) => d.status === 'pending' || d.status === 'missing')) {
     return <Badge tone="warn">Documents pending</Badge>;
@@ -165,7 +165,7 @@ export function DocumentsTab() {
                     </p>
                     <p className={`text-[11px] mt-0.5 ${missing ? 'text-red-text' : 'text-ink-soft'}`}>
                       {missing && doc.docType === 'coi'
-                        ? `Required: $1M general liability · Pinecrest named additional insured · Must be received by ${fmtDateFull(coiDueDate(retreat.arrivalDate))}`
+                        ? `Required: $1M general liability · Pinecrest named additional insured · Must be received by ${fmtDateFull(retreat.arrivalDate ? coiDueDate(retreat.arrivalDate) : null)}`
                         : metaLine(doc)}
                     </p>
                   </div>

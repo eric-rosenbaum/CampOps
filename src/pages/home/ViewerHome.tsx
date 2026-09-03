@@ -56,7 +56,7 @@ export function ViewerHome() {
               <AlertTriangle className="w-4 h-4 text-ink-soft" />
               <h2 className="text-[14px] font-semibold text-forest">Open Issues</h2>
             </div>
-            <Link to="/issues" className="text-[12px] text-ink-soft hover:text-forest flex items-center gap-1">
+            <Link to="/campground" className="text-[12px] text-ink-soft hover:text-forest flex items-center gap-1">
               View all <ChevronRight className="w-3 h-3" />
             </Link>
           </div>

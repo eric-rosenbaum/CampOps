@@ -577,22 +577,74 @@ export async function fetchPaymentsStatus(): Promise<{ connected: boolean; charg
 }
 
 /** Start (or resume) Stripe onboarding. Returns a URL to send the camp admin to. */
+/**
+ * The real error out of an edge function.
+ *
+ * `functions.invoke` rejects with a generic FunctionsHttpError whose `.message` is only
+ * "Edge Function returned a non-2xx status code" — the actual sentence is in the response body.
+ * Reporting the generic one told us "Stripe could not be reached" for a plain 400 about a missing
+ * field, and sent us looking at the network instead of at the call. `src/lib/email.ts` already
+ * unwraps it this way; Stripe should too.
+ */
+async function fnErrorMessage(error: { message?: string; context?: Response }, fallback: string): Promise<string> {
+  try {
+    const ctx = error?.context;
+    if (ctx && typeof ctx.json === 'function') {
+      const body = await ctx.json();
+      if (body?.error) return String(body.error);
+    }
+  } catch { /* fall through to the generic message */ }
+  return error?.message || fallback;
+}
+
+/**
+ * Where Stripe sends the browser back to.
+ *
+ * The function will fall back to the request's Origin header, but sending it explicitly is what
+ * makes the return land on the right host when the app is opened from a preview URL rather than
+ * the canonical one.
+ */
+const appOrigin = () => (typeof window === 'undefined' ? undefined : window.location.origin);
+
+/**
+ * Start (or resume) Stripe onboarding for THIS camp.
+ *
+ * `campId` is required by the function and is not optional: `onboard` and `status` both act on a
+ * camp, and the function re-checks is_camp_admin() against whichever camp it is given rather than
+ * trusting the caller's session to imply one. Omitting it returns a 400 that surfaces in the UI
+ * as "Stripe could not be reached", which is how this was missed until it ran for real.
+ */
 export async function startStripeOnboarding(): Promise<string | null> {
-  const { data, error } = await supabase.functions.invoke('stripe-connect', { body: { action: 'onboard' } });
-  if (error) { campError('stripe onboard', error.message); return null; }
+  const { data, error } = await supabase.functions.invoke('stripe-connect',
+    { body: { action: 'onboard', campId: CID(), origin: appOrigin() } });
+  if (error) {
+    const msg = await fnErrorMessage(error, 'Could not start Stripe onboarding.');
+    campError('stripe onboard', msg);
+    throw new Error(msg);
+  }
   return (data as { url?: string })?.url ?? null;
 }
 
 export async function refreshStripeStatus(): Promise<void> {
-  const { error } = await supabase.functions.invoke('stripe-connect', { body: { action: 'status' } });
-  if (error) campError('stripe status', error.message);
+  const { error } = await supabase.functions.invoke('stripe-connect',
+    { body: { action: 'status', campId: CID() } });
+  if (error) campError('stripe status', await fnErrorMessage(error, 'Could not read Stripe status.'));
 }
 
-/** Mint a Checkout link for one invoice. Funds settle to the camp's own connected account. */
+/**
+ * Mint a Checkout link for one invoice. Funds settle to the camp's own connected account.
+ *
+ * No campId here on purpose: the function derives the camp from the invoice, so an admin of one
+ * camp cannot mint a link against another camp's invoice by pairing their own campId with it.
+ */
 export async function createPaymentLink(invoiceId: string): Promise<string | null> {
   const { data, error } = await supabase.functions.invoke('stripe-connect',
-    { body: { action: 'payment_link', invoiceId } });
-  if (error) { campError('payment link', error.message); return null; }
+    { body: { action: 'payment_link', invoiceId, origin: appOrigin() } });
+  if (error) {
+    const msg = await fnErrorMessage(error, 'Could not create a payment link.');
+    campError('payment link', msg);
+    throw new Error(msg);
+  }
   return (data as { url?: string })?.url ?? null;
 }
 

@@ -41,7 +41,16 @@ export function PaymentsCard() {
   async function connect() {
     setBusy('connect');
     setError(null);
-    const url = await startStripeOnboarding();
+    let url: string | null = null;
+    try {
+      url = await startStripeOnboarding();
+    } catch (e) {
+      // Show what actually went wrong. "Stripe could not be reached" is true of a network
+      // failure and a lie about a 400, and the lie sends you debugging the wrong thing.
+      setBusy(null);
+      setError(e instanceof Error ? e.message : 'Could not start Stripe onboarding.');
+      return;
+    }
     setBusy(null);
     if (!url) {
       setError('Stripe could not be reached. Try again in a moment.');

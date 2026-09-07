@@ -119,7 +119,11 @@ export function LogIssueModal() {
   function applyDraft(draft: WorkOrderDraft) {
     setValue('title', draft.title);
     setValue('description', draft.description);
-    setValue('trade', draft.trade);
+    // Only a trade this camp actually has. The database has a CHECK constraint on this column, so
+    // an unrecognised value is not a cosmetic problem — it is a row that draws optimistically and
+    // is then rejected on the wire, which the user sees as "a change didn't save". Guarded here as
+    // well as in the function because the two deploy independently.
+    if (draft.trade && (TRADES as string[]).includes(draft.trade)) setValue('trade', draft.trade);
     if (draft.priority) setValue('priority', draft.priority);
     if (draft.assigneeId) setValue('assigneeId', draft.assigneeId);
     if (draft.assetId) setValue('assetId', draft.assetId);

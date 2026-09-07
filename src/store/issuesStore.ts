@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { campLog } from '@/lib/campLog';
+import { campLog, campError } from '@/lib/campLog';
 import type { Issue, ActivityEntry, IssueStatus, Priority } from '@/lib/types';
 import { addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import {
@@ -274,15 +274,42 @@ function commitIssue(id: string) {
   });
 }
 
+/**
+ * Whether a rejection is worth trying again.
+ *
+ * Postgres class 23 is integrity (check, foreign key, unique, not-null) and class 42 is a broken
+ * statement (undefined column, bad type). Both mean the row as written will NEVER be accepted, so
+ * retrying is not resilience — it is a loop that re-reports the same failure every five seconds.
+ * That is exactly what turned one bad trade value into "4 changes didn't save" and climbing.
+ */
+function isPermanentRejection(error: unknown): boolean {
+  const code = (error as { code?: string } | null)?.code;
+  return typeof code === 'string' && (code.startsWith('23') || code.startsWith('42'));
+}
+
+type WriteOutcome = 'saved' | 'retry' | 'rejected';
+
 // One-shot write attempt for a single issue. Used by addIssue for the immediate
 // attempt and by the queue processor for retries.
-async function writeIssueNow(issue: Issue): Promise<boolean> {
+async function writeIssueNow(issue: Issue): Promise<WriteOutcome> {
   const { error } = await dbUpsertIssue(issue);
   if (!error) {
     commitIssue(issue.id);
-    return true;
+    return 'saved';
   }
-  return false;
+  if (isPermanentRejection(error)) {
+    // Give up, and take the optimistic row with it. Leaving it on screen would be the precise
+    // failure the write-failure banner exists to prevent: work that looks saved and is not.
+    campError('[CampOps] issue permanently rejected, dropping', issue.id, error);
+    dequeueIssue(issue.id);
+    useIssuesStore.setState((state) => {
+      const rest = { ...state.pendingIssues };
+      delete rest[issue.id];
+      return { pendingIssues: rest, issues: state.issues.filter((i) => i.id !== issue.id) };
+    });
+    return 'rejected';
+  }
+  return 'retry';
 }
 
 // ─── Queue processor ───────────────────────────────────────────────────────────
@@ -302,8 +329,8 @@ async function processQueue() {
     if (queued.length === 0) return;
     campLog(`[CampOps] queueProcessor: ${queued.length} pending write(s)`);
     for (const issue of queued) {
-      const ok = await writeIssueNow(issue);
-      if (!ok) campLog(`[CampOps] queueProcessor: write failed for ${issue.id}, will retry`);
+      const outcome = await writeIssueNow(issue);
+      if (outcome === 'retry') campLog(`[CampOps] queueProcessor: write failed for ${issue.id}, will retry`);
     }
   } finally {
     _processorRunning = false;

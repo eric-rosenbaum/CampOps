@@ -24,10 +24,21 @@ const json = (body: unknown, status = 200) =>
 /** Matches the CHECK constraint on issues.priority. Anything else is a bug, not a suggestion. */
 const PRIORITIES = ["urgent", "high", "normal"] as const;
 
-/** How a camp actually splits its own work. Free text here would make the field unsortable. */
+/**
+ * The five crews, and they must stay identical to `issues_trade_check` in the database and to
+ * TRADES in src/lib/types.ts.
+ *
+ * This list used to be a ten-value taxonomy left over from an earlier design — electrical,
+ * plumbing, hvac, carpentry and so on. Only "grounds" overlapped with what the schema actually
+ * allows, so the function validated a draft against the wrong set, happily returned
+ * trade: "carpentry", and every work order created from a capture was rejected by the CHECK
+ * constraint. The client had already drawn the row optimistically, so it looked saved and then
+ * failed on the wire — and the write queue's retries turned one failure into four.
+ *
+ * A trade is a CREW here, not a skill. If that changes, all three places change together.
+ */
 const TRADES = [
-  "electrical", "plumbing", "hvac", "carpentry", "appliance",
-  "grounds", "vehicle", "pool", "technology", "general",
+  "maintenance", "housekeeping", "grounds", "kitchen", "it",
 ] as const;
 
 /**
@@ -200,7 +211,15 @@ Reuse their nouns. If they say "screen door", write "screen door", not "insect b
 call a building "Bunk 7", do not call it "Cabin 7". Titles are short and specific: what is wrong
 and where, under about 60 characters.
 
-"trade" must be one of: ${TRADES.join(", ")} — or null if the input does not settle it.
+"trade" is the CREW who will do the work, one of: ${TRADES.join(", ")} — or null if the input
+does not settle it. They are broad on purpose, so pick by who gets dispatched, not by skill:
+  maintenance  — repairs and building fabric: plumbing, electrical, heating, carpentry, appliances,
+                 vehicles and equipment. Most work lands here.
+  housekeeping — cleaning, linen, turnovers, bathrooms, rubbish.
+  grounds      — outside: mowing, trees, paths, docks, fences, snow.
+  kitchen      — the kitchen and food service, including its own equipment.
+  it           — network, wifi, phones, computers, cameras.
+Never invent a value outside that list.
 
 QUESTIONS — this field is an asset, not an admission of failure.
 "questions" holds the things the input could not settle, phrased for the person who will read the
@@ -222,7 +241,7 @@ outside the object:
   "confidence": 0.0,
   "title": "short specific title",
   "description": "what is wrong, what it affects, and anything needed to work on it",
-  "trade": "plumbing",
+  "trade": "maintenance",
   "priority": "normal",
   "locationId": null,
   "assetId": null,

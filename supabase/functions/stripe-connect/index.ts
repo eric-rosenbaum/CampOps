@@ -10,8 +10,22 @@
 //
 // Every action requires a camp ADMIN. Staff can send an invoice; only an admin can connect the
 // camp's bank account or mint a payment link against it.
-import Stripe from "npm:stripe@17";
+// v22: Accounts v2 (`stripe.v2.core.*`) does not exist in v17.
+import Stripe from "npm:stripe@22";
 import { createClient } from "npm:@supabase/supabase-js@2";
+
+/**
+ * Accounts v2 lives behind a preview API version. Pinned here rather than on the client, because
+ * the Checkout Session below is a v1 call and should keep the SDK's own default.
+ */
+const ACCOUNTS_V2_VERSION = "2026-08-26.preview";
+
+/** Only the fields we read. The SDK's v2 types are still preview-shaped. */
+type V2Account = {
+  id: string;
+  configuration?: { merchant?: { capabilities?: { card_payments?: { status?: string } } } };
+  requirements?: { entries?: { minimum_deadline?: { status?: string } }[] };
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -194,8 +208,21 @@ Deno.serve(async (req) => {
       if (!camp.stripe_account_id) {
         return json({ connected: false, chargesEnabled: false, detailsSubmitted: false });
       }
-      const account = await stripe.accounts.retrieve(camp.stripe_account_id);
-      const chargesEnabled = account.charges_enabled === true;
+      // Accounts v2. `charges_enabled` is a deprecated v1 field and is NOT the right question:
+      // the answer for a direct-charge merchant is whether the card_payments capability is
+      // active on the merchant configuration. `include` is required or these come back null.
+      const account = await stripe.v2.core.accounts.retrieve(
+        camp.stripe_account_id,
+        { include: ["configuration.merchant", "requirements"] },
+        { apiVersion: ACCOUNTS_V2_VERSION },
+      ) as V2Account;
+      const chargesEnabled =
+        account.configuration?.merchant?.capabilities?.card_payments?.status === "active";
+      // v2 has no `details_submitted`. "Have they finished?" is "is anything still being asked
+      // of them?", which is what the requirements hash actually says.
+      const outstanding = (account.requirements?.entries ?? []).filter((e) =>
+        e?.minimum_deadline?.status === "currently_due" || e?.minimum_deadline?.status === "past_due"
+      ).length;
 
       const patch: Record<string, unknown> = { stripe_charges_enabled: chargesEnabled };
       // stripe_connected_at answers "since when could this camp take money", not "when did we
@@ -211,7 +238,8 @@ Deno.serve(async (req) => {
         // and the interface needs to tell those two states apart.
         connected: true,
         chargesEnabled,
-        detailsSubmitted: account.details_submitted === true,
+        detailsSubmitted: outstanding === 0,
+        requirementsDue: outstanding,
       });
     }
 
@@ -221,16 +249,36 @@ Deno.serve(async (req) => {
 
     let accountId = camp.stripe_account_id as string | null;
     if (!accountId) {
-      const account = await stripe.accounts.create({
-        type: "standard",
-        country: (camp.country as string) || "US",
-        // The admin doing the onboarding is the right prefill; Stripe asks the account owner for
-        // the real business details next, and we never store what they answer.
-        email: userData.user.email ?? undefined,
-        business_profile: { name: camp.name as string },
-        // Lets a Stripe-side support question be traced back to a camp without an export.
-        metadata: { camp_id: camp.id as string },
-      });
+      // Accounts v2. `type: "standard"` and the whole v1 accounts.create path are refused for
+      // new Connect platforms — Stripe returns "no longer recommends Accounts v1".
+      //
+      // The shape below is the SaaS / direct-charge configuration, which is what CampCommand is:
+      // the camp is the merchant of record for its own rental customers, so Stripe bills the
+      // camp its fees and carries the negative-balance risk, and the camp gets a full Stripe
+      // Dashboard because it is running its own business rather than a storefront on ours.
+      // `dashboard` is IMMUTABLE after creation — changing it later means a new account.
+      const account = await stripe.v2.core.accounts.create(
+        {
+          display_name: camp.name as string,
+          // Prefill only. Stripe asks the account owner for the real business details during
+          // onboarding, and we never store what they answer.
+          contact_email: userData.user.email ?? undefined,
+          dashboard: "full",
+          identity: { country: ((camp.country as string) || "US").toLowerCase() },
+          configuration: {
+            merchant: { capabilities: { card_payments: { requested: true } } },
+          },
+          defaults: {
+            currency: "usd",
+            responsibilities: { fees_collector: "stripe", losses_collector: "stripe" },
+            locales: ["en-US"],
+          },
+          // Lets a Stripe-side support question be traced back to a camp without an export.
+          metadata: { camp_id: camp.id as string },
+          include: ["configuration.merchant", "requirements"],
+        },
+        { apiVersion: ACCOUNTS_V2_VERSION },
+      ) as V2Account;
       accountId = account.id;
 
       // Store the id before handing out the link. If this write fails and we returned the link
@@ -246,12 +294,23 @@ Deno.serve(async (req) => {
 
     // Account Links are single-use and expire in minutes, which is why refresh_url exists: Stripe
     // sends the admin back there when the link has gone stale and the app simply asks for another.
-    const link = await stripe.accountLinks.create({
-      account: accountId,
-      refresh_url: `${appOrigin}/settings?stripe=refresh`,
-      return_url: `${appOrigin}/settings?stripe=return`,
-      type: "account_onboarding",
-    });
+    const link = await stripe.v2.core.accountLinks.create(
+      {
+        account: accountId,
+        use_case: {
+          type: "account_onboarding",
+          account_onboarding: {
+            // Up front rather than incremental: a camp that connects in February and discovers
+            // in June that it cannot take a deposit has been failed by the integration.
+            collection_options: { fields: "eventually_due" },
+            configurations: ["merchant"],
+            refresh_url: `${appOrigin}/settings?stripe=refresh`,
+            return_url: `${appOrigin}/settings?stripe=return`,
+          },
+        },
+      },
+      { apiVersion: ACCOUNTS_V2_VERSION },
+    ) as { url: string };
 
     return json({ url: link.url });
   } catch (err) {

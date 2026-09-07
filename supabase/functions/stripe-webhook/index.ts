@@ -9,7 +9,7 @@
 // Deployment note: this endpoint takes no JWT, so it must be deployed with --no-verify-jwt.
 // Because charges are direct charges on connected accounts, register it as a CONNECT webhook —
 // account-scoped events arrive with `event.account` set to the camp's acct_… id.
-import Stripe from "npm:stripe@17";
+import Stripe from "npm:stripe@22";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {

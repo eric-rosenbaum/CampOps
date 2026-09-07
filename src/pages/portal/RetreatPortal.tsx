@@ -611,6 +611,9 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
   const numNights = nights(retreat.arrival_date, retreat.departure_date);
   const isDesktop = useIsDesktop();
   const unlocked = data.unlocked !== false;
+  // Whether the camp can take a card. Every "contact your coordinator to pay" line below is
+  // gated on it: with a working Pay button on screen, that sentence is just wrong.
+  const cardsOn = data.payments_enabled === true;
   const lock = (what: string) => (
     <UnlockPanel token={token} hint={data.verify_email_hint} what={what} onUnlocked={refetch} />
   );
@@ -665,11 +668,11 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
       case 'deposit':
         return (
           <div className="space-y-3">
-            <DepositCard retreat={retreat} />
+            <DepositCard retreat={retreat} cardsOn={cardsOn} />
             {/* Paying online lives inside the deposit step rather than beside it: money is one
                 question, and a second "Pay" step would just be a place to miss. */}
             <PaySection token={token} paymentNote={data.payment_note ?? null} />
-            {invoices.length > 0 && <InvoicesBlock retreat={retreat} invoices={invoices} />}
+            {invoices.length > 0 && <InvoicesBlock retreat={retreat} invoices={invoices} cardsOn={cardsOn} />}
           </div>
         );
       case 'housing':
@@ -950,11 +953,11 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
                           </span>
                         </div>
                       </div>
-                      <p className="text-[11px] text-ink-faint mt-2.5">Payments are handled directly with the camp. Contact your coordinator to pay.</p>
+                      {!cardsOn && <p className="text-[11px] text-ink-faint mt-2.5">Payments are handled directly with the camp. Contact your coordinator to pay.</p>}
                     </div>
                   )}
 
-                  {invoices.length > 0 && <InvoicesBlock retreat={retreat} invoices={invoices} />}
+                  {invoices.length > 0 && <InvoicesBlock retreat={retreat} invoices={invoices} cardsOn={cardsOn} />}
                 </div>
               </div>
             </Section>
@@ -1037,7 +1040,7 @@ function StepRow({ step, open, onClick }: { step: Step; open: boolean; onClick: 
 }
 
 // ─── Deposit card ─────────────────────────────────────────────────────────────
-function DepositCard({ retreat }: { retreat: PortalRetreat }) {
+function DepositCard({ retreat, cardsOn }: { retreat: PortalRetreat; cardsOn: boolean }) {
   if (retreat.deposit_required == null || retreat.deposit_required <= 0) return null;
   const paid = (retreat.deposit_received ?? 0) >= retreat.deposit_required;
   const partial = (retreat.deposit_received ?? 0) > 0 && !paid;
@@ -1067,7 +1070,7 @@ function DepositCard({ retreat }: { retreat: PortalRetreat }) {
               {money(retreat.deposit_required)}
             </span>
           </div>
-          {!paid && <p className="text-[11px] text-ink-faint mt-2.5">Payment is handled directly with the camp. Contact your coordinator to pay.</p>}
+          {!paid && !cardsOn && <p className="text-[11px] text-ink-faint mt-2.5">Payment is handled directly with the camp. Contact your coordinator to pay.</p>}
         </div>
       </div>
     </div>
@@ -1075,7 +1078,7 @@ function DepositCard({ retreat }: { retreat: PortalRetreat }) {
 }
 
 // ─── Invoices block ───────────────────────────────────────────────────────────
-function InvoicesBlock({ retreat, invoices }: { retreat: PortalRetreat; invoices: PortalInvoice[] }) {
+function InvoicesBlock({ retreat, invoices, cardsOn }: { retreat: PortalRetreat; invoices: PortalInvoice[]; cardsOn: boolean }) {
   function download(inv: PortalInvoice) {
     const ok = printInvoice({
       campName: retreat.camp_name ?? 'Camp', groupName: retreat.group_name,
@@ -1117,7 +1120,7 @@ function InvoicesBlock({ retreat, invoices }: { retreat: PortalRetreat; invoices
           </div>
         );
       })}
-      <p className="text-[11px] text-ink-faint px-1">Payment is handled directly with the camp. Contact your coordinator to pay.</p>
+      {!cardsOn && <p className="text-[11px] text-ink-faint px-1">Payment is handled directly with the camp. Contact your coordinator to pay.</p>}
     </div>
   );
 }

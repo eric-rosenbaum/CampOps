@@ -173,7 +173,7 @@ export function ReturnModal() {
           {condition === 'needs_attention' && (
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={createIssue} onChange={(e) => setCreateIssue(e.target.checked)} className="rounded" />
-              <span className="text-body text-forest">Create issue in Issues & Repairs</span>
+              <span className="text-body text-forest">Create work order in Campground</span>
             </label>
           )}
         </div>

@@ -15,7 +15,7 @@ const ROLE_LABELS: Record<CampRole, string> = {
 };
 
 const MODULE_LABELS: Record<keyof StaffGroupModules, string> = {
-  issues_repairs: 'Issues & Repairs',
+  issues_repairs: 'Campground',
   pre_post: 'Pre/Post Camp',
   pool: 'Pool Management',
   safety: 'Compliance',
@@ -119,7 +119,7 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
                 onChange={(e) => setIssuesSeeUnassigned(e.target.checked)}
                 className="w-3.5 h-3.5 accent-forest"
               />
-              <span className="text-[12px] text-forest">Issues & Repairs, can see unassigned issues</span>
+              <span className="text-[12px] text-forest">Campground, can see unassigned work</span>
             </label>
           )}
           {modules.pre_post && (
@@ -394,7 +394,7 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
               {(group.modules.issues_repairs || group.modules.pre_post || group.modules.commissary) && (
                 <div className="mb-3 text-[11px] text-ink-soft space-y-0.5">
                   {group.modules.issues_repairs && (
-                    <p>Issues & Repairs: {group.issuesSeeUnassigned ? 'assigned to them + unassigned' : 'assigned to them only'}</p>
+                    <p>Campground: {group.issuesSeeUnassigned ? 'assigned to them + unassigned' : 'assigned to them only'}</p>
                   )}
                   {group.modules.pre_post && (
                     <p>Pre/Post Camp: {group.prepostSeeUnassigned ? 'assigned to them + unassigned' : 'assigned to them only'}</p>

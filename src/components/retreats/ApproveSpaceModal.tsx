@@ -237,7 +237,7 @@ function WorkOrderLink({ id, label, onOpen }: { id: string; label: string; onOpe
       <ClipboardList className="w-4 h-4 text-sage flex-shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint">{label}</p>
-        <p className="text-[13px] text-forest truncate">{issue?.title ?? 'Open in Issues & Repairs'}</p>
+        <p className="text-[13px] text-forest truncate">{issue?.title ?? 'Open in Campground'}</p>
       </div>
       <ArrowRight className="w-4 h-4 text-ink-faint flex-shrink-0" />
     </Link>

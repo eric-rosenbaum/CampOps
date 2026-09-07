@@ -56,7 +56,7 @@ const US_STATES  = [
   'VA','WA','WV','WI','WY',
 ];
 const MODULE_OPTIONS = [
-  { key: 'issues',     label: 'Issues & Repairs',    desc: 'Track and assign maintenance issues' },
+  { key: 'issues',     label: 'Campground',           desc: 'Work orders, routines, housekeeping and repairs' },
   { key: 'checklists', label: 'Pre/Post Checklists',  desc: 'Opening and closing task lists' },
   { key: 'pool',       label: 'Pool & Waterfront',    desc: 'Chemical readings, inspections, equipment' },
   { key: 'safety',     label: 'Compliance',  desc: 'Permit, safety plan, inspections, staff certifications' },

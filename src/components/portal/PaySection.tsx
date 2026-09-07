@@ -6,8 +6,8 @@
 // the camp's existing payment instructions are shown instead, because a cheque in the post is a
 // perfectly good way to pay a camp and always has been.
 import { useEffect, useState } from 'react';
-import { Wallet, ExternalLink, CheckCircle2 } from 'lucide-react';
-import { supabasePublic, cardClass, btnPrimary } from '@/pages/portal/portalShared';
+import { Wallet, ExternalLink, CheckCircle2, Loader2 } from 'lucide-react';
+import { supabasePublic, portalFnPost, cardClass, btnPrimary } from '@/pages/portal/portalShared';
 import { fmtDateFull } from '@/components/retreats/retreatUi';
 
 interface PayableInvoice {
@@ -50,6 +50,35 @@ function dollars(n: number): string {
 export function PaySection({ token, paymentNote }: Props) {
   const [invoices, setInvoices] = useState<PayableInvoice[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Which invoice is mid-handoff, so its button can say so and cannot be double-clicked. */
+  const [starting, setStarting] = useState<string | null>(null);
+  const [payError, setPayError] = useState<string | null>(null);
+
+  /**
+   * Ask for a fresh checkout link and go there.
+   *
+   * Minted on click rather than stored on the invoice, because a Checkout Session expires within
+   * 24 hours: a link created when the invoice was raised would be dead long before a deposit due
+   * in three weeks is paid. Same tab, not a popup — an async `window.open` is blocked by default,
+   * and Stripe returns the payer to the portal anyway.
+   */
+  async function pay(invoiceId: string) {
+    setStarting(invoiceId);
+    setPayError(null);
+    try {
+      const { url } = await portalFnPost<{ url: string }>('stripe-connect', {
+        action: 'portal_payment_link',
+        token,
+        invoiceId,
+        origin: window.location.origin,
+      });
+      if (!url) throw new Error('No checkout page came back.');
+      window.location.href = url;
+    } catch (e) {
+      setPayError(e instanceof Error ? e.message : 'Could not open the payment page.');
+      setStarting(null);
+    }
+  }
 
   // Guarded async continuation rather than a synchronous effect body.
   useEffect(() => {
@@ -115,28 +144,30 @@ export function PaySection({ token, paymentNote }: Props) {
                   </div>
                 </div>
 
-                {!paid && inv.payable && inv.payment_link_url && (
-                  <a
-                    href={inv.payment_link_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                {!paid && inv.payable && (
+                  <button
+                    type="button"
+                    onClick={() => pay(inv.id)}
+                    disabled={starting !== null}
                     className={`${btnPrimary} w-full mt-3`}
                   >
-                    <ExternalLink className="w-4 h-4" /> Pay {dollars(remaining)} by card
-                  </a>
-                )}
-                {!paid && inv.payable && !inv.payment_link_url && (
-                  // Connected, but this invoice has no link yet. Saying so is better than a
-                  // button that goes nowhere.
-                  <p className="text-[12.5px] text-ink-soft mt-2">
-                    A card payment link for this invoice is being prepared. Please check back shortly,
-                    or contact the camp.
-                  </p>
+                    {starting === inv.id ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Opening secure checkout…</>
+                    ) : (
+                      <><ExternalLink className="w-4 h-4" /> Pay {dollars(remaining)} by card</>
+                    )}
+                  </button>
                 )}
               </li>
             );
           })}
         </ul>
+
+        {payError && (
+          <p className="px-4 py-3 border-t border-border bg-red-bg text-[13px] text-red-text">
+            {payError} You can try again, or contact the camp to pay another way.
+          </p>
+        )}
 
         {/* No Stripe on the camp's side: their own instructions, not a dead button. */}
         {!cardsOn && outstanding.length > 0 && (

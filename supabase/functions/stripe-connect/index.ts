@@ -8,8 +8,16 @@
 // ours, so the money never lands in a platform balance at all. That is also why offboarding is
 // cheap: delete the id and we are out of the loop entirely.
 //
-// Every action requires a camp ADMIN. Staff can send an invoice; only an admin can connect the
-// camp's bank account or mint a payment link against it.
+// Onboarding and status require a camp ADMIN. Minting a checkout link does not, and must not:
+// the person who pays is the GROUP, from their portal, and they have no login here. Their
+// credential is the portal token — the same unguessable string that already lets them see the
+// invoice at all (`portal_payable_invoices`) — so `portal_payment_link` is authorised by proving
+// the invoice belongs to the retreat that token opens. `payment_link` is the admin-side twin, for
+// putting a link in front of a coordinator who is on the phone.
+//
+// The link is minted ON DEMAND rather than when the invoice is raised, because a Checkout Session
+// expires within 24 hours and a deposit is typically due weeks out. Minting at send time would
+// hand every group a link that is dead before they open it.
 // v22: Accounts v2 (`stripe.v2.core.*`) does not exist in v17.
 import Stripe from "npm:stripe@22";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -61,14 +69,138 @@ Deno.serve(async (req) => {
   const secretKey = Deno.env.get("STRIPE_SECRET_KEY");
   if (!secretKey) return json({ error: "Payments are not configured yet (missing STRIPE_SECRET_KEY)." }, 503);
 
-  let action: string, campId: string | undefined, invoiceId: string | undefined, origin: string | undefined;
+  let action: string, campId: string | undefined, invoiceId: string | undefined,
+      origin: string | undefined, token: string | undefined;
   try {
-    ({ action, campId, invoiceId, origin } = await req.json());
+    ({ action, campId, invoiceId, origin, token } = await req.json());
   } catch {
     return json({ error: "Invalid request body." }, 400);
   }
-  if (action !== "onboard" && action !== "status" && action !== "payment_link") {
-    return json({ error: "action must be one of: onboard, status, payment_link." }, 400);
+  const ACTIONS = ["onboard", "status", "payment_link", "portal_payment_link"];
+  if (!ACTIONS.includes(action)) {
+    return json({ error: `action must be one of: ${ACTIONS.join(", ")}.` }, 400);
+  }
+
+  const admin = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  // The SDK's own default API version is the one its bundled types were generated against, so
+  // pinning a string here can only ever disagree with them. `createFetchHttpClient` is required:
+  // the default client wants node's http stack, which this runtime does not provide.
+  const stripe = new Stripe(secretKey, { httpClient: Stripe.createFetchHttpClient() });
+
+  /**
+   * Mint a Checkout Session for one invoice on the camp's own account, and remember it.
+   *
+   * Shared by the admin and portal paths so the two cannot drift: whoever asks, the charge is a
+   * direct charge on the camp's account and the metadata the webhook needs is identical.
+   */
+  async function mintCheckout(
+    invoice: Record<string, unknown>,
+    camp: Record<string, unknown>,
+    appOrigin: string,
+  ): Promise<Response> {
+    if (invoice.status === "void") return json({ error: "That invoice has been voided." }, 400);
+    if (invoice.status === "paid") return json({ error: "That invoice is already paid." }, 400);
+    if (!camp?.stripe_account_id) {
+      return json({ error: "This camp has not connected a Stripe account yet." }, 409);
+    }
+    if (camp.stripe_charges_enabled === false) {
+      return json({ error: "Stripe onboarding for this camp is not finished, so it cannot accept payments yet." }, 409);
+    }
+
+    const outstanding = Number(invoice.amount ?? 0) - Number(invoice.amount_paid ?? 0);
+    if (!(outstanding > 0)) return json({ error: "There is nothing outstanding on that invoice." }, 400);
+    // Stripe works in the smallest currency unit; our invoices are numeric dollars. Rounding
+    // once here, at the boundary, is what keeps a cent from drifting in on every conversion.
+    const amountCents = Math.round(outstanding * 100);
+    if (amountCents < 50) return json({ error: "That balance is below Stripe's minimum charge." }, 400);
+
+    // Guests pay from the portal, so that is where they land afterwards. The portal reads the
+    // query flag only to say thank you — the payment itself is confirmed by the webhook, never
+    // by the browser coming back, which a payer can simply not do.
+    const { data: retreat } = await admin
+      .from("retreats").select("portal_token, group_name, coordinator_email")
+      .eq("id", invoice.retreat_id).maybeSingle();
+    const back = retreat?.portal_token ? `${appOrigin}/portal/${retreat.portal_token}` : `${appOrigin}/retreats`;
+
+    const session = await stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        line_items: [{
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: amountCents,
+            product_data: {
+              name: `${camp.name} · Invoice ${invoice.number}`,
+              description: retreat?.group_name ? `Retreat: ${retreat.group_name}` : undefined,
+            },
+          },
+        }],
+        customer_email: retreat?.coordinator_email || undefined,
+        success_url: `${back}?paid=1`,
+        cancel_url: `${back}?paid=0`,
+        // The webhook has only the session to go on, so everything it needs to record the
+        // payment against the right row has to be carried here.
+        metadata: {
+          invoice_id: String(invoice.id),
+          camp_id: String(invoice.camp_id),
+          retreat_id: String(invoice.retreat_id),
+          invoice_number: String(invoice.number ?? ""),
+        },
+      },
+      // Direct charge on the camp's account: the funds settle in the camp's Stripe balance and
+      // never pass through ours. Stripe's fees come out of the camp's side, as they should.
+      { stripeAccount: camp.stripe_account_id as string },
+    );
+
+    if (!session.url) return json({ error: "Stripe did not return a checkout URL." }, 502);
+
+    const { error: updErr } = await admin.from("retreat_invoices")
+      .update({ stripe_session_id: session.id, payment_link_url: session.url })
+      .eq("id", invoice.id as string);
+    // A stored link is a convenience, not the source of truth — the webhook records the money
+    // either way — so a failed write is logged and the payer still gets their URL.
+    if (updErr) console.error("stripe-connect: could not store session on invoice:", updErr.message);
+
+    return json({ url: session.url, amount: outstanding, expiresAt: session.expires_at ?? null });
+  }
+
+  // ── portal_payment_link ───────────────────────────────────────────────────────────────────
+  // Handled before the login gate, because the payer has no login. Authorised by the portal
+  // token, and scoped by it: the invoice is looked up THROUGH the retreat that token opens, so a
+  // token can only ever mint a link for its own group's invoices.
+  if (action === "portal_payment_link") {
+    if (!token || !invoiceId) return json({ error: "token and invoiceId are required." }, 400);
+
+    const { data: retreat, error: rErr } = await admin
+      .from("retreats").select("id, camp_id").eq("portal_token", token).maybeSingle();
+    if (rErr) return json({ error: "Could not open that portal.", detail: rErr.message }, 500);
+    if (!retreat) return json({ error: "That portal link is not valid." }, 404);
+
+    const { data: invoice, error: invErr } = await admin
+      .from("retreat_invoices").select("*")
+      .eq("id", invoiceId).eq("retreat_id", retreat.id).maybeSingle();
+    if (invErr) return json({ error: "Could not read that invoice.", detail: invErr.message }, 500);
+    if (!invoice) return json({ error: "That invoice does not exist." }, 404);
+
+    const { data: camp, error: campErr } = await admin
+      .from("camps").select("id, name, stripe_account_id, stripe_charges_enabled")
+      .eq("id", invoice.camp_id).maybeSingle();
+    if (campErr) return json({ error: "Could not read the camp.", detail: campErr.message }, 500);
+
+    const appOrigin = safeOrigin(req, origin);
+    if (!appOrigin) return json({ error: "Could not determine where to send you back to." }, 400);
+
+    try {
+      return await mintCheckout(invoice, camp ?? {}, appOrigin);
+    } catch (err) {
+      console.error("stripe-connect portal error:", err instanceof Error ? err.message : err);
+      return json({ error: "Stripe request failed. Please try again." }, 502);
+    }
   }
 
   // The caller's own JWT. Used for identity and the admin check only — never for reading the
@@ -81,16 +213,6 @@ Deno.serve(async (req) => {
   );
   const { data: userData } = await asUser.auth.getUser();
   if (!userData?.user) return json({ error: "Not authorized." }, 401);
-
-  const admin = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
-
-  // The SDK's own default API version is the one its bundled types were generated against, so
-  // pinning a string here can only ever disagree with them. `createFetchHttpClient` is required:
-  // the default client wants node's http stack, which this runtime does not provide.
-  const stripe = new Stripe(secretKey, { httpClient: Stripe.createFetchHttpClient() });
 
   /** is_camp_admin() reads auth.uid() internally, so it must be called with the caller's client. */
   async function requireCampAdmin(id: string): Promise<boolean> {
@@ -117,79 +239,16 @@ Deno.serve(async (req) => {
       if (!(await requireCampAdmin(invoice.camp_id))) {
         return json({ error: "Only a camp admin can create a payment link." }, 403);
       }
-      if (invoice.status === "void") return json({ error: "That invoice has been voided." }, 400);
-      if (invoice.status === "paid") return json({ error: "That invoice is already paid." }, 400);
 
       const { data: camp, error: campErr } = await admin
         .from("camps").select("id, name, stripe_account_id, stripe_charges_enabled")
         .eq("id", invoice.camp_id).maybeSingle();
       if (campErr) return json({ error: "Could not read the camp.", detail: campErr.message }, 500);
-      if (!camp?.stripe_account_id) {
-        return json({ error: "This camp has not connected a Stripe account yet." }, 409);
-      }
-      if (camp.stripe_charges_enabled === false) {
-        return json({ error: "Stripe onboarding for this camp is not finished, so it cannot accept payments yet." }, 409);
-      }
-
-      const outstanding = Number(invoice.amount ?? 0) - Number(invoice.amount_paid ?? 0);
-      if (!(outstanding > 0)) return json({ error: "There is nothing outstanding on that invoice." }, 400);
-      // Stripe works in the smallest currency unit; our invoices are numeric dollars. Rounding
-      // once here, at the boundary, is what keeps a cent from drifting in on every conversion.
-      const amountCents = Math.round(outstanding * 100);
-      if (amountCents < 50) return json({ error: "That balance is below Stripe's minimum charge." }, 400);
 
       const appOrigin = safeOrigin(req, origin);
       if (!appOrigin) return json({ error: "Could not determine where to send the payer back to." }, 400);
 
-      // Guests pay from the portal, so that is where they land afterwards. The portal reads the
-      // query flag only to say thank you — the payment itself is confirmed by the webhook, never
-      // by the browser coming back, which a payer can simply not do.
-      const { data: retreat } = await admin
-        .from("retreats").select("portal_token, group_name, coordinator_email")
-        .eq("id", invoice.retreat_id).maybeSingle();
-      const back = retreat?.portal_token ? `${appOrigin}/portal/${retreat.portal_token}` : `${appOrigin}/retreats`;
-
-      const session = await stripe.checkout.sessions.create(
-        {
-          mode: "payment",
-          line_items: [{
-            quantity: 1,
-            price_data: {
-              currency: "usd",
-              unit_amount: amountCents,
-              product_data: {
-                name: `${camp.name} · Invoice ${invoice.number}`,
-                description: retreat?.group_name ? `Retreat: ${retreat.group_name}` : undefined,
-              },
-            },
-          }],
-          customer_email: retreat?.coordinator_email || undefined,
-          success_url: `${back}?paid=1`,
-          cancel_url: `${back}?paid=0`,
-          // The webhook has only the session to go on, so everything it needs to record the
-          // payment against the right row has to be carried here.
-          metadata: {
-            invoice_id: invoice.id,
-            camp_id: invoice.camp_id,
-            retreat_id: invoice.retreat_id,
-            invoice_number: String(invoice.number ?? ""),
-          },
-        },
-        // Direct charge on the camp's account: the funds settle in the camp's Stripe balance and
-        // never pass through ours. Stripe's fees come out of the camp's side, as they should.
-        { stripeAccount: camp.stripe_account_id },
-      );
-
-      if (!session.url) return json({ error: "Stripe did not return a checkout URL." }, 502);
-
-      const { error: updErr } = await admin.from("retreat_invoices")
-        .update({ stripe_session_id: session.id, payment_link_url: session.url })
-        .eq("id", invoice.id);
-      // A stored link is a convenience, not the source of truth — the webhook records the money
-      // either way — so a failed write is logged and the payer still gets their URL.
-      if (updErr) console.error("stripe-connect: could not store session on invoice:", updErr.message);
-
-      return json({ url: session.url, amount: outstanding, expiresAt: session.expires_at ?? null });
+      return await mintCheckout(invoice, camp ?? {}, appOrigin);
     }
 
     // ── onboard / status ────────────────────────────────────────────────────────────────────

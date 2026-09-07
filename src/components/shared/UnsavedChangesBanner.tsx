@@ -33,8 +33,8 @@ export function UnsavedChangesBanner() {
             {failures.length === 1 ? 'A change didn’t save' : `${failures.length} changes didn’t save`}
           </p>
           <p className="mt-1 text-[12px] leading-relaxed text-red-text/90">
-            What’s on screen may not match what’s stored. Reload to see exactly what saved
-            {targets.length > 0 && <>affected: {targets.join(', ')}</>}.
+            What’s on screen may not match what’s stored. Reload to see exactly what saved.
+            {targets.length > 0 && <> Affected: {targets.join(', ')}.</>}
           </p>
           <div className="mt-2.5 flex items-center gap-2">
             <button

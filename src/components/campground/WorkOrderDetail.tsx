@@ -178,7 +178,18 @@ export function WorkOrderDetail({ issue }: Props) {
   function handleVendorChange(vendorId: string) {
     const name = vendorId ? (vendors.find((v) => v.id === vendorId)?.name ?? 'a vendor') : null;
     updateIssue(issue.id, { vendorId: vendorId || null });
-    log(name ? `Waiting on ${name}` : `${currentUser.name} cleared the vendor`);
+    // The timeline says what happened, and what happened depends on the state. "Waiting on
+    // Ridgeline" is right when the job is parked on them and plainly wrong when they are on site
+    // today or finished last week.
+    if (!name) {
+      log(`${currentUser.name} removed the vendor`);
+    } else if (issue.status === 'waiting_on_vendor') {
+      log(`Waiting on ${name}`);
+    } else if (issue.status === 'resolved') {
+      log(`${currentUser.name} recorded that ${name} did this`);
+    } else {
+      log(`${currentUser.name} sent this to ${name}`);
+    }
   }
 
   function saveCost() {
@@ -346,32 +357,6 @@ export function WorkOrderDetail({ issue }: Props) {
             )}
           </div>
 
-          {/* Picking "waiting on vendor" without saying which vendor is how a work order goes
-              quiet for six weeks, so the list comes with the state. */}
-          {issue.status === 'waiting_on_vendor' && editable && (
-            <div className="flex flex-col gap-1">
-              <span className={railLabel}>Which vendor</span>
-              {vendors.length > 0 ? (
-                <select
-                  value={issue.vendorId ?? ''}
-                  onChange={(e) => handleVendorChange(e.target.value)}
-                  className={selectClass}
-                >
-                  <option value="">Not said</option>
-                  {vendors.filter((v) => v.isActive || v.id === issue.vendorId).map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}{v.trade ? ` · ${v.trade}` : ''}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <p className="text-[12px] text-ink-soft">
-                  No vendors saved yet. Add them on the Vendors tab and they show up here.
-                </p>
-              )}
-            </div>
-          )}
-
           <div className="flex flex-col gap-1">
             <span className={railLabel}>Assigned to</span>
             {can('assign') ? (
@@ -389,6 +374,43 @@ export function WorkOrderDetail({ issue }: Props) {
               <span className="text-[13px] font-medium text-forest">{assignee}</span>
             ) : (
               <span className="text-[13px] font-medium text-red">Unassigned</span>
+            )}
+          </div>
+
+          {/*
+            Two separate questions, so two separate fields: "Assigned to" is who INSIDE the camp
+            owns this, "Outside vendor" is who is actually doing it. A job can have either, both
+            or neither — the plumber is coming Thursday and Dave is meeting him on site.
+
+            This used to appear only while the status was "waiting on vendor", which meant the
+            only way to record a contractor was to first park the job as blocked. You could not
+            say "dispatched, work in progress", and you could not record who did it after the
+            fact — so the field was almost never set, and everything downstream of it (the
+            Vendors tab, the season review) had nothing to show.
+          */}
+          <div className="flex flex-col gap-1">
+            <span className={railLabel}>Outside vendor</span>
+            {editable && vendors.length > 0 ? (
+              <select
+                value={issue.vendorId ?? ''}
+                onChange={(e) => handleVendorChange(e.target.value)}
+                className={selectClass}
+              >
+                <option value="">Nobody outside</option>
+                {vendors.filter((v) => v.isActive || v.id === issue.vendorId).map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}{v.trade ? ` · ${v.trade}` : ''}
+                  </option>
+                ))}
+              </select>
+            ) : vendor ? (
+              <span className="text-[13px] font-medium text-forest">{vendor.name}</span>
+            ) : editable ? (
+              <p className="text-[12px] text-ink-soft">
+                No vendors saved yet. Add them on the Vendors tab.
+              </p>
+            ) : (
+              <span className="text-[13px] text-ink-soft">Nobody outside</span>
             )}
           </div>
         </div>

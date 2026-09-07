@@ -278,6 +278,7 @@ export function SeasonReview() {
             <LocationsSection data={data} />
             <AssetsSection data={data} />
             {role === 'admin' && <WorkloadSection data={data} />}
+            <VendorsSection data={data} />
             <SourcesSection data={data} />
             <RoutinesSection data={data} />
             <CarryOverSection data={data} />
@@ -575,6 +576,54 @@ function WorkloadSection({ data }: { data: SeasonReviewData }) {
           </table>
         </Scroller>
       )}
+    </Section>
+  );
+}
+
+// ─── Vendors ──────────────────────────────────────────────────────────────────
+
+function VendorsSection({ data }: { data: SeasonReviewData }) {
+  if (data.vendors.length === 0) return null;
+
+  // How much of the cost column is actually filled in. A camp that priced two of eleven jobs
+  // should be told that rather than shown a total that reads as complete.
+  const priced = data.vendors.reduce((n, v) => n + v.with_cost, 0);
+  const jobs = data.vendors.reduce((n, v) => n + v.jobs, 0);
+
+  return (
+    <Section
+      title="Vendors"
+      lede={priced < jobs ? `Cost recorded on ${priced} of ${jobs} jobs.` : undefined}
+    >
+      <Scroller>
+        <table className="w-full min-w-[560px] border-collapse">
+          <thead>
+            <tr>
+              <th className={th}>Vendor</th>
+              <th className={th}>Jobs</th>
+              <th className={th}>Still open</th>
+              <th className={th}>Median to close</th>
+              <th className={th}>Recorded cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.vendors.map((v) => (
+              <tr key={v.id}>
+                <td className={`${td} font-semibold text-forest`}>
+                  {v.name}
+                  {v.trade && <span className="font-normal text-ink-soft"> · {v.trade}</span>}
+                </td>
+                <td className={`${td} tabular-nums`}>{v.jobs}</td>
+                <td className={`${td} tabular-nums`}>{v.open || '—'}</td>
+                <td className={`${td} tabular-nums`}>
+                  {v.median_days != null ? `${v.median_days} d` : '—'}
+                </td>
+                <td className={`${td} tabular-nums`}>{v.cost > 0 ? formatCost(v.cost) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Scroller>
     </Section>
   );
 }

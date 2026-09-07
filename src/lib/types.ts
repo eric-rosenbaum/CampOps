@@ -2490,6 +2490,12 @@ export interface SeasonReview {
     location: string | null; age_days: number; status: string;
   }[];
   money: { recorded_cost: number; with_cost: number };
+  /** Per-contractor breakdown. `cost` is a floor: only what somebody typed into actual_cost. */
+  vendors: {
+    id: string; name: string; trade: string | null;
+    jobs: number; open: number; closed: number;
+    cost: number; with_cost: number; median_days: number | null;
+  }[];
 }
 
 export interface RentalsReview {

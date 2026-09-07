@@ -53,7 +53,7 @@ export function LogIssueModal() {
   const [captureOpen, setCaptureOpen] = useState(false);
   /** What the capture actually saw and heard, kept on screen beside the fields it filled in. */
   const [draftReading, setDraftReading] = useState<
-    { notes: string; questions: string[]; confidence: number } | null
+    { questions: string[] } | null
   >(null);
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } =
@@ -125,9 +125,7 @@ export function LogIssueModal() {
     if (draft.assetId) setValue('assetId', draft.assetId);
     if (draft.locationId) setLocationIds([draft.locationId]);
     setDraftReading({
-      notes: draft.notes,
       questions: draft.questions,
-      confidence: draft.confidence,
     });
   }
 
@@ -250,25 +248,10 @@ export function LogIssueModal() {
 
         {draftReading && (
           <div className="rounded-card border border-border bg-paper px-3 py-2.5">
-            <div className="flex items-start gap-2">
-              <p className="flex-1 text-[11.5px] leading-relaxed text-ink-soft">
-                <span className="font-semibold">Filled in from your capture. </span>
-                {draftReading.notes}
-              </p>
-              <span
-                className={`flex-none rounded-tag border px-[5px] py-px text-[9.5px] font-bold uppercase
-                            tracking-[0.1em] ${draftReading.confidence < 0.5
-                              ? 'border-amber text-amber-text'
-                              : 'border-sage text-sage'}`}
-              >
-                {Math.round(draftReading.confidence * 100)}% sure
-              </span>
-            </div>
-            {draftReading.confidence < 0.5 && (
-              <p className="mt-1 text-[11.5px] font-semibold text-amber-text">
-                This is a guess. Check every field.
-              </p>
-            )}
+            <p className="text-[11.5px] font-semibold text-ink-soft">Filled in from your capture.</p>
+            {/* The open questions stay: they are what to check on site. The reasoning blob and the
+                confidence score do not — the fields below are all editable, so the review is
+                editing them, not reading a second account of them. */}
             {draftReading.questions.length > 0 && (
               <ul className="mt-1 space-y-0.5">
                 {draftReading.questions.map((q) => (

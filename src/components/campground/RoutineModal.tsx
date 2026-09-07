@@ -411,8 +411,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
 
           {draft.cadence === 'on_turnover' && (
             <p className={hintClass}>
-              Raised whenever a session or a rental group departs. There is no date to set — the
-              calendar decides.
+              Raised whenever a session or rental group departs.
             </p>
           )}
 
@@ -476,9 +475,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
         <div className="border-t border-border pt-5">
           <h3 className="font-display text-[14px] font-bold text-forest mb-1">Active window</h3>
           <p className="text-[12.5px] text-ink-soft leading-relaxed mb-3">
-            Set this. Without it a daily routine keeps running in January, and a camp that finds
-            January work in its list stops trusting the whole queue — including the parts that
-            were right.
+            Without a window, this keeps raising work all year.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -594,8 +591,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
             </div>
             {draft.cadence === 'meter' ? (
               <p className="text-[12.5px] text-ink-soft leading-relaxed">
-                Meter routines come due on a reading, not a date. Log hours or miles against the
-                asset and this raises itself — there is nothing to preview on a calendar.
+                Comes due on a reading, not a date.
               </p>
             ) : draft.cadence === 'on_turnover' ? (
               <p className="text-[12.5px] text-ink-soft leading-relaxed">
@@ -614,8 +610,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
               </>
             ) : (
               <p className="text-[12.5px] text-red-text leading-relaxed">
-                Nothing comes due in the next five years. Check the active window and the starting
-                date — as configured, this routine would never raise anything.
+                Nothing comes due in the next five years. Check the window and start date.
               </p>
             )}
           </div>

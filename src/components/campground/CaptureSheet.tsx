@@ -17,9 +17,10 @@ import { draftWorkOrder } from '@/lib/campgroundDb';
  * get logged at all. So: point the camera, say what is wrong, and something else does the
  * typing.
  *
- * What comes back is NEVER filed. It lands in the log form as an editable draft, with what it
- * actually saw and heard, what it could not tell, and how sure it is — because a work order
- * nobody read is worse than no work order.
+ * What comes back is NEVER filed. It drops straight into the log form as an editable draft and
+ * this sheet closes. There is no approve-the-draft step in between: the form IS the review, every
+ * field is already editable there, and a second confirm screen only asked people to read the same
+ * text twice. If it came back wrong, Cancel costs nothing.
  */
 
 // ─── Web Speech API ───────────────────────────────────────────────────────────
@@ -90,7 +91,6 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
-  const [draft, setDraft] = useState<WorkOrderDraft | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
 
   const recRef = useRef<Recognizer | null>(null);
@@ -160,7 +160,6 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
   async function handleRead() {
     setReading(true);
     setReadError(null);
-    setDraft(null);
     const result = await draftWorkOrder({
       imageBase64: photoBase64 ?? undefined,
       transcript: transcript.trim() || undefined,
@@ -177,11 +176,16 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
       setReadError('That did not come back. Your words are still here, so try again or type it in.');
       return;
     }
-    setDraft(result);
+    if (!result.readable) {
+      // Nothing to fill the form with. Keep what they said on screen rather than closing over it.
+      setReadError(result.error ?? 'Could not make anything out of that. Type it in instead.');
+      return;
+    }
+    applyDraft(result);
   }
 
   /** The raw transcript rides along on the description: what was actually said is evidence. */
-  function useDraft(base: WorkOrderDraft) {
+  function applyDraft(base: WorkOrderDraft) {
     const said = transcript.trim();
     const description = [base.description?.trim(), said ? `Said: “${said}”` : '']
       .filter(Boolean)
@@ -196,8 +200,7 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
     <Modal title="Capture" onClose={onClose} width="460px">
       <div className="space-y-4">
         <p className="text-[12.5px] leading-relaxed text-ink-soft">
-          Take a picture, say what is wrong, or both. Nothing gets filed — you will see the draft
-          in the form and can change any of it.
+          Take a picture, say what is wrong, or both.
         </p>
 
         {/* ── Voice ─────────────────────────────────────────────────────────── */}
@@ -226,8 +229,7 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
                 Voice is not available in this browser
               </div>
               <p className="mt-1 text-[11.5px] text-ink-soft">
-                Chrome, Edge and Safari can do this; Firefox cannot. Type it below instead — the
-                photo still works either way.
+                Voice input needs Chrome, Edge or Safari. Type it below instead.
               </p>
             </div>
           )}
@@ -249,20 +251,36 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
         <div>
           <p className="mb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Show it</p>
           {photoPreview ? (
-            <div className="relative">
+            <div className="relative overflow-hidden rounded-card">
               <img
                 src={photoPreview}
                 alt="What you photographed"
-                className="max-h-48 w-full rounded-card border border-border object-cover"
+                className={`max-h-48 w-full rounded-card border border-border object-cover
+                            transition-[filter,opacity] duration-300
+                            ${reading ? 'opacity-80 saturate-[.6]' : ''}`}
               />
-              <button
-                onClick={() => { setPhotoPreview(null); setPhotoBase64(null); }}
-                className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full
-                           bg-black/50 text-white transition-colors hover:bg-black/70"
-                title="Remove this photo"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+              {reading && (
+                <>
+                  {/* The sweep is the whole point: it says THIS image is being read, where a
+                      centred spinner would only say "wait". */}
+                  <div className="pointer-events-none absolute inset-0 rounded-card bg-forest/10" />
+                  <div
+                    className="cc-scan-line pointer-events-none absolute inset-x-0 top-0 h-[2px]
+                               bg-gradient-to-r from-transparent via-sage to-transparent
+                               shadow-[0_0_10px_2px_rgba(94,122,97,.55)]"
+                  />
+                </>
+              )}
+              {!reading && (
+                <button
+                  onClick={() => { setPhotoPreview(null); setPhotoBase64(null); }}
+                  className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full
+                             bg-black/50 text-white transition-colors hover:bg-black/70"
+                  title="Remove this photo"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           ) : (
             <button
@@ -286,7 +304,15 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
 
         {readError && <p className="text-[12px] text-red">{readError}</p>}
 
-        {draft && <DraftReview draft={draft} transcript={transcript} onUse={useDraft} />}
+        {reading && (
+          <div className="flex items-center justify-center gap-2 rounded-card border border-border
+                          bg-cream px-3 py-2.5">
+            <Sparkles className="cc-loading-breathe h-4 w-4 text-sage" aria-hidden="true" />
+            <span className="cc-loading-shimmer text-[12.5px] font-semibold text-ink-soft">
+              {photoPreview ? 'Reading the photo…' : 'Reading what you said…'}
+            </span>
+          </div>
+        )}
 
         <div className="flex gap-2 pt-1">
           <Button
@@ -295,94 +321,11 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
             disabled={nothingToRead || reading}
           >
             <Sparkles className="h-3.5 w-3.5" />
-            {reading ? 'Reading…' : draft ? 'Read it again' : 'Read this'}
+            {reading ? 'Reading…' : 'Read this'}
           </Button>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
         </div>
       </div>
     </Modal>
-  );
-}
-
-function DraftReview({ draft, transcript, onUse }: {
-  draft: WorkOrderDraft;
-  transcript: string;
-  onUse: (d: WorkOrderDraft) => void;
-}) {
-  const percent = Math.round((draft.confidence ?? 0) * 100);
-  // Below half, the honest word is "guess". Dressing that up as a confidence score is how a
-  // wrong location ends up on a work order nobody re-read.
-  const isGuess = (draft.confidence ?? 0) < 0.5;
-
-  if (!draft.readable) {
-    const said = transcript.trim();
-    return (
-      <div className="rounded-card border border-amber bg-amber-bg px-3 py-3">
-        <p className="text-[12.5px] font-semibold text-amber-text">
-          {draft.error ?? 'I could not make anything out of that.'}
-        </p>
-        {said && (
-          <button
-            onClick={() => onUse({ ...draft, title: said.slice(0, 70), description: '' })}
-            className="mt-2 text-[12px] font-bold text-forest underline"
-          >
-            Use my words anyway
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-card border border-border bg-paper px-3 py-3">
-      <div className="flex items-start gap-2">
-        <p className="min-w-0 flex-1 font-display text-[15px] font-semibold leading-snug text-forest">
-          {draft.title}
-        </p>
-        <span
-          className={`flex-none rounded-tag border px-[5px] py-px text-[9.5px] font-bold uppercase
-                      tracking-[0.1em] ${isGuess ? 'border-amber text-amber-text' : 'border-sage text-sage'}`}
-        >
-          {percent}% sure
-        </span>
-      </div>
-
-      {isGuess && (
-        <p className="mt-1 text-[12px] font-semibold text-amber-text">
-          This is a guess. Check every field before you file it.
-        </p>
-      )}
-
-      {draft.description && (
-        <p className="mt-1.5 whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink">
-          {draft.description}
-        </p>
-      )}
-
-      {draft.notes && (
-        <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-          <span className="font-semibold">What it saw: </span>{draft.notes}
-        </p>
-      )}
-
-      {draft.questions.length > 0 && (
-        <div className="mt-2">
-          <p className="text-[11.5px] font-semibold text-ink-soft">What it could not tell:</p>
-          <ul className="mt-0.5 space-y-0.5">
-            {draft.questions.map((q) => (
-              <li key={q} className="text-[11.5px] text-ink-soft">• {q}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <button
-        onClick={() => onUse(draft)}
-        className="mt-2.5 w-full rounded-btn bg-forest px-3 py-1.5 text-[12.5px] font-bold text-paper
-                   transition-colors hover:bg-forest-mid"
-      >
-        Use this draft
-      </button>
-    </div>
   );
 }

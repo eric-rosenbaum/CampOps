@@ -66,8 +66,19 @@ body {
 .cc-loading-breathe { display: inline-block; animation: cc-loading-breathe 2.4s ease-in-out infinite; }
 .cc-loading-shimmer { animation: cc-loading-fade 1.6s ease-in-out infinite; }
 
+/* Reading a photo. A sweep down the image says which thing is being worked on, where a
+   centred spinner would only say "wait". */
+@keyframes cc-scan-sweep {
+  0%   { transform: translateY(-10%); opacity: 0; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { transform: translateY(1000%); opacity: 0; }
+}
+.cc-scan-line { animation: cc-scan-sweep 1.7s cubic-bezier(.45,0,.55,1) infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .cc-loading-sweep,
   .cc-loading-breathe,
-  .cc-loading-shimmer { animation: none; }
+  .cc-loading-shimmer,
+  .cc-scan-line { animation: none; }
 }

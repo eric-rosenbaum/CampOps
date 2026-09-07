@@ -161,9 +161,7 @@ export function RoutinesPanel() {
                 {behind.length} routine{behind.length === 1 ? ' is' : 's are'} behind
               </p>
               <p className="text-[12.5px] text-red-text/85 leading-relaxed mt-1">
-                A routine only ever holds one open work order at a time. When the last one is still
-                open and the next comes due, we bump that one rather than stack a duplicate — so a
-                routine that is four cycles behind is one row, not four.
+                A routine holds one open work order at a time. Behind means the open one is bumped, not duplicated.
               </p>
             </div>
           </div>
@@ -198,9 +196,7 @@ export function RoutinesPanel() {
           <Repeat className="w-6 h-6 text-sage mx-auto mb-3" aria-hidden="true" />
           <p className="font-display text-[16px] font-bold text-forest">No routines yet</p>
           <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-md mx-auto mt-2">
-            A routine is the work nobody reports because everybody assumes somebody else did it —
-            the grease traps, the fire extinguisher walk, the pump house. Set the cadence once and
-            it lands in the queue as a real work order somebody can be assigned and hold to.
+            Set a cadence once and it lands in the queue as a real work order.
           </p>
           {canEdit && (
             <div className="mt-4 flex justify-center">
@@ -346,8 +342,7 @@ function RoutineRow({
 
         {runsYearRound && (
           <p className="mt-2.5 border-t border-border pt-2.5 text-[11.5px] text-amber-text leading-relaxed">
-            No active window — this keeps raising work through the winter. Set one unless it really
-            does run year-round.
+            No active window — this runs year-round.
           </p>
         )}
     </>

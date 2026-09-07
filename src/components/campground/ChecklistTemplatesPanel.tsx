@@ -60,8 +60,7 @@ export function ChecklistTemplatesPanel() {
         <div className="max-w-2xl">
           <h2 className="font-display text-[18px] font-bold text-forest">Checklists</h2>
           <p className="text-[12.5px] text-ink-soft leading-relaxed mt-1">
-            Attach one to a routine or a work order and each step becomes something a named person
-            ticks. Ticking the last step closes the work order; unticking one reopens it.
+            Ticking the last step closes the work order.
           </p>
         </div>
         {canEdit && (
@@ -76,8 +75,7 @@ export function ChecklistTemplatesPanel() {
           <ListChecks className="w-6 h-6 text-sage mx-auto mb-3" aria-hidden="true" />
           <p className="font-display text-[16px] font-bold text-forest">No checklists yet</p>
           <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-md mx-auto mt-2">
-            Start with the jobs that get half-done: a cabin turnover, a bathhouse round, a vehicle
-            pre-trip.
+            A cabin turnover, a bathhouse round, a vehicle pre-trip.
           </p>
         </div>
       ) : (
@@ -326,10 +324,7 @@ function TemplateModal({ template, onClose }: {
               {photoOveruse
                 ? `${photoSteps} of ${draft.items.length} steps need a photo. `
                 : ''}
-              Ask for a photo where the photo settles an argument — "beds made" on a rental
-              turnover, a repair somebody will be billed for. Ask for it on every step and people
-              stop using the checklist, or tick it from the truck, and then the photos you actually
-              needed are not there either.
+              Ask for a photo only where it settles an argument.
             </p>
           </div>
         </div>

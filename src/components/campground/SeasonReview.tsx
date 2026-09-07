@@ -144,9 +144,7 @@ export function SeasonReview() {
       <div className="rounded-card border border-border bg-white px-6 py-10 text-center">
         <p className="font-display text-[16px] font-bold text-forest">The review could not be built</p>
         <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-md mx-auto mt-2">
-          The figures are computed in the database rather than in the browser, and that call came
-          back empty. Nothing is lost — try again, and if it keeps happening the work orders
-          themselves are unaffected.
+          That did not come back. Try again.
         </p>
         <div className="mt-4 flex justify-center">
           <Button variant="ghost" onClick={() => setReload((n) => n + 1)}>Try again</Button>
@@ -226,9 +224,7 @@ export function SeasonReview() {
       {isConfirming && (
         <div className="cc-no-print rounded-card border border-border bg-cream px-5 py-4 mb-6">
           <p className="text-[13px] text-ink leading-relaxed">
-            Freezing stores these numbers as they stand today. It exists because someone
-            back-dating a closure in November should not quietly change the report a board already
-            read in September — a frozen review keeps saying what it said.
+            Freezing stores these numbers as they stand today.
           </p>
           <div className="flex items-center gap-2 mt-3">
             <Button onClick={doFreeze} disabled={saving}>
@@ -329,7 +325,6 @@ function VolumeSection({ data, weekly }: { data: SeasonReviewData; weekly: Colum
   return (
     <Section
       title="Volume and flow"
-      lede="What came in, what went out, and what is still open at the end of it."
     >
       <div className="flex flex-wrap border-b border-border mb-4">
         <StatCard label="Reported" value={data.volume.reported} />
@@ -395,7 +390,7 @@ function TimingSection({ data }: { data: SeasonReviewData }) {
   return (
     <Section
       title="Response times — medians"
-      lede="These are medians, not averages, and the difference is the point: one work order somebody forgot about for four months would drag a mean far enough to make the whole table useless. The median says what a typical ticket actually did."
+      lede="Medians, not averages."
     >
       {rows.length === 0 ? (
         <p className="text-[12.5px] text-ink-faint italic">Nothing closed in this period yet.</p>
@@ -452,7 +447,6 @@ function LocationsSection({ data }: { data: SeasonReviewData }) {
   return (
     <Section
       title="Where the work is"
-      lede="The capital-budget argument, in the camp's own numbers. A building that takes eleven work orders and forty open-days every summer is not a maintenance problem, it is a replacement decision — and this is the page that makes that case to a board."
     >
       {rows.length === 0 ? (
         <p className="text-[12.5px] text-ink-faint italic">No work was tied to a location.</p>
@@ -507,12 +501,11 @@ function AssetsSection({ data }: { data: SeasonReviewData }) {
   return (
     <Section
       title="What it cost, by thing"
-      lede={`Cost is only here where somebody entered it: ${formatCost(data.money.recorded_cost)} recorded across ${data.money.with_cost} work order${data.money.with_cost === 1 ? '' : 's'}. Treat it as a floor, not a total — but a floor is still what turns "the Gator keeps breaking" into a number.`}
+      lede={`${formatCost(data.money.recorded_cost)} recorded across ${data.money.with_cost} work order${data.money.with_cost === 1 ? '' : 's'}.`}
     >
       {data.assets.length === 0 ? (
         <p className="text-[12.5px] text-ink-faint italic">
-          No work was tied to a specific asset. Assigning work to the machine rather than the place
-          is what makes repair-or-replace answerable next year.
+          No work was tied to a specific asset.
         </p>
       ) : (
         <Scroller>
@@ -548,10 +541,7 @@ function WorkloadSection({ data }: { data: SeasonReviewData }) {
   return (
     <Section title="Workload">
       <p className="text-[12.5px] text-ink-soft leading-relaxed mb-3 max-w-3xl">
-        This is a workload picture, not a ranking. Counts alone would put a summer hire above a
-        career carpenter for closing eleven light-bulb tickets while the carpenter rebuilt a dock,
-        and would reward whoever picks the easy work. Read it for who is carrying too much, and for
-        who has been handed nothing.
+        A workload picture, not a ranking.
       </p>
       {data.workload.length === 0 ? (
         <p className="text-[12.5px] text-ink-faint italic">Nothing was assigned in this period.</p>
@@ -600,7 +590,6 @@ function SourcesSection({ data }: { data: SeasonReviewData }) {
   return (
     <Section
       title="How work arrived"
-      lede="Whether the stickers worked. A camp that put a QR code on every bathhouse door and sees nothing under “Scanned a sticker” has an answer, and so does one that sees a third of its season arrive that way."
     >
       {rows.length === 0 ? (
         <p className="text-[12.5px] text-ink-faint italic">No source was recorded.</p>
@@ -634,7 +623,6 @@ function RoutinesSection({ data }: { data: SeasonReviewData }) {
   return (
     <Section
       title="Routines"
-      lede="Recurring work the camp scheduled rather than remembered."
     >
       <div className="flex flex-wrap border-b border-border mb-3">
         <StatCard label="Active routines" value={r.active} />
@@ -668,7 +656,7 @@ function CarryOverSection({ data }: { data: SeasonReviewData }) {
   return (
     <Section
       title="Carry-over"
-      lede="Everything still open as the season closes. Print this: it is the punch list that decides what gets done in the shoulder season, and the oldest rows at the top are the ones nobody has looked at since June."
+      lede="Oldest first."
     >
       {rows.length === 0 ? (
         <p className="text-[12.5px] text-ink-soft">

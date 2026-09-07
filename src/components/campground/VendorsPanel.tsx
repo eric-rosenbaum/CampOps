@@ -75,11 +75,6 @@ export function VendorsPanel() {
     [vendors],
   );
 
-  const insuranceProblems = useMemo(
-    () => vendors.filter((v) => v.isActive && ['expired', 'soon'].includes(insuranceState(v.insuranceExpiry))),
-    [vendors],
-  );
-
   const dispatched = useMemo(
     () => [...openByVendor.values()].reduce((a, b) => a + b, 0),
     [openByVendor],
@@ -94,11 +89,6 @@ export function VendorsPanel() {
             label="Work out with them" value={dispatched}
             hint={dispatched === 1 ? 'open work order' : 'open work orders'}
           />
-          <StatCard
-            label="Insurance to chase" value={insuranceProblems.length}
-            variant={insuranceProblems.length > 0 ? 'amber' : 'green'}
-            hint="expired or inside 30 days"
-          />
         </div>
         {canEdit && (
           <div className="pb-4">
@@ -109,32 +99,12 @@ export function VendorsPanel() {
         )}
       </div>
 
-      {insuranceProblems.length > 0 && (
-        <div className="rounded-card border border-amber/30 bg-amber-bg px-5 py-4 mb-5">
-          <div className="flex items-start gap-3">
-            <ShieldAlert className="w-5 h-5 text-amber-text flex-shrink-0 mt-0.5" aria-hidden="true" />
-            <div>
-              <p className="text-[13.5px] font-semibold text-amber-text">
-                {insuranceProblems.length} certificate{insuranceProblems.length === 1 ? '' : 's'} to chase
-              </p>
-              <p className="text-[12px] text-amber-text/85 leading-relaxed mt-1">
-                {insuranceProblems.map((v) => v.name).join(', ')} — Compliance reads this date, and
-                an inspector asking for a contractor's certificate is not the moment to find out it
-                lapsed in March.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {vendors.length === 0 ? (
         <div className="rounded-card border border-border bg-white px-6 py-10 text-center">
           <Shield className="w-6 h-6 text-sage mx-auto mb-3" aria-hidden="true" />
           <p className="font-display text-[16px] font-bold text-forest">No vendors yet</p>
           <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-md mx-auto mt-2">
-            Add the ones the camp already phones — the septic pumper, the well contractor, the
-            elevator inspector. Work orders can then be dispatched to them by name, and the season
-            review can say what each one cost.
+            The septic pumper, the well contractor, the elevator inspector.
           </p>
         </div>
       ) : (
@@ -348,10 +318,6 @@ function VendorModal({ vendor, openCount, onClose }: {
               value={draft.insuranceExpiry ?? ''}
               onChange={(e) => set({ insuranceExpiry: e.target.value || null })}
             />
-            <p className="text-[11.5px] text-ink-soft leading-relaxed mt-1.5">
-              Compliance reads this date. Leave it blank and the certificate simply is not tracked
-              — it does not default to valid.
-            </p>
           </div>
         </div>
 

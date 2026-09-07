@@ -45,6 +45,8 @@ export function WorkOrderDetail({ issue }: Props) {
   const checklistItems = useCampgroundStore((s) => s.checklistItems);
   const markRead = useCampgroundStore((s) => s.markRead);
   const postComment = useCampgroundStore((s) => s.postComment);
+  /** Still on the wire: the row exists locally but the server has not accepted it yet. */
+  const isPending = useIssuesStore((s) => !!s.pendingIssues[issue.id]);
 
   // Every one of these belongs to the work order on screen and to no other, which is why the
   // board mounts this with `key={issue.id}`: switching records throws the component away rather
@@ -80,8 +82,14 @@ export function WorkOrderDetail({ issue }: Props) {
    * need reading and no answer.
    */
   useEffect(() => {
+    // Not while the work order itself is still queued. A read receipt carries a foreign key to
+    // issues, so writing one for a row the server has not accepted yet is a guaranteed 409 —
+    // and logging work opens the record immediately, which made that the common path rather
+    // than the rare one. There is nothing to mark read on a record created seconds ago; the
+    // receipt gets written the next time it is opened.
+    if (isPending) return;
     markRead(issue.id, currentUser.id);
-  }, [issue.id, currentUser.id, markRead]);
+  }, [issue.id, currentUser.id, markRead, isPending]);
 
   // A pending undo belongs to the record that was on screen. Unmounting cancels it rather than
   // letting a timer fire against a work order nobody is looking at any more.

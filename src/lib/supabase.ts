@@ -175,8 +175,9 @@ async function fetchWithRetry(input: RequestInfo | URL, init?: RequestInit): Pro
     // in the app passes through exactly once.
     if (isWrite && !res.ok) {
       const url = input instanceof Request ? input.url : String(input);
-      recordWriteFailure({
-        table: describeTarget(url),
+      const target = describeTarget(url);
+      if (!BEST_EFFORT_TARGETS.has(target)) recordWriteFailure({
+        table: target,
         op: (init?.method ?? 'POST').toUpperCase(),
         status: res.status,
         message: `${res.status} ${res.statusText || 'request rejected'}`,
@@ -187,8 +188,9 @@ async function fetchWithRetry(input: RequestInfo | URL, init?: RequestInit): Pro
     // Never completed: timed out, aborted, or the network went away.
     if (isWrite) {
       const url = input instanceof Request ? input.url : String(input);
-      recordWriteFailure({
-        table: describeTarget(url),
+      const target = describeTarget(url);
+      if (!BEST_EFFORT_TARGETS.has(target)) recordWriteFailure({
+        table: target,
         op: (init?.method ?? 'POST').toUpperCase(),
         status: null,
         message: err instanceof Error ? err.message : String(err),
@@ -265,6 +267,16 @@ function isRetryableStatus(status: number): boolean {
 }
 
 /** "rest/v1/retreats?..." → "retreats"; "rest/v1/rpc/foo" → "rpc:foo". */
+/**
+ * Writes whose failure loses nothing the user typed.
+ *
+ * The banner exists for one thing: work that looked saved and wasn't. A read receipt is not that
+ * — nobody typed it, nothing disappears, and the next time the thread is opened it is written
+ * again. Raising "a change didn't save" over one teaches people to dismiss the banner, which
+ * costs us the only channel we have for the failure that actually matters.
+ */
+const BEST_EFFORT_TARGETS = new Set(['issue_comment_reads']);
+
 function describeTarget(url: string): string {
   const rpc = url.match(/\/rest\/v1\/rpc\/([^/?#]+)/);
   if (rpc) return `rpc:${rpc[1]}`;

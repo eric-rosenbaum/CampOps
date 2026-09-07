@@ -191,8 +191,7 @@ export function PropertyCalendar() {
                 {heaviest && heaviest.rooms_to_turn > 0
                   ? `${formatDate(heaviest.day)} is the heaviest — ${heaviest.rooms_to_turn} room${heaviest.rooms_to_turn === 1 ? '' : 's'} to turn between a departure and an arrival. `
                   : ''}
-                A group leaves and another arrives on the same date. That is a staffing call, and it
-                is normally discovered on the morning it happens.
+                A group leaves and another arrives the same day.
               </p>
               <ul className="flex flex-wrap gap-x-5 gap-y-1 mt-2.5">
                 {turnovers.map((t) => (

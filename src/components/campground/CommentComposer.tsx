@@ -131,7 +131,7 @@ export function CommentComposer({ issue }: Props) {
           <span>
             Reply to the person who reported this
             <span className="block text-[11px] text-ink-soft">
-              They see this message on the link they were given. Everything else here stays internal.
+              Visible to the reporter. Everything else stays internal.
             </span>
           </span>
         </label>

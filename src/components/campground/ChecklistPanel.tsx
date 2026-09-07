@@ -123,7 +123,7 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
           </div>
         ) : (
           <p className="text-[12px] text-ink-soft">
-            No checklists yet. Add a step below, or build one in Routines that every occurrence gets.
+            No steps yet.
           </p>
         )
       ) : (

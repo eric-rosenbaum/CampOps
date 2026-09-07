@@ -51,7 +51,24 @@ type ImageMediaType = "image/jpeg" | "image/png" | "image/webp" | "image/gif";
 function splitImage(input: string): { data: string; mediaType: ImageMediaType } {
   const m = /^data:(image\/(?:jpeg|png|webp|gif));base64,/i.exec(input);
   if (m) return { data: input.slice(m[0].length), mediaType: m[1].toLowerCase() as ImageMediaType };
-  return { data: input, mediaType: "image/jpeg" };
+  return { data: input, mediaType: sniff(input) };
+}
+
+/**
+ * What a bare base64 payload actually is, read from its first bytes.
+ *
+ * Assuming JPEG here used to be the fallback, and it was wrong in the one case that matters: a
+ * PNG screenshot is a completely ordinary thing to photograph a problem with, and Anthropic
+ * rejects a mislabelled image outright ("appears to be a image/png image") rather than sniffing
+ * it themselves. Base64 is deterministic at the front, so the magic bytes survive the encoding
+ * and can be matched without decoding anything.
+ */
+function sniff(b64: string): ImageMediaType {
+  const head = b64.slice(0, 16);
+  if (head.startsWith("iVBORw0KGgo")) return "image/png";   // 89 50 4E 47
+  if (head.startsWith("R0lGOD")) return "image/gif";         // "GIF8"
+  if (head.startsWith("UklGR")) return "image/webp";         // "RIFF" container
+  return "image/jpeg";                                        // FF D8 FF, and the last resort
 }
 
 /** Only ids the caller actually supplied may come back. See the normalisation block below. */

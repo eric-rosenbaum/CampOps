@@ -149,7 +149,10 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
     reader.onload = (ev) => {
       const url = ev.target?.result as string;
       setPhotoPreview(url);
-      setPhotoBase64(url.slice(url.indexOf(',') + 1));
+      // Send the whole data: URL, prefix included. Slicing it off threw away the media type, and
+      // the function then had to guess — it guessed JPEG, so every PNG (a screenshot, or an
+      // Android share sheet) came back 400 "appears to be a image/png image".
+      setPhotoBase64(url);
     };
     reader.readAsDataURL(file);
   }

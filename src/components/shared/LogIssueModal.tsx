@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Modal } from './Modal';
@@ -8,7 +8,7 @@ import { useIssuesStore } from '@/store/issuesStore';
 import { useCampStore } from '@/store/campStore';
 import { useLocationStore } from '@/store/locationStore';
 import { useAssetStore } from '@/store/assetStore';
-import { useCampgroundStore } from '@/store/campgroundStore';
+import { useCampgroundStore, routingFor } from '@/store/campgroundStore';
 import { LocationPicker } from '@/components/shared/LocationPicker';
 import { CaptureSheet } from '@/components/campground/CaptureSheet';
 import { useAuth } from '@/lib/auth';
@@ -31,7 +31,12 @@ interface FormValues {
   title: string;
   priority: Priority;
   description: string;
-  assigneeId: string;
+  /**
+   * Encoded because a job is assigned to a person OR a crew, never both, and a single control
+   * is the only way to say that without two selects contradicting each other.
+   * `''` = nobody, `user:<id>` = a person, `crew:<id>` = a crew.
+   */
+  assignTo: string;
   dueDate: string;
   /** Which crew. A filter default and a colour, never a permission. */
   trade: Trade;
@@ -49,6 +54,8 @@ export function LogIssueModal() {
   const { addIssue, updateIssue, addActivityEntry, selectIssue, issues } = useIssuesStore();
   const { currentUser, can } = useAuth();
   const members = useCampStore((s) => s.members);
+  const staffGroups = useCampStore((s) => s.staffGroups);
+  const routing = useCampgroundStore((s) => s.routing);
   const assets = useAssetStore((s) => s.assets);
   const vendors = useCampgroundStore((s) => s.vendors);
   const templates = useCampgroundStore((s) => s.templates);
@@ -83,6 +90,30 @@ export function LogIssueModal() {
     });
 
   const trade = watch('trade');
+  const assignTo = watch('assignTo');
+
+  /**
+   * Where this trade's work goes by default.
+   *
+   * route_work() has always applied this to routines, turnovers, set-ups and QR reports, but
+   * never to work logged by hand -- so a camp that had carefully set "grounds goes to Miguel"
+   * watched every typed-in job land unassigned. Prefilled rather than applied on save, so it is
+   * visible and can be overridden before anything is written.
+   */
+  const routeDefault = useMemo(() => {
+    const r = routingFor(routing, trade);
+    if (r?.defaultAssigneeId) return `user:${r.defaultAssigneeId}`;
+    if (r?.defaultStaffGroupId) return `crew:${r.defaultStaffGroupId}`;
+    return '';
+  }, [routing, trade]);
+
+  // Only while the field is still untouched: changing the trade must never silently reassign a
+  // job somebody has already given to a person.
+  const [assignTouched, setAssignTouched] = useState(false);
+  useEffect(() => {
+    if (editingIssue || assignTouched || assignTo) return;
+    if (routeDefault) setValue('assignTo', routeDefault);
+  }, [routeDefault, editingIssue, assignTouched, assignTo, setValue]);
 
   useEffect(() => {
     setPhotoFile(null);
@@ -97,7 +128,9 @@ export function LogIssueModal() {
         title: editingIssue.title,
         priority: editingIssue.priority,
         description: editingIssue.description,
-        assigneeId: editingIssue.assigneeId ?? '',
+        assignTo: editingIssue.assigneeId
+          ? `user:${editingIssue.assigneeId}`
+          : editingIssue.assigneeGroupId ? `crew:${editingIssue.assigneeGroupId}` : '',
         dueDate: editingIssue.dueDate ?? '',
         trade: editingIssue.trade,
         assetId: editingIssue.assetId ?? '',
@@ -109,7 +142,7 @@ export function LogIssueModal() {
         priority: 'normal',
         title: '',
         description: '',
-        assigneeId: '',
+        assignTo: '',
         dueDate: '',
         trade: 'maintenance',
         assetId: '',
@@ -144,7 +177,7 @@ export function LogIssueModal() {
     // well as in the function because the two deploy independently.
     if (draft.trade && tradeKeys.includes(draft.trade)) setValue('trade', draft.trade);
     if (draft.priority) setValue('priority', draft.priority);
-    if (draft.assigneeId) setValue('assigneeId', draft.assigneeId);
+    if (draft.assigneeId) setValue('assignTo', `user:${draft.assigneeId}`);
     if (draft.assetId) setValue('assetId', draft.assetId);
     if (draft.locationId) setLocationIds([draft.locationId]);
     setDraftReading({
@@ -154,7 +187,8 @@ export function LogIssueModal() {
 
   async function onSubmit(data: FormValues) {
     const now = new Date().toISOString();
-    const assigneeId = data.assigneeId || null;
+    const assigneeId = data.assignTo.startsWith('user:') ? data.assignTo.slice(5) : null;
+    const assigneeGroupId = data.assignTo.startsWith('crew:') ? data.assignTo.slice(5) : null;
     const assigneeName = assigneeId ? (members.find((m) => m.userId === assigneeId)?.fullName ?? null) : null;
     const locations = useLocationStore.getState().namesFor(locationIds);
 
@@ -182,6 +216,8 @@ export function LogIssueModal() {
         priority: data.priority,
         description: data.description,
         assigneeId,
+        assigneeGroupId,
+        // A crew is where work waits, not who owns it, so handing it to one leaves it unassigned.
         status: assigneeId
           ? (editingIssue.status === 'unassigned' ? 'assigned' : editingIssue.status)
           : editingIssue.status,
@@ -225,6 +261,7 @@ export function LogIssueModal() {
         locations,
         priority: data.priority,
         assigneeId,
+        assigneeGroupId,
         reportedById: currentUser.id,
         trade: data.trade,
         assetId: data.assetId || null,
@@ -429,11 +466,27 @@ export function LogIssueModal() {
           {can('assign') && (
             <div>
               <label className={labelClass}>Assign to</label>
-              <select {...register('assigneeId')} className={inputClass}>
-                <option value="">Unassigned</option>
-                {members.map((m) => (
-                  <option key={m.userId} value={m.userId}>{m.fullName}</option>
-                ))}
+              {/* Handing it to a crew is a real answer, and often the honest one: somebody in
+                  housekeeping will take it, and naming a person before anyone has agreed is how
+                  a board fills up with work its "owner" never knew about. */}
+              <select
+                {...register('assignTo')}
+                onChange={(e) => { setAssignTouched(true); void register('assignTo').onChange(e); }}
+                className={inputClass}
+              >
+                <option value="">Nobody yet</option>
+                {staffGroups.length > 0 && (
+                  <optgroup label="A crew picks it up">
+                    {staffGroups.map((g) => (
+                      <option key={g.id} value={`crew:${g.id}`}>{g.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                <optgroup label="A person">
+                  {members.map((m) => (
+                    <option key={m.userId} value={`user:${m.userId}`}>{m.fullName}</option>
+                  ))}
+                </optgroup>
               </select>
             </div>
           )}

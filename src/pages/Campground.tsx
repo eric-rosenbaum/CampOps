@@ -5,11 +5,9 @@ import { ChevronLeft, ChevronRight, Download, Plus } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { GroupHeader } from '@/components/shared/GroupHeader';
 import { StatCard } from '@/components/shared/StatCard';
-import { FilterPill } from '@/components/shared/FilterPill';
 import { SearchInput } from '@/components/shared/SearchInput';
 import { Button } from '@/components/shared/Button';
 import { LogIssueModal } from '@/components/shared/LogIssueModal';
-import { TradeLaneBar } from '@/components/campground/TradeLaneBar';
 import { WorkOrderCard } from '@/components/campground/WorkOrderCard';
 import { WorkOrderDetail } from '@/components/campground/WorkOrderDetail';
 // Owned by another agent; imported here because this page is where they live.
@@ -61,10 +59,11 @@ const TABS: { id: Tab; label: string }[] = [
  * thinks "this one is not moving and it is not my fault". The two states stay separate on the
  * record, where the difference is actionable.
  */
-type BoardFilter = 'all' | 'urgent' | 'unassigned' | 'in_progress' | 'waiting' | 'resolved' | 'public';
+type BoardFilter = 'all' | 'mine' | 'urgent' | 'unassigned' | 'in_progress' | 'waiting' | 'resolved' | 'public';
 
 const BOARD_FILTERS: { key: BoardFilter; label: string }[] = [
-  { key: 'all', label: 'All' },
+  { key: 'all', label: 'All work' },
+  { key: 'mine', label: 'Assigned to me' },
   { key: 'urgent', label: 'Urgent' },
   { key: 'unassigned', label: 'Unassigned' },
   { key: 'in_progress', label: 'In progress' },
@@ -73,8 +72,13 @@ const BOARD_FILTERS: { key: BoardFilter; label: string }[] = [
   { key: 'public', label: 'Public reports' },
 ];
 
+const selectClass =
+  'rounded-btn border border-border bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-forest ' +
+  'focus:border-sage focus:outline-none cursor-pointer';
+
 const EMPTY_MESSAGE: Record<BoardFilter, string> = {
   all: 'Nothing on the board',
+  mine: 'Nothing assigned to you',
   urgent: 'Nothing urgent right now',
   unassigned: 'Everything has an owner',
   in_progress: 'Nothing in progress',
@@ -135,7 +139,7 @@ export function Campground() {
   const setTradeFilter = useCampgroundStore((s) => s.setTradeFilter);
   const vendors = useCampgroundStore((s) => s.vendors);
   const checklistItems = useCampgroundStore((s) => s.checklistItems);
-  const { can, role, currentUser, issuesSeeUnassigned } = useAuth();
+  const { can, role, currentUser, issuesSeeUnassigned, staffGroup } = useAuth();
 
   const [filter, setFilter] = useState<BoardFilter>('all');
   const [search, setSearch] = useState('');
@@ -157,9 +161,12 @@ export function Campground() {
       (i) =>
         i.assigneeId === currentUser.id ||
         i.reportedById === currentUser.id ||
-        (issuesSeeUnassigned && !i.assigneeId),
+        // Work waiting for the whole camp, or waiting for this person's own crew. A crew whose
+        // members cannot see what is waiting for them cannot pick anything up.
+        (issuesSeeUnassigned && !i.assigneeId &&
+          (!i.assigneeGroupId || i.assigneeGroupId === staffGroup?.id)),
     );
-  }, [issues, role, currentUser.id, issuesSeeUnassigned]);
+  }, [issues, role, currentUser.id, issuesSeeUnassigned, staffGroup?.id]);
 
   // Lane counts come from open work: a lane exists because there is something in it to do.
   const laneCounts = useMemo(() => {
@@ -178,17 +185,20 @@ export function Campground() {
   // Counts beside each tab, so a filter announces its size before you switch to it.
   const filterCounts = useMemo(() => ({
     all: inLane.length,
+    mine: inLane.filter((i) => i.assigneeId === currentUser.id && isOpen(i)).length,
     urgent: inLane.filter((i) => i.priority === 'urgent' && isOpen(i)).length,
     unassigned: inLane.filter((i) => !i.assigneeId && isOpen(i)).length,
     in_progress: inLane.filter((i) => i.status === 'in_progress').length,
     waiting: inLane.filter(isStalled).length,
     resolved: inLane.filter((i) => i.status === 'resolved').length,
     public: inLane.filter((i) => i.isPublicReport).length,
-  }) as Record<BoardFilter, number>, [inLane]);
+  }) as Record<BoardFilter, number>, [inLane, currentUser.id]);
 
   const filtered = useMemo(() => {
     let rows = inLane;
-    if (filter === 'urgent') rows = rows.filter((i) => i.priority === 'urgent' && isOpen(i));
+    // Deliberately not "or my crew's": a crew list is a pile to pick from, not my list.
+    if (filter === 'mine') rows = rows.filter((i) => i.assigneeId === currentUser.id && isOpen(i));
+    else if (filter === 'urgent') rows = rows.filter((i) => i.priority === 'urgent' && isOpen(i));
     else if (filter === 'unassigned') rows = rows.filter((i) => !i.assigneeId && isOpen(i));
     else if (filter === 'in_progress') rows = rows.filter((i) => i.status === 'in_progress');
     else if (filter === 'waiting') rows = rows.filter(isStalled);
@@ -207,7 +217,7 @@ export function Campground() {
 
     // Overdue first, then priority, then how long it has been sitting.
     return [...rows].sort((a, b) => compareWorkOrders(a, b, today));
-  }, [inLane, filter, search, today]);
+  }, [inLane, filter, search, today, currentUser.id]);
 
   // Split the list only when the group can't see everything; otherwise flat is right.
   const showsSplitSections = role === 'staff' && !issuesSeeUnassigned;
@@ -408,32 +418,46 @@ export function Campground() {
               </div>
             </div>
 
-            {/* Lanes. A filter default, never a permission — nothing here hides work from
-                anybody, it only decides what is in front of them first. */}
-            <div className="flex-shrink-0 bg-paper-raised px-4 sm:px-7">
-              <TradeLaneBar
-                value={tradeFilter}
-                onChange={setTradeFilter}
-                counts={laneCounts}
-                total={openTotal}
-              />
-            </div>
-
-            {/* Toolbar: the tabs sit on the header's own bottom rule. */}
-            <div className="flex-shrink-0 border-b border-border bg-paper-raised px-4 sm:px-7">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="-mx-1 flex items-center gap-1 overflow-x-auto overflow-y-hidden px-1 no-scrollbar">
-                  {BOARD_FILTERS.map(({ key, label }) => (
-                    <FilterPill
-                      key={key}
-                      label={label}
-                      active={filter === key}
-                      count={filterCounts[key]}
-                      onClick={() => setFilter(key)}
-                    />
+            {/* One row, two questions: whose work and what state. This was two full-width rows
+                of chips -- a lane per trade above a tab per status -- which cost a third of the
+                screen before you had read a single job. The counts stay: a filter that announces
+                its size is worth switching to. */}
+            <div className="flex-shrink-0 border-b border-border bg-paper-raised px-4 sm:px-7 py-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  aria-label="Crew"
+                  value={tradeFilter}
+                  onChange={(e) => setTradeFilter(e.target.value as typeof tradeFilter)}
+                  className={selectClass}
+                >
+                  <option value="all">All crews · {openTotal}</option>
+                  {tradeKeys.map((t) => (
+                    <option key={t} value={t}>{labelOf(t)} · {laneCounts[t] ?? 0}</option>
                   ))}
-                </div>
-                <div className="pb-2 sm:pb-0">
+                </select>
+
+                <select
+                  aria-label="Status"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value as BoardFilter)}
+                  className={selectClass}
+                >
+                  {BOARD_FILTERS.map(({ key, label }) => (
+                    <option key={key} value={key}>{label} · {filterCounts[key]}</option>
+                  ))}
+                </select>
+
+                {(tradeFilter !== 'all' || filter !== 'all') && (
+                  <button
+                    type="button"
+                    onClick={() => { setTradeFilter('all'); setFilter('all'); }}
+                    className="text-[12px] font-semibold text-ink-soft hover:text-forest px-1"
+                  >
+                    Clear
+                  </button>
+                )}
+
+                <div className="ml-auto">
                   <SearchInput value={search} onChange={setSearch} placeholder="Search work…" />
                 </div>
               </div>

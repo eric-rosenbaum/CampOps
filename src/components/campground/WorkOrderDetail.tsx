@@ -33,6 +33,7 @@ export function WorkOrderDetail({ issue }: Props) {
   const navigate = useNavigate();
   const { currentUser, can } = useAuth();
   const members = useCampStore((s) => s.members);
+  const staffGroups = useCampStore((s) => s.staffGroups);
   const { updateIssue, resolveIssue, reopenIssue, addActivityEntry, deleteIssue } = useIssuesStore();
   const openEditIssueModal = useUIStore((s) => s.openEditIssueModal);
   const assets = useAssetStore((s) => s.assets);
@@ -162,17 +163,28 @@ export function WorkOrderDetail({ issue }: Props) {
     log(`${currentUser.name} set this to ${STATUS_LABELS[next].toLowerCase()}`);
   }
 
-  function handleAssigneeChange(assigneeId: string) {
+  /** `''` = nobody, `user:<id>` = a person, `crew:<id>` = a crew. One or the other, never both. */
+  function handleAssigneeChange(value: string) {
+    const assigneeId = value.startsWith('user:') ? value.slice(5) : null;
+    const assigneeGroupId = value.startsWith('crew:') ? value.slice(5) : null;
     const name = assigneeId
       ? (members.find((m) => m.userId === assigneeId)?.fullName ?? 'someone')
-      : null;
+      : assigneeGroupId
+        ? (staffGroups.find((g) => g.id === assigneeGroupId)?.name ?? 'a crew')
+        : null;
     updateIssue(issue.id, {
-      assigneeId: assigneeId || null,
+      assigneeId,
+      assigneeGroupId,
+      // Handing it to a crew leaves it unassigned: nobody has taken it yet.
       status: issue.status === 'unassigned' || issue.status === 'assigned'
         ? (assigneeId ? 'assigned' : 'unassigned')
         : issue.status,
     });
-    log(name ? `Assigned to ${name} by ${currentUser.name}` : `Unassigned by ${currentUser.name}`);
+    log(
+      assigneeId ? `Assigned to ${name} by ${currentUser.name}`
+        : assigneeGroupId ? `Handed to ${name} by ${currentUser.name}`
+        : `Unassigned by ${currentUser.name}`,
+    );
   }
 
   function handleVendorChange(vendorId: string) {
@@ -210,6 +222,9 @@ export function WorkOrderDetail({ issue }: Props) {
     setShowTime(false);
   }
 
+  const crewName = issue.assigneeGroupId
+    ? (staffGroups.find((g) => g.id === issue.assigneeGroupId)?.name ?? null)
+    : null;
   const assignee = issue.assigneeId
     ? (members.find((m) => m.userId === issue.assigneeId)?.fullName ?? null)
     : null;
@@ -361,17 +376,29 @@ export function WorkOrderDetail({ issue }: Props) {
             <span className={railLabel}>Assigned to</span>
             {can('assign') ? (
               <select
-                value={issue.assigneeId ?? ''}
+                value={issue.assigneeId ? `user:${issue.assigneeId}`
+                  : issue.assigneeGroupId ? `crew:${issue.assigneeGroupId}` : ''}
                 onChange={(e) => handleAssigneeChange(e.target.value)}
                 className={selectClass}
               >
-                <option value="">Unassigned</option>
-                {members.map((m) => (
-                  <option key={m.userId} value={m.userId}>{m.fullName}</option>
-                ))}
+                <option value="">Nobody yet</option>
+                {staffGroups.length > 0 && (
+                  <optgroup label="A crew picks it up">
+                    {staffGroups.map((g) => (
+                      <option key={g.id} value={`crew:${g.id}`}>{g.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                <optgroup label="A person">
+                  {members.map((m) => (
+                    <option key={m.userId} value={`user:${m.userId}`}>{m.fullName}</option>
+                  ))}
+                </optgroup>
               </select>
             ) : assignee ? (
               <span className="text-[13px] font-medium text-forest">{assignee}</span>
+            ) : crewName ? (
+              <span className="text-[13px] font-medium text-forest">{crewName} · unclaimed</span>
             ) : (
               <span className="text-[13px] font-medium text-red">Unassigned</span>
             )}

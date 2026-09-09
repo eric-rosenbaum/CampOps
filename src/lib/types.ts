@@ -140,6 +140,11 @@ export interface Issue {
   priority: Priority;
   status: IssueStatus;
   assigneeId: string | null;
+  /**
+   * The crew this is waiting on, when no one person has it. Mutually exclusive with
+   * `assigneeId`, and still counts as unassigned: a crew is where work waits, not who owns it.
+   */
+  assigneeGroupId: string | null;
   reportedById: string | null;
   /** @deprecated 2026-09-02. Not written, not shown — an estimate typed under time pressure is fiction. */
   estimatedCostDisplay: string | null;

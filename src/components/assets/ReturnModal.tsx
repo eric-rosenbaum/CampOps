@@ -63,6 +63,7 @@ export function ReturnModal() {
         priority: 'high',
         status: 'unassigned',
         assigneeId: null,
+        assigneeGroupId: null,
         reportedById: currentUser.id,
         estimatedCostDisplay: null,
         estimatedCostValue: null,

@@ -116,6 +116,8 @@ export interface NewWorkOrderInput {
   status?: IssueStatus;
   trade?: Trade;
   assigneeId?: string | null;
+  /** The crew it waits with. Still counts as unassigned -- nobody has taken it. */
+  assigneeGroupId?: string | null;
   reportedById?: string | null;
   assetId?: string | null;
   vendorId?: string | null;
@@ -143,6 +145,7 @@ export function newWorkOrder(input: NewWorkOrderInput): Issue {
     priority: input.priority ?? 'normal',
     status: input.status ?? (input.assigneeId ? 'assigned' : 'unassigned'),
     assigneeId: input.assigneeId ?? null,
+    assigneeGroupId: input.assigneeGroupId ?? null,
     reportedById: input.reportedById ?? null,
     // Deprecated 2026-09-02: an estimate typed under time pressure is fiction, and it cost two
     // fields on the fastest-moving form in the product.

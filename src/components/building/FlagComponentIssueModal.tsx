@@ -52,6 +52,7 @@ export function FlagComponentIssueModal({ componentId }: { componentId: string }
         priority: severity === 'out_of_service' ? 'high' : 'normal',
         status: 'unassigned',
         assigneeId: null,
+        assigneeGroupId: null,
         reportedById: currentUser.id,
         estimatedCostDisplay: null,
         estimatedCostValue: null,

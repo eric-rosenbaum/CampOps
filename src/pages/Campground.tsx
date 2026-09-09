@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
-import { ChevronLeft, ChevronRight, Download, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Plus, X } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { GroupHeader } from '@/components/shared/GroupHeader';
 import { StatCard } from '@/components/shared/StatCard';
@@ -23,7 +23,7 @@ import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useSafetyStore } from '@/store/safetyStore';
 import { useAssetStore } from '@/store/assetStore';
-import { useCampgroundStore, checklistProgress } from '@/store/campgroundStore';
+import { useCampgroundStore, checklistProgress, unreadThreadsForMe } from '@/store/campgroundStore';
 import { useAuth } from '@/lib/auth';
 import { useTradeLabel } from '@/lib/useTrades';
 import type { Issue, Trade } from '@/lib/types';
@@ -139,6 +139,8 @@ export function Campground() {
   const setTradeFilter = useCampgroundStore((s) => s.setTradeFilter);
   const vendors = useCampgroundStore((s) => s.vendors);
   const checklistItems = useCampgroundStore((s) => s.checklistItems);
+  const comments = useCampgroundStore((s) => s.comments);
+  const readAt = useCampgroundStore((s) => s.readAt);
   const { can, role, currentUser, issuesSeeUnassigned, staffGroup } = useAuth();
 
   const [filter, setFilter] = useState<BoardFilter>('all');
@@ -176,6 +178,17 @@ export function Campground() {
   }, [visible, tradeKeys]);
 
   const openTotal = useMemo(() => visible.filter(isOpen).length, [visible]);
+
+  /**
+   * Work orders that have said something to me since I last looked -- mine, or ones I have
+   * already spoken on. The dot on a card only helps if you are looking at the card; a message
+   * you are waiting on should find you.
+   */
+  const unreadThreads = useMemo(
+    () => unreadThreadsForMe(visible, comments, readAt, currentUser.id),
+    [visible, comments, readAt, currentUser.id],
+  );
+  const [messagesDismissed, setMessagesDismissed] = useState(false);
 
   const inLane = useMemo(
     () => (tradeFilter === 'all' ? visible : visible.filter((i) => i.trade === tradeFilter)),
@@ -464,6 +477,45 @@ export function Campground() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 pb-10 sm:px-7">
+              {unreadThreads.length > 0 && !messagesDismissed && (
+                <div className="mb-4 mt-4 rounded-card border border-blue/30 bg-blue-bg px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[12.5px] font-semibold text-blue-text">
+                        {unreadThreads.length === 1
+                          ? 'New message on a job you are on'
+                          : `New messages on ${unreadThreads.length} jobs you are on`}
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                        {unreadThreads.slice(0, 4).map((i) => (
+                          <button
+                            key={i.id}
+                            type="button"
+                            onClick={() => { selectIssue(i.id); setMobileDetailOpen(true); }}
+                            className="text-[12px] text-blue-text underline underline-offset-2 hover:no-underline"
+                          >
+                            {i.title}
+                          </button>
+                        ))}
+                        {unreadThreads.length > 4 && (
+                          <span className="text-[12px] text-blue-text/70">
+                            and {unreadThreads.length - 4} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMessagesDismissed(true)}
+                      aria-label="Dismiss"
+                      className="flex-none text-blue-text/60 hover:text-blue-text"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {failedDevices.length > 0 && (
                 <div className="mb-4 mt-4 rounded-card border border-red/20 bg-red-bg px-4 py-3.5">
                   <div className="mb-1.5 flex items-center justify-between">

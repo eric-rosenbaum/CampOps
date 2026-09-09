@@ -163,7 +163,10 @@ export interface CampgroundData {
 
 const CAMPGROUND_TABLES = [
   'service_vendors', 'work_routing', 'work_schedules', 'work_checklist_templates',
-  'issue_checklist_items', 'issue_comments', 'camp_sessions', 'camp_trades',
+  // issue_comments is deliberately absent: it gets its own channel below. This one carries
+  // eight tables and the app opens dozens of postgres_changes bindings across every module;
+  // a message somebody is waiting on cannot be the binding that quietly loses that queue.
+  'issue_checklist_items', 'camp_sessions', 'camp_trades',
 ];
 
 async function loadInner(campId: string): Promise<CampgroundData> {
@@ -200,6 +203,32 @@ export async function loadCampground(campId: string): Promise<CampgroundData | n
 }
 
 let channelCount = 0;
+/**
+ * Messages on a work order, on a channel of their own.
+ *
+ * They used to ride the shared campground subscription and simply never arrived: two people on
+ * the same job typed at each other and saw nothing until one reloaded. The table was missing
+ * from the publication, and even once added it was one of eight bindings on a channel competing
+ * with every other module's. `issues` has had its own channel for the same reason -- the things
+ * people are actually waiting on get their own pipe.
+ */
+export function subscribeToIssueComments(
+  campId: string, onUpdate: (rows: IssueComment[]) => void,
+): () => void {
+  const load = async (): Promise<IssueComment[]> => {
+    const { data } = await supabase.from('issue_comments').select('*')
+      .eq('camp_id', campId).is('deleted_at', null).order('created_at');
+    return (data ?? []).map((r) => rowToComment(r as Row));
+  };
+  const reload = () => loadAndApply('issue_comments', load, onUpdate);
+  const onWal = debounce(reload, WAL_DEBOUNCE_MS);
+  const channel = supabase.channel(`comments-${++channelCount}`)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'issue_comments', filter: `camp_id=eq.${campId}` }, onWal)
+    .subscribe((status) => campLog('[CampOps] comments channel status:', status));
+  return () => { supabase.removeChannel(channel); };
+}
+
 export function subscribeToCampground(campId: string, onUpdate: (d: CampgroundData) => void): () => void {
   const reload = () => loadAndApply('campground', () => loadInner(campId), onUpdate);
   const onWal = debounce(reload, WAL_DEBOUNCE_MS);

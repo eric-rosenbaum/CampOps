@@ -3,7 +3,7 @@ import type { Issue, IssueStatus } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
 import { useCampStore } from '@/store/campStore';
 import { useRetreatStore } from '@/store/retreatStore';
-import { useCampgroundStore, checklistProgress, hasUnread } from '@/store/campgroundStore';
+import { useCampgroundStore, checklistProgress, hasUnread, inThread } from '@/store/campgroundStore';
 import {
   STATUS_LABELS, tradeStripe, tradePill, tradeLabel, isOverdue, describeMissed,
 } from '@/lib/workOrder';
@@ -64,7 +64,10 @@ export function WorkOrderCard({ issue, selected, onClick, today, onTakeIt }: Pro
   const late = isOverdue(issue, today);
 
   const progress = checklistProgress(checklistItems, issue.id);
-  const unread = hasUnread(comments, readAt, issue.id, currentUser.id);
+  // Only for threads this person is actually in. A dot on every card is a dot that means
+  // nothing.
+  const unread = inThread(issue, comments, currentUser.id)
+    && hasUnread(comments, readAt, issue.id, currentUser.id);
 
   const schedule = issue.scheduleId ? schedules.find((s) => s.id === issue.scheduleId) : undefined;
   const behind = schedule ? describeMissed(schedule.missedCount) : null;

@@ -259,6 +259,29 @@ export function hasUnread(
     c.issueId === issueId && !c.deletedAt && c.authorId !== userId && (!seen || c.createdAt > seen));
 }
 
+/**
+ * Am I in this conversation?
+ *
+ * A message only wants my attention if the job is mine or I have already said something on it.
+ * Without this, a busy camp lights up every card on the board and the marker stops meaning
+ * anything -- which is worse than not having one.
+ */
+export function inThread(issue: Issue, comments: IssueComment[], userId: string): boolean {
+  if (issue.assigneeId === userId) return true;
+  return comments.some((c) => c.issueId === issue.id && !c.deletedAt && c.authorId === userId);
+}
+
+/** Work orders I am part of that have said something since I last looked. Newest first. */
+export function unreadThreadsForMe(
+  issues: Issue[], comments: IssueComment[], readAt: Record<string, string>, userId: string,
+): Issue[] {
+  return issues.filter(
+    (i) => i.status !== 'resolved'
+      && inThread(i, comments, userId)
+      && hasUnread(comments, readAt, i.id, userId),
+  );
+}
+
 export function routingFor(routing: WorkRouting[], trade: Trade): WorkRouting | undefined {
   return routing.find((r) => r.trade === trade);
 }

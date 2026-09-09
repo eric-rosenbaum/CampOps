@@ -88,7 +88,7 @@ import { useAssetStore } from '@/store/assetStore';
 import { useBuildingStore } from '@/store/buildingStore';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { loadRetreats, subscribeToRetreats } from '@/lib/retreatsDb';
-import { loadCampground, subscribeToCampground, dbGenerateScheduledWork } from '@/lib/campgroundDb';
+import { loadCampground, subscribeToCampground, subscribeToIssueComments, dbGenerateScheduledWork } from '@/lib/campgroundDb';
 import { useCampgroundStore } from '@/store/campgroundStore';
 import { useRetreatStore } from '@/store/retreatStore';
 import { loadLocations, subscribeToLocations } from '@/lib/locationsDb';
@@ -204,6 +204,7 @@ function CampDataLoader() {
     let unsubRetreats: (() => void) | null = null;
     let unsubLocations: (() => void) | null = null;
     let unsubCampground: (() => void) | null = null;
+    let unsubComments: (() => void) | null = null;
 
     // Start the Supabase keep-alive heartbeat.  Pings every 30 s while visible to
     // keep the TCP socket from going stale and to refresh the JWT before expiry.
@@ -331,6 +332,9 @@ function CampDataLoader() {
       setCampTrades(d.trades);
     };
     unsubCampground = subscribeToCampground(campId, applyCampground);
+    // Its own channel: a message on a job somebody is waiting on must not queue behind every
+    // other module's subscription.
+    unsubComments = subscribeToIssueComments(campId, setIssueComments);
 
     // Unified locations tree (camp-wide reference data).
     const applyLocationData = (d: import('@/lib/locationsDb').LocationData) => {
@@ -484,6 +488,7 @@ function CampDataLoader() {
       unsubCommAllergy?.();
       unsubRetreats?.();
       unsubCampground?.();
+      unsubComments?.();
       unsubLocations?.();
       stopHeartbeat();
       stopWriteQueue();

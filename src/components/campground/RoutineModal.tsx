@@ -3,7 +3,7 @@
    "next due" line in RoutinesPanel must agree exactly, and two copies of this maths would
    eventually disagree. The rule this disables only affects dev fast refresh, not correctness. */
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Trash2, CalendarRange } from 'lucide-react';
+import { AlertTriangle, Trash2, CalendarRange, ChevronRight } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { LocationPicker } from '@/components/shared/LocationPicker';
@@ -167,6 +167,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
   const labelOf = useTradeLabel();
   const [draft, setDraft] = useState<WorkSchedule>(() => schedule ?? blankSchedule());
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const addSchedule = useCampgroundStore((s) => s.addSchedule);
   const updateSchedule = useCampgroundStore((s) => s.updateSchedule);
@@ -474,41 +475,6 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
           )}
         </div>
 
-        {/* ── Active window ────────────────────────────────────────────────── */}
-        <div className="border-t border-border pt-5">
-          <h3 className="font-display text-[14px] font-bold text-forest mb-1">Active window</h3>
-          <p className="text-[12.5px] text-ink-soft leading-relaxed mb-3">
-            Without a window, this keeps raising work all year.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass} htmlFor="routine-from">Runs from</label>
-              <input
-                id="routine-from" type="date" className={inputClass}
-                value={draft.activeFrom ?? ''}
-                onChange={(e) => set({ activeFrom: e.target.value || null })}
-              />
-            </div>
-            <div>
-              <label className={labelClass} htmlFor="routine-until">Runs until</label>
-              <input
-                id="routine-until" type="date" className={inputClass}
-                value={draft.activeUntil ?? ''}
-                onChange={(e) => set({ activeUntil: e.target.value || null })}
-              />
-            </div>
-          </div>
-          {season && !draft.activeFrom && !draft.activeUntil && (
-            <button
-              type="button"
-              onClick={() => set({ activeFrom: season.openingDate, activeUntil: season.closingDate })}
-              className="mt-2 text-[12px] font-semibold text-forest underline underline-offset-2 cursor-pointer hover:text-forest-mid"
-            >
-              Use this season ({formatDate(season.openingDate)} – {formatDate(season.closingDate)})
-            </button>
-          )}
-        </div>
-
         {/* ── Who ──────────────────────────────────────────────────────────── */}
         <div className="border-t border-border pt-5">
           <h3 className="font-display text-[14px] font-bold text-forest mb-3">Who it lands on</h3>
@@ -558,33 +524,6 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
           </div>
         </div>
 
-        {/* ── Generation ───────────────────────────────────────────────────── */}
-        <div className="border-t border-border pt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className={labelClass} htmlFor="routine-ahead">Raise it this many days ahead</label>
-            <input
-              id="routine-ahead" type="number" min={0} max={90}
-              className={`${inputClass} w-24`}
-              value={draft.generateAheadDays}
-              onChange={(e) => set({ generateAheadDays: Math.max(0, Number(e.target.value) || 0) })}
-            />
-          </div>
-          <div>
-            <label className={labelClass} htmlFor="routine-reschedule">Count the next one from</label>
-            <select
-              id="routine-reschedule" className={inputClass} value={draft.rescheduleFrom}
-              onChange={(e) => set({ rescheduleFrom: e.target.value as WorkSchedule['rescheduleFrom'] })}
-            >
-              <option value="due_date">The date it was due</option>
-              <option value="completed_at">The date it was finished</option>
-            </select>
-            <p className={hintClass}>
-              "Finished" suits jobs measured from the last service — an oil change three weeks
-              late should push the next one back, not stay on the old grid.
-            </p>
-          </div>
-        </div>
-
         {/* ── Preview ──────────────────────────────────────────────────────── */}
         <div className="border-t border-border pt-5">
           <div className="bg-cream rounded-card border border-border px-4 py-3.5">
@@ -619,6 +558,86 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
           </div>
         </div>
 
+        {/* ── Everything else, folded away ─────────────────────────────────── */}
+        {/* Most routines take the defaults here. A form that shows every knob at once
+            makes a weekly bathhouse clean look like a configuration exercise. */}
+        <div className="border-t border-border pt-5">
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-soft hover:text-forest transition-colors"
+          >
+            <ChevronRight
+              className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
+              aria-hidden="true"
+            />
+            More settings
+          </button>
+
+          {showAdvanced && (
+            <div className="space-y-5 pt-4">
+        {/* ── Active window ────────────────────────────────────────────────── */}
+        <div className="border-t border-border pt-5">
+          <h3 className="font-display text-[14px] font-bold text-forest mb-1">Active window</h3>
+          <p className="text-[12.5px] text-ink-soft leading-relaxed mb-3">
+            Without a window, this keeps raising work all year.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass} htmlFor="routine-from">Runs from</label>
+              <input
+                id="routine-from" type="date" className={inputClass}
+                value={draft.activeFrom ?? ''}
+                onChange={(e) => set({ activeFrom: e.target.value || null })}
+              />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="routine-until">Runs until</label>
+              <input
+                id="routine-until" type="date" className={inputClass}
+                value={draft.activeUntil ?? ''}
+                onChange={(e) => set({ activeUntil: e.target.value || null })}
+              />
+            </div>
+          </div>
+          {season && !draft.activeFrom && !draft.activeUntil && (
+            <button
+              type="button"
+              onClick={() => set({ activeFrom: season.openingDate, activeUntil: season.closingDate })}
+              className="mt-2 text-[12px] font-semibold text-forest underline underline-offset-2 cursor-pointer hover:text-forest-mid"
+            >
+              Use this season ({formatDate(season.openingDate)} – {formatDate(season.closingDate)})
+            </button>
+          )}
+        </div>
+
+        {/* ── Generation ───────────────────────────────────────────────────── */}
+        <div className="border-t border-border pt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass} htmlFor="routine-ahead">Raise it this many days ahead</label>
+            <input
+              id="routine-ahead" type="number" min={0} max={90}
+              className={`${inputClass} w-24`}
+              value={draft.generateAheadDays}
+              onChange={(e) => set({ generateAheadDays: Math.max(0, Number(e.target.value) || 0) })}
+            />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="routine-reschedule">Count the next one from</label>
+            <select
+              id="routine-reschedule" className={inputClass} value={draft.rescheduleFrom}
+              onChange={(e) => set({ rescheduleFrom: e.target.value as WorkSchedule['rescheduleFrom'] })}
+            >
+              <option value="due_date">The date it was due</option>
+              <option value="completed_at">The date it was finished</option>
+            </select>
+            <p className={hintClass}>
+              "Finished" suits jobs measured from the last service — an oil change three weeks
+              late should push the next one back, not stay on the old grid.
+            </p>
+          </div>
+        </div>
+
         {/* ── Paused ───────────────────────────────────────────────────────── */}
         <label className="flex items-start gap-2.5 cursor-pointer">
           <input
@@ -644,6 +663,10 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
             </ul>
           </div>
         )}
+
+            </div>
+          )}
+        </div>
 
         {/* ── Actions ──────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 pt-1">

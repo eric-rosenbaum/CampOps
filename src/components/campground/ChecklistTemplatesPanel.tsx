@@ -19,8 +19,9 @@ import type { ChecklistTemplateItem, Trade, WorkChecklistTemplate } from '@/lib/
  * daily, program space reset, vehicle pre-trip, cabin opening, cabin closing) because a camp
  * that has to author six checklists before it can use the feature never uses the feature.
  *
- * `requiresPhoto` is the one setting here that can quietly kill adoption, so the editor argues
- * against over-using it rather than presenting it as a neutral toggle.
+ * `requiresPhoto` asks for a photo, it does not demand one: the step still ticks without it. A
+ * checklist that refuses to close is a checklist people stop opening, and the crew with no signal
+ * at the back of the property is exactly who needed it to work.
  */
 
 const inputClass =
@@ -108,7 +109,7 @@ export function ChecklistTemplatesPanel() {
                       </div>
                       <p className="text-[11.5px] text-ink-soft mt-1">
                         {t.items.length} step{t.items.length === 1 ? '' : 's'}
-                        {photos > 0 && ` · ${photos} need${photos === 1 ? 's' : ''} a photo`}
+                        {photos > 0 && ` · ${photos} ask${photos === 1 ? 's' : ''} for a photo`}
                       </p>
                       {t.items.length > 0 && (
                         <p className="text-[12px] text-ink-faint mt-1.5 leading-relaxed line-clamp-2">
@@ -267,7 +268,7 @@ function TemplateModal({ template, onClose }: {
                           onChange={(e) => patchItem(i, { requiresPhoto: e.target.checked })}
                         />
                         <span className="inline-flex items-center gap-1 text-[12px] text-ink-soft">
-                          <Camera className="w-3.5 h-3.5" aria-hidden="true" /> Needs a photo
+                          <Camera className="w-3.5 h-3.5" aria-hidden="true" /> Ask for a photo
                         </span>
                       </label>
                     </div>

@@ -79,7 +79,7 @@ export function rowToTemplate(r: Row): WorkChecklistTemplate {
   return {
     id: r.id as string, campId: r.camp_id as string, name: r.name as string,
     trade: (r.trade as Trade) ?? 'housekeeping',
-    items: Array.isArray(r.items) ? (r.items as ChecklistTemplateItem[]) : [],
+    items: Array.isArray(r.items) ? (r.items as Row[]).map(templateItemFromJson) : [],
     isActive: r.is_active !== false,
     createdAt: r.created_at as string, updatedAt: r.updated_at as string,
   };
@@ -300,8 +300,30 @@ export async function dbRecordMeter(assetId: string, reading: number, kind: 'hou
 }
 
 // Checklists ------------------------------------------------------------------
+/**
+ * The steps go into jsonb, so they need the same snake_case boundary every other column gets.
+ * They did not have one: the editor wrote `requiresPhoto` while apply_checklist_template reads
+ * `requires_photo`, so the flag survived in the template and vanished the moment a checklist was
+ * applied to a work order. Seeded templates were written in SQL and worked; anything a camp
+ * edited did not.
+ */
+const templateItemToJson = (i: ChecklistTemplateItem): Row => ({
+  text: i.text,
+  ...(i.note ? { note: i.note } : {}),
+  ...(i.requiresPhoto ? { requires_photo: true } : {}),
+});
+
+/** Reads both spellings, so templates stored by the old client still ask for their photos. */
+function templateItemFromJson(r: Row): ChecklistTemplateItem {
+  return {
+    text: String(r.text ?? ''),
+    ...(r.note ? { note: String(r.note) } : {}),
+    ...(r.requires_photo || r.requiresPhoto ? { requiresPhoto: true } : {}),
+  };
+}
+
 const templateRow = (t: WorkChecklistTemplate): Row => ({
-  name: t.name, trade: t.trade, items: t.items, is_active: t.isActive,
+  name: t.name, trade: t.trade, items: t.items.map(templateItemToJson), is_active: t.isActive,
 });
 export const dbAddTemplate = (t: WorkChecklistTemplate) => ins('work_checklist_templates', { id: t.id, camp_id: CID(), ...templateRow(t) });
 export const dbUpdateTemplate = (t: WorkChecklistTemplate) => upd('work_checklist_templates', t.id, templateRow(t));

@@ -227,8 +227,7 @@ function Step({ item, uploading, onToggle, onPhoto, onRemove }: {
   const fileRef = useRef<HTMLInputElement>(null);
   // A step can ask for a photo, and saying so is the whole job. It used to also refuse to tick
   // without one, which meant a crew with no signal at the back of the property could not close
-  // out their morning -- so the ask is now visible and the tick is never blocked.
-  const wantsPhoto = item.requiresPhoto && !item.photoUrl;
+  // out their morning -- so the ask is visible on the step itself and the tick is never blocked.
 
   return (
     <li className="group flex items-start gap-2">
@@ -252,20 +251,28 @@ function Step({ item, uploading, onToggle, onPhoto, onRemove }: {
       <div className="min-w-0 flex-1">
         <p className={`text-[13px] leading-snug ${item.isDone ? 'text-ink-faint line-through' : 'text-ink'}`}>
           {item.text}
+          {/* Sits on the step's own line, so a list of ten shows at a glance which two want a
+              photo. Clicking it is how you add one; it never stands in the way of the tick. */}
+          {item.requiresPhoto && (
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              title={item.photoUrl ? 'Replace the photo' : 'Add the photo this step asks for'}
+              className={`ml-1.5 inline-flex translate-y-px items-center gap-1 rounded-tag px-1.5 py-px
+                          align-middle text-[9.5px] font-bold uppercase tracking-[0.08em]
+                          transition-colors disabled:opacity-50 ${
+                item.photoUrl
+                  ? 'bg-sage-pale text-forest hover:bg-sage/30'
+                  : 'bg-amber-bg text-amber-text hover:bg-amber/20'
+              }`}
+            >
+              <Camera className="h-3 w-3" aria-hidden="true" />
+              {item.photoUrl ? 'Photo' : 'Photo asked for'}
+            </button>
+          )}
         </p>
         {item.note && <p className="text-[11.5px] text-ink-soft">{item.note}</p>}
-        {wantsPhoto && (
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-text
-                       hover:underline disabled:opacity-50"
-          >
-            <Camera className="h-3 w-3" aria-hidden="true" />
-            {item.isDone ? 'A photo was asked for' : 'Asks for a photo'}
-          </button>
-        )}
         {item.isDone && item.doneByName && (
           <p className="text-[11px] text-ink-faint">Done by {item.doneByName}</p>
         )}
@@ -281,30 +288,18 @@ function Step({ item, uploading, onToggle, onPhoto, onRemove }: {
       </div>
 
       {item.requiresPhoto && (
-        <>
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            title={item.photoUrl ? 'Replace the photo' : 'Add the photo this step asks for'}
-            className={`mt-0.5 flex-none transition-colors hover:text-forest disabled:opacity-50 ${
-              item.photoUrl ? 'text-sage' : 'text-amber'
-            }`}
-          >
-            <Camera className="h-3.5 w-3.5" />
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = '';
-              if (file) onPhoto(file);
-            }}
-          />
-        </>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (file) onPhoto(file);
+          }}
+        />
       )}
 
       <button

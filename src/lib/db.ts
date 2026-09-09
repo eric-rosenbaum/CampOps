@@ -248,21 +248,53 @@ export async function dbUpsertIssue(issue: Issue): Promise<{ error: unknown }> {
   return { error };
 }
 
+/**
+ * Column name for every editable Issue field.
+ *
+ * This used to be a hand-written run of `if (patch.x !== undefined)` lines, and it was never
+ * extended when the Campground build added trade, vendor, asset, schedule, minutes and the
+ * multi-location array. Editing any of those from the detail rail updated the store, drew the
+ * change, wrote a timeline entry — and silently dropped the column on the way to the database,
+ * so it was gone on the next refresh. A map keyed on the field name fails loudly instead: a new
+ * column that is missing here is one line, in one place, next to all the others.
+ *
+ * assigned_at / resolved_at are deliberately absent — a trigger stamps them, because a client
+ * clock is the wrong source for a number the season review reports as fact.
+ */
+const ISSUE_COLUMNS: Partial<Record<keyof Issue, string>> = {
+  title: 'title',
+  description: 'description',
+  locationIds: 'location_ids',
+  locations: 'locations',
+  priority: 'priority',
+  status: 'status',
+  assigneeId: 'assignee_id',
+  reportedById: 'reported_by_id',
+  estimatedCostDisplay: 'estimated_cost_display',
+  estimatedCostValue: 'estimated_cost_value',
+  actualCost: 'actual_cost',
+  photoUrl: 'photo_url',
+  dueDate: 'due_date',
+  isRecurring: 'is_recurring',
+  recurringInterval: 'recurring_interval',
+  isPublicReport: 'is_public_report',
+  reporterName: 'reporter_name',
+  reporterContact: 'reporter_contact',
+  source: 'source',
+  trade: 'trade',
+  assetId: 'asset_id',
+  vendorId: 'vendor_id',
+  scheduleId: 'schedule_id',
+  retreatSpaceRequestId: 'retreat_space_request_id',
+  retreatId: 'retreat_id',
+  minutesSpent: 'minutes_spent',
+};
+
 export async function dbUpdateIssue(id: string, patch: Partial<Issue>) {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (patch.title !== undefined) row.title = patch.title;
-  if (patch.description !== undefined) row.description = patch.description;
-  if (patch.locations !== undefined) row.locations = patch.locations;
-  if (patch.priority !== undefined) row.priority = patch.priority;
-  if (patch.status !== undefined) row.status = patch.status;
-  if (patch.assigneeId !== undefined) row.assignee_id = patch.assigneeId;
-  if (patch.estimatedCostDisplay !== undefined) row.estimated_cost_display = patch.estimatedCostDisplay;
-  if (patch.estimatedCostValue !== undefined) row.estimated_cost_value = patch.estimatedCostValue;
-  if (patch.actualCost !== undefined) row.actual_cost = patch.actualCost;
-  if (patch.dueDate !== undefined) row.due_date = patch.dueDate;
-  if (patch.isRecurring !== undefined) row.is_recurring = patch.isRecurring;
-  if (patch.recurringInterval !== undefined) row.recurring_interval = patch.recurringInterval;
-  if (patch.photoUrl !== undefined) row.photo_url = patch.photoUrl;
+  for (const [field, column] of Object.entries(ISSUE_COLUMNS) as [keyof Issue, string][]) {
+    if (patch[field] !== undefined) row[column] = patch[field];
+  }
   const { error } = await supabase.from('issues').update(row).eq('id', id);
   if (error) console.error('dbUpdateIssue error:', error.message);
 }

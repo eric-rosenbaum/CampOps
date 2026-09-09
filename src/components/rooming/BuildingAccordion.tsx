@@ -253,12 +253,24 @@ function RoomRow({
   onDropGuest?: (guestId: string, roomId: string) => void;
 }) {
   const [dragOver, setDragOver] = useState(false);
+  /**
+   * A placement that would overfill the room, held back for one confirmation. Camps really do
+   * put an extra mattress on the floor, so this is never a refusal — but it is the difference
+   * between choosing to do it and finding out at check-in.
+   */
+  const [overflow, setOverflow] = useState<{ run: () => void; adding: number } | null>(null);
   const taken = room.occupants.length + room.unnamed;
   const over = room.capacity > 0 && taken > room.capacity;
   const blocked = room.heldByOther || room.outOfService;
   const canPlace = editable && !blocked && selectedCount > 0 && !!onPlace;
   /** A single dragged person can land here even when nothing is selected. */
   const canDrop = editable && !blocked && (canPlace || !!onDropGuest);
+
+  /** Run it, unless it would put more people in the room than there are beds. */
+  function guardCapacity(adding: number, run: () => void) {
+    if (room.capacity > 0 && taken + adding > room.capacity) { setOverflow({ run, adding }); return; }
+    run();
+  }
 
   // Someone who needs a step-free room sitting in one that isn't: worth saying plainly rather
   // than discovering at check-in.
@@ -278,12 +290,19 @@ function RoomRow({
         const one = e.dataTransfer.getData(GUEST_MIME);
         if (many && onDropGuest) {
           try {
-            (JSON.parse(many) as string[]).forEach((id) => onDropGuest(id, room.id));
+            const ids = JSON.parse(many) as string[];
+            // People already in this room are moving nowhere; they must not count as arrivals.
+            const arriving = ids.filter((id) => !room.occupants.some((g) => g.id === id));
+            guardCapacity(arriving.length, () => ids.forEach((id) => onDropGuest(id, room.id)));
             return;
           } catch { /* fall through to the single-person path */ }
         }
-        if (one && onDropGuest) onDropGuest(one, room.id);
-        else if (canPlace) onPlace?.(room.id);
+        if (one && onDropGuest) {
+          const here = room.occupants.some((g) => g.id === one);
+          guardCapacity(here ? 0 : 1, () => onDropGuest(one, room.id));
+        } else if (canPlace) {
+          guardCapacity(selectedCount, () => onPlace?.(room.id));
+        }
       }}
       className={`rounded-xl border px-3.5 py-3 transition-colors ${
         dragOver ? 'border-sage bg-sage-pale ring-2 ring-sage/40'
@@ -320,7 +339,7 @@ function RoomRow({
 
         {canPlace && (
           <button
-            onClick={() => onPlace?.(room.id)}
+            onClick={() => guardCapacity(selectedCount, () => onPlace?.(room.id))}
             disabled={busy}
             className="flex-shrink-0 text-[12px] font-semibold text-forest bg-white border border-border rounded-btn px-3 py-1.5 hover:border-sage disabled:opacity-40 transition-colors"
           >
@@ -374,9 +393,37 @@ function RoomRow({
         </div>
       )}
 
+      {overflow && (
+        <div className="mt-2.5 rounded-lg border border-amber/50 bg-amber-bg px-3 py-2.5">
+          <p className="text-[12px] text-amber-text font-semibold">
+            {room.name} has {room.capacity} bed{room.capacity === 1 ? '' : 's'}.
+            This would put {taken + overflow.adding} {taken + overflow.adding === 1 ? 'person' : 'people'} in it.
+          </p>
+          <p className="text-[11.5px] text-amber-text/90 mt-0.5">
+            {taken + overflow.adding - room.capacity} without a bed unless you are adding bedding.
+          </p>
+          <div className="flex gap-2 mt-2">
+            <button
+              type="button"
+              onClick={() => { overflow.run(); setOverflow(null); }}
+              className="text-[12px] font-semibold text-white bg-amber-text rounded-btn px-3 py-1.5"
+            >
+              Place anyway
+            </button>
+            <button
+              type="button"
+              onClick={() => setOverflow(null)}
+              className="text-[12px] font-semibold text-amber-text px-2 py-1.5"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {over && (
-        <p className="text-[11.5px] text-amber-text mt-2">
-          {taken - room.capacity} more {taken - room.capacity === 1 ? 'person' : 'people'} than beds.
+        <p className="text-[11.5px] text-amber-text font-semibold mt-2">
+          Over capacity — {taken - room.capacity} more {taken - room.capacity === 1 ? 'person' : 'people'} than beds.
         </p>
       )}
       {accessMismatch && (

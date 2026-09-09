@@ -78,7 +78,7 @@ export interface RetreatFinancials {
   depositReceived: number; // deposit column vs deposit-kind payments, whichever is greater
   depositRequired: number;
   totalCharges: number;
-  source: 'invoice' | 'charges' | 'estimate';
+  source: 'invoice' | 'charges' | 'proposal' | 'estimate';
 }
 
 interface RetreatState {
@@ -538,8 +538,16 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
     const depositRequired = r?.depositRequired ?? 0;
     const totalCharges = get().charges.filter((c) => c.retreatId === id).reduce((s, c) => s + c.amount, 0);
 
+    // The price the group actually agreed to. A camp routinely edits the amount on a proposal
+    // line — a negotiated rate, a package, a discount for a shoulder week — and that number is
+    // the contract. Recomputing the rate card afterwards quotes them something they never
+    // accepted.
+    const agreed = get().proposals
+      .filter((p) => p.retreatId === id && p.status === 'accepted')
+      .sort((a, b) => b.version - a.version)[0] ?? null;
+
     // Priority: newest non-void balance invoice (bakes in fees + headcount changes)
-    // → manual charges → rate-card estimate.
+    // → manual charges → the accepted proposal → rate-card estimate.
     //
     // Positive lines only, because "less payments received" is itself a line and counting it
     // would subtract payments twice. A discount is not a payment though: it reduces what was
@@ -555,6 +563,7 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
     let expected: number; let source: RetreatFinancials['source'];
     if (invoiceGross != null) { expected = invoiceGross; source = 'invoice'; }
     else if (totalCharges > 0) { expected = totalCharges; source = 'charges'; }
+    else if (agreed && agreed.total > 0) { expected = agreed.total; source = 'proposal'; }
     else { expected = r ? estimateRevenue(r, housingCount) : 0; source = 'estimate'; }
 
     return { expected, collected, outstanding: Math.max(0, expected - collected), depositReceived, depositRequired, totalCharges, source };

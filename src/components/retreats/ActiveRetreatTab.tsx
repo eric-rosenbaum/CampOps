@@ -205,11 +205,28 @@ export function ActiveRetreatTab() {
             <div className="bg-white rounded-card border border-border px-5 py-4">
               <CardLabel>Financial</CardLabel>
               <Row k="Rate charged" v={rateSummary(r)} />
-              {perPerson && rate != null && (
+              {/* The arithmetic only belongs here when it is the arithmetic actually being used.
+                  Beside an agreed price it reads as a contradiction. */}
+              {perPerson && rate != null && fin.source === 'estimate' && (
                 <Row k="Billed" v={<span className="font-mono text-ink-soft">{money(rate)} × {billableHeadcount(r)} × {nightCount} night{nightCount === 1 ? '' : 's'}</span>} />
               )}
-              <Row k={fin.source === 'estimate' ? 'Estimated total' : 'Total billed'} v={<span className="font-mono text-green-muted-text">{money(fin.expected)}</span>} />
-              <Row k="Deposit received" v={<span className="font-mono text-green-muted-text">{money(fin.depositReceived)}</span>} />
+              <Row
+                k={fin.source === 'estimate' ? 'Estimated total'
+                  : fin.source === 'proposal' ? 'Agreed total'
+                  : 'Total billed'}
+                v={<span className="font-mono text-green-muted-text">{money(fin.expected)}</span>}
+              />
+              <Row
+                k="Deposit received"
+                v={(
+                  <span className="font-mono text-green-muted-text">
+                    {money(fin.depositReceived)}
+                    {fin.depositRequired > 0 && (
+                      <span className="text-ink-soft"> of {money(fin.depositRequired)}</span>
+                    )}
+                  </span>
+                )}
+              />
               <Row k="Balance due" v={<span className="font-mono">{money(fin.outstanding)} at checkout</span>} />
             </div>
           );

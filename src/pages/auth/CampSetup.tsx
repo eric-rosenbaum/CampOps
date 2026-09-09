@@ -16,7 +16,6 @@ const US_STATES = [
 
 const MODULE_OPTIONS = [
   { key: 'issues',     label: 'Campground',           description: 'Work orders, routines, housekeeping and repairs' },
-  { key: 'checklists', label: 'Pre/Post Checklists',  description: 'Opening and closing task lists' },
   { key: 'pool',       label: 'Pool & Waterfront',    description: 'Chemical logs, equipment, inspections' },
   { key: 'safety',     label: 'Compliance',  description: 'Permit, safety plan, licensing, inspections' },
   { key: 'assets',     label: 'Assets & Vehicles',    description: 'Fleet, equipment, maintenance records' },

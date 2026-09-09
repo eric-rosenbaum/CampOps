@@ -4,7 +4,7 @@ import {
   Pencil, ChevronDown, ChevronUp, Shield, Users,
 } from 'lucide-react';
 import { useCampStore } from '@/store/campStore';
-import type { CampRole, StaffGroup, StaffGroupModules, Invitation, JoinCode } from '@/store/campStore';
+import type { CampRole, StaffGroup, Invitation, JoinCode } from '@/store/campStore';
 import { sendEmail, buildInviteEmail } from '@/lib/email';
 import { BulkInviteForm } from '@/components/settings/BulkInviteForm';
 
@@ -12,30 +12,6 @@ import { BulkInviteForm } from '@/components/settings/BulkInviteForm';
 
 const ROLE_LABELS: Record<CampRole, string> = {
   admin: 'Admin', staff: 'Staff', viewer: 'Viewer',
-};
-
-const MODULE_LABELS: Record<keyof StaffGroupModules, string> = {
-  issues_repairs: 'Campground',
-  pre_post: 'Pre/Post Camp',
-  pool: 'Pool Management',
-  safety: 'Compliance',
-  assets: 'Assets & Vehicles',
-  building_systems: 'Building Systems',
-  commissary: 'Commissary',
-  retreats: 'Retreat Manager',
-};
-
-const ALL_MODULES = Object.keys(MODULE_LABELS) as (keyof StaffGroupModules)[];
-
-const EMPTY_MODULES: StaffGroupModules = {
-  issues_repairs: false,
-  pre_post: false,
-  pool: false,
-  safety: false,
-  assets: false,
-  building_systems: false,
-  commissary: false,
-  retreats: false,
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -49,8 +25,8 @@ function ModuleBadge({ label }: { label: string }) {
 }
 
 interface GroupFormProps {
-  initial?: { name: string; modules: StaffGroupModules; issuesSeeUnassigned: boolean; prepostSeeUnassigned: boolean; canViewCamperHealth: boolean };
-  onSave: (name: string, modules: StaffGroupModules, issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean, canViewCamperHealth: boolean) => Promise<void>;
+  initial?: { name: string; issuesSeeUnassigned: boolean; canViewCamperHealth: boolean };
+  onSave: (name: string, issuesSeeUnassigned: boolean, canViewCamperHealth: boolean) => Promise<void>;
   onCancel: () => void;
   saving: boolean;
   /** Surfaced from the save handler. Without this a rejected save is invisible. */
@@ -59,87 +35,69 @@ interface GroupFormProps {
 
 function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps) {
   const [name, setName] = useState(initial?.name ?? '');
-  const [modules, setModules] = useState<StaffGroupModules>(
-    initial?.modules ? { ...EMPTY_MODULES, ...initial.modules } : EMPTY_MODULES,
-  );
-  const [issuesSeeUnassigned, setIssuesSeeUnassigned] = useState(initial?.issuesSeeUnassigned ?? false);
-  const [prepostSeeUnassigned, setPrepostSeeUnassigned] = useState(initial?.prepostSeeUnassigned ?? false);
+  const [issuesSeeUnassigned, setIssuesSeeUnassigned] = useState(initial?.issuesSeeUnassigned ?? true);
   const [canViewCamperHealth, setCanViewCamperHealth] = useState(initial?.canViewCamperHealth ?? false);
-
-  function toggleModule(key: keyof StaffGroupModules) {
-    setModules((m) => ({ ...m, [key]: !m[key] }));
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    await onSave(name.trim(), modules, issuesSeeUnassigned, prepostSeeUnassigned, canViewCamperHealth);
+    await onSave(name.trim(), issuesSeeUnassigned, canViewCamperHealth);
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
-        <label className="block text-[11px] font-medium text-ink-soft mb-1">Group name</label>
+        <label className="block text-[11px] font-medium text-ink-soft mb-1">Crew name</label>
         <input
           type="text"
           required
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Pool Staff, Maintenance Crew"
+          placeholder="e.g. Housekeeping, Grounds"
           className="w-full px-3 py-1.5 border border-border rounded-lg text-[12px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20"
         />
       </div>
 
-      <div>
-        <label className="block text-[11px] font-medium text-ink-soft mb-1.5">Module access</label>
-        <div className="space-y-1">
-          {ALL_MODULES.map((key) => (
-            <label key={key} className="flex items-center gap-2 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={modules[key] ?? false}
-                onChange={() => toggleModule(key)}
-                className="w-3.5 h-3.5 accent-forest rounded"
-              />
-              <span className="text-[12px] text-forest group-hover:text-ink">{MODULE_LABELS[key]}</span>
-            </label>
-          ))}
-        </div>
+      {/* What a crew decides is whose work you can see. It used to also decide which modules
+          you could open at all, which made setting a camp up an exercise in guessing who might
+          one day need the pool page. */}
+      <div className="bg-paper border border-border rounded-lg px-3 py-2.5">
+        <p className="text-[11px] font-medium text-ink-soft mb-1.5">What this crew sees</p>
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="radio"
+            name="crew-visibility"
+            checked={issuesSeeUnassigned}
+            onChange={() => setIssuesSeeUnassigned(true)}
+            className="w-3.5 h-3.5 accent-forest mt-0.5"
+          />
+          <span className="text-[12px] text-forest">
+            Work waiting for the crew, so they can pick it up
+            <span className="block text-[11px] text-ink-soft mt-0.5">
+              Their own jobs, plus anything unassigned or sitting with this crew.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-2 cursor-pointer mt-2">
+          <input
+            type="radio"
+            name="crew-visibility"
+            checked={!issuesSeeUnassigned}
+            onChange={() => setIssuesSeeUnassigned(false)}
+            className="w-3.5 h-3.5 accent-forest mt-0.5"
+          />
+          <span className="text-[12px] text-forest">
+            Only what has their name on it
+            <span className="block text-[11px] text-ink-soft mt-0.5">
+              They see a job once somebody hands it to them.
+            </span>
+          </span>
+        </label>
       </div>
 
-      {(modules.issues_repairs || modules.pre_post) && (
-        <div className="bg-paper border border-border rounded-lg px-3 py-2.5 space-y-1.5">
-          <p className="text-[11px] font-medium text-ink-soft mb-1">Task visibility</p>
-          {modules.issues_repairs && (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={issuesSeeUnassigned}
-                onChange={(e) => setIssuesSeeUnassigned(e.target.checked)}
-                className="w-3.5 h-3.5 accent-forest"
-              />
-              <span className="text-[12px] text-forest">Campground, can see unassigned work</span>
-            </label>
-          )}
-          {modules.pre_post && (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={prepostSeeUnassigned}
-                onChange={(e) => setPrepostSeeUnassigned(e.target.checked)}
-                className="w-3.5 h-3.5 accent-forest"
-              />
-              <span className="text-[12px] text-forest">Pre/Post Camp, can see unassigned tasks</span>
-            </label>
-          )}
-          <p className="text-[10px] text-ink-faint pt-0.5">
-            Staff never see tasks assigned to other people, only their own and optionally unassigned ones.
-          </p>
-        </div>
-      )}
+      {(
 
-      {modules.commissary && (
         <div className="bg-red-bg border border-red/20 rounded-lg px-3 py-2.5 space-y-1.5">
           <p className="text-[11px] font-medium text-red/80 mb-1">Camper health data</p>
           <label className="flex items-start gap-2 cursor-pointer">
@@ -180,7 +138,7 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
           disabled={saving || !name.trim()}
           className="flex-1 bg-forest text-cream text-[12px] font-medium py-1.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50"
         >
-          {saving ? 'Saving…' : (initial ? 'Save changes' : 'Create group')}
+          {saving ? 'Saving…' : (initial ? 'Save changes' : 'Create crew')}
         </button>
       </div>
     </form>
@@ -260,7 +218,6 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const groupCodes = joinCodes.filter((c) => c.staffGroupId === group.id);
-  const enabledModules = ALL_MODULES.filter((k) => group.modules[k]);
 
   function joinCodeUrl(code: string) {
     return `${window.location.origin}/join?code=${code}`;
@@ -283,17 +240,16 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
   }
 
   async function handleSaveEdit(
-    name: string, modules: StaffGroupModules,
-    issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean, canViewCamperHealth: boolean
+    name: string, issuesSeeUnassigned: boolean, canViewCamperHealth: boolean
   ) {
     setSavingEdit(true);
     setEditError(null);
     try {
-      await updateStaffGroup(group.id, { name, modules, issuesSeeUnassigned, prepostSeeUnassigned, canViewCamperHealth });
+      await updateStaffGroup(group.id, { name, issuesSeeUnassigned, canViewCamperHealth });
       setEditing(false);
     } catch (err) {
       console.error('[handleSaveEdit]', err);
-      setEditError(err instanceof Error ? err.message : 'Failed to save group');
+      setEditError(err instanceof Error ? err.message : 'Could not save that crew');
     } finally {
       setSavingEdit(false);
     }
@@ -341,11 +297,8 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-semibold text-forest">{group.name}</p>
           <div className="flex flex-wrap gap-1 mt-1">
-            {enabledModules.length === 0 ? (
-              <span className="text-[10px] text-ink-faint italic">No modules assigned</span>
-            ) : (
-              enabledModules.map((k) => <ModuleBadge key={k} label={MODULE_LABELS[k]} />)
-            )}
+            <ModuleBadge label={group.issuesSeeUnassigned ? 'Can pick up work' : 'Own work only'} />
+            {group.canViewCamperHealth && <ModuleBadge label="Camper health" />}
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -378,9 +331,7 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
             <GroupForm
               initial={{
                 name: group.name,
-                modules: group.modules,
                 issuesSeeUnassigned: group.issuesSeeUnassigned,
-                prepostSeeUnassigned: group.prepostSeeUnassigned,
                 canViewCamperHealth: group.canViewCamperHealth,
               }}
               onSave={handleSaveEdit}
@@ -390,20 +341,18 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
             />
           ) : (
             <>
-              {/* Visibility notes */}
-              {(group.modules.issues_repairs || group.modules.pre_post || group.modules.commissary) && (
-                <div className="mb-3 text-[11px] text-ink-soft space-y-0.5">
-                  {group.modules.issues_repairs && (
-                    <p>Campground: {group.issuesSeeUnassigned ? 'assigned to them + unassigned' : 'assigned to them only'}</p>
-                  )}
-                  {group.modules.pre_post && (
-                    <p>Pre/Post Camp: {group.prepostSeeUnassigned ? 'assigned to them + unassigned' : 'assigned to them only'}</p>
-                  )}
-                  {group.modules.commissary && (
-                    <p>Camper health data: {group.canViewCamperHealth ? 'names + severities visible' : 'aggregate counts only'}</p>
-                  )}
-                </div>
-              )}
+              <div className="mb-3 text-[11px] text-ink-soft space-y-0.5">
+                <p>
+                  Work: {group.issuesSeeUnassigned
+                    ? 'their own, plus anything unassigned or waiting for this crew'
+                    : 'only what is assigned to them'}
+                </p>
+                <p>
+                  Camper health: {group.canViewCamperHealth
+                    ? 'names and severities visible'
+                    : 'aggregate counts only'}
+                </p>
+              </div>
 
               {/* Join codes */}
               <p className="text-[11px] font-medium text-ink-soft mb-1.5">Join links</p>
@@ -555,19 +504,18 @@ export function Team() {
   }
 
   async function handleCreateGroup(
-    name: string, modules: StaffGroupModules,
-    issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean, canViewCamperHealth: boolean
+    name: string, issuesSeeUnassigned: boolean, canViewCamperHealth: boolean
   ) {
     setSavingGroup(true);
     setGroupError(null);
     try {
-      await createStaffGroup(campId, name, modules, issuesSeeUnassigned, prepostSeeUnassigned, canViewCamperHealth);
+      await createStaffGroup(campId, name, issuesSeeUnassigned, canViewCamperHealth);
       setShowCreateGroup(false);
     } catch (err) {
       // Previously this had no catch: createStaffGroup throws on error, the rejection went
       // unhandled, and the button just flipped back to "Create group" with no explanation.
       console.error('[handleCreateGroup]', err);
-      setGroupError(err instanceof Error ? err.message : 'Failed to create group');
+      setGroupError(err instanceof Error ? err.message : 'Could not create that crew');
     } finally {
       setSavingGroup(false);
     }
@@ -641,8 +589,8 @@ export function Team() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-[14px] font-semibold text-forest">Staff groups</h2>
-            <p className="text-[11px] text-ink-faint mt-0.5">Each group controls which modules staff can access and how tasks are filtered.</p>
+            <h2 className="text-[14px] font-semibold text-forest">Crews</h2>
+            <p className="text-[11px] text-ink-faint mt-0.5">A crew is who work routes to, and who can see work that is not theirs.</p>
           </div>
           {isAdmin && !showCreateGroup && (
             <button
@@ -650,14 +598,14 @@ export function Team() {
               className="flex items-center gap-1.5 bg-forest text-cream text-[12px] font-medium px-3 py-1.5 rounded-lg hover:bg-forest/90 transition-colors flex-shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              New group
+              New crew
             </button>
           )}
         </div>
 
         {showCreateGroup && (
           <div className="bg-white border border-border rounded-xl p-5 mb-3">
-            <h3 className="text-[13px] font-semibold text-forest mb-3">New staff group</h3>
+            <h3 className="text-[13px] font-semibold text-forest mb-3">New crew</h3>
             <GroupForm
               onSave={handleCreateGroup}
               onCancel={() => { setShowCreateGroup(false); setGroupError(null); }}
@@ -670,7 +618,7 @@ export function Team() {
         <div className="space-y-3">
           {staffGroups.length === 0 && !showCreateGroup && (
             <div className="bg-white border border-dashed border-border rounded-xl px-5 py-4 sm:py-6 text-center">
-              <p className="text-[13px] font-medium text-ink-soft">No staff groups yet</p>
+              <p className="text-[13px] font-medium text-ink-soft">No crews yet</p>
               <p className="text-[11px] text-ink-faint mt-1">Create a group to start inviting staff with specific module access.</p>
             </div>
           )}
@@ -788,9 +736,9 @@ export function Team() {
               </div>
               {inviteRole === 'staff' && (
                 <div>
-                  <label className="block text-[11px] font-medium text-ink-soft mb-1">Staff group</label>
+                  <label className="block text-[11px] font-medium text-ink-soft mb-1">Crew</label>
                   {staffGroups.length === 0 ? (
-                    <p className="text-[11px] text-red-500 pt-1.5">Create a staff group first</p>
+                    <p className="text-[11px] text-red-500 pt-1.5">Create a crew first</p>
                   ) : (
                     <select
                       value={inviteGroupId}

@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Check, ChevronRight, Waves, ClipboardList,
-  ShieldCheck, Truck, MapPin, X, Plus, Users, Upload,
+  Check, ChevronRight, Waves,
+  ShieldCheck, Truck, MapPin, X, Plus, Users, Upload, CalendarDays,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useCampStore } from '@/store/campStore';
@@ -22,8 +22,8 @@ type StepKey = 'locations' | 'pool' | 'checklists' | 'safety' | 'assets' | 'team
 
 const STEP_META: Record<StepKey, { icon: React.ElementType; label: string }> = {
   locations:  { icon: MapPin,        label: 'Camp Locations' },
+  checklists: { icon: CalendarDays,  label: 'Season Dates' },
   pool:       { icon: Waves,         label: 'Pool & Waterfront' },
-  checklists: { icon: ClipboardList, label: 'Pre/Post Checklists' },
   safety:     { icon: ShieldCheck,   label: 'Compliance' },
   assets:     { icon: Truck,         label: 'Assets & Vehicles' },
   team:       { icon: Users,         label: 'Invite Your Team' },
@@ -606,7 +606,7 @@ function ChecklistsStep({ onDone, onSkip }: { onDone: () => void; onSkip: () => 
   return (
     <div className="space-y-5">
       <p className="text-[13px] text-ink leading-relaxed">
-        Your opening and closing dates are used to calculate task due dates on pre/post-camp checklists.
+        Your opening and closing dates set the season that reports, routines and the property calendar are measured against.
       </p>
       <InputRow label={<>Season name <span className="text-forest/30 font-normal">(optional)</span></>}>
         <input value={name} onChange={e => setName(e.target.value)} className={inputCls} placeholder="e.g. Summer 2026" />
@@ -954,7 +954,10 @@ export function Onboarding() {
 
   const steps: StepKey[] = [
     'locations',
-    ...((['pool', 'checklists', 'safety', 'assets'] as StepKey[]).filter(k => modules[k])),
+    // Season dates are not optional any more: Campground measures routine cycles, the season
+    // review and the property calendar against them.
+    'checklists',
+    ...((['pool', 'safety', 'assets'] as StepKey[]).filter(k => modules[k])),
     'team',
   ];
 

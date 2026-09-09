@@ -131,8 +131,8 @@ export function doh367Readiness(input: ReadinessInput): FormReadiness {
     label: 'Season open and close dates',
     source: seasonName ? `Your ${seasonName} season` : 'Your season',
     status: camp.openDate && camp.closeDate ? 'done' : 'todo',
-    detail: camp.openDate && camp.closeDate ? undefined : 'Set your season dates under Pre/Post Camp.',
-    goTo: { href: '/pre-post', label: 'Pre/Post Camp' },
+    detail: camp.openDate && camp.closeDate ? undefined : 'Set your season dates under Camp Info.',
+    goTo: { href: '/settings/camp', label: 'Camp Info' },
   });
 
   const code = answered(answers, 'ny.filing.facility_code');
@@ -291,8 +291,8 @@ export function doh367aReadiness(input: ReadinessInput): FormReadiness {
     source: seasonName ? `Your camp record and your ${seasonName} season` : 'Your camp record and season',
     status: camp.campName && camp.openDate && camp.closeDate ? 'done' : 'todo',
     detail: camp.campName && camp.openDate && camp.closeDate ? undefined
-      : 'The form prints your camp name and the dates you open and close. Set your season dates under Pre/Post Camp.',
-    goTo: { href: '/pre-post', label: 'Pre/Post Camp' },
+      : 'The form prints your camp name and the dates you open and close. Set your season dates under Camp Info.',
+    goTo: { href: '/settings/camp', label: 'Camp Info' },
   });
 
   // The same question DOH-367 asks, deliberately. One answer, both forms: a camp that typed

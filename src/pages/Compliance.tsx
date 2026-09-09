@@ -128,7 +128,7 @@ export function Compliance() {
             <p className="text-[15px] font-semibold text-forest">Set your season first</p>
             <p className="text-[13px] text-ink-soft mt-1.5 leading-relaxed">
               Every compliance deadline is measured against your opening date. Add a season under
-              Pre/Post Camp and this page will fill itself in.
+              Camp Info and this page will fill itself in.
             </p>
           </div>
         </div>

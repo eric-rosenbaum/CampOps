@@ -59,7 +59,6 @@ const US_STATES  = [
 ];
 const MODULE_OPTIONS = [
   { key: 'issues',     label: 'Campground',           desc: 'Work orders, routines, housekeeping and repairs' },
-  { key: 'checklists', label: 'Pre/Post Checklists',  desc: 'Opening and closing task lists' },
   { key: 'pool',       label: 'Pool & Waterfront',    desc: 'Chemical readings, inspections, equipment' },
   { key: 'safety',     label: 'Compliance',  desc: 'Permit, safety plan, inspections, staff certifications' },
   { key: 'assets',     label: 'Assets & Vehicles',    desc: 'Fleet, equipment, checkouts, service records' },
@@ -222,8 +221,7 @@ interface SeasonFormValues {
 }
 
 function SeasonTab() {
-  const { season, editSeason, activateNewSeason } = useChecklistStore();
-  const { currentUser } = useAuth();
+  const { season, editSeason } = useChecklistStore();
   const [mode, setMode] = useState<SeasonMode>('view');
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<SeasonFormValues>();
@@ -251,11 +249,9 @@ function SeasonTab() {
       closingDate:       data.closingDate,
       acaInspectionDate: data.acaInspectionDate || null,
     };
-    if (mode === 'edit') {
-      editSeason(s);
-    } else {
-      activateNewSeason(s, currentUser.name);
-    }
+    // Editing and starting a new season are the same write now. Starting one used to also
+    // reset every Pre/Post Camp task; that module is gone.
+    editSeason(s);
     setMode('view');
   }
 

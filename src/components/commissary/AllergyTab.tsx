@@ -88,7 +88,7 @@ export function AllergyTab() {
           <p className="text-[13px] text-ink-soft leading-relaxed">
             When allergies are entered, you'll see counts here and warnings on any
             menu item that conflicts with them. Names are visible only to
-            administrators and staff groups with health access.
+            administrators and crews with health access.
           </p>
         </div>
       </div>
@@ -236,7 +236,7 @@ export function AllergyTab() {
           <p className="text-[13px] text-ink-soft max-w-lg mx-auto leading-relaxed">
             You can see how many campers each restriction affects and which recipes conflict,
             which is what the kitchen needs to cook safely. Names, cabins and individual
-            severities are limited to administrators and staff groups with health access -
+            severities are limited to administrators and crews with health access -
             enforced in the database, not just hidden here.
           </p>
         </div>

@@ -3,7 +3,6 @@ import { Modal } from './Modal';
 import { Button } from './Button';
 import { useUIStore } from '@/store/uiStore';
 import { useChecklistStore } from '@/store/checklistStore';
-import { useAuth } from '@/lib/auth';
 
 interface FormValues {
   name: string;
@@ -14,8 +13,7 @@ interface FormValues {
 
 export function SeasonModal() {
   const { isSeasonModalOpen, closeAllModals } = useUIStore();
-  const { activateNewSeason, season } = useChecklistStore();
-  const { currentUser } = useAuth();
+  const { editSeason, season } = useChecklistStore();
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     defaultValues: {
@@ -24,16 +22,15 @@ export function SeasonModal() {
   });
 
   function onSubmit(data: FormValues) {
-    activateNewSeason(
-      {
-        id: crypto.randomUUID(),
-        name: data.name,
-        openingDate: data.openingDate,
-        closingDate: data.closingDate,
-        acaInspectionDate: data.acaInspectionDate || null,
-      },
-      currentUser.name,
-    );
+    // Starting a season used to also reset every Pre/Post Camp task to pending and recompute
+    // its due date off the new opening. That module is gone; a season is now just dates.
+    editSeason({
+      id: crypto.randomUUID(),
+      name: data.name,
+      openingDate: data.openingDate,
+      closingDate: data.closingDate,
+      acaInspectionDate: data.acaInspectionDate || null,
+    });
     closeAllModals();
   }
 

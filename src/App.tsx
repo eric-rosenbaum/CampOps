@@ -32,7 +32,6 @@ import { Campground } from '@/pages/Campground';
 import { ScanTarget } from '@/pages/qr/ScanTarget';
 import { LocationHub } from '@/pages/qr/LocationHub';
 import { ReportReceipt } from '@/pages/report/ReportReceipt';
-import { PrePostCamp } from '@/pages/PrePostCamp';
 import { PoolManagement } from '@/pages/PoolManagement';
 import { SafetyCompliance } from '@/pages/SafetyCompliance';
 import AssetVehicles from '@/pages/AssetVehicles';
@@ -58,7 +57,7 @@ import { SecuritySettings } from '@/pages/settings/SecuritySettings';
 
 // Data loading
 import {
-  initializeSupabase, subscribeToIssues, subscribeToTasks,
+  initializeSupabase, subscribeToIssues,
   loadPoolFromSupabase, subscribeToPool,
   loadSafetyFromSupabase, subscribeToSafety,
   loadAssetsFromSupabase, subscribeToAssets,
@@ -155,7 +154,6 @@ function CampDataLoader() {
   const campId = currentCamp?.id ?? null;
 
   const setIssues = useIssuesStore((s) => s.setIssues);
-  const setTasks = useChecklistStore((s) => s.setTasks);
   const setSeason = useChecklistStore((s) => s.setSeason);
   const { setPools, setChemicalReadings, setEquipment, setServiceLog, setInspections, setInspectionLog, setSeasonalTasks } = usePoolStore();
   const { setItems, setInspectionLog: setSafetyLog, setDrills, setStaff, setCertifications, setTempLogs, setLicenses } = useSafetyStore();
@@ -190,7 +188,6 @@ function CampDataLoader() {
     // Nothing has been looked at for this camp yet, whatever the previous one had loaded.
     resetHydration();
     let unsubIssues: (() => void) | null = null;
-    let unsubTasks: (() => void) | null = null;
     let unsubPool: (() => void) | null = null;
     let unsubSafety: (() => void) | null = null;
     let unsubAssets: (() => void) | null = null;
@@ -300,7 +297,6 @@ function CampDataLoader() {
     // subscription starts would fire a WAL event nobody is listening to, and the
     // subsequent setIssues(initialData) would overwrite the optimistic update permanently.
     unsubIssues = subscribeToIssues(campId, setIssues);
-    unsubTasks = subscribeToTasks(campId, setTasks);
     unsubPool = subscribeToPool(campId, applyPool);
     unsubSafety = subscribeToSafety(campId, applySafety);
     unsubAssets = subscribeToAssets(campId, applyAssets);
@@ -350,12 +346,10 @@ function CampDataLoader() {
     const loadIssuesAndTasks = async (): Promise<boolean> => {
       await awaitWriteQuiet();
       const issuesToken = beginSnapshot('issues');
-      const tasksToken = beginSnapshot('tasks');
       const data = await initializeSupabase(campId);
       if (!data) return false;
       let applied = false;
       if (shouldApplySnapshot('issues', issuesToken)) { setIssues(data.issues); applied = true; }
-      if (shouldApplySnapshot('tasks', tasksToken)) { setTasks(data.tasks); applied = true; }
       if (data.season) setSeason(data.season);
       return applied;
     };
@@ -478,7 +472,6 @@ function CampDataLoader() {
 
     return () => {
       unsubIssues?.();
-      unsubTasks?.();
       unsubPool?.();
       unsubSafety?.();
       unsubAssets?.();
@@ -628,7 +621,6 @@ export default function App() {
                     </Gate>
                   )}
                 />
-                <Route path="/pre-post" element={<Gate of={['tasks', 'locations']} label="Opening pre/post camp"><PrePostCamp /></Gate>} />
                 <Route path="/pool" element={<Gate of={['pool']} label="Opening pool & waterfront"><PoolManagement /></Gate>} />
                 {/* Folded into /compliance and removed from the nav. Kept so existing links,
                     bookmarks and any deep link out of the new Records page still resolve. */}

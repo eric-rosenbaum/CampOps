@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, CheckSquare, Wrench, ClipboardList,
+  LayoutDashboard, CheckSquare, Wrench,
   Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
   ClipboardCheck,
 } from 'lucide-react';
@@ -10,7 +10,6 @@ import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCom
 import { useAuth } from '@/lib/auth';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
-import type { StaffGroupModules } from '@/store/campStore';
 import { APP_HOST, MARKETING_ORIGIN } from '@/lib/env';
 
 type LucideIcon = React.ComponentType<{ className?: string }>;
@@ -52,7 +51,6 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   end: boolean;
-  module?: keyof StaffGroupModules;
 }
 
 const todayItems: NavItem[] = [
@@ -66,29 +64,28 @@ const facilityItems: NavItem[] = [
   // the camp's own word for the physical place. The TABLE is still `issues` and the module key is
   // still `issues_repairs`: the word on the screen is the product, the word in Postgres is
   // plumbing, and renaming a table thirteen surfaces read from buys nothing.
-  { path: '/campground', label: 'Campground', icon: Wrench, end: false, module: 'issues_repairs' },
-  { path: '/pre-post', label: 'Pre/Post Camp', icon: ClipboardList, end: false, module: 'pre_post' },
+  { path: '/campground', label: 'Campground', icon: Wrench, end: false },
   // The old Safety module was folded in here: its records are reached from the Requirements tab,
   // grouped by the party that asks for them, and its dialogs open in place. The /safety route
   // still resolves so old links and bookmarks keep working.
   //
   // Named just "Compliance". It absorbed Safety rather than sitting beside it, and a camp opening
   // this looks for the thing the county asks about, not for two words joined by an ampersand.
-  { path: '/compliance', label: 'Compliance', icon: ClipboardCheck, end: false, module: 'safety' },
-  { path: '/assets', label: 'Assets & Vehicles', icon: Truck, end: false, module: 'assets' },
-  { path: '/building', label: 'Building Systems', icon: Building2, end: false, module: 'building_systems' },
+  { path: '/compliance', label: 'Compliance', icon: ClipboardCheck, end: false },
+  { path: '/assets', label: 'Assets & Vehicles', icon: Truck, end: false },
+  { path: '/building', label: 'Building Systems', icon: Building2, end: false },
 ];
 
 const commissaryItems: NavItem[] = [
-  { path: '/commissary', label: 'Kitchen Manager', icon: UtensilsCrossed, end: false, module: 'commissary' },
+  { path: '/commissary', label: 'Kitchen Manager', icon: UtensilsCrossed, end: false },
 ];
 
 const aquaticsItems: NavItem[] = [
-  { path: '/pool', label: 'Pool Manager', icon: Waves, end: false, module: 'pool' },
+  { path: '/pool', label: 'Pool Manager', icon: Waves, end: false },
 ];
 
 const retreatItems: NavItem[] = [
-  { path: '/retreats', label: 'Retreat Manager', icon: CalendarRange, end: false, module: 'retreats' },
+  { path: '/retreats', label: 'Retreat Manager', icon: CalendarRange, end: false },
 ];
 
 const settingsItems: NavItem[] = [
@@ -132,9 +129,9 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
   const location = useLocation();
   useEffect(() => { onClose?.(); }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // A section only exists if the staff member can reach something inside it, so a kitchen
-  // hand does not see an empty "Aquatics" heading.
-  const visible = (items: NavItem[]) => items.filter((i) => !i.module || canAccessModule(i.module));
+  // Staff see every module; only a viewer is held out. Crews used to gate this per module,
+  // which meant a camp had to decide whether the groundskeeper may open the pool page.
+  const visible = (items: NavItem[]) => (canAccessModule() ? items : []);
 
   const navSections = [
     { section: 'Today', items: todayItems },

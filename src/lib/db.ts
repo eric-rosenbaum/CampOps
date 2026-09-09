@@ -12,7 +12,7 @@ const supabasePublic = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY as string,
 );
 import type {
-  Issue, ChecklistTask, ActivityEntry, Season,
+  Issue, ActivityEntry, Season,
   CampPool, ChemicalReading, PoolEquipment, ServiceLogEntry,
   PoolInspection, InspectionLogEntry, SeasonalTask,
   SafetyItem, SafetyInspectionLog, EmergencyDrill,
@@ -136,48 +136,6 @@ function rowToIssue(row: Record<string, unknown>, activityLog: ActivityEntry[]):
   };
 }
 
-function taskToRow(task: ChecklistTask) {
-  return {
-    id: task.id,
-    camp_id: _campId,
-    title: task.title,
-    description: task.description,
-    location_ids: task.locationIds,
-    locations: task.locations,
-    priority: task.priority,
-    status: task.status,
-    assignee_id: task.assigneeId,
-    phase: task.phase,
-    days_relative_to_opening: task.daysRelativeToOpening,
-    due_date: task.dueDate,
-    is_recurring: task.isRecurring,
-    module_tag: task.moduleTag ?? null,
-    created_at: task.createdAt,
-    updated_at: task.updatedAt,
-  };
-}
-
-function rowToTask(row: Record<string, unknown>, activityLog: ActivityEntry[]): ChecklistTask {
-  return {
-    id: row.id as string,
-    title: row.title as string,
-    description: (row.description as string) ?? '',
-    locationIds: (row.location_ids as string[]) ?? [],
-    locations: ((row.locations as string[]) ?? []) as ChecklistTask['locations'],
-    priority: row.priority as ChecklistTask['priority'],
-    status: row.status as ChecklistTask['status'],
-    assigneeId: (row.assignee_id as string) ?? null,
-    phase: row.phase as 'pre' | 'post',
-    daysRelativeToOpening: row.days_relative_to_opening as number | null,
-    dueDate: (row.due_date as string) ?? null,
-    isRecurring: true,
-    moduleTag: (row.module_tag as string) ?? null,
-    createdAt: row.created_at as string,
-    updatedAt: row.updated_at as string,
-    activityLog,
-  };
-}
-
 function activityRowToEntry(row: Record<string, unknown>): ActivityEntry {
   return {
     id: row.id as string,
@@ -192,15 +150,15 @@ function activityRowToEntry(row: Record<string, unknown>): ActivityEntry {
 
 export async function initializeSupabase(campId: string): Promise<{
   issues: Issue[];
-  tasks: ChecklistTask[];
   season: Season | null;
 } | null> {
   try {
-    const [issueRows, activityRows, taskRows, taskActivityRows, seasonRows] = await Promise.all([
+    // checklist_tasks and checklist_activity are no longer read: Pre/Post Camp was removed as a
+    // module. The tables are left in place so an existing camp's history is not destroyed by a
+    // deploy, but nothing loads or writes them any more.
+    const [issueRows, activityRows, seasonRows] = await Promise.all([
       supabase.from('issues').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
       supabase.from('issue_activity').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
-      supabase.from('checklist_tasks').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
-      supabase.from('checklist_activity').select('*').eq('camp_id', campId).order('created_at', { ascending: false }),
       supabase.from('seasons').select('*').eq('camp_id', campId).order('created_at', { ascending: false }).limit(1),
     ]);
 
@@ -211,12 +169,6 @@ export async function initializeSupabase(campId: string): Promise<{
       return rowToIssue(row as Record<string, unknown>, log);
     });
 
-    const tasks: ChecklistTask[] = (taskRows.data ?? []).map((row) => {
-      const log = (taskActivityRows.data ?? [])
-        .filter((a) => a.task_id === row.id)
-        .map(activityRowToEntry);
-      return rowToTask(row as Record<string, unknown>, log);
-    });
 
     const season: Season | null = seasonRows.data?.[0]
       ? {
@@ -228,7 +180,7 @@ export async function initializeSupabase(campId: string): Promise<{
         }
       : null;
 
-    return { issues, tasks, season };
+    return { issues, season };
   } catch (e) {
     console.error('[Supabase] initializeSupabase threw:', e);
     return null;
@@ -312,40 +264,6 @@ export async function dbAddIssueActivity(issueId: string, entry: ActivityEntry) 
   if (error) console.error('dbAddIssueActivity error:', error.message);
 }
 
-export async function dbUpsertTask(task: ChecklistTask) {
-  const { error } = await supabase.from('checklist_tasks').upsert(taskToRow(task), { onConflict: 'id' });
-  if (error) console.error('dbUpsertTask error:', error.message);
-}
-
-export async function dbUpdateTask(id: string, patch: Partial<ChecklistTask>) {
-  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (patch.title !== undefined) row.title = patch.title;
-  if (patch.description !== undefined) row.description = patch.description;
-  if (patch.locations !== undefined) row.locations = patch.locations;
-  if (patch.priority !== undefined) row.priority = patch.priority;
-  if (patch.status !== undefined) row.status = patch.status;
-  if (patch.assigneeId !== undefined) row.assignee_id = patch.assigneeId;
-  if (patch.phase !== undefined) row.phase = patch.phase;
-  if (patch.daysRelativeToOpening !== undefined) row.days_relative_to_opening = patch.daysRelativeToOpening;
-  if (patch.dueDate !== undefined) row.due_date = patch.dueDate;
-  if (patch.moduleTag !== undefined) row.module_tag = patch.moduleTag;
-  const { error } = await supabase.from('checklist_tasks').update(row).eq('id', id);
-  if (error) console.error('dbUpdateTask error:', error.message);
-}
-
-export async function dbAddTaskActivity(taskId: string, entry: ActivityEntry) {
-  const { error } = await supabase.from('checklist_activity').insert({
-    id: entry.id,
-    camp_id: _campId,
-    task_id: taskId,
-    user_id: entry.userId === 'system' ? null : entry.userId,
-    user_name: entry.userName,
-    action: entry.action,
-    created_at: entry.timestamp,
-  });
-  if (error) console.error('dbAddTaskActivity error:', error.message);
-}
-
 export async function dbUpsertSeason(season: Season) {
   const { error } = await supabase.from('seasons').upsert({
     id: season.id,
@@ -402,18 +320,11 @@ export async function dbDeleteIssue(id: string): Promise<void> {
   if (error) console.error('[Supabase] Delete issue error:', error.message);
 }
 
-export async function dbDeleteTask(id: string): Promise<void> {
-  const { error } = await supabase.from('checklist_tasks').delete().eq('id', id);
-  if (error) console.error('[Supabase] Delete task error:', error.message);
-}
-
 // ─── Realtime subscriptions ───────────────────────────────────────────────────
 
 type IssueCallback = (issues: Issue[]) => void;
-type TaskCallback = (tasks: ChecklistTask[]) => void;
 
 let issueChannelCount = 0;
-let taskChannelCount = 0;
 
 export function subscribeToIssues(campId: string, onUpdate: IssueCallback): () => void {
   const channelName = `issues-channel-${++issueChannelCount}`;
@@ -440,33 +351,6 @@ export function subscribeToIssues(campId: string, onUpdate: IssueCallback): () =
       if (status === 'SUBSCRIBED') {
         if (everSubscribed) { campLog('[CampOps] issues reconnected, reloading in 10s'); setTimeout(() => reload('reconnect'), 10000); }
         else { campLog('[CampOps] issues initial subscription'); everSubscribed = true; }
-      }
-    });
-
-  return () => { supabase.removeChannel(channel); };
-}
-
-export function subscribeToTasks(campId: string, onUpdate: TaskCallback): () => void {
-  const channelName = `tasks-channel-${++taskChannelCount}`;
-  const loadTasks = async (): Promise<ChecklistTask[]> => {
-    const { data: taskRows } = await supabase.from('checklist_tasks').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
-    const { data: taskActivityRows } = await supabase.from('checklist_activity').select('*').eq('camp_id', campId).order('created_at', { ascending: false });
-    return (taskRows ?? []).map((row) => {
-      const log = (taskActivityRows ?? []).filter((a) => a.task_id === row.id).map(activityRowToEntry);
-      return rowToTask(row as Record<string, unknown>, log);
-    });
-  };
-  const reload = () => loadAndApply('tasks', loadTasks, onUpdate);
-  const onWal = debounce(reload, WAL_DEBOUNCE_MS);
-  let everSubscribed = false;
-  const channel = supabase
-    .channel(channelName)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_tasks', filter: `camp_id=eq.${campId}` }, onWal)
-    .subscribe((status) => {
-      campLog('[CampOps] tasks channel status:', status);
-      if (status === 'SUBSCRIBED') {
-        if (everSubscribed) { campLog('[CampOps] tasks reconnected, reloading in 10s'); setTimeout(() => reload(), 10000); }
-        else { campLog('[CampOps] tasks initial subscription'); everSubscribed = true; }
       }
     });
 

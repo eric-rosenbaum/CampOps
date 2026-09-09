@@ -96,7 +96,7 @@ export function RoutinesPanel() {
   function landsOn(s: WorkSchedule): string {
     if (s.vendorId) return nameLookup.vendor(s.vendorId) ?? 'A vendor';
     if (s.assigneeId) return nameLookup.member(s.assigneeId) ?? 'Someone who has left';
-    if (s.staffGroupId) return nameLookup.group(s.staffGroupId) ?? 'A staff group';
+    if (s.staffGroupId) return nameLookup.group(s.staffGroupId) ?? 'A crew';
     const r = routingFor(routing, s.trade);
     const fallback = nameLookup.member(r?.defaultAssigneeId ?? null)
       ?? nameLookup.group(r?.defaultStaffGroupId ?? null);

@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
-import type { CampRole, StaffGroupModules } from '@/store/campStore';
+import type { CampRole } from '@/store/campStore';
 
 // ─── Permission definitions ────────────────────────────────────────────────
 
@@ -66,23 +66,28 @@ export function useAuth() {
     return ROLE_PERMISSIONS[permission].includes(role);
   }
 
-  // Returns true if the current user can access the given module.
-  // Admins always have access. Staff with no group (legacy) have full access.
-  // Viewers never have module access.
-  function canAccessModule(module: keyof StaffGroupModules): boolean {
-    if (role === 'admin') return true;
-    if (role === 'viewer') return false;
-    if (!currentStaffGroup) return true;
-    return currentStaffGroup.modules[module] ?? false;
+  /**
+   * Module access is no longer a per-crew setting.
+   *
+   * Crews used to carry a `modules` object deciding which parts of the app each staff member
+   * could open, which meant onboarding a camp involved deciding, per crew, whether the
+   * groundskeeper may look at the pool page. Staff see the whole app; what a crew still decides
+   * is whose work you can see (see `issuesSeeUnassigned`) and whether you may read camper health.
+   *
+   * Viewers remain read-only observers and still see nothing.
+   */
+  function canAccessModule(): boolean {
+    return role !== 'viewer';
   }
 
-  // Whether this user can see unassigned issues (in addition to their own).
+  /**
+   * Whether this person sees work that is not theirs.
+   *
+   * True: everything unassigned and everything sitting with their crew, so they can pick jobs
+   * up. False: only what has their name on it. Anyone who is not staff sees the whole board.
+   */
   const issuesSeeUnassigned =
     role !== 'staff' || !currentStaffGroup || currentStaffGroup.issuesSeeUnassigned;
-
-  // Whether this user can see unassigned pre/post tasks (in addition to their own).
-  const prepostSeeUnassigned =
-    role !== 'staff' || !currentStaffGroup || currentStaffGroup.prepostSeeUnassigned;
 
   // Camper names + allergy severities. Unlike every other gate here, this one is
   // mirrored by real RLS (has_camper_health_access). This flag only decides what the
@@ -100,7 +105,6 @@ export function useAuth() {
     can,
     canAccessModule,
     issuesSeeUnassigned,
-    prepostSeeUnassigned,
     canViewCamperHealth,
   };
 }

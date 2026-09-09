@@ -172,9 +172,9 @@ export function BulkInviteForm({
         </div>
         {role === 'staff' && (
           <div>
-            <label className="block text-[11px] font-medium text-ink-soft mb-1">Staff group</label>
+            <label className="block text-[11px] font-medium text-ink-soft mb-1">Crew</label>
             {staffGroups.length === 0 ? (
-              <p className="text-[11px] text-red-500 pt-1.5">Create a staff group first</p>
+              <p className="text-[11px] text-red-500 pt-1.5">Create a crew first</p>
             ) : (
               <select
                 value={groupId}

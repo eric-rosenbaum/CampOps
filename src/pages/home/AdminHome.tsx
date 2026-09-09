@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { format, formatDistanceToNow, differenceInDays, addDays, startOfDay } from 'date-fns';
 import {
   AlertTriangle, ArrowRight, CheckCircle2, Shield, Droplets,
-  Truck, Wrench, Users, Calendar, ChevronRight,
+  Truck, Users, Calendar, ChevronRight,
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { useIssuesStore } from '@/store/issuesStore';
@@ -390,7 +390,7 @@ function SectionHeader({
 export function AdminHome() {
   // ── Stores ────────────────────────────────────────────────────────────────
   const { issues, urgentCount, openCount, totalCosts, selectIssue } = useIssuesStore();
-  const { tasks, season } = useChecklistStore();
+  const { season } = useChecklistStore();
   const { pools, chemicalReadings } = usePoolStore();
   const {
     items: safetyItems, drills, certifications, licenses,
@@ -415,11 +415,6 @@ export function AdminHome() {
   const expiredCerts   = certifications.filter(c => certExpiryStatus(c.expiryDate) === 'expired').length;
   const expiringCerts  = certifications.filter(c => certExpiryStatus(c.expiryDate) === 'expiring').length;
   const expiredLicenses = licenses.filter(l => l.expiryDate && new Date(l.expiryDate + 'T00:00:00') < today).length;
-
-  const preTotal     = tasks.filter(t => t.phase === 'pre').length;
-  const preComplete  = tasks.filter(t => t.phase === 'pre' && t.status === 'complete').length;
-  const postTotal    = tasks.filter(t => t.phase === 'post').length;
-  const postComplete = tasks.filter(t => t.phase === 'post' && t.status === 'complete').length;
 
   const activePools = pools.filter(p => p.isActive);
 
@@ -534,13 +529,6 @@ export function AdminHome() {
         allActivity.push({ id: e.id, module: 'Issue', userName: e.userName, action: e.action, context: issue.title, timestamp: e.timestamp })
       )
   );
-  tasks.forEach(task =>
-    task.activityLog
-      .filter(e => new Date(e.timestamp) >= cutoff)
-      .forEach(e =>
-        allActivity.push({ id: `task-${e.id}`, module: 'Checklist', userName: e.userName, action: e.action, context: task.title, timestamp: e.timestamp })
-      )
-  );
   chemicalReadings
     .filter(r => new Date(r.readingTime) >= cutoff)
     .forEach(r => {
@@ -632,13 +620,6 @@ export function AdminHome() {
             sub={overdueOuts.length > 0 ? `${overdueOuts.length} overdue` : fleet.available > 0 ? `${fleet.available} available` : 'All checked out'}
             variant={overdueOuts.length > 0 ? 'red' : 'default'}
             to="/assets"
-          />
-          <StatTile
-            label="Pre/post checklist"
-            value={`${preTotal > 0 ? Math.round((preComplete / preTotal) * 100) : 0}%`}
-            sub={`${preComplete}/${preTotal} pre · ${postComplete}/${postTotal} post`}
-            variant={preTotal > 0 && preComplete === preTotal ? 'green' : 'default'}
-            to="/pre-post"
           />
           {acaDays !== null ? (
             <StatTile
@@ -1012,39 +993,6 @@ export function AdminHome() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-
-        {/* ── Pre / post checklist strip ───────────────────────────────── */}
-        <div className="bg-white rounded-card border border-border px-5 py-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Wrench className="w-3.5 h-3.5 text-ink-faint" />
-              <h2 className="text-[15px] font-semibold text-forest">Pre / post camp checklist</h2>
-            </div>
-            <Link to="/pre-post" className="text-[11px] text-sage hover:text-sage-light flex items-center gap-0.5 transition-colors">
-              View all <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {[
-              { label: 'Pre-camp opening', pct: preTotal > 0 ? Math.round((preComplete / preTotal) * 100) : 0, done: preComplete, total: preTotal },
-              { label: 'Post-camp closing', pct: postTotal > 0 ? Math.round((postComplete / postTotal) * 100) : 0, done: postComplete, total: postTotal },
-            ].map(({ label, pct, done, total }) => (
-              <div key={label}>
-                <div className="flex justify-between mb-1.5">
-                  <p className="text-[12px] text-ink-soft">{label}</p>
-                  <p className="text-[12px] font-semibold text-forest font-mono">{pct}%</p>
-                </div>
-                <div className="h-2 bg-cream-dark rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-sage' : pct > 50 ? 'bg-sage/70' : 'bg-amber/60'}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <p className="text-[10px] text-ink-faint mt-1">{done} of {total} tasks complete</p>
-              </div>
-            ))}
           </div>
         </div>
 

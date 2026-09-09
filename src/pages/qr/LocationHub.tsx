@@ -405,7 +405,7 @@ function Hub({
       {location && can('updateIssue') && <ServicePanel location={location} />}
 
       {/* ── Shutoffs & panel ──────────────────────────────────────────────── */}
-      {location && canAccessModule('building_systems') && <BuildingPanel location={location} />}
+      {location && canAccessModule() && <BuildingPanel location={location} />}
 
       {/* ── Undo snackbar ─────────────────────────────────────────────────── */}
       {undo && (

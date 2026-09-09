@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Waves } from 'lucide-react';
 import { useIssuesStore } from '@/store/issuesStore';
-import { useChecklistStore } from '@/store/checklistStore';
 import { usePoolStore } from '@/store/poolStore';
 import { useAuth } from '@/lib/auth';
 import { useCampStore } from '@/store/campStore';
@@ -11,7 +10,6 @@ export function StaffHome() {
   const { currentUser, department } = useAuth();
   const { currentCamp } = useCampStore();
   const issues = useIssuesStore((s) => s.issues);
-  const tasks = useChecklistStore((s) => s.tasks);
   const pools = usePoolStore((s) => s.pools);
   const readings = usePoolStore((s) => s.chemicalReadings);
 
@@ -20,10 +18,6 @@ export function StaffHome() {
     [issues, currentUser.id]
   );
 
-  const myTasks = useMemo(
-    () => tasks.filter((t) => t.assigneeId === currentUser.id && t.status !== 'complete'),
-    [tasks, currentUser.id]
-  );
 
   const poolStatus = useMemo(() => {
     if (!pools.length) return null;
@@ -104,27 +98,6 @@ export function StaffHome() {
         )}
       </div>
 
-      {/* My tasks */}
-      {myTasks.length > 0 && (
-        <div className="bg-white rounded-xl border border-border">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-            <h2 className="text-[14px] font-semibold text-forest">My tasks</h2>
-            <Link to="/pre-post" className="text-[12px] text-ink-soft hover:text-forest flex items-center gap-1">
-              All tasks <ChevronRight className="w-3 h-3" />
-            </Link>
-          </div>
-          <div className="divide-y divide-stone-100">
-            {myTasks.slice(0, 4).map((task) => (
-              <div key={task.id} className="px-5 py-3">
-                <p className="text-[13px] font-medium text-forest">{task.title}</p>
-                <p className="text-[11px] text-ink-faint mt-0.5">
-                  {task.phase === 'pre' ? 'Pre-camp' : 'Post-camp'} · {task.status.replace('_', ' ')}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

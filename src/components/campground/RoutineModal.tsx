@@ -526,7 +526,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
               </select>
             </div>
             <div>
-              <label className={labelClass} htmlFor="routine-group">Staff group</label>
+              <label className={labelClass} htmlFor="routine-group">Crew</label>
               <select
                 id="routine-group" className={inputClass} value={draft.staffGroupId ?? ''}
                 onChange={(e) => set({ staffGroupId: e.target.value || null })}

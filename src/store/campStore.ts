@@ -7,24 +7,19 @@ export type Department =
   | 'waterfront' | 'maintenance' | 'kitchen'
   | 'administration' | 'health' | 'program' | 'other';
 
-export interface StaffGroupModules {
-  issues_repairs: boolean;
-  pre_post: boolean;
-  pool: boolean;
-  safety: boolean;
-  assets: boolean;
-  building_systems: boolean;
-  commissary: boolean;
-  retreats: boolean;
-}
-
 export interface StaffGroup {
   id: string;
   campId: string;
   name: string;
-  modules: StaffGroupModules;
+  /**
+   * Whether the crew sees work that is not theirs -- anything unassigned or sitting with the
+   * crew, so they can pick it up. False means they only ever see jobs with their own name on.
+   *
+   * A crew used to also carry a `modules` object deciding which parts of the app its members
+   * could open at all. That column is still on the table so a rollback has something to read,
+   * but nothing writes it and nothing checks it: staff see the whole app.
+   */
   issuesSeeUnassigned: boolean;
-  prepostSeeUnassigned: boolean;
   /**
    * Grants this group's members camper NAMES and allergy severities. Enforced in
    * Postgres by has_camper_health_access(), not just in the UI. Health data is the
@@ -187,8 +182,8 @@ interface CampState {
   revokeInvitation: (invId: string) => Promise<void>;
 
   loadStaffGroups: (campId: string) => Promise<StaffGroup[]>;
-  createStaffGroup: (campId: string, name: string, modules: StaffGroupModules, issuesSeeUnassigned: boolean, prepostSeeUnassigned: boolean, canViewCamperHealth?: boolean) => Promise<StaffGroup>;
-  updateStaffGroup: (groupId: string, patch: Partial<Pick<StaffGroup, 'name' | 'modules' | 'issuesSeeUnassigned' | 'prepostSeeUnassigned' | 'canViewCamperHealth'>>) => Promise<void>;
+  createStaffGroup: (campId: string, name: string, issuesSeeUnassigned: boolean, canViewCamperHealth?: boolean) => Promise<StaffGroup>;
+  updateStaffGroup: (groupId: string, patch: Partial<Pick<StaffGroup, 'name' | 'issuesSeeUnassigned' | 'canViewCamperHealth'>>) => Promise<void>;
   deleteStaffGroup: (groupId: string) => Promise<void>;
 }
 
@@ -559,9 +554,7 @@ export const useCampStore = create<CampState>((set, get) => ({
       id: r.id,
       campId: r.camp_id,
       name: r.name,
-      modules: r.modules as StaffGroupModules,
       issuesSeeUnassigned: r.issues_see_unassigned,
-      prepostSeeUnassigned: r.prepost_see_unassigned,
       canViewCamperHealth: r.can_view_camper_health ?? false,
       createdAt: r.created_at,
     }));
@@ -570,15 +563,13 @@ export const useCampStore = create<CampState>((set, get) => ({
     return groups;
   },
 
-  createStaffGroup: async (campId, name, modules, issuesSeeUnassigned, prepostSeeUnassigned, canViewCamperHealth = false) => {
+  createStaffGroup: async (campId, name, issuesSeeUnassigned, canViewCamperHealth = false) => {
     const { data, error } = await supabase
       .from('staff_groups')
       .insert({
         camp_id: campId,
         name,
-        modules,
         issues_see_unassigned: issuesSeeUnassigned,
-        prepost_see_unassigned: prepostSeeUnassigned,
         can_view_camper_health: canViewCamperHealth,
       })
       .select()
@@ -590,9 +581,7 @@ export const useCampStore = create<CampState>((set, get) => ({
       id: data.id,
       campId: data.camp_id,
       name: data.name,
-      modules: data.modules as StaffGroupModules,
       issuesSeeUnassigned: data.issues_see_unassigned,
-      prepostSeeUnassigned: data.prepost_see_unassigned,
       canViewCamperHealth: data.can_view_camper_health ?? false,
       createdAt: data.created_at,
     };
@@ -604,9 +593,7 @@ export const useCampStore = create<CampState>((set, get) => ({
   updateStaffGroup: async (groupId, patch) => {
     const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.name !== undefined) row.name = patch.name;
-    if (patch.modules !== undefined) row.modules = patch.modules;
     if (patch.issuesSeeUnassigned !== undefined) row.issues_see_unassigned = patch.issuesSeeUnassigned;
-    if (patch.prepostSeeUnassigned !== undefined) row.prepost_see_unassigned = patch.prepostSeeUnassigned;
     if (patch.canViewCamperHealth !== undefined) row.can_view_camper_health = patch.canViewCamperHealth;
 
     const { error } = await supabase.from('staff_groups').update(row).eq('id', groupId);

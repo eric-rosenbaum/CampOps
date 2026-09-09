@@ -127,7 +127,7 @@ export function WorkRoutingCard() {
                       className="block text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-1"
                       htmlFor={`routing-group-${trade}`}
                     >
-                      Staff group
+                      Crew
                     </label>
                     <select
                       id={`routing-group-${trade}`}

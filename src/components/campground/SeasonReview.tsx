@@ -7,9 +7,12 @@ import { ColumnChart, type ColumnDatum } from '@/components/shared/ColumnChart';
 import { useCampgroundStore } from '@/store/campgroundStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useAuth } from '@/lib/auth';
-import { fetchSeasonReview, dbSnapshotReview } from '@/lib/campgroundDb';
+import {
+  fetchSeasonReview, dbSnapshotReview, dbListReviewSnapshots, dbGetReviewSnapshot,
+  dbReleaseReviewSnapshot, type ReviewSnapshotRow,
+} from '@/lib/campgroundDb';
 import { SOURCE_LABELS, STATUS_LABELS } from '@/lib/workOrder';
-import { formatCost, formatDate, parseDateStr, todayStr } from '@/lib/utils';
+import { formatCost, formatDate, parseDateStr, todayStr, toDateStr } from '@/lib/utils';
 import { useTradeLabel } from '@/lib/useTrades';
 import type { IssueSource, IssueStatus, SeasonReview as SeasonReviewData } from '@/lib/types';
 
@@ -78,23 +81,48 @@ export function SeasonReview() {
   // an effect has to set — which also means a slow response for last week's dates can never
   // paint over this week's.
   const [result, setResult] = useState<{ key: string; data: SeasonReviewData | null } | null>(null);
+
+  /**
+   * A saved snapshot being read instead of the live numbers. Selecting one replaces the whole
+   * report; releasing it puts the live figures back. Frozen used to be component state, so it
+   * was forgotten on reload and nothing could ever be unfrozen.
+   */
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const [snapshots, setSnapshots] = useState<ReviewSnapshotRow[]>([]);
+  const viewing = snapshots.find((sn) => sn.id === viewingId) ?? null;
+
   useEffect(() => {
     let cancelled = false;
-    void fetchSeasonReview(from, to).then((d) => { if (!cancelled) setResult({ key, data: d }); });
+    const load = viewingId
+      ? dbGetReviewSnapshot(viewingId)
+      : fetchSeasonReview(from, to);
+    void load.then((d) => { if (!cancelled) setResult({ key, data: d }); });
     return () => { cancelled = true; };
-  }, [from, to, key]);
+  }, [from, to, key, viewingId]);
+
+  // What has already been saved for this period, so the affordance survives a reload.
+  useEffect(() => {
+    let cancelled = false;
+    void dbListReviewSnapshots('season', from, to).then((rows) => {
+      if (!cancelled) setSnapshots(rows);
+    });
+    return () => { cancelled = true; };
+  }, [from, to, reload]);
 
   const loading = result?.key !== key;
   const data = result?.key === key ? result.data : null;
   const failed = !loading && data == null;
 
-  // Freeze state is keyed to the period it was for, so changing the dates resets the whole
-  // affordance without an effect reaching in to clear it.
-  const [frozenKey, setFrozenKey] = useState<string | null>(null);
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
   const [freezeFailedKey, setFreezeFailedKey] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const isFrozen = frozenKey === key;
+  const [asOf, setAsOf] = useState('');
+
+  /**
+   * A stored instant rendered as the camp's own calendar day. Slicing the ISO string would show
+   * the UTC day, so "as of Sep 2" saved in the evening reads back as Sep 3.
+   */
+  const localDay = (iso: string) => formatDate(toDateStr(new Date(iso)));
   const isConfirming = confirmKey === key;
   const freezeFailed = freezeFailedKey === key;
 
@@ -110,9 +138,20 @@ export function SeasonReview() {
 
   async function doFreeze() {
     setSaving(true);
-    const ok = await dbSnapshotReview('season', from, to);
+    // A bare date means the end of that day, so "as of the closing date" includes the closing
+    // day's work rather than stopping at midnight before it.
+    const stamp = asOf ? new Date(`${asOf}T23:59:59`).toISOString() : new Date().toISOString();
+    const ok = await dbSnapshotReview('season', from, to, stamp);
     setSaving(false);
-    if (ok) { setFrozenKey(key); setConfirmKey(null); } else setFreezeFailedKey(key);
+    if (ok) { setConfirmKey(null); setAsOf(''); setReload((n) => n + 1); }
+    else setFreezeFailedKey(key);
+  }
+
+  async function doRelease(id: string) {
+    const ok = await dbReleaseReviewSnapshot(id);
+    if (!ok) { setFreezeFailedKey(key); return; }
+    if (viewingId === id) setViewingId(null);
+    setReload((n) => n + 1);
   }
 
   const weekly = useMemo<ColumnDatum[]>(() => {
@@ -210,13 +249,9 @@ export function SeasonReview() {
             <Printer className="w-3.5 h-3.5" aria-hidden="true" /> Print
           </Button>
           {role === 'admin' && (
-            isFrozen ? (
-              <span className="text-[12.5px] text-green-muted-text font-semibold">Frozen</span>
-            ) : (
-              <Button variant="ghost" onClick={() => setConfirmKey(isConfirming ? null : key)}>
-                <Lock className="w-3.5 h-3.5" aria-hidden="true" /> Freeze this review
-              </Button>
-            )
+            <Button variant="ghost" onClick={() => setConfirmKey(isConfirming ? null : key)}>
+              <Lock className="w-3.5 h-3.5" aria-hidden="true" /> Save a snapshot
+            </Button>
           )}
         </div>
       </div>
@@ -224,19 +259,95 @@ export function SeasonReview() {
       {isConfirming && (
         <div className="cc-no-print rounded-card border border-border bg-cream px-5 py-4 mb-6">
           <p className="text-[13px] text-ink leading-relaxed">
-            Freezing stores these numbers as they stand today.
+            Stores these numbers so they cannot change later. Leave the date blank for today, or
+            set it to rebuild the board as it stood then — useful in November for a season that
+            closed in August.
           </p>
-          <div className="flex items-center gap-2 mt-3">
+          <div className="flex flex-wrap items-end gap-3 mt-3">
+            <div>
+              <label
+                className="block text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-1"
+                htmlFor="review-asof"
+              >
+                As of
+              </label>
+              <input
+                id="review-asof" type="date" className={inputClass} value={asOf} max={todayStr()}
+                onChange={(e) => setAsOf(e.target.value)}
+              />
+            </div>
             <Button onClick={doFreeze} disabled={saving}>
-              {saving ? 'Freezing…' : `Freeze ${formatDate(from)} – ${formatDate(to)}`}
+              {saving ? 'Saving…' : asOf ? `Save as of ${formatDate(asOf)}` : 'Save as of today'}
             </Button>
-            <Button variant="ghost" onClick={() => setConfirmKey(null)}>Not now</Button>
+            <Button variant="ghost" onClick={() => { setConfirmKey(null); setAsOf(''); }}>
+              Not now
+            </Button>
           </div>
+          <p className="text-[11.5px] text-ink-soft mt-2.5">
+            Counts, closures and ageing rebuild to that date. Recorded costs do not — nothing
+            keeps a history of what was typed into them, so they read as they are today.
+          </p>
+        </div>
+      )}
+
+      {/* Saved snapshots for this period. Reading one replaces the report; releasing it puts the
+          live numbers back. */}
+      {snapshots.length > 0 && (
+        <div className="cc-no-print rounded-card border border-border bg-white px-5 py-3.5 mb-6">
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-2">
+            Saved snapshots
+          </p>
+          <ul className="divide-y divide-border">
+            {snapshots.map((sn) => {
+              const on = viewingId === sn.id;
+              return (
+                <li key={sn.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+                  <span className="text-[13px] font-semibold text-forest">
+                    As of {localDay(sn.as_of)}
+                  </span>
+                  <span className="text-[11.5px] text-ink-soft">
+                    saved {localDay(sn.taken_at)}
+                    {sn.taken_by ? ` by ${sn.taken_by}` : ''}
+                  </span>
+                  <span className="ml-auto flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setViewingId(on ? null : sn.id)}
+                      className="text-[12px] font-semibold text-forest hover:underline px-1.5"
+                    >
+                      {on ? 'Back to live' : 'Open'}
+                    </button>
+                    {role === 'admin' && (
+                      <button
+                        type="button"
+                        onClick={() => void doRelease(sn.id)}
+                        title="Delete this snapshot. The live review is unaffected."
+                        className="text-[12px] font-semibold text-ink-soft hover:text-red px-1.5"
+                      >
+                        Release
+                      </button>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {viewing && (
+        <div className="rounded-card border border-forest/30 bg-sage-pale px-5 py-3.5 mb-6 flex items-start gap-2.5">
+          <Lock className="w-4 h-4 text-forest flex-shrink-0 mt-0.5" aria-hidden="true" />
+          <p className="text-[12.5px] text-forest leading-relaxed">
+            <b>Frozen snapshot</b> — the board as it stood on {localDay(viewing.as_of)}.
+            Saved {localDay(viewing.taken_at)}
+            {viewing.taken_by ? ` by ${viewing.taken_by}` : ''}. It will not change.
+          </p>
         </div>
       )}
       {freezeFailed && (
         <p className="cc-no-print text-[12.5px] text-red-text mb-6">
-          The snapshot did not save. Nothing was changed — try again.
+          That did not work. Nothing was changed — try again.
         </p>
       )}
 

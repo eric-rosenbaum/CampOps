@@ -461,8 +461,12 @@ export async function dbSetLocationService(
 
 // ─── Reviews and the calendar ─────────────────────────────────────────────────
 
-export async function fetchSeasonReview(from: string, to: string): Promise<SeasonReview | null> {
-  const { data, error } = await supabase.rpc('season_review', { p_camp_id: CID(), p_from: from, p_to: to });
+/** `asOf` rebuilds the board as it stood at that instant; omit it for the live numbers. */
+export async function fetchSeasonReview(
+  from: string, to: string, asOf?: string | null,
+): Promise<SeasonReview | null> {
+  const { data, error } = await supabase.rpc('season_review',
+    { p_camp_id: CID(), p_from: from, p_to: to, p_as_of: asOf ?? new Date().toISOString() });
   if (error) { campError('season review', error.message); return null; }
   return (data as SeasonReview) ?? null;
 }
@@ -485,10 +489,43 @@ export async function fetchPropertyCalendar(from: string, to: string): Promise<P
  * Generate live all summer, freeze on the closing date, so last year's report cannot quietly
  * change when somebody back-dates a closure in November.
  */
-export async function dbSnapshotReview(kind: 'season' | 'rentals', from: string, to: string) {
+export async function dbSnapshotReview(
+  kind: 'season' | 'rentals', from: string, to: string, asOf?: string | null,
+) {
   const { error } = await supabase.rpc('snapshot_review',
-    { p_camp_id: CID(), p_kind: kind, p_from: from, p_to: to });
+    { p_camp_id: CID(), p_kind: kind, p_from: from, p_to: to,
+      p_as_of: asOf ?? new Date().toISOString() });
   if (error) { campError('snapshot review', error.message); return false; }
+  return true;
+}
+
+export interface ReviewSnapshotRow {
+  id: string;
+  /** The instant the numbers describe, which is not necessarily when it was taken. */
+  as_of: string;
+  taken_at: string;
+  taken_by: string | null;
+}
+
+export async function dbListReviewSnapshots(
+  kind: 'season' | 'rentals', from: string, to: string,
+): Promise<ReviewSnapshotRow[]> {
+  const { data, error } = await supabase.rpc('list_review_snapshots',
+    { p_camp_id: CID(), p_kind: kind, p_from: from, p_to: to });
+  if (error) { campError('list snapshots', error.message); return []; }
+  return (data as ReviewSnapshotRow[]) ?? [];
+}
+
+export async function dbGetReviewSnapshot(id: string): Promise<SeasonReview | null> {
+  const { data, error } = await supabase.rpc('get_review_snapshot', { p_id: id });
+  if (error) { campError('read snapshot', error.message); return null; }
+  return (data as SeasonReview) ?? null;
+}
+
+/** Unfreeze. The live review is unaffected; it is recomputed from the work orders every time. */
+export async function dbReleaseReviewSnapshot(id: string): Promise<boolean> {
+  const { error } = await supabase.rpc('release_review_snapshot', { p_id: id });
+  if (error) { campError('release snapshot', error.message); return false; }
   return true;
 }
 

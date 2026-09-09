@@ -2495,6 +2495,10 @@ export interface CampSession {
 export interface SeasonReview {
   from: string;
   to: string;
+  /** The instant these numbers describe. Absent on payloads stored before as-of existed. */
+  as_of?: string;
+  /** The cut-off is meaningfully in the past, so this is not simply "right now". */
+  is_historical?: boolean;
   volume: {
     reported: number; closed: number; open: number;
     by_trade: Record<string, number>;

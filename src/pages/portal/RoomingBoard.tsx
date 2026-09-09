@@ -29,18 +29,14 @@ import {
 /**
  * A room's service status, if the camp's portal payload carries one.
  *
- * `get_portal_data` does not publish it today, so this is read defensively rather than
- * assumed: when it appears, out-of-service cabins grey out here exactly as they do on the
- * camp's own board; until then nothing changes and nothing breaks.
+ * Out-of-service rooms never reach here.
+ *
+ * They used to arrive with their service status, reason and expected-back date, and the board
+ * greyed them out and said why -- which told a church group that the septic line is dug up.
+ * The portal RPC now leaves them off the list entirely: a room is available, or it is not
+ * offered. What arrives instead is a description, so a group choosing between Cabin 1 and
+ * Cabin 7 has something to choose on.
  */
-type ServiceAwarePortalSpace = PortalSpace & {
-  service_status?: string | null;
-  out_of_service_reason?: string | null;
-  expected_back?: string | null;
-};
-
-const outOfService = (s: PortalSpace) =>
-  (s as ServiceAwarePortalSpace).service_status === 'out_of_service';
 
 export function RoomingBoard({
   retreat, spaces, guests, housing, token, refetch, locked, deadlinePassed,
@@ -116,9 +112,7 @@ export function RoomingBoard({
       capacity: room.bed_capacity ?? 0,
       accessible: room.accessible ?? false,
       heldByOther: room.taken_by_other,
-      outOfService: outOfService(room),
-      outOfServiceReason: (room as ServiceAwarePortalSpace).out_of_service_reason ?? null,
-      expectedBack: (room as ServiceAwarePortalSpace).expected_back ?? null,
+      note: room.description ?? null,
       unnamed: unnamedCounts.get(room.id) ?? 0,
       occupants: (byRoom.get(room.id) ?? []).map((g) => ({
         id: g.id, name: g.full_name, needsAccessible: g.needs_accessible, subgroup: g.subgroup,
@@ -135,7 +129,7 @@ export function RoomingBoard({
     id: s.id, name: s.name, capacity: s.bed_capacity ?? 0,
     accessible: s.accessible ?? false,
     unnamed: unnamedCounts.get(s.id) ?? 0,
-    blocked: !!s.taken_by_other || outOfService(s),
+    blocked: !!s.taken_by_other,
   })), [spaces, unnamedCounts]);
   const progress = useMemo(
     () => summariseArrangement(plannerGuests, plannerRooms),
@@ -209,7 +203,7 @@ export function RoomingBoard({
     if (people.length === 0) return;
 
     const open = spaces
-      .filter((s) => !s.taken_by_other && !outOfService(s))
+      .filter((s) => !s.taken_by_other)
       .map((s) => ({
         s,
         // Beds already spoken for include people booked by count, with no name attached.

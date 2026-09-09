@@ -122,6 +122,10 @@ export interface PortalSpace {
   accessible: boolean | null;
   /** Held by another retreat whose stay overlaps these dates. Not pickable. */
   taken_by_other?: boolean;
+  /** The camp's cabin type, if this one has been given one. */
+  cabin_type?: string | null;
+  /** What this cabin is like: the type's description plus anything true of this cabin alone. */
+  description?: string | null;
 }
 
 export interface PortalHousing {

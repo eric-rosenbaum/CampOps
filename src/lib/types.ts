@@ -19,6 +19,13 @@ export type IssueStatus =
 export type ChecklistStatus = 'pending' | 'in_progress' | 'complete';
 
 // ─── Unified locations (one nestable, categorized tree per camp) ───────────────────
+export interface CabinType {
+  id: string;
+  campId: string;
+  name: string;
+  description: string;
+}
+
 export interface CampLocation {
   id: string;
   campId: string;
@@ -31,7 +38,10 @@ export interface CampLocation {
   accessible: boolean;
   sortOrder: number;
   isActive: boolean;
+  /** Shown to the group in the portal, beside its cabin type. Not a place for internal notes. */
   notes: string | null;
+  /** The camp's reusable description this cabin uses, if any. */
+  cabinTypeId: string | null;
   /**
    * Read by rental availability and the rooming board, not merely displayed.
    *

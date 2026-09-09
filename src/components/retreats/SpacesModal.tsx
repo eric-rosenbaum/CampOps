@@ -5,17 +5,22 @@ import { Button } from '@/components/shared/Button';
 import { useLocationStore } from '@/store/locationStore';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
-import type { CampLocation } from '@/lib/types';
+import type { CampLocation, CabinType } from '@/lib/types';
+import { CabinTypesBlock } from './CabinTypesBlock';
+import { useCabinTypes } from './useCabinTypes';
 
 /** One room under a dorm building. Beds live here (never on the building). Available toggle =
  *  retreat_available; blocked rooms drop out of assignment + the guest portal. */
-function RoomRow({ room, canManage }: { room: CampLocation; canManage: boolean }) {
+function RoomRow({ room, canManage, types }: {
+  room: CampLocation; canManage: boolean; types: CabinType[];
+}) {
   const { updateLocation } = useLocationStore();
   const [beds, setBeds] = useState(String(room.bedCapacity ?? 0));
   const commit = (patch: Partial<CampLocation>) => { if (canManage) updateLocation({ ...room, ...patch }); };
 
   return (
-    <div className={`flex items-center gap-2 rounded-btn border px-3 py-2 ${room.retreatAvailable ? 'border-border bg-white' : 'border-border bg-cream-dark/40 opacity-70'}`}>
+    <div className={`rounded-btn border px-3 py-2 ${room.retreatAvailable ? 'border-border bg-white' : 'border-border bg-cream-dark/40 opacity-70'}`}>
+    <div className="flex items-center gap-2">
       <p className="flex-1 text-[13px] text-forest truncate">{room.name}</p>
       <input
         type="number" min="0" step="1" value={beds}
@@ -36,11 +41,33 @@ function RoomRow({ room, canManage }: { room: CampLocation; canManage: boolean }
         {room.retreatAvailable ? <><Check className="w-3 h-3" /> Available</> : <><Ban className="w-3 h-3" /> Blocked</>}
       </button>
     </div>
+
+    {/* What the group is told about this one. The type carries the description; the note is for
+        whatever is true of this cabin alone. Both are guest-facing. */}
+    {room.retreatAvailable && (
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center mt-2">
+        <select
+          value={room.cabinTypeId ?? ''} disabled={!canManage}
+          onChange={(e) => commit({ cabinTypeId: e.target.value || null })}
+          className="text-[12px] bg-white border border-border rounded-btn px-2 py-1 focus:outline-none focus:border-sage disabled:opacity-50 sm:w-44"
+        >
+          <option value="">No cabin type</option>
+          {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+        <input
+          defaultValue={room.notes ?? ''} disabled={!canManage}
+          placeholder="Anything true of this cabin only — shown to the group"
+          onBlur={(e) => { if ((e.target.value || null) !== room.notes) commit({ notes: e.target.value.trim() || null }); }}
+          className="flex-1 text-[12px] bg-white border border-border rounded-btn px-2 py-1 focus:outline-none focus:border-sage disabled:opacity-50"
+        />
+      </div>
+    )}
+    </div>
   );
 }
 
 /** One dorm building: toggle retreat availability; beds are configured on its rooms below. */
-function BuildingBlock({ building, rooms, canManage }: { building: CampLocation; rooms: CampLocation[]; canManage: boolean }) {
+function BuildingBlock({ building, rooms, canManage, types }: { building: CampLocation; rooms: CampLocation[]; canManage: boolean; types: CabinType[] }) {
   const { updateLocation } = useLocationStore();
   const commit = (patch: Partial<CampLocation>) => { if (canManage) updateLocation({ ...building, ...patch }); };
   const totalBeds = rooms.filter((r) => r.retreatAvailable).reduce((s, r) => s + (r.bedCapacity ?? 0), 0);
@@ -62,7 +89,7 @@ function BuildingBlock({ building, rooms, canManage }: { building: CampLocation;
         <div className="mt-2.5 space-y-1.5">
           {rooms.length === 0 ? (
             <p className="text-[11px] text-ink-faint italic">No rooms yet. Add rooms as sub-locations in Camp Info → Locations to set beds.</p>
-          ) : rooms.map((r) => <RoomRow key={r.id} room={r} canManage={canManage} />)}
+          ) : rooms.map((r) => <RoomRow key={r.id} room={r} canManage={canManage} types={types} />)}
         </div>
       )}
     </div>
@@ -74,6 +101,7 @@ export function SpacesModal() {
   const locations = useLocationStore((s) => s.locations);
   const { can } = useAuth();
   const canManage = can('manageRetreats');
+  const [types] = useCabinTypes();
 
   // A building is a TOP-LEVEL dorm; its rooms are direct children.
   const dorms = useMemo(
@@ -104,7 +132,11 @@ export function SpacesModal() {
             No dorms yet. Mark locations as dorms in Camp Info → Locations, then toggle their retreat availability here.
           </p>
         )}
-        {dorms.map((d) => <BuildingBlock key={d.id} building={d} rooms={roomsByBuilding.get(d.id) ?? []} canManage={canManage} />)}
+        {dorms.map((d) => <BuildingBlock key={d.id} building={d} rooms={roomsByBuilding.get(d.id) ?? []} canManage={canManage} types={types} />)}
+      </div>
+
+      <div className="border-t border-border pt-5 mb-5">
+        <CabinTypesBlock canManage={canManage} />
       </div>
 
       <div className="border-t border-border pt-5 mb-2">

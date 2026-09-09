@@ -22,8 +22,10 @@ import { parseDateStr, toDateStr, todayStr } from '@/lib/utils';
  * One row per space PER DAY, deliberately. A reset between a Friday session and a Saturday
  * session is two jobs for the person carrying the benches, so it is two rows here.
  *
- * The interaction is the rooming board's: pick a space, then pick a day. Select-then-place
- * works on a phone on a sofa, which is where this actually gets filled in.
+ * The interaction is the rooming board's: pick a space, then pick the days. Days multi-select
+ * because "the dining hall, every day" is the common ask and answering the same six questions
+ * four times is how a coordinator gives up halfway. Select-then-place works on a phone on a
+ * sofa, which is where this actually gets filled in.
  */
 
 // ─── Shapes returned by the portal RPCs ──────────────────────────────────────
@@ -108,7 +110,13 @@ async function fetchProgramSpaces(
 
 interface Draft {
   locationId: string;
-  dayDate: string;
+  /**
+   * The days this one form is being filled in for. A group that wants the dining hall every
+   * day of the stay should answer "how do you want the room?" once, not four times -- but it
+   * still becomes one row per day, because a reset between Friday and Saturday is two jobs
+   * for the person carrying the benches.
+   */
+  dayDates: string[];
   startLabel: string;
   endLabel: string;
   purpose: string;
@@ -120,7 +128,7 @@ interface Draft {
 
 function draftFrom(row: SpaceRequestRow): Draft {
   return {
-    locationId: row.location_id, dayDate: row.day_date,
+    locationId: row.location_id, dayDates: [row.day_date],
     startLabel: row.start_label ?? '', endLabel: row.end_label ?? '',
     purpose: row.purpose ?? '', expectedCount: row.expected_count?.toString() ?? '',
     layout: row.layout ?? 'open', layoutOther: row.layout_other ?? '',
@@ -177,6 +185,8 @@ export function ProgramSpacesSection({
     return () => { active = false; };
   }, [token]);
 
+  const [pickedDays, setPickedDays] = useState<string[]>([]);
+
   const days = useMemo(
     () => stayDays(retreat.arrival_date, retreat.departure_date),
     [retreat.arrival_date, retreat.departure_date],
@@ -194,15 +204,24 @@ export function ProgramSpacesSection({
     return Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [requests]);
 
+  /** Days for the selected space that have not been asked for yet — what "every day" means. */
+  const freeDays = useMemo(
+    () => (selectedSpace
+      ? days.filter((d) => !requests.some((r) => r.location_id === selectedSpace && r.day_date === d))
+      : []),
+    [selectedSpace, days, requests],
+  );
+
   const existingFor = useCallback(
     (locationId: string, day: string) => requests.find((r) => r.location_id === locationId && r.day_date === day) ?? null,
     [requests],
   );
 
-  function openDraft(locationId: string, day: string) {
-    const existing = existingFor(locationId, day);
+  function openDraft(locationId: string, dayList: string[]) {
+    // Editing exactly one day that already exists reopens that ask; anything else is new.
+    const existing = dayList.length === 1 ? existingFor(locationId, dayList[0]) : null;
     setDraft(existing ? draftFrom(existing) : {
-      locationId, dayDate: day, startLabel: '', endLabel: '', purpose: '',
+      locationId, dayDates: dayList, startLabel: '', endLabel: '', purpose: '',
       expectedCount: '', layout: 'open', layoutOther: '', setupNotes: '',
     });
   }
@@ -211,21 +230,26 @@ export function ProgramSpacesSection({
     if (!draft) return;
     setBusy(true); setError(null);
     const count = draft.expectedCount.trim() === '' ? null : Number(draft.expectedCount);
-    const { error: err } = await supabasePublic.rpc('portal_save_space_request', {
-      p_token: token,
-      p_location_id: draft.locationId,
-      p_day_date: draft.dayDate,
-      p_start_label: draft.startLabel.trim() || null,
-      p_end_label: draft.endLabel.trim() || null,
-      p_purpose: draft.purpose.trim() || null,
-      p_expected_count: Number.isFinite(count) ? count : null,
-      p_layout: draft.layout,
-      p_layout_other: draft.layout === 'other' ? draft.layoutOther.trim() || null : null,
-      p_setup_notes: draft.setupNotes.trim() || null,
-    });
+    let err: { message?: string } | null = null;
+    for (const day of draft.dayDates) {
+      const res = await supabasePublic.rpc('portal_save_space_request', {
+        p_token: token,
+        p_location_id: draft.locationId,
+        p_day_date: day,
+        p_start_label: draft.startLabel.trim() || null,
+        p_end_label: draft.endLabel.trim() || null,
+        p_purpose: draft.purpose.trim() || null,
+        p_expected_count: Number.isFinite(count) ? count : null,
+        p_layout: draft.layout,
+        p_layout_other: draft.layout === 'other' ? draft.layoutOther.trim() || null : null,
+        p_setup_notes: draft.setupNotes.trim() || null,
+      });
+      if (res.error) { err = res.error; break; }
+    }
     setBusy(false);
     if (err) { setError(err.message || 'Could not save that request. Please try again.'); return; }
     setDraft(null);
+    setPickedDays([]);
     await load();
     await onChanged?.();
   }
@@ -301,7 +325,7 @@ export function ProgramSpacesSection({
                     space={spaceById.get(r.location_id) ?? null}
                     editable={editable}
                     busy={busy}
-                    onEdit={() => { setSelectedSpace(r.location_id); openDraft(r.location_id, r.day_date); }}
+                    onEdit={() => { setSelectedSpace(r.location_id); openDraft(r.location_id, [r.day_date]); }}
                     onWithdraw={() => withdraw(r.id)}
                   />
                 ))}
@@ -325,7 +349,7 @@ export function ProgramSpacesSection({
               return (
                 <button
                   key={s.id}
-                  onClick={() => setSelectedSpace(on ? null : s.id)}
+                  onClick={() => { setSelectedSpace(on ? null : s.id); setPickedDays([]); }}
                   className={`text-left rounded-xl border px-3.5 py-3 transition-colors ${
                     on ? 'bg-forest text-white border-forest' : 'bg-cream border-border hover:border-sage'
                   }`}
@@ -349,20 +373,40 @@ export function ProgramSpacesSection({
 
           {selectedSpace && (
             <div className="mt-4 pt-4 border-t border-cream-dark">
-              <p className="text-[13px] font-semibold text-forest mb-2">
-                Which day do you need {spaceById.get(selectedSpace)?.name}?
-              </p>
+              <div className="flex items-baseline justify-between gap-3 flex-wrap mb-2">
+                <p className="text-[13px] font-semibold text-forest">
+                  Which days do you need {spaceById.get(selectedSpace)?.name}?
+                </p>
+                {freeDays.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setPickedDays(
+                      pickedDays.length === freeDays.length ? [] : freeDays,
+                    )}
+                    className="text-[12.5px] font-semibold text-forest hover:underline"
+                  >
+                    {pickedDays.length === freeDays.length ? 'Clear' : 'Every day'}
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap gap-1.5">
                 {days.map((d) => {
                   const existing = existingFor(selectedSpace, d);
+                  const picked = pickedDays.includes(d);
                   return (
                     <button
                       key={d}
-                      onClick={() => openDraft(selectedSpace, d)}
+                      onClick={() => {
+                        // A day already asked for opens that ask; the rest toggle.
+                        if (existing) { openDraft(selectedSpace, [d]); return; }
+                        setPickedDays(picked ? pickedDays.filter((x) => x !== d) : [...pickedDays, d]);
+                      }}
                       className={`inline-flex items-center gap-1.5 text-[13px] rounded-full px-3 py-1.5 border transition-colors ${
                         existing
                           ? 'bg-sage-pale border-sage/40 text-forest'
-                          : 'bg-white border-border text-ink hover:border-sage'
+                          : picked
+                            ? 'bg-forest border-forest text-white font-semibold'
+                            : 'bg-white border-border text-ink hover:border-sage'
                       }`}
                     >
                       {existing && <Check className="w-3.5 h-3.5" />}
@@ -371,6 +415,15 @@ export function ProgramSpacesSection({
                   );
                 })}
               </div>
+              {pickedDays.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => openDraft(selectedSpace, [...pickedDays].sort())}
+                  className={`${btnPrimary} mt-3`}
+                >
+                  Set up {pickedDays.length} day{pickedDays.length === 1 ? '' : 's'}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -380,7 +433,7 @@ export function ProgramSpacesSection({
         <RequestForm
           draft={draft}
           space={spaceById.get(draft.locationId) ?? null}
-          existing={existingFor(draft.locationId, draft.dayDate)}
+          existing={draft.dayDates.length === 1 ? existingFor(draft.locationId, draft.dayDates[0]) : null}
           busy={busy}
           onChange={setDraft}
           onCancel={() => setDraft(null)}
@@ -492,9 +545,16 @@ function RequestForm({
         <div>
           <p className="text-[15px] font-bold text-forest">{space?.name ?? 'Space'}</p>
           <p className="text-[12.5px] text-ink-soft mt-0.5">
-            {fmtDay(draft.dayDate)}
+            {draft.dayDates.length === 1
+              ? fmtDay(draft.dayDates[0])
+              : `${draft.dayDates.length} days · ${fmtDay(draft.dayDates[0])} – ${fmtDay(draft.dayDates[draft.dayDates.length - 1])}`}
             {cap != null && ` · seats ${cap}`}
           </p>
+          {draft.dayDates.length > 1 && (
+            <p className="text-[11.5px] text-ink-soft mt-1">
+              Saved as one ask per day, so the camp can confirm each one.
+            </p>
+          )}
         </div>
         <button onClick={onCancel} className="text-ink-faint hover:text-forest" aria-label="Close">
           <X className="w-4 h-4" />

@@ -77,8 +77,7 @@ export function FeedbackTab() {
             <div className="flex items-start gap-3 rounded-card border border-amber/40 bg-amber-bg px-4 py-3 mb-5">
               <AlertTriangle className="w-4 h-4 text-amber flex-shrink-0 mt-0.5" />
               <p className="text-[13px] text-amber-text leading-relaxed">
-                Communication scored {commAvg.toFixed(1)}, below the {COMM_THRESHOLD} target. Groups most often
-                flag response time on change requests. Consider a 24-hour response commitment for all portal requests.
+                Communication scored {commAvg.toFixed(1)}, below the {COMM_THRESHOLD} target.
               </p>
             </div>
           )}

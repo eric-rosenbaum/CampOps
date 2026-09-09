@@ -64,6 +64,8 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
   const [nextAction, setNextAction] = useState('');
   const [nextActionOn, setNextActionOn] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
+  /** Whether the draft came from a read. The review step is worded differently when typed. */
+  const [fromAI, setFromAI] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
   function copy(key: string, text: string) {
@@ -84,6 +86,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
    */
   function startBlank() {
     setError(null);
+    setFromAI(false);
     setDraft({
       groupName: null, groupType: null, contacts: [],
       arrivalDate: null, departureDate: null, dateFlexibility: null,
@@ -108,6 +111,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
       return;
     }
     setReading(false);
+    setFromAI(true);
     setDraft(d);
     setGroupName(d.groupName ?? '');
     setGroupType(d.groupType ?? 'other');
@@ -294,7 +298,11 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
   const datesResolved = Boolean(arrival || departure);
 
   return (
-    <Modal title="Check this before it becomes an enquiry" onClose={onClose} width="min(720px, 94vw)">
+    <Modal
+      title={fromAI ? 'Check this before it becomes an enquiry' : 'New enquiry'}
+      onClose={onClose}
+      width="min(720px, 94vw)"
+    >
       {/* What they didn't tell us — first, because it is the most valuable thing on the screen
           and it is what the follow-up email will be made of. */}
       {draft.questions.length > 0 && (
@@ -403,7 +411,9 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
         <div>
           <label className={labelClass}>People</label>
           {people.length === 0 && (
-            <p className="text-[12px] text-ink-faint mb-2">Nobody was named in the notes.</p>
+            <p className="text-[12px] text-ink-faint mb-2">
+              {fromAI ? 'Nobody was named in the notes.' : 'Nobody added yet.'}
+            </p>
           )}
           <div className="space-y-2">
             {people.map((p, i) => (
@@ -493,7 +503,9 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
       )}
 
       <div className="flex flex-col sm:flex-row justify-between gap-2 mt-5 pt-4 border-t border-border">
-        <Button variant="ghost" onClick={() => setDraft(null)}>Back to the notes</Button>
+        <Button variant="ghost" onClick={() => setDraft(null)}>
+          {fromAI ? 'Back to the notes' : 'Back'}
+        </Button>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button onClick={create}>Create enquiry</Button>

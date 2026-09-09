@@ -64,6 +64,12 @@ Deno.serve(async (req) => {
   if (new Date() > expiredAfter) return json({ error: "This portal link has expired." }, 403);
 
   const email = (retreat.coordinator_email ?? "").trim();
+  // A malformed address on file is the same problem as no address: the group cannot fix it and
+  // "please try again" would have them tapping forever. Treat it as "no email" so the portal
+  // explains and points them at the camp.
+  if (email && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) {
+    return json({ codeRequired: false });
+  }
   if (!email) {
     // Nothing to verify against. Rather than locking the group out of their own booking, the
     // portal is told so it can explain and point them at the camp.
@@ -107,7 +113,17 @@ Deno.serve(async (req) => {
       html,
     }),
   });
-  if (!res.ok) return json({ error: "Could not send the code. Please try again." }, 502);
+  if (!res.ok) {
+    // Resend rejecting the recipient is a bad address on file, not a blip. Saying "try again"
+    // sends the group round a loop only the camp can break.
+    const detail = await res.text().catch(() => "");
+    const badRecipient = res.status === 422 || /invalid.*(email|recipient)|not a valid/i.test(detail);
+    return json({
+      error: badRecipient
+        ? "We could not reach the email address your camp has on file. Please contact the camp so they can correct it."
+        : "Could not send the code. Please try again.",
+    }, 502);
+  }
 
   return json({ codeRequired: true, sentTo: maskEmail(email), expiresInMinutes: CODE_TTL_MINUTES });
 });

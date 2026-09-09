@@ -13,7 +13,21 @@ export interface SendEmailInput {
 
 export type SendEmailResult = { ok: true; id?: string } | { ok: false; error: string };
 
+/**
+ * Deliberately stricter than `<input type="email">`, which happily accepts `eric@campcommandapp`
+ * because the HTML spec does not require a dot in the domain. That address is a typo every time,
+ * and letting it save means the failure only shows up later, at the moment someone tries to send.
+ */
+export function isValidEmail(s: string | null | undefined): boolean {
+  return typeof s === 'string' && /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(s.trim());
+}
+
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
+  // Say which address is wrong. The function's own "a valid recipient email is required" is
+  // true but useless when the address is one character off and sitting on another screen.
+  if (!isValidEmail(input.to)) {
+    return { ok: false, error: `"${input.to}" is not a valid email address. Fix it under Contacts and try again.` };
+  }
   const { data, error } = await supabase.functions.invoke('send-email', { body: input });
   if (error) {
     // The function returns a JSON error body; surface it when available.

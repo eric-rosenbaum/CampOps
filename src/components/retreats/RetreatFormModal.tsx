@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth';
 import { generateId } from '@/lib/utils';
 import type { Retreat, RetreatStatus, RetreatPricingModel } from '@/lib/types';
 import { inputClass, labelClass, GROUP_TYPE_OPTIONS, STATUS_LABELS, PRICING_MODEL_OPTIONS } from './retreatUi';
+import { isValidEmail } from '@/lib/email';
 
 const STATUS_ORDER: RetreatStatus[] = ['inquiry', 'confirmed', 'ready', 'active', 'complete', 'cancelled'];
 
@@ -54,6 +55,7 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
   const [depositDue, setDepositDue] = useState(existing?.depositDue ?? '');
   const [coordName, setCoordName] = useState(existing?.coordinatorName ?? '');
   const [coordEmail, setCoordEmail] = useState(existing?.coordinatorEmail ?? '');
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [coordPhone, setCoordPhone] = useState(existing?.coordinatorPhone ?? '');
   const [housingDeadline, setHousingDeadline] = useState(existing?.housingDeadline ?? '');
   const [headcountCutoff, setHeadcountCutoff] = useState(existing?.headcountCutoff ?? '');
@@ -76,6 +78,13 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!valid || !canManage) return;
+    // This address is where every reminder, proposal and portal code goes. A typo here is
+    // silent until the day someone needs it to work.
+    if (coordEmail.trim() && !isValidEmail(coordEmail)) {
+      setEmailError('That does not look like an email address — check for a missing dot.');
+      return;
+    }
+    setEmailError(null);
     const now = new Date().toISOString();
 
     if (editing && existing) {
@@ -218,7 +227,12 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Coordinator email</label>
-            <input type="email" value={coordEmail} onChange={(e) => setCoordEmail(e.target.value)} className={inputClass} placeholder="name@org.com" />
+            <input
+              type="email" value={coordEmail}
+              onChange={(e) => { setCoordEmail(e.target.value); setEmailError(null); }}
+              className={`${inputClass} ${emailError ? 'border-red' : ''}`} placeholder="name@org.com"
+            />
+            {emailError && <p className="text-[11.5px] text-red mt-1">{emailError}</p>}
           </div>
           <div>
             <label className={labelClass}>Coordinator phone</label>

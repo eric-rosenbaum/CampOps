@@ -14,6 +14,7 @@ import type { RetreatContact } from '@/lib/types';
 import { dbAddContact, dbUpdateContact, dbDeleteContact } from '@/lib/retreatsDb';
 import { generateId } from '@/lib/utils';
 import { inputClass, labelClass, Badge } from './retreatUi';
+import { isValidEmail } from '@/lib/email';
 
 const now = () => new Date().toISOString();
 
@@ -152,6 +153,7 @@ function ContactForm({ retreatId, existing, hasPrimary, onCancel, onSave }: {
   const [name, setName] = useState(existing?.name ?? '');
   const [role, setRole] = useState(existing?.role ?? '');
   const [email, setEmail] = useState(existing?.email ?? '');
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [phone, setPhone] = useState(existing?.phone ?? '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
   // The first person on a group is the one we will email, so default to primary rather than
@@ -161,6 +163,12 @@ function ContactForm({ retreatId, existing, hasPrimary, onCancel, onSave }: {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    // Catch it here, not three screens later when a reminder bounces.
+    if (email.trim() && !isValidEmail(email)) {
+      setEmailError('That does not look like an email address — check for a missing dot.');
+      return;
+    }
+    setEmailError(null);
     const ts = now();
     onSave({
       id: existing?.id ?? generateId(),
@@ -196,7 +204,12 @@ function ContactForm({ retreatId, existing, hasPrimary, onCancel, onSave }: {
         </div>
         <div>
           <label className={labelClass}>Email</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+          <input
+            type="email" value={email}
+            onChange={(e) => { setEmail(e.target.value); setEmailError(null); }}
+            className={`${inputClass} ${emailError ? 'border-red' : ''}`}
+          />
+          {emailError && <p className="text-[11.5px] text-red mt-1">{emailError}</p>}
         </div>
         <div>
           <label className={labelClass}>Phone</label>

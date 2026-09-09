@@ -298,6 +298,10 @@ const BEST_EFFORT_TARGETS = new Set([
   // user is already looking at.
   'retreat-intake',
   'draft-work-order',
+  // Sending mail stores nothing. A bounced address is a real failure, but it is the sending
+  // modal's failure to report — "what's on screen may not match what's stored" is a lie about
+  // an email that was never a write.
+  'send-email',
 ]);
 
 function describeTarget(url: string): string {

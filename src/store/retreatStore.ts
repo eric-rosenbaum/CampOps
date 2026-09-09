@@ -247,7 +247,8 @@ interface RetreatState {
   balanceFor: (retreatId: string) => Balance;
   financialsFor: (retreatId: string) => RetreatFinancials;
   phaseProgress: (retreatId: string) => PhaseProgress;
-  pendingRequestCount: () => number;
+  /** Camp-wide, for the manager header. Pass a retreat id for that booking's own count. */
+  pendingRequestCount: (retreatId?: string) => number;
   portalUrl: (r: Retreat) => string;
 }
 
@@ -626,6 +627,8 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   // Only what the camp still owes an answer to. A request the camp raised is also 'pending',
   // but it is pending on the group, and counting it would put a number on the season header
   // for work nobody at the camp can do.
-  pendingRequestCount: () => get().changeRequests.filter((r) => r.status === 'pending' && r.origin !== 'camp').length,
+  pendingRequestCount: (retreatId) => get().changeRequests.filter((r) =>
+    r.status === 'pending' && r.origin !== 'camp'
+    && (retreatId === undefined || r.retreatId === retreatId)).length,
   portalUrl: (r) => `${typeof window !== 'undefined' ? window.location.origin : ''}/portal/${r.portalToken}`,
 }));

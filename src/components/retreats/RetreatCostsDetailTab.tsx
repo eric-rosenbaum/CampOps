@@ -15,7 +15,7 @@ import { money, fmtDate, fmtDateFull, StatusBadge, billableHeadcount } from './r
  */
 export function RetreatCostsDetailTab() {
   const {
-    selectedRetreat, financialsFor, paymentsFor, invoicesFor, chargesFor, openModal,
+    selectedRetreat, financialsFor, paymentsFor, invoicesFor, chargesFor, costsFor, openModal,
   } = useRetreatStore();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
@@ -27,6 +27,7 @@ export function RetreatCostsDetailTab() {
   const payments = paymentsFor(r.id).slice().sort((a, b) => b.paidOn.localeCompare(a.paidOn));
   const invoices = invoicesFor(r.id).slice().sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
   const charges = chargesFor(r.id);
+  const costs = costsFor(r.id);
 
   // A balance invoice raised before the group confirmed a different number is out of date.
   // Comparing timestamps rather than parsing the invoice's line text: the confirmation carries
@@ -56,6 +57,12 @@ export function RetreatCostsDetailTab() {
             <>
               <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'payment', retreatId: r.id })}>
                 <Plus className="w-3.5 h-3.5" /> Log payment
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'charge', retreatId: r.id })}>
+                <Plus className="w-3.5 h-3.5" /> Charge
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'cost', retreatId: r.id })}>
+                <Plus className="w-3.5 h-3.5" /> Cost
               </Button>
               <Button size="sm" onClick={() => openModal({ kind: 'invoice', retreatId: r.id })}>
                 <FileText className="w-3.5 h-3.5" /> Invoice
@@ -179,11 +186,33 @@ export function RetreatCostsDetailTab() {
         <div className="mt-4">
           <Panel title="Line charges" count={charges.length} empty="">
             {charges.map((c) => (
-              <Row key={c.id} title={c.description} sub={c.qty > 1 ? `${c.qty} × ${money(c.unitRate)}` : ''} amount={money(c.amount)} />
+              <Row
+                key={c.id}
+                title={c.description}
+                sub={c.qty > 1 ? `${c.qty} × ${money(c.unitRate)}` : ''}
+                amount={money(c.amount)}
+                onClick={canManage ? () => openModal({ kind: 'charge', retreatId: r.id, chargeId: c.id }) : undefined}
+              />
             ))}
           </Panel>
         </div>
       )}
+
+      {/* What the stay costs the camp. This is what the rentals review's "cost to host" reads,
+          and it read zero for every group because nothing opened the editor. */}
+      <div className="mt-4">
+        <Panel title="What it costs us" count={costs.length} empty="Nothing recorded yet.">
+          {costs.map((c) => (
+            <Row
+              key={c.id}
+              title={c.category}
+              sub={c.actual != null && c.budgeted ? `budgeted ${money(c.budgeted)}` : 'budgeted'}
+              amount={money(c.actual ?? c.budgeted ?? 0)}
+              onClick={canManage ? () => openModal({ kind: 'cost', retreatId: r.id, costId: c.id }) : undefined}
+            />
+          ))}
+        </Panel>
+      </div>
 
       <p className="text-[11.5px] text-ink-faint mt-4">
         The season-wide picture across every group lives on the Costs &amp; invoice tab outside

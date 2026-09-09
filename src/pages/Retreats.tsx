@@ -89,6 +89,9 @@ export function Retreats() {
   const byStatus = retreatsByStatus();
   const pending = pendingRequestCount();
   const retreat = selectedRetreat();
+  // The per-retreat tab badge must count THAT booking. It was showing the camp-wide total, so a
+  // group with nothing outstanding wore another group's number.
+  const pendingHere = retreat ? pendingRequestCount(retreat.id) : 0;
 
   // A per-retreat tab left selected after stepping out would render an empty shell, so the
   // view falls back to the season overview.
@@ -141,8 +144,8 @@ export function Retreats() {
               }`}
             >
               {tab.label}
-              {tab.id === 'requests' && pending > 0 && (
-                <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-amber text-white text-[10px] font-bold">{pending}</span>
+              {tab.id === 'requests' && pendingHere > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-amber text-white text-[10px] font-bold">{pendingHere}</span>
               )}
             </button>
           ))}

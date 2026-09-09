@@ -123,8 +123,7 @@ export function TurnoverCard({ retreatId }: { retreatId: string }) {
 
           <p className="text-[11.5px] text-ink-faint mt-2 inline-flex items-start gap-1.5">
             <Info className="w-3.5 h-3.5 flex-shrink-0 mt-px" />
-            Safe to press twice. A room that already has a turnover job is skipped, so nothing
-            gets duplicated onto the crew's list.
+            Safe to press twice. Rooms that already have a turnover job are skipped.
           </p>
 
           {result && <p className="text-[12.5px] text-green-muted-text font-medium mt-2">{result}</p>}

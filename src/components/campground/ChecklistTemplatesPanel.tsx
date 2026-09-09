@@ -252,7 +252,7 @@ function TemplateModal({ template, onClose }: {
                       <input
                         className={`${inputClass} text-[12px]`}
                         value={item.note ?? ''}
-                        placeholder="Note (optional) — the detail people get wrong"
+                        placeholder="Note (optional)"
                         aria-label={`Note for step ${i + 1}`}
                         onChange={(e) => patchItem(i, { note: e.target.value })}
                       />

@@ -272,7 +272,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
             onChange={(e) => set({ title: e.target.value })}
           />
           <p className={hintClass}>
-            Every occurrence is raised with this title, so write it as the job, not the schedule.
+            Write it as the job, not the schedule.
           </p>
         </div>
 
@@ -465,7 +465,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
                 onChange={(e) => set({ anchorDate: e.target.value || null })}
               />
               <p className={hintClass}>
-                The date the count runs from. "Every 2 weeks" needs to know which two weeks.
+                The date the count runs from.
               </p>
             </div>
           )}
@@ -595,7 +595,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
               </p>
             ) : draft.cadence === 'on_turnover' ? (
               <p className="text-[12.5px] text-ink-soft leading-relaxed">
-                Raised on every departure, so the dates come from the property calendar.
+                Raised on every departure.
               </p>
             ) : preview.length > 0 ? (
               <>

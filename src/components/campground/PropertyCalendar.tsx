@@ -390,7 +390,7 @@ export function PropertyCalendar() {
       {!loading && data && turnovers.length === 0 && (
         <p className="mt-3 text-[12px] text-ink-soft flex items-center gap-2">
           <CalendarDays className="w-3.5 h-3.5 text-sage" aria-hidden="true" />
-          No turnover days in this window — nothing departs and arrives on the same date.
+          No turnover days in this window.
         </p>
       )}
     </div>

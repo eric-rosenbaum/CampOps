@@ -87,8 +87,7 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No retreat selected</h3>
           <p className="text-[13px] text-ink-soft leading-relaxed">
-            Open a retreat to see which rooms the group has asked for, and turn those asks into
-            work for the property team.
+            Open a retreat to see the rooms it has asked for.
           </p>
         </div>
       </div>
@@ -130,9 +129,7 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
         <div className="bg-white rounded-card border border-border px-5 py-8 text-center">
           <Presentation className="w-7 h-7 text-ink-faint mx-auto mb-2.5" />
           <p className="text-[13px] text-ink-soft max-w-md mx-auto leading-relaxed">
-            This group hasn't asked for any rooms yet. They can choose spaces in their portal,
-            or you can log what they told you on the phone — either way it becomes the same
-            work order.
+            No rooms requested yet. They can ask in their portal, or you can log it here.
           </p>
         </div>
       ) : (
@@ -189,8 +186,7 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
                       {r.status === 'countered' && (
                         <p className="text-[12px] text-amber-text mt-2 inline-flex items-start gap-1.5">
                           <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                          This changed after it was approved. The work order has a note on it —
-                          approve again to update the crew's instructions.
+                          Changed after approval. Approve again to update the crew's instructions.
                         </p>
                       )}
 

@@ -148,8 +148,7 @@ export function OutboxPanel() {
           <div>
             <h3 className="text-[13px] font-semibold text-forest">Outbox</h3>
             <p className="text-[11.5px] text-ink-soft">
-              Nothing sends silently. The queue is visible and cancellable because the worst email
-              this product could send is “please submit your rooming” the morning after they submitted it.
+              Nothing sends silently. Everything queued here can be edited or cancelled.
             </p>
           </div>
           {canManage && (

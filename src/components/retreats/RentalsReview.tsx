@@ -155,8 +155,7 @@ export function RentalsReview({ from: initialFrom, to: initialTo }: Props) {
 
       {frozen && (
         <p className="no-print text-[12.5px] text-green-muted-text bg-green-muted-bg border border-sage/30 rounded-card px-3.5 py-2.5 mb-5">
-          Frozen. This range is stored as it stands, so back-dating a closure in November cannot
-          quietly rewrite what last season looked like.
+          Frozen. This range is stored as it stands.
         </p>
       )}
 
@@ -178,8 +177,7 @@ export function RentalsReview({ from: initialFrom, to: initialTo }: Props) {
           <section className="print-break">
             <h3 className="font-display text-[16px] font-bold text-forest mb-1">Occupancy</h3>
             <p className="text-[12px] text-ink-soft mb-3">
-              Bed-nights sold against bed-nights available. Not “weekends booked” — a group of
-              twelve in a building that sleeps forty is not a full house.
+              Bed-nights sold against bed-nights available.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-4">

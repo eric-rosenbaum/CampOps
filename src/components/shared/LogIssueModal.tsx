@@ -8,6 +8,7 @@ import { useIssuesStore } from '@/store/issuesStore';
 import { useCampStore } from '@/store/campStore';
 import { useLocationStore } from '@/store/locationStore';
 import { useAssetStore } from '@/store/assetStore';
+import { useCampgroundStore } from '@/store/campgroundStore';
 import { LocationPicker } from '@/components/shared/LocationPicker';
 import { CaptureSheet } from '@/components/campground/CaptureSheet';
 import { useAuth } from '@/lib/auth';
@@ -35,6 +36,8 @@ interface FormValues {
   trade: Trade;
   /** Work against a *thing*, so cost and days-out roll up to the vehicle or the mower. */
   assetId: string;
+  /** Who outside the camp is doing it. Independent of assignee and of status. */
+  vendorId: string;
 }
 
 export function LogIssueModal() {
@@ -44,6 +47,7 @@ export function LogIssueModal() {
   const { currentUser, can } = useAuth();
   const members = useCampStore((s) => s.members);
   const assets = useAssetStore((s) => s.assets);
+  const vendors = useCampgroundStore((s) => s.vendors);
   const editingIssue = editingIssueId ? issues.find((i) => i.id === editingIssueId) : null;
 
   const [locationIds, setLocationIds] = useState<string[]>([]);
@@ -62,6 +66,7 @@ export function LogIssueModal() {
         priority: 'normal',
         trade: 'maintenance',
         assetId: '',
+        vendorId: '',
       },
     });
 
@@ -84,6 +89,7 @@ export function LogIssueModal() {
         dueDate: editingIssue.dueDate ?? '',
         trade: editingIssue.trade,
         assetId: editingIssue.assetId ?? '',
+        vendorId: editingIssue.vendorId ?? '',
       });
     } else {
       setLocationIds([]);
@@ -95,6 +101,7 @@ export function LogIssueModal() {
         dueDate: '',
         trade: 'maintenance',
         assetId: '',
+        vendorId: '',
       });
     }
   }, [editingIssue, reset, isLogIssueModalOpen]);
@@ -169,6 +176,7 @@ export function LogIssueModal() {
         dueDate: data.dueDate || null,
         trade: data.trade,
         assetId: data.assetId || null,
+        vendorId: data.vendorId || null,
         photoUrl,
       });
       addActivityEntry(editingIssue.id, {
@@ -208,6 +216,7 @@ export function LogIssueModal() {
         reportedById: currentUser.id,
         trade: data.trade,
         assetId: data.assetId || null,
+        vendorId: data.vendorId || null,
         dueDate: data.dueDate || null,
         activityLog,
       });
@@ -228,6 +237,7 @@ export function LogIssueModal() {
 
   const displayPhoto = photoPreview ?? (editingIssue?.photoUrl && !removeExistingPhoto ? editingIssue.photoUrl : null);
   const activeAssets = assets.filter((a) => a.isActive || a.id === editingIssue?.assetId);
+  const activeVendors = vendors.filter((v) => v.isActive || v.id === editingIssue?.vendorId);
 
   const inputClass = 'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
   const labelClass = 'block text-[12px] font-medium text-ink mb-1';
@@ -304,8 +314,7 @@ export function LogIssueModal() {
           <LocationPicker value={locationIds} onChange={setLocationIds} />
         </div>
 
-        {/* Work against a *thing*. It is what lets the season review say what the Gator cost
-            across nine work orders, which is the argument for replacing it. */}
+        {/* Work against a *thing*, so cost and days-out roll up to the vehicle or the mower. */}
         {activeAssets.length > 0 && (
           <div>
             <label className={labelClass}>Vehicle or equipment</label>
@@ -313,6 +322,22 @@ export function LogIssueModal() {
               <option value="">Not about a specific one</option>
               {activeAssets.map((a) => (
                 <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Plenty of work is dispatched to a contractor the moment it is logged. Asking for it
+            here means the record is right from the start rather than after somebody remembers. */}
+        {activeVendors.length > 0 && (
+          <div>
+            <label className={labelClass}>Outside vendor</label>
+            <select {...register('vendorId')} className={inputClass}>
+              <option value="">Nobody outside</option>
+              {activeVendors.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}{v.trade ? ` · ${v.trade}` : ''}
+                </option>
               ))}
             </select>
           </div>

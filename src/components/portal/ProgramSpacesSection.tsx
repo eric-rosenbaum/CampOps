@@ -266,8 +266,7 @@ export function ProgramSpacesSection({
         <div className="flex items-start gap-2.5 bg-cream-dark border border-border rounded-xl px-4 py-3">
           <Lock className="w-4 h-4 text-ink-soft flex-shrink-0 mt-0.5" />
           <p className="text-[13px] text-ink">
-            Your stay has finished, so these are now a record of what you asked for rather
-            than a form.
+            Your stay has finished. These are a record of what you asked for.
           </p>
         </div>
       )}
@@ -319,8 +318,7 @@ export function ProgramSpacesSection({
             {requests.length === 0 ? 'Choose your program spaces' : 'Add another space'}
           </p>
           <p className="text-[12.5px] text-ink-soft mt-0.5 mb-3">
-            Pick a room, then pick the day you need it. One row per day — a room that gets
-            reset between Friday night and Saturday morning is two jobs for the camp.
+            Pick a room, then the day you need it. One row per day.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

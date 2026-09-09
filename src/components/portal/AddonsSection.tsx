@@ -163,8 +163,7 @@ export function AddonsSection({ token, headcount, nights, onChanged }: Props) {
 
       {provisional && (
         <p className="text-[12px] text-ink-soft mt-2">
-          Prices that depend on your numbers or your dates are worked out once those are confirmed,
-          so what you see above may change.
+          Prices that depend on your numbers or dates are confirmed later.
         </p>
       )}
       {error && <p className="text-[13px] text-red mt-2">{error}</p>}

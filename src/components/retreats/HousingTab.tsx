@@ -508,9 +508,7 @@ export function HousingTab() {
         <div className="rounded-card border border-border bg-white px-5 py-4 mb-4">
           <p className="text-[13px] font-semibold text-forest">One printable sign per room</p>
           <p className="text-[12px] text-ink-soft mt-0.5 leading-relaxed max-w-2xl">
-            Big room name, who's in it, and your camp's name. The QR code is this room's own —
-            a guest who finds a broken lamp scans the sheet on their door and it lands in the
-            same queue the crew is already working from.
+            Room name, who's in it, and your camp's name. Each sheet carries that room's QR code.
           </p>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-3">
             <label className="inline-flex items-center gap-2 text-[12.5px] text-ink cursor-pointer">
@@ -573,8 +571,7 @@ export function HousingTab() {
                 )}
               </div>
               <p className="text-[11.5px] text-ink-faint mt-2">
-                It's a draft. Move anybody it got wrong — that is faster than starting from an
-                empty grid.
+                It's a draft. Move anybody it got wrong.
               </p>
             </div>
           )}

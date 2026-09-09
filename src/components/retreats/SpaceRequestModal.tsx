@@ -58,6 +58,8 @@ export function SpaceRequestModal({
 
   const [locationId, setLocationId] = useState(existing?.locationId ?? spaces.find((s) => s.serviceStatus !== 'out_of_service')?.id ?? '');
   const [dayDate, setDayDate] = useState(existing?.dayDate ?? retreat?.arrivalDate ?? toDateStr(new Date()));
+  // A group that has the room all week is one ask, not five. Blank means the same day.
+  const [endDate, setEndDate] = useState(existing?.endDate ?? '');
   const [startLabel, setStartLabel] = useState(existing?.startLabel ?? '');
   const [endLabel, setEndLabel] = useState(existing?.endLabel ?? '');
   const [purpose, setPurpose] = useState(existing?.purpose ?? '');
@@ -78,6 +80,7 @@ export function SpaceRequestModal({
   // material changed would train people to ignore the warning.
   const reopens = existing?.status === 'approved' && (
     dayDate !== existing.dayDate
+    || (endDate || dayDate) !== existing.endDate
     || layout !== existing.layout
     || (setupNotes.trim() || null) !== existing.setupNotes
     || (count ?? null) !== existing.expectedCount
@@ -100,6 +103,7 @@ export function SpaceRequestModal({
       retreatId,
       locationId,
       dayDate,
+      endDate: endDate && endDate >= dayDate ? endDate : dayDate,
       startLabel: startLabel.trim() || null,
       endLabel: endLabel.trim() || null,
       purpose: purpose.trim() || null,
@@ -171,8 +175,18 @@ export function SpaceRequestModal({
             </select>
           </div>
           <div>
-            <label className={labelClass}>Day</label>
+            <label className={labelClass}>First day</label>
             <input type="date" value={dayDate} onChange={(e) => setDayDate(e.target.value)} className={inputClass} required />
+          </div>
+          <div>
+            <label className={labelClass}>Last day</label>
+            <input
+              type="date" value={endDate} min={dayDate}
+              onChange={(e) => setEndDate(e.target.value)} className={inputClass}
+            />
+            <p className="text-[11.5px] text-ink-soft mt-1">
+              Leave blank for a single day. A run is set up once and reset once.
+            </p>
           </div>
         </div>
 

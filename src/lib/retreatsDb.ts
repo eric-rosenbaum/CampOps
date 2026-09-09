@@ -120,6 +120,7 @@ function rowToSpaceRequest(r: Row): RetreatSpaceRequest {
   return {
     id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string,
     locationId: r.location_id as string, dayDate: r.day_date as string,
+    endDate: (r.end_date as string) ?? (r.day_date as string),
     startLabel: s(r.start_label), endLabel: s(r.end_label), purpose: s(r.purpose),
     expectedCount: n(r.expected_count),
     layout: (r.layout as RetreatSpaceRequest['layout']) ?? 'open',
@@ -452,7 +453,7 @@ export async function dbRegeneratePortalToken(retreatId: string): Promise<string
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const spaceRequestRow = (x: RetreatSpaceRequest): Row => ({
-  location_id: x.locationId, day_date: x.dayDate,
+  location_id: x.locationId, day_date: x.dayDate, end_date: x.endDate ?? x.dayDate,
   start_label: x.startLabel, end_label: x.endLabel, purpose: x.purpose,
   expected_count: x.expectedCount, layout: x.layout, layout_other: x.layoutOther,
   setup_notes: x.setupNotes, camp_notes: x.campNotes, status: x.status,

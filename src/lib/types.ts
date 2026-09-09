@@ -2290,7 +2290,10 @@ export interface RetreatSpaceRequest {
   campId: string;
   retreatId: string;
   locationId: string;
+  /** First day of the run. */
   dayDate: string;
+  /** Last day, inclusive. Equal to dayDate for a single-day ask. */
+  endDate: string;
   startLabel: string | null;
   endLabel: string | null;
   purpose: string | null;

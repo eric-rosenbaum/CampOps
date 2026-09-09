@@ -12,6 +12,10 @@ import {
 } from '@/lib/retreatsDb';
 import { LAYOUT_LABELS, type SpaceRequestConflicts } from '@/lib/types';
 import { fmtDateFull, inputClass, labelClass } from './retreatUi';
+import { useCampStore } from '@/store/campStore';
+import { useLocationStore } from '@/store/locationStore';
+import { sendEmail } from '@/lib/email';
+import { spaceDecisionHtml } from './spaceDecisionEmail';
 
 /**
  * Saying yes, with everything that makes it a real decision on the same screen.
@@ -37,12 +41,16 @@ export function ApproveSpaceModal({
   const setSpaceRequests = useRetreatStore((s) => s.setSpaceRequests);
   const retreatById = useRetreatStore((s) => s.retreatById);
   const selectIssue = useIssuesStore((s) => s.selectIssue);
+  const portalUrl = useRetreatStore((s) => s.portalUrl);
+  const currentCamp = useCampStore((s) => s.currentCamp);
+  const locations = useLocationStore((s) => s.locations);
 
   const request = useMemo(
     () => spaceRequests.find((r) => r.id === requestId) ?? null,
     [spaceRequests, requestId],
   );
   const retreat = request ? retreatById(request.retreatId) : null;
+  const spaceName = locations.find((l) => l.id === request?.locationId)?.name ?? 'the space';
 
   const [conflicts, setConflicts] = useState<SpaceRequestConflicts | null>(null);
   const [checking, setChecking] = useState(true);
@@ -76,12 +84,46 @@ export function ApproveSpaceModal({
 
   const blocked = conflicts?.outOfService === true;
 
+  /**
+   * Whether the group hears about this.
+   *
+   * A decline needs saying: they planned around a room they are not getting. An approval is
+   * usually one of a dozen and lands in their portal anyway, so it defaults off rather than
+   * filling an inbox with "yes".
+   */
+  const [tellGroup, setTellGroup] = useState(mode === 'decline');
+  const [emailNote, setEmailNote] = useState<string | null>(null);
+
+  async function notifyGroup(outcome: 'approved' | 'declined') {
+    if (!request) return;
+    const to = retreat?.coordinatorEmail?.trim();
+    if (!to) { setEmailNote('No coordinator email on file, so nothing was sent.'); return; }
+    const res = await sendEmail({
+      to,
+      subject: outcome === 'approved'
+        ? `${spaceName} is confirmed for ${retreat?.groupName ?? 'your stay'}`
+        : `About your request for ${spaceName}`,
+      html: spaceDecisionHtml({
+        outcome, spaceName, campName: currentCamp?.name ?? 'the camp',
+        groupName: retreat?.groupName ?? 'your group',
+        when: request.endDate > request.dayDate
+          ? `${fmtDateFull(request.dayDate)} – ${fmtDateFull(request.endDate)}`
+          : fmtDateFull(request.dayDate),
+        message: message.trim(),
+        portalUrl: retreat ? portalUrl(retreat) : '',
+      }),
+      fromName: currentCamp?.name,
+    });
+    setEmailNote(res.ok ? `Emailed ${to}.` : `Saved, but the email did not go: ${res.error}`);
+  }
+
   async function approve() {
     if (blocked) return;
     setBusy(true); setError(null);
     const res = await dbApproveSpaceRequest(requestId, campNotes.trim() || null, message.trim() || null);
     setBusy(false);
     if (typeof res === 'string') { setError(res); return; }
+    if (tellGroup) await notifyGroup('approved');
     setCreated(res);
     setSpaceRequests(spaceRequests.map((r) => (r.id === requestId ? {
       ...r, status: 'approved' as const, campNotes: campNotes.trim() || r.campNotes,
@@ -94,6 +136,7 @@ export function ApproveSpaceModal({
   async function decline() {
     setBusy(true); setError(null);
     await dbDeclineSpaceRequest(requestId, message.trim() || null);
+    if (tellGroup) await notifyGroup('declined');
     setBusy(false);
     setSpaceRequests(spaceRequests.map((r) => (r.id === requestId ? {
       ...r, status: 'declined' as const, responseMessage: message.trim() || null,
@@ -141,7 +184,9 @@ export function ApproveSpaceModal({
         {/* ── The ask ── */}
         <div className="bg-cream border border-border rounded-card px-4 py-3">
           <p className="text-[13.5px] font-semibold text-forest">
-            {retreat?.groupName ?? 'Group'} · {fmtDateFull(request.dayDate)}
+            {retreat?.groupName ?? 'Group'} · {request.endDate > request.dayDate
+              ? `${fmtDateFull(request.dayDate)} – ${fmtDateFull(request.endDate)}`
+              : fmtDateFull(request.dayDate)}
           </p>
           <p className="text-[12.5px] text-ink-soft mt-0.5">
             {time && `${time} · `}
@@ -159,7 +204,7 @@ export function ApproveSpaceModal({
         {/* ── What saying yes runs into ── */}
         {checking ? (
           <p className="text-[12.5px] text-ink-soft inline-flex items-center gap-2">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking this space for that day…
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking this space for those dates…
           </p>
         ) : (
           <ConflictPanel conflicts={conflicts} expectedCount={request.expectedCount} />
@@ -186,6 +231,23 @@ export function ApproveSpaceModal({
             placeholder={mode === 'decline' ? 'Why this one can\'t happen, and what could instead…' : 'Anything they should know…'}
           />
           <p className="text-[11px] text-ink-faint mt-1">Shown in their portal against this request.</p>
+
+          <label className="flex items-start gap-2 mt-2.5 cursor-pointer">
+            <input
+              type="checkbox" checked={tellGroup}
+              onChange={(e) => setTellGroup(e.target.checked)}
+              className="mt-0.5 accent-forest"
+            />
+            <span className="text-[12.5px] text-ink">
+              Email this to {retreat?.coordinatorName || 'the group'}
+              <span className="block text-[11px] text-ink-soft mt-0.5">
+                {mode === 'decline'
+                  ? 'They planned around this room, so they should hear it rather than find it.'
+                  : 'It is already in their portal; tick this if it is worth an email too.'}
+              </span>
+            </span>
+          </label>
+          {emailNote && <p className="text-[11.5px] text-ink-soft mt-1.5">{emailNote}</p>}
         </div>
 
         {error && (
@@ -336,7 +398,7 @@ function ConflictPanel({ conflicts, expectedCount }: {
   if (rows.length === 0) {
     return (
       <Row tone="ok" icon={<CalendarClock className="w-4 h-4" />}>
-        Nothing else is booked in this space that day, and nobody is sleeping in it.
+        Nothing else is booked in this space then, and nobody is sleeping in it.
       </Row>
     );
   }

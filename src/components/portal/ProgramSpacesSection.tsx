@@ -43,6 +43,7 @@ interface SpaceRequestRow {
   location_id: string;
   location_name: string;
   day_date: string;
+  end_date: string;
   start_label: string | null;
   end_label: string | null;
   purpose: string | null;
@@ -77,6 +78,37 @@ const LAYOUT_ORDER: SpaceLayout[] = ['theater', 'rounds', 'classroom', 'open', '
 
 function fmtDay(d: string): string {
   return parseDateStr(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+/**
+ * Split a set of picked days into consecutive runs.
+ *
+ * Mon-Thu is one booking of a room; Mon and Thu are two sessions with something else happening
+ * in between. The first should be set up once, the second twice, and only the calendar can tell
+ * them apart.
+ */
+function contiguousRuns(days: string[]): string[][] {
+  const sorted = [...days].sort();
+  const runs: string[][] = [];
+  for (const d of sorted) {
+    const last = runs[runs.length - 1];
+    if (last && nextDay(last[last.length - 1]) === d) last.push(d);
+    else runs.push([d]);
+  }
+  return runs;
+}
+
+/** Every day in a saved run, so editing one reopens the whole thing. */
+function daysBetween(from: string, to: string): string[] {
+  const out: string[] = [];
+  for (let d = from; d <= to; d = nextDay(d)) out.push(d);
+  return out;
+}
+
+function nextDay(d: string): string {
+  const dt = parseDateStr(d);
+  dt.setDate(dt.getDate() + 1);
+  return toDateStr(dt);
 }
 
 /** Every calendar day of the stay, arrival and departure included. */
@@ -207,13 +239,13 @@ export function ProgramSpacesSection({
   /** Days for the selected space that have not been asked for yet — what "every day" means. */
   const freeDays = useMemo(
     () => (selectedSpace
-      ? days.filter((d) => !requests.some((r) => r.location_id === selectedSpace && r.day_date === d))
+      ? days.filter((d) => !requests.some((r) => r.location_id === selectedSpace && d >= r.day_date && d <= r.end_date))
       : []),
     [selectedSpace, days, requests],
   );
 
   const existingFor = useCallback(
-    (locationId: string, day: string) => requests.find((r) => r.location_id === locationId && r.day_date === day) ?? null,
+    (locationId: string, day: string) => requests.find((r) => r.location_id === locationId && day >= r.day_date && day <= r.end_date) ?? null,
     [requests],
   );
 
@@ -231,11 +263,15 @@ export function ProgramSpacesSection({
     setBusy(true); setError(null);
     const count = draft.expectedCount.trim() === '' ? null : Number(draft.expectedCount);
     let err: { message?: string } | null = null;
-    for (const day of draft.dayDates) {
+    // Contiguous days are one ask. Ticking Mon-Thu used to file four requests, which the camp
+    // then approved four times and got four set-ups for a room nobody rearranged in between.
+    // Non-contiguous picks really are separate sessions, so those stay separate asks.
+    for (const run of contiguousRuns(draft.dayDates)) {
       const res = await supabasePublic.rpc('portal_save_space_request', {
         p_token: token,
         p_location_id: draft.locationId,
-        p_day_date: day,
+        p_day_date: run[0],
+        p_end_date: run[run.length - 1],
         p_start_label: draft.startLabel.trim() || null,
         p_end_label: draft.endLabel.trim() || null,
         p_purpose: draft.purpose.trim() || null,
@@ -316,7 +352,13 @@ export function ProgramSpacesSection({
         <div className="space-y-3">
           {byDay.map(([day, rows]) => (
             <div key={day} className={`${cardClass} p-4`}>
-              <p className="text-[13px] font-bold uppercase tracking-wide text-ink-faint mb-3">{fmtDay(day)}</p>
+              {/* A run is headed by its span, not just the first day, so a four-day booking
+                  does not read as a Monday one. */}
+              <p className="text-[13px] font-bold uppercase tracking-wide text-ink-faint mb-3">
+                {rows.every((r) => r.end_date === day)
+                  ? fmtDay(day)
+                  : `${fmtDay(day)} – ${fmtDay(rows.reduce((m, r) => (r.end_date > m ? r.end_date : m), day))}`}
+              </p>
               <div className="space-y-2.5">
                 {rows.map((r) => (
                   <RequestRow
@@ -325,7 +367,7 @@ export function ProgramSpacesSection({
                     space={spaceById.get(r.location_id) ?? null}
                     editable={editable}
                     busy={busy}
-                    onEdit={() => { setSelectedSpace(r.location_id); openDraft(r.location_id, [r.day_date]); }}
+                    onEdit={() => { setSelectedSpace(r.location_id); openDraft(r.location_id, daysBetween(r.day_date, r.end_date)); }}
                     onWithdraw={() => withdraw(r.id)}
                   />
                 ))}
@@ -552,7 +594,7 @@ function RequestForm({
           </p>
           {draft.dayDates.length > 1 && (
             <p className="text-[11.5px] text-ink-soft mt-1">
-              Saved as one ask per day, so the camp can confirm each one.
+              Consecutive days are one ask; the camp sets the room up once.
             </p>
           )}
         </div>

@@ -53,11 +53,17 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
   const locations = useLocationStore((s) => s.locations);
   const issues = useIssuesStore((s) => s.issues);
   const selectIssue = useIssuesStore((s) => s.selectIssue);
+  const deleteIssue = useIssuesStore((s) => s.deleteIssue);
+
+  /** The set-up and strike this ask produced. */
+  const jobsFor = (requestId: string) => issues.filter((i) => i.retreatSpaceRequestId === requestId);
   const { can } = useAuth();
   const canManage = can('manageRetreats');
 
   const [editing, setEditing] = useState<{ id?: string } | null>(null);
   const [deciding, setDeciding] = useState<{ id: string; mode: 'approve' | 'decline' } | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState<RetreatSpaceRequest | null>(null);
+  const [alsoJobs, setAlsoJobs] = useState(true);
 
   const retreat = retreatId ? retreatById(retreatId) : selectedRetreat();
   const rid = retreat?.id ?? null;
@@ -94,9 +100,16 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
     );
   }
 
-  async function remove(id: string) {
+  async function remove(id: string, alsoJobs: boolean) {
+    if (alsoJobs) {
+      // issues.retreat_space_request_id is ON DELETE SET NULL, so the set-up and the strike
+      // outlive the ask unless they are taken with it — leaving the crew a job for a session
+      // that no longer exists.
+      jobsFor(id).forEach((i) => deleteIssue(i.id));
+    }
     setSpaceRequests(spaceRequests.filter((r) => r.id !== id));
     await dbDeleteSpaceRequest(id);
+    setConfirmingDelete(null);
   }
 
   return (
@@ -221,7 +234,7 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
                           <Button size="sm" variant="ghost" onClick={() => setEditing({ id: r.id })}>
                             <Pencil className="w-3.5 h-3.5" /> Edit
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => remove(r.id)}>
+                          <Button size="sm" variant="ghost" onClick={() => { setConfirmingDelete(r); setAlsoJobs(true); }}>
                             <Trash2 className="w-3.5 h-3.5" /> Delete
                           </Button>
                         </div>
@@ -251,6 +264,51 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
           onClose={() => setDeciding(null)}
         />
       )}
+
+      {confirmingDelete && (() => {
+        const jobs = jobsFor(confirmingDelete.id);
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setConfirmingDelete(null); }}
+          >
+            <div className="bg-white rounded-modal shadow-xl w-full max-w-md p-5">
+              <h3 className="text-[15px] font-semibold text-forest">
+                Delete this request?
+              </h3>
+              <p className="text-[13px] text-ink-soft mt-1.5">
+                {locById.get(confirmingDelete.locationId)?.name ?? 'This space'} on {fmtDateFull(confirmingDelete.dayDate)}.
+                The group will see it disappear from their portal.
+              </p>
+
+              {jobs.length > 0 && (
+                <label className="flex items-start gap-2.5 mt-4 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={alsoJobs}
+                    onChange={(e) => setAlsoJobs(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span className="text-[13px] text-ink">
+                    Also delete the {jobs.length} work order{jobs.length === 1 ? '' : 's'} it created
+                    <span className="block text-[12px] text-ink-soft mt-0.5">
+                      The set-up and the strike. Unticked, they stay on the crew's board for a
+                      session that is no longer happening.
+                    </span>
+                  </span>
+                </label>
+              )}
+
+              <div className="mt-4 flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setConfirmingDelete(null)}>Cancel</Button>
+                <Button variant="danger" onClick={() => remove(confirmingDelete.id, alsoJobs)}>
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

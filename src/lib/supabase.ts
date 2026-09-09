@@ -44,6 +44,20 @@ const STALL_MS = 20_000;
 const FIRST_BYTE_MS = 8_000;
 const FIRST_BYTE_BODY_MS = 45_000;
 
+/**
+ * Edge functions get their own, much longer first-byte budget.
+ *
+ * A PostgREST write answers in milliseconds, so 8 seconds of total silence from one is a fair
+ * sign the socket is dead. An edge function that asks a model to read a page of notes answers in
+ * twenty to forty, and sends NOTHING until it is finished — no headers, no progress, nothing to
+ * bump the deadline with. Under the 8s budget every AI call was aborted before it could reply,
+ * retried twice, and surfaced as "Failed to send a request to the Edge Function": a timeout that
+ * looked like a network fault and made the feature appear broken when it was merely slow.
+ *
+ * Once the response starts, STALL_MS takes over as normal.
+ */
+const FIRST_BYTE_FUNCTION_MS = 90_000;
+
 function xhrFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   return new Promise((resolve, reject) => {
     // campOpsDebug.simulateStaleFetch() sets this to test stale-TCP behaviour fast.
@@ -91,10 +105,12 @@ function xhrFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respons
     // called dead just as quickly. Only an actual upload earns the long first-byte grace.
     const body = init?.body;
     const isFileUpload = body instanceof FormData || body instanceof Blob || body instanceof ArrayBuffer;
+    const isFunction = url.includes('/functions/v1/');
 
     // Progress-driven deadline: any byte in either direction pushes it out, so only real
     // silence can expire it.
-    let deadline = Date.now() + (isFileUpload ? FIRST_BYTE_BODY_MS : FIRST_BYTE_MS);
+    let deadline = Date.now()
+      + (isFunction ? FIRST_BYTE_FUNCTION_MS : isFileUpload ? FIRST_BYTE_BODY_MS : FIRST_BYTE_MS);
     const bump = () => { deadline = Date.now() + STALL_MS; };
 
     const tick = () => {
@@ -275,7 +291,14 @@ function isRetryableStatus(status: number): boolean {
  * again. Raising "a change didn't save" over one teaches people to dismiss the banner, which
  * costs us the only channel we have for the failure that actually matters.
  */
-const BEST_EFFORT_TARGETS = new Set(['issue_comment_reads']);
+const BEST_EFFORT_TARGETS = new Set([
+  'issue_comment_reads',
+  // Drafting calls. They create nothing — the typed notes stay on screen and the modal reports
+  // its own failure — so raising the data-loss banner over one is noise on top of an error the
+  // user is already looking at.
+  'retreat-intake',
+  'draft-work-order',
+]);
 
 function describeTarget(url: string): string {
   const rpc = url.match(/\/rest\/v1\/rpc\/([^/?#]+)/);
@@ -334,6 +357,13 @@ async function fetchWithRetryInner(input: RequestInfo | URL, init?: RequestInit)
       return res;
     } catch (err) {
       if (init?.signal?.aborted) throw err; // caller cancelled, don't retry
+      // An edge function that has already had 90 seconds of silence is not going to answer on
+      // the second ask. Retrying would put the caller through four and a half minutes before
+      // reporting the failure, and bill for three model runs to do it.
+      if (url.includes('/functions/v1/') && err instanceof DOMException && err.name === 'TimeoutError') {
+        campLog(`[CampOps] ${tag} timed out; not retrying an edge function`);
+        throw err;
+      }
       if (i < delays.length) {
         campLog(`[CampOps] fetch attempt ${i + 1} failed, retrying in ${delays[i] / 1000}s: ${String(err)}`);
       } else {

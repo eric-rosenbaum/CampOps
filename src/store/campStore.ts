@@ -65,6 +65,14 @@ export interface Camp {
   dietaryDefaults: Record<string, boolean>;
   /** Default payment/banking instructions prefilled into retreat invoice notes. */
   retreatPaymentNote: string | null;
+  /** The camp's rate card. A booking priced individually overrides these; they fill the gap. */
+  defaultPricingModel: string | null;
+  defaultRatePerPersonNight: number | null;
+  defaultFlatRate: number | null;
+  /** Seeded into every new proposal, so terms are written once. */
+  proposalTerms: string | null;
+  /** How long a quote stands. Null means 30. */
+  proposalValidDays: number | null;
   accountType: CampAccountType;
   status: CampStatus;
   plan: string | null;
@@ -88,6 +96,11 @@ function rowToCamp(c: Record<string, unknown>): Camp {
     locations: (c.locations as string[]) ?? [],
     dietaryDefaults: (c.dietary_defaults as Record<string, boolean>) ?? {},
     retreatPaymentNote: (c.retreat_payment_note as string) ?? null,
+    defaultPricingModel: (c.default_pricing_model as string) ?? null,
+    defaultRatePerPersonNight: (c.default_rate_per_person_night as number) ?? null,
+    defaultFlatRate: (c.default_flat_rate as number) ?? null,
+    proposalTerms: (c.proposal_terms as string) ?? null,
+    proposalValidDays: (c.proposal_valid_days as number) ?? null,
     accountType: (c.account_type as CampAccountType) ?? 'customer',
     status: (c.status as CampStatus) ?? 'active',
     plan: (c.plan as string) ?? null,
@@ -153,6 +166,10 @@ interface CampState {
   acceptInvitation: (token: string) => Promise<{ campId: string } | { error: string }>;
   updateCamp: (campId: string, data: Partial<Pick<Camp, 'name' | 'campType' | 'state' | 'modules' | 'locations' | 'dietaryDefaults'>>) => Promise<void>;
   setRetreatPaymentNote: (campId: string, note: string | null) => Promise<void>;
+  /** Write any part of the camp's rate card / proposal defaults. */
+  setRentalDefaults: (campId: string, patch: Partial<Pick<Camp,
+    'defaultPricingModel' | 'defaultRatePerPersonNight' | 'defaultFlatRate'
+    | 'proposalTerms' | 'proposalValidDays'>>) => Promise<void>;
 
   loadMembers: (campId: string) => Promise<MemberWithProfile[]>;
   inviteMember: (campId: string, email: string, role: CampRole, staffGroupId: string | null) => Promise<string>;
@@ -356,6 +373,19 @@ export const useCampStore = create<CampState>((set, get) => ({
       p_dietary_defaults: data.dietaryDefaults ?? null,
     });
     if (error) console.error('[campStore] updateCamp error:', error);
+  },
+
+  setRentalDefaults: async (campId, patch) => {
+    const current = get().currentCamp;
+    if (current && current.id === campId) set({ currentCamp: { ...current, ...patch } });
+    const row: Record<string, unknown> = {};
+    if (patch.defaultPricingModel !== undefined) row.default_pricing_model = patch.defaultPricingModel;
+    if (patch.defaultRatePerPersonNight !== undefined) row.default_rate_per_person_night = patch.defaultRatePerPersonNight;
+    if (patch.defaultFlatRate !== undefined) row.default_flat_rate = patch.defaultFlatRate;
+    if (patch.proposalTerms !== undefined) row.proposal_terms = patch.proposalTerms;
+    if (patch.proposalValidDays !== undefined) row.proposal_valid_days = patch.proposalValidDays;
+    const { error } = await supabase.from('camps').update(row).eq('id', campId);
+    if (error) console.error('[campStore] setRentalDefaults error:', error);
   },
 
   setRetreatPaymentNote: async (campId, note) => {

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
+import { useCampStore } from '@/store/campStore';
+import { useIssuesStore } from '@/store/issuesStore';
 import { useAuth } from '@/lib/auth';
 import { generateId } from '@/lib/utils';
 import type { Retreat, RetreatStatus, RetreatPricingModel } from '@/lib/types';
@@ -17,6 +19,7 @@ function addDays(iso: string, days: number): string {
 }
 
 export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
+  const currentCamp = useCampStore((s) => s.currentCamp);
   const { retreatById, addRetreat, updateRetreat, deleteRetreat, closeModal } = useRetreatStore();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
@@ -24,13 +27,28 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
   const existing = retreatId ? retreatById(retreatId) : null;
   const editing = !!existing;
 
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [alsoWorkOrders, setAlsoWorkOrders] = useState(true);
+  // Set-ups, strikes and turnovers this booking generated. They outlive it unless taken too,
+  // because issues.retreat_id is ON DELETE SET NULL.
+  const retreatWorkOrders = useIssuesStore(
+    (s) => s.issues.filter((i) => i.retreatId === retreatId).length);
+
   const [groupName, setGroupName] = useState(existing?.groupName ?? '');
   const [groupType, setGroupType] = useState(existing?.groupType ?? '');
   const [arrivalDate, setArrivalDate] = useState(existing?.arrivalDate ?? '');
   const [departureDate, setDepartureDate] = useState(existing?.departureDate ?? '');
   const [headcount, setHeadcount] = useState(existing ? String(existing.headcount) : '');
-  const [pricingModel, setPricingModel] = useState<RetreatPricingModel>(existing?.pricingModel ?? 'per_person_night');
-  const [rate, setRate] = useState(existing?.ratePerPersonNight != null ? String(existing.ratePerPersonNight) : '');
+  // A new booking starts on the camp's own rate card rather than empty, which is what made
+  // every fresh proposal quote zero.
+  const [pricingModel, setPricingModel] = useState<RetreatPricingModel>(
+    existing?.pricingModel
+    ?? (currentCamp?.defaultPricingModel as RetreatPricingModel | undefined)
+    ?? 'per_person_night');
+  const [rate, setRate] = useState(() => {
+    const v = existing?.ratePerPersonNight ?? (existing ? null : currentCamp?.defaultRatePerPersonNight);
+    return v != null ? String(v) : '';
+  });
   const [flatRate, setFlatRate] = useState(existing?.flatRate != null ? String(existing.flatRate) : '');
   const [deposit, setDeposit] = useState(existing?.depositRequired != null ? String(existing.depositRequired) : '');
   const [depositDue, setDepositDue] = useState(existing?.depositDue ?? '');
@@ -128,10 +146,9 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
     closeModal();
   }
 
-  function handleDelete() {
+  function confirmDelete() {
     if (!existing || !canManage) return;
-    if (!window.confirm(`Delete “${existing.groupName}”? This removes the retreat and all its records.`)) return;
-    deleteRetreat(existing.id);
+    deleteRetreat(existing.id, alsoWorkOrders);
     closeModal();
   }
 
@@ -240,12 +257,47 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
             {editing ? 'Save changes' : 'Create retreat'}
           </Button>
           {editing ? (
-            <Button type="button" variant="danger" onClick={handleDelete} disabled={!canManage}>Delete</Button>
+            <Button type="button" variant="danger" onClick={() => setConfirmingDelete(true)} disabled={!canManage}>Delete</Button>
           ) : (
             <Button type="button" variant="ghost" onClick={closeModal}>Cancel</Button>
           )}
         </div>
       </form>
+      {confirmingDelete && existing && (
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-card border border-border bg-white p-5 shadow-lg">
+            <h3 className="font-display text-[16px] font-bold text-forest">
+              Delete “{existing.groupName}”?
+            </h3>
+            <p className="mt-1.5 text-[13px] text-ink-soft">
+              The booking, its rooming, documents, invoices and requests all go.
+            </p>
+
+            {retreatWorkOrders > 0 && (
+              <label className="mt-3 flex items-start gap-2.5 rounded-card border border-border bg-cream px-3 py-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={alsoWorkOrders}
+                  onChange={(e) => setAlsoWorkOrders(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span className="text-[13px] text-ink">
+                  Also delete the {retreatWorkOrders} work order{retreatWorkOrders === 1 ? '' : 's'} for this group
+                  <span className="block text-[12px] text-ink-soft mt-0.5">
+                    Set-ups, strikes and turnovers. Unticked, they stay on the board with no group.
+                  </span>
+                </span>
+              </label>
+            )}
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setConfirmingDelete(false)}>Cancel</Button>
+              <Button variant="danger" onClick={confirmDelete}>Delete</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </Modal>
   );
 }

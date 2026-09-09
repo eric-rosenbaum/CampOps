@@ -325,6 +325,17 @@ export function dbUpdateRetreat(r: Retreat) {
 }
 export const dbDeleteRetreat = (id: string) => del('retreats', id);
 
+/**
+ * Remove the work orders a booking generated.
+ *
+ * Must run BEFORE the retreat row goes: issues.retreat_id is ON DELETE SET NULL, so once the
+ * parent is gone there is nothing left to find them by.
+ */
+export async function dbDeleteRetreatWorkOrders(retreatId: string): Promise<void> {
+  const { error } = await supabase.from('issues').delete().eq('retreat_id', retreatId);
+  if (error) campError('delete retreat work orders', error.message);
+}
+
 export const dbAddSpace = (x: RetreatSpace) => ins('retreat_spaces', { id: x.id, camp_id: CID(), name: x.name, bed_capacity: x.bedCapacity, accessible: x.accessible, notes: x.notes, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
 export const dbUpdateSpace = (x: RetreatSpace) => upd('retreat_spaces', x.id, { name: x.name, bed_capacity: x.bedCapacity, accessible: x.accessible, notes: x.notes, sort_order: x.sortOrder });
 export const dbDeleteSpace = (id: string) => del('retreat_spaces', id);

@@ -13,6 +13,7 @@ import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { AddEditPoolModal } from '@/components/pool/AddEditPoolModal';
 import { Modal } from '@/components/shared/Modal';
+import { Button } from '@/components/shared/Button';
 import type { Season, CampLocation } from '@/lib/types';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { PaymentsCard } from '@/components/settings/PaymentsCard';
@@ -20,7 +21,7 @@ import { PrintLabelsModal } from '@/components/qr/PrintLabelsModal';
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
-type TabId = 'profile' | 'season' | 'staff' | 'locations' | 'pools' | 'payments' | 'files';
+type TabId = 'profile' | 'season' | 'staff' | 'locations' | 'pools' | 'rentals' | 'payments' | 'files';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'profile',   label: 'Profile' },
@@ -33,6 +34,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'pools',     label: 'Pools & Waterfront' },
   // Stripe Connect. Sits in camp settings rather than inside Retreats because connecting an
   // account is a thing the camp does once, about itself, not about any one group.
+  { id: 'rentals',   label: 'Rentals' },
   { id: 'payments',  label: 'Payments' },
   { id: 'files',     label: 'Setup Files' },
 ];
@@ -991,11 +993,131 @@ export function CampSettings() {
         {activeTab === 'staff'     && <StaffRosterTab />}
         {activeTab === 'locations' && <LocationsTab />}
         {activeTab === 'pools'     && <PoolsTab />}
+        {activeTab === 'rentals'   && <RentalsTab />}
         {activeTab === 'payments'  && (
           <div className="px-4 py-4 sm:px-7 sm:py-6"><PaymentsCard /></div>
         )}
         {activeTab === 'files'     && <ImplementationFilesTab />}
       </div>
+    </div>
+  );
+}
+
+// ─── Rentals ──────────────────────────────────────────────────────────────────
+
+/**
+ * The camp's rate card and proposal defaults.
+ *
+ * These used to live nowhere. Every booking carried its own rate and started empty, so a
+ * proposal for a new group quoted "50 people × 3 nights @ $.00/person/night" and totalled zero.
+ * A camp charges most groups the same thing; it says so once here, and any booking that needs a
+ * different number still overrides it.
+ */
+function RentalsTab() {
+  const { currentCamp, setRentalDefaults } = useCampStore();
+  const { can } = useAuth();
+  const editable = can('manageRetreats');
+
+  const [model, setModel] = useState(currentCamp?.defaultPricingModel ?? 'per_person_night');
+  const [rate, setRate] = useState(
+    currentCamp?.defaultRatePerPersonNight != null ? String(currentCamp.defaultRatePerPersonNight) : '');
+  const [flat, setFlat] = useState(
+    currentCamp?.defaultFlatRate != null ? String(currentCamp.defaultFlatRate) : '');
+  const [terms, setTerms] = useState(currentCamp?.proposalTerms ?? '');
+  const [days, setDays] = useState(
+    currentCamp?.proposalValidDays != null ? String(currentCamp.proposalValidDays) : '30');
+  const [saved, setSaved] = useState(false);
+
+  if (!currentCamp) return null;
+
+  async function save() {
+    const num = (v: string) => (v.trim() === '' ? null : Number(v));
+    await setRentalDefaults(currentCamp!.id, {
+      defaultPricingModel: model,
+      defaultRatePerPersonNight: num(rate),
+      defaultFlatRate: num(flat),
+      proposalTerms: terms.trim() || null,
+      proposalValidDays: days.trim() === '' ? null : Number(days),
+    });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  const input = 'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
+  const label = 'block text-[11px] font-semibold uppercase tracking-wide text-ink-faint mb-1.5';
+
+  return (
+    <div className="px-4 py-4 sm:px-7 sm:py-6 max-w-2xl space-y-5">
+      <div className="rounded-card border border-border bg-white p-5">
+        <h3 className="font-display text-[15px] font-bold text-forest">Your rate</h3>
+        <p className="text-[12.5px] text-ink-soft mt-0.5">
+          Used for a new booking and for any quote where you have not set a different price.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+          <div>
+            <label className={label} htmlFor="rt-model">How you charge</label>
+            <select
+              id="rt-model" className={input} value={model} disabled={!editable}
+              onChange={(e) => setModel(e.target.value)}
+            >
+              <option value="per_person_night">Per person, per night</option>
+              <option value="per_cabin_night">Per cabin, per night</option>
+              <option value="flat">Flat facility fee</option>
+            </select>
+          </div>
+          {model === 'per_person_night' ? (
+            <div>
+              <label className={label} htmlFor="rt-rate">Rate per person / night</label>
+              <input
+                id="rt-rate" className={input} inputMode="decimal" placeholder="92"
+                value={rate} disabled={!editable} onChange={(e) => setRate(e.target.value)}
+              />
+            </div>
+          ) : (
+            <div>
+              <label className={label} htmlFor="rt-flat">
+                {model === 'per_cabin_night' ? 'Rate per cabin / night' : 'Facility fee'}
+              </label>
+              <input
+                id="rt-flat" className={input} inputMode="decimal" placeholder="1200"
+                value={flat} disabled={!editable} onChange={(e) => setFlat(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-card border border-border bg-white p-5">
+        <h3 className="font-display text-[15px] font-bold text-forest">Proposal defaults</h3>
+        <div className="mt-4 space-y-3">
+          <div className="max-w-[13rem]">
+            <label className={label} htmlFor="rt-days">A quote stands for</label>
+            <div className="flex items-center gap-2">
+              <input
+                id="rt-days" className={input} inputMode="numeric" placeholder="30"
+                value={days} disabled={!editable} onChange={(e) => setDays(e.target.value)}
+              />
+              <span className="text-[13px] text-ink-soft">days</span>
+            </div>
+          </div>
+          <div>
+            <label className={label} htmlFor="rt-terms">Terms</label>
+            <textarea
+              id="rt-terms" className={`${input} resize-y`} rows={5} value={terms}
+              disabled={!editable} onChange={(e) => setTerms(e.target.value)}
+              placeholder="A signed agreement and a deposit hold the dates…"
+            />
+          </div>
+        </div>
+      </div>
+
+      {editable && (
+        <div className="flex items-center gap-3">
+          <Button onClick={save}>Save</Button>
+          {saved && <span className="text-[12.5px] text-green-muted-text">Saved.</span>}
+        </div>
+      )}
     </div>
   );
 }

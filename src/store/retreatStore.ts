@@ -9,7 +9,7 @@ import type {
   RetreatFeedback, RetreatReminder, RetreatInvoice, MealPeriod,
 } from '@/lib/types';
 import {
-  dbAddRetreat, dbUpdateRetreat, dbDeleteRetreat,
+  dbAddRetreat, dbUpdateRetreat, dbDeleteRetreat, dbDeleteRetreatWorkOrders,
   dbAddSpace, dbUpdateSpace, dbDeleteSpace,
   dbAddHousing, dbUpdateHousing, dbDeleteHousing, dbSetHousingLock, dbAddHousingVersion, dbAssignGuests,
   dbAddDocument, dbUpdateDocument, dbDeleteDocument, dbUploadRetreatDocument,
@@ -148,7 +148,15 @@ interface RetreatState {
   /** Resolves once the row is on the server, so child rows with an FK to it can follow. */
   addRetreat: (r: Retreat) => Promise<void>;
   updateRetreat: (r: Retreat) => void;
-  deleteRetreat: (id: string) => void;
+  /**
+   * Delete a booking, and optionally the work orders its stay generated.
+   *
+   * issues.retreat_id is ON DELETE SET NULL, so without this the set-ups, strikes and turnovers
+   * survive the group and sit on the board belonging to nobody. Deleting them is the usual
+   * intent — the group is not coming — but it is a choice, because a camp that has already done
+   * the work may want the history.
+   */
+  deleteRetreat: (id: string, alsoWorkOrders?: boolean) => void;
   regeneratePortalToken: (retreatId: string) => Promise<string | null>;
 
   // Spaces
@@ -341,8 +349,10 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
     if (token) set((s) => ({ retreats: s.retreats.map((x) => x.id === retreatId ? { ...x, portalToken: token } : x) }));
     return token;
   },
-  deleteRetreat: (id) => {
+  deleteRetreat: (id, alsoWorkOrders = true) => {
     set((s) => ({ retreats: s.retreats.filter((r) => r.id !== id), activeRetreatId: s.activeRetreatId === id ? null : s.activeRetreatId }));
+    // Before the retreat goes, while the rows can still be found by retreat_id.
+    if (alsoWorkOrders) void dbDeleteRetreatWorkOrders(id);
     dbDeleteRetreat(id);
   },
 

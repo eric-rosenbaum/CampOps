@@ -9,6 +9,7 @@ import { Loader2, Plus, Send, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
+import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import type { RetreatInvoiceLine, RetreatProposal } from '@/lib/types';
 import { dbAddProposal, dbUpdateProposal, fetchProposalLines } from '@/lib/retreatsDb';
@@ -38,6 +39,8 @@ interface Props {
 }
 
 export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
+  const currentCamp = useCampStore((s) => s.currentCamp);
+  const setRentalDefaults = useCampStore((s) => s.setRentalDefaults);
   const { proposals, setProposals, retreatById } = useRetreatStore();
   const { can, currentUser } = useAuth();
   const canManage = can('manageRetreats');
@@ -47,9 +50,21 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
 
   const [lines, setLines] = useState<RetreatInvoiceLine[]>(existing?.lineItems ?? []);
   const [intro, setIntro] = useState(existing?.intro ?? '');
-  const [terms, setTerms] = useState(existing?.terms ?? DEFAULT_TERMS);
-  const [validUntil, setValidUntil] = useState(existing?.validUntil ?? addDays(todayStr(), 30));
+  const [terms, setTerms] = useState(existing?.terms ?? currentCamp?.proposalTerms ?? DEFAULT_TERMS);
+  const [validUntil, setValidUntil] = useState(
+    existing?.validUntil ?? addDays(todayStr(), currentCamp?.proposalValidDays ?? 30));
   const [loading, setLoading] = useState(!existing);
+  const [termsSaved, setTermsSaved] = useState(false);
+
+  const savedTerms = (currentCamp?.proposalTerms ?? '').trim();
+  const termsIsDefault = savedTerms !== '' && terms.trim() === savedTerms;
+
+  async function saveTermsAsDefault() {
+    if (!currentCamp || !terms.trim()) return;
+    await setRentalDefaults(currentCamp.id, { proposalTerms: terms.trim() });
+    setTermsSaved(true);
+    setTimeout(() => setTermsSaved(false), 2500);
+  }
 
   // Seed a new proposal from the rate card. One round trip, in Postgres, so the arithmetic
   // matches what the invoice will later say rather than being computed twice in two places.
@@ -203,7 +218,19 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
         </div>
 
         <div>
-          <label className={labelClass}>Terms</label>
+          <div className="flex items-baseline justify-between gap-2">
+            <label className={labelClass}>Terms</label>
+            {/* Written once, reused. Same affordance the invoice note already has. */}
+            {!termsIsDefault && (
+              <button
+                type="button"
+                onClick={saveTermsAsDefault}
+                className="text-[11.5px] font-semibold text-forest underline"
+              >
+                {termsSaved ? 'Saved as your default' : 'Save as our default'}
+              </button>
+            )}
+          </div>
           <textarea
             value={terms} onChange={(e) => setTerms(e.target.value)} rows={4}
             className={`${inputClass} resize-y`}

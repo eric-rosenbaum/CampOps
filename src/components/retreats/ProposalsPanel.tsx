@@ -15,6 +15,7 @@ import { dbDeleteProposal } from '@/lib/retreatsDb';
 import { todayStr } from '@/lib/utils';
 import { money, fmtDateFull, fmtRange, Badge, type BadgeTone } from './retreatUi';
 import { ProposalModal } from './ProposalModal';
+import { ProposalViewer } from './ProposalViewer';
 
 /** "Tue 3:12pm" — the day of the week is the part that changes what you do next. */
 function fmtOpened(iso: string): string {
@@ -118,6 +119,7 @@ export function ProposalsPanel({ retreatId }: { retreatId: string }) {
   const canManage = can('manageRetreats');
 
   const [modal, setModal] = useState<{ proposalId?: string } | null>(null);
+  const [viewing, setViewing] = useState<RetreatProposal | null>(null);
   const [copied, setCopied] = useState(false);
 
   const retreat = retreatById(retreatId);
@@ -230,6 +232,13 @@ export function ProposalsPanel({ retreatId }: { retreatId: string }) {
                     )}
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    {p.status !== 'draft' && (
+                      <button
+                        type="button" title="View it as they received it"
+                        onClick={() => setViewing(p)}
+                        className="p-1.5 text-ink-faint hover:text-forest transition-colors"
+                      ><Eye className="w-3.5 h-3.5" /></button>
+                    )}
                     <button
                       type="button" title="Print / save as PDF"
                       onClick={() => { if (retreat) printProposal(p, retreat, currentCamp?.name ?? ''); }}
@@ -262,6 +271,17 @@ export function ProposalsPanel({ retreatId }: { retreatId: string }) {
         <p className="px-4 py-2.5 border-t border-border text-[11px] text-ink-faint">
           {fmtRange(retreat.arrivalDate, retreat.departureDate)} 
         </p>
+      )}
+
+      {viewing && (
+        <ProposalViewer
+          proposal={viewing}
+          retreat={retreat ?? null}
+          campName={currentCamp?.name ?? ''}
+          portalUrl={url}
+          onPrint={() => { if (retreat) printProposal(viewing, retreat, currentCamp?.name ?? ''); }}
+          onClose={() => setViewing(null)}
+        />
       )}
 
       {modal && (

@@ -452,15 +452,12 @@ export function RoomingBoard({
                     Select all {visibleUnassigned.length}
                   </button>
                 )}
-                <div
-                  className="flex flex-wrap gap-1.5 max-h-[45vh] overflow-y-auto"
-                  draggable={editable && selectedIds.length > 0}
-                  onDragStart={(e) => { e.dataTransfer.setData('text/plain', 'guests'); }}
-                >
+                <div className="flex flex-wrap gap-1.5 max-h-[45vh] overflow-y-auto">
                   {visibleUnassigned.map((g) => (
                     <GuestChip
                       key={g.id}
                       draggableId={editable ? g.id : undefined}
+                      dragGroup={selected.has(g.id) ? selectedIds : undefined}
                       guest={g}
                       selected={selected.has(g.id)}
                       disabled={!editable}
@@ -514,12 +511,14 @@ export function RoomingBoard({
 
 // ─── One name ────────────────────────────────────────────────────────────────
 function GuestChip({
-  guest, selected, disabled, onClick, draggableId,
+  guest, selected, disabled, onClick, draggableId, dragGroup,
 }: {
   guest: PortalGuest; selected: boolean; disabled?: boolean;
   onClick: (shift: boolean) => void;
   /** Set to make this one person draggable into a room without selecting first. */
   draggableId?: string;
+  /** When this person is part of the current selection, drag the whole selection. */
+  dragGroup?: string[];
 }) {
   return (
     <button
@@ -529,6 +528,9 @@ function GuestChip({
       onDragStart={(e) => {
         if (!draggableId) return;
         e.stopPropagation();
+        // A person inside the selection drags the selection; a person outside it drags alone.
+        const ids = dragGroup && dragGroup.length > 1 ? dragGroup : [draggableId];
+        e.dataTransfer.setData('application/x-campops-guests', JSON.stringify(ids));
         e.dataTransfer.setData('application/x-campops-guest', draggableId);
         e.dataTransfer.effectAllowed = 'move';
       }}

@@ -239,6 +239,7 @@ function fmtDay(d: string | null | undefined): string | null {
 
 /** The drag payload for one person. A private type so a stray text drop cannot place anybody. */
 const GUEST_MIME = 'application/x-campops-guest';
+const GUESTS_MIME = 'application/x-campops-guests';
 
 function RoomRow({
   room, selectedCount, editable, busy, onPlace, onRemove, onDropGuest,
@@ -272,9 +273,16 @@ function RoomRow({
         if (!canDrop) return;
         e.preventDefault();
         setDragOver(false);
-        const guestId = e.dataTransfer.getData(GUEST_MIME);
-        // One person dragged by their chip, or everyone currently selected.
-        if (guestId && onDropGuest) onDropGuest(guestId, room.id);
+        // A dragged selection, one dragged person, or the "Place N" path.
+        const many = e.dataTransfer.getData(GUESTS_MIME);
+        const one = e.dataTransfer.getData(GUEST_MIME);
+        if (many && onDropGuest) {
+          try {
+            (JSON.parse(many) as string[]).forEach((id) => onDropGuest(id, room.id));
+            return;
+          } catch { /* fall through to the single-person path */ }
+        }
+        if (one && onDropGuest) onDropGuest(one, room.id);
         else if (canPlace) onPlace?.(room.id);
       }}
       className={`rounded-xl border px-3.5 py-3 transition-colors ${

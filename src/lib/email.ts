@@ -68,3 +68,25 @@ export function textToHtml(text: string): string {
   const esc = text.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
   return `<div style="font-family:-apple-system,Segoe UI,sans-serif;font-size:15px;line-height:1.6;color:#1a2e1a">${esc.replace(/\n/g, '<br>')}</div>`;
 }
+
+/**
+ * A reminder, with the way to act on it.
+ *
+ * Reminders used to go out as bare text: "please upload your certificate of insurance" and no
+ * link. The portal is where every one of those things is actually done, and the group has no
+ * reason to keep the URL to hand, so the ask and the place to do it now travel together.
+ */
+export function reminderHtml(text: string, portalUrl: string, campName?: string): string {
+  const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+  return `<div style="font-family:-apple-system,Segoe UI,sans-serif;font-size:15px;line-height:1.6;color:#1a2e1a;max-width:560px">
+    <div style="white-space:pre-wrap">${esc(text)}</div>
+    <p style="margin:24px 0">
+      <a href="${portalUrl}" style="background:#2f4f2f;color:#fdfcf7;text-decoration:none;font-size:15px;font-weight:600;padding:12px 22px;border-radius:8px;display:inline-block">
+        Open your portal
+      </a>
+    </p>
+    <p style="font-size:12.5px;color:#8a978a;line-height:1.6;margin:0">
+      Everything for your stay${campName ? ` at ${esc(campName)}` : ''} lives at this link — no password needed.
+    </p>
+  </div>`;
+}

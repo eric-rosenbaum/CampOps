@@ -5,7 +5,7 @@ import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
-import { sendEmail, textToHtml } from '@/lib/email';
+import { sendEmail, reminderHtml } from '@/lib/email';
 import type { Retreat } from '@/lib/types';
 import { inputClass, labelClass, fmtDateFull, fmtRange } from './retreatUi';
 
@@ -54,7 +54,7 @@ const REMINDER_TYPES: ReminderType[] = [
 ];
 
 export function SendReminderModal({ retreatId, reminderType }: { retreatId: string; reminderType?: string }) {
-  const { retreatById, sendReminder, closeModal } = useRetreatStore();
+  const { retreatById, sendReminder, closeModal, portalUrl } = useRetreatStore();
   const { currentCamp } = useCampStore();
   const { can, currentUser } = useAuth();
   const canManage = can('manageRetreats');
@@ -88,7 +88,7 @@ export function SendReminderModal({ retreatId, reminderType }: { retreatId: stri
       const res = await sendEmail({
         to: retreat.coordinatorEmail,
         subject: `${label} · ${retreat.groupName}`,
-        html: textToHtml(message.trim()),
+        html: reminderHtml(message.trim(), portalUrl(retreat), currentCamp?.name),
         fromName: currentCamp?.name,
         replyTo: currentUser.email || undefined,
       });

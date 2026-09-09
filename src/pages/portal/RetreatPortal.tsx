@@ -458,6 +458,27 @@ function buildUpdates(data: PortalData): PortalUpdate[] {
       detail: r.body,
       view: 'todo', step: 'requests',
     }));
+  // A reply on a space request. Previously invisible unless the group happened to open that
+  // section, which is not a way to learn the chairs are in the back closet.
+  (data.space_replies ?? [])
+    .filter((q) => q.response_message)
+    .forEach((q) => out.push({
+      id: `spacereply:${q.id}:${q.responded_at ?? q.status}`,
+      title: q.space_name ? `The camp replied about ${q.space_name}` : 'The camp replied about your space request',
+      detail: q.response_message as string,
+      view: 'todo', step: 'spaces',
+    }));
+  // Sending a quote is the loudest thing a camp does; the banner should say so.
+  if (data.proposal && data.proposal.status !== 'accepted' && data.proposal.status !== 'declined') {
+    out.push({
+      id: `proposal:${data.proposal.id}:${data.proposal.status}`,
+      title: 'Your quote is ready',
+      detail: data.proposal.valid_until
+        ? `${money(data.proposal.total)} · valid until ${fmtDateFull(data.proposal.valid_until)}`
+        : money(data.proposal.total),
+      view: 'todo', step: 'proposal',
+    });
+  }
   data.documents
     .filter((d) => d.doc_type !== 'coi' && d.has_file && d.status !== 'signed' && d.status !== 'approved')
     .forEach((d) => out.push({

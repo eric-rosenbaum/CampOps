@@ -317,9 +317,6 @@ export function ProgramSpacesSection({
           <p className="text-[15px] font-bold text-forest">
             {requests.length === 0 ? 'Choose your program spaces' : 'Add another space'}
           </p>
-          <p className="text-[12.5px] text-ink-soft mt-0.5 mb-3">
-            Pick a room, then the day you need it. One row per day.
-          </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {spaces.map((s) => {

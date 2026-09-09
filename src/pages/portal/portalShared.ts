@@ -209,6 +209,11 @@ export interface PortalData {
     valid_until: string | null; status: string; accepted_at: string | null;
   } | null;
   has_program_spaces?: boolean;
+  /** Space requests the camp has answered with a message. Feeds the "New from the camp" banner. */
+  space_replies?: {
+    id: string; space_name: string | null; status: string;
+    response_message: string | null; responded_at: string | null;
+  }[];
   space_request_count?: number;
   has_addons?: boolean;
   /** How the camp says to pay when it has not connected Stripe. */

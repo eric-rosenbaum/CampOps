@@ -51,28 +51,28 @@ const SEASON_TABS: { id: RetreatTab; label: string }[] = [
   // The half of the job that happens before a booking exists. It sits second because a season
   // with nothing in the pipeline is the problem you want to notice in February, not in June.
   { id: 'pipeline', label: 'Pipeline' },
-  { id: 'costs', label: 'Costs & invoice' },
-  { id: 'rentalsReview', label: 'Occupancy & revenue' },
   // The one screen where both halves of the product are visibly the same product: sessions,
   // groups, space bookings, out-of-service rooms and the turnover days where a departure and an
-  // arrival meet. It lives here because "who is here this week, and what is free in October" is
-  // a rentals question that only has an honest answer if you can also see the work.
+  // arrival meet.
   { id: 'calendar', label: 'Property calendar' },
+  { id: 'costs', label: 'Costs & invoice' },
   { id: 'outbox', label: 'Reminders' },
+  { id: 'rentalsReview', label: 'Occupancy & revenue' },
   { id: 'addons', label: 'Extras' },
 ];
 
+// The life of one booking, in the order it happens: what is true now, then winning it, the
+// paperwork, the money, planning the stay, what they have asked for, what they see, and how it
+// went. Tabs that were grouped by which table they read are grouped by when they are used.
 const RETREAT_TABS: { id: RetreatTab; label: string }[] = [
   { id: 'active', label: 'Active retreat' },
-  { id: 'documents', label: 'Documents & compliance' },
-  { id: 'housing', label: 'Housing' },
-  // Everything this group turns into work for the property team: the spaces they asked for, and
-  // the cabins somebody has to turn over after they leave. Grouped together on purpose — it is
-  // one question ("what does hosting them actually cost us in labour"), not two.
-  { id: 'spaces', label: 'Spaces & set-up' },
   { id: 'relationship', label: 'Contacts & proposals' },
-  { id: 'menu', label: 'Menu & dining' },
+  { id: 'documents', label: 'Documents & compliance' },
   { id: 'retreatCosts', label: 'Costs & invoice' },
+  { id: 'housing', label: 'Housing' },
+  // The spaces they asked for, and the cabins somebody turns over after they leave.
+  { id: 'spaces', label: 'Spaces & set-up' },
+  { id: 'menu', label: 'Menu & dining' },
   { id: 'requests', label: 'Requests' },
   { id: 'portal', label: 'Guest portal' },
   { id: 'feedback', label: 'Feedback' },

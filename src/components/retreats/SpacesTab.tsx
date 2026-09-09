@@ -192,7 +192,7 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
 
                       {r.responseMessage && (
                         <p className="text-[12px] text-ink-soft mt-2">
-                          <span className="font-semibold text-forest">You told them: </span>{r.responseMessage}
+                          <span className="font-semibold text-forest">Shown in their portal: </span>{r.responseMessage}
                         </p>
                       )}
 

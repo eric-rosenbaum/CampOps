@@ -460,6 +460,7 @@ export function RoomingBoard({
                   {visibleUnassigned.map((g) => (
                     <GuestChip
                       key={g.id}
+                      draggableId={editable ? g.id : undefined}
                       guest={g}
                       selected={selected.has(g.id)}
                       disabled={!editable}
@@ -495,6 +496,7 @@ export function RoomingBoard({
               busy={busy}
               onPlace={(roomId) => place(selectedIds, roomId)}
               onRemove={(guestId) => place([guestId], null)}
+              onDropGuest={(guestId, roomId) => place([guestId], roomId)}
               emptyMessage="The camp has not published any rooms for your dates yet."
             />
           </div>
@@ -512,12 +514,24 @@ export function RoomingBoard({
 
 // ─── One name ────────────────────────────────────────────────────────────────
 function GuestChip({
-  guest, selected, disabled, onClick,
-}: { guest: PortalGuest; selected: boolean; disabled?: boolean; onClick: (shift: boolean) => void }) {
+  guest, selected, disabled, onClick, draggableId,
+}: {
+  guest: PortalGuest; selected: boolean; disabled?: boolean;
+  onClick: (shift: boolean) => void;
+  /** Set to make this one person draggable into a room without selecting first. */
+  draggableId?: string;
+}) {
   return (
     <button
       onClick={(e) => onClick(e.shiftKey)}
       disabled={disabled}
+      draggable={!!draggableId}
+      onDragStart={(e) => {
+        if (!draggableId) return;
+        e.stopPropagation();
+        e.dataTransfer.setData('application/x-campops-guest', draggableId);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
       className={`inline-flex items-center gap-1.5 text-[13px] rounded-full pl-2.5 pr-3 py-1.5 border transition-colors ${
         selected
           ? 'bg-forest text-white border-forest'

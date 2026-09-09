@@ -863,7 +863,7 @@ function FixPhotoSheet({
       <div className="w-full max-w-lg rounded-t-modal bg-white p-4 sm:rounded-modal">
         <div className="mb-3 flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-bold text-ink">Photo of the fix?</p>
+            <p className="text-[15px] font-bold text-ink">Add a photo?</p>
             <p className="truncate text-[12.5px] text-ink-faint">{title}</p>
           </div>
           <button onClick={onClose} className="flex-none text-ink-faint"><X className="h-4 w-4" /></button>

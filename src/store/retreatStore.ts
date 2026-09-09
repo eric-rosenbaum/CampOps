@@ -145,7 +145,8 @@ interface RetreatState {
   setInvoices: (r: RetreatInvoice[]) => void;
 
   // Retreats
-  addRetreat: (r: Retreat) => void;
+  /** Resolves once the row is on the server, so child rows with an FK to it can follow. */
+  addRetreat: (r: Retreat) => Promise<void>;
   updateRetreat: (r: Retreat) => void;
   deleteRetreat: (id: string) => void;
   regeneratePortalToken: (retreatId: string) => Promise<string | null>;
@@ -330,7 +331,10 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   setReminders: (rows) => set({ reminders: rows }),
   setInvoices: (rows) => set({ invoices: rows }),
 
-  addRetreat: (r) => { set((s) => ({ retreats: [...s.retreats, r], activeRetreatId: r.id })); dbAddRetreat(r); },
+  addRetreat: (r) => {
+    set((s) => ({ retreats: [...s.retreats, r], activeRetreatId: r.id }));
+    return dbAddRetreat(r);
+  },
   updateRetreat: (r) => { set((s) => ({ retreats: s.retreats.map((x) => x.id === r.id ? r : x) })); dbUpdateRetreat(r); },
   regeneratePortalToken: async (retreatId) => {
     const token = await dbRegeneratePortalToken(retreatId);

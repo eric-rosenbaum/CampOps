@@ -56,7 +56,7 @@ export interface BuildingVM {
 }
 
 export function BuildingAccordion({
-  buildings, selectedCount, editable, busy, onPlace, onRemove, emptyMessage,
+  buildings, selectedCount, editable, busy, onPlace, onRemove, onDropGuest, emptyMessage,
 }: {
   buildings: BuildingVM[];
   /** How many people are staged for placing. 0 hides the place affordance. */
@@ -65,6 +65,8 @@ export function BuildingAccordion({
   busy?: boolean;
   onPlace?: (roomId: string) => void;
   onRemove?: (guestId: string) => void;
+  /** Move one person into a room by dragging them there. */
+  onDropGuest?: (guestId: string, roomId: string) => void;
   emptyMessage?: string;
 }) {
   // Open the first building when there is only one, otherwise start collapsed: the point of
@@ -145,6 +147,7 @@ export function BuildingAccordion({
                     busy={busy}
                     onPlace={onPlace}
                     onRemove={onRemove}
+                    onDropGuest={onDropGuest}
                   />
                 ))}
               </div>
@@ -234,8 +237,11 @@ function fmtDay(d: string | null | undefined): string | null {
   } catch { return null; }
 }
 
+/** The drag payload for one person. A private type so a stray text drop cannot place anybody. */
+const GUEST_MIME = 'application/x-campops-guest';
+
 function RoomRow({
-  room, selectedCount, editable, busy, onPlace, onRemove,
+  room, selectedCount, editable, busy, onPlace, onRemove, onDropGuest,
 }: {
   room: RoomVM;
   selectedCount: number;
@@ -243,11 +249,15 @@ function RoomRow({
   busy?: boolean;
   onPlace?: (roomId: string) => void;
   onRemove?: (guestId: string) => void;
+  onDropGuest?: (guestId: string, roomId: string) => void;
 }) {
+  const [dragOver, setDragOver] = useState(false);
   const taken = room.occupants.length + room.unnamed;
   const over = room.capacity > 0 && taken > room.capacity;
   const blocked = room.heldByOther || room.outOfService;
   const canPlace = editable && !blocked && selectedCount > 0 && !!onPlace;
+  /** A single dragged person can land here even when nothing is selected. */
+  const canDrop = editable && !blocked && (canPlace || !!onDropGuest);
 
   // Someone who needs a step-free room sitting in one that isn't: worth saying plainly rather
   // than discovering at check-in.
@@ -256,10 +266,20 @@ function RoomRow({
 
   return (
     <div
-      onDragOver={(e) => { if (canPlace) e.preventDefault(); }}
-      onDrop={(e) => { if (canPlace) { e.preventDefault(); onPlace?.(room.id); } }}
+      onDragOver={(e) => { if (canDrop) { e.preventDefault(); setDragOver(true); } }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        if (!canDrop) return;
+        e.preventDefault();
+        setDragOver(false);
+        const guestId = e.dataTransfer.getData(GUEST_MIME);
+        // One person dragged by their chip, or everyone currently selected.
+        if (guestId && onDropGuest) onDropGuest(guestId, room.id);
+        else if (canPlace) onPlace?.(room.id);
+      }}
       className={`rounded-xl border px-3.5 py-3 transition-colors ${
-        room.outOfService ? 'border-border bg-cream-dark/60 opacity-75'
+        dragOver ? 'border-sage bg-sage-pale ring-2 ring-sage/40'
+          : room.outOfService ? 'border-border bg-cream-dark/60 opacity-75'
           : room.heldByOther ? 'border-border bg-cream-dark/40 opacity-70'
           : over ? 'border-amber/50 bg-amber-bg/50'
           : 'border-border bg-paper-card'
@@ -312,7 +332,14 @@ function RoomRow({
           {room.occupants.map((g) => (
             <span
               key={g.id}
-              className="inline-flex items-center gap-1.5 text-[12px] bg-sage-pale border border-sage/30 text-forest rounded-full pl-1 pr-2 py-0.5"
+              draggable={editable && !!onDropGuest}
+              onDragStart={(e) => {
+                e.dataTransfer.setData(GUEST_MIME, g.id);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              className={`inline-flex items-center gap-1.5 text-[12px] bg-sage-pale border
+                          border-sage/30 text-forest rounded-full pl-1 pr-2 py-0.5
+                          ${editable && onDropGuest ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
               <Avatar name={g.name} size={18} />
               {g.subgroup && (

@@ -173,15 +173,7 @@ function exportMap(
   openPrintWindow(html);
 }
 
-/**
- * One printable sign per room.
- *
- * Two options that matter, both of them about what a piece of paper on a door means. Some
- * groups will not put surnames where a stranger can read them, so last names are optional.
- * And the room's own QR code goes on the sign because that is the seam from the other
- * direction: a guest sees a broken lamp, scans the sheet already taped to their door, and the
- * report lands in the same queue the housekeeping crew is working from.
- */
+/** One printable sign per room: the names, and that room's own QR code, on one page. */
 function printDoorSigns(
   retreat: Retreat,
   rooms: { loc: CampLocation; building: string | null; occupants: RetreatGuest[]; unnamed: number }[],
@@ -221,7 +213,11 @@ function printDoorSigns(
     <style>
       @page{size:portrait;margin:14mm}
       body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#23201B;margin:0}
-      article{page-break-after:always;break-after:page;min-height:245mm;display:flex;flex-direction:column;padding:6mm 0}
+      /* No pinned height. 245mm plus padding overflowed US Letter's 251mm printable area by a
+         few millimetres, which pushed the QR block onto a page of its own — the sign said one
+         room and the code for it came out on the next sheet. Content flows; the page break is
+         what makes it one room per page. */
+      article{page-break-after:always;break-after:page}
       article:last-child{page-break-after:auto;break-after:auto}
       header{display:flex;align-items:center;gap:10px;border-bottom:2px solid #DED3BB;padding-bottom:8px}
       .logo{height:34px;width:auto}
@@ -232,7 +228,7 @@ function printDoorSigns(
       ul{list-style:none;padding:0;margin:26px 0 0;font-size:26px;line-height:1.55;color:#23201B}
       li{border-bottom:1px dotted #DED3BB;padding:2px 0}
       .none{color:#9AA98F;font-size:16px;margin:14px 0 0}
-      .qr{margin-top:auto;display:flex;align-items:center;gap:14px;padding-top:16px;border-top:1px solid #DED3BB}
+      .qr{margin-top:30px;display:flex;align-items:center;gap:14px;padding-top:16px;border-top:1px solid #DED3BB}
       .qr svg{width:34mm;height:34mm}
       .qr p{font-size:13px;color:#6B6357;margin:0;line-height:1.45}
     </style></head><body>${pages}</body></html>`;
@@ -673,6 +669,7 @@ export function HousingTab() {
           setSelected(new Set());
         }}
         onRemove={(guestId) => assignGuests([guestId], null)}
+        onDropGuest={(guestId, roomId) => assignGuests([guestId], roomId)}
         emptyMessage="No cabins defined yet. Add your camp's spaces first, then assign this group."
       />
     </div>

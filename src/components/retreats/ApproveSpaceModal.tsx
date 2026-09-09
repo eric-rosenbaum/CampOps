@@ -113,7 +113,7 @@ export function ApproveSpaceModal({
             </p>
             <p className="text-[12.5px] text-green-muted-text/90 leading-relaxed mt-1">
               {created.strikeId
-                ? 'A set-up before the session and a strike after it. A rental turnover is always both, and the tear-down is the half that gets forgotten — so the system books it at the same time.'
+                ? 'A set-up before, and a strike after.'
                 : 'This space already has an open strike for this group, so no second tear-down was created. One reset per space per stay, not one per session.'}
             </p>
           </div>

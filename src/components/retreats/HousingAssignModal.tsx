@@ -40,6 +40,9 @@ export function HousingAssignModal({ retreatId, housingId }: { retreatId: string
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!buildingId) return;
+    // A building with rooms in it is a container, not a bed. Assigning to it books the whole
+    // village, which then collides with every group placed in any cabin inside it.
+    if (rooms.length > 0 && !roomId) return;
     const now = new Date().toISOString();
     const targetId = roomId || buildingId;
     // Snapshot a friendly label: "Cabin 7 · Room B" for a room, else just the building.
@@ -92,7 +95,7 @@ export function HousingAssignModal({ retreatId, housingId }: { retreatId: string
           <div>
             <label className={labelClass}>Room</label>
             <select value={roomId} onChange={(e) => setRoomId(e.target.value)} className={inputClass} disabled={!buildingId || rooms.length === 0}>
-              <option value="">{rooms.length === 0 ? 'Whole building' : 'Whole building (no specific room)'}</option>
+              <option value="">{rooms.length === 0 ? 'Whole building' : 'Pick a room…'}</option>
               {rooms.map((r) => (
                 <option key={r.id} value={r.id}>{r.name}{r.bedCapacity ? ` · ${r.bedCapacity} beds` : ''}{r.accessible ? ' · accessible' : ''}</option>
               ))}
@@ -103,7 +106,10 @@ export function HousingAssignModal({ retreatId, housingId }: { retreatId: string
           <p className="text-[11px] text-amber-text">No retreat-available buildings yet, toggle them on from "Manage spaces" first.</p>
         )}
         {buildingId && rooms.length === 0 && (
-          <p className="text-[11px] text-ink-faint">This building has no rooms. Add rooms as sub-locations in Camp Info → Locations to assign by room.</p>
+          <p className="text-[11px] text-ink-faint">This building has no rooms. Add them in Camp Info → Locations to assign by room.</p>
+        )}
+        {buildingId && rooms.length > 0 && !roomId && (
+          <p className="text-[11px] text-amber-text">Pick a room. This building holds {rooms.length}.</p>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

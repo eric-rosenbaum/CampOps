@@ -150,7 +150,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
     ].join('\n');
   }, [draft]);
 
-  function create() {
+  async function create() {
     // Validate here rather than disabling the button. A disabled control with no message is the
     // worst of both: nothing happens, and the reason is a field the user has scrolled past.
     if (!groupName.trim()) {
@@ -209,7 +209,9 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
       createdAt: ts,
       updatedAt: ts,
     };
-    addRetreat(r);
+    // Wait for the retreat to land. retreat_contacts carries a foreign key to retreats, so
+    // firing the contact inserts alongside the parent is a race the contacts lose.
+    await addRetreat(r);
 
     const rows: RetreatContact[] = people
       .filter((p) => p.name.trim())

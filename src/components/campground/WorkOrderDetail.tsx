@@ -151,7 +151,7 @@ export function WorkOrderDetail({ issue }: Props) {
       setFixError('That photo did not upload. The work order is still closed either way.');
       return;
     }
-    postComment(issue.id, 'Photo of the fix', author, [url], false);
+    postComment(issue.id, 'Photo', author, [url], false);
     setFixPrompt(false);
   }
 
@@ -303,7 +303,7 @@ export function WorkOrderDetail({ issue }: Props) {
             {fixPrompt && (
               <div className="rounded-card border border-border bg-paper px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <p className="flex-1 text-[12.5px] text-ink">Add a photo of the fix?</p>
+                  <p className="flex-1 text-[12.5px] text-ink">Add a photo?</p>
                   <button
                     onClick={() => fixFileRef.current?.click()}
                     disabled={uploadingFix}

@@ -49,8 +49,7 @@ export function ActiveRetreatTab() {
         <div className="max-w-md mx-auto text-center mt-24">
           <p className="text-[15px] font-semibold text-forest">No active retreat</p>
           <p className="text-[13px] text-ink-soft mt-2 leading-relaxed">
-            When a group is on property, their live details, schedule, issues, and checkout
-            checklist appear here. Select a retreat from the overview to preview it.
+            Select a retreat from the overview to preview it.
           </p>
         </div>
       </div>

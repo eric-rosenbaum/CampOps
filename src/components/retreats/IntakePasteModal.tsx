@@ -5,7 +5,7 @@
 // the source sentence beside each field a reviewer re-opens the email to check the robot's work,
 // and the feature has saved nobody anything. With it, the usual outcome is one glance and Create.
 import { useMemo, useState } from 'react';
-import { ClipboardPaste, Copy, Check, Loader2, HelpCircle, Sparkles } from 'lucide-react';
+import { Copy, Check, Loader2, HelpCircle, Sparkles } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
@@ -71,16 +71,41 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
     }).catch(() => { /* clipboard denied; the text is on screen anyway */ });
   }
 
+  /**
+   * Skip the AI and type the enquiry in.
+   *
+   * The review form was previously unreachable without a successful read — `if (!draft)` returned
+   * the paste step — so the error message's advice to "fill the form in by hand" was something
+   * the interface could not actually do. An empty draft is a legitimate starting point: every
+   * field on the next step is editable anyway, and provenance is simply absent because nothing
+   * was inferred.
+   */
+  function startBlank() {
+    setError(null);
+    setDraft({
+      groupName: null, groupType: null, contacts: [],
+      arrivalDate: null, departureDate: null, dateFlexibility: null,
+      headcount: null, mealsWanted: null, spacesMentioned: [],
+      specialRequests: null, estimatedValue: null, leadSource: null,
+      questions: [], provenance: {}, replyDraft: null,
+    });
+    setNextAction('Follow up on the enquiry');
+    setNextActionOn(addDays(todayStr(), 1));
+  }
+
   async function read() {
     if (!raw.trim()) return;
     setReading(true);
     setError(null);
-    const d = await draftRetreatFromNotes(raw, currentCamp?.name ?? 'the camp');
-    setReading(false);
-    if (!d) {
-      setError('The notes could not be read. Check the connection, or fill the form in by hand.');
+    let d;
+    try {
+      d = await draftRetreatFromNotes(raw, currentCamp?.name ?? 'the camp');
+    } catch (e) {
+      setReading(false);
+      setError(e instanceof Error ? e.message : 'The notes could not be read.');
       return;
     }
+    setReading(false);
     setDraft(d);
     setGroupName(d.groupName ?? '');
     setGroupType(d.groupType ?? 'other');
@@ -198,28 +223,63 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
   // ── Paste step ────────────────────────────────────────────────────────────
   if (!draft) {
     return (
-      <Modal title="New enquiry from your notes" onClose={onClose} width="min(620px, 94vw)">
-        <p className="text-[12.5px] text-ink-soft mb-3 leading-relaxed">
-          Paste the notes you typed while they were on the phone, or the whole email thread.
-          Nothing is created from this — you get a form to check, with the sentence every value
-          came from shown beside it.
+      <Modal title="New enquiry" onClose={onClose} width="min(620px, 94vw)">
+        <p className="text-[12.5px] text-ink-soft mb-3">
+          Paste your notes or the email thread and AI will fill the form in, or skip it and type
+          the enquiry yourself.
         </p>
         <textarea
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
-          rows={12}
+          rows={reading ? 6 : 12}
           autoFocus
-          className={`${inputClass} font-mono text-[12px] leading-relaxed resize-y`}
+          disabled={reading}
+          className={`${inputClass} font-mono text-[12px] leading-relaxed resize-y
+                      ${reading ? 'opacity-60' : ''}`}
           placeholder={'e.g.\n\nCalled about Beth Shalom shabbaton. Rabbi Stein, 914-555-0132.\nAbout 48 people, second weekend in October, arriving Friday afternoon\nleaving Sunday after lunch. All meals, kosher. Wants the lakeside lodge\nfor Saturday sessions. Budget around 12k. Found us through Camp Ramah.'}
         />
-        {error && <p className="text-[12.5px] text-red mt-2">{error}</p>}
-        <div className="flex justify-between items-center gap-2 mt-4">
+
+        {reading && (
+          <div className="mt-3 rounded-card border border-border bg-cream px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="cc-loading-breathe w-4 h-4 flex-none text-sage" aria-hidden="true" />
+              <span className="cc-loading-shimmer text-[12.5px] font-semibold text-ink-soft">
+                Reading your notes…
+              </span>
+            </div>
+            {/* An indeterminate bar rather than a percentage: the request is one round trip and
+                inventing a number for it would be a lie people learn to distrust. */}
+            <div className="mt-2.5 h-[3px] w-full overflow-hidden rounded-full bg-cream-dark">
+              <div className="cc-scan-line h-full w-1/3 rounded-full bg-sage" />
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="mt-3 rounded-card border border-red/30 bg-red-bg px-4 py-3">
+            <p className="text-[12.5px] text-red-text">{error}</p>
+            <button
+              type="button"
+              onClick={startBlank}
+              className="mt-1.5 text-[12.5px] font-bold text-forest underline"
+            >
+              Enter it myself instead
+            </button>
+          </div>
+        )}
+
+        <div className="flex flex-wrap justify-between items-center gap-2 mt-4">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={read} disabled={!raw.trim() || reading}>
-            {reading
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Reading…</>
-              : <><ClipboardPaste className="w-4 h-4" /> Read the notes</>}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="ghost" onClick={startBlank} disabled={reading}>
+              Enter it myself
+            </Button>
+            <Button onClick={read} disabled={!raw.trim() || reading}>
+              {reading
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Reading…</>
+                : <><Sparkles className="w-4 h-4" /> Read it with AI</>}
+            </Button>
+          </div>
         </div>
       </Modal>
     );

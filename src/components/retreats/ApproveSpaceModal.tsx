@@ -124,9 +124,7 @@ export function ApproveSpaceModal({
           </div>
 
           <p className="text-[11.5px] text-ink-faint leading-relaxed">
-            Both carry the group's own set-up notes in the description, word for word. They are
-            assigned by the camp's housekeeping routing rule, or left unassigned if there
-            isn't one.
+            Both carry the group's set-up notes, word for word.
           </p>
 
           <div className="flex justify-end"><Button onClick={onClose}>Done</Button></div>
@@ -216,8 +214,7 @@ export function ApproveSpaceModal({
 
         {blocked && (
           <p className="text-[11.5px] text-red">
-            Approving is off while the space is out of service. Everything else above is a
-            warning you can override.
+            The space is out of service. Everything else above is a warning you can override.
           </p>
         )}
       </div>

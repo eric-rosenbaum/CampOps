@@ -51,8 +51,7 @@ export function FeedbackTab() {
         <div className="max-w-md mx-auto text-center mt-20">
           <p className="text-[15px] font-semibold text-forest">No feedback yet</p>
           <p className="text-[13px] text-ink-soft mt-2 leading-relaxed">
-            Feedback surveys are sent to group coordinators at checkout. Record responses here to
-            track satisfaction and spot returning groups.
+            Surveys are sent at checkout. Record responses here.
           </p>
           {canManage && recordTarget && (
             <div className="mt-5">

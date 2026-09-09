@@ -106,7 +106,7 @@ export function RentalsReview({ from: initialFrom, to: initialTo }: Props) {
     : null;
 
   return (
-    <div id="rentals-review">
+    <div id="rentals-review" className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       {/* Print CSS lives with the thing it prints. The app shell around this component is not
           mine to restyle, so the review lifts itself out of the page rather than asking every
           other screen to know about printing. */}

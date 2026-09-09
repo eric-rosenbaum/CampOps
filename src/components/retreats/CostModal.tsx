@@ -58,8 +58,7 @@ export function CostModal({ retreatId, costId }: { retreatId: string; costId?: s
     <Modal title={existing ? 'Edit cost line' : 'Add cost line'} onClose={closeModal} width="440px">
       <form onSubmit={handleSubmit} className="space-y-4">
         <p className="text-[12px] text-ink-soft leading-relaxed">
-          Track what this retreat costs the camp, food, staff, utilities, cleaning. Actual is
-          optional until you know the real number; margin uses actual when set, otherwise budgeted.
+          What this retreat costs the camp. Margin uses actual when set, otherwise budgeted.
         </p>
         <div>
           <label className={labelClass}>Category</label>

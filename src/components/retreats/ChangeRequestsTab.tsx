@@ -80,7 +80,7 @@ export function ChangeRequestsTab() {
         <div>
           <h2 className="text-[15px] font-semibold text-forest">{r.groupName} · requests</h2>
           <p className="text-[12px] text-ink-soft mt-0.5">
-            Everything asked either way on this booking. Other groups live on their own tabs.
+            Everything asked on this booking.
           </p>
         </div>
         {canManage && !asking && (

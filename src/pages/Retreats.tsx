@@ -155,7 +155,11 @@ export function Retreats() {
         {currentTab === 'rentalsReview' && <RentalsReview />}
         {currentTab === 'calendar' && <PropertyCalendar />}
         {currentTab === 'outbox' && <OutboxPanel />}
-        {currentTab === 'addons' && <AddonsPanel />}
+        {currentTab === 'addons' && (
+          <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
+            <AddonsPanel />
+          </div>
+        )}
         {currentTab === 'costs' && <RetreatCostsTab />}
         {currentTab === 'retreatCosts' && <RetreatCostsDetailTab />}
         {currentTab === 'active' && <ActiveRetreatTab />}

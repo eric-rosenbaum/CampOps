@@ -523,8 +523,7 @@ export function HousingTab() {
           </div>
           {!signLastNames && (
             <p className="text-[11.5px] text-ink-faint mt-2">
-              First names only. Some groups will not put a full name where anybody walking past
-              can read it.
+              First names only.
             </p>
           )}
         </div>

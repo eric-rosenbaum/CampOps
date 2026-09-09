@@ -150,7 +150,7 @@ export function PropertyCalendar() {
   const tooWide = totalDays > MAX_DAYS;
 
   return (
-    <div>
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       {/* ── Range ───────────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-end gap-3 mb-5">
         <div>

@@ -658,12 +658,23 @@ export async function createPaymentLink(invoiceId: string): Promise<string | nul
  * Never auto-creates. Every field comes back with the sentence it was taken from, because
  * without that people re-read the email to check and the feature has saved nothing.
  */
-export async function draftRetreatFromNotes(text: string, campName: string): Promise<RetreatIntakeDraft | null> {
+export async function draftRetreatFromNotes(text: string, campName: string): Promise<RetreatIntakeDraft> {
   const { data, error } = await supabase.functions.invoke('retreat-intake', {
     body: { text, today: new Date().toISOString().slice(0, 10), campName },
   });
-  if (error) { campError('retreat intake', error.message); return null; }
-  return (data as RetreatIntakeDraft) ?? null;
+  // The reason has to reach the screen. Returning null lost it, so a missing API key, text that
+  // was too long and a dropped connection all surfaced as the same sentence and none of them
+  // told the user which one it was.
+  if (error) {
+    const msg = await fnErrorMessage(error, 'The notes could not be read.');
+    campError('retreat intake', msg);
+    throw new Error(msg);
+  }
+  // Several paths in the function report failure with a 200 and an { error } body, so a
+  // successful HTTP call is not on its own a successful read.
+  const body = data as (RetreatIntakeDraft & { error?: string }) | null;
+  if (!body || body.error) throw new Error(body?.error ?? 'The notes could not be read.');
+  return body;
 }
 
 /** Re-plan the outbox now rather than waiting for tonight. Used after a deadline changes. */

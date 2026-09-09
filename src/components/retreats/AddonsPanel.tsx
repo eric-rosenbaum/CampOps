@@ -249,7 +249,7 @@ function AddonForm({ existing, nextSort, onCancel, onSave }: {
           {UNIT_OPTIONS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <p className="text-[11px] text-ink-soft mt-1">
-          Per-person and per-night rates multiply themselves out against the group's real numbers.
+          Per-person and per-night rates multiply out against the group's numbers.
         </p>
       </div>
       <label className="flex items-center gap-2 text-[12.5px] text-ink cursor-pointer">

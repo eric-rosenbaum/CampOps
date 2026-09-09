@@ -114,7 +114,7 @@ export function DocumentsTab() {
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No retreats yet</h3>
           <p className="text-[13px] text-ink-soft leading-relaxed">
-            Once you add a retreat, its agreement, certificate of insurance, waivers, and deposit will be tracked here.
+            Add a retreat to track its documents here.
           </p>
         </div>
       </div>

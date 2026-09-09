@@ -153,14 +153,11 @@ export function PipelineTab() {
     : null;
 
   return (
-    <div>
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
           <h2 className="font-display text-page-title font-bold text-forest">Pipeline</h2>
-          <p className="text-[12.5px] text-ink-soft">
-            Every enquiry, what happens next, and who owes the call.
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center border border-border rounded-btn bg-white">

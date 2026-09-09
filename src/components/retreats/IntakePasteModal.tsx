@@ -4,7 +4,7 @@
 // from, and says out loud what the notes did not answer. Provenance is the whole trick: without
 // the source sentence beside each field a reviewer re-opens the email to check the robot's work,
 // and the feature has saved nobody anything. With it, the usual outcome is one glance and Create.
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Copy, Check, Loader2, HelpCircle, Sparkles } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
@@ -63,6 +63,8 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
   const [people, setPeople] = useState<EditableContact[]>([]);
   const [nextAction, setNextAction] = useState('');
   const [nextActionOn, setNextActionOn] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
 
   function copy(key: string, text: string) {
     navigator.clipboard?.writeText(text).then(() => {
@@ -145,6 +147,14 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
   }, [draft]);
 
   function create() {
+    // Validate here rather than disabling the button. A disabled control with no message is the
+    // worst of both: nothing happens, and the reason is a field the user has scrolled past.
+    if (!groupName.trim()) {
+      setCreateError('Give the group a name before creating the enquiry.');
+      nameRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      nameRef.current?.focus({ preventScroll: true });
+      return;
+    }
     const ts = now();
     const id = generateId();
     const primary = people[0];
@@ -240,18 +250,12 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
         />
 
         {reading && (
-          <div className="mt-3 rounded-card border border-border bg-cream px-4 py-3">
-            <div className="flex items-center gap-2.5">
-              <Sparkles className="cc-loading-breathe w-4 h-4 flex-none text-sage" aria-hidden="true" />
-              <span className="cc-loading-shimmer text-[12.5px] font-semibold text-ink-soft">
-                Reading your notes…
-              </span>
-            </div>
-            {/* An indeterminate bar rather than a percentage: the request is one round trip and
-                inventing a number for it would be a lie people learn to distrust. */}
-            <div className="mt-2.5 h-[3px] w-full overflow-hidden rounded-full bg-cream-dark">
-              <div className="cc-scan-line h-full w-1/3 rounded-full bg-sage" />
-            </div>
+          <div className="mt-3 flex items-center gap-2.5 rounded-card border border-border
+                          bg-cream px-4 py-3">
+            <Sparkles className="cc-loading-breathe w-4 h-4 flex-none text-sage" aria-hidden="true" />
+            <span className="cc-loading-shimmer text-[12.5px] font-semibold text-ink-soft">
+              Reading your notes… this takes about half a minute.
+            </span>
           </div>
         )}
 
@@ -355,8 +359,15 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
 
       {/* Fields ------------------------------------------------------------- */}
       <div className="space-y-4">
-        <Field label="Group name" quote={prov.groupName}>
-          <input value={groupName} onChange={(e) => setGroupName(e.target.value)} className={inputClass} />
+        <Field label="Group name *" quote={prov.groupName}>
+          <input
+            ref={nameRef}
+            value={groupName}
+            onChange={(e) => { setGroupName(e.target.value); if (createError) setCreateError(null); }}
+            className={`${inputClass} ${createError ? 'border-red' : ''}`}
+            placeholder="Who is the enquiry from?"
+          />
+          {createError && <p className="mt-1 text-[12px] text-red-text">{createError}</p>}
         </Field>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -485,7 +496,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
         <Button variant="ghost" onClick={() => setDraft(null)}>Back to the notes</Button>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={create} disabled={!groupName.trim()}>Create enquiry</Button>
+          <Button onClick={create}>Create enquiry</Button>
         </div>
       </div>
     </Modal>

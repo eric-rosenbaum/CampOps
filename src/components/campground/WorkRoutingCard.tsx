@@ -70,8 +70,7 @@ export function WorkRoutingCard() {
               Work filed against a trade with no default here waits in the unassigned pile.
             </p>
             <p className="text-[11.5px] text-ink-faint mt-1.5">
-              {routed} of {TRADES.length} trades routed. This sets the default assignee only —
-              everyone still sees everything they could see before.
+              {routed} of {TRADES.length} trades routed.
             </p>
           </div>
         </div>

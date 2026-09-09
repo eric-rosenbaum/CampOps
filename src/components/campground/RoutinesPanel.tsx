@@ -124,7 +124,7 @@ export function RoutinesPanel() {
           />
           <StatCard
             label="Open occurrences" value={openByScheduleId.size}
-            hint="one per routine, by design"
+            hint="open now"
           />
         </div>
         <div className="flex items-center gap-2 pb-4">
@@ -160,9 +160,6 @@ export function RoutinesPanel() {
               <p className="font-display text-[16px] font-bold text-red-text">
                 {behind.length} routine{behind.length === 1 ? ' is' : 's are'} behind
               </p>
-              <p className="text-[12.5px] text-red-text/85 leading-relaxed mt-1">
-                A routine holds one open work order at a time. Behind means the open one is bumped, not duplicated.
-              </p>
             </div>
           </div>
           <ul className="mt-3.5 space-y-2 pl-8">
@@ -180,7 +177,7 @@ export function RoutinesPanel() {
                   <span className="text-red-text/80"> · {describeMissed(s.missedCount)} · </span>
                   <span className="text-red-text/80">
                     {openTitle
-                      ? 'the last one is still open, so we have not raised another'
+                      ? 'the open one is still open'
                       : 'nothing is open — Generate now will raise the next one'}
                   </span>
                 </li>
@@ -335,14 +332,14 @@ function RoutineRow({
         {missed && (
           <p className="mt-2.5 border-t border-border pt-2.5 text-[11.5px] text-red-text leading-relaxed">
             {openTitle
-              ? 'The last one is still open, so we have not raised another. Close it and the next occurrence appears.'
+              ? 'Close the open one and the next appears.'
               : 'No occurrence is open. Generate now will raise the one that is due.'}
           </p>
         )}
 
         {runsYearRound && (
           <p className="mt-2.5 border-t border-border pt-2.5 text-[11.5px] text-amber-text leading-relaxed">
-            No active window — this runs year-round.
+            Runs year-round.
           </p>
         )}
     </>

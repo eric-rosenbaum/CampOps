@@ -312,22 +312,17 @@ function TemplateModal({ template, onClose }: {
           </div>
         </div>
 
-        {/* ── The photo warning ────────────────────────────────────────────── */}
-        <div className={`rounded-card border px-4 py-3 ${
-          photoOveruse ? 'border-amber/30 bg-amber-bg' : 'border-border bg-cream'
-        }`}>
-          <div className="flex gap-2.5">
-            {photoOveruse
-              ? <AlertTriangle className="w-4 h-4 text-amber-text flex-shrink-0 mt-0.5" aria-hidden="true" />
-              : <Camera className="w-4 h-4 text-ink-soft flex-shrink-0 mt-0.5" aria-hidden="true" />}
-            <p className={`text-[12px] leading-relaxed ${photoOveruse ? 'text-amber-text' : 'text-ink-soft'}`}>
-              {photoOveruse
-                ? `${photoSteps} of ${draft.items.length} steps need a photo. `
-                : ''}
-              Ask for a photo only where it settles an argument.
-            </p>
+        {/* Only worth a line when most of the steps are asking for one. */}
+        {photoOveruse && (
+          <div className="rounded-card border border-amber/30 bg-amber-bg px-4 py-3">
+            <div className="flex gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-text flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-[12px] leading-relaxed text-amber-text">
+                {photoSteps} of {draft.items.length} steps need a photo.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         <label className="flex items-start gap-2.5 cursor-pointer">
           <input

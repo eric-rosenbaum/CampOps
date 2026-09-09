@@ -17,7 +17,7 @@ import { TRADES, TRADE_LABELS } from '@/lib/types';
 import type { ActivityEntry, Priority, Trade, WorkOrderDraft } from '@/lib/types';
 import { newWorkOrder } from '@/lib/workOrder';
 import { generateId } from '@/lib/utils';
-import { Camera, Repeat, Sparkles, X } from 'lucide-react';
+import { Camera, ChevronRight, Repeat, Sparkles, X } from 'lucide-react';
 
 
 /**
@@ -48,12 +48,21 @@ export function LogIssueModal() {
   const members = useCampStore((s) => s.members);
   const assets = useAssetStore((s) => s.assets);
   const vendors = useCampgroundStore((s) => s.vendors);
+  const templates = useCampgroundStore((s) => s.templates);
+  const applyTemplate = useCampgroundStore((s) => s.applyTemplate);
   const editingIssue = editingIssueId ? issues.find((i) => i.id === editingIssueId) : null;
 
   const [locationIds, setLocationIds] = useState<string[]>([]);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [removeExistingPhoto, setRemoveExistingPhoto] = useState(false);
+  const [templateId, setTemplateId] = useState('');
+  /**
+   * Asset and vendor are blank on most jobs — a torn screen door belongs to no vehicle and no
+   * contractor — so they sit behind a disclosure rather than making everyone scroll past two
+   * "not applicable" selects to reach the description.
+   */
+  const [showExtras, setShowExtras] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   /** What the capture actually saw and heard, kept on screen beside the fields it filled in. */
   const [draftReading, setDraftReading] = useState<
@@ -226,7 +235,12 @@ export function LogIssueModal() {
         if (url) workOrder.photoUrl = url;
       }
 
-      addIssue(workOrder);
+      const outcome = await addIssue(workOrder);
+      // The steps are half the job: a turnover logged without its checklist is a title and a
+      // hope. The template is applied by an RPC against the saved row, so it has to wait for
+      // the parent write — firing it alongside the optimistic insert is a foreign-key race the
+      // RPC loses silently.
+      if (templateId && outcome === 'saved') await applyTemplate(workOrder.id, templateId);
       selectIssue(workOrder.id);
     }
 
@@ -238,6 +252,10 @@ export function LogIssueModal() {
   const displayPhoto = photoPreview ?? (editingIssue?.photoUrl && !removeExistingPhoto ? editingIssue.photoUrl : null);
   const activeAssets = assets.filter((a) => a.isActive || a.id === editingIssue?.assetId);
   const activeVendors = vendors.filter((v) => v.isActive || v.id === editingIssue?.vendorId);
+  // Only the checklists for the trade being logged; a housekeeping turnover list on a plumbing
+  // job is noise in a dropdown someone is scanning quickly.
+  const tradeTemplates = templates.filter((t) => t.isActive && t.trade === trade);
+  const extrasCount = (watch('assetId') ? 1 : 0) + (watch('vendorId') ? 1 : 0);
 
   const inputClass = 'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
   const labelClass = 'block text-[12px] font-medium text-ink mb-1';
@@ -314,32 +332,73 @@ export function LogIssueModal() {
           <LocationPicker value={locationIds} onChange={setLocationIds} />
         </div>
 
-        {/* Work against a *thing*, so cost and days-out roll up to the vehicle or the mower. */}
-        {activeAssets.length > 0 && (
+        {/* A checklist turns a title into the steps somebody can actually work through, and the
+            moment of logging is when the person knows which one applies. */}
+        {!editingIssue && tradeTemplates.length > 0 && (
           <div>
-            <label className={labelClass}>Vehicle or equipment</label>
-            <select {...register('assetId')} className={inputClass}>
-              <option value="">Not about a specific one</option>
-              {activeAssets.map((a) => (
-                <option key={a.id} value={a.id}>{a.name}</option>
+            <label className={labelClass}>Checklist</label>
+            <select
+              value={templateId}
+              onChange={(e) => setTemplateId(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">No checklist</option>
+              {tradeTemplates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} · {t.items.length} step{t.items.length === 1 ? '' : 's'}
+                </option>
               ))}
             </select>
           </div>
         )}
 
-        {/* Plenty of work is dispatched to a contractor the moment it is logged. Asking for it
-            here means the record is right from the start rather than after somebody remembers. */}
-        {activeVendors.length > 0 && (
-          <div>
-            <label className={labelClass}>Outside vendor</label>
-            <select {...register('vendorId')} className={inputClass}>
-              <option value="">Nobody outside</option>
-              {activeVendors.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}{v.trade ? ` · ${v.trade}` : ''}
-                </option>
-              ))}
-            </select>
+        {(activeAssets.length > 0 || activeVendors.length > 0) && (
+          <div className="border-t border-border pt-3">
+            <button
+              type="button"
+              onClick={() => setShowExtras((v) => !v)}
+              className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-soft hover:text-forest transition-colors"
+            >
+              <ChevronRight
+                className={`w-3.5 h-3.5 transition-transform ${showExtras ? 'rotate-90' : ''}`}
+                aria-hidden="true"
+              />
+              Equipment and contractors
+              {extrasCount > 0 && (
+                <span className="font-mono text-[11.5px] text-forest">{extrasCount} set</span>
+              )}
+            </button>
+
+            {showExtras && (
+              <div className="space-y-3 pt-3">
+                {/* Work against a *thing*, so cost and days-out roll up to the vehicle or the mower. */}
+                {activeAssets.length > 0 && (
+                  <div>
+                    <label className={labelClass}>Vehicle or equipment</label>
+                    <select {...register('assetId')} className={inputClass}>
+                      <option value="">Not about a specific one</option>
+                      {activeAssets.map((a) => (
+                        <option key={a.id} value={a.id}>{a.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {activeVendors.length > 0 && (
+                  <div>
+                    <label className={labelClass}>Outside vendor</label>
+                    <select {...register('vendorId')} className={inputClass}>
+                      <option value="">Nobody outside</option>
+                      {activeVendors.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name}{v.trade ? ` · ${v.trade}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

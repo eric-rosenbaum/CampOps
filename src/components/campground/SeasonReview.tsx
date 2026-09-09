@@ -391,7 +391,7 @@ function TimingSection({ data }: { data: SeasonReviewData }) {
   return (
     <Section
       title="Response times — medians"
-      lede="Medians, not averages."
+      lede="Medians."
     >
       {rows.length === 0 ? (
         <p className="text-[12.5px] text-ink-faint italic">Nothing closed in this period yet.</p>
@@ -705,11 +705,11 @@ function CarryOverSection({ data }: { data: SeasonReviewData }) {
   return (
     <Section
       title="Carry-over"
-      lede="Oldest first."
+      lede="Open work orders from this season. Oldest first."
     >
       {rows.length === 0 ? (
         <p className="text-[12.5px] text-ink-soft">
-          Nothing is carrying over. That is rare and worth saying out loud.
+          Nothing is carrying over.
         </p>
       ) : (
         <Scroller>

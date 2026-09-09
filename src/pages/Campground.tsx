@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
-import { ChevronLeft, Download, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Plus } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { GroupHeader } from '@/components/shared/GroupHeader';
 import { StatCard } from '@/components/shared/StatCard';
@@ -309,6 +309,22 @@ export function Campground() {
   );
   const doneCount = useMemo(() => visible.filter((i) => i.status === 'resolved').length, [visible]);
 
+  /**
+   * Finished work leaves the list and waits at the bottom. A board is a list of what still
+   * needs doing; a season's worth of resolved jobs pushed that below the fold. The "Done"
+   * filter still shows them outright, so nothing is hidden — it is just not first.
+   */
+  const [showDone, setShowDone] = useState(false);
+  const splitDone = filter !== 'resolved';
+  const openRows = useMemo(
+    () => (splitDone ? filtered.filter((i) => i.status !== 'resolved') : filtered),
+    [filtered, splitDone],
+  );
+  const doneRows = useMemo(
+    () => (splitDone ? filtered.filter((i) => i.status === 'resolved') : []),
+    [filtered, splitDone],
+  );
+
   const subtitle = season
     ? `${season.name} · ${openTotal} open`
     : `${openTotal} open`;
@@ -437,7 +453,7 @@ export function Campground() {
                 </div>
               )}
 
-              {filtered.length === 0 ? (
+              {openRows.length === 0 && doneRows.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <p className="text-[15px] font-semibold text-ink-soft">{EMPTY_MESSAGE[filter]}</p>
                   <p className="mt-1 text-[13px] text-ink-faint">
@@ -465,7 +481,27 @@ export function Campground() {
                   )}
                 </div>
               ) : (
-                <div className="pt-4">{filtered.map(card)}</div>
+                <div className="pt-4">
+                  {openRows.map(card)}
+
+                  {doneRows.length > 0 && (
+                    <div className="mt-5 border-t border-border pt-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowDone((v) => !v)}
+                        className="flex w-full items-center gap-2 text-[13px] font-semibold text-ink-soft hover:text-forest transition-colors"
+                      >
+                        <ChevronRight
+                          className={`h-4 w-4 transition-transform ${showDone ? 'rotate-90' : ''}`}
+                          aria-hidden="true"
+                        />
+                        Done
+                        <span className="font-mono text-[12px] text-ink-faint">{doneRows.length}</span>
+                      </button>
+                      {showDone && <div className="pt-3">{doneRows.map(card)}</div>}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

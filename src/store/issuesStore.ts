@@ -27,7 +27,7 @@ interface IssuesStore {
   setFilter: (f: FilterType) => void;
   setSearch: (q: string) => void;
   selectIssue: (id: string | null) => void;
-  addIssue: (issue: Issue) => void;
+  addIssue: (issue: Issue) => Promise<WriteOutcome>;
   updateIssue: (id: string, patch: Partial<Issue>) => void;
   deleteIssue: (id: string) => void;
   resolveIssue: (id: string, actualCost?: number | null) => void;
@@ -129,8 +129,10 @@ export const useIssuesStore = create<IssuesStore>((set, get) => ({
     }));
     // 2. Persist to localStorage, survives page refresh, retried by the queue processor.
     enqueueIssue(issue);
-    // 3. Kick off an immediate write attempt alongside the scheduled processor.
-    void writeIssueNow(issue);
+    // 3. Kick off an immediate write attempt alongside the scheduled processor. Returned so a
+    //    caller with a child row to write — a checklist, a comment — can wait for the parent
+    //    to land instead of racing it into a foreign-key violation.
+    return writeIssueNow(issue);
   },
 
   deleteIssue: (id) => {

@@ -1,7 +1,8 @@
-import { TRADES, TRADE_LABELS } from '@/lib/types';
+import { useTradeLabel } from '@/lib/useTrades';
 import type { Trade } from '@/lib/types';
-import { TRADE_PILL } from '@/lib/workOrder';
+import { tradePill } from '@/lib/workOrder';
 import type { TradeFilter } from '@/store/campgroundStore';
+import { useTradeKeys } from '@/lib/useTrades';
 
 interface Props {
   value: TradeFilter;
@@ -29,9 +30,11 @@ const ALWAYS_OFFERED: Trade[] = ['maintenance', 'housekeeping'];
  * the exact trap the staff-visibility split below the board exists to avoid.
  */
 export function TradeLaneBar({ value, onChange, counts, total }: Props) {
+  const tradeKeys = useTradeKeys();
+  const labelOf = useTradeLabel();
   // The selected lane stays visible even after its last work order closes, or the bar would
   // reshuffle under the finger that just emptied it.
-  const lanes = TRADES.filter(
+  const lanes = tradeKeys.filter(
     (t) => ALWAYS_OFFERED.includes(t) || counts[t] > 0 || value === t,
   );
 
@@ -51,10 +54,10 @@ export function TradeLaneBar({ value, onChange, counts, total }: Props) {
       {lanes.map((t) => (
         <Lane
           key={t}
-          label={TRADE_LABELS[t]}
+          label={labelOf(t)}
           count={counts[t]}
           active={value === t}
-          tone={TRADE_PILL[t]}
+          tone={tradePill(t)}
           onClick={() => onChange(t)}
         />
       ))}

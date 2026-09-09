@@ -13,11 +13,12 @@ import { LocationPicker } from '@/components/shared/LocationPicker';
 import { CaptureSheet } from '@/components/campground/CaptureSheet';
 import { useAuth } from '@/lib/auth';
 import { dbUploadPhoto, dbDeletePhoto } from '@/lib/db';
-import { TRADES, TRADE_LABELS } from '@/lib/types';
+import { useTradeLabel } from '@/lib/useTrades';
 import type { ActivityEntry, Priority, Trade, WorkOrderDraft } from '@/lib/types';
 import { newWorkOrder } from '@/lib/workOrder';
 import { generateId } from '@/lib/utils';
 import { Camera, ChevronRight, Repeat, Sparkles, X } from 'lucide-react';
+import { useTradeKeys } from '@/lib/useTrades';
 
 
 /**
@@ -41,6 +42,8 @@ interface FormValues {
 }
 
 export function LogIssueModal() {
+  const tradeKeys = useTradeKeys();
+  const labelOf = useTradeLabel();
   const navigate = useNavigate();
   const { isLogIssueModalOpen, editingIssueId, closeAllModals } = useUIStore();
   const { addIssue, updateIssue, addActivityEntry, selectIssue, issues } = useIssuesStore();
@@ -139,7 +142,7 @@ export function LogIssueModal() {
     // an unrecognised value is not a cosmetic problem — it is a row that draws optimistically and
     // is then rejected on the wire, which the user sees as "a change didn't save". Guarded here as
     // well as in the function because the two deploy independently.
-    if (draft.trade && (TRADES as string[]).includes(draft.trade)) setValue('trade', draft.trade);
+    if (draft.trade && tradeKeys.includes(draft.trade)) setValue('trade', draft.trade);
     if (draft.priority) setValue('priority', draft.priority);
     if (draft.assigneeId) setValue('assigneeId', draft.assigneeId);
     if (draft.assetId) setValue('assetId', draft.assetId);
@@ -309,7 +312,7 @@ export function LogIssueModal() {
         <div>
           <label className={labelClass}>Crew</label>
           <div className="flex flex-wrap gap-1">
-            {TRADES.map((t) => (
+            {tradeKeys.map((t) => (
               <button
                 key={t}
                 type="button"
@@ -321,7 +324,7 @@ export function LogIssueModal() {
                     : 'border-border bg-white text-ink hover:border-sage'
                 }`}
               >
-                {TRADE_LABELS[t]}
+                {labelOf(t)}
               </button>
             ))}
           </div>

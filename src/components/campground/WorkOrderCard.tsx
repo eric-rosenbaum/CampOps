@@ -5,7 +5,7 @@ import { useCampStore } from '@/store/campStore';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useCampgroundStore, checklistProgress, hasUnread } from '@/store/campgroundStore';
 import {
-  STATUS_LABELS, TRADE_STRIPE, TRADE_PILL, tradeLabel, isOverdue, describeMissed,
+  STATUS_LABELS, tradeStripe, tradePill, tradeLabel, isOverdue, describeMissed,
 } from '@/lib/workOrder';
 import { LocationIcon } from '@/components/shared/LocationIcon';
 import { Avatar } from '@/components/shared/Avatar';
@@ -82,7 +82,7 @@ export function WorkOrderCard({ issue, selected, onClick, today, onTakeIt }: Pro
                   px-3 py-3 sm:px-4 sm:py-4 text-left cursor-pointer
                   transition-[box-shadow,transform,border-color] duration-150
                   hover:-translate-y-px hover:shadow-[0_3px_0_rgba(35,32,27,0.07)]
-                  ${TRADE_STRIPE[issue.trade]}
+                  ${tradeStripe(issue.trade)}
                   ${selected ? 'border-forest shadow-[0_0_0_1px_#1D3A2E]' : 'border-border'}`}
     >
       <LocationIcon location={location} className="hidden sm:grid" />
@@ -104,7 +104,7 @@ export function WorkOrderCard({ issue, selected, onClick, today, onTakeIt }: Pro
         </div>
 
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] sm:text-[12.5px] text-ink-soft">
-          <span className={`rounded-tag px-[5px] py-px text-[9.5px] font-bold uppercase tracking-[0.09em] ${TRADE_PILL[issue.trade]}`}>
+          <span className={`rounded-tag px-[5px] py-px text-[9.5px] font-bold uppercase tracking-[0.09em] ${tradePill(issue.trade)}`}>
             {tradeLabel(issue.trade)}
           </span>
           <StatusChip status={issue.status} />

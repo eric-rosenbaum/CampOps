@@ -10,7 +10,7 @@ import { useAssetStore } from '@/store/assetStore';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useCampgroundStore, checklistFor } from '@/store/campgroundStore';
 import {
-  OPEN_STATUSES, SOURCE_LABELS, STATUS_LABELS, TRADE_PILL, describeCadence, describeMissed,
+  OPEN_STATUSES, SOURCE_LABELS, STATUS_LABELS, tradePill, describeCadence, describeMissed,
   isOverdue, tradeLabel,
 } from '@/lib/workOrder';
 import { Button } from '@/components/shared/Button';
@@ -240,7 +240,7 @@ export function WorkOrderDetail({ issue }: Props) {
           <PriorityBadge priority={issue.priority} />
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className={`rounded-tag px-[5px] py-px text-[9.5px] font-bold uppercase tracking-[0.09em] ${TRADE_PILL[issue.trade]}`}>
+          <span className={`rounded-tag px-[5px] py-px text-[9.5px] font-bold uppercase tracking-[0.09em] ${tradePill(issue.trade)}`}>
             {tradeLabel(issue.trade)}
           </span>
           <StatusChip status={issue.status} />

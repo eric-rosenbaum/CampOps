@@ -16,6 +16,7 @@ import { WorkOrderDetail } from '@/components/campground/WorkOrderDetail';
 import { RoutinesPanel } from '@/components/campground/RoutinesPanel';
 import { VendorsPanel } from '@/components/campground/VendorsPanel';
 import { WorkRoutingCard } from '@/components/campground/WorkRoutingCard';
+import { TradesCard } from '@/components/campground/TradesCard';
 import { ChecklistTemplatesPanel } from '@/components/campground/ChecklistTemplatesPanel';
 import { SeasonReview } from '@/components/campground/SeasonReview';
 import { useIssuesStore } from '@/store/issuesStore';
@@ -26,12 +27,13 @@ import { useSafetyStore } from '@/store/safetyStore';
 import { useAssetStore } from '@/store/assetStore';
 import { useCampgroundStore, checklistProgress } from '@/store/campgroundStore';
 import { useAuth } from '@/lib/auth';
-import { TRADES, TRADE_LABELS } from '@/lib/types';
+import { useTradeLabel } from '@/lib/useTrades';
 import type { Issue, Trade } from '@/lib/types';
 import {
   STATUS_LABELS, compareWorkOrders, isOpen, isStalled, tradeLabel,
 } from '@/lib/workOrder';
 import { todayStr } from '@/lib/utils';
+import { useTradeKeys } from '@/lib/useTrades';
 
 /**
  * The Campground board.
@@ -98,6 +100,8 @@ function downloadCsv(filename: string, text: string) {
 }
 
 export function Campground() {
+  const tradeKeys = useTradeKeys();
+  const labelOf = useTradeLabel();
   /**
    * The tab lives in the URL.
    *
@@ -159,10 +163,10 @@ export function Campground() {
 
   // Lane counts come from open work: a lane exists because there is something in it to do.
   const laneCounts = useMemo(() => {
-    const counts = Object.fromEntries(TRADES.map((t) => [t, 0])) as Record<Trade, number>;
+    const counts = Object.fromEntries(tradeKeys.map((t) => [t, 0])) as Record<Trade, number>;
     for (const i of visible) if (isOpen(i)) counts[i.trade] += 1;
     return counts;
-  }, [visible]);
+  }, [visible, tradeKeys]);
 
   const openTotal = useMemo(() => visible.filter(isOpen).length, [visible]);
 
@@ -250,7 +254,7 @@ export function Campground() {
       const progress = checklistProgress(checklistItems, i.id);
       return [
         i.title,
-        TRADE_LABELS[i.trade],
+        labelOf(i.trade),
         STATUS_LABELS[i.status],
         i.priority,
         i.locations.join('; '),
@@ -385,6 +389,7 @@ export function Campground() {
           {tab === 'vendors' && <VendorsPanel />}
           {tab === 'setup' && (
             <div className="flex flex-col gap-6">
+              <TradesCard />
               <WorkRoutingCard />
               <ChecklistTemplatesPanel />
             </div>

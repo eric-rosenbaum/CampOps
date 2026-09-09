@@ -4,9 +4,10 @@ import { useCampgroundStore, routingFor } from '@/store/campgroundStore';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
-import { TRADE_PILL } from '@/lib/workOrder';
-import { TRADES, TRADE_LABELS } from '@/lib/types';
+import { tradePill } from '@/lib/workOrder';
+import { useTradeLabel } from '@/lib/useTrades';
 import type { Trade } from '@/lib/types';
+import { useTradeKeys } from '@/lib/useTrades';
 
 /**
  * Where each trade's work lands by default.
@@ -26,6 +27,8 @@ const inputClass =
   'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
 
 export function WorkRoutingCard() {
+  const tradeKeys = useTradeKeys();
+  const labelOf = useTradeLabel();
   const routing = useCampgroundStore((s) => s.routing);
   const setTradeRouting = useCampgroundStore((s) => s.setTradeRouting);
   const issues = useIssuesStore((s) => s.issues);
@@ -52,11 +55,11 @@ export function WorkRoutingCard() {
   }, [issues]);
 
   const routed = useMemo(
-    () => TRADES.filter((t) => {
+    () => tradeKeys.filter((t) => {
       const r = routingFor(routing, t);
       return Boolean(r?.defaultAssigneeId || r?.defaultStaffGroupId);
     }).length,
-    [routing],
+    [routing, tradeKeys],
   );
 
   return (
@@ -70,14 +73,14 @@ export function WorkRoutingCard() {
               Work filed against a trade with no default here waits in the unassigned pile.
             </p>
             <p className="text-[11.5px] text-ink-faint mt-1.5">
-              {routed} of {TRADES.length} trades routed.
+              {routed} of {tradeKeys.length} trades routed.
             </p>
           </div>
         </div>
       </div>
 
       <ul>
-        {TRADES.map((trade) => {
+        {tradeKeys.map((trade) => {
           const r = routingFor(routing, trade);
           const assigneeId = r?.defaultAssigneeId ?? '';
           const groupId = r?.defaultStaffGroupId ?? '';
@@ -88,8 +91,8 @@ export function WorkRoutingCard() {
             <li key={trade} className="px-5 py-3.5 border-b border-border last:border-b-0">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="sm:w-44 flex-shrink-0">
-                  <span className={`rounded-tag px-1.5 py-px text-[9.5px] font-bold uppercase tracking-[0.1em] ${TRADE_PILL[trade]}`}>
-                    {TRADE_LABELS[trade]}
+                  <span className={`rounded-tag px-1.5 py-px text-[9.5px] font-bold uppercase tracking-[0.1em] ${tradePill(trade)}`}>
+                    {labelOf(trade)}
                   </span>
                   <p className={`text-[11.5px] mt-1.5 ${waiting > 0 && !isRouted ? 'text-red-text' : 'text-ink-faint'}`}>
                     {waiting === 0
@@ -143,7 +146,7 @@ export function WorkRoutingCard() {
                   {isRouted && (
                     <CheckCircle2
                       className="w-4 h-4 text-green-muted-text"
-                      aria-label={`${TRADE_LABELS[trade]} is routed`}
+                      aria-label={`${labelOf(trade)} is routed`}
                     />
                   )}
                 </div>

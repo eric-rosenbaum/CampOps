@@ -15,7 +15,7 @@ import { campLog } from '@/lib/campLog';
 import { generateId, todayStr } from '@/lib/utils';
 import type {
   ServiceVendor, WorkRouting, WorkSchedule, WorkChecklistTemplate,
-  IssueChecklistItem, IssueComment, Trade, CampSession, Issue,
+  IssueChecklistItem, IssueComment, Trade, CampSession, Issue, CampTrade,
 } from '@/lib/types';
 import {
   dbAddVendor, dbUpdateVendor, dbDeleteVendor, dbSetRouting,
@@ -23,6 +23,7 @@ import {
   dbAddTemplate, dbUpdateTemplate, dbDeleteTemplate,
   dbAddComment, dbDeleteComment, dbMarkThreadRead,
   dbSetChecklistItemDone, dbApplyChecklist, dbAddChecklistItem, dbDeleteChecklistItem,
+  dbAddTrade, dbUpdateTrade,
 } from '@/lib/campgroundDb';
 
 /** The board's lane filter. `all` is the default so nobody is hidden from anyone's work. */
@@ -33,6 +34,7 @@ interface CampgroundState {
   routing: WorkRouting[];
   schedules: WorkSchedule[];
   templates: WorkChecklistTemplate[];
+  trades: CampTrade[];
   checklistItems: IssueChecklistItem[];
   comments: IssueComment[];
   sessions: CampSession[];
@@ -46,6 +48,10 @@ interface CampgroundState {
   setRouting: (r: WorkRouting[]) => void;
   setSchedules: (s: WorkSchedule[]) => void;
   setTemplates: (t: WorkChecklistTemplate[]) => void;
+  setTrades: (t: CampTrade[]) => void;
+  /** Returns an error message, or null on success — a duplicate key is a real answer. */
+  addTrade: (t: CampTrade) => Promise<string | null>;
+  updateTrade: (t: CampTrade) => void;
   setChecklistItems: (i: IssueChecklistItem[]) => void;
   setComments: (c: IssueComment[]) => void;
   setSessions: (s: CampSession[]) => void;
@@ -78,7 +84,7 @@ interface CampgroundState {
 }
 
 export const useCampgroundStore = create<CampgroundState>((set, get) => ({
-  vendors: [], routing: [], schedules: [], templates: [],
+  vendors: [], routing: [], schedules: [], templates: [], trades: [],
   checklistItems: [], comments: [], sessions: [],
   readAt: {},
   tradeFilter: 'all',
@@ -87,6 +93,19 @@ export const useCampgroundStore = create<CampgroundState>((set, get) => ({
   setRouting: (routing) => set({ routing }),
   setSchedules: (schedules) => set({ schedules }),
   setTemplates: (templates) => set({ templates }),
+  setTrades: (trades) => set({ trades }),
+
+  // ── Trades ─────────────────────────────────────────────────────────────────
+  addTrade: async (t) => {
+    const { error } = await dbAddTrade(t);
+    if (error) return error;
+    set((s) => ({ trades: [...s.trades, t] }));
+    return null;
+  },
+  updateTrade: (t) => {
+    set((s) => ({ trades: s.trades.map((x) => (x.id === t.id ? t : x)) }));
+    void dbUpdateTrade(t);
+  },
   setChecklistItems: (checklistItems) => set({ checklistItems }),
   setComments: (comments) => set({ comments }),
   setSessions: (sessions) => set({ sessions }),

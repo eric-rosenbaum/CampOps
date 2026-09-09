@@ -81,17 +81,38 @@ export type RecurringInterval = 'daily' | 'weekly' | 'monthly' | 'annually';
  * gating work by trade would rebuild the staff-visibility trap that once hid a reporter's own
  * issue from them.
  */
-export type Trade = 'maintenance' | 'housekeeping' | 'grounds' | 'kitchen' | 'it';
+/**
+ * A trade is whatever the camp calls one of its crews.
+ *
+ * It used to be a five-value union, which meant a camp with no IT person stared at an empty
+ * Tech lane and a camp with a waterfront crew had nowhere to file that work. The key is now
+ * free-form and the real list lives in `camp_trades`, one row per camp, seeded with the five
+ * below — so nothing changed until somebody changed it.
+ *
+ * Keys are stable and labels are not: renaming Grounds to "Property" is a label edit, not a
+ * rewrite of a season of work orders.
+ */
+export type Trade = string;
 
+/** The seed list, and the fallback when a camp's trades have not loaded yet. */
 export const TRADES: Trade[] = ['maintenance', 'housekeeping', 'grounds', 'kitchen', 'it'];
 
-export const TRADE_LABELS: Record<Trade, string> = {
+export const TRADE_LABELS: Record<string, string> = {
   maintenance: 'Maintenance',
   housekeeping: 'Housekeeping',
   grounds: 'Grounds',
   kitchen: 'Kitchen',
   it: 'Tech',
 };
+
+export interface CampTrade {
+  id: string;
+  campId: string;
+  key: string;
+  label: string;
+  sortOrder: number;
+  isActive: boolean;
+}
 
 export interface ActivityEntry {
   id: string;

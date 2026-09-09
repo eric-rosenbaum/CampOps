@@ -7,8 +7,8 @@ import { Modal } from '@/components/shared/Modal';
 import { useCampgroundStore } from '@/store/campgroundStore';
 import { useAuth } from '@/lib/auth';
 import { generateId } from '@/lib/utils';
-import { TRADES, TRADE_LABELS } from '@/lib/types';
-import { TRADE_PILL } from '@/lib/workOrder';
+import { useTradeKeys, useTradeLabel } from '@/lib/useTrades';
+import { tradePill } from '@/lib/workOrder';
 import type { ChecklistTemplateItem, Trade, WorkChecklistTemplate } from '@/lib/types';
 
 /**
@@ -36,6 +36,8 @@ function blankTemplate(): WorkChecklistTemplate {
 }
 
 export function ChecklistTemplatesPanel() {
+  const tradeKeys = useTradeKeys();
+  const labelOf = useTradeLabel();
   const templates = useCampgroundStore((s) => s.templates);
   const { role } = useAuth();
   const canEdit = role !== 'viewer';
@@ -51,8 +53,8 @@ export function ChecklistTemplatesPanel() {
       groups.set(t.trade, list);
     }
     for (const list of groups.values()) list.sort((a, b) => a.name.localeCompare(b.name));
-    return TRADES.filter((t) => groups.has(t)).map((t) => ({ trade: t, items: groups.get(t) ?? [] }));
-  }, [templates]);
+    return tradeKeys.filter((t) => groups.has(t)).map((t) => ({ trade: t, items: groups.get(t) ?? [] }));
+  }, [templates, tradeKeys]);
 
   return (
     <div>
@@ -83,8 +85,8 @@ export function ChecklistTemplatesPanel() {
           {byTrade.map(({ trade, items }) => (
             <section key={trade}>
               <div className="flex items-center gap-2 mb-2.5">
-                <span className={`rounded-tag px-1.5 py-px text-[9.5px] font-bold uppercase tracking-[0.1em] ${TRADE_PILL[trade]}`}>
-                  {TRADE_LABELS[trade]}
+                <span className={`rounded-tag px-1.5 py-px text-[9.5px] font-bold uppercase tracking-[0.1em] ${tradePill(trade)}`}>
+                  {labelOf(trade)}
                 </span>
                 <span className="h-px flex-1 bg-border" aria-hidden="true" />
               </div>
@@ -146,6 +148,8 @@ function TemplateModal({ template, onClose }: {
   template: WorkChecklistTemplate | null;
   onClose: () => void;
 }) {
+  const tradeKeys = useTradeKeys();
+  const labelOf = useTradeLabel();
   const addTemplate = useCampgroundStore((s) => s.addTemplate);
   const updateTemplate = useCampgroundStore((s) => s.updateTemplate);
   const deleteTemplate = useCampgroundStore((s) => s.deleteTemplate);
@@ -222,7 +226,7 @@ function TemplateModal({ template, onClose }: {
               id="tmpl-trade" className={`${inputClass} sm:w-44`} value={draft.trade}
               onChange={(e) => setDraft((d) => ({ ...d, trade: e.target.value as Trade }))}
             >
-              {TRADES.map((t) => <option key={t} value={t}>{TRADE_LABELS[t]}</option>)}
+              {tradeKeys.map((t) => <option key={t} value={t}>{labelOf(t)}</option>)}
             </select>
           </div>
         </div>

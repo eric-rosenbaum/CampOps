@@ -10,8 +10,8 @@ import { useAuth } from '@/lib/auth';
 import { fetchSeasonReview, dbSnapshotReview } from '@/lib/campgroundDb';
 import { SOURCE_LABELS, STATUS_LABELS } from '@/lib/workOrder';
 import { formatCost, formatDate, parseDateStr, todayStr } from '@/lib/utils';
-import { TRADE_LABELS } from '@/lib/types';
-import type { IssueSource, IssueStatus, SeasonReview as SeasonReviewData, Trade } from '@/lib/types';
+import { useTradeLabel } from '@/lib/useTrades';
+import type { IssueSource, IssueStatus, SeasonReview as SeasonReviewData } from '@/lib/types';
 
 /**
  * The renewal artifact.
@@ -318,6 +318,7 @@ const td = 'text-[12.5px] text-ink py-2 pr-4 border-t border-border align-top';
 // ─── 1 · Volume & flow ────────────────────────────────────────────────────────
 
 function VolumeSection({ data, weekly }: { data: SeasonReviewData; weekly: ColumnDatum[] }) {
+  const labelOf = useTradeLabel();
   const trades = Object.entries(data.volume.by_trade)
     .filter(([, n]) => n > 0)
     .sort((a, b) => b[1] - a[1]);
@@ -362,7 +363,7 @@ function VolumeSection({ data, weekly }: { data: SeasonReviewData; weekly: Colum
               <li key={trade}>
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="text-[12.5px] text-ink">
-                    {TRADE_LABELS[trade as Trade] ?? trade}
+                    {labelOf(trade)}
                   </span>
                   <span className="text-[12.5px] font-semibold text-forest tabular-nums">{n}</span>
                 </div>
@@ -385,6 +386,7 @@ function VolumeSection({ data, weekly }: { data: SeasonReviewData; weekly: Colum
 // ─── 2 · Response times ───────────────────────────────────────────────────────
 
 function TimingSection({ data }: { data: SeasonReviewData }) {
+  const labelOf = useTradeLabel();
   const rows = [...data.timing].sort((a, b) => a.trade.localeCompare(b.trade));
   const thin = rows.every((r) => r.sample < SMALL_SAMPLE);
 
@@ -418,7 +420,7 @@ function TimingSection({ data }: { data: SeasonReviewData }) {
                 {rows.map((r) => (
                   <tr key={`${r.trade}-${r.priority}`}>
                     <td className={`${td} font-semibold text-forest`}>
-                      {TRADE_LABELS[r.trade as Trade] ?? r.trade}
+                      {labelOf(r.trade)}
                     </td>
                     <td className={td}>{r.priority}</td>
                     <td className={`${td} tabular-nums`}>{hoursLabel(r.median_hours_to_assign)}</td>
@@ -700,6 +702,7 @@ function RoutinesSection({ data }: { data: SeasonReviewData }) {
 // ─── 8 · Carry-over ───────────────────────────────────────────────────────────
 
 function CarryOverSection({ data }: { data: SeasonReviewData }) {
+  const labelOf = useTradeLabel();
   const rows = [...data.carry_over].sort((a, b) => b.age_days - a.age_days);
 
   return (
@@ -728,7 +731,7 @@ function CarryOverSection({ data }: { data: SeasonReviewData }) {
               {rows.map((c) => (
                 <tr key={c.id}>
                   <td className={`${td} font-semibold text-forest`}>{c.title}</td>
-                  <td className={td}>{TRADE_LABELS[c.trade as Trade] ?? c.trade}</td>
+                  <td className={td}>{labelOf(c.trade)}</td>
                   <td className={td}>{c.priority}</td>
                   <td className={td}>{c.location ?? '—'}</td>
                   <td className={td}>{STATUS_LABELS[c.status as IssueStatus] ?? c.status}</td>

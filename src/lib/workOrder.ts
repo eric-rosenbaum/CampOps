@@ -80,6 +80,31 @@ export const TRADE_PILL: Record<Trade, string> = {
 
 export const tradeLabel = (t: Trade) => TRADE_LABELS[t] ?? t;
 
+/**
+ * A camp-invented trade has no colour of its own, so it gets one from the quiet half of the
+ * palette, chosen by its key. Stable across reloads, and never red or amber — those belong to
+ * priority and overdue.
+ */
+const SPARE_STRIPES = ['border-l-forest', 'border-l-blue', 'border-l-sage', 'border-l-purple'];
+const SPARE_PILLS = [
+  'bg-green-muted-bg text-green-muted-text',
+  'bg-blue-bg text-blue-text',
+  'bg-sage-pale text-forest',
+  'bg-purple-bg text-purple-text',
+];
+
+function spareIndex(key: string, len: number): number {
+  let h = 0;
+  for (let i = 0; i < key.length; i += 1) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return h % len;
+}
+
+export const tradeStripe = (t: Trade) =>
+  TRADE_STRIPE[t] ?? SPARE_STRIPES[spareIndex(t, SPARE_STRIPES.length)];
+
+export const tradePill = (t: Trade) =>
+  TRADE_PILL[t] ?? SPARE_PILLS[spareIndex(t, SPARE_PILLS.length)];
+
 // ─── Making one ───────────────────────────────────────────────────────────────
 
 export interface NewWorkOrderInput {

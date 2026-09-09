@@ -17,7 +17,7 @@ import { loadAndApply, debounce, WAL_DEBOUNCE_MS } from './syncGuard';
 import type {
   ServiceVendor, WorkRouting, WorkSchedule, WorkChecklistTemplate, ChecklistTemplateItem,
   IssueChecklistItem, IssueComment, Trade, QrTarget, SeasonReview, RentalsReview,
-  PropertyCalendar, WorkOrderDraft, CampSession,
+  PropertyCalendar, WorkOrderDraft, CampSession, CampTrade,
 } from './types';
 
 type Row = Record<string, unknown>;
@@ -115,6 +115,33 @@ export function rowToSession(r: Row): CampSession {
   };
 }
 
+export function rowToTrade(r: Row): CampTrade {
+  return {
+    id: r.id as string, campId: r.camp_id as string,
+    key: r.key as string, label: r.label as string,
+    sortOrder: Number(r.sort_order ?? 0), isActive: r.is_active !== false,
+  };
+}
+
+// ─── Camp trades ──────────────────────────────────────────────────────────────
+
+export async function dbAddTrade(t: CampTrade): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('camp_trades').insert({
+    id: t.id, camp_id: t.campId, key: t.key, label: t.label,
+    sort_order: t.sortOrder, is_active: t.isActive,
+  });
+  if (error) campError('add trade', error.message);
+  return { error: error?.message ?? null };
+}
+
+export async function dbUpdateTrade(t: CampTrade): Promise<void> {
+  const { error } = await supabase.from('camp_trades')
+    .update({ label: t.label, sort_order: t.sortOrder, is_active: t.isActive,
+              updated_at: new Date().toISOString() })
+    .eq('id', t.id);
+  if (error) campError('update trade', error.message);
+}
+
 // ─── Load + subscribe ─────────────────────────────────────────────────────────
 
 export interface CampgroundData {
@@ -125,16 +152,17 @@ export interface CampgroundData {
   checklistItems: IssueChecklistItem[];
   comments: IssueComment[];
   sessions: CampSession[];
+  trades: CampTrade[];
 }
 
 const CAMPGROUND_TABLES = [
   'service_vendors', 'work_routing', 'work_schedules', 'work_checklist_templates',
-  'issue_checklist_items', 'issue_comments', 'camp_sessions',
+  'issue_checklist_items', 'issue_comments', 'camp_sessions', 'camp_trades',
 ];
 
 async function loadInner(campId: string): Promise<CampgroundData> {
   const q = (t: string) => supabase.from(t).select('*').eq('camp_id', campId);
-  const [ven, rout, sched, tmpl, items, comments, sessions] = await Promise.all([
+  const [ven, rout, sched, tmpl, items, comments, sessions, trades] = await Promise.all([
     q('service_vendors').order('name'),
     q('work_routing'),
     q('work_schedules').order('title'),
@@ -145,8 +173,9 @@ async function loadInner(campId: string): Promise<CampgroundData> {
       .eq('camp_id', campId).neq('issues.status', 'resolved').order('position'),
     q('issue_comments').is('deleted_at', null).order('created_at'),
     q('camp_sessions').order('start_date'),
+    q('camp_trades').order('sort_order'),
   ]);
-  assertLoaded('campground', ven, rout, sched, tmpl, items, comments, sessions);
+  assertLoaded('campground', ven, rout, sched, tmpl, items, comments, sessions, trades);
   return {
     vendors: (ven.data ?? []).map((r) => rowToVendor(r as Row)),
     routing: (rout.data ?? []).map((r) => rowToRouting(r as Row)),
@@ -155,6 +184,7 @@ async function loadInner(campId: string): Promise<CampgroundData> {
     checklistItems: (items.data ?? []).map((r) => rowToChecklistItem(r as Row)),
     comments: (comments.data ?? []).map((r) => rowToComment(r as Row)),
     sessions: (sessions.data ?? []).map((r) => rowToSession(r as Row)),
+    trades: (trades.data ?? []).map((r) => rowToTrade(r as Row)),
   };
 }
 

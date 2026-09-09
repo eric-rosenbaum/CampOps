@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Camera, Plus, X } from 'lucide-react';
 import type { IssueChecklistItem } from '@/lib/types';
-import { TRADE_LABELS } from '@/lib/types';
+import { useTradeLabel } from '@/lib/useTrades';
 import { useAuth } from '@/lib/auth';
 import { useCampgroundStore, checklistFor } from '@/store/campgroundStore';
 import { dbUploadPhoto } from '@/lib/db';
@@ -23,6 +23,7 @@ interface Props {
  * would mean fighting the trigger and losing on a slow connection.
  */
 export function ChecklistPanel({ issueId, highlight = false }: Props) {
+  const labelOf = useTradeLabel();
   const { currentUser } = useAuth();
   // Raw slices, derived below. Filtering inside a selector allocates a new array per render.
   const checklistItems = useCampgroundStore((s) => s.checklistItems);
@@ -109,7 +110,7 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
             >
               <option value="">Apply a checklist…</option>
               {activeTemplates.map((t) => (
-                <option key={t.id} value={t.id}>{t.name} · {TRADE_LABELS[t.trade]}</option>
+                <option key={t.id} value={t.id}>{t.name} · {labelOf(t.trade)}</option>
               ))}
             </select>
             <button

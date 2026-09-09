@@ -14,9 +14,9 @@ import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useAuth } from '@/lib/auth';
 import { dbGenerateScheduledWork, dbRecordMeter } from '@/lib/campgroundDb';
-import { describeCadence, describeMissed, TRADE_PILL } from '@/lib/workOrder';
+import { describeCadence, describeMissed, tradePill } from '@/lib/workOrder';
 import { formatDate } from '@/lib/utils';
-import { TRADES, TRADE_LABELS } from '@/lib/types';
+import { useTradeKeys, useTradeLabel } from '@/lib/useTrades';
 import type { Trade, WorkSchedule } from '@/lib/types';
 
 /**
@@ -34,6 +34,8 @@ import type { Trade, WorkSchedule } from '@/lib/types';
  */
 
 export function RoutinesPanel() {
+  const tradeKeys = useTradeKeys();
+  const labelOf = useTradeLabel();
   // Raw slices only. A selector that filters or maps allocates a new array every render, which
   // under React 19 + zustand v5 is the "getSnapshot should be cached" loop and a white screen.
   const schedules = useCampgroundStore((s) => s.schedules);
@@ -70,8 +72,8 @@ export function RoutinesPanel() {
         return a.title.localeCompare(b.title);
       });
     }
-    return TRADES.filter((t) => groups.has(t)).map((t) => ({ trade: t, items: groups.get(t)! }));
-  }, [schedules]);
+    return tradeKeys.filter((t) => groups.has(t)).map((t) => ({ trade: t, items: groups.get(t)! }));
+  }, [schedules, tradeKeys]);
 
   /** Which routines already have their one open occurrence sitting in the queue. */
   const openByScheduleId = useMemo(() => {
@@ -98,7 +100,7 @@ export function RoutinesPanel() {
     const r = routingFor(routing, s.trade);
     const fallback = nameLookup.member(r?.defaultAssigneeId ?? null)
       ?? nameLookup.group(r?.defaultStaffGroupId ?? null);
-    return fallback ? `${fallback} — the ${TRADE_LABELS[s.trade].toLowerCase()} default` : 'Nobody yet';
+    return fallback ? `${fallback} — the ${labelOf(s.trade).toLowerCase()} default` : 'Nobody yet';
   }
 
   async function generateNow() {
@@ -206,7 +208,7 @@ export function RoutinesPanel() {
       ) : (
         byTrade.map(({ trade, items }) => (
           <section key={trade}>
-            <GroupHeader label={TRADE_LABELS[trade]} count={items.length} />
+            <GroupHeader label={labelOf(trade)} count={items.length} />
             <ul className="space-y-2">
               {items.map((s) => (
                 <RoutineRow
@@ -248,6 +250,7 @@ function RoutineRow({
   canRecord: boolean;
   onOpen?: () => void;
 }) {
+  const labelOf = useTradeLabel();
   const missed = describeMissed(s.missedCount);
   const next = useMemo(
     () => nextDates(s, { count: 1, openingDate })[0] ?? null,
@@ -272,8 +275,8 @@ function RoutineRow({
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <b className="text-[14px] font-semibold text-forest">{s.title}</b>
-              <span className={`rounded-tag px-1.5 py-px text-[9.5px] font-bold uppercase tracking-[0.1em] ${TRADE_PILL[s.trade]}`}>
-                {TRADE_LABELS[s.trade]}
+              <span className={`rounded-tag px-1.5 py-px text-[9.5px] font-bold uppercase tracking-[0.1em] ${tradePill(s.trade)}`}>
+                {labelOf(s.trade)}
               </span>
               {!s.isActive && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">

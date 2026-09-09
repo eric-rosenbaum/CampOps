@@ -8,7 +8,7 @@ import { useIssuesStore } from '@/store/issuesStore';
 import { useAuth } from '@/lib/auth';
 import { isOpen } from '@/lib/workOrder';
 import { generateId, todayStr, toDateStr, parseDateStr, formatDate } from '@/lib/utils';
-import { TRADES, TRADE_LABELS } from '@/lib/types';
+import { useTradeKeys, useTradeLabel } from '@/lib/useTrades';
 import type { ServiceVendor } from '@/lib/types';
 
 /**
@@ -152,6 +152,7 @@ function VendorRow({ vendor: v, openCount, onOpen }: {
   openCount: number;
   onOpen?: () => void;
 }) {
+  const labelOf = useTradeLabel();
   const state = insuranceState(v.insuranceExpiry);
   const { className, icon: Icon } = INSURANCE_STYLE[state];
 
@@ -163,7 +164,7 @@ function VendorRow({ vendor: v, openCount, onOpen }: {
             <b className="text-[14px] font-semibold text-forest">{v.name}</b>
             {v.trade && (
               <span className="rounded-tag bg-cream-dark px-1.5 py-px text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-soft">
-                {TRADE_LABELS[v.trade as keyof typeof TRADE_LABELS] ?? v.trade}
+                {labelOf(v.trade)}
               </span>
             )}
             {!v.isActive && (
@@ -229,6 +230,8 @@ function VendorModal({ vendor, openCount, onClose }: {
   openCount: number;
   onClose: () => void;
 }) {
+  const tradeKeys = useTradeKeys();
+  const labelOf = useTradeLabel();
   const addVendor = useCampgroundStore((s) => s.addVendor);
   const updateVendor = useCampgroundStore((s) => s.updateVendor);
   const deleteVendor = useCampgroundStore((s) => s.deleteVendor);
@@ -280,7 +283,7 @@ function VendorModal({ vendor, openCount, onClose }: {
               onChange={(e) => set({ trade: e.target.value || null })}
             >
               <option value="">Not set</option>
-              {TRADES.map((t) => <option key={t} value={t}>{TRADE_LABELS[t]}</option>)}
+              {tradeKeys.map((t) => <option key={t} value={t}>{labelOf(t)}</option>)}
             </select>
           </div>
           <div>

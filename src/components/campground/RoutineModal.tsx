@@ -14,7 +14,8 @@ import { useLocationStore } from '@/store/locationStore';
 import { useAssetStore } from '@/store/assetStore';
 import { describeCadence } from '@/lib/workOrder';
 import { generateId, todayStr, toDateStr, parseDateStr, formatDate } from '@/lib/utils';
-import { CADENCE_LABELS, TRADE_LABELS, TRADES } from '@/lib/types';
+import { CADENCE_LABELS } from '@/lib/types';
+import { useTradeKeys, useTradeLabel } from '@/lib/useTrades';
 import type { Cadence, Priority, WorkSchedule } from '@/lib/types';
 
 // ─── The preview maths ────────────────────────────────────────────────────────
@@ -162,6 +163,8 @@ interface Props {
 }
 
 export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
+  const tradeKeys = useTradeKeys();
+  const labelOf = useTradeLabel();
   const [draft, setDraft] = useState<WorkSchedule>(() => schedule ?? blankSchedule());
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -293,7 +296,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
               id="routine-trade" className={inputClass} value={draft.trade}
               onChange={(e) => set({ trade: e.target.value as WorkSchedule['trade'] })}
             >
-              {TRADES.map((t) => <option key={t} value={t}>{TRADE_LABELS[t]}</option>)}
+              {tradeKeys.map((t) => <option key={t} value={t}>{labelOf(t)}</option>)}
             </select>
           </div>
           <div>

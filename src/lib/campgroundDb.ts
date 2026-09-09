@@ -89,7 +89,8 @@ export function rowToChecklistItem(r: Row): IssueChecklistItem {
   return {
     id: r.id as string, campId: r.camp_id as string, issueId: r.issue_id as string,
     position: Number(r.position ?? 0), text: r.text as string, note: s(r.note),
-    requiresPhoto: Boolean(r.requires_photo), isDone: Boolean(r.is_done),
+    requiresPhoto: Boolean(r.requires_photo), templateId: s(r.template_id),
+    isDone: Boolean(r.is_done),
     doneBy: s(r.done_by), doneByName: s(r.done_by_name), doneAt: s(r.done_at),
     photoUrl: s(r.photo_url), createdAt: r.created_at as string,
   };
@@ -132,6 +133,11 @@ export async function dbAddTrade(t: CampTrade): Promise<{ error: string | null }
   });
   if (error) campError('add trade', error.message);
   return { error: error?.message ?? null };
+}
+
+export async function dbDeleteTrade(id: string): Promise<void> {
+  const { error } = await supabase.from('camp_trades').delete().eq('id', id);
+  if (error) campError('delete trade', error.message);
 }
 
 export async function dbUpdateTrade(t: CampTrade): Promise<void> {
@@ -306,6 +312,14 @@ export async function dbApplyChecklist(issueId: string, templateId: string): Pro
     { p_issue_id: issueId, p_template_id: templateId });
   if (error) { campError('apply checklist', error.message); return 0; }
   return (data as number) ?? 0;
+}
+
+/** The steps on one work order, in order. Used to show them the instant they are applied. */
+export async function dbFetchChecklistItems(issueId: string): Promise<IssueChecklistItem[]> {
+  const { data, error } = await supabase.from('issue_checklist_items')
+    .select('*').eq('issue_id', issueId).order('position');
+  if (error) { campError('fetch checklist', error.message); return []; }
+  return (data ?? []).map((r) => rowToChecklistItem(r as Row));
 }
 
 /**

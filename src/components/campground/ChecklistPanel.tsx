@@ -45,6 +45,36 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
   const author = { id: currentUser.id, name: currentUser.name };
   const activeTemplates = templates.filter((t) => t.isActive);
 
+  /** Applying the same checklist twice would duplicate every step, so it is not offered twice. */
+  const appliedIds = new Set(items.map((i) => i.templateId).filter(Boolean) as string[]);
+  const unappliedTemplates = activeTemplates.filter((t) => !appliedIds.has(t.id));
+
+  /**
+   * Steps in the order they were added, grouped by the checklist they came from. Hand-typed
+   * steps are their own unnamed group, so a job can carry a checklist and a couple of one-offs
+   * without either looking like the other.
+   */
+  const groups = (() => {
+    const runs: { key: string; name: string | null; items: IssueChecklistItem[] }[] = [];
+    items.forEach((item, idx) => {
+      const key = item.templateId ?? 'loose';
+      const prev = idx > 0 ? (items[idx - 1].templateId ?? 'loose') : null;
+      if (key === prev) {
+        const last = runs[runs.length - 1];
+        runs[runs.length - 1] = { ...last, items: [...last.items, item] };
+        return;
+      }
+      runs.push({
+        key: `${key}-${idx}`,
+        name: item.templateId
+          ? templates.find((t) => t.id === item.templateId)?.name ?? 'Checklist'
+          : null,
+        items: [item],
+      });
+    });
+    return runs;
+  })();
+
   async function handleApply() {
     if (!templateId) return;
     setApplying(true);
@@ -100,46 +130,62 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
         )}
       </div>
 
-      {items.length === 0 ? (
-        activeTemplates.length > 0 ? (
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <select
-              value={templateId}
-              onChange={(e) => setTemplateId(e.target.value)}
-              className="w-full rounded-btn border border-border bg-white px-2 py-1.5 text-[13px] focus:border-sage focus:outline-none sm:flex-1"
-            >
-              <option value="">Apply a checklist…</option>
-              {activeTemplates.map((t) => (
-                <option key={t.id} value={t.id}>{t.name} · {labelOf(t.trade)}</option>
-              ))}
-            </select>
-            <button
-              onClick={handleApply}
-              disabled={!templateId || applying}
-              className="rounded-btn bg-forest px-3 py-1.5 text-[12.5px] font-bold text-paper
-                         transition-colors hover:bg-forest-mid disabled:opacity-50"
-            >
-              {applying ? 'Applying…' : 'Apply'}
-            </button>
-          </div>
-        ) : (
-          <p className="text-[12px] text-ink-soft">
-            No steps yet.
-          </p>
-        )
-      ) : (
-        <ul className="space-y-1.5">
-          {items.map((item) => (
-            <Step
-              key={item.id}
-              item={item}
-              uploading={uploadingId === item.id}
-              onToggle={() => toggle(item)}
-              onPhoto={(file) => attachPhoto(item, file)}
-              onRemove={() => removeChecklistStep(item.id)}
-            />
-          ))}
-        </ul>
+      {items.length === 0 && (
+        <p className="mb-2 text-[12px] text-ink-soft">
+          No steps yet. Apply a checklist or type one below.
+        </p>
+      )}
+
+      {groups.map((g) => (
+        <div key={g.key} className={g.name ? 'mb-2' : ''}>
+          {/* Where these came from. A work order that says "Cabin closing" is answerable; a bare
+              list of seven ticks is something you have to remember the shape of. */}
+          {g.name && (
+            <p className="mb-1 text-[11px] font-semibold text-ink-soft">
+              {g.name}
+              <span className="ml-1.5 font-normal text-ink-faint">
+                {g.items.filter((i) => i.isDone).length} of {g.items.length}
+              </span>
+            </p>
+          )}
+          <ul className="space-y-1.5">
+            {g.items.map((item) => (
+              <Step
+                key={item.id}
+                item={item}
+                uploading={uploadingId === item.id}
+                onToggle={() => toggle(item)}
+                onPhoto={(file) => attachPhoto(item, file)}
+                onRemove={() => removeChecklistStep(item.id)}
+              />
+            ))}
+          </ul>
+        </div>
+      ))}
+
+      {/* Available whatever is already on the job. It used to vanish the moment a step existed,
+          so a work order with one hand-typed line could never take a checklist again. */}
+      {unappliedTemplates.length > 0 && (
+        <div className="mt-2.5 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <select
+            value={templateId}
+            onChange={(e) => setTemplateId(e.target.value)}
+            className="w-full rounded-btn border border-border bg-white px-2 py-1.5 text-[13px] focus:border-sage focus:outline-none sm:flex-1"
+          >
+            <option value="">{items.length ? 'Add another checklist…' : 'Apply a checklist…'}</option>
+            {unappliedTemplates.map((t) => (
+              <option key={t.id} value={t.id}>{t.name} · {labelOf(t.trade)}</option>
+            ))}
+          </select>
+          <button
+            onClick={handleApply}
+            disabled={!templateId || applying}
+            className="rounded-btn bg-forest px-3 py-1.5 text-[12.5px] font-bold text-paper
+                       transition-colors hover:bg-forest-mid disabled:opacity-50"
+          >
+            {applying ? 'Applying…' : 'Apply'}
+          </button>
+        </div>
       )}
 
       {error && <p className="mt-2 text-[11.5px] text-red">{error}</p>}
@@ -179,17 +225,18 @@ function Step({ item, uploading, onToggle, onPhoto, onRemove }: {
   onRemove: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  // A step that wants proof and does not have it yet asks for the camera instead of the tick,
-  // because "beds made" ticked from the parking lot is what the requirement exists to prevent.
-  const needsPhotoFirst = item.requiresPhoto && !item.isDone && !item.photoUrl;
+  // A step can ask for a photo, and saying so is the whole job. It used to also refuse to tick
+  // without one, which meant a crew with no signal at the back of the property could not close
+  // out their morning -- so the ask is now visible and the tick is never blocked.
+  const wantsPhoto = item.requiresPhoto && !item.photoUrl;
 
   return (
     <li className="group flex items-start gap-2">
       <button
-        onClick={() => (needsPhotoFirst ? fileRef.current?.click() : onToggle())}
+        onClick={onToggle}
         disabled={uploading}
         aria-pressed={item.isDone}
-        title={needsPhotoFirst ? 'Take a photo to finish this step' : (item.isDone ? 'Untick' : 'Tick')}
+        title={item.isDone ? 'Untick' : 'Tick'}
         className={`mt-[3px] grid h-[17px] w-[17px] flex-none place-items-center rounded-[3px] border
                     transition-colors disabled:opacity-50 ${
           item.isDone ? 'border-forest bg-forest text-paper' : 'border-border bg-white hover:border-sage'
@@ -207,6 +254,18 @@ function Step({ item, uploading, onToggle, onPhoto, onRemove }: {
           {item.text}
         </p>
         {item.note && <p className="text-[11.5px] text-ink-soft">{item.note}</p>}
+        {wantsPhoto && (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-text
+                       hover:underline disabled:opacity-50"
+          >
+            <Camera className="h-3 w-3" aria-hidden="true" />
+            {item.isDone ? 'A photo was asked for' : 'Asks for a photo'}
+          </button>
+        )}
         {item.isDone && item.doneByName && (
           <p className="text-[11px] text-ink-faint">Done by {item.doneByName}</p>
         )}
@@ -226,7 +285,7 @@ function Step({ item, uploading, onToggle, onPhoto, onRemove }: {
           <button
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            title={item.photoUrl ? 'Replace the photo' : 'This step needs a photo'}
+            title={item.photoUrl ? 'Replace the photo' : 'Add the photo this step asks for'}
             className={`mt-0.5 flex-none transition-colors hover:text-forest disabled:opacity-50 ${
               item.photoUrl ? 'text-sage' : 'text-amber'
             }`}

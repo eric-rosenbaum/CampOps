@@ -2198,6 +2198,8 @@ export interface IssueChecklistItem {
   text: string;
   note: string | null;
   requiresPhoto: boolean;
+  /** The checklist this step came from, or null if somebody typed it on the job. */
+  templateId: string | null;
   isDone: boolean;
   doneBy: string | null;
   doneByName: string | null;

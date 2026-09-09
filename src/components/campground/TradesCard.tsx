@@ -30,6 +30,7 @@ export function TradesCard() {
   const trades = useCampgroundStore((s) => s.trades);
   const addTrade = useCampgroundStore((s) => s.addTrade);
   const updateTrade = useCampgroundStore((s) => s.updateTrade);
+  const deleteTrade = useCampgroundStore((s) => s.deleteTrade);
   const issues = useIssuesStore((s) => s.issues);
   const schedules = useCampgroundStore((s) => s.schedules);
   const currentCamp = useCampStore((s) => s.currentCamp);
@@ -41,6 +42,7 @@ export function TradesCard() {
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   // Derived from the raw slices, never inside a selector.
   const sorted = useMemo(
@@ -134,12 +136,12 @@ export function TradesCard() {
                 />
               ) : (
                 <span className="flex-1 min-w-0 text-[12px] text-ink-soft truncate">
-                  {used > 0 ? `${used} on the books` : 'Nothing filed under it yet'}
+                  {used > 0 ? `${used} on the books · retire only` : 'Nothing filed under it yet'}
                   {!t.isActive && ' · retired'}
                 </span>
               )}
 
-              {canEdit && editingId !== t.id && (
+              {canEdit && editingId !== t.id && confirmingId !== t.id && (
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
                     type="button"
@@ -157,6 +159,38 @@ export function TradesCard() {
                       : 'Offer it again on new work'}
                   >
                     {t.isActive ? 'Retire' : 'Bring back'}
+                  </button>
+                  {/* Deleting one that has been used would leave work orders pointing at a trade
+                      that no longer exists, so those can only be retired. */}
+                  {used === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingId(t.id)}
+                      className="text-[12px] font-semibold text-ink-soft hover:text-red px-1.5"
+                      title="Remove it completely"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {confirmingId === t.id && (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="text-[12px] text-ink-soft">Delete {t.label}?</span>
+                  <button
+                    type="button"
+                    onClick={() => { deleteTrade(t.id); setConfirmingId(null); }}
+                    className="text-[12px] font-semibold text-red hover:underline px-1"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingId(null)}
+                    className="text-[12px] font-semibold text-ink-soft hover:text-forest px-1"
+                  >
+                    Cancel
                   </button>
                 </div>
               )}

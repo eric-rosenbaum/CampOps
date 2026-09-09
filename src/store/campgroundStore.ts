@@ -23,7 +23,8 @@ import {
   dbAddTemplate, dbUpdateTemplate, dbDeleteTemplate,
   dbAddComment, dbDeleteComment, dbMarkThreadRead,
   dbSetChecklistItemDone, dbApplyChecklist, dbAddChecklistItem, dbDeleteChecklistItem,
-  dbAddTrade, dbUpdateTrade,
+  dbFetchChecklistItems,
+  dbAddTrade, dbUpdateTrade, dbDeleteTrade,
 } from '@/lib/campgroundDb';
 
 /** The board's lane filter. `all` is the default so nobody is hidden from anyone's work. */
@@ -52,6 +53,8 @@ interface CampgroundState {
   /** Returns an error message, or null on success — a duplicate key is a real answer. */
   addTrade: (t: CampTrade) => Promise<string | null>;
   updateTrade: (t: CampTrade) => void;
+  /** Only safe when nothing has ever been filed under it — the card enforces that. */
+  deleteTrade: (id: string) => void;
   setChecklistItems: (i: IssueChecklistItem[]) => void;
   setComments: (c: IssueComment[]) => void;
   setSessions: (s: CampSession[]) => void;
@@ -105,6 +108,10 @@ export const useCampgroundStore = create<CampgroundState>((set, get) => ({
   updateTrade: (t) => {
     set((s) => ({ trades: s.trades.map((x) => (x.id === t.id ? t : x)) }));
     void dbUpdateTrade(t);
+  },
+  deleteTrade: (id) => {
+    set((s) => ({ trades: s.trades.filter((x) => x.id !== id) }));
+    void dbDeleteTrade(id);
   },
   setChecklistItems: (checklistItems) => set({ checklistItems }),
   setComments: (comments) => set({ comments }),
@@ -183,9 +190,15 @@ export const useCampgroundStore = create<CampgroundState>((set, get) => ({
 
   // ── Checklists ─────────────────────────────────────────────────────────────
   applyTemplate: async (issueId, templateId) => {
-    await dbApplyChecklist(issueId, templateId);
-    // Realtime brings the rows back; nothing optimistic here, because the server decides the
-    // positions and refuses to apply a template twice.
+    const n = await dbApplyChecklist(issueId, templateId);
+    if (n === 0) return;
+    // Read the steps straight back rather than waiting to be told about them. The server picks
+    // the positions and refuses to apply a template twice, so there is nothing to guess -- and
+    // a checklist that appears a beat after you asked for it reads as one that did not apply.
+    const items = await dbFetchChecklistItems(issueId);
+    set((s) => ({
+      checklistItems: [...s.checklistItems.filter((i) => i.issueId !== issueId), ...items],
+    }));
   },
   tickChecklistItem: (id, isDone, by, photoUrl) => {
     set((s) => ({
@@ -203,7 +216,7 @@ export const useCampgroundStore = create<CampgroundState>((set, get) => ({
     const existing = get().checklistItems.filter((i) => i.issueId === issueId);
     const item: IssueChecklistItem = {
       id: generateId(), campId: '', issueId,
-      position: existing.length, text, note: null, requiresPhoto: false,
+      position: existing.length, text, note: null, requiresPhoto: false, templateId: null,
       isDone: false, doneBy: null, doneByName: null, doneAt: null, photoUrl: null,
       createdAt: new Date().toISOString(),
     };

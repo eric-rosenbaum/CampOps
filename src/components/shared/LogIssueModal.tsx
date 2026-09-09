@@ -405,15 +405,14 @@ export function LogIssueModal() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className={labelClass}>Priority *</label>
-            <select {...register('priority', { required: true })} className={inputClass}>
-              <option value="normal">Normal</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
-          </div>
+        {/* A two-column grid with one thing in it, which read as a half-finished row. */}
+        <div>
+          <label className={labelClass}>Priority *</label>
+          <select {...register('priority', { required: true })} className={inputClass}>
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
         </div>
 
         <div>

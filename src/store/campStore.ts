@@ -69,6 +69,8 @@ export interface Camp {
   defaultPricingModel: string | null;
   defaultRatePerPersonNight: number | null;
   defaultFlatRate: number | null;
+  /** Seeds the deposit on a new quote. */
+  defaultDepositAmount: number | null;
   /** Seeded into every new proposal, so terms are written once. */
   proposalTerms: string | null;
   /** How long a quote stands. Null means 30. */
@@ -99,6 +101,7 @@ function rowToCamp(c: Record<string, unknown>): Camp {
     defaultPricingModel: (c.default_pricing_model as string) ?? null,
     defaultRatePerPersonNight: (c.default_rate_per_person_night as number) ?? null,
     defaultFlatRate: (c.default_flat_rate as number) ?? null,
+    defaultDepositAmount: (c.default_deposit_amount as number) ?? null,
     proposalTerms: (c.proposal_terms as string) ?? null,
     proposalValidDays: (c.proposal_valid_days as number) ?? null,
     accountType: (c.account_type as CampAccountType) ?? 'customer',
@@ -168,7 +171,7 @@ interface CampState {
   setRetreatPaymentNote: (campId: string, note: string | null) => Promise<void>;
   /** Write any part of the camp's rate card / proposal defaults. */
   setRentalDefaults: (campId: string, patch: Partial<Pick<Camp,
-    'defaultPricingModel' | 'defaultRatePerPersonNight' | 'defaultFlatRate'
+    'defaultPricingModel' | 'defaultRatePerPersonNight' | 'defaultFlatRate' | 'defaultDepositAmount'
     | 'proposalTerms' | 'proposalValidDays'>>) => Promise<void>;
 
   loadMembers: (campId: string) => Promise<MemberWithProfile[]>;
@@ -382,6 +385,7 @@ export const useCampStore = create<CampState>((set, get) => ({
     if (patch.defaultPricingModel !== undefined) row.default_pricing_model = patch.defaultPricingModel;
     if (patch.defaultRatePerPersonNight !== undefined) row.default_rate_per_person_night = patch.defaultRatePerPersonNight;
     if (patch.defaultFlatRate !== undefined) row.default_flat_rate = patch.defaultFlatRate;
+    if (patch.defaultDepositAmount !== undefined) row.default_deposit_amount = patch.defaultDepositAmount;
     if (patch.proposalTerms !== undefined) row.proposal_terms = patch.proposalTerms;
     if (patch.proposalValidDays !== undefined) row.proposal_valid_days = patch.proposalValidDays;
     const { error } = await supabase.from('camps').update(row).eq('id', campId);

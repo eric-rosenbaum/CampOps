@@ -14,7 +14,8 @@ import { useAuth } from '@/lib/auth';
 import type { RetreatInvoiceLine, RetreatProposal } from '@/lib/types';
 import { dbAddProposal, dbUpdateProposal, fetchProposalLines } from '@/lib/retreatsDb';
 import { generateId, parseDateStr, todayStr } from '@/lib/utils';
-import { money, inputClass, labelClass, fmtRange } from './retreatUi';
+import { money, inputClass, labelClass, fmtRange, fmtDateFull } from './retreatUi';
+import { sendEmail } from '@/lib/email';
 
 const now = () => new Date().toISOString();
 
@@ -41,7 +42,8 @@ interface Props {
 export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
   const currentCamp = useCampStore((s) => s.currentCamp);
   const setRentalDefaults = useCampStore((s) => s.setRentalDefaults);
-  const { proposals, setProposals, retreatById } = useRetreatStore();
+  const { proposals, setProposals, retreatById, portalUrl } = useRetreatStore();
+  const campName = currentCamp?.name ?? 'the camp';
   const { can, currentUser } = useAuth();
   const canManage = can('manageRetreats');
 
@@ -53,7 +55,13 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
   const [terms, setTerms] = useState(existing?.terms ?? currentCamp?.proposalTerms ?? DEFAULT_TERMS);
   const [validUntil, setValidUntil] = useState(
     existing?.validUntil ?? addDays(todayStr(), currentCamp?.proposalValidDays ?? 30));
+  const [deposit, setDeposit] = useState(() => {
+    const v = existing?.depositAmount ?? currentCamp?.defaultDepositAmount;
+    return v != null ? String(v) : '';
+  });
   const [loading, setLoading] = useState(!existing);
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [termsSaved, setTermsSaved] = useState(false);
 
   const savedTerms = (currentCamp?.proposalTerms ?? '').trim();
@@ -117,9 +125,81 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
       declinedAt: existing?.declinedAt ?? null,
       declineReason: existing?.declineReason ?? null,
       createdBy: existing?.createdBy ?? (currentUser.id || null),
+      // The quote records the price it was built on, so accepting can write it onto the booking
+      // and every later invoice agrees with what the group actually said yes to.
+      depositAmount: deposit.trim() === '' ? null : Number(deposit),
+      pricingModel: retreat?.pricingModel ?? currentCamp?.defaultPricingModel ?? null,
+      ratePerPersonNight: retreat?.ratePerPersonNight ?? currentCamp?.defaultRatePerPersonNight ?? null,
+      flatRate: retreat?.flatRate ?? currentCamp?.defaultFlatRate ?? null,
       createdAt: existing?.createdAt ?? ts,
       updatedAt: ts,
     };
+  }
+
+  /** The quote as an email: the lines, the total, the deposit, and the link to accept it. */
+  function proposalEmailHtml(p: RetreatProposal, url: string): string {
+    const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+    const rows = p.lineItems.map((l) => `
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #e7e2d6">${esc(l.description)}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #e7e2d6;text-align:right;white-space:nowrap">${money(l.amount)}</td>
+      </tr>`).join('');
+    return `<div style="font-family:-apple-system,Segoe UI,sans-serif;font-size:15px;line-height:1.6;color:#1a2e1a;max-width:560px">
+      <p>Hello,</p>
+      <p>${esc(campName)} has put together a quote for <strong>${esc(retreat?.groupName ?? 'your stay')}</strong>${
+        retreat ? `, ${esc(fmtRange(retreat.arrivalDate, retreat.departureDate))}` : ''}.</p>
+      ${p.intro ? `<p>${esc(p.intro).replace(/\n/g, '<br>')}</p>` : ''}
+      <table style="width:100%;border-collapse:collapse;margin:18px 0">
+        ${rows}
+        <tr>
+          <td style="padding:10px 0;font-weight:700">Total</td>
+          <td style="padding:10px 0;text-align:right;font-weight:700">${money(p.total)}</td>
+        </tr>
+        ${p.depositAmount ? `<tr>
+          <td style="padding:2px 0;color:#5a6b5a">Deposit to hold the dates</td>
+          <td style="padding:2px 0;text-align:right;color:#5a6b5a">${money(p.depositAmount)}</td>
+        </tr>` : ''}
+      </table>
+      ${p.validUntil ? `<p style="color:#5a6b5a;font-size:13px">This quote stands until ${esc(fmtDateFull(p.validUntil))}.</p>` : ''}
+      <p style="margin:24px 0">
+        <a href="${url}" style="background:#2f4f2f;color:#fdfcf7;text-decoration:none;font-size:15px;font-weight:600;padding:12px 22px;border-radius:8px;display:inline-block">
+          Review and accept
+        </a>
+      </p>
+      ${p.terms ? `<p style="font-size:13px;color:#5a6b5a;border-top:1px solid #e7e2d6;padding-top:14px">${esc(p.terms).replace(/\n/g, '<br>')}</p>` : ''}
+    </div>`;
+  }
+
+  /** Save it as sent, then actually send it. */
+  async function sendToGroup() {
+    if (!canManage || !retreat) return;
+    const to = retreat.coordinatorEmail?.trim();
+    if (!to) {
+      setSendResult({ ok: false, text: 'No coordinator email on this booking. Add one under Contacts.' });
+      return;
+    }
+    setSending(true);
+    setSendResult(null);
+    const p = build('sent');
+    if (existing) { setProposals(proposals.map((x) => (x.id === p.id ? p : x))); await dbUpdateProposal(p); }
+    else { setProposals([p, ...proposals]); await dbAddProposal(p); }
+
+    const res = await sendEmail({
+      to,
+      subject: `Your quote from ${campName}`,
+      html: proposalEmailHtml(p, portalUrl(retreat)),
+      fromName: campName,
+      replyTo: currentUser.email || undefined,
+    });
+    setSending(false);
+    if (!res.ok) {
+      // The proposal is saved and marked sent either way; only the email failed, and saying so
+      // beats leaving the camp to guess whether the group got it.
+      setSendResult({ ok: false, text: `Saved, but the email did not go: ${res.error}` });
+      return;
+    }
+    setSendResult({ ok: true, text: `Sent to ${to}.` });
+    setTimeout(onClose, 1200);
   }
 
   function save(status: RetreatProposal['status']) {
@@ -206,6 +286,16 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
+            <label className={labelClass}>Deposit to hold the dates</label>
+            <input
+              inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)}
+              className={inputClass} placeholder="0"
+            />
+            <p className="text-[11px] text-ink-soft mt-1">
+              Set on the booking when they accept.
+            </p>
+          </div>
+          <div>
             <label className={labelClass}>Valid until</label>
             <input
               type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)}
@@ -243,10 +333,18 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
         <Button variant="ghost" onClick={() => save('draft')} disabled={!canManage || loading}>
           Save draft
         </Button>
-        <Button onClick={() => save('sent')} disabled={!canManage || loading || lines.length === 0}>
-          <Send className="w-4 h-4" /> Mark sent
+        <Button variant="ghost" onClick={() => save('sent')} disabled={!canManage || loading || lines.length === 0}>
+          Mark sent
+        </Button>
+        <Button onClick={sendToGroup} disabled={!canManage || loading || sending || lines.length === 0}>
+          <Send className="w-4 h-4" /> {sending ? 'Sending…' : 'Send to the group'}
         </Button>
       </div>
+      {sendResult && (
+        <p className={`text-[12.5px] mt-2 text-right ${sendResult.ok ? 'text-green-muted-text' : 'text-red-text'}`}>
+          {sendResult.text}
+        </p>
+      )}
     </Modal>
   );
 }

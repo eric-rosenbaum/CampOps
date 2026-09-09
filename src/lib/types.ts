@@ -2373,6 +2373,12 @@ export type ProposalStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'decline
  * follow-up call.
  */
 export interface RetreatProposal {
+  /** What this quote asks for up front. Written onto the booking when the group accepts. */
+  depositAmount: number | null;
+  /** The price the quote was built on, so an accepted quote can set the booking's rate. */
+  pricingModel: string | null;
+  ratePerPersonNight: number | null;
+  flatRate: number | null;
   id: string;
   campId: string;
   retreatId: string;

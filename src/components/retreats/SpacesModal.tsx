@@ -93,7 +93,7 @@ export function SpacesModal() {
   }, [locations]);
 
   return (
-    <Modal title="Retreat dorms & rooms" onClose={closeModal} width="600px">
+    <Modal title="Retreat spaces" onClose={closeModal} width="600px">
       <p className="text-[12px] text-ink-soft -mt-2 mb-4">
         Dorms come from Camp Info → Locations. Toggle which buildings are available to retreat groups, then set beds per room. Block a room to take it out of rotation.
       </p>
@@ -107,9 +107,127 @@ export function SpacesModal() {
         {dorms.map((d) => <BuildingBlock key={d.id} building={d} rooms={roomsByBuilding.get(d.id) ?? []} canManage={canManage} />)}
       </div>
 
+      <div className="border-t border-border pt-5 mb-2">
+        <ProgramSpacesBlock canManage={canManage} />
+      </div>
+
       <div className="flex justify-end pt-4">
         <Button variant="ghost" onClick={closeModal}>Done</Button>
       </div>
     </Modal>
+  );
+}
+
+/**
+ * Meeting spaces, and what a group is told about them.
+ *
+ * These had no editor at all: program_space and capacity_seated were set by the seed and there
+ * was no way to add one, describe it, change its seating or take it out of the list. A group
+ * choosing where to run a session was picking from a fixed list of names with a number beside
+ * them, and the camp could not say what any of them actually was.
+ */
+function ProgramSpacesBlock({ canManage }: { canManage: boolean }) {
+  const locations = useLocationStore((s) => s.locations);
+  const updateLocation = useLocationStore((s) => s.updateLocation);
+
+  const candidates = useMemo(
+    () => locations.filter((l) => l.isActive && !l.isDorm)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
+    [locations],
+  );
+  const chosen = candidates.filter((l) => l.programSpace);
+  const rest = candidates.filter((l) => !l.programSpace);
+  const [adding, setAdding] = useState(false);
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2 mb-2">
+        <h3 className="font-display text-[14px] font-bold text-forest">Meeting spaces</h3>
+        {canManage && rest.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setAdding((v) => !v)}
+            className="text-[12px] font-semibold text-forest underline"
+          >
+            {adding ? 'Done adding' : 'Add a space'}
+          </button>
+        )}
+      </div>
+      <p className="text-[12px] text-ink-soft mb-3">
+        What a group can ask for, and what they are told it is.
+      </p>
+
+      {adding && (
+        <div className="mb-3 rounded-card border border-border bg-cream p-3">
+          <p className="text-[11.5px] font-semibold uppercase tracking-wide text-ink-faint mb-2">
+            Offer one of your locations
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {rest.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => updateLocation({ ...l, programSpace: true })}
+                className="rounded-full border border-border bg-white px-2.5 py-1 text-[12.5px] text-ink hover:border-sage"
+              >
+                + {l.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {chosen.length === 0 ? (
+        <p className="rounded-card border border-border bg-cream px-4 py-5 text-center text-[13px] text-ink-faint">
+          No meeting spaces offered yet.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {chosen.map((l) => (
+            <div key={l.id} className="rounded-card border border-border bg-white p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[13.5px] font-semibold text-forest">{l.name}</span>
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={() => updateLocation({ ...l, programSpace: false })}
+                    className="text-[12px] text-ink-soft hover:text-red"
+                  >
+                    Stop offering
+                  </button>
+                )}
+              </div>
+              <div className="mt-2 grid grid-cols-1 sm:grid-cols-[7rem_1fr] gap-2">
+                <label className="flex flex-col gap-1">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-wide text-ink-faint">Seats</span>
+                  <input
+                    inputMode="numeric"
+                    value={l.capacitySeated ?? ''}
+                    disabled={!canManage}
+                    onChange={(e) => updateLocation({
+                      ...l,
+                      capacitySeated: e.target.value.trim() === '' ? null : Number(e.target.value),
+                    })}
+                    className="w-full rounded-btn border border-border bg-white px-2.5 py-1.5 text-[13px] focus:border-sage focus:outline-none"
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-wide text-ink-faint">
+                    What it is
+                  </span>
+                  <input
+                    value={l.notes ?? ''}
+                    disabled={!canManage}
+                    placeholder="e.g. Fireplace, projector, opens onto the deck"
+                    onChange={(e) => updateLocation({ ...l, notes: e.target.value || null })}
+                    className="w-full rounded-btn border border-border bg-white px-2.5 py-1.5 text-[13px] focus:border-sage focus:outline-none"
+                  />
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

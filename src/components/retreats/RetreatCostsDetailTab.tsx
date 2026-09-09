@@ -127,9 +127,16 @@ export function RetreatCostsDetailTab() {
             </div>
           </div>
           {canManage && depositReq > 0 && !depositOk && (
-            <Button size="sm" onClick={() => openModal({ kind: 'payment', retreatId: r.id, defaultKind: 'deposit' })}>
-              <Plus className="w-3.5 h-3.5" /> Log deposit
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Chasing it is the other half of the job; the money screen is where you notice. */}
+              <Button size="sm" variant="ghost"
+                onClick={() => openModal({ kind: 'sendReminder', retreatId: r.id, reminderType: 'deposit' })}>
+                Send reminder
+              </Button>
+              <Button size="sm" onClick={() => openModal({ kind: 'payment', retreatId: r.id, defaultKind: 'deposit' })}>
+                <Plus className="w-3.5 h-3.5" /> Log deposit
+              </Button>
+            </div>
           )}
         </div>
 

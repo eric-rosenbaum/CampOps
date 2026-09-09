@@ -47,6 +47,12 @@ const REMINDER_TYPES: ReminderType[] = [
       `Hi ${r?.coordinatorName ?? 'there'},\n\nPlease confirm your final headcount for ${r?.groupName ?? 'your group'}${r?.headcountCutoff ? ` by ${fmtDateFull(r.headcountCutoff)}` : ''}. This lets us finalize meals, housing, and staffing. Current count on file: ${r?.headcount ?? '-'}.\n\nThanks!`,
   },
   {
+    value: 'proposal',
+    label: 'Proposal awaiting an answer',
+    message: (r) =>
+      `Hi ${r?.coordinatorName ?? 'there'},\n\nJust following up on the quote we sent for ${r?.groupName ?? 'your group'}${r ? ` (${fmtRange(r.arrivalDate, r.departureDate)})` : ''}. It is in your guest portal whenever you are ready, and you can accept it there. Happy to talk through any of it.\n\nThank you!`,
+  },
+  {
     value: 'custom',
     label: 'Custom',
     message: () => '',

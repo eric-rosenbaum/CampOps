@@ -113,7 +113,7 @@ function statusTone(p: RetreatProposal, expired: boolean): { tone: BadgeTone; la
 }
 
 export function ProposalsPanel({ retreatId }: { retreatId: string }) {
-  const { proposals, setProposals, retreatById, portalUrl } = useRetreatStore();
+  const { proposals, setProposals, retreatById, portalUrl, openModal } = useRetreatStore();
   const { currentCamp } = useCampStore();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
@@ -170,13 +170,24 @@ export function ProposalsPanel({ retreatId }: { retreatId: string }) {
               ? <><Eye className="w-4 h-4 text-blue" /> Opened {fmtOpened(current.viewedAt)}</>
               : <><EyeOff className="w-4 h-4 text-ink-faint" /> Not opened yet</>}
           </p>
-          <p className="text-[11.5px] text-ink-soft mt-0.5">
-            {current.viewedAt
-              ? 'They have read v' + current.version + '. A call converts better than a second email.'
-              : current.sentAt
-                ? 'Sent ' + fmtOpened(current.sentAt) + '.'
-                : 'Send it and this will start tracking.'}
-          </p>
+          <div className="flex items-end justify-between gap-3 flex-wrap">
+            <p className="text-[11.5px] text-ink-soft mt-0.5">
+              {current.viewedAt
+                ? 'They have read v' + current.version + '. A call converts better than a second email.'
+                : current.sentAt
+                  ? 'Sent ' + fmtOpened(current.sentAt) + '.'
+                  : 'Send it and this will start tracking.'}
+            </p>
+            {/* The nudge belongs where you learn it is needed. */}
+            {canManage && current.sentAt && !current.acceptedAt && !current.declinedAt && (
+              <Button
+                size="sm" variant="ghost"
+                onClick={() => openModal({ kind: 'sendReminder', retreatId, reminderType: 'proposal' })}
+              >
+                Send reminder
+              </Button>
+            )}
+          </div>
         </div>
       )}
 

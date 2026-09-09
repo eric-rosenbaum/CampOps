@@ -124,9 +124,6 @@ export function RentalsReview({ from: initialFrom, to: initialTo }: Props) {
       <div className="no-print flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
         <div>
           <h2 className="font-display text-page-title font-bold text-forest">Rentals review</h2>
-          <p className="text-[12.5px] text-ink-soft">
-            The season the way a board asks about it: occupancy, money, and what it cost to host.
-          </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <div>
@@ -205,7 +202,7 @@ export function RentalsReview({ from: initialFrom, to: initialTo }: Props) {
                 value={occ.out_of_service_beds.toLocaleString()}
                 variant={occ.out_of_service_beds > 0 ? 'amber' : 'default'}
                 hint={occ.out_of_service_beds > 0
-                  ? 'not sellable — a maintenance number, not a sales one'
+                  ? 'not sellable'
                   : 'every bed sellable'}
               />
             </div>
@@ -329,11 +326,6 @@ export function RentalsReview({ from: initialFrom, to: initialTo }: Props) {
           {/* ── Where groups come from ──────────────────────────────────────── */}
           <section className="print-break">
             <h3 className="font-display text-[16px] font-bold text-forest mb-1">Where groups come from</h3>
-            <p className="text-[12px] text-ink-soft mb-3">
-              The returning-group percentage is the health of a rental business in one number: a
-              camp that has to win every group again each year is running a sales operation, not a
-              venue.
-            </p>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 content-start">
@@ -419,9 +411,7 @@ export function RentalsReview({ from: initialFrom, to: initialTo }: Props) {
               )}
             </div>
             <p className="text-[12px] text-ink-soft mt-2">
-              These last three columns exist only because the maintenance board and the rental book
-              are one system: the work orders a group's stay generated are counted against that
-              group. Nobody else can tell a camp what a rental group actually cost to host.
+              Work orders a group's stay generated, counted against that group.
             </p>
           </section>
 

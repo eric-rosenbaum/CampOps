@@ -151,7 +151,6 @@ export function ProposalsPanel({ retreatId }: { retreatId: string }) {
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
         <div>
           <h3 className="text-[13px] font-semibold text-forest">Proposals</h3>
-          <p className="text-[11.5px] text-ink-soft">What you quoted, and whether they opened it.</p>
         </div>
         {canManage && (
           <Button size="sm" variant="ghost" onClick={() => setModal({})}>
@@ -173,7 +172,7 @@ export function ProposalsPanel({ retreatId }: { retreatId: string }) {
             {current.viewedAt
               ? 'They have read v' + current.version + '. A call converts better than a second email.'
               : current.sentAt
-                ? 'Sent ' + fmtOpened(current.sentAt) + '. If it stays unopened, check the address before chasing.'
+                ? 'Sent ' + fmtOpened(current.sentAt) + '.'
                 : 'Send it and this will start tracking.'}
           </p>
         </div>
@@ -197,7 +196,7 @@ export function ProposalsPanel({ retreatId }: { retreatId: string }) {
 
       {list.length === 0 ? (
         <p className="px-4 py-6 text-[12.5px] text-ink-faint text-center">
-          No proposal yet. The lines build themselves from the rate card.
+          No proposal yet.
         </p>
       ) : (
         <ul className="divide-y divide-border">
@@ -261,8 +260,7 @@ export function ProposalsPanel({ retreatId }: { retreatId: string }) {
 
       {retreat && (
         <p className="px-4 py-2.5 border-t border-border text-[11px] text-ink-faint">
-          {fmtRange(retreat.arrivalDate, retreat.departureDate)} · a new version never overwrites the
-          old one, so what you quoted in March is still there in August.
+          {fmtRange(retreat.arrivalDate, retreat.departureDate)} 
         </p>
       )}
 

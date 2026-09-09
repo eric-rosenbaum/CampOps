@@ -270,7 +270,7 @@ export function SpaceRequestModal({
             className={`${inputClass} resize-y`}
             placeholder="Chairs are stacked in the back closet…"
           />
-          <p className="text-[11px] text-ink-faint mt-1">Added beside the group's words, never over them.</p>
+          <p className="text-[11px] text-ink-faint mt-1">Added beside the group's words.</p>
         </div>
 
         <div className="flex gap-2 pt-1">

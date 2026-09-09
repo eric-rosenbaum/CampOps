@@ -68,7 +68,6 @@ export function ContactsPanel({ retreatId }: { retreatId: string }) {
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
         <div>
           <h3 className="text-[13px] font-semibold text-forest">Contacts</h3>
-          <p className="text-[11.5px] text-ink-soft">Everyone who speaks for this group.</p>
         </div>
         {canManage && editing == null && (
           <Button size="sm" variant="ghost" onClick={() => setEditing('new')}>

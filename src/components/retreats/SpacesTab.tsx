@@ -108,9 +108,7 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
             : requests.length === 0 ? 'No program spaces requested yet' : 'Every request has an answer'}
         </p>
         <p className={`text-[12px] leading-relaxed ${pending > 0 ? 'text-amber-text' : 'text-forest/80'}`}>
-          Approving a request writes two work orders into the housekeeping queue — a set-up
-          before the session and a strike after it — carrying the group's own set-up notes
-          through to the person doing the work.
+          Approving writes a set-up and a strike, carrying the group's notes.
         </p>
       </div>
 

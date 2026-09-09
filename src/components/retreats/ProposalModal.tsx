@@ -197,7 +197,7 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
               className={inputClass}
             />
             <p className="text-[11px] text-ink-soft mt-1">
-              After this date the portal refuses the accept button and tells them to ask for a new one.
+              After this date they cannot accept it.
             </p>
           </div>
         </div>

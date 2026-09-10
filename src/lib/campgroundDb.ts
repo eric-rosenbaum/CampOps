@@ -102,6 +102,7 @@ export function rowToComment(r: Row): IssueComment {
     authorId: s(r.author_id), authorName: (r.author_name as string) ?? 'Someone',
     body: (r.body as string) ?? '',
     photoUrls: (r.photo_urls as string[]) ?? [],
+    mentions: (r.mentions as string[]) ?? [],
     visibleToReporter: Boolean(r.visible_to_reporter),
     createdAt: r.created_at as string, editedAt: s(r.edited_at), deletedAt: s(r.deleted_at),
   };
@@ -378,6 +379,7 @@ export async function dbAddComment(c: IssueComment) {
   const { error } = await supabase.from('issue_comments').insert({
     id: c.id, camp_id: CID(), issue_id: c.issueId, author_id: c.authorId,
     author_name: c.authorName, body: c.body, photo_urls: c.photoUrls,
+    mentions: c.mentions ?? [],
     visible_to_reporter: c.visibleToReporter, created_at: c.createdAt,
   });
   if (error) campError('add comment', error.message);

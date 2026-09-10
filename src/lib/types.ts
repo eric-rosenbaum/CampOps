@@ -2244,6 +2244,14 @@ export interface IssueComment {
   authorName: string;
   body: string;
   photoUrls: string[];
+  /**
+   * Who this message names with @.
+   *
+   * Ids, not names parsed back out of the text: a name stops resolving the day someone is
+   * renamed or two Sarahs work the same season. Being named here puts the thread in that
+   * person's Campground banner even if the work is not theirs and they have never posted in it.
+   */
+  mentions: string[];
   /** Off by default: a camp talking to itself must not accidentally publish that to a scanner. */
   visibleToReporter: boolean;
   createdAt: string;

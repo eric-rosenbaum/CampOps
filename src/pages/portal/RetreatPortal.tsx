@@ -4,7 +4,7 @@ import {
   CalendarDays, Users, User, Moon, AlertCircle, CheckCircle2, FileText,
   PenLine, ShieldCheck, BedDouble, UtensilsCrossed, MessageSquarePlus,
   Star, Clock, Trash2, Send, Lock, ClipboardList, Loader2,
-  Circle, ChevronRight, Wallet, UploadCloud, DollarSign, Bell, X, Check,
+  Circle, ChevronRight, Wallet, UploadCloud, DollarSign, Bell, X, Check, CreditCard,
 } from 'lucide-react';
 import {
   money, fmtDateFull, fmtRange, nights, MEAL_PERIOD_LABELS,
@@ -727,7 +727,7 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
         return (
           <div className="space-y-3">
             <PaySection token={token} paymentNote={data.payment_note ?? null} only="balance" />
-            {invoices.length > 0 && <InvoicesBlock retreat={retreat} invoices={invoices} cardsOn={cardsOn} />}
+            {invoices.length > 0 && <InvoicesBlock retreat={retreat} invoices={invoices} cardsOn={cardsOn} paymentNote={data.payment_note ?? null} />}
           </div>
         );
       case 'housing':
@@ -1012,7 +1012,19 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
                     </div>
                   )}
 
-                  {invoices.length > 0 && <InvoicesBlock retreat={retreat} invoices={invoices} cardsOn={cardsOn} />}
+                  {invoices.length > 0 && (
+                    <InvoicesBlock
+                      retreat={retreat} invoices={invoices} cardsOn={cardsOn}
+                      paymentNote={data.payment_note ?? null}
+                      onPay={() => setOpenStep(
+                        // An unpaid deposit is the step that takes it; once that is settled the
+                        // balance step is the one holding a Pay button.
+                        (retreat.deposit_required ?? 0) > 0
+                        && (retreat.deposit_received ?? 0) < (retreat.deposit_required ?? 0)
+                          ? 'deposit' : 'balance',
+                      )}
+                    />
+                  )}
                 </div>
               </div>
             </Section>
@@ -1133,7 +1145,18 @@ function DepositCard({ retreat, cardsOn }: { retreat: PortalRetreat; cardsOn: bo
 }
 
 // ─── Invoices block ───────────────────────────────────────────────────────────
-function InvoicesBlock({ retreat, invoices, cardsOn }: { retreat: PortalRetreat; invoices: PortalInvoice[]; cardsOn: boolean }) {
+function InvoicesBlock({ retreat, invoices, cardsOn, paymentNote, onPay }: {
+  retreat: PortalRetreat; invoices: PortalInvoice[]; cardsOn: boolean; paymentNote: string | null;
+  /** Opens the Pay step. Omitted where this block already sits inside it. */
+  onPay?: () => void;
+}) {
+  /**
+   * Where the money actually gets paid.
+   *
+   * An unpaid invoice offering only "Download PDF" reads as "you cannot pay here" -- which was
+   * false, since the Pay step above takes a card. The card now says how to settle it, either way.
+   */
+  const [showDirect, setShowDirect] = useState(false);
   function download(inv: PortalInvoice) {
     const ok = printInvoice({
       campName: retreat.camp_name ?? 'Camp', groupName: retreat.group_name,
@@ -1167,15 +1190,39 @@ function InvoicesBlock({ retreat, invoices, cardsOn }: { retreat: PortalRetreat;
                   {inv.number}{inv.due_date ? ` · due ${fmtDateFull(inv.due_date)}` : ''}
                 </p>
                 {inv.note && <p className="text-[12px] text-ink-soft mt-1.5 leading-relaxed">{inv.note}</p>}
-                <button onClick={() => download(inv)} className="mt-2.5 text-[13px] font-semibold text-forest inline-flex items-center gap-1.5 hover:text-forest-mid">
-                  <FileText className="w-3.5 h-3.5" /> Download PDF
-                </button>
+                <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  {!paid && cardsOn && onPay && (
+                    <button onClick={onPay} className="text-[13px] font-semibold text-forest inline-flex items-center gap-1.5 hover:text-forest-mid">
+                      <CreditCard className="w-3.5 h-3.5" /> Pay by card
+                    </button>
+                  )}
+                  {!paid && (
+                    <button
+                      onClick={() => setShowDirect((v) => !v)}
+                      className="text-[13px] font-semibold text-forest inline-flex items-center gap-1.5 hover:text-forest-mid"
+                    >
+                      {showDirect ? 'Hide' : 'Pay the camp directly'}
+                    </button>
+                  )}
+                  <button onClick={() => download(inv)} className="text-[13px] font-semibold text-forest inline-flex items-center gap-1.5 hover:text-forest-mid">
+                    <FileText className="w-3.5 h-3.5" /> Download PDF
+                  </button>
+                </div>
+                {!paid && showDirect && (
+                  <div className="mt-2.5 rounded-card border border-border bg-cream px-3.5 py-2.5">
+                    <p className="text-[12.5px] text-ink leading-relaxed whitespace-pre-line">
+                      {paymentNote?.trim()
+                        ? paymentNote
+                        : 'Contact your coordinator to arrange payment by cheque or transfer.'}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         );
       })}
-      {!cardsOn && <p className="text-[11px] text-ink-faint px-1">Payment is handled directly with the camp. Contact your coordinator to pay.</p>}
+
     </div>
   );
 }

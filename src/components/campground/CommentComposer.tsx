@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Camera, Send, X } from 'lucide-react';
 import type { Issue } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
 import { useCampgroundStore } from '@/store/campgroundStore';
+import { useCampStore } from '@/store/campStore';
 import { dbUploadPhoto } from '@/lib/db';
 import { generateId } from '@/lib/utils';
 
@@ -39,6 +40,62 @@ export function CommentComposer({ issue }: Props) {
   const canReachReporter = issue.isPublicReport && Boolean(issue.reporterToken);
 
   const fileRef = useRef<HTMLInputElement>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  /**
+   * Who has been named, by id.
+   *
+   * Kept alongside the text rather than parsed back out of it on send: two people called Sarah
+   * would be one ambiguous string, and a rename would orphan the mention. The text carries the
+   * name for reading; this carries who was meant.
+   */
+  const [mentioned, setMentioned] = useState<{ id: string; name: string }[]>([]);
+  /** The @… fragment being typed, or null. Drives the picker. */
+  const [query, setQuery] = useState<{ from: number; text: string } | null>(null);
+  const [highlight, setHighlight] = useState(0);
+
+  const members = useCampStore((s) => s.members);
+  const candidates = useMemo(() => {
+    if (!query) return [];
+    const q = query.text.toLowerCase();
+    return members
+      .filter((m) => m.isActive && m.role !== 'viewer' && m.userId !== currentUser.id)
+      .filter((m) => (m.displayName ?? m.fullName ?? '').toLowerCase().includes(q))
+      .slice(0, 6);
+  }, [members, query, currentUser.id]);
+
+  /**
+   * Spot an @ the caret is still inside.
+   *
+   * Only fires on an @ that starts a word, so an email address typed into a message does not
+   * open a people picker halfway through it.
+   */
+  function syncQuery(text: string, caret: number) {
+    const upto = text.slice(0, caret);
+    const at = upto.lastIndexOf('@');
+    if (at === -1) { setQuery(null); return; }
+    if (at > 0 && !/\s/.test(upto[at - 1])) { setQuery(null); return; }
+    const frag = upto.slice(at + 1);
+    if (/[\n]/.test(frag)) { setQuery(null); return; }
+    setQuery({ from: at, text: frag });
+    setHighlight(0);
+  }
+
+  function choose(m: { userId: string; displayName: string | null; fullName: string | null }) {
+    if (!query) return;
+    const name = m.displayName ?? m.fullName ?? 'Someone';
+    const before = body.slice(0, query.from);
+    const after = body.slice(query.from + 1 + query.text.length);
+    const next = `${before}@${name}${after.startsWith(' ') ? '' : ' '}${after}`;
+    setBody(next);
+    setMentioned((xs) => (xs.some((x) => x.id === m.userId) ? xs : [...xs, { id: m.userId, name }]));
+    setQuery(null);
+    requestAnimationFrame(() => {
+      const pos = before.length + 1 + name.length + 1;
+      taRef.current?.focus();
+      taRef.current?.setSelectionRange(pos, pos);
+    });
+  }
 
   function addFiles(picked: FileList) {
     const room = MAX_PHOTOS - files.length;
@@ -76,31 +133,77 @@ export function CommentComposer({ issue }: Props) {
       urls.push(url);
     }
 
+    // Someone picked and then deleted from the text is not mentioned. Without this, backspacing
+    // over a name still pulls that person into a thread they were never named in.
+    const stillNamed = mentioned.filter((m) => text.includes(`@${m.name}`)).map((m) => m.id);
+
     postComment(
       issue.id,
       text,
       { id: currentUser.id, name: currentUser.name },
       urls,
       canReachReporter && replyToReporter,
+      stillNamed,
     );
 
     setBody('');
     setFiles([]);
     setPreviews([]);
+    setMentioned([]);
+    setQuery(null);
     setReplyToReporter(false);
     setSending(false);
   }
 
   return (
     <div className="rounded-card border border-border bg-white p-2.5">
-      <textarea
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        rows={2}
-        placeholder="Add a message…"
-        className="w-full resize-none bg-transparent text-[13px] leading-relaxed text-ink
-                   placeholder:text-ink-faint focus:outline-none"
-      />
+      <div className="relative">
+        <textarea
+          ref={taRef}
+          value={body}
+          onChange={(e) => { setBody(e.target.value); syncQuery(e.target.value, e.target.selectionStart); }}
+          onClick={(e) => syncQuery(body, e.currentTarget.selectionStart)}
+          onBlur={() => setTimeout(() => setQuery(null), 120)}
+          onKeyDown={(e) => {
+            if (!query || candidates.length === 0) return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight((h) => (h + 1) % candidates.length); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight((h) => (h - 1 + candidates.length) % candidates.length); }
+            else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); choose(candidates[highlight]); }
+            else if (e.key === 'Escape') { setQuery(null); }
+          }}
+          rows={2}
+          placeholder="Add a message… @ to name someone"
+          className="w-full resize-none bg-transparent text-[13px] leading-relaxed text-ink
+                     placeholder:text-ink-faint focus:outline-none"
+        />
+
+        {/* The people picker. Above the box, because the box sits at the bottom of a thread. */}
+        {query && candidates.length > 0 && (
+          <ul className="absolute bottom-full left-0 z-20 mb-1 w-60 overflow-hidden rounded-card
+                         border border-border bg-white shadow-lg">
+            {candidates.map((m, i) => (
+              <li key={m.userId}>
+                <button
+                  onMouseDown={(e) => { e.preventDefault(); choose(m); }}
+                  onMouseEnter={() => setHighlight(i)}
+                  className={`block w-full px-3 py-1.5 text-left text-[12.5px] ${
+                    i === highlight ? 'bg-forest/8 text-forest font-medium' : 'text-ink hover:bg-cream'
+                  }`}
+                >
+                  {m.displayName ?? m.fullName}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {mentioned.filter((m) => body.includes(`@${m.name}`)).length > 0 && (
+        <p className="mb-2 text-[11px] text-ink-soft">
+          {mentioned.filter((m) => body.includes(`@${m.name}`)).map((m) => m.name).join(', ')}
+          {' '}will see this at the top of Campground.
+        </p>
+      )}
 
       {previews.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">

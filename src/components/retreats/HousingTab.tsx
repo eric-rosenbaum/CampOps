@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
+import { dbGenerateTurnover } from '@/lib/retreatsDb';
 import { useLocationStore } from '@/store/locationStore';
 import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
@@ -347,6 +348,17 @@ export function HousingTab() {
 
   const phase = derivePhase(rows, retreat?.housingSubmittedAt);
   const allLocked = phase === 3;
+  // What locking will actually create, counted the way generate_turnover_work counts it: one per
+  // distinct room on the housing plan, NOT per room that has a guest in it. A room held for a
+  // group and left empty still gets turned over, and a dialog that promised a different number
+  // than the board then shows is worse than no dialog.
+  const occupiedRooms = useMemo(
+    () => new Set(rows.filter((h) => h.locationId).map((h) => h.locationId as string)).size,
+    [rows],
+  );
+  const [confirmLock, setConfirmLock] = useState(false);
+  const [locking, setLocking] = useState(false);
+  const [lockResult, setLockResult] = useState<string | null>(null);
   const assigned = rows.reduce((sum, h) => sum + h.peopleCount, 0);
   const editable = canManage && !allLocked;
 
@@ -381,12 +393,34 @@ export function HousingTab() {
     },
   }[phase];
 
+  /**
+   * Unlocking is immediate. Locking asks first, because it used to raise a work order per room
+   * through a database trigger and tell nobody -- a camp finalised a rooming plan and found four
+   * turnovers on the board with no idea what had made them.
+   */
   function toggleLock() {
     if (!retreat) return;
-    const next = !allLocked;
-    setHousingLocked(retreat.id, next);
+    if (allLocked) { setHousingLocked(retreat.id, false); return; }
+    setConfirmLock(true);
+  }
+
+  async function doLock(alsoCreateWork: boolean) {
+    if (!retreat) return;
+    setLocking(true);
+    setHousingLocked(retreat.id, true);
     // The snapshot is the arrangement itself, so a locked plan can be brought back later.
-    if (next) saveHousingVersion(retreat.id, 'Locked', snapshotSummary(guests, locById) || 'Housing finalized', currentUser.name || null);
+    saveHousingVersion(retreat.id, 'Locked', snapshotSummary(guests, locById) || 'Housing finalized', currentUser.name || null);
+    let made = 0;
+    if (alsoCreateWork) made = await dbGenerateTurnover(retreat.id, 'room');
+    setLocking(false);
+    setConfirmLock(false);
+    if (alsoCreateWork) {
+      setLockResult(made === 0
+        ? 'Housing is locked. No new turnover work was needed — it was already on the board.'
+        : `Housing is locked, and ${made} turnover work order${made === 1 ? '' : 's'} ${made === 1 ? 'is' : 'are'} on the board.`);
+    } else {
+      setLockResult('Housing is locked. No work orders were created.');
+    }
   }
 
   function saveSnapshot() {
@@ -498,6 +532,51 @@ export function HousingTab() {
           )}
         </div>
       </div>
+
+      {/* ── Locking asks, because it creates work ── */}
+      {confirmLock && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-forest/25 px-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-card border border-border bg-white shadow-lg p-5">
+            <h3 className="font-display text-[16px] font-bold text-forest">Lock this housing plan?</h3>
+            <p className="text-[13px] text-ink-soft leading-relaxed mt-2">
+              Guests stop moving between rooms and the arrangement is saved so you can bring it
+              back later.
+            </p>
+
+            <div className="mt-3.5 rounded-card border border-border bg-cream px-3.5 py-3">
+              <p className="text-[12.5px] font-semibold text-forest">
+                Turnover work: {occupiedRooms} room{occupiedRooms === 1 ? '' : 's'} to clean after they leave
+              </p>
+              <p className="text-[12px] text-ink-soft leading-relaxed mt-1">
+                {occupiedRooms === 0
+                  ? 'No rooms are on the housing plan yet, so there is nothing to turn over.'
+                  : `One work order per room, for housekeeping, carrying the bed count. You can create them later instead — locking now and generating them nearer the date makes the same work.`}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mt-4">
+              <Button onClick={() => doLock(true)} disabled={locking || occupiedRooms === 0} className="flex-1 justify-center">
+                {locking ? 'Locking…' : 'Lock and create the turnover work'}
+              </Button>
+              <Button variant="ghost" onClick={() => doLock(false)} disabled={locking}>
+                Lock only
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmLock(false)} disabled={locking}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {lockResult && (
+        <div className="mx-4 sm:mx-7 mb-3 flex items-start justify-between gap-3 rounded-card border border-sage/40 bg-green-muted-bg px-3.5 py-2.5">
+          <p className="text-[12.5px] text-green-muted-text">{lockResult}</p>
+          <button onClick={() => setLockResult(null)} className="text-[12px] text-green-muted-text/70 hover:text-green-muted-text flex-shrink-0">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* ── Door signs ── */}
       {signsOpen && (

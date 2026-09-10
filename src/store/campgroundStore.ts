@@ -69,7 +69,7 @@ interface CampgroundState {
   deleteTemplate: (id: string) => void;
 
   postComment: (issueId: string, body: string, author: { id: string; name: string },
-                photoUrls?: string[], visibleToReporter?: boolean) => void;
+                photoUrls?: string[], visibleToReporter?: boolean, mentions?: string[]) => void;
   removeComment: (id: string) => void;
   markRead: (issueId: string, userId: string) => void;
 
@@ -145,11 +145,11 @@ export const useCampgroundStore = create<CampgroundState>((set, get) => ({
   },
 
   // ── Comments ───────────────────────────────────────────────────────────────
-  postComment: (issueId, body, author, photoUrls = [], visibleToReporter = false) => {
+  postComment: (issueId, body, author, photoUrls = [], visibleToReporter = false, mentions = []) => {
     const c: IssueComment = {
       id: generateId(), campId: '', issueId,
       authorId: author.id, authorName: author.name,
-      body, photoUrls, visibleToReporter,
+      body, photoUrls, mentions, visibleToReporter,
       createdAt: new Date().toISOString(), editedAt: null, deletedAt: null,
     };
     set((s) => ({ comments: [...s.comments, c] }));
@@ -247,7 +247,10 @@ export function hasUnread(
  */
 export function inThread(issue: Issue, comments: IssueComment[], userId: string): boolean {
   if (issue.assigneeId === userId) return true;
-  return comments.some((c) => c.issueId === issue.id && !c.deletedAt && c.authorId === userId);
+  // Authored it, or was named in it. Being named is the third way in, and the only one someone
+  // else can trigger for you -- which is the point: it is how you ask the person who knows.
+  return comments.some((c) => c.issueId === issue.id && !c.deletedAt
+    && (c.authorId === userId || c.mentions.includes(userId)));
 }
 
 /** Work orders I am part of that have said something since I last looked. Newest first. */

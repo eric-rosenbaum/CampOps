@@ -211,7 +211,11 @@ export function ApproveSpaceModal({
           <ConflictPanel conflicts={conflicts} expectedCount={request.expectedCount} />
         )}
 
-        {/* ── The camp's own notes, beside the group's words ── */}
+        {/* ── The camp's own notes, beside the group's words ──
+            Only on an approval. A decline creates no work order, so there is no crew to write
+            notes to -- and this field sat ABOVE "Message to the group", so a decline reason typed
+            here was collected and silently dropped. A box that does nothing is worse than no box. */}
+        {mode !== 'decline' && (
         <div>
           <label className={labelClass}>Camp notes for the crew</label>
           <textarea
@@ -223,15 +227,22 @@ export function ApproveSpaceModal({
             Added <em>beside</em> the group's words on the work order, never over them.
           </p>
         </div>
+        )}
 
         <div>
-          <label className={labelClass}>Message to the group</label>
+          <label className={mode === 'decline' ? `${labelClass} text-forest` : labelClass}>
+            {mode === 'decline' ? 'Why, in your words' : 'Message to the group'}
+          </label>
           <textarea
             value={message} onChange={(e) => setMessage(e.target.value)} rows={2}
             className={`${inputClass} resize-y`}
             placeholder={mode === 'decline' ? 'Why this one can\'t happen, and what could instead…' : 'Anything they should know…'}
           />
-          <p className="text-[11px] text-ink-faint mt-1">Shown in their portal against this request.</p>
+          <p className="text-[11px] text-ink-faint mt-1">
+            {mode === 'decline'
+              ? 'This is the whole of what they hear. It goes in their portal against this request, and in the email if you send one.'
+              : 'Shown in their portal against this request.'}
+          </p>
 
           <label className="flex items-start gap-2 mt-2.5 cursor-pointer">
             <input

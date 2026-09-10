@@ -100,7 +100,9 @@ function Message({ comment, mine, onDelete }: {
             </button>
           )}
         </div>
-        <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed text-ink">{comment.body}</p>
+        <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed text-ink">
+          {renderMentions(comment.body)}
+        </p>
         {comment.photoUrls.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {comment.photoUrls.map((url) => (
@@ -122,4 +124,19 @@ function Message({ comment, mine, onDelete }: {
       </div>
     </div>
   );
+}
+
+/**
+ * Show an @name as a name rather than as punctuation someone typed.
+ *
+ * Deliberately cosmetic: who was actually mentioned lives in `comment.mentions`, and this only
+ * decides what the sentence looks like. A message that says "@Dave" because someone typed it by
+ * hand still reads as a name here, and still notifies nobody -- which is the right way round.
+ */
+function renderMentions(body: string) {
+  const parts = body.split(/(@[\p{L}][\p{L}\p{M}'\-]*(?: [\p{L}][\p{L}\p{M}'\-]*)?)/gu);
+  return parts.map((part, i) =>
+    part.startsWith('@')
+      ? <strong key={i} className="font-semibold text-forest">{part}</strong>
+      : part);
 }

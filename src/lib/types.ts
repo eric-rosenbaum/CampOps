@@ -2426,6 +2426,13 @@ export interface RetreatProposal {
   pricingModel: string | null;
   ratePerPersonNight: number | null;
   flatRate: number | null;
+  /**
+   * The heads and nights this quote was priced on. Stored rather than read off the booking:
+   * a quote is a promise about the numbers as they stood when it was sent, and the booking's
+   * headcount moves afterwards.
+   */
+  peopleCount: number | null;
+  nights: number | null;
   id: string;
   campId: string;
   retreatId: string;

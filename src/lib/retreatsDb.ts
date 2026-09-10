@@ -164,6 +164,8 @@ function rowToProposal(r: Row): RetreatProposal {
     pricingModel: s(r.pricing_model),
     ratePerPersonNight: r.rate_per_person_night != null ? Number(r.rate_per_person_night) : null,
     flatRate: r.flat_rate != null ? Number(r.flat_rate) : null,
+    peopleCount: r.people_count != null ? Number(r.people_count) : null,
+    nights: r.nights != null ? Number(r.nights) : null,
     createdAt: r.created_at as string, updatedAt: r.updated_at as string,
   };
 }
@@ -559,6 +561,7 @@ const proposalRow = (x: RetreatProposal): Row => ({
   created_by: x.createdBy,
   deposit_amount: x.depositAmount, pricing_model: x.pricingModel,
   rate_per_person_night: x.ratePerPersonNight, flat_rate: x.flatRate,
+  people_count: x.peopleCount, nights: x.nights,
   // viewed_at / accepted_at are written when the GROUP acts, through the portal RPC. A camp
   // marking its own proposal "viewed" would destroy the one signal this table exists for.
 });

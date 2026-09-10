@@ -49,15 +49,40 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
   // Kept as a string so the field can be cleared to "" while typing (no forced 0).
   // The confirmed number when the group has given one, so an invoice raised after they
   // confirmed does not quietly bill the booking estimate.
-  const [headcount, setHeadcount] = useState(retreat ? String(billableHeadcount(retreat)) : '');
+  /**
+   * The accepted quote, if there is one.
+   *
+   * It is what the group agreed to, so it -- not the booking's current rate card -- seeds the
+   * invoice. The camp can still change any of the three, because a final headcount lands after
+   * a quote goes out and the invoice is the thing that has to be right.
+   */
+  const agreed = useRetreatStore((s) => s.proposals)
+    .filter((p) => p.retreatId === retreatId && p.status === 'accepted')
+    .sort((a, b) => b.version - a.version)[0] ?? null;
+
+  const [headcount, setHeadcount] = useState(
+    String(agreed?.peopleCount ?? (retreat ? billableHeadcount(retreat) : '')));
   const headcountNum = Math.max(0, Math.round(Number(headcount) || 0));
+  const [rateStr, setRateStr] = useState(
+    String(agreed?.ratePerPersonNight ?? (retreat ? pricingRate(retreat) ?? 0 : 0)));
+  const rateNum = Math.max(0, Number(rateStr) || 0);
+  const [nightsStr, setNightsStr] = useState(
+    String(agreed?.nights ?? (retreat ? nights(retreat.arrivalDate, retreat.departureDate) : 0)));
+  const nightsNum = Math.max(0, Math.round(Number(nightsStr) || 0));
   const [dueDate, setDueDate] = useState('');
   const [emailToo, setEmailToo] = useState(true);
   const [busy, setBusy] = useState(false);
   const [emailingId, setEmailingId] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
-  // Ad-hoc extra fees added to this invoice (cleaning, damage, late, add-ons…).
-  const [fees, setFees] = useState<RetreatInvoiceLine[]>([]);
+  /**
+   * Ad-hoc extra fees added to this invoice (cleaning, damage, late, add-ons…), seeded with
+   * whatever the accepted quote carried besides the rate line.
+   *
+   * Without this a quote of "$8,000 facility + $250 firewood" invoiced at $8,000 and the
+   * firewood quietly vanished between the thing they agreed to and the thing they were billed.
+   */
+  const [fees, setFees] = useState<RetreatInvoiceLine[]>(() =>
+    (agreed?.lineItems ?? []).filter((l) => !/people\s*×.*night.*@.*\/person\/night/i.test(l.description)));
   const [feeDesc, setFeeDesc] = useState('');
   const [feeAmount, setFeeAmount] = useState('');
   // A discount off the whole invoice, rather than a negative extra fee. Kept as its own field
@@ -100,8 +125,8 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
     if (charges.length > 0) {
       base = charges.map((c) => ({ description: c.description, amount: c.amount }));
     } else if (retreat) {
-      const n = nights(retreat.arrivalDate, retreat.departureDate);
-      const rate = pricingRate(retreat) ?? 0;
+      const n = nightsNum;
+      const rate = rateNum;
       const cabinCount = housingFor(retreatId).length;
       let amt: number; let desc: string;
       if (retreat.pricingModel === 'per_person_night') {
@@ -225,14 +250,34 @@ export function InvoiceModal({ retreatId }: { retreatId: string }) {
             </div>
           </div>
 
-          {/* Editable headcount, only affects the per-person facility line before extra fees. */}
+          {/* The three numbers the facility line is made of -- the same three the quote was
+              built from, seeded off the accepted quote so the invoice starts at what the group
+              agreed to. All editable: a final headcount lands after a quote goes out, and the
+              invoice is the thing that has to be right. */}
           {kind === 'balance' && charges.length === 0 && retreat.pricingModel === 'per_person_night' && (
             <div>
-              <label className={labelClass}>Headcount to bill</label>
-              <input type="number" min={0} value={headcount}
-                     onChange={(e) => setHeadcount(e.target.value)}
-                     className={`${inputClass} w-32`} />
-              <p className="text-[11px] text-ink-faint mt-1">Defaults to the group's confirmed headcount. Edit to bill a different number.</p>
+              <div className="grid grid-cols-3 gap-2.5">
+                <div>
+                  <label className={labelClass}>Rate</label>
+                  <input type="number" min={0} step="0.01" value={rateStr}
+                         onChange={(e) => setRateStr(e.target.value)} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>People</label>
+                  <input type="number" min={0} value={headcount}
+                         onChange={(e) => setHeadcount(e.target.value)} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Nights</label>
+                  <input type="number" min={0} value={nightsStr}
+                         onChange={(e) => setNightsStr(e.target.value)} className={inputClass} />
+                </div>
+              </div>
+              <p className="text-[11px] text-ink-faint mt-1">
+                {agreed
+                  ? `Starting from what they accepted on version ${agreed.version}.`
+                  : "Starting from the booking's rate card."}
+              </p>
             </div>
           )}
 

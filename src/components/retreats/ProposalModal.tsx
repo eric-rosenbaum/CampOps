@@ -14,11 +14,21 @@ import { useAuth } from '@/lib/auth';
 import type { RetreatInvoiceLine, RetreatProposal } from '@/lib/types';
 import { dbAddProposal, dbUpdateProposal, fetchProposalLines } from '@/lib/retreatsDb';
 import { generateId, parseDateStr, todayStr } from '@/lib/utils';
-import { money, inputClass, labelClass, fmtRange } from './retreatUi';
+import { money, inputClass, labelClass, fmtRange, nights as nightsBetween } from './retreatUi';
 import { sendEmail } from '@/lib/email';
 import { proposalEmailHtml } from './proposalEmail';
 
 const now = () => new Date().toISOString();
+
+/**
+ * The rate-card line, which is derived rather than typed.
+ *
+ * It is stored in line_items so the document, the invoice and the portal all read the same
+ * arithmetic -- but the editor computes it from the three inputs, so it has to be lifted back
+ * out when an existing quote is reopened or it would be counted twice.
+ */
+const BASE_LINE = /people\s*×.*night.*@.*\/person\/night/i;
+const withoutBase = (xs: RetreatInvoiceLine[]) => xs.filter((l) => !BASE_LINE.test(l.description));
 
 /** Add days to a calendar day without going through UTC. */
 function addDays(d: string, days: number): string {
@@ -51,7 +61,25 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
   const retreat = retreatById(retreatId);
   const existing = proposalId ? proposals.find((p) => p.id === proposalId) ?? null : null;
 
-  const [lines, setLines] = useState<RetreatInvoiceLine[]>(existing?.lineItems ?? []);
+  /**
+   * A per-person quote is three numbers and everything else is an extra.
+   *
+   * `lines` used to be the whole quote, each amount typed freely, which is how a proposal ended
+   * up saying "50 people × 3 nights @ $120" beside a total that was not 50 × 3 × 120. The base
+   * is now derived from the three inputs and cannot be typed over; `lines` keeps only the
+   * extras and discounts, which genuinely are free-form.
+   */
+  const perPerson = (retreat?.pricingModel ?? 'per_person_night') === 'per_person_night';
+  const [rate, setRate] = useState(() =>
+    String(existing?.ratePerPersonNight ?? retreat?.ratePerPersonNight
+      ?? currentCamp?.defaultRatePerPersonNight ?? ''));
+  const [people, setPeople] = useState(() =>
+    String(existing?.peopleCount ?? retreat?.finalHeadcount ?? retreat?.headcount ?? ''));
+  const [nights, setNights] = useState(() =>
+    String(existing?.nights ?? nightsBetween(retreat?.arrivalDate ?? null, retreat?.departureDate ?? null)));
+
+  const [lines, setLines] = useState<RetreatInvoiceLine[]>(
+    perPerson ? withoutBase(existing?.lineItems ?? []) : (existing?.lineItems ?? []));
   const [intro, setIntro] = useState(existing?.intro ?? '');
   const [terms, setTerms] = useState(existing?.terms ?? currentCamp?.proposalTerms ?? DEFAULT_TERMS);
   const [validUntil, setValidUntil] = useState(
@@ -82,16 +110,24 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
     let live = true;
     fetchProposalLines(retreatId).then((seed) => {
       if (!live) return;
-      setLines(seed);
+      setLines(perPerson ? withoutBase(seed) : seed);
       setLoading(false);
     });
     return () => { live = false; };
-  }, [existing, retreatId]);
+  }, [existing, retreatId, perPerson]);
 
-  const total = useMemo(
+  const num = (v: string) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const base = useMemo(
+    () => (perPerson ? num(rate) * num(people) * num(nights) : 0),
+    [perPerson, rate, people, nights],
+  );
+  const baseLabel = `${num(people)} people × ${num(nights)} night${num(nights) === 1 ? '' : 's'} @ ${money(num(rate))}/person/night`;
+
+  const extras = useMemo(
     () => lines.reduce((s, l) => s + (Number.isFinite(l.amount) ? l.amount : 0), 0),
     [lines],
   );
+  const total = useMemo(() => base + extras, [base, extras]);
 
   const nextVersion = useMemo(() => {
     if (existing) return existing.version;
@@ -110,8 +146,15 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
       campId: existing?.campId ?? '',
       retreatId,
       version: nextVersion,
-      lineItems: lines.filter((l) => l.description.trim() !== ''),
+      // The derived base rides along as the first line so the document, the invoice and the
+      // portal all read the same arithmetic without recomputing it three times.
+      lineItems: [
+        ...(perPerson && base > 0 ? [{ description: baseLabel, amount: base }] : []),
+        ...lines.filter((l) => l.description.trim() !== ''),
+      ],
       total,
+      peopleCount: perPerson ? num(people) : null,
+      nights: perPerson ? num(nights) : null,
       validUntil: validUntil || null,
       terms: terms.trim() || null,
       intro: intro.trim() || null,
@@ -130,7 +173,11 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
       // and every later invoice agrees with what the group actually said yes to.
       depositAmount: deposit.trim() === '' ? null : Number(deposit),
       pricingModel: retreat?.pricingModel ?? currentCamp?.defaultPricingModel ?? null,
-      ratePerPersonNight: retreat?.ratePerPersonNight ?? currentCamp?.defaultRatePerPersonNight ?? null,
+      // The rate the camp actually quoted, not the booking's. Accepting this writes it onto
+      // the booking, so reading it back off the booking made the edit a no-op.
+      ratePerPersonNight: perPerson
+        ? (rate.trim() === '' ? null : num(rate))
+        : (retreat?.ratePerPersonNight ?? currentCamp?.defaultRatePerPersonNight ?? null),
       flatRate: retreat?.flatRate ?? currentCamp?.defaultFlatRate ?? null,
       createdAt: existing?.createdAt ?? ts,
       updatedAt: ts,
@@ -214,10 +261,48 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
               </span>
             )}
           </div>
+          {/* The price, as three numbers. The camp used to be able to type any total it liked
+              beside the arithmetic that was supposed to produce it, and the two disagreed on
+              the document the group signs. */}
+          {perPerson && (
+            <div className="border border-border rounded-card px-3 py-3 mb-2">
+              <div className="grid grid-cols-3 gap-2.5">
+                <div>
+                  <label className={labelClass}>Rate</label>
+                  <input
+                    inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)}
+                    className={inputClass} placeholder="0"
+                  />
+                  <p className="text-[10.5px] text-ink-soft mt-1">per person per night</p>
+                </div>
+                <div>
+                  <label className={labelClass}>People</label>
+                  <input
+                    inputMode="numeric" value={people} onChange={(e) => setPeople(e.target.value)}
+                    className={inputClass} placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Nights</label>
+                  <input
+                    inputMode="numeric" value={nights} onChange={(e) => setNights(e.target.value)}
+                    className={inputClass} placeholder="0"
+                  />
+                </div>
+              </div>
+              <div className="flex items-baseline justify-between mt-2.5 pt-2.5 border-t border-border">
+                <span className="text-[12.5px] text-ink-soft">{baseLabel}</span>
+                <span className="text-[13.5px] font-semibold text-forest tabular-nums">{money(base)}</span>
+              </div>
+            </div>
+          )}
+
           <div className="border border-border rounded-card divide-y divide-border">
             {lines.length === 0 && !loading && (
               <p className="px-3 py-4 text-[12.5px] text-ink-faint text-center">
-                No lines yet. Add one, or set a rate on the booking first.
+                {perPerson
+                  ? 'No extras. Add a line for firewood, a discount, anything outside the rate.'
+                  : 'No lines yet. Add one, or set a rate on the booking first.'}
               </p>
             )}
             {lines.map((l, i) => (
@@ -226,7 +311,7 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
                   value={l.description}
                   onChange={(e) => setLine(i, { description: e.target.value })}
                   className="flex-1 min-w-0 text-body bg-transparent px-1 py-1 focus:outline-none focus:bg-cream-dark/40 rounded"
-                  placeholder="Description"
+                  placeholder={perPerson ? 'Firewood bundle, shoulder-week discount…' : 'Description'}
                 />
                 <input
                   type="number" value={Number.isFinite(l.amount) ? l.amount : 0}
@@ -245,7 +330,7 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
                 type="button"
                 onClick={() => setLines((xs) => [...xs, { description: '', amount: 0 }])}
                 className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-forest hover:underline"
-              ><Plus className="w-3.5 h-3.5" /> Add a line</button>
+              ><Plus className="w-3.5 h-3.5" /> {perPerson ? 'Add an extra or a discount' : 'Add a line'}</button>
               <span className="text-[14px] font-bold text-forest tabular-nums">{money(total)}</span>
             </div>
           </div>

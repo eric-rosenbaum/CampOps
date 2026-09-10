@@ -421,6 +421,41 @@ export async function dbUploadRetreatDocument(
   return uploadToBucket(supabase, DOC_BUCKET, path, file, onProgress);
 }
 
+/**
+ * The camp's own agreement, kept once and reused for every group.
+ *
+ * Same bucket as the per-retreat documents, filed under the camp rather than a retreat because it
+ * belongs to none of them. attach_agreement_from_template() copies it onto each booking that has
+ * no agreement of its own.
+ */
+export async function dbUploadCampAgreement(
+  file: File, onProgress?: UploadProgress,
+): Promise<string> {
+  const path = `${CID()}/camp-agreement/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+  return uploadToBucket(supabase, DOC_BUCKET, path, file, onProgress);
+}
+
+/**
+ * Point the camp at a stored agreement.
+ *
+ * Written only after the file has been read back. The whole reason a camp-level template exists
+ * is that a proposal attaches it unattended -- a path that points at nothing would attach nothing,
+ * silently, on every proposal from then on.
+ */
+export async function dbSetCampAgreement(
+  campId: string, path: string | null, name: string | null,
+): Promise<string | null> {
+  if (path && !(await verifyReadable(supabase, DOC_BUCKET, path))) {
+    return 'The file uploaded but could not be opened afterwards. Nothing was saved, so try again.';
+  }
+  const { error } = await supabase
+    .from('camps')
+    .update({ agreement_template_path: path, agreement_template_name: name })
+    .eq('id', campId);
+  if (error) { campError('set camp agreement', error.message); return error.message; }
+  return null;
+}
+
 /** Can this document be opened? Signs it and reads a byte back, exactly as a viewer would. */
 export const dbVerifyRetreatDocument = (path: string) => verifyReadable(supabase, DOC_BUCKET, path);
 

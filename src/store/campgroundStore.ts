@@ -24,6 +24,7 @@ import {
   dbAddComment, dbDeleteComment, dbMarkThreadRead,
   dbSetChecklistItemDone, dbApplyChecklist, dbAddChecklistItem, dbDeleteChecklistItem,
   dbFetchChecklistItems,
+  dbGrantIssueView,
 } from '@/lib/campgroundDb';
 
 /** The board's lane filter. `all` is the default so nobody is hidden from anyone's work. */
@@ -37,6 +38,7 @@ interface CampgroundState {
   checklistItems: IssueChecklistItem[];
   comments: IssueComment[];
   sessions: CampSession[];
+  viewers: { issueId: string; userId: string }[];
 
   /** Per-issue unread marker, kept client-side between reads so the dot clears on open. */
   readAt: Record<string, string>;
@@ -52,6 +54,8 @@ interface CampgroundState {
   setChecklistItems: (i: IssueChecklistItem[]) => void;
   setComments: (c: IssueComment[]) => void;
   setSessions: (s: CampSession[]) => void;
+  setViewers: (v: { issueId: string; userId: string }[]) => void;
+  grantIssueView: (issueId: string, userIds: string[]) => Promise<void>;
   setTradeFilter: (t: TradeFilter) => void;
 
   addVendor: (v: ServiceVendor) => void;
@@ -81,7 +85,7 @@ interface CampgroundState {
 }
 
 export const useCampgroundStore = create<CampgroundState>((set, get) => ({
-  vendors: [], routing: [], schedules: [], templates: [],
+  vendors: [], routing: [], schedules: [], templates: [], viewers: [],
   checklistItems: [], comments: [], sessions: [],
   readAt: {},
   tradeFilter: 'all',
@@ -95,6 +99,25 @@ export const useCampgroundStore = create<CampgroundState>((set, get) => ({
   setChecklistItems: (checklistItems) => set({ checklistItems }),
   setComments: (comments) => set({ comments }),
   setSessions: (sessions) => set({ sessions }),
+  setViewers: (viewers) => set({ viewers }),
+
+  /**
+   * Let named people see one work order they could not otherwise open.
+   *
+   * Narrower than a permission: this row and nobody else's crew setting. Optimistic, because the
+   * message it accompanies has already posted -- a grant that lagged behind its own comment would
+   * put the banner in front of a blank screen.
+   */
+  grantIssueView: async (issueId, userIds) => {
+    if (userIds.length === 0) return;
+    set((s) => ({
+      viewers: [
+        ...s.viewers.filter((v) => !(v.issueId === issueId && userIds.includes(v.userId))),
+        ...userIds.map((userId) => ({ issueId, userId })),
+      ],
+    }));
+    await dbGrantIssueView(issueId, userIds);
+  },
   setTradeFilter: (tradeFilter) => set({ tradeFilter }),
 
   // ── Vendors ────────────────────────────────────────────────────────────────

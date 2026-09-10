@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { setCampId } from '@/lib/db';
+import { dbSetCampAgreement } from '@/lib/retreatsDb';
 
 export type CampRole = 'admin' | 'staff' | 'viewer';
 export type Department =
@@ -100,6 +101,9 @@ export interface Camp {
   dietaryDefaults: Record<string, boolean>;
   /** Default payment/banking instructions prefilled into retreat invoice notes. */
   retreatPaymentNote: string | null;
+  /** Storage path of the agreement sent to every group by default; null when the camp keeps none. */
+  agreementTemplatePath: string | null;
+  agreementTemplateName: string | null;
   /**
    * Whether the platform generates a terms page in front of this camp's agreement.
    *
@@ -142,6 +146,8 @@ function rowToCamp(c: Record<string, unknown>): Camp {
     locations: (c.locations as string[]) ?? [],
     dietaryDefaults: (c.dietary_defaults as Record<string, boolean>) ?? {},
     retreatPaymentNote: (c.retreat_payment_note as string) ?? null,
+    agreementTemplatePath: (c.agreement_template_path as string) ?? null,
+    agreementTemplateName: (c.agreement_template_name as string) ?? null,
     agreementScheduleEnabled: Boolean(c.agreement_schedule_enabled),
     defaultPricingModel: (c.default_pricing_model as string) ?? null,
     defaultRatePerPersonNight: (c.default_rate_per_person_night as number) ?? null,
@@ -222,6 +228,7 @@ interface CampState {
   updateCamp: (campId: string, data: Partial<Pick<Camp, 'name' | 'campType' | 'state' | 'modules' | 'locations' | 'dietaryDefaults'>>) => Promise<void>;
   setRetreatPaymentNote: (campId: string, note: string | null) => Promise<void>;
   setAgreementScheduleEnabled: (campId: string, on: boolean) => Promise<void>;
+  setCampAgreement: (campId: string, path: string | null, name: string | null) => Promise<void>;
   /** Write any part of the camp's rate card / proposal defaults. */
   setRentalDefaults: (campId: string, patch: Partial<Pick<Camp,
     'defaultPricingModel' | 'defaultRatePerPersonNight' | 'defaultFlatRate' | 'defaultDepositAmount'
@@ -269,7 +276,7 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     const { data, error } = await supabase
       .from('camp_members')
-      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, address_line1, city, state, modules, locations, dietary_defaults, retreat_payment_note, agreement_schedule_enabled, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
+      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, address_line1, city, state, modules, locations, dietary_defaults, retreat_payment_note, agreement_template_path, agreement_template_name, agreement_schedule_enabled, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
       .eq('user_id', user.id)
       .eq('is_active', true);
 
@@ -460,6 +467,16 @@ export const useCampStore = create<CampState>((set, get) => ({
     if (current && current.id === campId) set({ currentCamp: { ...current, agreementScheduleEnabled: on } });
     const { error } = await supabase.from('camps').update({ agreement_schedule_enabled: on }).eq('id', campId);
     if (error) console.error('[campStore] setAgreementScheduleEnabled error:', error);
+  },
+
+  /** Record (or clear) the camp's stored agreement, once its file is known to be readable. */
+  setCampAgreement: async (campId, path, name) => {
+    const err = await dbSetCampAgreement(campId, path, name);
+    if (err) throw new Error(err);
+    const current = get().currentCamp;
+    if (current && current.id === campId) {
+      set({ currentCamp: { ...current, agreementTemplatePath: path, agreementTemplateName: name } });
+    }
   },
 
   setRetreatPaymentNote: async (campId, note) => {

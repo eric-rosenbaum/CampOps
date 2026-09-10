@@ -136,6 +136,8 @@ export interface CampgroundData {
   checklistItems: IssueChecklistItem[];
   comments: IssueComment[];
   sessions: CampSession[];
+  /** Who has been let in on a work order they could not otherwise see, by being tagged into it. */
+  viewers: { issueId: string; userId: string }[];
 }
 
 const CAMPGROUND_TABLES = [
@@ -143,12 +145,12 @@ const CAMPGROUND_TABLES = [
   // issue_comments is deliberately absent: it gets its own channel below. This one carries
   // eight tables and the app opens dozens of postgres_changes bindings across every module;
   // a message somebody is waiting on cannot be the binding that quietly loses that queue.
-  'issue_checklist_items', 'camp_sessions',
+  'issue_checklist_items', 'camp_sessions', 'issue_viewers',
 ];
 
 async function loadInner(campId: string): Promise<CampgroundData> {
   const q = (t: string) => supabase.from(t).select('*').eq('camp_id', campId);
-  const [ven, rout, sched, tmpl, items, comments, sessions] = await Promise.all([
+  const [ven, rout, sched, tmpl, items, comments, sessions, viewers] = await Promise.all([
     q('service_vendors').order('name'),
     q('work_routing'),
     q('work_schedules').order('title'),
@@ -158,9 +160,10 @@ async function loadInner(campId: string): Promise<CampgroundData> {
     supabase.from('issue_checklist_items').select('*, issues!inner(status)')
       .eq('camp_id', campId).neq('issues.status', 'resolved').order('position'),
     q('issue_comments').is('deleted_at', null).order('created_at'),
+    q('issue_viewers'),
     q('camp_sessions').order('start_date'),
   ]);
-  assertLoaded('campground', ven, rout, sched, tmpl, items, comments, sessions);
+  assertLoaded('campground', ven, rout, sched, tmpl, items, comments, sessions, viewers);
   return {
     vendors: (ven.data ?? []).map((r) => rowToVendor(r as Row)),
     routing: (rout.data ?? []).map((r) => rowToRouting(r as Row)),
@@ -168,6 +171,9 @@ async function loadInner(campId: string): Promise<CampgroundData> {
     templates: (tmpl.data ?? []).map((r) => rowToTemplate(r as Row)),
     checklistItems: (items.data ?? []).map((r) => rowToChecklistItem(r as Row)),
     comments: (comments.data ?? []).map((r) => rowToComment(r as Row)),
+    viewers: (viewers.data ?? []).map((r) => ({
+      issueId: (r as Row).issue_id as string, userId: (r as Row).user_id as string,
+    })),
     sessions: (sessions.data ?? []).map((r) => rowToSession(r as Row)),
   };
 }
@@ -373,6 +379,23 @@ export const dbAddChecklistItem = (i: IssueChecklistItem) => ins('issue_checklis
   note: i.note, requires_photo: i.requiresPhoto, is_done: i.isDone,
 });
 export const dbDeleteChecklistItem = (id: string) => del('issue_checklist_items', id);
+
+/**
+ * Let people see one work order they could not otherwise open.
+ *
+ * Idempotent: naming the same person twice in a thread must not fail the second time.
+ */
+export async function dbGrantIssueView(issueId: string, userIds: string[]) {
+  if (userIds.length === 0) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase.from('issue_viewers').upsert(
+    userIds.map((userId) => ({
+      camp_id: CID(), issue_id: issueId, user_id: userId, granted_by: user?.id ?? null,
+    })),
+    { onConflict: 'issue_id,user_id' },
+  );
+  if (error) campError('grant issue view', error.message);
+}
 
 // Comments --------------------------------------------------------------------
 export async function dbAddComment(c: IssueComment) {

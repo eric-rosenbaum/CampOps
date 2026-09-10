@@ -156,6 +156,12 @@ export function Campground() {
    * group cannot see unassigned work — without that clause, logging something makes it vanish,
    * which is the bug that once convinced a whole crew the app was eating their reports.
    */
+  const viewers = useCampgroundStore((s) => s.viewers);
+  const grantedToMe = useMemo(
+    () => new Set(viewers.filter((v) => v.userId === currentUser.id).map((v) => v.issueId)),
+    [viewers, currentUser.id],
+  );
+
   const visible = useMemo(() => {
     if (role !== 'staff') return issues;
     return issues.filter(
@@ -165,10 +171,13 @@ export function Campground() {
         // Work waiting for the whole camp, or waiting for this person's own crew. A crew whose
         // members cannot see what is waiting for them cannot pick anything up.
         (issuesSeeUnassigned && !i.assigneeId &&
-          (!i.assigneeGroupId || staffGroupIds.includes(i.assigneeGroupId))),
+          (!i.assigneeGroupId || staffGroupIds.includes(i.assigneeGroupId))) ||
+        // Somebody tagged them into this one and chose to open it. A narrow, recorded exception:
+        // it is this work order and no other, and it does not touch their crew setting.
+        grantedToMe.has(i.id),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [issues, role, currentUser.id, issuesSeeUnassigned, staffGroupIds.join(',')]);
+  }, [issues, role, currentUser.id, issuesSeeUnassigned, staffGroupIds.join(','), grantedToMe]);
 
   // Lane counts come from open work: a lane exists because there is something in it to do.
   const laneCounts = useMemo(() => {

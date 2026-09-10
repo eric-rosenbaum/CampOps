@@ -23,6 +23,7 @@ interface Props {
 export function CommentComposer({ issue }: Props) {
   const { currentUser } = useAuth();
   const postComment = useCampgroundStore((s) => s.postComment);
+  const grantIssueView = useCampgroundStore((s) => s.grantIssueView);
 
   const [body, setBody] = useState('');
   const [files, setFiles] = useState<File[]>([]);
@@ -50,19 +51,62 @@ export function CommentComposer({ issue }: Props) {
    * name for reading; this carries who was meant.
    */
   const [mentioned, setMentioned] = useState<{ id: string; name: string }[]>([]);
+  /** People named in the message just sent who cannot open this work order. */
+  const [needsAccess, setNeedsAccess] = useState<{ userId: string; displayName: string | null; fullName: string | null; role: string }[]>([]);
+  /** Already let in during this session, so the prompt does not ask twice. */
+  const [grantedIds, setGrantedIds] = useState<Set<string>>(new Set());
   /** The @… fragment being typed, or null. Drives the picker. */
   const [query, setQuery] = useState<{ from: number; text: string } | null>(null);
   const [highlight, setHighlight] = useState(0);
 
   const members = useCampStore((s) => s.members);
+  const staffGroups = useCampStore((s) => s.staffGroups);
+  const crewMembership = useCampStore((s) => s.crewMembership);
+
+  /**
+   * Anyone with an account at this camp.
+   *
+   * No filtering by crew or by role: the whole point of naming somebody is to reach the person
+   * who knows, and that person is often not on the crew and sometimes cannot see the work order
+   * at all. What their permissions mean is handled at send, not by hiding them from the list.
+   */
+  const taggable = useMemo(
+    () => members.filter((m) => m.isActive && m.userId !== currentUser.id),
+    [members, currentUser.id],
+  );
+
   const candidates = useMemo(() => {
     if (!query) return [];
     const q = query.text.toLowerCase();
-    return members
-      .filter((m) => m.isActive && m.role !== 'viewer' && m.userId !== currentUser.id)
-      .filter((m) => (m.displayName ?? m.fullName ?? '').toLowerCase().includes(q))
+    if (!q) return taggable.slice(0, 6);
+    // Matched on every name this person goes by, not just the one the camp typed in. Somebody
+    // whose display name here is "Demo guest" is still findable by typing their actual name --
+    // searching only the display name is why they looked untaggable. Email is not searchable:
+    // it lives in auth.users, which the client cannot read, and MemberWithProfile.email is
+    // always ''. Better to leave it out than to offer a search that silently matches nothing.
+    return taggable
+      .filter((m) => [m.displayName, m.fullName]
+        .some((n) => (n ?? '').toLowerCase().includes(q)))
       .slice(0, 6);
-  }, [members, query, currentUser.id]);
+  }, [taggable, query]);
+
+  /**
+   * Could this person open this work order today?
+   *
+   * Mirrors the board's own filter. Admins and viewers-of-everything see all of it; a staff
+   * member sees their own work, plus whatever is unassigned IF one of their crews allows picking
+   * work up, plus anything they have already been let in on.
+   */
+  function canSee(m: typeof members[number]): boolean {
+    if (m.role !== 'staff') return m.role !== 'viewer';
+    if (issue.assigneeId === m.userId) return true;
+    if (issue.reportedById === m.userId) return true;
+    if (grantedIds.has(m.userId)) return true;
+    const mine = staffGroups.filter((g) => (crewMembership[g.id] ?? []).includes(m.userId));
+    const seesUnassigned = mine.length === 0 || mine.some((g) => g.issuesSeeUnassigned);
+    if (!seesUnassigned || issue.assigneeId) return false;
+    return !issue.assigneeGroupId || mine.some((g) => g.id === issue.assigneeGroupId);
+  }
 
   /**
    * Spot an @ the caret is still inside.
@@ -146,6 +190,13 @@ export function CommentComposer({ issue }: Props) {
       stillNamed,
     );
 
+    // The message has posted either way. What is still open is whether the people named in it can
+    // actually open the thing it is about -- asked after sending rather than before, so nobody is
+    // held up by a permissions question to send a message.
+    const blocked = stillNamed
+      .map((id) => members.find((m) => m.userId === id))
+      .filter((m): m is typeof members[number] => Boolean(m) && !canSee(m!));
+
     setBody('');
     setFiles([]);
     setPreviews([]);
@@ -153,10 +204,72 @@ export function CommentComposer({ issue }: Props) {
     setQuery(null);
     setReplyToReporter(false);
     setSending(false);
+    if (blocked.length > 0) setNeedsAccess(blocked);
+  }
+
+  const nameOf = (m: { displayName: string | null; fullName: string | null }) =>
+    m.displayName ?? m.fullName ?? 'They';
+
+  /** Open this one work order to the people who were named and cannot see it. */
+  async function grantAccess() {
+    const ids = needsAccess.filter((m) => m.role !== 'viewer').map((m) => m.userId);
+    setGrantedIds((prev) => new Set([...prev, ...ids]));
+    setNeedsAccess([]);
+    await grantIssueView(issue.id, ids);
   }
 
   return (
     <div className="rounded-card border border-border bg-white p-2.5">
+      {/* ── Named somebody who cannot open this ── */}
+      {needsAccess.length > 0 && (() => {
+        const staff = needsAccess.filter((m) => m.role !== 'viewer');
+        const viewers = needsAccess.filter((m) => m.role === 'viewer');
+        const list = (xs: typeof needsAccess) =>
+          xs.map(nameOf).join(xs.length === 2 ? ' and ' : ', ');
+        return (
+          <div className="mb-2.5 rounded-card border border-amber-text/25 bg-amber-bg px-3.5 py-3">
+            <p className="text-[12.5px] font-semibold text-amber-text">Your message is posted.</p>
+            {staff.length > 0 && (
+              <p className="mt-1 text-[12.5px] leading-relaxed text-amber-text/90">
+                {list(staff)} cannot open this work order: it is not assigned to them, and{' '}
+                {staff.length === 1 ? 'their crew sees' : 'their crews see'} only their own work.
+                Let them see this one?
+              </p>
+            )}
+            {viewers.length > 0 && (
+              <p className="mt-1 text-[12.5px] leading-relaxed text-amber-text/90">
+                {list(viewers)} {viewers.length === 1 ? 'is a viewer' : 'are viewers'} and cannot
+                open Campground at all, so this is not something to grant from here. An
+                administrator can change {viewers.length === 1 ? 'their role' : 'their roles'} under
+                Team.
+              </p>
+            )}
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {staff.length > 0 && (
+                <button
+                  onClick={grantAccess}
+                  className="rounded-btn bg-forest px-3 py-1.5 text-[12.5px] font-bold text-paper
+                             transition-colors hover:bg-forest-mid"
+                >
+                  Let {staff.length === 1 ? nameOf(staff[0]) : 'them'} see this work order
+                </button>
+              )}
+              <button
+                onClick={() => setNeedsAccess([])}
+                className="rounded-btn border border-amber-text/30 px-3 py-1.5 text-[12.5px]
+                           font-semibold text-amber-text transition-colors hover:bg-amber-text/5"
+              >
+                {staff.length > 0 ? 'No, leave it' : 'Got it'}
+              </button>
+            </div>
+            {staff.length > 0 && (
+              <p className="mt-1.5 text-[11px] text-amber-text/75">
+                This work order only. Nothing else opens up, and their crew setting does not change.
+              </p>
+            )}
+          </div>
+        );
+      })()}
       <div className="relative">
         <textarea
           ref={taRef}
@@ -179,18 +292,26 @@ export function CommentComposer({ issue }: Props) {
 
         {/* The people picker. Above the box, because the box sits at the bottom of a thread. */}
         {query && candidates.length > 0 && (
-          <ul className="absolute bottom-full left-0 z-20 mb-1 w-60 overflow-hidden rounded-card
+          <ul className="absolute bottom-full left-0 z-20 mb-1 w-72 overflow-hidden rounded-card
                          border border-border bg-white shadow-lg">
             {candidates.map((m, i) => (
               <li key={m.userId}>
                 <button
                   onMouseDown={(e) => { e.preventDefault(); choose(m); }}
                   onMouseEnter={() => setHighlight(i)}
-                  className={`block w-full px-3 py-1.5 text-left text-[12.5px] ${
-                    i === highlight ? 'bg-forest/8 text-forest font-medium' : 'text-ink hover:bg-cream'
+                  className={`block w-full px-3 py-1.5 text-left ${
+                    i === highlight ? 'bg-forest/8' : 'hover:bg-cream'
                   }`}
                 >
-                  {m.displayName ?? m.fullName}
+                  <span className={`block text-[12.5px] ${i === highlight ? 'font-medium text-forest' : 'text-ink'}`}>
+                    {m.displayName ?? m.fullName}
+                  </span>
+                  {/* Who this actually is, when the camp has renamed them. Two people sharing a
+                      display name is not hypothetical -- a camp with two "Demo guest" members
+                      cannot otherwise tell which one they are naming. */}
+                  {m.displayName && m.fullName && m.displayName !== m.fullName && (
+                    <span className="block text-[11px] text-ink-faint">{m.fullName}</span>
+                  )}
                 </button>
               </li>
             ))}

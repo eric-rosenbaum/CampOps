@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
-import { Plus, X, Pencil, Calendar, Sun, Copy, Check, Upload, CornerDownRight, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, X, Pencil, Calendar, Sun, Copy, Check, Upload, CornerDownRight, ChevronDown, ChevronRight, FileText, Paperclip } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useCampStore } from '@/store/campStore';
+import { dbUploadCampAgreement } from '@/lib/retreatsDb';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useLocationStore } from '@/store/locationStore';
 import { ImplementationDropzone, ImplementationFilesTab } from '@/components/settings/ImplementationFiles';
@@ -1022,6 +1023,43 @@ function RentalsTab() {
   const [terms, setTerms] = useState(currentCamp?.proposalTerms ?? '');
   const [scheduleOn, setScheduleOn] = useState(Boolean(currentCamp?.agreementScheduleEnabled));
   const setAgreementScheduleEnabled = useCampStore((st) => st.setAgreementScheduleEnabled);
+
+  // ── The camp's stored agreement ──
+  const setCampAgreement = useCampStore((st) => st.setCampAgreement);
+  const agreementRef = useRef<HTMLInputElement>(null);
+  const [agreementName, setAgreementName] = useState(currentCamp?.agreementTemplateName ?? '');
+  const [agreementBusy, setAgreementBusy] = useState(false);
+  const [agreementError, setAgreementError] = useState<string | null>(null);
+
+  async function uploadAgreement(file: File) {
+    if (!currentCamp) return;
+    setAgreementBusy(true);
+    setAgreementError(null);
+    try {
+      // Upload, then verify, then record. A path that points at nothing would attach nothing to
+      // every proposal from here on, and nobody would find out until a group asked where the
+      // agreement was.
+      const path = await dbUploadCampAgreement(file);
+      await setCampAgreement(currentCamp.id, path, file.name);
+      setAgreementName(file.name);
+    } catch (err) {
+      setAgreementError(err instanceof Error ? err.message : 'That did not upload. Nothing was saved.');
+    } finally {
+      setAgreementBusy(false);
+    }
+  }
+
+  async function removeAgreement() {
+    if (!currentCamp) return;
+    if (!confirm('Remove the stored agreement? New proposals will stop attaching one. Groups that already have theirs keep it.')) return;
+    setAgreementError(null);
+    try {
+      await setCampAgreement(currentCamp.id, null, null);
+      setAgreementName('');
+    } catch (err) {
+      setAgreementError(err instanceof Error ? err.message : 'Could not remove that.');
+    }
+  }
   const [days, setDays] = useState(
     currentCamp?.proposalValidDays != null ? String(currentCamp.proposalValidDays) : '30');
   const [chase, setChase] = useState(
@@ -1125,6 +1163,59 @@ function RentalsTab() {
               placeholder="A signed agreement and a deposit hold the dates…"
             />
           </div>
+        </div>
+
+        {/* ── The agreement itself ──
+            One file, reused for every group. A proposal attaches it automatically to any booking
+            that has no agreement of its own; a group that negotiated different terms gets their
+            own uploaded on the retreat, and that one wins. */}
+        <div className="mt-5 border-t border-border pt-4">
+          <p className={label}>Our retreat agreement</p>
+          {agreementName ? (
+            <div className="mt-1.5 flex flex-wrap items-center gap-2.5 rounded-card border border-border bg-cream px-3.5 py-2.5">
+              <FileText className="h-4 w-4 flex-shrink-0 text-forest" />
+              <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{agreementName}</span>
+              {editable && (
+                <>
+                  <button
+                    onClick={() => agreementRef.current?.click()}
+                    className="text-[12.5px] font-semibold text-forest hover:text-forest-mid"
+                  >
+                    Replace
+                  </button>
+                  <button
+                    onClick={removeAgreement}
+                    className="text-[12.5px] font-semibold text-red hover:opacity-80"
+                  >
+                    Remove
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={!editable || agreementBusy}
+              onClick={() => agreementRef.current?.click()}
+              className="mt-1.5 w-full rounded-btn border-2 border-dashed border-border px-4 py-5 text-center
+                         transition-colors hover:border-sage hover:bg-sage-pale/40 disabled:opacity-50"
+            >
+              <Paperclip className="mx-auto mb-1.5 h-5 w-5 text-ink-faint" />
+              <p className="text-[13px] font-medium text-forest">
+                {agreementBusy ? 'Uploading…' : 'Upload the agreement you send every group'}
+              </p>
+              <p className="mt-0.5 text-[11px] text-ink-faint">PDF, JPG or PNG · attached to each new proposal</p>
+            </button>
+          )}
+          <input
+            ref={agreementRef} type="file" accept=".pdf,image/*" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void uploadAgreement(f); }}
+          />
+          <p className="mt-1 text-[11px] text-ink-soft">
+            A group with its own agreement uploaded on their retreat keeps that one — this never
+            overwrites it.
+          </p>
+          {agreementError && <p className="mt-1.5 text-[11.5px] text-red">{agreementError}</p>}
         </div>
 
         {/* Opting in to a machine-filled page in front of a legal document. Saved on the spot

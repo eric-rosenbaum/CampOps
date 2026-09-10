@@ -246,19 +246,24 @@ begin
           'coord@test.local', encode(gen_random_bytes(16),'hex'))
   returning id into retreat;
 
-  insert into retreat_space_requests (camp_id, retreat_id, location_id, day_date, layout,
+  -- A request spans a RUN, not a day: a group that wants the Lodge Friday through Sunday is
+  -- making one request, and the crew sets up once and strikes once. Two days here so the
+  -- run-spanning path is what gets tested, not the degenerate single-day case.
+  insert into retreat_space_requests (camp_id, retreat_id, location_id, day_date, end_date, layout,
                                       expected_count, purpose, setup_notes, start_label)
-  values (camp, retreat, loc_lodge, current_date + 31, 'rounds', 40, 'Havdalah service',
+  values (camp, retreat, loc_lodge, current_date + 31, current_date + 32, 'rounds', 40, 'Havdalah service',
           'Three benches along the back wall, two tables at the front', 'after dinner')
   returning id into req;
 
   v := approve_space_request(req, 'We will leave the piano where it is.', null);
 
-  -- TWO work orders, not one. Camps forget the strike every time, and a rental turnover is
-  -- set-up plus tear-down without exception.
+  -- TWO work orders, not one, and not two per day. Camps forget the strike every time, and a
+  -- rental turnover is set-up plus tear-down without exception -- but a group holding the Lodge
+  -- for a weekend does not want the room struck and reset each morning. One run, one set-up,
+  -- one strike, however many days it spans.
   select count(*) into n from issues where retreat_space_request_id = req;
   if n <> 2 then
-    raise exception 'T14 FAIL: approving created % work order(s), expected 2 (set-up and strike)', n;
+    raise exception 'T14 FAIL: approving a 2-day run created % work order(s), expected 2 (one set-up, one strike)', n;
   end if;
   passed := passed + 1;
 
@@ -295,8 +300,8 @@ begin
   -- because approval is a judgement call.
   update locations set service_status = 'out_of_service', out_of_service_reason = 'Roof leak'
    where id = loc_lodge;
-  insert into retreat_space_requests (camp_id, retreat_id, location_id, day_date, layout)
-  values (camp, retreat, loc_lodge, current_date + 33, 'open') returning id into req;
+  insert into retreat_space_requests (camp_id, retreat_id, location_id, day_date, end_date, layout)
+  values (camp, retreat, loc_lodge, current_date + 33, current_date + 33, 'open') returning id into req;
   begin
     perform approve_space_request(req, null, null);
     raise exception 'T18 FAIL: an out-of-service space was approvable';

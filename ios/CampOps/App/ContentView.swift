@@ -8,7 +8,13 @@ struct ContentView: View {
     @StateObject private var assetVM     = AssetViewModel()
     @StateObject private var buildingVM  = BuildingViewModel()
     @StateObject private var syncService = SyncService.shared
+    @ObservedObject private var push = PushService.shared
     @Environment(\.scenePhase) private var scenePhase
+
+    /// Bound so a tapped notification can put the Issues tab in front. Nothing else moves it.
+    @State private var selectedTab = Tab.home
+
+    private enum Tab: Hashable { case home, issues, prePost, pool, assets, building }
 
     var body: some View {
         Group {
@@ -30,8 +36,17 @@ struct ContentView: View {
                     .task(id: authManager.currentCamp?.id) {
                         if let campId = authManager.currentCamp?.id {
                             SyncEngine.shared.start(campId: campId)
+                            // Asked for here rather than at launch: by this point they have signed
+                            // in and joined a camp, so the permission prompt is about work they
+                            // already said yes to.
+                            await PushService.shared.register(campId: campId)
                         }
                         await loadCampData()
+                    }
+                    // A tapped notification names a work order. Bring Issues forward; the list
+                    // itself opens it, and clears the request once it has.
+                    .task(id: push.pendingWorkOrderId) {
+                        if push.pendingWorkOrderId != nil { selectedTab = .issues }
                     }
                     .onChange(of: scenePhase) { _, phase in
                         if phase == .active {
@@ -58,34 +73,40 @@ struct ContentView: View {
     // `syncStatusBar()` goes on each tab rather than on the TabView, so the pill sits above the
     // tab bar instead of behind it. It is the offline layer's only visible surface.
     private var mainTabView: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             HomeView()
                 .syncStatusBar()
                 .tabItem { Label("Home", systemImage: "house") }
+                .tag(Tab.home)
             if authManager.canAccessModule("issues_repairs") {
                 IssueListView()
                     .syncStatusBar()
                     .tabItem { Label("Issues", systemImage: "wrench.adjustable") }
+                    .tag(Tab.issues)
             }
             if authManager.canAccessModule("pre_post") {
                 ChecklistView()
                     .syncStatusBar()
                     .tabItem { Label("Pre/Post", systemImage: "checklist") }
+                    .tag(Tab.prePost)
             }
             if authManager.canAccessModule("pool") {
                 PoolView()
                     .syncStatusBar()
                     .tabItem { Label("Pool", systemImage: "drop.fill") }
+                    .tag(Tab.pool)
             }
             if authManager.canAccessModule("assets") {
                 AssetView()
                     .syncStatusBar()
                     .tabItem { Label("Assets", systemImage: "car.fill") }
+                    .tag(Tab.assets)
             }
             if authManager.canAccessModule("building_systems") {
                 BuildingView()
                     .syncStatusBar()
                     .tabItem { Label("Building", systemImage: "building.2.fill") }
+                    .tag(Tab.building)
             }
         }
         // An admin with every module sees six tabs, which iPhone collapses into "More".

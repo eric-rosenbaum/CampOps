@@ -245,6 +245,11 @@ final class AuthManager: ObservableObject {
     /// that POST can sit for a long time, so it runs unawaited. If it never lands, the refresh
     /// token expires on its own. The web client time-boxes the same call for the same reason.
     func signOut() async {
+        // Before the session goes, while the delete still has a token to authenticate with.
+        // Leaving the row behind would keep sending this camp's work orders to a phone whose
+        // holder has just signed out of it.
+        PushService.shared.forgetThisDevice()
+
         Task { try? await supabase.auth.signOut() }
 
         // Drop derived state immediately rather than waiting for the auth-state callback, so

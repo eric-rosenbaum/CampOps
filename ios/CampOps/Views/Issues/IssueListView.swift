@@ -3,7 +3,11 @@ import SwiftUI
 struct IssueListView: View {
     @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var vm: IssueListViewModel
+    @ObservedObject private var push = PushService.shared
     @State private var showingLogIssue = false
+    /// Bound so a tapped notification can open a work order directly. Taps in the list still go
+    /// through NavigationLink and push onto the same stack.
+    @State private var path: [Issue] = []
 
     // Staff see only their own issues + (if permitted) unassigned ones.
     /// True when the list is being narrowed by staff-group rules rather than genuinely empty.
@@ -42,7 +46,7 @@ struct IssueListView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 if vm.isLoading && vm.issues.isEmpty {
                     ProgressView("Loading...").frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -52,6 +56,12 @@ struct IssueListView: View {
                     issueList
                 }
             }
+            // On the stack rather than on the list, so a notification can still open a work order
+            // when the list underneath is empty or still loading.
+            .navigationDestination(for: Issue.self) { issue in
+                IssueDetailView(issue: issue).environmentObject(vm)
+            }
+            .task(id: push.pendingWorkOrderId) { await openWorkOrderFromNotification() }
             .campCanvas()
             .refreshable { await vm.refresh() }
             .navigationTitle("Issues & Repairs")
@@ -97,9 +107,21 @@ struct IssueListView: View {
             }
             .padding(Spacing.md)
         }
-        .navigationDestination(for: Issue.self) { issue in
-            IssueDetailView(issue: issue).environmentObject(vm)
-        }
+    }
+
+    /// Opens the work order a notification named.
+    ///
+    /// The list is allowed not to have it. Being assigned something a second ago is precisely the
+    /// case that produced the notification, so a miss falls back to fetching the single row rather
+    /// than showing "nothing here".
+    private func openWorkOrderFromNotification() async {
+        guard let id = push.pendingWorkOrderId else { return }
+        push.pendingWorkOrderId = nil
+
+        var issue = vm.issues.first { $0.id == id }
+        if issue == nil { issue = try? await DataService.shared.fetchIssue(id: id) }
+        guard let issue else { return }
+        path = [issue]
     }
 
     @ViewBuilder

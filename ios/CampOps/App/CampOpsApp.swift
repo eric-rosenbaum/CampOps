@@ -1,9 +1,12 @@
 import SwiftUI
 import UIKit
+import UserNotifications
 
 @main
 struct CampCommandApp: App {
     @StateObject private var authManager = AuthManager.shared
+    // APNs hands its token to a UIApplicationDelegate and nothing else, so SwiftUI needs one.
+    @UIApplicationDelegateAdaptor(PushDelegate.self) private var pushDelegate
 
     init() { Self.applyBrandAppearance() }
 
@@ -46,5 +49,36 @@ struct CampCommandApp: App {
         }
         UITabBar.appearance().standardAppearance = tab
         UITabBar.appearance().scrollEdgeAppearance = tab
+    }
+}
+
+/// The one thing SwiftUI cannot do for us.
+///
+/// `registerForRemoteNotifications()` answers through `UIApplicationDelegate` — there is no
+/// SwiftUI equivalent — so the app keeps a delegate whose entire job is to hand the token to
+/// `PushService` and get out of the way.
+final class PushDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // Set here rather than at registration time: a notification tapped while the app was dead
+        // is delivered during launch, and a delegate assigned later than this misses it.
+        UNUserNotificationCenter.current().delegate = PushService.shared
+        return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        PushService.shared.tokenArrived(deviceToken)
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        PushService.shared.registrationFailed(error)
     }
 }

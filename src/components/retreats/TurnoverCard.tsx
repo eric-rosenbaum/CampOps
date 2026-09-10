@@ -90,7 +90,7 @@ export function TurnoverCard({ retreatId }: { retreatId: string }) {
               ? 'Nobody is in a room yet, so there is nothing to turn over. Place the group first.'
               : <>
                   {targets.length} {scope === 'building' ? (targets.length === 1 ? 'building' : 'buildings') : (targets.length === 1 ? 'room' : 'rooms')}
-                  {' '}assigned to this group. One housekeeping work order each, due{' '}
+                  {' '}assigned to this group. One housekeeping work order each, carrying how many beds were used, due{' '}
                   {retreat?.departureDate ? fmtDateFull(retreat.departureDate) : 'on departure'}.
                 </>}
           </p>
@@ -123,7 +123,9 @@ export function TurnoverCard({ retreatId }: { retreatId: string }) {
 
           <p className="text-[11.5px] text-ink-faint mt-2 inline-flex items-start gap-1.5">
             <Info className="w-3.5 h-3.5 flex-shrink-0 mt-px" />
-            Safe to press twice. Rooms that already have a turnover job are skipped.
+            Raised automatically when the rooming plan is locked. This button is for a camp that
+            never locks it, and is safe to press twice — rooms that already have a turnover job
+            are skipped.
           </p>
 
           {result && <p className="text-[12.5px] text-green-muted-text font-medium mt-2">{result}</p>}

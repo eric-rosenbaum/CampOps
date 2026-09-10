@@ -17,6 +17,7 @@ export function rowToLocation(r: Row): CampLocation {
     accessible: Boolean(r.accessible), sortOrder: Number(r.sort_order ?? 0),
     isActive: Boolean(r.is_active), notes: (r.notes as string) ?? null,
     cabinTypeId: (r.cabin_type_id as string) ?? null,
+    checklistTemplateId: (r.checklist_template_id as string) ?? null,
     // Out of service is read by rental availability and the rooming board, not merely displayed:
     // a cabin down for repairs must not be bookable. Defaults to in_service so a row written
     // before the column existed reads as usable rather than mysteriously unavailable.
@@ -46,7 +47,7 @@ function locationToRow(l: CampLocation): Row {
     id: l.id, camp_id: getCampId(), parent_id: l.parentId, name: l.name, category_id: l.categoryId,
     is_dorm: l.isDorm, retreat_available: l.retreatAvailable, bed_capacity: l.bedCapacity,
     accessible: l.accessible, sort_order: l.sortOrder, is_active: l.isActive, notes: l.notes,
-  cabin_type_id: l.cabinTypeId,
+  cabin_type_id: l.cabinTypeId, checklist_template_id: l.checklistTemplateId,
     service_status: l.serviceStatus, out_of_service_reason: l.outOfServiceReason,
     out_of_service_since: l.outOfServiceSince, expected_back: l.expectedBack,
     program_space: l.programSpace, capacity_seated: l.capacitySeated,

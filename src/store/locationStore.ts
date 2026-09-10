@@ -45,7 +45,7 @@ function build(partial: NewLocation, sortOrder: number): CampLocation {
     categoryId: partial.categoryId ?? null, isDorm: partial.isDorm ?? false,
     retreatAvailable: partial.retreatAvailable ?? false, bedCapacity: partial.bedCapacity ?? null,
     accessible: partial.accessible ?? false, sortOrder: partial.sortOrder ?? sortOrder,
-    isActive: partial.isActive ?? true, notes: partial.notes ?? null, cabinTypeId: null,
+    isActive: partial.isActive ?? true, notes: partial.notes ?? null, cabinTypeId: null, checklistTemplateId: null,
     serviceStatus: partial.serviceStatus ?? 'in_service', outOfServiceReason: null,
     outOfServiceSince: null, expectedBack: null,
     programSpace: partial.programSpace ?? false, capacitySeated: partial.capacitySeated ?? null,

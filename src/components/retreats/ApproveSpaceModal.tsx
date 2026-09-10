@@ -59,6 +59,16 @@ export function ApproveSpaceModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ setupId: string; strikeId: string | null } | null>(null);
+  /**
+   * Whether the group hears about this.
+   *
+   * A decline needs saying: they planned around a room they are not getting. An approval is
+   * usually one of a dozen and lands in their portal anyway, so it defaults off rather than
+   * filling an inbox with "yes".
+   */
+  const [tellGroup, setTellGroup] = useState(mode === 'decline');
+  const [emailNote, setEmailNote] = useState<string | null>(null);
+
 
   // Conflicts are fetched FIRST, before any of the decision UI is usable. The whole point is
   // that the collision is on screen at the moment of deciding, not discoverable afterwards.
@@ -84,15 +94,6 @@ export function ApproveSpaceModal({
 
   const blocked = conflicts?.outOfService === true;
 
-  /**
-   * Whether the group hears about this.
-   *
-   * A decline needs saying: they planned around a room they are not getting. An approval is
-   * usually one of a dozen and lands in their portal anyway, so it defaults off rather than
-   * filling an inbox with "yes".
-   */
-  const [tellGroup, setTellGroup] = useState(mode === 'decline');
-  const [emailNote, setEmailNote] = useState<string | null>(null);
 
   async function notifyGroup(outcome: 'approved' | 'declined') {
     if (!request) return;

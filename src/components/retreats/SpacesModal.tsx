@@ -8,11 +8,13 @@ import { useAuth } from '@/lib/auth';
 import type { CampLocation, CabinType } from '@/lib/types';
 import { CabinTypesBlock } from './CabinTypesBlock';
 import { useCabinTypes } from './useCabinTypes';
+import { useCampgroundStore } from '@/store/campgroundStore';
 
 /** One room under a dorm building. Beds live here (never on the building). Available toggle =
  *  retreat_available; blocked rooms drop out of assignment + the guest portal. */
-function RoomRow({ room, canManage, types }: {
+function RoomRow({ room, canManage, types, templates }: {
   room: CampLocation; canManage: boolean; types: CabinType[];
+  templates: { id: string; name: string }[];
 }) {
   const { updateLocation } = useLocationStore();
   const [beds, setBeds] = useState(String(room.bedCapacity ?? 0));
@@ -60,6 +62,18 @@ function RoomRow({ room, canManage, types }: {
           onBlur={(e) => { if ((e.target.value || null) !== room.notes) commit({ notes: e.target.value.trim() || null }); }}
           className="flex-1 text-[12px] bg-white border border-border rounded-btn px-2 py-1 focus:outline-none focus:border-sage disabled:opacity-50"
         />
+        {/* What this room contributes to a job covering the whole building. A bathhouse with its
+            own checklist puts its steps inside "Turn over Boys Village" rather than being a
+            single line somebody has to remember the shape of. */}
+        <select
+          value={room.checklistTemplateId ?? ''} disabled={!canManage}
+          onChange={(e) => commit({ checklistTemplateId: e.target.value || null })}
+          title="Steps this room adds to a whole-building work order"
+          className="text-[12px] bg-white border border-border rounded-btn px-2 py-1 focus:outline-none focus:border-sage disabled:opacity-50 sm:w-40"
+        >
+          <option value="">One step for the room</option>
+          {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
       </div>
     )}
     </div>
@@ -67,7 +81,7 @@ function RoomRow({ room, canManage, types }: {
 }
 
 /** One dorm building: toggle retreat availability; beds are configured on its rooms below. */
-function BuildingBlock({ building, rooms, canManage, types }: { building: CampLocation; rooms: CampLocation[]; canManage: boolean; types: CabinType[] }) {
+function BuildingBlock({ building, rooms, canManage, types, templates }: { building: CampLocation; rooms: CampLocation[]; canManage: boolean; types: CabinType[]; templates: { id: string; name: string }[] }) {
   const { updateLocation } = useLocationStore();
   const commit = (patch: Partial<CampLocation>) => { if (canManage) updateLocation({ ...building, ...patch }); };
   const totalBeds = rooms.filter((r) => r.retreatAvailable).reduce((s, r) => s + (r.bedCapacity ?? 0), 0);
@@ -89,7 +103,7 @@ function BuildingBlock({ building, rooms, canManage, types }: { building: CampLo
         <div className="mt-2.5 space-y-1.5">
           {rooms.length === 0 ? (
             <p className="text-[11px] text-ink-faint italic">No rooms yet. Add rooms as sub-locations in Camp Info → Locations to set beds.</p>
-          ) : rooms.map((r) => <RoomRow key={r.id} room={r} canManage={canManage} types={types} />)}
+          ) : rooms.map((r) => <RoomRow key={r.id} room={r} canManage={canManage} types={types} templates={templates} />)}
         </div>
       )}
     </div>
@@ -102,6 +116,7 @@ export function SpacesModal() {
   const { can } = useAuth();
   const canManage = can('manageRetreats');
   const [types] = useCabinTypes();
+  const templates = useCampgroundStore((s) => s.templates).filter((t) => t.isActive);
 
   // A building is a TOP-LEVEL dorm; its rooms are direct children.
   const dorms = useMemo(
@@ -132,7 +147,7 @@ export function SpacesModal() {
             No dorms yet. Mark locations as dorms in Camp Info → Locations, then toggle their retreat availability here.
           </p>
         )}
-        {dorms.map((d) => <BuildingBlock key={d.id} building={d} rooms={roomsByBuilding.get(d.id) ?? []} canManage={canManage} types={types} />)}
+        {dorms.map((d) => <BuildingBlock key={d.id} building={d} rooms={roomsByBuilding.get(d.id) ?? []} canManage={canManage} types={types} templates={templates} />)}
       </div>
 
       <div className="border-t border-border pt-5 mb-5">

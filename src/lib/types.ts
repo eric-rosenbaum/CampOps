@@ -43,6 +43,12 @@ export interface CampLocation {
   /** The camp's reusable description this cabin uses, if any. */
   cabinTypeId: string | null;
   /**
+   * Steps this room adds to a work order covering its whole building -- a bathhouse's own
+   * checklist appearing inside "Turn over Boys Village". Without one the room still earns a
+   * single step named after it.
+   */
+  checklistTemplateId: string | null;
+  /**
    * Read by rental availability and the rooming board, not merely displayed.
    *
    * Assets already had a status; locations did not — which meant a coordinator could put twelve

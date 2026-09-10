@@ -37,12 +37,30 @@ export function WorkRoutingCard() {
   const { role } = useAuth();
   const canEdit = role === 'admin';
 
-  const assignable = useMemo(
-    () => members
-      .filter((m) => m.isActive && m.role !== 'viewer')
-      .sort((a, b) => (a.fullName || '').localeCompare(b.fullName || '')),
-    [members],
-  );
+  const crewMembership = useCampStore((s) => s.crewMembership);
+
+  /** The crew a trade key names. Since the merge, every trade IS one. */
+  const crewFor = useMemo(() => {
+    const byKey = new Map(staffGroups.map((g) => [g.key, g]));
+    return (t: Trade) => byKey.get(t);
+  }, [staffGroups]);
+
+  /**
+   * Who can take work in a given crew.
+   *
+   * Only that crew's own members, which is the point of merging the two lists: the default for
+   * housekeeping work is a housekeeper, and offering the whole camp in that dropdown was how a
+   * camp ended up routing kitchen work to the waterfront director by mis-click.
+   */
+  const assignableIn = useMemo(() => {
+    const active = members.filter((m) => m.isActive && m.role !== 'viewer');
+    return (groupId: string | undefined) => {
+      const ids = groupId ? crewMembership[groupId] ?? [] : [];
+      return active
+        .filter((m) => ids.includes(m.userId))
+        .sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+    };
+  }, [members, crewMembership]);
 
   /** How much work is sitting unassigned in each trade — the cost of an empty row, in numbers. */
   const unassignedByTrade = useMemo(() => {
@@ -70,10 +88,11 @@ export function WorkRoutingCard() {
           <div>
             <h3 className="font-display text-[15px] font-bold text-forest">Where work lands</h3>
             <p className="text-[12.5px] text-ink-soft leading-relaxed mt-1 max-w-2xl">
-              Work filed against a trade with no default here waits in the unassigned pile.
+              Every crew is a kind of work. Work filed against a crew with nobody on it and no
+              default here waits in the unassigned pile until someone takes it.
             </p>
             <p className="text-[11.5px] text-ink-faint mt-1.5">
-              {routed} of {tradeKeys.length} trades routed.
+              {routed} of {tradeKeys.length} crews have somewhere to send work.
             </p>
           </div>
         </div>
@@ -83,9 +102,12 @@ export function WorkRoutingCard() {
         {tradeKeys.map((trade) => {
           const r = routingFor(routing, trade);
           const assigneeId = r?.defaultAssigneeId ?? '';
-          const groupId = r?.defaultStaffGroupId ?? '';
+          const crew = crewFor(trade);
+          const crewMembers = assignableIn(crew?.id);
           const waiting = unassignedByTrade.get(trade) ?? 0;
-          const isRouted = Boolean(assigneeId || groupId);
+          // A crew with people on it is a destination even with no named default: the work sits
+          // with the crew and any of them can take it. That is routed, not stranded.
+          const isRouted = Boolean(assigneeId) || crewMembers.length > 0;
 
           return (
             <li key={trade} className="px-5 py-3.5 border-b border-border last:border-b-0">
@@ -101,45 +123,30 @@ export function WorkRoutingCard() {
                   </p>
                 </div>
 
-                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label
-                      className="block text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-1"
-                      htmlFor={`routing-assignee-${trade}`}
-                    >
-                      Default assignee
-                    </label>
-                    <select
-                      id={`routing-assignee-${trade}`}
-                      className={inputClass}
-                      value={assigneeId}
-                      disabled={!canEdit}
-                      onChange={(e) => setTradeRouting(trade, groupId || null, e.target.value || null)}
-                    >
-                      <option value="">Nobody — leave it unassigned</option>
-                      {assignable.map((m) => (
-                        <option key={m.userId} value={m.userId}>{m.displayName ?? m.fullName}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label
-                      className="block text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-1"
-                      htmlFor={`routing-group-${trade}`}
-                    >
-                      Crew
-                    </label>
-                    <select
-                      id={`routing-group-${trade}`}
-                      className={inputClass}
-                      value={groupId}
-                      disabled={!canEdit}
-                      onChange={(e) => setTradeRouting(trade, e.target.value || null, assigneeId || null)}
-                    >
-                      <option value="">None</option>
-                      {staffGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-                    </select>
-                  </div>
+                <div className="flex-1">
+                  <label
+                    className="block text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-1"
+                    htmlFor={`routing-assignee-${trade}`}
+                  >
+                    Who on this crew gets it
+                  </label>
+                  <select
+                    id={`routing-assignee-${trade}`}
+                    className={inputClass}
+                    value={assigneeId}
+                    disabled={!canEdit || !crew}
+                    onChange={(e) => setTradeRouting(trade, crew?.id ?? null, e.target.value || null)}
+                  >
+                    <option value="">The whole crew — anyone can pick it up</option>
+                    {crewMembers.map((m) => (
+                      <option key={m.userId} value={m.userId}>{m.displayName ?? m.fullName}</option>
+                    ))}
+                  </select>
+                  {crew && crewMembers.length === 0 && (
+                    <p className="text-[11px] text-ink-faint mt-1">
+                      Nobody is on {crew.name} yet. Add people under Team, or leave this for the crew.
+                    </p>
+                  )}
                 </div>
 
                 <div className="sm:w-5 flex-shrink-0 flex sm:justify-center">

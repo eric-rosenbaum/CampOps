@@ -7,10 +7,50 @@ export type Department =
   | 'waterfront' | 'maintenance' | 'kitchen'
   | 'administration' | 'health' | 'program' | 'other';
 
+/** Row -> crew. One place, because three call sites drifted apart the last time it was three. */
+function rowToStaffGroup(r: Record<string, any>): StaffGroup {
+  return {
+    id: r.id,
+    campId: r.camp_id,
+    name: r.name,
+    key: r.key,
+    sortOrder: r.sort_order ?? 0,
+    isActive: r.is_active ?? true,
+    issuesSeeUnassigned: r.issues_see_unassigned,
+    canViewCamperHealth: r.can_view_camper_health ?? false,
+    createdAt: r.created_at,
+  };
+}
+
+/**
+ * A slug for a new crew, unique within the camp.
+ *
+ * Work orders are filed under this and never re-filed, so a collision would silently pour one
+ * crew's work into another. A name that slugs to nothing (an emoji, a name in a non-Latin script)
+ * still needs a key, hence the fallback.
+ */
+function crewKey(name: string, taken: string[]): string {
+  const base = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'crew';
+  if (!taken.includes(base)) return base;
+  let n = 2;
+  while (taken.includes(`${base}_${n}`)) n += 1;
+  return `${base}_${n}`;
+}
+
 export interface StaffGroup {
   id: string;
   campId: string;
   name: string;
+  /**
+   * The stable slug work is filed under: issues.trade, work_routing.trade, work_schedules.trade.
+   *
+   * A crew and a trade are one thing. The name is what people read and can be renamed at will;
+   * this is what the rows point at, so it never moves once work exists under it.
+   */
+  key: string;
+  sortOrder: number;
+  /** Retired crews still resolve for old work orders; they are not offered for new ones. */
+  isActive: boolean;
   /**
    * Whether the crew sees work that is not theirs -- anything unassigned or sitting with the
    * crew, so they can pick it up. False means they only ever see jobs with their own name on.
@@ -145,9 +185,15 @@ export interface Invitation {
 interface CampState {
   currentCamp: Camp | null;
   currentMember: CampMember | null;
-  currentStaffGroup: StaffGroup | null;
+  /**
+   * The crews I am on. Was a single crew; a person can now be on several, because at a small
+   * camp one person IS the maintenance, grounds and tech crew.
+   */
+  myStaffGroups: StaffGroup[];
   members: MemberWithProfile[];
   staffGroups: StaffGroup[];
+  /** Crew id -> the user ids on it. */
+  crewMembership: Record<string, string[]>;
   camps: Camp[];
   isLoading: boolean;
   /** Founder super-admin (from platform_admins). Grants the admin console + all-camp access. */
@@ -185,17 +231,19 @@ interface CampState {
   revokeInvitation: (invId: string) => Promise<void>;
 
   loadStaffGroups: (campId: string) => Promise<StaffGroup[]>;
+  setCrewMembers: (campId: string, groupId: string, userIds: string[]) => Promise<void>;
   createStaffGroup: (campId: string, name: string, issuesSeeUnassigned: boolean, canViewCamperHealth?: boolean) => Promise<StaffGroup>;
-  updateStaffGroup: (groupId: string, patch: Partial<Pick<StaffGroup, 'name' | 'issuesSeeUnassigned' | 'canViewCamperHealth'>>) => Promise<void>;
+  updateStaffGroup: (groupId: string, patch: Partial<Pick<StaffGroup, 'name' | 'isActive' | 'sortOrder' | 'issuesSeeUnassigned' | 'canViewCamperHealth'>>) => Promise<void>;
   deleteStaffGroup: (groupId: string) => Promise<void>;
 }
 
 export const useCampStore = create<CampState>((set, get) => ({
   currentCamp: null,
   currentMember: null,
-  currentStaffGroup: null,
+  myStaffGroups: [],
   members: [],
   staffGroups: [],
+  crewMembership: {},
   camps: [],
   isLoading: true,
   isPlatformAdmin: false,
@@ -300,11 +348,12 @@ export const useCampStore = create<CampState>((set, get) => ({
       get().loadStaffGroups(campId),
     ]);
 
-    const currentStaffGroup = member.staffGroupId
-      ? staffGroups.find((g) => g.id === member.staffGroupId) ?? null
-      : null;
+    // Which crews this person is on. Read from the membership map loadStaffGroups just filled,
+    // not from camp_members.staff_group_id -- that column is frozen at one crew.
+    const mine = get().crewMembership;
+    const myStaffGroups = staffGroups.filter((g) => (mine[g.id] ?? []).includes(member.userId));
 
-    set({ currentCamp: camp, currentMember: member, members, staffGroups, currentStaffGroup, impersonating });
+    set({ currentCamp: camp, currentMember: member, members, staffGroups, myStaffGroups, impersonating });
   },
 
   openCampAsAdmin: async (campId) => {
@@ -316,7 +365,7 @@ export const useCampStore = create<CampState>((set, get) => ({
     localStorage.removeItem('campcommand_selected_camp_id');
     sessionStorage.removeItem('campcommand_admin_camp_id');
     setCampId('');
-    set({ currentCamp: null, currentMember: null, currentStaffGroup: null, members: [], staffGroups: [], impersonating: false });
+    set({ currentCamp: null, currentMember: null, myStaffGroups: [], members: [], staffGroups: [], crewMembership: {}, impersonating: false });
   },
 
   createCamp: async ({ name, slug, campType, state, modules }) => {
@@ -548,31 +597,51 @@ export const useCampStore = create<CampState>((set, get) => ({
   },
 
   loadStaffGroups: async (campId) => {
-    const { data } = await supabase
-      .from('staff_groups')
-      .select('*')
-      .eq('camp_id', campId)
-      .order('created_at', { ascending: true });
+    const [{ data }, { data: memberRows }] = await Promise.all([
+      supabase.from('staff_groups').select('*').eq('camp_id', campId)
+        .order('sort_order', { ascending: true }).order('name', { ascending: true }),
+      supabase.from('staff_group_members').select('staff_group_id, user_id').eq('camp_id', campId),
+    ]);
 
-    const groups: StaffGroup[] = (data ?? []).map((r) => ({
-      id: r.id,
-      campId: r.camp_id,
-      name: r.name,
-      issuesSeeUnassigned: r.issues_see_unassigned,
-      canViewCamperHealth: r.can_view_camper_health ?? false,
-      createdAt: r.created_at,
-    }));
+    const groups: StaffGroup[] = (data ?? []).map(rowToStaffGroup);
+    const membership: Record<string, string[]> = {};
+    for (const r of memberRows ?? []) {
+      (membership[r.staff_group_id] ??= []).push(r.user_id);
+    }
 
-    set({ staffGroups: groups });
+    set({ staffGroups: groups, crewMembership: membership });
     return groups;
   },
 
+  /** Put someone on a crew, or take them off. A person can be on as many as they actually work. */
+  setCrewMembers: async (campId, groupId, userIds) => {
+    const before = get().crewMembership[groupId] ?? [];
+    const added = userIds.filter((u) => !before.includes(u));
+    const removed = before.filter((u) => !userIds.includes(u));
+
+    set((s) => ({ crewMembership: { ...s.crewMembership, [groupId]: userIds } }));
+
+    if (removed.length > 0) {
+      const { error } = await supabase.from('staff_group_members')
+        .delete().eq('staff_group_id', groupId).in('user_id', removed);
+      if (error) { set((s) => ({ crewMembership: { ...s.crewMembership, [groupId]: before } })); throw new Error(error.message); }
+    }
+    if (added.length > 0) {
+      const { error } = await supabase.from('staff_group_members')
+        .insert(added.map((u) => ({ camp_id: campId, staff_group_id: groupId, user_id: u })));
+      if (error) { set((s) => ({ crewMembership: { ...s.crewMembership, [groupId]: before } })); throw new Error(error.message); }
+    }
+  },
+
   createStaffGroup: async (campId, name, issuesSeeUnassigned, canViewCamperHealth = false) => {
+    const existing = get().staffGroups.filter((g) => g.campId === campId);
     const { data, error } = await supabase
       .from('staff_groups')
       .insert({
         camp_id: campId,
         name,
+        key: crewKey(name, existing.map((g) => g.key)),
+        sort_order: existing.length,
         issues_see_unassigned: issuesSeeUnassigned,
         can_view_camper_health: canViewCamperHealth,
       })
@@ -581,22 +650,18 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     if (error) throw new Error(error.message);
 
-    const group: StaffGroup = {
-      id: data.id,
-      campId: data.camp_id,
-      name: data.name,
-      issuesSeeUnassigned: data.issues_see_unassigned,
-      canViewCamperHealth: data.can_view_camper_health ?? false,
-      createdAt: data.created_at,
-    };
-
+    const group = rowToStaffGroup(data);
     set((s) => ({ staffGroups: [...s.staffGroups, group] }));
     return group;
   },
 
   updateStaffGroup: async (groupId, patch) => {
     const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    // `key` is deliberately not patchable. Work orders point at it; renaming the crew renames
+    // what people read, and the rows underneath stay attached.
     if (patch.name !== undefined) row.name = patch.name;
+    if (patch.isActive !== undefined) row.is_active = patch.isActive;
+    if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder;
     if (patch.issuesSeeUnassigned !== undefined) row.issues_see_unassigned = patch.issuesSeeUnassigned;
     if (patch.canViewCamperHealth !== undefined) row.can_view_camper_health = patch.canViewCamperHealth;
 
@@ -605,9 +670,7 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     set((s) => ({
       staffGroups: s.staffGroups.map((g) => g.id === groupId ? { ...g, ...patch } : g),
-      currentStaffGroup: s.currentStaffGroup?.id === groupId
-        ? { ...s.currentStaffGroup, ...patch }
-        : s.currentStaffGroup,
+      myStaffGroups: s.myStaffGroups.map((g) => g.id === groupId ? { ...g, ...patch } : g),
     }));
   },
 
@@ -616,7 +679,7 @@ export const useCampStore = create<CampState>((set, get) => ({
     if (error) throw new Error(error.message);
     set((s) => ({
       staffGroups: s.staffGroups.filter((g) => g.id !== groupId),
-      currentStaffGroup: s.currentStaffGroup?.id === groupId ? null : s.currentStaffGroup,
+      myStaffGroups: s.myStaffGroups.filter((g) => g.id !== groupId),
     }));
   },
 }));

@@ -43,7 +43,7 @@ export const ROLE_LABELS: Record<CampRole, string> = {
 
 export function useAuth() {
   const { user, profile } = useAuthStore();
-  const { currentMember, currentStaffGroup } = useCampStore();
+  const { currentMember, myStaffGroups } = useCampStore();
 
   const fullName = profile?.fullName ?? user?.email ?? '';
   const initials = fullName
@@ -83,24 +83,33 @@ export function useAuth() {
   /**
    * Whether this person sees work that is not theirs.
    *
-   * True: everything unassigned and everything sitting with their crew, so they can pick jobs
-   * up. False: only what has their name on it. Anyone who is not staff sees the whole board.
+   * True: everything unassigned and everything sitting with one of their crews, so they can pick
+   * jobs up. False: only what has their name on it. Anyone who is not staff sees the whole board.
    */
+  // Across every crew this person is on, the most permissive answer wins. Someone on both
+  // Grounds (pick work up) and Kitchen (own work only) can still pick up grounds work -- the
+  // stricter crew must not quietly take away what the other one grants.
   const issuesSeeUnassigned =
-    role !== 'staff' || !currentStaffGroup || currentStaffGroup.issuesSeeUnassigned;
+    role !== 'staff'
+    || myStaffGroups.length === 0
+    || myStaffGroups.some((g) => g.issuesSeeUnassigned);
 
   // Camper names + allergy severities. Unlike every other gate here, this one is
   // mirrored by real RLS (has_camper_health_access). This flag only decides what the
   // UI bothers to render. It also FAILS CLOSED: a staff member with no group is denied,
   // where elsewhere no group means legacy full access.
   const canViewCamperHealth =
-    role === 'admin' || (role === 'staff' && Boolean(currentStaffGroup?.canViewCamperHealth));
+    role === 'admin'
+    || (role === 'staff' && myStaffGroups.some((g) => g.canViewCamperHealth));
 
   return {
     currentUser,
     role,
     department: currentMember?.department ?? null,
-    staffGroup: currentStaffGroup,
+    /** Every crew this person is on. */
+    staffGroups: myStaffGroups,
+    /** The crew ids, for filtering work that sits with a crew rather than a person. */
+    staffGroupIds: myStaffGroups.map((g) => g.id),
     roleLabel: ROLE_LABELS[role],
     can,
     canAccessModule,

@@ -178,7 +178,6 @@ function CampDataLoader() {
     setVendors: setServiceVendors, setRouting: setWorkRouting,
     setSchedules: setWorkSchedules, setTemplates: setChecklistTemplates,
     setChecklistItems, setComments: setIssueComments, setSessions: setCampSessions,
-    setTrades: setCampTrades,
   } = useCampgroundStore();
   const { setLocations, setCategories, setBuildingDetails } = useLocationStore();
   const applyCompliance = useComplianceStore((s) => s.apply);
@@ -329,7 +328,6 @@ function CampDataLoader() {
       setServiceVendors(d.vendors); setWorkRouting(d.routing); setWorkSchedules(d.schedules);
       setChecklistTemplates(d.templates); setChecklistItems(d.checklistItems);
       setIssueComments(d.comments); setCampSessions(d.sessions);
-      setCampTrades(d.trades);
     };
     unsubCampground = subscribeToCampground(campId, applyCampground);
     // Its own channel: a message on a job somebody is waiting on must not queue behind every

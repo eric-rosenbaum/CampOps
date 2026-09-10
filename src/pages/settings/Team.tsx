@@ -197,6 +197,79 @@ function AddLinkForm({ onSave, onCancel, saving }: AddLinkFormProps) {
   );
 }
 
+// ─── CrewRoster ────────────────────────────────────────────────────────────────
+
+/**
+ * Who is on this crew.
+ *
+ * Membership is many-to-many on purpose. A crew is also a kind of work, and a camp with three
+ * staff still has five kinds of work — so Sam is on Maintenance, Grounds and Tech at once rather
+ * than the camp collapsing three categories it actually tracks.
+ */
+function CrewRoster({ group, campId }: { group: StaffGroup; campId: string }) {
+  const members = useCampStore((s) => s.members);
+  const crewMembership = useCampStore((s) => s.crewMembership);
+  const setCrewMembers = useCampStore((s) => s.setCrewMembers);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const onCrew = crewMembership[group.id] ?? [];
+  const assignable = members
+    .filter((m) => m.isActive && m.role !== 'viewer')
+    .sort((a, b) => (a.displayName ?? a.fullName ?? '').localeCompare(b.displayName ?? b.fullName ?? ''));
+
+  async function toggle(userId: string) {
+    setSaving(userId);
+    setError(null);
+    const next = onCrew.includes(userId) ? onCrew.filter((u) => u !== userId) : [...onCrew, userId];
+    try {
+      await setCrewMembers(campId, group.id, next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save that');
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <div className="mb-3">
+      <p className="text-[11px] font-medium text-ink-soft mb-1.5">
+        On this crew{onCrew.length > 0 && ` · ${onCrew.length}`}
+      </p>
+      {assignable.length === 0 ? (
+        <p className="text-[11px] text-forest/30 italic">Nobody to add yet.</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {assignable.map((m) => {
+            const on = onCrew.includes(m.userId);
+            return (
+              <button
+                key={m.userId}
+                onClick={() => toggle(m.userId)}
+                disabled={saving === m.userId}
+                className={`px-2.5 py-1 rounded-full text-[11.5px] border transition-colors disabled:opacity-50 ${
+                  on
+                    ? 'bg-forest/10 border-forest/30 text-forest font-medium'
+                    : 'bg-white border-border text-ink-soft hover:border-forest/30'
+                }`}
+              >
+                {on && <Check className="w-3 h-3 inline -mt-px mr-1" />}
+                {m.displayName ?? m.fullName}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {onCrew.length === 0 && assignable.length > 0 && (
+        <p className="text-[11px] text-ink-faint mt-1.5">
+          Work filed as {group.name.toLowerCase()} has nobody to land on until someone is here.
+        </p>
+      )}
+      {error && <p className="text-[11px] text-red mt-1.5">{error}</p>}
+    </div>
+  );
+}
+
 // ─── StaffGroupCard ────────────────────────────────────────────────────────────
 
 interface StaffGroupCardProps {
@@ -353,6 +426,8 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
                     : 'aggregate counts only'}
                 </p>
               </div>
+
+              <CrewRoster group={group} campId={campId} />
 
               {/* Join codes */}
               <p className="text-[11px] font-medium text-ink-soft mb-1.5">Join links</p>

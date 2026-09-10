@@ -14,7 +14,6 @@ import { WorkOrderDetail } from '@/components/campground/WorkOrderDetail';
 import { RoutinesPanel } from '@/components/campground/RoutinesPanel';
 import { VendorsPanel } from '@/components/campground/VendorsPanel';
 import { WorkRoutingCard } from '@/components/campground/WorkRoutingCard';
-import { TradesCard } from '@/components/campground/TradesCard';
 import { ChecklistTemplatesPanel } from '@/components/campground/ChecklistTemplatesPanel';
 import { SeasonReview } from '@/components/campground/SeasonReview';
 import { useIssuesStore } from '@/store/issuesStore';
@@ -141,7 +140,7 @@ export function Campground() {
   const checklistItems = useCampgroundStore((s) => s.checklistItems);
   const comments = useCampgroundStore((s) => s.comments);
   const readAt = useCampgroundStore((s) => s.readAt);
-  const { can, role, currentUser, issuesSeeUnassigned, staffGroup } = useAuth();
+  const { can, role, currentUser, issuesSeeUnassigned, staffGroupIds } = useAuth();
 
   const [filter, setFilter] = useState<BoardFilter>('all');
   const [search, setSearch] = useState('');
@@ -166,9 +165,10 @@ export function Campground() {
         // Work waiting for the whole camp, or waiting for this person's own crew. A crew whose
         // members cannot see what is waiting for them cannot pick anything up.
         (issuesSeeUnassigned && !i.assigneeId &&
-          (!i.assigneeGroupId || i.assigneeGroupId === staffGroup?.id)),
+          (!i.assigneeGroupId || staffGroupIds.includes(i.assigneeGroupId))),
     );
-  }, [issues, role, currentUser.id, issuesSeeUnassigned, staffGroup?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [issues, role, currentUser.id, issuesSeeUnassigned, staffGroupIds.join(',')]);
 
   // Lane counts come from open work: a lane exists because there is something in it to do.
   const laneCounts = useMemo(() => {
@@ -412,7 +412,6 @@ export function Campground() {
           {tab === 'vendors' && <VendorsPanel />}
           {tab === 'setup' && (
             <div className="flex flex-col gap-6">
-              <TradesCard />
               <WorkRoutingCard />
               <ChecklistTemplatesPanel />
             </div>

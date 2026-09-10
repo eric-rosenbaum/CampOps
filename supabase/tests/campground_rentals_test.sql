@@ -213,7 +213,11 @@ begin
   values (camp, 'T Timing', array['T Bathhouse'], array[loc_bath], 'normal', 'unassigned', false, 'web', 'maintenance')
   returning id into issue2;
 
-  update issues set assignee_id = u_house, status = 'assigned' where id = issue2;
+  -- Clearing the crew is not incidental. Work now lands with the crew of its trade on insert, and
+  -- `issues_one_assignee` allows a crew OR a person, never both -- so naming somebody means
+  -- releasing it from the crew. The app does this (handleAssigneeChange sets both); a test that
+  -- set only one would be testing an update the product never makes.
+  update issues set assignee_group_id = null, assignee_id = u_house, status = 'assigned' where id = issue2;
   if (select assigned_at from issues where id = issue2) is null then
     raise exception 'T12 FAIL: assigned_at was not stamped on first assignment';
   end if;

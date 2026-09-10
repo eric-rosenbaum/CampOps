@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { FileText, ShieldCheck, Waves, DollarSign, FileQuestion, AlertTriangle, Paperclip, Plus, Pencil, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
@@ -6,6 +7,9 @@ import { dbSignRetreatDocument } from '@/lib/retreatsDb';
 import type { Retreat, RetreatDocument, RetreatDocType, RetreatDocStatus } from '@/lib/types';
 import { Badge, fmtDate, fmtDateFull, money } from './retreatUi';
 import { toDateStr } from '@/lib/utils';
+import { useCampStore } from '@/store/campStore';
+import { supabase } from '@/lib/supabase';
+import { TermsScheduleModal } from './TermsScheduleModal';
 
 const DOC_TYPE_LABEL: Record<RetreatDocType, string> = {
   agreement: 'Retreat agreement',
@@ -104,6 +108,40 @@ export function DocumentsTab() {
   const canManage = can('manageRetreats');
 
   const retreat = selectedRetreat();
+
+  // Above the early return: hook order has to be the same on every render, and there is a
+  // "no retreats yet" branch below.
+  const currentCamp = useCampStore((s) => s.currentCamp);
+  const scheduleOn = Boolean(currentCamp?.agreementScheduleEnabled);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const retreatId = retreat?.id ?? null;
+  /**
+   * Tagged with the retreat it belongs to, rather than cleared when the retreat changes.
+   *
+   * Clearing meant a synchronous setState inside the effect, and the answer for the previous
+   * retreat would flash against the new one for a frame either way. Carrying the id makes the
+   * staleness answerable without a write.
+   */
+  const [fetched, setFetched] = useState<
+    { forRetreat: string; value: { confirmed_name: string; confirmed_at: string } | null } | null
+  >(null);
+
+  useEffect(() => {
+    if (!retreatId || !scheduleOn) return;
+    let live = true;
+    (async () => {
+      const { data } = await supabase.rpc('confirmed_retreat_terms', { p_retreat_id: retreatId });
+      if (live) {
+        setFetched({
+          forRetreat: retreatId,
+          value: (data as { confirmed_name: string; confirmed_at: string } | null) ?? null,
+        });
+      }
+    })();
+    return () => { live = false; };
+  }, [retreatId, scheduleOn, termsOpen]);
+
+  const terms = fetched && fetched.forRetreat === retreatId ? fetched.value : null;
 
   if (!retreat) {
     return (
@@ -212,6 +250,36 @@ export function DocumentsTab() {
             </div>
           )}
 
+          {/* The generated terms page. Opt-in per camp: nobody gets a machine-filled contract by
+              upgrade, and a camp that has not switched this on never sees it. */}
+          {canManage && scheduleOn && (
+            <div className="bg-white rounded-card border border-border px-5 py-4 mb-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-forest mb-1">
+                    Terms page for the agreement
+                  </p>
+                  {terms ? (
+                    <p className="text-[12px] text-ink-soft leading-relaxed">
+                      Confirmed by {terms.confirmed_name} on {fmtDateFull(terms.confirmed_at.slice(0, 10))}.
+                      These numbers are fixed and will not change if the booking does.
+                    </p>
+                  ) : (
+                    <p className="text-[12px] text-ink-soft leading-relaxed">
+                      Group, dates, headcount and money, filled in from this booking and put in
+                      front of your own agreement. You check every value before it counts for
+                      anything.
+                    </p>
+                  )}
+                </div>
+                <Button size="sm" variant={terms ? 'ghost' : 'primary'}
+                        onClick={() => setTermsOpen(true)} className="flex-shrink-0">
+                  {terms ? 'Review again' : 'Review the terms'}
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Retreat agreement, a dedicated slot; upload here or it shows in the list once added. */}
           {canManage && agreementMissing && (
             <div className="bg-white rounded-card border border-border px-5 py-4 mb-3">
@@ -247,6 +315,14 @@ export function DocumentsTab() {
             </div>
           )}
         </>
+      )}
+
+      {termsOpen && retreat && (
+        <TermsScheduleModal
+          retreatId={retreat.id}
+          groupName={retreat.groupName}
+          onClose={() => setTermsOpen(false)}
+        />
       )}
     </div>
   );

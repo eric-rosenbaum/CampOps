@@ -134,7 +134,7 @@ function Message({ comment, mine, onDelete }: {
  * hand still reads as a name here, and still notifies nobody -- which is the right way round.
  */
 function renderMentions(body: string) {
-  const parts = body.split(/(@[\p{L}][\p{L}\p{M}'\-]*(?: [\p{L}][\p{L}\p{M}'\-]*)?)/gu);
+  const parts = body.split(/(@[\p{L}][\p{L}\p{M}'-]*(?: [\p{L}][\p{L}\p{M}'-]*)?)/gu);
   return parts.map((part, i) =>
     part.startsWith('@')
       ? <strong key={i} className="font-semibold text-forest">{part}</strong>

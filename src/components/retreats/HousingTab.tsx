@@ -263,6 +263,9 @@ export function HousingTab() {
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [restoreResult, setRestoreResult] = useState<string | null>(null);
   const [signsOpen, setSignsOpen] = useState(false);
+  const [confirmLock, setConfirmLock] = useState(false);
+  const [locking, setLocking] = useState(false);
+  const [lockResult, setLockResult] = useState<string | null>(null);
   const [signLastNames, setSignLastNames] = useState(true);
   const [signQr, setSignQr] = useState(true);
   const { can, currentUser } = useAuth();
@@ -352,13 +355,7 @@ export function HousingTab() {
   // distinct room on the housing plan, NOT per room that has a guest in it. A room held for a
   // group and left empty still gets turned over, and a dialog that promised a different number
   // than the board then shows is worse than no dialog.
-  const occupiedRooms = useMemo(
-    () => new Set(rows.filter((h) => h.locationId).map((h) => h.locationId as string)).size,
-    [rows],
-  );
-  const [confirmLock, setConfirmLock] = useState(false);
-  const [locking, setLocking] = useState(false);
-  const [lockResult, setLockResult] = useState<string | null>(null);
+  const occupiedRooms = new Set(rows.filter((h) => h.locationId).map((h) => h.locationId as string)).size;
   const assigned = rows.reduce((sum, h) => sum + h.peopleCount, 0);
   const editable = canManage && !allLocked;
 

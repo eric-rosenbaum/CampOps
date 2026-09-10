@@ -568,6 +568,18 @@ const proposalRow = (x: RetreatProposal): Row => ({
 export const dbAddProposal = (x: RetreatProposal) =>
   ins('retreat_proposals', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, ...proposalRow(x) });
 export const dbUpdateProposal = (x: RetreatProposal) => upd('retreat_proposals', x.id, proposalRow(x));
+/**
+ * Give a retreat the camp's stored agreement to sign, if it has none of its own.
+ *
+ * Returns the new document id, or null when the camp keeps no template or this group already
+ * has an agreement -- including one uploaded for them specifically, which wins.
+ */
+export async function dbAttachAgreementFromTemplate(retreatId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc('attach_agreement_from_template', { p_retreat_id: retreatId });
+  if (error) { campError('attach agreement', error.message); return null; }
+  return (data as string) ?? null;
+}
+
 export const dbDeleteProposal = (id: string) => del('retreat_proposals', id);
 
 /** Build the lines from the rate card and existing charges, rather than asking anyone to retype them. */

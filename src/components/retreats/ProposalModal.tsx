@@ -12,7 +12,7 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import type { RetreatInvoiceLine, RetreatProposal } from '@/lib/types';
-import { dbAddProposal, dbUpdateProposal, fetchProposalLines } from '@/lib/retreatsDb';
+import { dbAddProposal, dbUpdateProposal, fetchProposalLines, dbAttachAgreementFromTemplate } from '@/lib/retreatsDb';
 import { generateId, parseDateStr, todayStr } from '@/lib/utils';
 import { money, inputClass, labelClass, fmtRange, nights as nightsBetween } from './retreatUi';
 import { sendEmail } from '@/lib/email';
@@ -59,6 +59,8 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
   const canManage = can('manageRetreats');
 
   const retreat = retreatById(retreatId);
+  const hasAgreement = useRetreatStore((s) => s.documents)
+    .some((d) => d.retreatId === retreatId && d.docType === 'agreement');
   const existing = proposalId ? proposals.find((p) => p.id === proposalId) ?? null : null;
 
   /**
@@ -198,10 +200,15 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
     if (existing) { setProposals(proposals.map((x) => (x.id === p.id ? p : x))); await dbUpdateProposal(p); }
     else { setProposals([p, ...proposals]); await dbAddProposal(p); }
 
+    // The quote and the thing that makes it binding travel together. If the camp keeps an
+    // agreement on file and this group has none, they get it now -- signing it is what accepts
+    // the quote, so sending one without the other asks them to agree to nothing.
+    const agreementId = await dbAttachAgreementFromTemplate(retreatId);
+
     const res = await sendEmail({
       to,
       subject: `Your quote from ${campName}`,
-      html: proposalEmailHtml(p, retreat, campName, portalUrl(retreat)),
+      html: proposalEmailHtml(p, retreat, campName, portalUrl(retreat), Boolean(agreementId) || hasAgreement),
       fromName: campName,
       replyTo: currentUser.email || undefined,
     });

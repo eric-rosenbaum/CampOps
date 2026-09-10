@@ -39,9 +39,13 @@ interface Props {
   token: string;
   /** Called after a successful accept, so the page can reload the rest of the booking. */
   onAccepted?: () => void;
+  /** True when this group has an agreement to sign; signing it is what accepts the quote. */
+  hasAgreement?: boolean;
+  /** Take them to the documents section, where the agreement is. */
+  onGoToAgreement?: () => void;
 }
 
-export function ProposalSection({ token, onAccepted }: Props) {
+export function ProposalSection({ token, onAccepted, hasAgreement, onGoToAgreement }: Props) {
   const [proposal, setProposal] = useState<PortalProposal | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
@@ -155,6 +159,24 @@ export function ProposalSection({ token, onAccepted }: Props) {
             </p>
           </div>
         ) : (
+          hasAgreement ? (
+          /* An agreement is the stronger act of agreement -- an emailed code, an IP, a hash of
+             the file -- so it is the one that counts. Typing a name into a second box days later
+             added nothing and left the camp checking two places to know it had a booking. */
+          <div className="px-5 py-4 border-t border-border">
+            <p className="text-[13px] text-ink leading-relaxed">
+              To accept this, sign the retreat agreement in your documents. Signing it is what
+              confirms the quote — there is nothing else to send back.
+            </p>
+            <button
+              type="button"
+              onClick={onGoToAgreement}
+              className={`${btnPrimary} w-full mt-3`}
+            >
+              <FileText className="w-4 h-4" /> Go to the agreement
+            </button>
+          </div>
+          ) : (
           <div className="px-5 py-4 border-t border-border">
             <label className={labelClass} htmlFor="proposal-accept-name">Type your name to accept</label>
             <input
@@ -180,6 +202,7 @@ export function ProposalSection({ token, onAccepted }: Props) {
             </p>
             {error && <p className="text-[13px] text-red mt-2 text-center">{error}</p>}
           </div>
+          )
         )}
       </div>
     </section>

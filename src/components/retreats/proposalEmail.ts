@@ -15,6 +15,7 @@ export function proposalEmailHtml(
   retreat: Retreat | null,
   campName: string,
   url: string,
+  withAgreement = false,
 ): string {
   const rows = p.lineItems.map((l) => `
       <tr>
@@ -38,9 +39,11 @@ export function proposalEmailHtml(
         </tr>` : ''}
       </table>
       ${p.validUntil ? `<p style="color:#5a6b5a;font-size:13px">This quote stands until ${esc(fmtDateFull(p.validUntil))}.</p>` : ''}
+      ${withAgreement ? `<p>Your retreat agreement is in the portal alongside this quote.
+        <strong>Signing it is how you accept</strong> -- there is nothing else to send back.</p>` : ''}
       <p style="margin:24px 0">
         <a href="${url}" style="background:#2f4f2f;color:#fdfcf7;text-decoration:none;font-size:15px;font-weight:600;padding:12px 22px;border-radius:8px;display:inline-block">
-          Review and accept
+          ${withAgreement ? 'Review and sign' : 'Review and accept'}
         </a>
       </p>
       ${p.terms ? `<p style="font-size:13px;color:#5a6b5a;border-top:1px solid #e7e2d6;padding-top:14px">${esc(p.terms).replace(/\n/g, '<br>')}</p>` : ''}

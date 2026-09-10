@@ -699,13 +699,23 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
 
   function openRooming() { setView('rooming'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
+  /** The agreement this group has to sign, if any. Signing it is what accepts their quote. */
+  const agreementDoc = documents.find((d) => d.doc_type === 'agreement' || d.doc_type === 'contract');
+
   /** The working part of a checklist item, shown when that item is open. */
   function stepBody(key: string) {
     switch (key) {
       case 'agreement':
         return <DocumentsBlock documents={documents.filter((d) => d.doc_type !== 'coi')} token={token} refetch={refetch} unlocked={unlocked} hint={data.verify_email_hint} />;
       case 'proposal':
-        return <ProposalSection token={token} onAccepted={refetch} />;
+        return (
+          <ProposalSection
+            token={token}
+            onAccepted={refetch}
+            hasAgreement={Boolean(agreementDoc)}
+            onGoToAgreement={() => setOpenStep('agreement')}
+          />
+        );
       case 'deposit':
         return (
           <div className="space-y-3">

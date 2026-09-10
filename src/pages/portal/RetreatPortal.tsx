@@ -267,7 +267,7 @@ interface Step {
 }
 
 function buildSteps(data: PortalData): Step[] {
-  const { retreat, documents, housing } = data;
+  const { retreat, documents, housing, invoices } = data;
   const arrival = retreat.arrival_date;
 
   const agreementDoc = documents.find((d) => d.doc_type === 'agreement' || d.doc_type === 'contract');
@@ -318,6 +318,26 @@ function buildSteps(data: PortalData): Step[] {
       hint: paid ? 'Paid. Your dates are secured' : partial ? 'Partial payment received' : retreat.deposit_due ? `Due ${fmtDateFull(retreat.deposit_due)}` : 'Invoice sent - pay to lock in your dates',
       state: paid ? 'done' : urgency(retreat.deposit_due), dueDate: retreat.deposit_due, sectionId: 'documents', counts: true,
     });
+  }
+
+  // 2b, Balance. Its own step rather than sharing the deposit's: they are two different asks,
+  // months apart, and a group that has paid its deposit reads "Pay deposit to hold your dates"
+  // as done and never looks again. Appears only once there is a balance invoice to pay.
+  {
+    const balanceInvoices = invoices.filter((i) => i.kind === 'balance' && i.status !== 'void');
+    const outstanding = balanceInvoices.filter((i) => i.status !== 'paid');
+    if (balanceInvoices.length > 0) {
+      const due = outstanding[0]?.due_date ?? null;
+      steps.push({
+        key: 'balance',
+        label: 'Pay your balance',
+        hint: outstanding.length === 0
+          ? 'Paid in full. Thank you'
+          : due ? `Due ${fmtDateFull(due)}` : 'Invoice sent',
+        state: outstanding.length === 0 ? 'done' : urgency(due),
+        dueDate: due, sectionId: 'documents', counts: true,
+      });
+    }
   }
 
   // 3, Rooming: names first, then a bed for each of them
@@ -690,9 +710,13 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
         return (
           <div className="space-y-3">
             <DepositCard retreat={retreat} cardsOn={cardsOn} />
-            {/* Paying online lives inside the deposit step rather than beside it: money is one
-                question, and a second "Pay" step would just be a place to miss. */}
-            <PaySection token={token} paymentNote={data.payment_note ?? null} />
+            <PaySection token={token} paymentNote={data.payment_note ?? null} only="deposit" />
+          </div>
+        );
+      case 'balance':
+        return (
+          <div className="space-y-3">
+            <PaySection token={token} paymentNote={data.payment_note ?? null} only="balance" />
             {invoices.length > 0 && <InvoicesBlock retreat={retreat} invoices={invoices} cardsOn={cardsOn} />}
           </div>
         );

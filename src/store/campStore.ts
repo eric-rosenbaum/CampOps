@@ -70,6 +70,8 @@ export interface Camp {
   proposalTerms: string | null;
   /** How long a quote stands. Null means 30. */
   proposalValidDays: number | null;
+  /** Days after a deposit invoice goes out before the camp is asked whether it arrived. */
+  depositChaseDays: number | null;
   accountType: CampAccountType;
   status: CampStatus;
   plan: string | null;
@@ -99,6 +101,7 @@ function rowToCamp(c: Record<string, unknown>): Camp {
     defaultDepositAmount: (c.default_deposit_amount as number) ?? null,
     proposalTerms: (c.proposal_terms as string) ?? null,
     proposalValidDays: (c.proposal_valid_days as number) ?? null,
+    depositChaseDays: (c.deposit_chase_days as number) ?? null,
     accountType: (c.account_type as CampAccountType) ?? 'customer',
     status: (c.status as CampStatus) ?? 'active',
     plan: (c.plan as string) ?? null,
@@ -167,7 +170,7 @@ interface CampState {
   /** Write any part of the camp's rate card / proposal defaults. */
   setRentalDefaults: (campId: string, patch: Partial<Pick<Camp,
     'defaultPricingModel' | 'defaultRatePerPersonNight' | 'defaultFlatRate' | 'defaultDepositAmount'
-    | 'proposalTerms' | 'proposalValidDays'>>) => Promise<void>;
+    | 'proposalTerms' | 'proposalValidDays' | 'depositChaseDays'>>) => Promise<void>;
 
   loadMembers: (campId: string) => Promise<MemberWithProfile[]>;
   inviteMember: (campId: string, email: string, role: CampRole, staffGroupId: string | null) => Promise<string>;
@@ -383,6 +386,7 @@ export const useCampStore = create<CampState>((set, get) => ({
     if (patch.defaultDepositAmount !== undefined) row.default_deposit_amount = patch.defaultDepositAmount;
     if (patch.proposalTerms !== undefined) row.proposal_terms = patch.proposalTerms;
     if (patch.proposalValidDays !== undefined) row.proposal_valid_days = patch.proposalValidDays;
+    if (patch.depositChaseDays !== undefined) row.deposit_chase_days = patch.depositChaseDays;
     const { error } = await supabase.from('camps').update(row).eq('id', campId);
     if (error) console.error('[campStore] setRentalDefaults error:', error);
   },

@@ -1022,6 +1022,8 @@ function RentalsTab() {
   const [terms, setTerms] = useState(currentCamp?.proposalTerms ?? '');
   const [days, setDays] = useState(
     currentCamp?.proposalValidDays != null ? String(currentCamp.proposalValidDays) : '30');
+  const [chase, setChase] = useState(
+    currentCamp?.depositChaseDays != null ? String(currentCamp.depositChaseDays) : '');
   const [saved, setSaved] = useState(false);
 
   if (!currentCamp) return null;
@@ -1034,6 +1036,7 @@ function RentalsTab() {
       defaultFlatRate: num(flat),
       proposalTerms: terms.trim() || null,
       proposalValidDays: days.trim() === '' ? null : Number(days),
+      depositChaseDays: num(chase),
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
@@ -1096,6 +1099,21 @@ function RentalsTab() {
               />
               <span className="text-[13px] text-ink-soft">days</span>
             </div>
+          </div>
+          {/* A cheque that never came does not announce itself: the dates stay held, no money
+              lands against them, and somebody notices in the week of arrival. */}
+          <div className="max-w-[13rem]">
+            <label className={label} htmlFor="rt-chase">Ask us about an unpaid deposit after</label>
+            <div className="flex items-center gap-2">
+              <input
+                id="rt-chase" className={input} inputMode="numeric" placeholder="Never"
+                value={chase} disabled={!editable} onChange={(e) => setChase(e.target.value)}
+              />
+              <span className="text-[13px] text-ink-soft">days</span>
+            </div>
+            <p className="text-[11px] text-ink-soft mt-1">
+              Counted from the day the deposit invoice went out. Blank means never.
+            </p>
           </div>
           <div>
             <label className={label} htmlFor="rt-terms">Terms</label>

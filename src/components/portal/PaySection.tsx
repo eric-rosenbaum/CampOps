@@ -30,6 +30,12 @@ interface Props {
    * pass it through so this section never renders a dead end.
    */
   paymentNote?: string | null;
+  /**
+   * Which half of the money this instance is for. The portal asks twice, months apart -- a
+   * group that has paid its deposit reads that step as done and never opens it again, so a
+   * balance shown inside it is a balance nobody sees.
+   */
+  only?: 'deposit' | 'balance';
 }
 
 /**
@@ -47,12 +53,13 @@ function dollars(n: number): string {
   });
 }
 
-export function PaySection({ token, paymentNote }: Props) {
+export function PaySection({ token, paymentNote, only }: Props) {
   const [invoices, setInvoices] = useState<PayableInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   /** Which invoice is mid-handoff, so its button can say so and cannot be double-clicked. */
   const [starting, setStarting] = useState<string | null>(null);
   const [payError, setPayError] = useState<string | null>(null);
+  const [showDirect, setShowDirect] = useState(false);
 
   /**
    * Ask for a fresh checkout link and go there.
@@ -94,7 +101,8 @@ export function PaySection({ token, paymentNote }: Props) {
 
   if (loading || invoices.length === 0) return null;
 
-  const outstanding = invoices.filter((i) => (i.amount - (i.amount_paid ?? 0)) > 0 && i.status !== 'paid');
+  const mine = only ? invoices.filter((i) => i.kind === only) : invoices;
+  const outstanding = mine.filter((i) => (i.amount - (i.amount_paid ?? 0)) > 0 && i.status !== 'paid');
   const cardsOn = invoices.some((i) => i.payable);
   const totalDue = outstanding.reduce((s, i) => s + (i.amount - (i.amount_paid ?? 0)), 0);
 
@@ -105,7 +113,9 @@ export function PaySection({ token, paymentNote }: Props) {
           <Wallet className="w-4 h-4" />
         </div>
         <div className="min-w-0">
-          <h2 className="text-[16px] font-bold text-forest leading-tight">Payment</h2>
+          <h2 className="text-[16px] font-bold text-forest leading-tight">
+            {only === 'deposit' ? 'Your deposit' : only === 'balance' ? 'Your balance' : 'Payment'}
+          </h2>
           <p className="text-[12px] text-ink-soft leading-tight">
             {outstanding.length === 0
               ? 'Everything is settled.'
@@ -116,7 +126,7 @@ export function PaySection({ token, paymentNote }: Props) {
 
       <div className={`${cardClass} overflow-hidden`}>
         <ul className="divide-y divide-border">
-          {invoices.map((inv) => {
+          {mine.map((inv) => {
             const paid = inv.amount - (inv.amount_paid ?? 0) <= 0 || inv.status === 'paid';
             const remaining = inv.amount - (inv.amount_paid ?? 0);
             return (
@@ -167,6 +177,29 @@ export function PaySection({ token, paymentNote }: Props) {
           <p className="px-4 py-3 border-t border-border bg-red-bg text-[13px] text-red-text">
             {payError} You can try again, or contact the camp to pay another way.
           </p>
+        )}
+
+        {/* Paying the camp directly, alongside the card button rather than only in its absence.
+            A cheque or an ACH transfer is how a great many groups pay a camp, and hiding the
+            option behind "the camp has no Stripe" made it look unavailable to everyone else.
+            A button rather than a permanently open block: most people will tap the card. */}
+        {cardsOn && outstanding.length > 0 && (
+          <div className="px-4 py-3 border-t border-border">
+            <button
+              type="button"
+              onClick={() => setShowDirect((v) => !v)}
+              className="text-[13px] font-semibold text-forest hover:underline"
+            >
+              {showDirect ? 'Hide' : 'Pay the camp directly'}
+            </button>
+            {showDirect && (
+              <p className="text-[13.5px] text-ink leading-relaxed whitespace-pre-wrap mt-2">
+                {paymentNote?.trim()
+                  ? paymentNote
+                  : 'Contact the camp office to arrange a cheque or bank transfer — they will confirm how they would like to receive it.'}
+              </p>
+            )}
+          </div>
         )}
 
         {/* No Stripe on the camp's side: their own instructions, not a dead button. */}

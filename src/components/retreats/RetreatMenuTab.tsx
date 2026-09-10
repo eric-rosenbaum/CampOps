@@ -1,16 +1,27 @@
-import { Utensils, Pencil, Eye, EyeOff } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+// The menu, typed straight in.
+//
+// It used to be authored in Commissary's retreats mode -- structured entries pointing at recipes
+// and inventory items -- and this tab was a read-only preview with a button that sent you to a
+// different module to change a Tuesday lunch. That coupling bought food ordering, and cost every
+// camp that just wants to tell a group what is for dinner.
+//
+// So: a grid. Meal periods down, days across, free text in every cell, saved as you leave it.
+// Allergens and alternatives stay on the row for the portal to show, typed rather than derived.
+import { useState } from 'react';
+import { Utensils, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useCommissaryStore } from '@/store/commissaryStore';
+import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
+import { generateId } from '@/lib/utils';
 import type { MealPeriod, Retreat, RetreatMenuEntry } from '@/lib/types';
 import { fmtDate, fmtRange } from './retreatUi';
 
-// The menu is authored in Commissary (retreats mode); this tab is a read-only preview + publish control.
-// Axis matches the Commissary menu: meal periods are rows, days are columns.
 const MEAL_ROWS: MealPeriod[] = ['breakfast', 'lunch', 'dinner', 'snack'];
-const MEAL_LABELS: Record<string, string> = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' };
+const MEAL_LABELS: Record<string, string> = {
+  breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack',
+};
 
 const DIET_LABELS: Record<string, string> = {
   vegetarian: 'vegetarian', vegan: 'vegan', gluten_free: 'gluten-free', dairy_free: 'dairy-free',
@@ -34,86 +45,105 @@ function dayLabel(dayDate: string): string {
   return `${weekday} ${fmtDate(dayDate)}`;
 }
 
-function MenuTable({ retreat }: { retreat: Retreat }) {
-  const { retreatEntriesFor, recipesById, itemsById } = useCommissaryStore();
-  const recById = recipesById();
-  const itById = itemsById();
-  const days = retreat.arrivalDate && retreat.departureDate
-    ? retreatDays(retreat.arrivalDate, retreat.departureDate) : [];
-  const dishName = (e: RetreatMenuEntry) =>
-    e.label || (e.recipeId ? recById.get(e.recipeId)?.name : null) || (e.itemId ? itById.get(e.itemId)?.name : null) || 'Untitled';
+/** One cell: whatever is being served, or nothing. */
+function Cell({ retreat, day, meal, editable }: {
+  retreat: Retreat; day: string; meal: MealPeriod; editable: boolean;
+}) {
+  const entries = useCommissaryStore((s) => s.retreatMenuEntries);
+  const addEntry = useCommissaryStore((s) => s.addRetreatMenuEntry);
+  const updateEntry = useCommissaryStore((s) => s.updateRetreatMenuEntry);
+  const deleteEntry = useCommissaryStore((s) => s.deleteRetreatMenuEntry);
+  const campId = useCampStore((s) => s.currentCamp?.id ?? '');
 
-  if (days.length === 0) {
-    return (
-      <div className="bg-white rounded-card border border-border px-5 py-8 text-center text-[13px] text-ink-faint">
-        This retreat's arrival and departure dates don't form a valid range.
-      </div>
-    );
+  const row = entries.find(
+    (e) => e.retreatId === retreat.id && e.dayDate === day && e.mealPeriod === meal,
+  ) ?? null;
+  const [text, setText] = useState(row?.label ?? '');
+
+  function commit() {
+    const next = text.trim();
+    const was = (row?.label ?? '').trim();
+    if (next === was) return;
+    if (!row) {
+      if (!next) return;
+      const now = new Date().toISOString();
+      addEntry({
+        id: generateId(), campId, retreatId: retreat.id, dayDate: day, mealPeriod: meal,
+        recipeId: null, itemId: null, itemQtyBase: null, label: next,
+        allergens: [], alternatives: null, portionsOverride: null, sortOrder: 0,
+        createdAt: now, updatedAt: now,
+      } as RetreatMenuEntry);
+      return;
+    }
+    // Cleared: the row goes rather than sitting there empty.
+    if (!next) { deleteEntry(row.id); return; }
+    updateEntry({ ...row, label: next, updatedAt: new Date().toISOString() });
   }
-  // Only show a meal row if the retreat actually has entries in it (always keep B/L/D).
-  const mealsToShow = MEAL_ROWS.filter((m) =>
-    ['breakfast', 'lunch', 'dinner'].includes(m) || days.some((d) => retreatEntriesFor(retreat.id, d, m).length > 0),
-  );
-  const gridCols = { gridTemplateColumns: `100px repeat(${days.length}, minmax(150px, 1fr))` };
 
   return (
-    <div className="bg-white rounded-card border border-border overflow-x-auto">
-      <div className="min-w-max">
-        {/* Header: days across the top */}
-        <div className="grid bg-cream-dark/60 border-b border-border" style={gridCols}>
-          <div className="px-4 py-2.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Meal</div>
-          {days.map((d) => (
-            <div key={d} className="px-3 py-2.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft border-l border-border">{dayLabel(d)}</div>
+    <textarea
+      value={text}
+      disabled={!editable}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      rows={2}
+      placeholder="—"
+      className="w-full min-w-[9rem] resize-y rounded-btn border border-transparent bg-transparent px-2 py-1.5
+                 text-[12.5px] text-ink placeholder:text-ink-faint/50
+                 hover:border-border focus:border-sage focus:bg-white focus:outline-none disabled:opacity-70"
+    />
+  );
+}
+
+function MenuGrid({ retreat, editable }: { retreat: Retreat; editable: boolean }) {
+  const days = retreatDays(retreat.arrivalDate ?? '', retreat.departureDate ?? '');
+  if (days.length === 0) {
+    return (
+      <p className="rounded-card border border-border bg-white px-4 py-6 text-center text-[13px] text-ink-soft">
+        Set the arrival and departure dates and the days will appear here.
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-card border border-border bg-white">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr>
+            <th className="sticky left-0 z-10 bg-cream-dark/60 px-3 py-2 text-left text-[10px] font-bold uppercase tracking-[0.1em] text-ink-soft">
+              Meal
+            </th>
+            {days.map((d) => (
+              <th key={d} className="border-l border-border bg-cream-dark/60 px-3 py-2 text-left text-[11px] font-semibold text-forest whitespace-nowrap">
+                {dayLabel(d)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {MEAL_ROWS.map((meal) => (
+            <tr key={meal} className="border-t border-border">
+              <th className="sticky left-0 z-10 bg-white px-3 py-2 text-left text-[12px] font-semibold text-forest whitespace-nowrap">
+                {MEAL_LABELS[meal]}
+              </th>
+              {days.map((d) => (
+                <td key={d} className="border-l border-border align-top p-0.5">
+                  <Cell retreat={retreat} day={d} meal={meal} editable={editable} />
+                </td>
+              ))}
+            </tr>
           ))}
-        </div>
-        {/* One row per meal period */}
-        {mealsToShow.map((meal) => (
-          <div key={meal} className="grid border-b border-cream-dark last:border-b-0" style={gridCols}>
-            <div className="px-4 py-3 text-[12px] font-semibold text-ink-soft">{MEAL_LABELS[meal]}</div>
-            {days.map((d) => {
-              const cell = retreatEntriesFor(retreat.id, d, meal);
-              return (
-                <div key={d} className="px-3 py-2 border-l border-cream-dark min-h-[64px] flex flex-col gap-1.5">
-                  {cell.map((e) => (
-                    <div key={e.id}>
-                      <p className="text-[13px] font-medium text-forest leading-snug">{dishName(e)}</p>
-                      {e.allergens && e.allergens.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-0.5">
-                          {e.allergens.map((a) => <span key={a} className="text-[10px] bg-amber-bg text-amber-text px-1.5 py-0.5 rounded-tag capitalize">{a.replace(/_/g, ' ')}</span>)}
-                        </div>
-                      )}
-                      {e.alternatives && <p className="text-[10px] text-green-muted-text mt-0.5 leading-snug">{e.alternatives}</p>}
-                    </div>
-                  ))}
-                  {cell.length === 0 && <span className="text-[11px] text-forest/25 px-1 py-1">-</span>}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
+        </tbody>
+      </table>
     </div>
   );
 }
 
 export function RetreatMenuTab() {
   const { selectedRetreat, updateRetreat } = useRetreatStore();
-  const setMode = useCommissaryStore((s) => s.setMode);
-  const setCommissaryTab = useCommissaryStore((s) => s.setActiveTab);
-  const setRetreatMenuTarget = useCommissaryStore((s) => s.setRetreatMenuTarget);
-  const navigate = useNavigate();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
-
   const retreat = selectedRetreat();
-
-  function editInCommissary() {
-    setMode('retreats');
-    setCommissaryTab('menu');
-    // Carry the group across, so "edit" lands on this menu rather than the chooser.
-    if (retreat) setRetreatMenuTarget(retreat.id);
-    navigate('/commissary');
-  }
 
   if (!retreat) {
     return (
@@ -123,7 +153,7 @@ export function RetreatMenuTab() {
             <Utensils className="w-7 h-7 text-forest/30" />
           </div>
           <h3 className="text-[15px] font-semibold text-forest mb-1.5">No retreats yet</h3>
-          <p className="text-[13px] text-ink-soft leading-relaxed">Create a retreat first, then plan its menu in Commissary.</p>
+          <p className="text-[13px] text-ink-soft leading-relaxed">Create a retreat first, then write its menu here.</p>
         </div>
       </div>
     );
@@ -131,42 +161,37 @@ export function RetreatMenuTab() {
 
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
-        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-          <h2 className="text-[14px] font-semibold text-forest">
-            Menu · {retreat.groupName} · {fmtRange(retreat.arrivalDate, retreat.departureDate)}
-          </h2>
-          {canManage && (
-            <div className="flex gap-2">
-              <Button size="sm" variant="ghost" onClick={editInCommissary}>
-                <Pencil className="w-3.5 h-3.5" /> Edit in Commissary
-              </Button>
-              <Button
-                size="sm"
-                variant={retreat.menuPublished ? 'ghost' : 'primary'}
-                onClick={() => updateRetreat({ ...retreat, menuPublished: !retreat.menuPublished, updatedAt: new Date().toISOString() })}
-              >
-                {retreat.menuPublished ? <><Eye className="w-3.5 h-3.5" /> Published · unpublish</> : <><EyeOff className="w-3.5 h-3.5" /> Publish to portal</>}
-              </Button>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-cream-dark/40 border border-border rounded-card px-4 py-2.5 mb-4 text-[12px] text-ink-soft">
-          This menu is planned in <span className="font-medium text-forest">Commissary → Retreats → Menu builder</span>, where it also drives food ordering. This tab is a preview of what the group sees.
-        </div>
-
-        {retreat.dietaryFlags && Object.keys(retreat.dietaryFlags).length > 0 && (
-          <div className="bg-blue-bg border border-blue/20 rounded-card px-4 py-3 mb-4 text-[12px] text-blue-text leading-relaxed">
-            <strong className="font-semibold">Dietary flags for this group:</strong>{' '}
-            {Object.entries(retreat.dietaryFlags).map(([k, v]) => `${v} ${dietLabel(k)}`).join(' · ')}.
-          </div>
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <h2 className="text-[14px] font-semibold text-forest">
+          Menu · {retreat.groupName} · {fmtRange(retreat.arrivalDate, retreat.departureDate)}
+        </h2>
+        {canManage && (
+          <Button
+            size="sm"
+            variant={retreat.menuPublished ? 'ghost' : 'primary'}
+            onClick={() => updateRetreat({ ...retreat, menuPublished: !retreat.menuPublished, updatedAt: new Date().toISOString() })}
+          >
+            {retreat.menuPublished
+              ? <><Eye className="w-3.5 h-3.5" /> Published · unpublish</>
+              : <><EyeOff className="w-3.5 h-3.5" /> Publish to portal</>}
+          </Button>
         )}
+      </div>
 
-        <MenuTable retreat={retreat} />
+      {retreat.dietaryFlags && Object.keys(retreat.dietaryFlags).length > 0 && (
+        <div className="bg-blue-bg border border-blue/20 rounded-card px-4 py-3 mb-4 text-[12px] text-blue-text leading-relaxed">
+          <strong className="font-semibold">Dietary flags for this group:</strong>{' '}
+          {Object.entries(retreat.dietaryFlags).map(([k, v]) => `${v} ${dietLabel(k)}`).join(' · ')}.
+        </div>
+      )}
 
-        {!retreat.menuPublished && (
-          <p className="text-[11px] text-ink-faint mt-3">This menu is a draft, not yet visible to the group. Use “Publish to portal” to share it.</p>
-        )}
+      <MenuGrid retreat={retreat} editable={canManage} />
+
+      {!retreat.menuPublished && (
+        <p className="text-[11px] text-ink-faint mt-3">
+          A draft. The group cannot see it until you publish.
+        </p>
+      )}
     </div>
   );
 }

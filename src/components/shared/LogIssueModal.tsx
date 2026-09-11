@@ -38,6 +38,8 @@ interface FormValues {
    */
   assignTo: string;
   dueDate: string;
+  /** Camp-local clock time, or '' for any time that day. */
+  dueTime: string;
   /** Which crew. A filter default and a colour, never a permission. */
   trade: Trade;
   /** Work against a *thing*, so cost and days-out roll up to the vehicle or the mower. */
@@ -132,6 +134,7 @@ export function LogIssueModal() {
           ? `user:${editingIssue.assigneeId}`
           : editingIssue.assigneeGroupId ? `crew:${editingIssue.assigneeGroupId}` : '',
         dueDate: editingIssue.dueDate ?? '',
+        dueTime: editingIssue.dueTime?.slice(0, 5) ?? '',
         trade: editingIssue.trade,
         assetId: editingIssue.assetId ?? '',
         vendorId: editingIssue.vendorId ?? '',
@@ -144,6 +147,7 @@ export function LogIssueModal() {
         description: '',
         assignTo: '',
         dueDate: '',
+        dueTime: '',
         trade: 'maintenance',
         assetId: '',
         vendorId: '',
@@ -168,7 +172,16 @@ export function LogIssueModal() {
   }
 
   /** A capture never files anything. It fills this form in, and a person reads it. */
-  function applyDraft(draft: WorkOrderDraft) {
+  function applyDraft(draft: WorkOrderDraft, photo: File | null) {
+    // The photo it was read FROM becomes the work order's photo. Anything else means somebody
+    // photographs the broken hinge, gets a work order about a broken hinge, and no picture of it.
+    if (photo) {
+      setPhotoFile(photo);
+      const reader = new FileReader();
+      reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
+      reader.readAsDataURL(photo);
+      setRemoveExistingPhoto(false);
+    }
     setValue('title', draft.title);
     setValue('description', draft.description);
     // Only a trade this camp actually has. The database has a CHECK constraint on this column, so
@@ -222,6 +235,7 @@ export function LogIssueModal() {
           ? (editingIssue.status === 'unassigned' ? 'assigned' : editingIssue.status)
           : editingIssue.status,
         dueDate: data.dueDate || null,
+        dueTime: data.dueDate ? (data.dueTime || null) : null,
         trade: data.trade,
         assetId: data.assetId || null,
         vendorId: data.vendorId || null,
@@ -267,6 +281,7 @@ export function LogIssueModal() {
         assetId: data.assetId || null,
         vendorId: data.vendorId || null,
         dueDate: data.dueDate || null,
+        dueTime: data.dueDate ? (data.dueTime || null) : null,
         activityLog,
       });
 
@@ -295,7 +310,9 @@ export function LogIssueModal() {
   // Only the checklists for the trade being logged; a housekeeping turnover list on a plumbing
   // job is noise in a dropdown someone is scanning quickly.
   const tradeTemplates = templates.filter((t) => t.isActive && t.trade === trade);
-  const extrasCount = (watch('assetId') ? 1 : 0) + (watch('vendorId') ? 1 : 0);
+  const checklistOffered = !editingIssue && tradeTemplates.length > 0;
+  const extrasCount =
+    (watch('assetId') ? 1 : 0) + (watch('vendorId') ? 1 : 0) + (templateId ? 1 : 0);
 
   const inputClass = 'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
   const labelClass = 'block text-[12px] font-medium text-ink mb-1';
@@ -304,19 +321,69 @@ export function LogIssueModal() {
   return (
     <Modal title={editingIssue ? 'Edit work order' : 'Log work'} onClose={closeAllModals}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {/* Capture first, because the fastest way to fill this form in is to not type. */}
-        {!editingIssue && (
-          <button
-            type="button"
-            onClick={() => setCaptureOpen(true)}
-            className="flex w-full items-center gap-2 rounded-card border border-dashed border-border
-                       bg-cream px-3 py-2.5 text-left transition-colors hover:border-sage"
-          >
-            <Sparkles className="h-4 w-4 flex-none text-sage" />
-            <span className="text-[12.5px] font-semibold text-forest">Capture</span>
-            <span className="text-[11.5px] text-ink-soft">Photo or voice — you edit what comes back</span>
-          </button>
-        )}
+
+        {/* ── Photo ──
+            One block, two ways in. Capture reads the picture and fills the form; attaching just
+            keeps it. They were two separate affordances at opposite ends of the form competing
+            for the same act -- and the captured photo was thrown away afterwards, so the two
+            routes did not even produce the same work order. */}
+        <div>
+          <label className={labelClass}>Photo</label>
+          {!editingIssue && !displayPhoto && (
+            <button
+              type="button"
+              onClick={() => setCaptureOpen(true)}
+              className="mb-1.5 flex w-full items-center gap-2 rounded-card border border-dashed
+                         border-sage/60 bg-sage-pale/40 px-3 py-2.5 text-left transition-colors
+                         hover:border-sage"
+            >
+              <Sparkles className="h-4 w-4 flex-none text-sage" />
+              <span className="text-[12.5px] font-semibold text-forest">Capture</span>
+              <span className="text-[11.5px] text-ink-soft">
+                Photo or voice — fills this in, and keeps the photo
+              </span>
+            </button>
+          )}
+          {displayPhoto ? (
+            <div className="space-y-1.5">
+              <div className="relative">
+                <img
+                  src={displayPhoto}
+                  alt="Issue"
+                  className="w-full rounded-card border border-border object-cover max-h-48"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  className="absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <label className="flex items-center gap-1.5 text-[11px] text-ink-soft cursor-pointer hover:text-ink transition-colors w-fit">
+                <Camera className="w-3 h-3" />
+                <span>Change photo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
+              </label>
+            </div>
+          ) : (
+            <label className="flex items-center gap-2 py-3 px-3 bg-cream rounded-card border border-dashed border-border text-ink-faint cursor-pointer hover:border-sage hover:text-ink-soft transition-colors">
+              <Camera className="w-4 h-4" />
+              <span className="text-[12px]">Or attach one without reading it</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoChange}
+              />
+            </label>
+          )}
+        </div>
 
         {draftReading && (
           <div className="rounded-card border border-border bg-paper px-3 py-2.5">
@@ -344,55 +411,12 @@ export function LogIssueModal() {
           {errors.title && <p className={errorClass}>{errors.title.message}</p>}
         </div>
 
-        {/* Trade decides which lane this lands in and who it routes to by default. Never a
-            permission: everyone can see and take everything. */}
-        <div>
-          <label className={labelClass}>Crew</label>
-          <div className="flex flex-wrap gap-1">
-            {tradeKeys.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setValue('trade', t, { shouldDirty: true })}
-                aria-pressed={trade === t}
-                className={`rounded-btn border px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
-                  trade === t
-                    ? 'border-forest bg-forest text-paper'
-                    : 'border-border bg-white text-ink hover:border-sage'
-                }`}
-              >
-                {labelOf(t)}
-              </button>
-            ))}
-          </div>
-        </div>
-
         <div>
           <label className={labelClass}>Location</label>
           <LocationPicker value={locationIds} onChange={setLocationIds} />
         </div>
 
-        {/* A checklist turns a title into the steps somebody can actually work through, and the
-            moment of logging is when the person knows which one applies. */}
-        {!editingIssue && tradeTemplates.length > 0 && (
-          <div>
-            <label className={labelClass}>Checklist</label>
-            <select
-              value={templateId}
-              onChange={(e) => setTemplateId(e.target.value)}
-              className={inputClass}
-            >
-              <option value="">No checklist</option>
-              {tradeTemplates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} · {t.items.length} step{t.items.length === 1 ? '' : 's'}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {(activeAssets.length > 0 || activeVendors.length > 0) && (
+        {(activeAssets.length > 0 || activeVendors.length > 0 || checklistOffered) && (
           <div className="border-t border-border pt-3">
             <button
               type="button"
@@ -403,7 +427,7 @@ export function LogIssueModal() {
                 className={`w-3.5 h-3.5 transition-transform ${showExtras ? 'rotate-90' : ''}`}
                 aria-hidden="true"
               />
-              Equipment and contractors
+              Checklist, equipment and contractors
               {extrasCount > 0 && (
                 <span className="font-mono text-[11.5px] text-forest">{extrasCount} set</span>
               )}
@@ -411,6 +435,28 @@ export function LogIssueModal() {
 
             {showExtras && (
               <div className="space-y-3 pt-3">
+                {/* A checklist turns a title into the steps somebody can work through, and the
+                    moment of logging is when the person knows which one applies. Collapsed with
+                    the rest: most work orders do not carry one, and an always-open dropdown that
+                    is usually left blank is just another field to skip past. */}
+                {checklistOffered && (
+                  <div>
+                    <label className={labelClass}>Checklist</label>
+                    <select
+                      value={templateId}
+                      onChange={(e) => setTemplateId(e.target.value)}
+                      className={inputClass}
+                    >
+                      <option value="">No checklist</option>
+                      {tradeTemplates.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} · {t.items.length} step{t.items.length === 1 ? '' : 's'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {/* Work against a *thing*, so cost and days-out roll up to the vehicle or the mower. */}
                 {activeAssets.length > 0 && (
                   <div>
@@ -462,6 +508,30 @@ export function LogIssueModal() {
           />
         </div>
 
+        {/* Crew decides which lane this lands in and who it routes to by default. Never a
+            permission: everyone can see and take everything. Below the description because the
+            person logging knows what is wrong before they know whose job it is. */}
+        <div>
+          <label className={labelClass}>Crew</label>
+          <div className="flex flex-wrap gap-1">
+            {tradeKeys.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setValue('trade', t, { shouldDirty: true })}
+                aria-pressed={trade === t}
+                className={`rounded-btn border px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
+                  trade === t
+                    ? 'border-forest bg-forest text-paper'
+                    : 'border-border bg-white text-ink hover:border-sage'
+                }`}
+              >
+                {labelOf(t)}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {can('assign') && (
             <div>
@@ -491,54 +561,26 @@ export function LogIssueModal() {
             </div>
           )}
           <div>
-            <label className={labelClass}>Due date</label>
-            <input type="date" {...register('dueDate')} className={inputClass} />
+            <label className={labelClass}>Due</label>
+            <div className="flex gap-2">
+              <input type="date" {...register('dueDate')} className={inputClass} />
+              {/* The time is usually the point: a room has to be ready before the group walks
+                  into it. Only offered once there is a day to hang it on. */}
+              <input
+                type="time"
+                {...register('dueTime')}
+                disabled={!watch('dueDate')}
+                className={`${inputClass} w-32 disabled:opacity-50`}
+                aria-label="Due by (time)"
+              />
+            </div>
+            {watch('dueDate') && !watch('dueTime') && (
+              <p className="mt-0.5 text-[11px] text-ink-faint">Any time that day.</p>
+            )}
           </div>
         </div>
 
-        {/* Photo */}
-        <div>
-          <label className={labelClass}>Photo</label>
-          {displayPhoto ? (
-            <div className="space-y-1.5">
-              <div className="relative">
-                <img
-                  src={displayPhoto}
-                  alt="Issue"
-                  className="w-full rounded-card border border-border object-cover max-h-48"
-                />
-                <button
-                  type="button"
-                  onClick={handleRemovePhoto}
-                  className="absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <label className="flex items-center gap-1.5 text-[11px] text-ink-soft cursor-pointer hover:text-ink transition-colors w-fit">
-                <Camera className="w-3 h-3" />
-                <span>Change photo</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handlePhotoChange}
-                />
-              </label>
-            </div>
-          ) : (
-            <label className="flex items-center gap-2 py-3 px-3 bg-cream rounded-card border border-dashed border-border text-ink-faint cursor-pointer hover:border-sage hover:text-ink-soft transition-colors">
-              <Camera className="w-4 h-4" />
-              <span className="text-[12px]">Click to attach photo</span>
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handlePhotoChange}
-              />
-            </label>
-          )}
-        </div>
+
 
         {/*
           Recurrence is not a checkbox on an event any more.
@@ -547,14 +589,19 @@ export function LogIssueModal() {
           these eleven steps" — which is why it generated nothing for its entire life. It lives
           in Routines now, and this points there rather than pretending otherwise.
         */}
-        <button
-          type="button"
-          onClick={() => { closeAllModals(); navigate(ROUTINES_PATH); }}
-          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-ink-soft hover:text-forest"
-        >
-          <Repeat className="h-3.5 w-3.5" />
-          This happens on a schedule — make it a routine
-        </button>
+        {/* A question, not a statement. It read as the form telling you this was recurring work,
+            on every single log, including the one-off broken hinge. */}
+        <p className="text-[12px] text-ink-faint">
+          Does this happen on a schedule?{' '}
+          <button
+            type="button"
+            onClick={() => { closeAllModals(); navigate(ROUTINES_PATH); }}
+            className="inline-flex items-center gap-1 font-semibold text-ink-soft hover:text-forest"
+          >
+            <Repeat className="h-3.5 w-3.5" />
+            Set it up as a routine instead
+          </button>
+        </p>
 
         <div className="flex gap-2 pt-2">
           <Button type="submit" className="flex-1 justify-center" disabled={isSubmitting}>

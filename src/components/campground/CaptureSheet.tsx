@@ -76,7 +76,8 @@ function voiceErrorMessage(code: string): string {
 interface Props {
   onClose: () => void;
   /** Hands the draft back to the form that opened this. Nothing is filed here. */
-  onDraft: (draft: WorkOrderDraft) => void;
+  /** The draft, plus the photo it was read from so the work order can keep it. */
+  onDraft: (draft: WorkOrderDraft, photo: File | null) => void;
 }
 
 export function CaptureSheet({ onClose, onDraft }: Props) {
@@ -90,6 +91,14 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
+  /**
+   * The file itself, kept so it can be attached to the work order.
+   *
+   * It used to be read for its bytes and then dropped: the photo that produced the whole draft
+   * was gone by the time the issue saved, so a work order logged from a photo of the broken thing
+   * had no photo of the broken thing.
+   */
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
 
@@ -145,6 +154,7 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    setPhotoFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => {
       const url = ev.target?.result as string;
@@ -190,7 +200,7 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
     const description = [base.description?.trim(), said ? `Said: “${said}”` : '']
       .filter(Boolean)
       .join('\n\n');
-    onDraft({ ...base, description });
+    onDraft({ ...base, description }, photoFile);
     onClose();
   }
 
@@ -273,7 +283,7 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
               )}
               {!reading && (
                 <button
-                  onClick={() => { setPhotoPreview(null); setPhotoBase64(null); }}
+                  onClick={() => { setPhotoPreview(null); setPhotoBase64(null); setPhotoFile(null); }}
                   className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full
                              bg-black/50 text-white transition-colors hover:bg-black/70"
                   title="Remove this photo"

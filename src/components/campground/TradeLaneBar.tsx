@@ -41,7 +41,7 @@ export function TradeLaneBar({ value, onChange, counts, total }: Props) {
   return (
     <div
       role="tablist"
-      aria-label="Trade"
+      aria-label="Crew"
       className="-mx-1 flex items-center gap-1.5 overflow-x-auto overflow-y-hidden no-scrollbar px-1 py-2"
     >
       <Lane

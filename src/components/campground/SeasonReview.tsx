@@ -520,7 +520,7 @@ function TimingSection({ data }: { data: SeasonReviewData }) {
             <table className="w-full min-w-[560px] border-collapse">
               <thead>
                 <tr>
-                  <th className={th}>Trade</th>
+                  <th className={th}>Crew</th>
                   <th className={th}>Priority</th>
                   <th className={th}>Median to assign</th>
                   <th className={th}>Median to close</th>
@@ -831,7 +831,7 @@ function CarryOverSection({ data }: { data: SeasonReviewData }) {
             <thead>
               <tr>
                 <th className={th}>Work order</th>
-                <th className={th}>Trade</th>
+                <th className={th}>Crew</th>
                 <th className={th}>Priority</th>
                 <th className={th}>Location</th>
                 <th className={th}>Status</th>

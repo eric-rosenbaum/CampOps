@@ -51,16 +51,31 @@ export function formatCost(value: number): string {
   return `$${value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-export function relativeDueDate(dueDateStr: string): { label: string; overdue: boolean } {
+export function relativeDueDate(dueDateStr: string, dueTime?: string | null): { label: string; overdue: boolean } {
   const due = new Date(dueDateStr + 'T00:00:00');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   due.setHours(0, 0, 0, 0);
   const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
+  // The hour only matters near the deadline. "Due in 9 days by 3pm" is noise; "Due today by 3pm"
+  // is the difference between the hall being ready and the group standing in it.
+  const at = dueTime ? ` by ${fmtClock(dueTime)}` : '';
+
   if (diffDays < 0) return { label: `Overdue ${Math.abs(diffDays)} day${Math.abs(diffDays) === 1 ? '' : 's'}`, overdue: true };
-  if (diffDays === 0) return { label: 'Due today', overdue: false };
-  if (diffDays === 1) return { label: 'Due tomorrow', overdue: false };
+  if (diffDays === 0) {
+    // Past the hour, on the day it was due, is overdue -- a 3pm job at 5pm is late, and calling
+    // that "Due today" is the reading that lets it slip.
+    if (dueTime) {
+      const now = new Date();
+      const [h, m] = dueTime.split(':').map(Number);
+      if (Number.isFinite(h) && (now.getHours() > h || (now.getHours() === h && now.getMinutes() > (m || 0)))) {
+        return { label: `Overdue — was due ${fmtClock(dueTime)}`, overdue: true };
+      }
+    }
+    return { label: `Due today${at}`, overdue: false };
+  }
+  if (diffDays === 1) return { label: `Due tomorrow${at}`, overdue: false };
   return { label: `Due in ${diffDays} days`, overdue: false };
 }
 
@@ -102,4 +117,23 @@ export function initialsFor(name: string): string {
   if (parts.length === 0) return '?';
   if (parts.length === 1) return parts[0][0].toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/**
+ * A stored clock time as people say it: "15:00" -> "3pm", "15:30" -> "3:30pm".
+ *
+ * These are camp-local wall-clock times, not instants — `due_time` is a bare `time` column
+ * precisely so it is not reinterpreted against a timezone. So this formats the string rather than
+ * routing it through Date, which would attach today's date and a UTC offset to something that has
+ * neither.
+ */
+export function fmtClock(t: string | null | undefined): string {
+  if (!t) return '';
+  const [hRaw, mRaw] = t.split(':');
+  const h = Number(hRaw);
+  if (!Number.isFinite(h)) return t;
+  const m = Number(mRaw ?? '0');
+  const suffix = h < 12 ? 'am' : 'pm';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return m === 0 ? `${hour12}${suffix}` : `${hour12}:${String(m).padStart(2, '0')}${suffix}`;
 }

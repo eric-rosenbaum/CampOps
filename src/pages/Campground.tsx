@@ -40,16 +40,18 @@ import { useTradeKeys } from '@/lib/useTrades';
  * risk for zero user-visible gain.
  */
 
-type Tab = 'board' | 'routines' | 'vendors' | 'setup' | 'review';
+type Tab = 'board' | 'routines' | 'crews' | 'review';
 
+// Four tabs, paired by what they answer rather than by what they are.
+//
+// A routine raises work and a checklist is what that work consists of, so they are one subject:
+// "what happens on its own". Crews and vendors are both the answer to "who does it" -- the people
+// here and the people you call -- so they are the other. Five tabs where two pairs said the same
+// thing meant setting up a turnover took three of them.
 const TABS: { id: Tab; label: string }[] = [
   { id: 'board', label: 'Board' },
-  { id: 'routines', label: 'Routines' },
-  { id: 'vendors', label: 'Vendors' },
-  // Where each trade's work lands, and the checklists a turnover carries. Both are things a camp
-  // sets once and then benefits from every day, so they live behind their own tab rather than
-  // cluttering the board.
-  { id: 'setup', label: 'Crews & checklists' },
+  { id: 'routines', label: 'Routines & checklists' },
+  { id: 'crews', label: 'Crews & vendors' },
   { id: 'review', label: 'Season review' },
 ];
 
@@ -417,12 +419,16 @@ export function Campground() {
 
       {tab !== 'board' ? (
         <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-7 sm:py-6">
-          {tab === 'routines' && <RoutinesPanel />}
-          {tab === 'vendors' && <VendorsPanel />}
-          {tab === 'setup' && (
+          {tab === 'routines' && (
+            <div className="flex flex-col gap-6">
+              <RoutinesPanel />
+              <ChecklistTemplatesPanel />
+            </div>
+          )}
+          {tab === 'crews' && (
             <div className="flex flex-col gap-6">
               <WorkRoutingCard />
-              <ChecklistTemplatesPanel />
+              <VendorsPanel />
             </div>
           )}
           {tab === 'review' && <SeasonReview />}

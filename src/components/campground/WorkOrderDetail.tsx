@@ -236,7 +236,7 @@ export function WorkOrderDetail({ issue }: Props) {
   const schedule = issue.scheduleId ? schedules.find((s) => s.id === issue.scheduleId) : undefined;
   const behind = schedule ? describeMissed(schedule.missedCount) : null;
   const retreat = issue.retreatId ? retreats.find((r) => r.id === issue.retreatId) : undefined;
-  const due = issue.dueDate ? relativeDueDate(issue.dueDate) : null;
+  const due = issue.dueDate ? relativeDueDate(issue.dueDate, issue.dueTime) : null;
   const late = isOverdue(issue, todayStr());
   const resolved = issue.status === 'resolved';
 
@@ -438,6 +438,21 @@ export function WorkOrderDetail({ issue }: Props) {
               </p>
             ) : (
               <span className="text-[13px] text-ink-soft">Nobody outside</span>
+            )}
+
+            {/* The number, tappable. On a phone this is the whole interaction: read the work
+                order, ring the contractor -- and retyping a number off the screen into a keypad
+                is the step that did not need to exist. `tel:` is inert on a desktop browser, so
+                the number still reads as a number there. */}
+            {vendor?.phone && (
+              <a
+                href={`tel:${vendor.phone.replace(/[^\d+]/g, '')}`}
+                className="inline-flex w-fit items-center gap-1.5 text-[12.5px] font-semibold
+                           text-forest hover:text-forest-mid"
+              >
+                <Phone className="h-3.5 w-3.5" />
+                {vendor.phone}
+              </a>
             )}
           </div>
         </div>

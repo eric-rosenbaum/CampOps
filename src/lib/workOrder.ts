@@ -122,6 +122,8 @@ export interface NewWorkOrderInput {
   assetId?: string | null;
   vendorId?: string | null;
   dueDate?: string | null;
+  /** Camp-local clock time it is due, or null for any time that day. */
+  dueTime?: string | null;
   photoUrl?: string | null;
   source?: IssueSource;
   activityLog?: ActivityEntry[];
@@ -154,6 +156,7 @@ export function newWorkOrder(input: NewWorkOrderInput): Issue {
     actualCost: null,
     photoUrl: input.photoUrl ?? null,
     dueDate: input.dueDate ?? null,
+    dueTime: input.dueTime ?? null,
     isRecurring: false,
     recurringInterval: null,
     isPublicReport: false,

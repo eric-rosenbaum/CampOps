@@ -13,7 +13,7 @@ import { useChecklistStore } from '@/store/checklistStore';
 import { useLocationStore } from '@/store/locationStore';
 import { useAssetStore } from '@/store/assetStore';
 import { describeCadence } from '@/lib/workOrder';
-import { generateId, todayStr, toDateStr, parseDateStr, formatDate } from '@/lib/utils';
+import { generateId, todayStr, toDateStr, parseDateStr, formatDate, fmtClock } from '@/lib/utils';
 import { CADENCE_LABELS } from '@/lib/types';
 import { useTradeKeys, useTradeLabel } from '@/lib/useTrades';
 import type { Cadence, Priority, WorkSchedule } from '@/lib/types';
@@ -147,7 +147,7 @@ function blankSchedule(): WorkSchedule {
     checklistTemplateId: null,
     cadence: 'weekly', intervalCount: 1,
     byWeekday: [parseDateStr(today).getDay()], byMonthday: null,
-    anchorDate: today, daysRelativeToOpening: null,
+    anchorDate: today, dueTime: null, daysRelativeToOpening: null,
     meterInterval: null, meterLastAt: null, meterKind: 'hours',
     activeFrom: null, activeUntil: null,
     generateAheadDays: 14, rescheduleFrom: 'due_date',
@@ -292,7 +292,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelClass} htmlFor="routine-trade">Trade</label>
+            <label className={labelClass} htmlFor="routine-trade">Crew</label>
             <select
               id="routine-trade" className={inputClass} value={draft.trade}
               onChange={(e) => set({ trade: e.target.value as WorkSchedule['trade'] })}
@@ -459,6 +459,23 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
               )}
             </div>
           )}
+
+          {/* "Mopped by 3pm every Friday." Without this a routine can only say which day, and at a
+              camp the hour is usually the point -- the hall has to be clear before the group walks
+              into it. Copied onto every occurrence the generator raises. */}
+          <div className="mt-4">
+            <label className={labelClass} htmlFor="routine-due-time">Due by</label>
+            <input
+              id="routine-due-time" type="time" className={`${inputClass} sm:w-40`}
+              value={draft.dueTime?.slice(0, 5) ?? ''}
+              onChange={(e) => set({ dueTime: e.target.value || null })}
+            />
+            <p className={hintClass}>
+              {draft.dueTime
+                ? `Every occurrence is due by ${fmtClock(draft.dueTime)}.`
+                : 'Leave blank for any time that day.'}
+            </p>
+          </div>
 
           {usesInterval && (
             <div className="mt-4">

@@ -70,6 +70,7 @@ export function ReturnModal() {
         actualCost: null,
         photoUrl: null,
         dueDate: null,
+        dueTime: null,
         isRecurring: false,
         recurringInterval: null,
         isPublicReport: false,

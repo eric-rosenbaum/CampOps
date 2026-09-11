@@ -60,7 +60,7 @@ export function WorkOrderCard({ issue, selected, onClick, today, onTakeIt }: Pro
     ? (members.find((m) => m.userId === issue.assigneeId)?.fullName ?? null)
     : null;
   const location = issue.locations[0];
-  const due = issue.dueDate ? relativeDueDate(issue.dueDate) : null;
+  const due = issue.dueDate ? relativeDueDate(issue.dueDate, issue.dueTime) : null;
   const late = isOverdue(issue, today);
 
   const progress = checklistProgress(checklistItems, issue.id);

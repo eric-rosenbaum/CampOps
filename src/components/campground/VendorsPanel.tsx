@@ -277,7 +277,7 @@ function VendorModal({ vendor, openCount, onClose }: {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelClass} htmlFor="vendor-trade">Trade</label>
+            <label className={labelClass} htmlFor="vendor-trade">Crew they work with</label>
             <select
               id="vendor-trade" className={inputClass} value={draft.trade ?? ''}
               onChange={(e) => set({ trade: e.target.value || null })}
@@ -285,6 +285,13 @@ function VendorModal({ vendor, openCount, onClose }: {
               <option value="">Not set</option>
               {tradeKeys.map((t) => <option key={t} value={t}>{labelOf(t)}</option>)}
             </select>
+            {/* This dropdown has always offered the camp's own crews, so the honest label is the
+                crew whose work they cover -- the septic company does maintenance work. Some older
+                rows hold free text (septic, well, hvac) that matches no crew; those still display,
+                they just cannot be re-picked. */}
+            <p className="mt-1 text-[11px] text-ink-faint">
+              Whose work they turn up for.
+            </p>
           </div>
           <div>
             <label className={labelClass} htmlFor="vendor-contact">Who we ask for</label>

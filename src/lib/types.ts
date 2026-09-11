@@ -171,6 +171,13 @@ export interface Issue {
   actualCost: number | null;
   photoUrl: string | null;
   dueDate: string | null;
+  /**
+   * Camp-local clock time this is due ("15:00"), or null for "some time that day".
+   *
+   * Separate from dueDate on purpose: dueDate is a calendar day, never an instant. A room has to
+   * be ready before the group walks into it, and "Friday" is not an answer to when.
+   */
+  dueTime: string | null;
   /** @deprecated 2026-09-02. Migrated into WorkSchedule; the checkbox never generated anything. */
   isRecurring: boolean;
   /** @deprecated 2026-09-02. See isRecurring. */
@@ -2166,6 +2173,13 @@ export interface WorkSchedule {
   byWeekday: number[] | null;
   byMonthday: number | null;
   anchorDate: string | null;
+  /**
+   * Clock time the occurrences are due ("15:00"), or null for "some time that day".
+   *
+   * Copied onto each work order the generator raises, so "mopped by 3pm every Friday" arrives on
+   * the board saying 3pm rather than just Friday.
+   */
+  dueTime: string | null;
   daysRelativeToOpening: number | null;
   meterInterval: number | null;
   meterLastAt: number | null;

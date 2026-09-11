@@ -59,6 +59,7 @@ export function FlagComponentIssueModal({ componentId }: { componentId: string }
         actualCost: null,
         photoUrl: component.photoUrl,
         dueDate: null,
+        dueTime: null,
         isRecurring: false,
         recurringInterval: null,
         isPublicReport: false,

@@ -222,7 +222,7 @@ function TemplateModal({ template, onClose }: {
             />
           </div>
           <div>
-            <label className={labelClass} htmlFor="tmpl-trade">Trade</label>
+            <label className={labelClass} htmlFor="tmpl-trade">Crew</label>
             <select
               id="tmpl-trade" className={`${inputClass} sm:w-44`} value={draft.trade}
               onChange={(e) => setDraft((d) => ({ ...d, trade: e.target.value as Trade }))}

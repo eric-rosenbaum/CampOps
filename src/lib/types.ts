@@ -1333,6 +1333,17 @@ export interface Retreat {
   housingSubmittedBy: string | null;
   /** Aggregate counts, e.g. { vegetarian: 4, gluten_free: 2, kosher: 0, nut_allergy: 1 }. */
   dietaryFlags: Record<string, number> | null;
+  /** What the group wrote in their own words — the primary answer; the counts are secondary. */
+  /**
+   * When somebody at camp acknowledged an enquiry that arrived through the public link.
+   *
+   * Null AND lead_source 'website' means nobody has looked at it yet, which is what the banner
+   * counts. Always null for a retreat the camp typed in themselves -- they were looking at it.
+   */
+  enquirySeenAt: string | null;
+  dietaryNotes: string | null;
+  /** They actively said nobody has a need. Distinct from nobody having been asked. */
+  dietaryNoneConfirmed: boolean;
   notes: string | null;
 
   // ── Pipeline ───────────────────────────────────────────────────────────────

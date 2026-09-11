@@ -83,6 +83,8 @@ export interface PortalRetreat {
    * the camp must be able to tell apart from "no needs".
    */
   dietary_flags: Record<string, number> | null;
+  /** What the group wrote in their own words. The primary answer; counts are the secondary. */
+  dietary_notes?: string | null;
   /** The group actively said nobody has a need — distinct from nobody having been asked. */
   dietary_none_confirmed?: boolean;
   menu_published: boolean;

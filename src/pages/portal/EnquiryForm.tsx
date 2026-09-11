@@ -86,7 +86,7 @@ export function EnquiryForm() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-cream">
+      <div className="flex min-h-screen w-full items-center justify-center bg-cream">
         <Loader2 className="h-5 w-5 animate-spin text-forest" />
       </div>
     );
@@ -94,7 +94,7 @@ export function EnquiryForm() {
 
   if (!camp) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-cream px-5">
+      <div className="flex min-h-screen w-full items-center justify-center bg-cream px-5">
         <div className="max-w-sm text-center">
           <h1 className="font-display text-[20px] font-bold text-forest">This link is not recognised</h1>
           <p className="mt-2 text-[14px] leading-relaxed text-ink-soft">
@@ -107,7 +107,7 @@ export function EnquiryForm() {
 
   if (sent) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-cream px-5">
+      <div className="flex min-h-screen w-full items-center justify-center bg-cream px-5">
         <div className="max-w-md text-center">
           <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-sage" />
           <h1 className="font-display text-[22px] font-bold text-forest">Thank you — that&rsquo;s with us</h1>
@@ -121,7 +121,7 @@ export function EnquiryForm() {
   }
 
   return (
-    <div className="min-h-screen bg-cream px-5 py-10">
+    <div className="min-h-screen w-full bg-cream px-5 py-10">
       <div className="mx-auto max-w-xl">
         <h1 className="font-display text-[26px] font-bold text-forest">Enquire at {camp.camp_name}</h1>
         <p className="mt-1.5 text-[15px] leading-relaxed text-ink-soft">

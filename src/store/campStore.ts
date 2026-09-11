@@ -80,6 +80,8 @@ export interface CampMember {
   staffGroupId: string | null;
   displayName: string | null;
   isActive: boolean;
+  /** Emailed when a new enquiry arrives through the camp's public link. */
+  notifyRetreats: boolean;
 }
 
 export type CampAccountType = 'customer' | 'trial' | 'demo' | 'internal';
@@ -242,6 +244,7 @@ interface CampState {
   inviteMember: (campId: string, email: string, role: CampRole, staffGroupId: string | null) => Promise<string>;
   removeMember: (memberId: string) => Promise<void>;
   updateMemberRole: (memberId: string, role: CampRole, staffGroupId: string | null) => Promise<void>;
+  setMemberNotifyRetreats: (memberId: string, on: boolean) => Promise<void>;
 
   generateJoinCode: (campId: string, role: CampRole, staffGroupId: string | null, maxUses: number | null, days: number) => Promise<string>;
   loadJoinCodes: (campId: string) => Promise<JoinCode[]>;
@@ -353,9 +356,11 @@ export const useCampStore = create<CampState>((set, get) => ({
       staffGroupId: memberRow.staff_group_id ?? null,
       displayName: memberRow.display_name,
       isActive: memberRow.is_active,
+      notifyRetreats: Boolean(memberRow.notify_retreats),
     } : {
       id: 'platform-admin', campId, userId: user.id, role: 'admin',
       department: null, staffGroupId: null, displayName: 'CampCommand admin', isActive: true,
+      notifyRetreats: false,
     };
 
     const camp: Camp = rowToCamp(campRow as Record<string, unknown>);
@@ -531,6 +536,7 @@ export const useCampStore = create<CampState>((set, get) => ({
       staffGroupId: row.staff_group_id ?? null,
       displayName: row.display_name,
       isActive: row.is_active,
+      notifyRetreats: Boolean(row.notify_retreats),
       fullName: nameMap.get(row.user_id) ?? row.display_name ?? 'Unknown',
       email: '',
       isCreator: row.user_id === creatorUserId,
@@ -568,6 +574,16 @@ export const useCampStore = create<CampState>((set, get) => ({
   removeMember: async (memberId) => {
     await supabase.from('camp_members').update({ is_active: false }).eq('id', memberId);
     set((s) => ({ members: s.members.filter((m) => m.id !== memberId) }));
+  },
+
+  /** Turn a person's new-enquiry emails on or off. Nobody is opted in without being shown. */
+  setMemberNotifyRetreats: async (memberId, on) => {
+    set((s2) => ({ members: s2.members.map((m) => (m.id === memberId ? { ...m, notifyRetreats: on } : m)) }));
+    const { error } = await supabase.from('camp_members').update({ notify_retreats: on }).eq('id', memberId);
+    if (error) {
+      set((s2) => ({ members: s2.members.map((m) => (m.id === memberId ? { ...m, notifyRetreats: !on } : m)) }));
+      throw new Error(error.message);
+    }
   },
 
   updateMemberRole: async (memberId, role, staffGroupId) => {

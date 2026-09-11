@@ -14,7 +14,7 @@ const DEPT_LABELS: Record<string, string> = {
 };
 
 export function Members() {
-  const { currentCamp, currentMember, loadMembers, inviteMember, removeMember, updateMemberRole, loadInvitations, revokeInvitation } = useCampStore();
+  const { currentCamp, currentMember, loadMembers, inviteMember, removeMember, updateMemberRole, setMemberNotifyRetreats, loadInvitations, revokeInvitation } = useCampStore();
   const campId = currentCamp?.id ?? '';
 
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
@@ -169,6 +169,26 @@ export function Members() {
                   <p className="text-[11px] text-ink-faint">{DEPT_LABELS[m.department] ?? m.department}</p>
                 )}
               </div>
+              {/* Who hears about a new enquiry. Per person, because it is usually one or two of
+                  them and a form that notifies everybody gets muted by everybody. */}
+              <label
+                className="flex items-center gap-1.5 cursor-pointer text-[11.5px] text-ink-soft"
+                title="Email this person when a new enquiry arrives through the public link"
+              >
+                <input
+                  type="checkbox"
+                  checked={m.notifyRetreats}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    setMembers((xs) => xs.map((x) => (x.id === m.id ? { ...x, notifyRetreats: on } : x)));
+                    void setMemberNotifyRetreats(m.id, on).catch(() => {
+                      setMembers((xs) => xs.map((x) => (x.id === m.id ? { ...x, notifyRetreats: !on } : x)));
+                    });
+                  }}
+                  className="accent-forest"
+                />
+                Enquiries
+              </label>
               <select
                 value={m.role}
                 disabled={m.userId === currentMember?.userId}

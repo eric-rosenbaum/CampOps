@@ -3,7 +3,7 @@ import { FileText, ShieldCheck, Waves, DollarSign, FileQuestion, AlertTriangle, 
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
-import { dbSignRetreatDocument } from '@/lib/retreatsDb';
+import { dbSignRetreatDocument, dbAttachAgreementFromTemplate, dbFetchRetreatDocuments } from '@/lib/retreatsDb';
 import type { Retreat, RetreatDocument, RetreatDocType, RetreatDocStatus } from '@/lib/types';
 import { Badge, fmtDate, fmtDateFull, money } from './retreatUi';
 import { toDateStr } from '@/lib/utils';
@@ -115,6 +115,29 @@ export function DocumentsTab({ embedded = false }: { embedded?: boolean } = {}) 
   const scheduleOn = Boolean(currentCamp?.agreementScheduleEnabled);
   const [termsOpen, setTermsOpen] = useState(false);
   const retreatId = retreat?.id ?? null;
+
+  // The camp's standing agreement, so this page can explain itself rather than showing an empty
+  // slot with no account of why.
+  const campTemplateName = currentCamp?.agreementTemplateName ?? null;
+  const [attaching, setAttaching] = useState(false);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const setDocuments = useRetreatStore((st) => st.setDocuments);
+
+  async function attachNow() {
+    if (!retreatId) return;
+    setAttaching(true); setAttachError(null);
+    const id = await dbAttachAgreementFromTemplate(retreatId);
+    if (!id) {
+      setAttaching(false);
+      setAttachError('Nothing was attached. This group may already have an agreement.');
+      return;
+    }
+    // Read the row back rather than constructing one optimistically: the document is only real
+    // once the database says it is, and this slot exists to stop people guessing about that.
+    const fresh = await dbFetchRetreatDocuments();
+    if (fresh) setDocuments(fresh);
+    setAttaching(false);
+  }
   /**
    * Tagged with the retreat it belongs to, rather than cleared when the retreat changes.
    *
@@ -280,11 +303,41 @@ export function DocumentsTab({ embedded = false }: { embedded?: boolean } = {}) 
             </div>
           )}
 
-          {/* Retreat agreement, a dedicated slot; upload here or it shows in the list once added. */}
-          {canManage && agreementMissing && (
+          {/* ── Retreat agreement ──
+              The camp-level agreement attaches ITSELF when a proposal is sent, and that was the
+              whole of the feature: invisible until it happened, and never explained if it had not.
+              A camp that uploaded one and then looked at a group whose proposal predated it saw an
+              empty slot and no reason. So the slot says which of the three states it is in. */}
+          {canManage && agreementMissing && campTemplateName && (
+            <div className="bg-white rounded-card border border-sage/40 px-5 py-4 mb-3">
+              <p className="text-[13px] font-semibold text-forest mb-1">
+                Your agreement is not on this group yet
+              </p>
+              <p className="text-[12px] text-ink-soft leading-relaxed mb-3.5">
+                You keep <strong>{campTemplateName}</strong> on file. It attaches itself when you
+                send a proposal — this group has not had one sent since you uploaded it. Attach it
+                now if you are not sending a quote through CampCommand.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" disabled={attaching} onClick={attachNow}>
+                  {attaching ? 'Attaching…' : 'Attach it to this group'}
+                </Button>
+                <Button size="sm" variant="ghost"
+                        onClick={() => openModal({ kind: 'uploadDoc', retreatId: retreat.id, docType: 'agreement' })}>
+                  Upload a different one
+                </Button>
+              </div>
+              {attachError && <p className="mt-2 text-[11.5px] text-red">{attachError}</p>}
+            </div>
+          )}
+
+          {canManage && agreementMissing && !campTemplateName && (
             <div className="bg-white rounded-card border border-border px-5 py-4 mb-3">
               <p className="text-[13px] font-semibold text-forest mb-1">Add the retreat agreement</p>
-              <p className="text-[12px] text-ink-soft mb-3.5">Upload the signed rental / retreat agreement for this group.</p>
+              <p className="text-[12px] text-ink-soft mb-3.5">
+                Upload one for this group — or keep your standard agreement under Camp Info &rsaquo;
+                Rentals, and it will attach itself to every proposal you send.
+              </p>
               <button
                 type="button"
                 onClick={() => openModal({ kind: 'uploadDoc', retreatId: retreat.id, docType: 'agreement' })}

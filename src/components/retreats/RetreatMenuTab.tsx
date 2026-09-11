@@ -181,10 +181,24 @@ export function RetreatMenuTab() {
       {/* Answered and unanswered are different facts, and the kitchen plans differently for each.
           Showing nothing when nobody has asked reads as "no dietary needs", which is how a camp
           cooks one lasagne for a group with four vegetarians in it. */}
-      {retreat.dietaryFlags && Object.keys(retreat.dietaryFlags).length > 0 ? (
+      {(retreat.dietaryNotes?.trim() || (retreat.dietaryFlags && Object.keys(retreat.dietaryFlags).length > 0)) ? (
         <div className="bg-blue-bg border border-blue/20 rounded-card px-4 py-3 mb-4 text-[12px] text-blue-text leading-relaxed">
-          <strong className="font-semibold">Dietary needs for this group:</strong>{' '}
-          {Object.entries(retreat.dietaryFlags).map(([k, v]) => `${v} ${dietLabel(k)}`).join(' · ')}.
+          <strong className="font-semibold">Dietary needs for this group</strong>
+          {/* Their sentence first and whole. A tally cannot carry "Ben has a severe tree-nut
+              allergy and carries an EpiPen", and that is the line the kitchen needs. */}
+          {retreat.dietaryNotes?.trim() && (
+            <p className="mt-1 whitespace-pre-wrap">{retreat.dietaryNotes.trim()}</p>
+          )}
+          {retreat.dietaryFlags && Object.keys(retreat.dietaryFlags).length > 0 && (
+            <p className="mt-1 opacity-90">
+              {Object.entries(retreat.dietaryFlags).map(([k, v]) => `${v} ${dietLabel(k)}`).join(' · ')}.
+            </p>
+          )}
+        </div>
+      ) : retreat.dietaryNoneConfirmed ? (
+        <div className="bg-green-muted-bg border border-sage/40 rounded-card px-4 py-3 mb-4 text-[12px] text-green-muted-text leading-relaxed">
+          <strong className="font-semibold">The group has confirmed nobody has a dietary need.</strong>{' '}
+          Asked and answered — not the same as unanswered.
         </div>
       ) : (
         <div className="bg-amber-bg border border-amber-text/20 rounded-card px-4 py-3 mb-4 text-[12px] text-amber-text leading-relaxed">

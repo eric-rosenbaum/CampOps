@@ -1,3 +1,4 @@
+import { Bell } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
@@ -94,16 +95,20 @@ export function ActiveRetreatTab() {
               Edit retreat details
             </button>
           )}
+
+        </div>
+        <div className="text-right flex-shrink-0">
           {canManage && (
             <button
               onClick={() => openModal({ kind: 'sendReminder', retreatId: r.id })}
-              className="mt-2 ml-3 text-[11px] font-medium text-sage-light hover:text-white underline underline-offset-2"
+              className="mb-2.5 inline-flex items-center gap-1.5 rounded-btn border border-sage-light/40
+                         px-3 py-1.5 text-[12px] font-semibold text-sage-light transition-colors
+                         hover:border-sage-light hover:bg-white/10 hover:text-white"
             >
+              <Bell className="h-3.5 w-3.5" />
               Send reminder
             </button>
           )}
-        </div>
-        <div className="text-right flex-shrink-0">
           <p className="text-[28px] font-semibold font-mono text-sage-light leading-none">Day {day}</p>
           <p className="text-[11px] text-white/50 mt-1">
             of {total} · Checkout {fmtDate(r.departureDate)}

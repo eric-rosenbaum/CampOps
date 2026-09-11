@@ -376,15 +376,20 @@ function buildSteps(data: PortalData): Step[] {
   // group has to DO is invisible in it. It belongs beside the headcount: the same kind of number,
   // wanted by the same kitchen, on the same deadline, and the one that decides what gets ordered
   // rather than just how much.
-  const dietaryDone = Object.keys(retreat.dietary_flags ?? {}).length > 0
+  const dietaryCounts = Object.entries(retreat.dietary_flags ?? {});
+  const dietaryWords = (retreat.dietary_notes ?? '').trim();
+  const dietaryDone = dietaryWords !== '' || dietaryCounts.length > 0
     || retreat.dietary_none_confirmed === true;
   steps.push({
     key: 'dietary', label: 'Tell us about dietary needs',
-    hint: retreat.dietary_none_confirmed && Object.keys(retreat.dietary_flags ?? {}).length === 0
-      ? 'Confirmed: nothing to work around'
-      : dietaryDone
-        ? Object.entries(retreat.dietary_flags ?? {}).map(([k, v]) => `${v} ${k.replace(/_/g, ' ')}`).join(' · ')
-        : `Due ${fmtDateFull(headcountDue)} — the kitchen orders against this`,
+    hint: dietaryWords
+      // What they wrote, not a tally of it -- the sentence is the answer.
+      ? (dietaryWords.length > 70 ? `${dietaryWords.slice(0, 70)}…` : dietaryWords)
+      : dietaryCounts.length > 0
+        ? dietaryCounts.map(([k, v]) => `${v} ${k.replace(/_/g, ' ')}`).join(' · ')
+        : retreat.dietary_none_confirmed
+          ? 'Confirmed: nothing to work around'
+          : `Due ${fmtDateFull(headcountDue)} — the kitchen orders against this`,
     state: dietaryDone ? 'done' : urgency(headcountDue), dueDate: headcountDue, sectionId: 'info', counts: true,
   });
 
@@ -1263,13 +1268,17 @@ function DietaryCard({ retreat, token, refetch }: {
   retreat: PortalRetreat; token: string; refetch: () => Promise<void>;
 }) {
   const saved = (retreat.dietary_flags ?? {}) as Record<string, number>;
+  const [notes, setNotes] = useState(retreat.dietary_notes ?? '');
   const [counts, setCounts] = useState<Record<string, string>>(() =>
     Object.fromEntries(DIETS.map((d) => [d.key, saved[d.key] ? String(saved[d.key]) : ''])));
+  /** Counts start closed. Most groups answer in a sentence; the tally is for the ones who count. */
+  const [countsOpen, setCountsOpen] = useState(Object.keys(saved).length > 0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved_, setSaved_] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
 
-  const total = DIETS.reduce((n, d) => n + (Number(counts[d.key]) || 0), 0);
+  const anyCounts = DIETS.some((d) => (Number(counts[d.key]) || 0) > 0);
+  const nothingSaid = !notes.trim() && !anyCounts;
 
   async function save() {
     setSaving(true); setError(null);
@@ -1280,12 +1289,12 @@ function DietaryCard({ retreat, token, refetch }: {
     }
     try {
       const { error: err } = await supabasePublic.rpc('portal_save_dietary', {
-        p_token: token, p_flags: flags,
+        p_token: token, p_flags: flags, p_notes: notes.trim() || null,
       });
       if (err) throw new Error(err.message);
       await refetch();
-      setSaved_(true);
-      setTimeout(() => setSaved_(false), 2500);
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'That did not save. Try again.');
     } finally {
@@ -1295,40 +1304,58 @@ function DietaryCard({ retreat, token, refetch }: {
 
   return (
     <div className={`${cardClass} p-4`}>
-      <p className="text-[13px] leading-relaxed text-ink">
-        How many people, for each. The kitchen orders against these.
-      </p>
+      {/* Words first. A real answer is "one coeliac, and Ben has a severe tree-nut allergy — he
+          carries an EpiPen", and none of that fits in a number box. The tally is the tidy half,
+          and the tidy half is not the one the kitchen needs to read. */}
+      <label className="block text-[13px] font-semibold text-forest mb-1.5" htmlFor="diet-notes">
+        Allergies, diets, anything the kitchen should know
+      </label>
+      <textarea
+        id="diet-notes" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)}
+        className="w-full resize-y rounded-btn border border-border bg-white px-3 py-2 text-[13.5px]
+                   leading-relaxed text-ink focus:border-sage focus:outline-none"
+        placeholder="e.g. Two vegetarians, one coeliac. Ben has a severe tree-nut allergy and carries an EpiPen."
+      />
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        {DIETS.map((d) => (
-          <label key={d.key} className="flex items-center gap-2">
-            <input
-              type="number" min="0" inputMode="numeric"
-              value={counts[d.key] ?? ''}
-              onChange={(e) => setCounts((c) => ({ ...c, [d.key]: e.target.value }))}
-              className="w-14 rounded-btn border border-border bg-white px-2 py-1 text-[13px] focus:border-sage focus:outline-none"
-            />
-            <span className="text-[12.5px] text-ink">{d.label}</span>
-          </label>
-        ))}
-      </div>
+      <button
+        type="button"
+        onClick={() => setCountsOpen((v) => !v)}
+        className="mt-3 flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-soft hover:text-forest"
+      >
+        <ChevronRight className={`h-3.5 w-3.5 transition-transform ${countsOpen ? 'rotate-90' : ''}`} />
+        Add counts by diet
+        {anyCounts && <span className="font-mono text-[11.5px] text-forest">
+          {DIETS.reduce((n, d) => n + (Number(counts[d.key]) || 0), 0)} counted
+        </span>}
+      </button>
+
+      {countsOpen && (
+        <div className="mt-2.5 grid grid-cols-2 gap-2">
+          {DIETS.map((d) => (
+            <label key={d.key} className="flex items-center gap-2">
+              <input
+                type="number" min="0" inputMode="numeric"
+                value={counts[d.key] ?? ''}
+                onChange={(e) => setCounts((c) => ({ ...c, [d.key]: e.target.value }))}
+                className="w-14 rounded-btn border border-border bg-white px-2 py-1 text-[13px] focus:border-sage focus:outline-none"
+              />
+              <span className="text-[12.5px] text-ink">{d.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
 
       {error && <p className="mt-2 text-[11.5px] text-red">{error}</p>}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-3.5 flex flex-wrap items-center gap-2">
         <button
           onClick={save} disabled={saving}
           className="rounded-btn bg-forest px-3 py-1.5 text-[12.5px] font-bold text-paper hover:bg-forest-mid disabled:opacity-50"
         >
-          {saving ? 'Saving…' : total > 0 ? 'Save' : 'Nobody has any — save'}
+          {saving ? 'Saving…' : nothingSaid ? 'Nobody has any — save' : 'Save'}
         </button>
-        {saved_ && <span className="text-[12px] font-medium text-green-muted-text">Saved.</span>}
+        {justSaved && <span className="text-[12px] font-medium text-green-muted-text">Saved.</span>}
       </div>
-
-      <p className="mt-2 text-[11px] text-ink-faint">
-        Anything that does not fit these — an allergy, a medical diet — send as a request and we
-        will read it.
-      </p>
     </div>
   );
 }

@@ -56,14 +56,26 @@ export function fmtDateFull(d: string | null): string {
  */
 export function fmtRange(a: string | null, b: string | null): string {
   if (!a && !b) return 'Dates TBC';
-  // One year at the end rather than one on each side: "Oct 21 - Oct 24, 2027", not
-  // "Oct 21, 2027 - Oct 24, 2027".
-  const dt = a ? new Date(`${a}T00:00:00`) : null;
-  const otherYear = dt ? dt.getFullYear() !== new Date().getFullYear() : false;
-  if (otherYear && a && b) {
-    const short = (x: string) => new Date(`${x}T00:00:00`)
-      .toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return `${short(a)} – ${short(b)}, ${dt!.getFullYear()}`;
+  // ALWAYS the year on a range, even the current one.
+  //
+  // It was conditional -- shown only when the dates fell outside this year, on the reasoning that
+  // a reader can infer the obvious case and every other screen stays quieter. That reasoning is
+  // wrong here: a range is how a booking is identified, groups come back every year, and "Oct 21 -
+  // Oct 24" on a card tells you nothing about which stay you are looking at. A reader who has to
+  // work out whether the year was omitted because it is current, or because there is a bug, is
+  // doing the work the label was supposed to do.
+  //
+  // One year at the end rather than one on each side: "Oct 21 - Oct 24, 2026".
+  const short = (x: string | null) => (x
+    ? new Date(`${x}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : '-');
+  const year = (a ?? b) ? new Date(`${(a ?? b) as string}T00:00:00`).getFullYear() : null;
+  if (a && b) {
+    const bYear = new Date(`${b}T00:00:00`).getFullYear();
+    // A stay that crosses New Year names both, or the range would claim the wrong one.
+    return bYear !== year
+      ? `${short(a)}, ${year} – ${short(b)}, ${bYear}`
+      : `${short(a)} – ${short(b)}, ${year}`;
   }
   return `${fmtDate(a)} – ${fmtDate(b)}`;
 }

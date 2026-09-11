@@ -40,6 +40,9 @@ export function rowToRetreat(r: Row): Retreat {
     finalHeadcount: n(r.final_headcount), finalHeadcountAt: s(r.final_headcount_at), finalHeadcountBy: s(r.final_headcount_by),
     housingSubmittedAt: s(r.housing_submitted_at), housingSubmittedBy: s(r.housing_submitted_by),
     dietaryFlags: (r.dietary_flags as Record<string, number>) ?? null,
+    dietaryNotes: s(r.dietary_notes),
+    enquirySeenAt: s(r.enquiry_seen_at),
+    dietaryNoneConfirmed: Boolean(r.dietary_none_confirmed),
     notes: s(r.notes), portalToken: r.portal_token as string,
     // Pipeline. Rows written before these columns existed are real bookings, not leads, so an
     // absent stage reads as 'won' rather than dropping every existing retreat into a funnel.
@@ -318,7 +321,9 @@ export function retreatToRow(r: Retreat): Row {
     status: r.status, housing_deadline: r.housingDeadline, headcount_cutoff: r.headcountCutoff,
     final_headcount: r.finalHeadcount, final_headcount_at: r.finalHeadcountAt, final_headcount_by: r.finalHeadcountBy,
     housing_submitted_at: r.housingSubmittedAt, housing_submitted_by: r.housingSubmittedBy,
-    dietary_flags: r.dietaryFlags, notes: r.notes, portal_token: r.portalToken,
+    dietary_flags: r.dietaryFlags, dietary_notes: r.dietaryNotes,
+    dietary_none_confirmed: r.dietaryNoneConfirmed,
+    notes: r.notes, portal_token: r.portalToken,
     lead_stage: r.leadStage, lead_source: r.leadSource, lost_reason: r.lostReason,
     next_action: r.nextAction, next_action_on: r.nextActionOn, owner_id: r.ownerId,
     estimated_value: r.estimatedValue, date_flexibility: r.dateFlexibility,
@@ -368,6 +373,27 @@ export const dbAddHousingVersion = (x: RetreatHousingVersion) => ins('retreat_ho
 export const dbAddDocument = (x: RetreatDocument) => ins('retreat_documents', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, doc_type: x.docType, name: x.name, status: x.status, file_path: x.filePath, signed_by: x.signedBy, signed_at: x.signedAt, due_date: x.dueDate, meta: x.meta, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
 export const dbUpdateDocument = (x: RetreatDocument) => upd('retreat_documents', x.id, { doc_type: x.docType, name: x.name, status: x.status, file_path: x.filePath, signed_by: x.signedBy, signed_at: x.signedAt, due_date: x.dueDate, meta: x.meta, sort_order: x.sortOrder });
 export const dbDeleteDocument = (id: string) => del('retreat_documents', id);
+
+/** Somebody has looked at this enquiry, so the banner can stop announcing it. */
+export async function dbMarkEnquirySeen(retreatId: string) {
+  const { error } = await supabase.rpc('mark_enquiry_seen', { p_retreat_id: retreatId });
+  if (error) campError('mark enquiry seen', error.message);
+}
+
+/**
+ * Re-read this camp's documents.
+ *
+ * For the paths where a row is created by the DATABASE rather than by the client -- the agreement
+ * that attaches itself from the camp's template -- so the list shows what actually exists rather
+ * than an optimistic guess at it.
+ */
+export async function dbFetchRetreatDocuments(): Promise<RetreatDocument[] | null> {
+  const { data, error } = await supabase
+    .from('retreat_documents').select('*').eq('camp_id', CID())
+    .order('sort_order', { ascending: true });
+  if (error) { campError('fetch documents', error.message); return null; }
+  return (data ?? []).map((r) => rowToDocument(r as Row));
+}
 
 export const dbAddMeal = (x: RetreatMeal) => ins('retreat_meals', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, day_date: x.dayDate, meal_period: x.mealPeriod, name: x.name, items: x.items, allergens: x.allergens, alternatives: x.alternatives, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
 export const dbUpdateMeal = (x: RetreatMeal) => upd('retreat_meals', x.id, { day_date: x.dayDate, meal_period: x.mealPeriod, name: x.name, items: x.items, allergens: x.allergens, alternatives: x.alternatives, sort_order: x.sortOrder });

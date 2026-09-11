@@ -178,10 +178,19 @@ export function RetreatMenuTab() {
         )}
       </div>
 
-      {retreat.dietaryFlags && Object.keys(retreat.dietaryFlags).length > 0 && (
+      {/* Answered and unanswered are different facts, and the kitchen plans differently for each.
+          Showing nothing when nobody has asked reads as "no dietary needs", which is how a camp
+          cooks one lasagne for a group with four vegetarians in it. */}
+      {retreat.dietaryFlags && Object.keys(retreat.dietaryFlags).length > 0 ? (
         <div className="bg-blue-bg border border-blue/20 rounded-card px-4 py-3 mb-4 text-[12px] text-blue-text leading-relaxed">
-          <strong className="font-semibold">Dietary flags for this group:</strong>{' '}
+          <strong className="font-semibold">Dietary needs for this group:</strong>{' '}
           {Object.entries(retreat.dietaryFlags).map(([k, v]) => `${v} ${dietLabel(k)}`).join(' · ')}.
+        </div>
+      ) : (
+        <div className="bg-amber-bg border border-amber-text/20 rounded-card px-4 py-3 mb-4 text-[12px] text-amber-text leading-relaxed">
+          <strong className="font-semibold">Nobody has told us their dietary needs yet.</strong>{' '}
+          The group fills this in on their portal, under Booking overview. Not the same as none —
+          it has not been asked.
         </div>
       )}
 

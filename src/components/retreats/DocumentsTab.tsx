@@ -221,9 +221,16 @@ export function DocumentsTab({ embedded = false }: { embedded?: boolean } = {}) 
                 >
                   <DocIcon doc={doc} />
                   <div className="flex-1 min-w-0">
+                    {/* What it IS, then what it is called. The filename led, so an agreement
+                        uploaded as "Screenshot 2026-09-07 at 3.10.17 PM.png" announced itself as
+                        a screenshot -- there was no way to tell from this list that it was the
+                        retreat agreement, or that it would go out with the next proposal. */}
                     <p className={`text-[13px] font-semibold ${missing ? 'text-red' : 'text-forest'}`}>
-                      {doc.name || DOC_TYPE_LABEL[doc.docType]} · {STATUS_LABEL[doc.status]}
+                      {DOC_TYPE_LABEL[doc.docType]} · {STATUS_LABEL[doc.status]}
                     </p>
+                    {doc.name && doc.name !== DOC_TYPE_LABEL[doc.docType] && (
+                      <p className="mt-0.5 truncate text-[11.5px] text-ink-soft">{doc.name}</p>
+                    )}
                     <p className={`text-[11px] mt-0.5 ${missing ? 'text-red-text' : 'text-ink-soft'}`}>
                       {missing && doc.docType === 'coi'
                         ? `Required: $1M general liability · Pinecrest named additional insured · Must be received by ${fmtDateFull(retreat.arrivalDate ? coiDueDate(retreat.arrivalDate) : null)}`
@@ -311,12 +318,13 @@ export function DocumentsTab({ embedded = false }: { embedded?: boolean } = {}) 
           {canManage && agreementMissing && campTemplateName && (
             <div className="bg-white rounded-card border border-sage/40 px-5 py-4 mb-3">
               <p className="text-[13px] font-semibold text-forest mb-1">
-                Your agreement is not on this group yet
+                Your agreement goes out with the next proposal
               </p>
               <p className="text-[12px] text-ink-soft leading-relaxed mb-3.5">
-                You keep <strong>{campTemplateName}</strong> on file. It attaches itself when you
-                send a proposal — this group has not had one sent since you uploaded it. Attach it
-                now if you are not sending a quote through CampCommand.
+                A quote and its agreement are one send — signing the agreement is how the group
+                accepts. <strong>{campTemplateName}</strong> attaches itself when you send a
+                proposal to this group. Attach it now if you are not sending a quote through
+                CampCommand, or want it on file first.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" disabled={attaching} onClick={attachNow}>

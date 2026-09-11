@@ -5,7 +5,7 @@
 // a paragraph in an email instead. Everything stays editable — the generated lines are a
 // starting point, not a contract.
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Plus, Send, Trash2 } from 'lucide-react';
+import { FileSignature, Loader2, Plus, Send, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
@@ -53,14 +53,27 @@ interface Props {
 export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
   const currentCamp = useCampStore((s) => s.currentCamp);
   const setRentalDefaults = useCampStore((s) => s.setRentalDefaults);
-  const { proposals, setProposals, retreatById, portalUrl } = useRetreatStore();
+  const { proposals, setProposals, retreatById, portalUrl, openModal } = useRetreatStore();
   const campName = currentCamp?.name ?? 'the camp';
   const { can, currentUser } = useAuth();
   const canManage = can('manageRetreats');
 
   const retreat = retreatById(retreatId);
-  const hasAgreement = useRetreatStore((s) => s.documents)
-    .some((d) => d.retreatId === retreatId && d.docType === 'agreement');
+  /**
+   * The agreement that goes out with this quote.
+   *
+   * A proposal and its agreement are one send -- the quote says what it costs and the agreement is
+   * what makes it binding, and signing the agreement is how the group accepts. Which one is going
+   * belongs HERE, at the moment of sending, not on a documents tab somebody has to know to open.
+   *
+   * Three cases, in order of precedence: this group has their own uploaded (negotiated terms win),
+   * else the camp's standing template attaches itself on send, else there is none and the camp
+   * should be told rather than left to find out from the group.
+   */
+  const agreementDoc = useRetreatStore((s) => s.documents)
+    .find((d) => d.retreatId === retreatId && d.docType === 'agreement');
+  const campTemplateName = useCampStore((s) => s.currentCamp?.agreementTemplateName) ?? null;
+  const hasAgreement = Boolean(agreementDoc) || Boolean(campTemplateName);
   const existing = proposalId ? proposals.find((p) => p.id === proposalId) ?? null : null;
 
   /**
@@ -387,6 +400,62 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
         </div>
       </div>
 
+      {/* ── What is actually going in the envelope ── */}
+      <div className="mt-5 rounded-card border border-border bg-cream px-4 py-3.5">
+        <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-soft">
+          Going with this quote
+        </p>
+        {agreementDoc ? (
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <FileSignature className="h-4 w-4 flex-shrink-0 text-forest" />
+            <span className="text-[13px] font-semibold text-forest">Retreat agreement</span>
+            <span className="min-w-0 truncate text-[12px] text-ink-soft">{agreementDoc.name}</span>
+            {canManage && (
+              <button
+                onClick={() => openModal({ kind: 'uploadDoc', retreatId, docType: 'agreement' })}
+                className="text-[12px] font-semibold text-forest hover:text-forest-mid"
+              >
+                Use a different one
+              </button>
+            )}
+          </div>
+        ) : campTemplateName ? (
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <FileSignature className="h-4 w-4 flex-shrink-0 text-forest" />
+            <span className="text-[13px] font-semibold text-forest">Retreat agreement</span>
+            <span className="min-w-0 truncate text-[12px] text-ink-soft">
+              {campTemplateName} — your standard one, attached when you send
+            </span>
+            {canManage && (
+              <button
+                onClick={() => openModal({ kind: 'uploadDoc', retreatId, docType: 'agreement' })}
+                className="text-[12px] font-semibold text-forest hover:text-forest-mid"
+              >
+                Use a different one for this group
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="mt-1.5">
+            <p className="text-[12.5px] leading-relaxed text-amber-text">
+              No agreement will go with this quote. Signing the agreement is how a group accepts,
+              so this sends a price with nothing to sign.
+            </p>
+            {canManage && (
+              <button
+                onClick={() => openModal({ kind: 'uploadDoc', retreatId, docType: 'agreement' })}
+                className="mt-1 text-[12px] font-semibold text-forest hover:text-forest-mid"
+              >
+                Attach one for this group
+              </button>
+            )}
+            <p className="mt-1 text-[11px] text-ink-faint">
+              Keep a standard one under Camp Info &rsaquo; Rentals and it goes with every proposal.
+            </p>
+          </div>
+        )}
+      </div>
+
       <div className="flex flex-col sm:flex-row justify-end gap-2 mt-5 pt-4 border-t border-border">
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
         <Button variant="ghost" onClick={() => save('draft')} disabled={!canManage || loading}>
@@ -396,7 +465,8 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
           Mark sent
         </Button>
         <Button onClick={sendToGroup} disabled={!canManage || loading || sending || lines.length === 0}>
-          <Send className="w-4 h-4" /> {sending ? 'Sending…' : 'Send to the group'}
+          <Send className="w-4 h-4" />
+          {sending ? 'Sending…' : hasAgreement ? 'Send quote and agreement' : 'Send quote'}
         </Button>
       </div>
       {sendResult && (

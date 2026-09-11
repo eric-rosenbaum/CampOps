@@ -366,13 +366,16 @@ export function OverviewTab() {
           </button>
 
           {pastOpen && (
-            <div className="mt-3 space-y-4">
+            // Years are separated more than the rows inside them, so a year reads as a heading for
+            // the cards under it rather than floating between two groups. The label was 12px from
+            // the control above and 6px from its own cards, which is the wrong way round.
+            <div className="mt-4 space-y-6">
               {Object.entries(pastByYear).sort((a, b) => b[0].localeCompare(a[0])).map(([year, rs]) => (
                 <div key={year}>
-                  <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-ink-faint">
+                  <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-ink-faint">
                     {year} · {rs.length} group{rs.length === 1 ? '' : 's'}
                   </p>
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     {rs.map((r) => (
                       <button
                         key={r.id}

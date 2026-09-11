@@ -353,10 +353,12 @@ export function OverviewTab() {
       <div className="flex items-center justify-between mt-7 mb-3.5">
         <h2 className="text-[14px] font-semibold text-forest">Availability</h2>
       </div>
+      <AvailabilityCalendar retreats={seasonList} />
+
       {/* Groups that have been and gone. Behind a disclosure because a camp in its fifth season
           has two hundred of them, and grouped by year because the same group comes back. */}
       {past.length > 0 && (
-        <div className="mt-6">
+        <div className="mt-8 border-t border-border pt-6">
           <button
             onClick={() => setPastOpen((v) => !v)}
             className="flex items-center gap-1.5 text-[14px] font-semibold text-forest hover:text-forest-mid"
@@ -399,8 +401,6 @@ export function OverviewTab() {
           )}
         </div>
       )}
-
-      <AvailabilityCalendar retreats={seasonList} />
     </div>
   );
 }

@@ -144,6 +144,16 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
   );
   const total = useMemo(() => base + extras, [base, extras]);
 
+  /**
+   * Is there a quote here to send?
+   *
+   * NOT `lines.length` -- that was right when `lines` was the whole quote, and stopped being
+   * right when per-person pricing became three inputs and the base line was stripped out of the
+   * array. A straight rate quote with no add-ons is the commonest proposal there is, and it had
+   * an empty `lines`, so Send and Mark sent greyed out on a perfectly good $18,000 booking.
+   */
+  const quotable = total > 0 || lines.length > 0;
+
   const nextVersion = useMemo(() => {
     if (existing) return existing.version;
     const mine = proposals.filter((p) => p.retreatId === retreatId);
@@ -461,10 +471,10 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
         <Button variant="ghost" onClick={() => save('draft')} disabled={!canManage || loading}>
           Save draft
         </Button>
-        <Button variant="ghost" onClick={() => save('sent')} disabled={!canManage || loading || lines.length === 0}>
+        <Button variant="ghost" onClick={() => save('sent')} disabled={!canManage || loading || !quotable}>
           Mark sent
         </Button>
-        <Button onClick={sendToGroup} disabled={!canManage || loading || sending || lines.length === 0}>
+        <Button onClick={sendToGroup} disabled={!canManage || loading || sending || !quotable}>
           <Send className="w-4 h-4" />
           {sending ? 'Sending…' : hasAgreement ? 'Send quote and agreement' : 'Send quote'}
         </Button>

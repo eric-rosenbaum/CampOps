@@ -102,7 +102,7 @@ async function viewFile(path: string) {
   else alert('Could not open this document.');
 }
 
-export function DocumentsTab() {
+export function DocumentsTab({ embedded = false }: { embedded?: boolean } = {}) {
   const { selectedRetreat, docsFor, openModal } = useRetreatStore();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
@@ -145,7 +145,7 @@ export function DocumentsTab() {
 
   if (!retreat) {
     return (
-      <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
+      <div className={embedded ? '' : 'flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6'}>
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto">
           <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mb-4">
             <FileText className="w-7 h-7 text-forest/30" />
@@ -166,7 +166,7 @@ export function DocumentsTab() {
   const agreementMissing = retreat && !agreement;
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
+    <div className={embedded ? '' : 'flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6'}>
 
       {retreat && (
         <>

@@ -27,6 +27,7 @@ export function rowToRetreat(r: Row): Retreat {
     id: r.id as string, campId: r.camp_id as string,
     groupName: r.group_name as string, groupType: (r.group_type as string) ?? 'other',
     arrivalDate: s(r.arrival_date), departureDate: s(r.departure_date),
+    arrivalTime: s(r.arrival_time), departureTime: s(r.departure_time),
     headcount: Number(r.headcount ?? 0),
     pricingModel: (r.pricing_model as Retreat['pricingModel']) ?? 'per_person_night',
     ratePerPersonNight: n(r.rate_per_person_night), flatRate: n(r.flat_rate),
@@ -308,7 +309,8 @@ const CID = () => getCampId();
 export function retreatToRow(r: Retreat): Row {
   return {
     id: r.id, camp_id: CID(), group_name: r.groupName, group_type: r.groupType,
-    arrival_date: r.arrivalDate, departure_date: r.departureDate, headcount: r.headcount,
+    arrival_date: r.arrivalDate, departure_date: r.departureDate,
+    arrival_time: r.arrivalTime, departure_time: r.departureTime, headcount: r.headcount,
     pricing_model: r.pricingModel, flat_rate: r.flatRate,
     rate_per_person_night: r.ratePerPersonNight, deposit_required: r.depositRequired, deposit_received: r.depositReceived,
     deposit_due: r.depositDue,

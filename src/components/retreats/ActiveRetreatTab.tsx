@@ -5,7 +5,7 @@ import type { Retreat, RetreatIssue } from '@/lib/types';
 import {
   money, fmtDate, fmtRange, nights, Badge, GROUP_TYPE_LABELS, rateSummary, pricingRate, PhaseTracker, type BadgeTone, billableHeadcount
 } from './retreatUi';
-import { todayStr } from '@/lib/utils';
+import { todayStr, fmtClock } from '@/lib/utils';
 
 function dayOf(r: Retreat): { day: number; total: number } {
   const total = Math.max(1, nights(r.arrivalDate, r.departureDate));
@@ -65,10 +65,6 @@ export function ActiveRetreatTab() {
   const checkout = checklistFor(r.id, 'checkout');
 
   const subgroups = housing.filter((h) => h.subgroupName).map((h) => `${h.subgroupName} (${h.peopleCount})`).join(' + ');
-  const dietary = Object.entries(r.dietaryFlags ?? {})
-    .filter(([, v]) => v > 0)
-    .map(([k, v]) => `${v} ${k.replace(/_/g, ' ')}`)
-    .join(' · ');
   const spaces = housing.filter((h) => h.spaceName).map((h) => h.spaceName).join(', ');
 
   return (
@@ -81,6 +77,15 @@ export function ActiveRetreatTab() {
             {fmtRange(r.arrivalDate, r.departureDate)} · {r.finalHeadcount ?? r.headcount} people · {GROUP_TYPE_LABELS[r.groupType] ?? r.groupType}
             {spaces ? ` · ${spaces}` : ''}
           </p>
+          {/* The hours, when the camp has them. These are what the kitchen and the crew plan
+              around, and they used to live only in somebody's head. */}
+          {(r.arrivalTime || r.departureTime) && (
+            <p className="text-[12px] text-sage-light/90 mt-0.5">
+              {r.arrivalTime && `In ${fmtClock(r.arrivalTime)}`}
+              {r.arrivalTime && r.departureTime && ' · '}
+              {r.departureTime && `Out ${fmtClock(r.departureTime)}`}
+            </p>
+          )}
           {canManage && (
             <button
               onClick={() => openModal({ kind: 'editRetreat', retreatId: r.id })}
@@ -89,10 +94,21 @@ export function ActiveRetreatTab() {
               Edit retreat details
             </button>
           )}
+          {canManage && (
+            <button
+              onClick={() => openModal({ kind: 'sendReminder', retreatId: r.id })}
+              className="mt-2 ml-3 text-[11px] font-medium text-sage-light hover:text-white underline underline-offset-2"
+            >
+              Send reminder
+            </button>
+          )}
         </div>
         <div className="text-right flex-shrink-0">
           <p className="text-[28px] font-semibold font-mono text-sage-light leading-none">Day {day}</p>
-          <p className="text-[11px] text-white/50 mt-1">of {total} · Checkout {fmtDate(r.departureDate)} by 11am</p>
+          <p className="text-[11px] text-white/50 mt-1">
+            of {total} · Checkout {fmtDate(r.departureDate)}
+            {r.departureTime ? ` by ${fmtClock(r.departureTime)}` : ''}
+          </p>
         </div>
       </div>
 
@@ -145,7 +161,6 @@ export function ActiveRetreatTab() {
             />
           )}
           <Row k="Subgroups" v={subgroups || '-'} />
-          <Row k="Dietary flags" v={dietary || 'None flagged'} />
           {r.coordinatorEmail && <Row k="Email" v={r.coordinatorEmail} />}
         </div>
 

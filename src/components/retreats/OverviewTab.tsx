@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { StatCard } from '@/components/shared/StatCard';
@@ -33,6 +34,7 @@ export function OverviewTab() {
     retreats, retreatsByStatus, docsFor, housingFor, financialsFor,
     phaseProgress, enterRetreat, openModal,
   } = useRetreatStore();
+  const [pastOpen, setPastOpen] = useState(false);
   const { can } = useAuth();
   const canManage = can('manageRetreats');
 
@@ -113,6 +115,24 @@ export function OverviewTab() {
   const seasonList = [...retreats]
     .filter((r) => r.status !== 'cancelled')
     .sort(byArrival);
+
+  /**
+   * Groups that have been and gone, newest first, grouped by the year they came.
+   *
+   * They were in the one list, sunk to the bottom. That is fine for a camp in its first season
+   * and unusable by the third: the same group comes back every year, so "Tufts" appears five
+   * times and the only thing telling them apart is a date that did not print its year. A camp
+   * looking back at what a group needed last October needs to find last October.
+   */
+  const past = seasonList
+    .filter((r) => (r.departureDate ?? '') !== '' && (r.departureDate as string) < todayStr())
+    .reverse();
+  const upcomingList = seasonList.filter((r) => !past.includes(r));
+  const pastByYear = past.reduce<Record<string, Retreat[]>>((acc, r) => {
+    const y = (r.departureDate as string).slice(0, 4);
+    (acc[y] ??= []).push(r);
+    return acc;
+  }, {});
 
   // Whoever is on property comes first, then whoever arrives soonest. Groups that have
   // already left stay reachable but sink to the end.
@@ -227,12 +247,17 @@ export function OverviewTab() {
         })}
       </div>
 
-      {/* All retreats this season */}
+      {/* Coming up */}
       <div className="flex items-center justify-between mt-1 mb-3.5">
-        <h2 className="text-[14px] font-semibold text-forest">All retreats this season</h2>
+        <h2 className="text-[14px] font-semibold text-forest">
+          Coming up{upcomingList.length > 0 && ` · ${upcomingList.length}`}
+        </h2>
       </div>
       <div className="flex flex-col gap-3">
-        {seasonList.map((r) => {
+        {upcomingList.length === 0 && (
+          <p className="text-[12.5px] text-ink-soft italic">Nothing booked ahead.</p>
+        )}
+        {upcomingList.map((r) => {
           const d = derive(r);
           const away = daysUntil(r.arrivalDate);
           const secondary = deriveBadge(r, d);
@@ -287,6 +312,50 @@ export function OverviewTab() {
       <div className="flex items-center justify-between mt-7 mb-3.5">
         <h2 className="text-[14px] font-semibold text-forest">Availability</h2>
       </div>
+      {/* Groups that have been and gone. Behind a disclosure because a camp in its fifth season
+          has two hundred of them, and grouped by year because the same group comes back. */}
+      {past.length > 0 && (
+        <div className="mt-6">
+          <button
+            onClick={() => setPastOpen((v) => !v)}
+            className="flex items-center gap-1.5 text-[14px] font-semibold text-forest hover:text-forest-mid"
+          >
+            <ChevronRight className={`h-4 w-4 transition-transform ${pastOpen ? 'rotate-90' : ''}`} />
+            Past retreats · {past.length}
+          </button>
+
+          {pastOpen && (
+            <div className="mt-3 space-y-4">
+              {Object.entries(pastByYear).sort((a, b) => b[0].localeCompare(a[0])).map(([year, rs]) => (
+                <div key={year}>
+                  <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-ink-faint">
+                    {year} · {rs.length} group{rs.length === 1 ? '' : 's'}
+                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    {rs.map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => enterRetreat(r.id)}
+                        className="flex items-center justify-between gap-3 rounded-card border border-border
+                                   bg-white px-4 py-2.5 text-left transition-colors hover:border-sage"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-[13.5px] font-semibold text-forest">{r.groupName}</span>
+                          <span className="block text-[11px] text-ink-soft">
+                            {fmtRange(r.arrivalDate, r.departureDate)} · {billableHeadcount(r)} people
+                          </span>
+                        </span>
+                        <ChevronRight className="h-4 w-4 flex-shrink-0 text-ink-faint" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <AvailabilityCalendar retreats={seasonList} />
     </div>
   );

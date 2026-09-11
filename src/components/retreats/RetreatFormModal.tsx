@@ -5,9 +5,9 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { useCampStore } from '@/store/campStore';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useAuth } from '@/lib/auth';
-import { generateId } from '@/lib/utils';
+import { generateId, todayStr } from '@/lib/utils';
 import type { Retreat, RetreatStatus, RetreatPricingModel } from '@/lib/types';
-import { inputClass, labelClass, GROUP_TYPE_OPTIONS, STATUS_LABELS, PRICING_MODEL_OPTIONS } from './retreatUi';
+import { inputClass, labelClass, GROUP_TYPE_OPTIONS, STATUS_LABELS, PRICING_MODEL_OPTIONS, fieldClass } from './retreatUi';
 import { isValidEmail } from '@/lib/email';
 
 const STATUS_ORDER: RetreatStatus[] = ['inquiry', 'confirmed', 'ready', 'active', 'complete', 'cancelled'];
@@ -39,6 +39,8 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
   const [groupType, setGroupType] = useState(existing?.groupType ?? '');
   const [arrivalDate, setArrivalDate] = useState(existing?.arrivalDate ?? '');
   const [departureDate, setDepartureDate] = useState(existing?.departureDate ?? '');
+  const [arrivalTime, setArrivalTime] = useState(existing?.arrivalTime?.slice(0, 5) ?? '');
+  const [departureTime, setDepartureTime] = useState(existing?.departureTime?.slice(0, 5) ?? '');
   const [headcount, setHeadcount] = useState(existing ? String(existing.headcount) : '');
   // A new booking starts on the camp's own rate card rather than empty, which is what made
   // every fresh proposal quote zero.
@@ -64,9 +66,32 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
 
   const valid = groupName.trim() && groupType && arrivalDate && departureDate && Number(headcount) > 0 && departureDate >= arrivalDate;
 
-  // Final-headcount confirmation defaults to two weeks before arrival; the camp can override.
-  const defaultHeadcountCutoff = arrivalDate ? addDays(arrivalDate, -14) : '';
+  /**
+   * The deadlines the reminder emails are anchored to.
+   *
+   * Every one of these was optional, and camps left them all blank -- so the agreement, deposit
+   * and rooming reminders were written, wired up, and never queued once, because each waits on a
+   * date nobody filled in. The reminders that DID fire were the two anchored to the arrival date.
+   *
+   * So they default, visibly, in this form: the camp sees the date, can change it, and the email
+   * that eventually goes out quotes a deadline the camp actually agreed to rather than one the
+   * platform invented behind them.
+   *
+   * Floored at today, because a group booked four days out cannot have a deadline three weeks
+   * ago -- that would either be nonsense on screen or a reminder that fires the instant it is
+   * created.
+   */
+  const deadlineBefore = (days: number) => {
+    if (!arrivalDate) return '';
+    const derived = addDays(arrivalDate, -days);
+    return derived < todayStr() ? todayStr() : derived;
+  };
+  const defaultHeadcountCutoff = deadlineBefore(14);
+  const defaultHousingDeadline = deadlineBefore(14);
+  const defaultDepositDue = deadlineBefore(30);
   const effectiveHeadcountCutoff = headcountCutoff || defaultHeadcountCutoff;
+  const effectiveHousingDeadline = housingDeadline || defaultHousingDeadline;
+  const effectiveDepositDue = depositDue || defaultDepositDue;
 
   const perPerson = pricingModel === 'per_person_night';
   const rateValue = perPerson ? rate : flatRate;
@@ -94,16 +119,18 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
         groupType,
         arrivalDate,
         departureDate,
+        arrivalTime: arrivalTime || null,
+        departureTime: departureTime || null,
         headcount: Number(headcount),
         pricingModel,
         ratePerPersonNight: rate ? Number(rate) : null,
         flatRate: flatRate ? Number(flatRate) : null,
         depositRequired: deposit ? Number(deposit) : null,
-        depositDue: depositDue || null,
+        depositDue: effectiveDepositDue || null,
         coordinatorName: coordName.trim() || null,
         coordinatorEmail: coordEmail.trim() || null,
         coordinatorPhone: coordPhone.trim() || null,
-        housingDeadline: housingDeadline || null,
+        housingDeadline: effectiveHousingDeadline || null,
         headcountCutoff: effectiveHeadcountCutoff || null,
         status,
         notes: notes.trim() || null,
@@ -123,18 +150,20 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
         groupType,
         arrivalDate,
         departureDate,
+        arrivalTime: arrivalTime || null,
+        departureTime: departureTime || null,
         headcount: Number(headcount),
         pricingModel,
         ratePerPersonNight: rate ? Number(rate) : null,
         flatRate: flatRate ? Number(flatRate) : null,
         depositRequired: deposit ? Number(deposit) : null,
         depositReceived: null,
-        depositDue: depositDue || null,
+        depositDue: effectiveDepositDue || null,
         coordinatorName: coordName.trim() || null,
         coordinatorEmail: coordEmail.trim() || null,
         coordinatorPhone: coordPhone.trim() || null,
         status: 'confirmed',
-        housingDeadline: housingDeadline || null,
+        housingDeadline: effectiveHousingDeadline || null,
         headcountCutoff: effectiveHeadcountCutoff || null,
         finalHeadcount: null,
         finalHeadcountAt: null,
@@ -183,14 +212,31 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Time beside date. "They get in at 7pm Wednesday" decides whether dinner is cooked that
+            night and whether the cabins have to be ready by lunchtime -- it used to live in
+            somebody's head. Blank still means "some time that day", which is a real answer.
+            Each pair on its own row: a date input and a time input have genuine intrinsic widths
+            and will not share a half-width column without overflowing it. */}
+        <div className="space-y-3">
           <div>
             <label className={labelClass}>Arrival</label>
-            <input type="date" value={arrivalDate} onChange={(e) => setArrivalDate(e.target.value)} className={inputClass} />
+            <div className="flex min-w-0 gap-2">
+              <input type="date" value={arrivalDate} onChange={(e) => setArrivalDate(e.target.value)}
+                     className={`${fieldClass} min-w-0 flex-1`} />
+              <input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)}
+                     disabled={!arrivalDate} aria-label="Arrival time"
+                     className={`${fieldClass} w-28 flex-none disabled:opacity-50`} />
+            </div>
           </div>
           <div>
             <label className={labelClass}>Departure</label>
-            <input type="date" value={departureDate} onChange={(e) => setDepartureDate(e.target.value)} className={inputClass} />
+            <div className="flex min-w-0 gap-2">
+              <input type="date" value={departureDate} onChange={(e) => setDepartureDate(e.target.value)}
+                     className={`${fieldClass} min-w-0 flex-1`} />
+              <input type="time" value={departureTime} onChange={(e) => setDepartureTime(e.target.value)}
+                     disabled={!departureDate} aria-label="Departure time"
+                     className={`${fieldClass} w-28 flex-none disabled:opacity-50`} />
+            </div>
           </div>
         </div>
 

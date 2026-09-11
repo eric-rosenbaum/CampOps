@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { fmtClock } from '@/lib/utils';
 import type { Retreat } from '@/lib/types';
 import { fmtRange, byArrival } from './retreatUi';
 
@@ -106,17 +107,43 @@ export function AvailabilityCalendar({ retreats }: { retreats: Retreat[] }) {
                   const on = booked.get(date) ?? [];
                   const isToday = date === today;
                   const c = on.length > 0 ? colourOf(on[0].id) : null;
+                  const arrivesToday = on.length > 0 && on[0].arrivalDate === date;
+                  const leavesToday  = on.length > 0 && on[0].departureDate === date;
                   return (
                     <div
                       key={i}
                       title={on.length > 0
                         ? on.map((r) => `${r.groupName} · ${fmtRange(r.arrivalDate, r.departureDate)}`).join('\n')
                         : `Available · ${date}`}
-                      className={`relative aspect-square flex items-center justify-center text-[11px] rounded transition-colors ${
+                      className={`relative aspect-square flex flex-col items-center justify-center overflow-hidden text-[11px] rounded transition-colors ${
                         c ? `${c.bg} ${c.text} font-semibold` : 'text-ink-soft hover:bg-cream'
                       } ${isToday ? 'ring-2 ring-forest ring-offset-1' : ''}`}
                     >
-                      {d}
+                      <span className="absolute top-1 left-1.5 text-[10px] leading-none opacity-80">{d}</span>
+
+                      {/* The group's name, on the block. It was in a legend underneath, which
+                          meant matching a shade of green to a line of text every time you wanted
+                          to know who was on site -- and two greens apart in a legend look identical
+                          on a square. */}
+                      {on.length > 0 && (
+                        <span className="px-1 text-center text-[9.5px] font-semibold leading-tight line-clamp-2">
+                          {on[0].groupName}
+                        </span>
+                      )}
+
+                      {/* The hour, on the day it matters. Arrival and departure are the two days
+                          the kitchen and the crew plan around; the days between are just "here". */}
+                      {arrivesToday && on[0].arrivalTime && (
+                        <span className="absolute bottom-0.5 left-0 right-0 text-center text-[8.5px] font-semibold leading-none opacity-90">
+                          {fmtClock(on[0].arrivalTime)} in
+                        </span>
+                      )}
+                      {leavesToday && on[0].departureTime && (
+                        <span className="absolute bottom-0.5 left-0 right-0 text-center text-[8.5px] font-semibold leading-none opacity-90">
+                          {fmtClock(on[0].departureTime)} out
+                        </span>
+                      )}
+
                       {/* Changeover day: two groups on site, so the square is not one colour. */}
                       {on.length > 1 && (
                         <span
@@ -128,7 +155,7 @@ export function AvailabilityCalendar({ retreats }: { retreats: Retreat[] }) {
                 })}
               </div>
 
-              <MonthKey y={y} m={m} booked={booked} colourOf={colourOf} />
+              <MonthEmpty y={y} m={m} booked={booked} />
             </div>
           );
         })}
@@ -144,35 +171,18 @@ export function AvailabilityCalendar({ retreats }: { retreats: Retreat[] }) {
  * group can never appear in the key on a month where none of its days are drawn (or, worse,
  * be missing from one where they are).
  */
-function MonthKey({
-  y, m, booked, colourOf,
-}: {
-  y: number;
-  m: number;
-  booked: Map<string, Retreat[]>;
-  colourOf: (id: string) => { dot: string };
-}) {
-  const seen = new Map<string, Retreat>();
+/**
+ * Only the empty state now.
+ *
+ * There used to be a colour key under each month. Identifying a group meant matching a shade of
+ * green to a line of text, and two greens that are distinct in a list are indistinguishable as
+ * squares -- so the name went onto the block instead and the key had nothing left to do. "Nothing
+ * booked" is still worth saying: an empty grid and an unloaded grid look the same.
+ */
+function MonthEmpty({ y, m, booked }: { y: number; m: number; booked: Map<string, Retreat[]> }) {
   const days = new Date(y, m + 1, 0).getDate();
   for (let d = 1; d <= days; d++) {
-    for (const r of booked.get(iso(y, m, d)) ?? []) if (!seen.has(r.id)) seen.set(r.id, r);
+    if ((booked.get(iso(y, m, d)) ?? []).length > 0) return null;
   }
-  const groups = [...seen.values()].sort(byArrival);
-
-  if (groups.length === 0) {
-    return <p className="mt-2.5 text-[11px] text-ink-faint italic">Nothing booked this month.</p>;
-  }
-  return (
-    <ul className="mt-2.5 space-y-1">
-      {groups.map((r) => (
-        <li key={r.id} className="flex items-start gap-1.5 text-[11px] leading-snug">
-          <span className={`mt-1 h-2 w-2 flex-shrink-0 rounded-sm ${colourOf(r.id).dot}`} />
-          <span className="min-w-0">
-            <span className="font-semibold text-forest">{r.groupName}</span>
-            <span className="text-ink-faint"> · {fmtRange(r.arrivalDate, r.departureDate)}</span>
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
+  return <p className="mt-2.5 text-[11px] text-ink-faint italic">Nothing booked this month.</p>;
 }

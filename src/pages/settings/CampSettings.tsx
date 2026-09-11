@@ -1024,6 +1024,18 @@ function RentalsTab() {
   const [scheduleOn, setScheduleOn] = useState(Boolean(currentCamp?.agreementScheduleEnabled));
   const setAgreementScheduleEnabled = useCampStore((st) => st.setAgreementScheduleEnabled);
 
+  // ── The public enquiry link ──
+  const setEnquiryToken = useCampStore((st) => st.setEnquiryToken);
+  const [enquiryToken, setEnquiryTokenLocal] = useState(currentCamp?.enquiryToken ?? null);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const enquiryUrl = enquiryToken ? `${window.location.origin}/enquire/${enquiryToken}` : '';
+
+  async function toggleEnquiry(on: boolean) {
+    if (!currentCamp) return;
+    await setEnquiryToken(currentCamp.id, on);
+    setEnquiryTokenLocal(useCampStore.getState().currentCamp?.enquiryToken ?? null);
+  }
+
   // ── The camp's stored agreement ──
   const setCampAgreement = useCampStore((st) => st.setCampAgreement);
   const agreementRef = useRef<HTMLInputElement>(null);
@@ -1163,6 +1175,47 @@ function RentalsTab() {
               placeholder="A signed agreement and a deposit hold the dates…"
             />
           </div>
+        </div>
+
+        {/* ── The front door ──
+            Every other way into Retreats assumes a booking already exists. This is the link a
+            group uses before there is one: it lands as an enquiry in the pipeline with its fields
+            filled in, instead of as an email somebody has to retype. */}
+        <div className="mt-5 border-t border-border pt-4">
+          <p className={label}>Public enquiry link</p>
+          {enquiryToken ? (
+            <div className="mt-1.5 space-y-2">
+              <div className="flex flex-wrap items-center gap-2 rounded-card border border-border bg-cream px-3.5 py-2.5">
+                <code className="min-w-0 flex-1 truncate text-[12.5px] text-ink">{enquiryUrl}</code>
+                <button
+                  onClick={() => { void navigator.clipboard.writeText(enquiryUrl); setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000); }}
+                  className="text-[12.5px] font-semibold text-forest hover:text-forest-mid"
+                >
+                  {copiedLink ? 'Copied' : 'Copy'}
+                </button>
+                {editable && (
+                  <button
+                    onClick={() => { if (confirm('Turn the enquiry link off? Anyone using the old link will see "not recognised".')) void toggleEnquiry(false); }}
+                    className="text-[12.5px] font-semibold text-red hover:opacity-80"
+                  >
+                    Turn off
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-ink-soft">
+                Put it on your website or in a reply. Enquiries arrive in the pipeline as new leads.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-1.5">
+              <Button size="sm" variant="ghost" disabled={!editable} onClick={() => void toggleEnquiry(true)}>
+                Create an enquiry link
+              </Button>
+              <p className="mt-1 text-[11px] text-ink-soft">
+                Off by default. Nothing is public until you make one.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* ── The agreement itself ──

@@ -1,3 +1,4 @@
+import { fmtClock } from '@/lib/utils';
 /* eslint-disable react-refresh/only-export-components -- shared Retreats UI kit: pure format
    helpers are deliberately colocated with small display atoms so every tab imports one module;
    the rule this disables only affects dev fast-refresh, not correctness or the build. */
@@ -6,8 +7,16 @@
 import type { Retreat, RetreatStatus, RetreatPricingModel } from '@/lib/types';
 import type { PhaseState, RetreatTab } from '@/store/retreatStore';
 
-export const inputClass =
-  'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
+/**
+ * The field styling without a width, for callers that set their own.
+ *
+ * Appending `flex-1` or `w-28` to a class string that already contains `w-full` does nothing:
+ * both are width utilities of equal specificity, so the winner is whichever Tailwind emits later
+ * in the stylesheet, not whichever is written last. Reach for this whenever the width is yours.
+ */
+export const fieldClass =
+  'text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
+export const inputClass = `w-full ${fieldClass}`;
 export const labelClass = 'block text-[11px] font-semibold uppercase tracking-widest text-ink-soft mb-1';
 
 // ─── Money & dates ────────────────────────────────────────────────────────────
@@ -15,9 +24,22 @@ export function money(n: number | null | undefined): string {
   if (n == null) return '-';
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 }
+/**
+ * A date, with the year only when the year is not obvious.
+ *
+ * Many groups come back every year, and "Oct 21 - Oct 24" does not say WHICH October -- looking at
+ * last year's Tufts and this year's Tufts, the two headers were identical. Printing the year on
+ * every date fixes that and makes every other screen noisier, so it appears only when the date
+ * falls outside the current year, which is exactly when the reader cannot infer it.
+ */
 export function fmtDate(d: string | null): string {
   if (!d) return '-';
-  return new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const dt = new Date(`${d}T00:00:00`);
+  const showYear = dt.getFullYear() !== new Date().getFullYear();
+  return dt.toLocaleDateString('en-US',
+    showYear
+      ? { month: 'short', day: 'numeric', year: 'numeric' }
+      : { month: 'short', day: 'numeric' });
 }
 export function fmtDateFull(d: string | null): string {
   if (!d) return '-';
@@ -34,6 +56,15 @@ export function fmtDateFull(d: string | null): string {
  */
 export function fmtRange(a: string | null, b: string | null): string {
   if (!a && !b) return 'Dates TBC';
+  // One year at the end rather than one on each side: "Oct 21 - Oct 24, 2027", not
+  // "Oct 21, 2027 - Oct 24, 2027".
+  const dt = a ? new Date(`${a}T00:00:00`) : null;
+  const otherYear = dt ? dt.getFullYear() !== new Date().getFullYear() : false;
+  if (otherYear && a && b) {
+    const short = (x: string) => new Date(`${x}T00:00:00`)
+      .toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${short(a)} – ${short(b)}, ${dt!.getFullYear()}`;
+  }
   return `${fmtDate(a)} – ${fmtDate(b)}`;
 }
 export function nights(a: string | null, b: string | null): number {
@@ -283,4 +314,15 @@ export function stars(score: number | null | undefined): string {
   const half = score - full >= 0.25 && score - full < 0.75;
   const rounded = score - full >= 0.75 ? full + 1 : full;
   return '★'.repeat(half ? full : rounded) + (half ? '½' : '') + '☆'.repeat(5 - (half ? full + 1 : rounded));
+}
+
+/**
+ * "Oct 21, 7pm arrival" — the date with the hour when there is one.
+ *
+ * Blank time is a real answer ("some time that day"), so it renders as just the date rather than
+ * inventing a check-in hour the camp never agreed.
+ */
+export function fmtWhen(date: string | null, time: string | null | undefined, word: string): string {
+  if (!date) return 'TBC';
+  return time ? `${fmtDate(date)}, ${fmtClock(time)} ${word}` : fmtDate(date);
 }

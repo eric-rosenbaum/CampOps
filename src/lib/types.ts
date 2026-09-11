@@ -1300,6 +1300,15 @@ export interface Retreat {
   groupType: string;               // synagogue | corporate | youth | alumni | family | school | other
   /** Null only while status is 'inquiry'. A DB check constraint enforces that. */
   arrivalDate: string | null;
+  /**
+   * Camp-local clock time the group gets in / leaves, or null for "some time that day".
+   *
+   * "They arrive 7pm Wednesday" decides whether dinner is cooked that night and whether the
+   * cabins have to be ready by lunchtime. Separate from the date for the same reason due_time is:
+   * these are calendar days, not instants.
+   */
+  arrivalTime: string | null;
+  departureTime: string | null;
   departureDate: string | null;
   headcount: number;
   pricingModel: RetreatPricingModel;

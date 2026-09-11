@@ -973,18 +973,7 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
                 </div>
 
                 <div className="space-y-3">
-                  {retreat.dietary_flags && retreat.dietary_flags.length > 0 && (
-                    <div className={`${cardClass} p-4`}>
-                      <p className={labelClass}>Dietary notes on file</p>
-                      <div className="flex flex-wrap gap-2">
-                        {retreat.dietary_flags.map((f) => (
-                          <span key={f} className="inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-medium bg-amber-bg text-amber-text">
-                            {f}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <DietaryCard retreat={retreat} token={token} refetch={refetch} />
 
                   {(retreat.balance_due != null || retreat.total_charges != null) && (
                     <div className={`${cardClass} p-4`}>
@@ -1228,6 +1217,127 @@ function InvoicesBlock({ retreat, invoices, cardsOn, paymentNote, onPay }: {
 }
 
 // ─── Final headcount block ────────────────────────────────────────────────────
+// ─── Dietary ──────────────────────────────────────────────────────────────────
+
+/** The diets a camp kitchen actually plans around. Free text goes in a request instead. */
+const DIETS: { key: string; label: string }[] = [
+  { key: 'vegetarian', label: 'Vegetarian' },
+  { key: 'vegan', label: 'Vegan' },
+  { key: 'gluten_free', label: 'Gluten-free' },
+  { key: 'dairy_free', label: 'Dairy-free' },
+  { key: 'nut_allergy', label: 'Nut allergy' },
+  { key: 'shellfish_allergy', label: 'Shellfish allergy' },
+  { key: 'kosher', label: 'Kosher' },
+  { key: 'halal', label: 'Halal' },
+];
+
+/**
+ * How many of each, entered by the group.
+ *
+ * The camp screen has always shown "Dietary flags", and nothing anywhere set them — the field was
+ * read in two places and written in none, so every camp read "None flagged" about a group nobody
+ * had asked. The group is who knows, so the group enters it, and a camp that sees nothing here can
+ * tell the difference between "no needs" and "not answered yet".
+ */
+function DietaryCard({ retreat, token, refetch }: {
+  retreat: PortalRetreat; token: string; refetch: () => Promise<void>;
+}) {
+  const saved = (retreat.dietary_flags ?? {}) as Record<string, number>;
+  const answered = Object.keys(saved).length > 0;
+  const [editing, setEditing] = useState(false);
+  const [counts, setCounts] = useState<Record<string, string>>(() =>
+    Object.fromEntries(DIETS.map((d) => [d.key, saved[d.key] ? String(saved[d.key]) : ''])));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setSaving(true); setError(null);
+    const flags: Record<string, number> = {};
+    for (const d of DIETS) {
+      const n = Number(counts[d.key]);
+      if (Number.isFinite(n) && n > 0) flags[d.key] = Math.round(n);
+    }
+    try {
+      const { error: err } = await supabasePublic.rpc('portal_save_dietary', {
+        p_token: token, p_flags: flags,
+      });
+      if (err) throw new Error(err.message);
+      await refetch();
+      setEditing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'That did not save. Try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className={`${cardClass} p-4`}>
+      <div className="flex items-start justify-between gap-3">
+        <p className={labelClass}>Dietary needs</p>
+        {!editing && (
+          <button onClick={() => setEditing(true)} className="text-[12.5px] font-semibold text-forest hover:text-forest-mid">
+            {answered ? 'Update' : 'Tell us'}
+          </button>
+        )}
+      </div>
+
+      {!editing && (
+        answered ? (
+          <div className="flex flex-wrap gap-2">
+            {DIETS.filter((d) => saved[d.key] > 0).map((d) => (
+              <span key={d.key} className="inline-flex items-center rounded-full bg-amber-bg px-2.5 py-1 text-[12px] font-medium text-amber-text">
+                {saved[d.key]} {d.label.toLowerCase()}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[12.5px] leading-relaxed text-ink-soft">
+            Nobody has told us yet. Even "none" is worth saying — the kitchen plans from this.
+          </p>
+        )
+      )}
+
+      {editing && (
+        <div className="space-y-2.5">
+          <p className="text-[12px] leading-relaxed text-ink-soft">
+            How many people, for each. Leave blank for none.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {DIETS.map((d) => (
+              <label key={d.key} className="flex items-center gap-2">
+                <input
+                  type="number" min="0" inputMode="numeric"
+                  value={counts[d.key] ?? ''}
+                  onChange={(e) => setCounts((c) => ({ ...c, [d.key]: e.target.value }))}
+                  className="w-14 rounded-btn border border-border bg-white px-2 py-1 text-[13px] focus:border-sage focus:outline-none"
+                />
+                <span className="text-[12.5px] text-ink">{d.label}</span>
+              </label>
+            ))}
+          </div>
+          {error && <p className="text-[11.5px] text-red">{error}</p>}
+          <div className="flex gap-2 pt-0.5">
+            <button
+              onClick={save} disabled={saving}
+              className="rounded-btn bg-forest px-3 py-1.5 text-[12.5px] font-bold text-paper hover:bg-forest-mid disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button onClick={() => setEditing(false)} disabled={saving} className="text-[12.5px] font-semibold text-ink-soft hover:text-forest">
+              Cancel
+            </button>
+          </div>
+          <p className="text-[11px] text-ink-faint">
+            Anything that does not fit these — an allergy, a medical diet — send as a request and we
+            will read it.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HeadcountBlock({ retreat, guests, token, refetch }: {
   retreat: PortalRetreat; guests: PortalGuest[]; token: string; refetch: () => Promise<void>;
 }) {

@@ -102,6 +102,8 @@ export interface Camp {
   /** Default payment/banking instructions prefilled into retreat invoice notes. */
   retreatPaymentNote: string | null;
   /** Storage path of the agreement sent to every group by default; null when the camp keeps none. */
+  /** Public enquiry link slug, or null when the camp is not taking enquiries through the platform. */
+  enquiryToken: string | null;
   agreementTemplatePath: string | null;
   agreementTemplateName: string | null;
   /**
@@ -146,6 +148,7 @@ function rowToCamp(c: Record<string, unknown>): Camp {
     locations: (c.locations as string[]) ?? [],
     dietaryDefaults: (c.dietary_defaults as Record<string, boolean>) ?? {},
     retreatPaymentNote: (c.retreat_payment_note as string) ?? null,
+    enquiryToken: (c.enquiry_token as string) ?? null,
     agreementTemplatePath: (c.agreement_template_path as string) ?? null,
     agreementTemplateName: (c.agreement_template_name as string) ?? null,
     agreementScheduleEnabled: Boolean(c.agreement_schedule_enabled),
@@ -229,6 +232,7 @@ interface CampState {
   setRetreatPaymentNote: (campId: string, note: string | null) => Promise<void>;
   setAgreementScheduleEnabled: (campId: string, on: boolean) => Promise<void>;
   setCampAgreement: (campId: string, path: string | null, name: string | null) => Promise<void>;
+  setEnquiryToken: (campId: string, on: boolean) => Promise<void>;
   /** Write any part of the camp's rate card / proposal defaults. */
   setRentalDefaults: (campId: string, patch: Partial<Pick<Camp,
     'defaultPricingModel' | 'defaultRatePerPersonNight' | 'defaultFlatRate' | 'defaultDepositAmount'
@@ -276,7 +280,7 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     const { data, error } = await supabase
       .from('camp_members')
-      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, address_line1, city, state, modules, locations, dietary_defaults, retreat_payment_note, agreement_template_path, agreement_template_name, agreement_schedule_enabled, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
+      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, address_line1, city, state, modules, locations, dietary_defaults, retreat_payment_note, enquiry_token, agreement_template_path, agreement_template_name, agreement_schedule_enabled, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
       .eq('user_id', user.id)
       .eq('is_active', true);
 
@@ -470,6 +474,20 @@ export const useCampStore = create<CampState>((set, get) => ({
   },
 
   /** Record (or clear) the camp's stored agreement, once its file is known to be readable. */
+  /** Turn the public enquiry link on (a slug from the camp's own name) or off. */
+  setEnquiryToken: async (campId, on) => {
+    const current = get().currentCamp;
+    let token: string | null = null;
+    if (on) {
+      const base = (current?.slug || 'camp').replace(/[^a-z0-9-]/g, '');
+      // A short random tail, so the link cannot be guessed from the camp's name alone.
+      token = `${base}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+    const { error } = await supabase.from('camps').update({ enquiry_token: token }).eq('id', campId);
+    if (error) throw new Error(error.message);
+    if (current && current.id === campId) set({ currentCamp: { ...current, enquiryToken: token } });
+  },
+
   setCampAgreement: async (campId, path, name) => {
     const err = await dbSetCampAgreement(campId, path, name);
     if (err) throw new Error(err);

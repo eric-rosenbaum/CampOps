@@ -171,6 +171,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
       // status is 'inquiry', which is exactly what this is.
       arrivalDate: arrival || null,
       departureDate: departure || null,
+      arrivalTime: null, departureTime: null,
       headcount: headcount.trim() === '' ? 0 : Number(headcount),
       pricingModel: 'per_person_night',
       ratePerPersonNight: null,

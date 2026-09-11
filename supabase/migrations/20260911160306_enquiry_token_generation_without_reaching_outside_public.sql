@@ -1,0 +1,7 @@
+-- submit_camp_enquiry is `set search_path = public`, and gen_random_bytes lives in the extensions
+-- schema, so the insert failed on the portal token. gen_random_uuid() is core and carries the same
+-- 128 bits, so the token is exactly as strong without reaching outside the search path -- which a
+-- SECURITY DEFINER function should not be doing anyway.
+--
+-- Superseded by the next migration, which fixes the touchpoint insert. Kept because it is in the
+-- ledger and because the search_path lesson is worth leaving where it happened.

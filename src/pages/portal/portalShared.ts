@@ -78,7 +78,11 @@ export interface PortalRetreat {
   headcount: number | null;
   coordinator_name: string | null;
   status: string;
-  dietary_flags: string[] | null;
+  /**
+   * Counts per diet, e.g. {"vegetarian": 4}. Null means the group has not been asked yet, which
+   * the camp must be able to tell apart from "no needs".
+   */
+  dietary_flags: Record<string, number> | null;
   menu_published: boolean;
   change_requests_enabled: boolean;
   feedback_opens: string | null;

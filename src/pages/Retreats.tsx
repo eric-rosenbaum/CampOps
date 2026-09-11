@@ -66,8 +66,10 @@ const SEASON_TABS: { id: RetreatTab; label: string }[] = [
 // went. Tabs that were grouped by which table they read are grouped by when they are used.
 const RETREAT_TABS: { id: RetreatTab; label: string }[] = [
   { id: 'active', label: 'Active retreat' },
-  { id: 'relationship', label: 'Contacts & proposals' },
-  { id: 'documents', label: 'Documents & compliance' },
+  // Proposals, the agreement, the COI and whatever else they send are all one thing: paperwork
+  // with this group. They were split by which half of the sale they belonged to, which meant
+  // sending an agreement and filing the certificate that comes back were two different tabs.
+  { id: 'relationship', label: 'Paperwork & contacts' },
   { id: 'retreatCosts', label: 'Costs & invoice' },
   { id: 'housing', label: 'Housing' },
   // The spaces they asked for, and the cabins somebody turns over after they leave.
@@ -166,7 +168,6 @@ export function Retreats() {
         {currentTab === 'costs' && <RetreatCostsTab />}
         {currentTab === 'retreatCosts' && <RetreatCostsDetailTab />}
         {currentTab === 'active' && <ActiveRetreatTab />}
-        {currentTab === 'documents' && <DocumentsTab />}
         {currentTab === 'housing' && <HousingTab />}
         {currentTab === 'spaces' && retreat && (
           <div className="flex-1 min-h-0 overflow-y-auto">
@@ -179,6 +180,7 @@ export function Retreats() {
         {currentTab === 'relationship' && retreat && (
           <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-7 sm:py-6 flex flex-col gap-6">
             <ProposalsPanel retreatId={retreat.id} />
+            <DocumentsTab embedded />
             <ContactsPanel retreatId={retreat.id} />
             <TouchpointsPanel retreatId={retreat.id} />
           </div>

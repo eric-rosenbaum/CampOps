@@ -684,6 +684,19 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
   );
 
   const steps = buildSteps(data);
+
+  /**
+   * One number for the top of the portal, and where it came from.
+   *
+   * Invoiced charges win, then a quote the group accepted, then what the booking's own rate works
+   * out to. `invoiced` and `agreed` drive the wording, because presenting an estimate as a bill is
+   * how a group budgets for the wrong figure.
+   */
+  const costSummary = {
+    total: retreat.total_charges ?? retreat.estimated_total ?? null,
+    invoiced: retreat.total_charges != null,
+    agreed: retreat.total_charges == null && retreat.estimated_basis === 'accepted quote',
+  };
   const counted = steps.filter((s) => s.counts);
   const doneCount = counted.filter((s) => s.state === 'done').length;
   const allDone = counted.length > 0 && doneCount === counted.length;
@@ -936,6 +949,64 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
               </p>
             </div>
 
+            {/* ── What the stay is and what it costs ──
+                The landing view is the to-do list, and the to-do list is entirely things the
+                camp wants FROM the group. A guest opening the portal for the first time got a
+                stack of tasks and an agreement to sign, with what they had booked and what it
+                came to one tab away -- so the first impression of the portal was a demand with
+                no context. Dates, size and money, before the asks. */}
+            {(costSummary.total != null || retreat.deposit_required != null) && (
+              <div className={`${cardClass} p-4`}>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <p className={labelClass}>
+                    {costSummary.agreed ? 'Your agreed price' : 'What your stay costs'}
+                  </p>
+                  <button
+                    onClick={() => setView('stay')}
+                    className="text-[12.5px] font-semibold text-forest hover:text-forest-mid"
+                  >
+                    See the full breakdown
+                  </button>
+                </div>
+
+                <div className="mt-1 flex flex-wrap items-baseline gap-x-5 gap-y-1">
+                  {costSummary.total != null && (
+                    <span className="font-mono text-[22px] font-semibold text-forest">
+                      {money(costSummary.total)}
+                    </span>
+                  )}
+                  {retreat.pricing_model === 'per_person_night' && retreat.rate_per_person_night != null && (
+                    <span className="text-[12.5px] text-ink-soft">
+                      {money(retreat.rate_per_person_night)}/person/night × {retreat.headcount ?? 0}
+                      {' '}× {retreat.nights ?? 0} night{(retreat.nights ?? 0) === 1 ? '' : 's'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[12.5px] text-ink">
+                  {retreat.deposit_required != null && retreat.deposit_required > 0 && (
+                    <span>
+                      Deposit {money(retreat.deposit_required)}
+                      {(retreat.deposit_received ?? 0) >= retreat.deposit_required
+                        ? ' · paid'
+                        : retreat.deposit_due ? ` · due ${fmtDateFull(retreat.deposit_due)}` : ''}
+                    </span>
+                  )}
+                  {retreat.balance_due != null && retreat.balance_due > 0 && (
+                    <span>Balance {money(retreat.balance_due)}</span>
+                  )}
+                </div>
+
+                {!costSummary.invoiced && (
+                  <p className="mt-2 text-[11px] text-ink-faint">
+                    {costSummary.agreed
+                      ? 'From the quote you accepted. An invoice follows from the camp.'
+                      : 'Based on your numbers so far — it moves if your headcount does.'}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="lg:grid lg:grid-cols-[300px_1fr] lg:gap-5 lg:items-start">
               <div className="space-y-2 lg:sticky lg:top-20">
                 {steps.map((step) => (
@@ -999,6 +1070,43 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
                 </div>
 
                 <div className="space-y-3">
+
+                  {/* Nothing invoiced yet, but there is a price. Shown as what it is -- an
+                      estimate, or the quote they accepted -- never as a bill. Without this a
+                      confirmed booking that has not been billed showed the guest an agreement
+                      and a to-do list and no money anywhere. */}
+                  {retreat.balance_due == null && retreat.total_charges == null
+                    && retreat.estimated_total != null && (
+                    <div className={`${cardClass} p-4`}>
+                      <p className={labelClass}>
+                        {retreat.estimated_basis === 'accepted quote' ? 'Your agreed price' : 'What your stay costs'}
+                      </p>
+                      <div className="space-y-1.5 text-[14px]">
+                        {retreat.pricing_model === 'per_person_night' && retreat.rate_per_person_night != null && (
+                          <div className="flex justify-between text-[12px] text-ink-soft">
+                            <span>
+                              {money(retreat.rate_per_person_night)}/person/night × {retreat.headcount ?? 0} × {retreat.nights ?? 0} night{(retreat.nights ?? 0) === 1 ? '' : 's'}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-semibold text-forest">
+                          <span>{retreat.estimated_basis === 'accepted quote' ? 'Total' : 'Estimated total'}</span>
+                          <span className="font-mono">{money(retreat.estimated_total)}</span>
+                        </div>
+                        {retreat.deposit_required != null && retreat.deposit_required > 0 && (
+                          <div className="flex justify-between text-[13px] text-ink">
+                            <span>Deposit to hold the dates</span>
+                            <span className="font-mono">{money(retreat.deposit_required)}</span>
+                          </div>
+                        )}
+                      </div>
+                      <p className="mt-2.5 text-[11px] leading-relaxed text-ink-faint">
+                        {retreat.estimated_basis === 'accepted quote'
+                          ? 'From the quote you accepted. An invoice follows from the camp.'
+                          : 'Based on your numbers so far — it moves if your headcount does. The camp will invoice you.'}
+                      </p>
+                    </div>
+                  )}
 
                   {(retreat.balance_due != null || retreat.total_charges != null) && (
                     <div className={`${cardClass} p-4`}>

@@ -107,6 +107,17 @@ export interface PortalRetreat {
   total_charges: number | null;
   total_paid: number | null;
   balance_due: number | null;
+  /**
+   * What the stay comes to before anything is invoiced.
+   *
+   * The account card reads from invoices, so a booking between "confirmed" and "billed" showed
+   * the guest no money at all. Null when the camp has not set a rate — a made-up number is worse
+   * than an honest blank.
+   */
+  estimated_total?: number | null;
+  /** 'accepted quote' when they agreed to it, 'estimate' when we worked it out. Never a bill. */
+  estimated_basis?: string | null;
+  flat_rate?: number | null;
 }
 
 export interface PortalDocument {

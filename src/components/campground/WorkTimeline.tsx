@@ -3,6 +3,7 @@ import { Trash2 } from 'lucide-react';
 import type { Issue, IssueComment } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
 import { useCampgroundStore, commentsFor } from '@/store/campgroundStore';
+import { useCampStore } from '@/store/campStore';
 import { Avatar } from '@/components/shared/Avatar';
 import { relativeTime } from '@/lib/utils';
 
@@ -70,21 +71,60 @@ export function WorkTimeline({ issue }: Props) {
   );
 }
 
+/**
+ * The product's own voice, when it posts a note into a thread.
+ *
+ * Shared rather than typed out at each site: the database writes this exact string for an
+ * author-less system note, and the UI has to recognise the same one to badge it correctly.
+ */
+const SYSTEM_AUTHOR = 'CampCommand';
+
+/**
+ * Who a message is from, resolved against the camp's current roster.
+ *
+ * The stored name is written from the account at post time and can no longer be asserted by a
+ * caller -- but a person renamed afterwards would still drift, so the roster wins whenever it has
+ * an answer. Names only fall back to what was stored when there is nothing to resolve against: an
+ * author with no account, or somebody since removed from the camp.
+ */
+function attribution(
+  comment: IssueComment,
+  members: { userId: string; displayName: string | null; fullName: string }[],
+): { name: string; badge: 'reporter' | 'system' | null } {
+  if (comment.authorId === null) {
+    return comment.authorName === SYSTEM_AUTHOR
+      ? { name: SYSTEM_AUTHOR, badge: 'system' }
+      : { name: comment.authorName, badge: 'reporter' };
+  }
+  const m = members.find((x) => x.userId === comment.authorId);
+  return { name: m ? (m.displayName ?? m.fullName) : comment.authorName, badge: null };
+}
+
 function Message({ comment, mine, onDelete }: {
   comment: IssueComment;
   mine: boolean;
   onDelete: () => void;
 }) {
+  const members = useCampStore((s) => s.members);
+  const who = attribution(comment, members);
+
   return (
     <div className="group flex gap-2.5 rounded-card bg-paper px-3 py-2.5">
-      <Avatar name={comment.authorName} size={26} />
+      <Avatar name={who.name} size={26} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="truncate text-[12.5px] font-bold text-forest">{comment.authorName}</span>
-          {/* Null author means the public reporter, who has no account. */}
-          {comment.authorId === null && (
+          <span className="truncate text-[12.5px] font-bold text-forest">{who.name}</span>
+          {/* No account behind it. Said plainly, because a bare name beside a staff member's name
+              reads as a colleague -- which is how a thread ends up showing somebody the camp has
+              no record of. */}
+          {who.badge === 'reporter' && (
             <span className="rounded-tag border border-red px-[4px] py-px text-[9px] font-bold uppercase tracking-[0.1em] text-red">
               Reporter
+            </span>
+          )}
+          {who.badge === 'system' && (
+            <span className="rounded-tag border border-border px-[4px] py-px text-[9px] font-bold uppercase tracking-[0.1em] text-ink-faint">
+              Automatic
             </span>
           )}
           <span className="text-[11px] text-ink-faint">{relativeTime(comment.createdAt)}</span>

@@ -399,6 +399,9 @@ export async function dbGrantIssueView(issueId: string, userIds: string[]) {
 
 // Comments --------------------------------------------------------------------
 export async function dbAddComment(c: IssueComment) {
+  // author_name is sent for the optimistic row only -- Postgres overwrites it from author_id on
+  // insert. A name a caller can assert is how a thread ends up signed by somebody the camp has no
+  // record of, so the account signs the comment, not this string.
   const { error } = await supabase.from('issue_comments').insert({
     id: c.id, camp_id: CID(), issue_id: c.issueId, author_id: c.authorId,
     author_name: c.authorName, body: c.body, photo_urls: c.photoUrls,

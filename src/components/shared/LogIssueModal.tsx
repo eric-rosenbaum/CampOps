@@ -314,7 +314,14 @@ export function LogIssueModal() {
   const extrasCount =
     (watch('assetId') ? 1 : 0) + (watch('vendorId') ? 1 : 0) + (templateId ? 1 : 0);
 
-  const inputClass = 'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
+  // Split so the width can be set by the caller where it has to be.
+  //
+  // Appending `flex-1` to a class string that already contains `w-full` does nothing: both are
+  // width utilities of equal specificity, so the winner is whichever Tailwind emits later in the
+  // stylesheet, not whichever is written last in the attribute. That is how the time input ended
+  // up 384px wide with the date squeezed to 24px beside it.
+  const fieldClass = 'text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
+  const inputClass = `w-full ${fieldClass}`;
   const labelClass = 'block text-[12px] font-medium text-ink mb-1';
   const errorClass = 'text-[11px] text-red mt-0.5';
 
@@ -532,9 +539,14 @@ export function LogIssueModal() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* One column, not two.
+            A date input and a time input have real intrinsic widths -- they render mm/dd/yyyy and
+            a picker glyph and will not shrink past them. Sharing a half-width grid cell, the pair
+            needed 262px in 187px, and the overflow propagated all the way up: the whole modal
+            scrolled sideways. Full width fits both with room to spare. */}
+        <div className="space-y-3">
           {can('assign') && (
-            <div>
+            <div className="min-w-0">
               <label className={labelClass}>Assign to</label>
               {/* Handing it to a crew is a real answer, and often the honest one: somebody in
                   housekeeping will take it, and naming a person before anyone has agreed is how
@@ -560,17 +572,17 @@ export function LogIssueModal() {
               </select>
             </div>
           )}
-          <div>
+          <div className="min-w-0">
             <label className={labelClass}>Due</label>
-            <div className="flex gap-2">
-              <input type="date" {...register('dueDate')} className={inputClass} />
+            <div className="flex min-w-0 gap-2">
+              <input type="date" {...register('dueDate')} className={`${fieldClass} min-w-0 flex-1`} />
               {/* The time is usually the point: a room has to be ready before the group walks
                   into it. Only offered once there is a day to hang it on. */}
               <input
                 type="time"
                 {...register('dueTime')}
                 disabled={!watch('dueDate')}
-                className={`${inputClass} w-32 disabled:opacity-50`}
+                className={`${fieldClass} w-28 flex-none disabled:opacity-50`}
                 aria-label="Due by (time)"
               />
             </div>

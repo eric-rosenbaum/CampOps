@@ -90,14 +90,20 @@ const SYSTEM_AUTHOR = 'CampCommand';
 function attribution(
   comment: IssueComment,
   members: { userId: string; displayName: string | null; fullName: string }[],
-): { name: string; badge: 'reporter' | 'system' | null } {
+): { name: string; badge: 'reporter' | 'system' | 'former' | null } {
   if (comment.authorId === null) {
     return comment.authorName === SYSTEM_AUTHOR
       ? { name: SYSTEM_AUTHOR, badge: 'system' }
       : { name: comment.authorName, badge: 'reporter' };
   }
   const m = members.find((x) => x.userId === comment.authorId);
-  return { name: m ? (m.displayName ?? m.fullName) : comment.authorName, badge: null };
+  if (m) return { name: m.displayName ?? m.fullName, badge: null };
+
+  // An account that wrote this but is not on the roster any more -- deactivated, or removed from
+  // the camp. Their words stay, so the name has to stay with them; what was missing is any way to
+  // tell that the reason you cannot find this person under Team is that they are gone. A name
+  // nobody can place reads as a bug in the product rather than as a person who left.
+  return { name: comment.authorName, badge: 'former' };
 }
 
 function Message({ comment, mine, onDelete }: {
@@ -125,6 +131,14 @@ function Message({ comment, mine, onDelete }: {
           {who.badge === 'system' && (
             <span className="rounded-tag border border-border px-[4px] py-px text-[9px] font-bold uppercase tracking-[0.1em] text-ink-faint">
               Automatic
+            </span>
+          )}
+          {who.badge === 'former' && (
+            <span
+              title="This account is no longer active at this camp"
+              className="rounded-tag border border-border px-[4px] py-px text-[9px] font-bold uppercase tracking-[0.1em] text-ink-faint"
+            >
+              No longer here
             </span>
           )}
           <span className="text-[11px] text-ink-faint">{relativeTime(comment.createdAt)}</span>

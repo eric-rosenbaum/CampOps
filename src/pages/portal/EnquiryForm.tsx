@@ -125,8 +125,8 @@ export function EnquiryForm() {
       <div className="mx-auto max-w-xl">
         <h1 className="font-display text-[26px] font-bold text-forest">Enquire at {camp.camp_name}</h1>
         <p className="mt-1.5 text-[15px] leading-relaxed text-ink-soft">
-          Tell us roughly what you are after. Nothing here is a commitment, and you do not need
-          exact dates yet.
+          Enter all the information you know about your retreat. Missing or undecided information
+          is fine!
         </p>
 
         <form onSubmit={submit} className="mt-7 space-y-5">

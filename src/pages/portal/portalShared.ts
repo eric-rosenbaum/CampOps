@@ -83,6 +83,8 @@ export interface PortalRetreat {
    * the camp must be able to tell apart from "no needs".
    */
   dietary_flags: Record<string, number> | null;
+  /** The group actively said nobody has a need — distinct from nobody having been asked. */
+  dietary_none_confirmed?: boolean;
   menu_published: boolean;
   change_requests_enabled: boolean;
   feedback_opens: string | null;

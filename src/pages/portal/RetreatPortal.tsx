@@ -369,6 +369,25 @@ function buildSteps(data: PortalData): Step[] {
     state: headcountDone ? 'done' : urgency(headcountDue), dueDate: headcountDue, sectionId: 'final', counts: true,
   });
 
+  // 4b · Dietary needs.
+  //
+  // A step rather than a card in the booking summary, which is where it started. That summary is
+  // a reference list of facts ABOUT the booking -- status, dates, headcount -- and a thing the
+  // group has to DO is invisible in it. It belongs beside the headcount: the same kind of number,
+  // wanted by the same kitchen, on the same deadline, and the one that decides what gets ordered
+  // rather than just how much.
+  const dietaryDone = Object.keys(retreat.dietary_flags ?? {}).length > 0
+    || retreat.dietary_none_confirmed === true;
+  steps.push({
+    key: 'dietary', label: 'Tell us about dietary needs',
+    hint: retreat.dietary_none_confirmed && Object.keys(retreat.dietary_flags ?? {}).length === 0
+      ? 'Confirmed: nothing to work around'
+      : dietaryDone
+        ? Object.entries(retreat.dietary_flags ?? {}).map(([k, v]) => `${v} ${k.replace(/_/g, ' ')}`).join(' · ')
+        : `Due ${fmtDateFull(headcountDue)} — the kitchen orders against this`,
+    state: dietaryDone ? 'done' : urgency(headcountDue), dueDate: headcountDue, sectionId: 'info', counts: true,
+  });
+
   // 5 · COI
   const coiDone = !!coiDoc && (coiDoc.status === 'received' || coiDoc.status === 'approved' || !!coiDoc.has_file);
   steps.push({
@@ -745,6 +764,8 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
         );
       case 'headcount':
         return <HeadcountBlock retreat={retreat} guests={guests} token={token} refetch={refetch} />;
+      case 'dietary':
+        return <DietaryCard retreat={retreat} token={token} refetch={refetch} />;
       case 'coi':
         return <CoiBlock retreat={retreat} documents={documents} token={token} refetch={refetch} />;
       case 'requests':
@@ -973,7 +994,6 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
                 </div>
 
                 <div className="space-y-3">
-                  <DietaryCard retreat={retreat} token={token} refetch={refetch} />
 
                   {(retreat.balance_due != null || retreat.total_charges != null) && (
                     <div className={`${cardClass} p-4`}>
@@ -1243,12 +1263,13 @@ function DietaryCard({ retreat, token, refetch }: {
   retreat: PortalRetreat; token: string; refetch: () => Promise<void>;
 }) {
   const saved = (retreat.dietary_flags ?? {}) as Record<string, number>;
-  const answered = Object.keys(saved).length > 0;
-  const [editing, setEditing] = useState(false);
   const [counts, setCounts] = useState<Record<string, string>>(() =>
     Object.fromEntries(DIETS.map((d) => [d.key, saved[d.key] ? String(saved[d.key]) : ''])));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved_, setSaved_] = useState(false);
+
+  const total = DIETS.reduce((n, d) => n + (Number(counts[d.key]) || 0), 0);
 
   async function save() {
     setSaving(true); setError(null);
@@ -1263,7 +1284,8 @@ function DietaryCard({ retreat, token, refetch }: {
       });
       if (err) throw new Error(err.message);
       await refetch();
-      setEditing(false);
+      setSaved_(true);
+      setTimeout(() => setSaved_(false), 2500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'That did not save. Try again.');
     } finally {
@@ -1273,67 +1295,40 @@ function DietaryCard({ retreat, token, refetch }: {
 
   return (
     <div className={`${cardClass} p-4`}>
-      <div className="flex items-start justify-between gap-3">
-        <p className={labelClass}>Dietary needs</p>
-        {!editing && (
-          <button onClick={() => setEditing(true)} className="text-[12.5px] font-semibold text-forest hover:text-forest-mid">
-            {answered ? 'Update' : 'Tell us'}
-          </button>
-        )}
+      <p className="text-[13px] leading-relaxed text-ink">
+        How many people, for each. The kitchen orders against these.
+      </p>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {DIETS.map((d) => (
+          <label key={d.key} className="flex items-center gap-2">
+            <input
+              type="number" min="0" inputMode="numeric"
+              value={counts[d.key] ?? ''}
+              onChange={(e) => setCounts((c) => ({ ...c, [d.key]: e.target.value }))}
+              className="w-14 rounded-btn border border-border bg-white px-2 py-1 text-[13px] focus:border-sage focus:outline-none"
+            />
+            <span className="text-[12.5px] text-ink">{d.label}</span>
+          </label>
+        ))}
       </div>
 
-      {!editing && (
-        answered ? (
-          <div className="flex flex-wrap gap-2">
-            {DIETS.filter((d) => saved[d.key] > 0).map((d) => (
-              <span key={d.key} className="inline-flex items-center rounded-full bg-amber-bg px-2.5 py-1 text-[12px] font-medium text-amber-text">
-                {saved[d.key]} {d.label.toLowerCase()}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="text-[12.5px] leading-relaxed text-ink-soft">
-            Nobody has told us yet. Even "none" is worth saying — the kitchen plans from this.
-          </p>
-        )
-      )}
+      {error && <p className="mt-2 text-[11.5px] text-red">{error}</p>}
 
-      {editing && (
-        <div className="space-y-2.5">
-          <p className="text-[12px] leading-relaxed text-ink-soft">
-            How many people, for each. Leave blank for none.
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {DIETS.map((d) => (
-              <label key={d.key} className="flex items-center gap-2">
-                <input
-                  type="number" min="0" inputMode="numeric"
-                  value={counts[d.key] ?? ''}
-                  onChange={(e) => setCounts((c) => ({ ...c, [d.key]: e.target.value }))}
-                  className="w-14 rounded-btn border border-border bg-white px-2 py-1 text-[13px] focus:border-sage focus:outline-none"
-                />
-                <span className="text-[12.5px] text-ink">{d.label}</span>
-              </label>
-            ))}
-          </div>
-          {error && <p className="text-[11.5px] text-red">{error}</p>}
-          <div className="flex gap-2 pt-0.5">
-            <button
-              onClick={save} disabled={saving}
-              className="rounded-btn bg-forest px-3 py-1.5 text-[12.5px] font-bold text-paper hover:bg-forest-mid disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-            <button onClick={() => setEditing(false)} disabled={saving} className="text-[12.5px] font-semibold text-ink-soft hover:text-forest">
-              Cancel
-            </button>
-          </div>
-          <p className="text-[11px] text-ink-faint">
-            Anything that does not fit these — an allergy, a medical diet — send as a request and we
-            will read it.
-          </p>
-        </div>
-      )}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          onClick={save} disabled={saving}
+          className="rounded-btn bg-forest px-3 py-1.5 text-[12.5px] font-bold text-paper hover:bg-forest-mid disabled:opacity-50"
+        >
+          {saving ? 'Saving…' : total > 0 ? 'Save' : 'Nobody has any — save'}
+        </button>
+        {saved_ && <span className="text-[12px] font-medium text-green-muted-text">Saved.</span>}
+      </div>
+
+      <p className="mt-2 text-[11px] text-ink-faint">
+        Anything that does not fit these — an allergy, a medical diet — send as a request and we
+        will read it.
+      </p>
     </div>
   );
 }

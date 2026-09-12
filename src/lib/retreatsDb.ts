@@ -157,6 +157,7 @@ function rowToProposal(r: Row): RetreatProposal {
   return {
     id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string,
     version: Number(r.version ?? 1),
+    agreementBody: s(r.agreement_body),
     lineItems: Array.isArray(r.line_items) ? (r.line_items as RetreatInvoiceLine[]) : [],
     total: Number(r.total ?? 0), validUntil: s(r.valid_until),
     terms: s(r.terms), intro: s(r.intro),
@@ -373,6 +374,28 @@ export const dbAddHousingVersion = (x: RetreatHousingVersion) => ins('retreat_ho
 export const dbAddDocument = (x: RetreatDocument) => ins('retreat_documents', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, doc_type: x.docType, name: x.name, status: x.status, file_path: x.filePath, signed_by: x.signedBy, signed_at: x.signedAt, due_date: x.dueDate, meta: x.meta, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
 export const dbUpdateDocument = (x: RetreatDocument) => upd('retreat_documents', x.id, { doc_type: x.docType, name: x.name, status: x.status, file_path: x.filePath, signed_by: x.signedBy, signed_at: x.signedAt, due_date: x.dueDate, meta: x.meta, sort_order: x.sortOrder });
 export const dbDeleteDocument = (id: string) => del('retreat_documents', id);
+
+/**
+ * The camp's agreement wording, with this group's details filled in.
+ *
+ * Values come back alongside the rendered text so the review screen can show what was filled and
+ * what nothing filled -- a token left standing in a contract is the failure this whole flow is
+ * built to catch before it reaches anybody.
+ */
+export async function dbAgreementForRetreat(
+  retreatId: string, template: string,
+): Promise<{ body: string; values: Record<string, string | null>; unfilled: string[] } | null> {
+  const { data, error } = await supabase.rpc('agreement_tokens', { p_retreat_id: retreatId });
+  if (error) { campError('agreement tokens', error.message); return null; }
+  const values = (data ?? {}) as Record<string, string | null>;
+
+  let body = template;
+  for (const [k, v] of Object.entries(values)) {
+    if (v != null && String(v).trim() !== '') body = body.split(`{{${k}}}`).join(String(v));
+  }
+  const unfilled = [...new Set((body.match(/\{\{([a-z_]+)\}\}/g) ?? []))].map((t) => t.slice(2, -2));
+  return { body, values, unfilled };
+}
 
 /** Somebody has looked at this enquiry, so the banner can stop announcing it. */
 export async function dbMarkEnquirySeen(retreatId: string) {
@@ -625,6 +648,7 @@ const proposalRow = (x: RetreatProposal): Row => ({
   deposit_amount: x.depositAmount, pricing_model: x.pricingModel,
   rate_per_person_night: x.ratePerPersonNight, flat_rate: x.flatRate,
   people_count: x.peopleCount, nights: x.nights,
+  agreement_body: x.agreementBody,
   // viewed_at / accepted_at are written when the GROUP acts, through the portal RPC. A camp
   // marking its own proposal "viewed" would destroy the one signal this table exists for.
 });

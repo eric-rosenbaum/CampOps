@@ -292,7 +292,7 @@ export function RentalsReview({ from: initialFrom, to: initialTo }: Props) {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-4">
               <StatCard label="Enquiries" value={data.pipeline.inquiries} />
-              <StatCard label="Proposals sent" value={data.pipeline.proposals_sent} />
+              <StatCard label="Agreements sent" value={data.pipeline.proposals_sent} />
               <StatCard label="Booked" value={data.pipeline.won} variant="green" />
               <StatCard label="Lost" value={data.pipeline.lost} variant={data.pipeline.lost ? 'amber' : 'default'} />
               <StatCard

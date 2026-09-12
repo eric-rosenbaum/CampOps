@@ -99,7 +99,7 @@ export function ProposalSection({ token, onAccepted, hasAgreement, onGoToAgreeme
           <FileText className="w-4 h-4" />
         </div>
         <div className="min-w-0">
-          <h2 className="text-[16px] font-bold text-forest leading-tight">Your proposal</h2>
+          <h2 className="text-[16px] font-bold text-forest leading-tight">Your retreat agreement</h2>
           <p className="text-[12px] text-ink-soft leading-tight">
             {proposal.version > 1 ? `Version ${proposal.version} · ` : ''}
             {proposal.valid_until ? `Valid until ${fmtDateFull(proposal.valid_until)}` : 'No expiry date'}
@@ -195,7 +195,7 @@ export function ProposalSection({ token, onAccepted, hasAgreement, onGoToAgreeme
             >
               {saving
                 ? <><Loader2 className="w-4 h-4 animate-spin" /> Accepting…</>
-                : <><Check className="w-4 h-4" /> Accept this proposal</>}
+                : <><Check className="w-4 h-4" /> Sign and confirm the booking</>}
             </button>
             <p className="text-[12px] text-ink-soft mt-2 text-center">
               Accepting holds the dates while the agreement and deposit are sorted out.

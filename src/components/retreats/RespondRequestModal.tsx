@@ -11,7 +11,7 @@ type Decision = 'approved' | 'approved_mod' | 'countered' | 'declined';
 const DECISIONS: { value: Decision; label: string; status: RetreatRequestStatus }[] = [
   { value: 'approved', label: 'Approved', status: 'approved' },
   { value: 'approved_mod', label: 'Approved with modification', status: 'approved' },
-  { value: 'countered', label: 'Counter-proposal', status: 'countered' },
+  { value: 'countered', label: 'Revised agreement', status: 'countered' },
   { value: 'declined', label: 'Declined', status: 'declined' },
 ];
 

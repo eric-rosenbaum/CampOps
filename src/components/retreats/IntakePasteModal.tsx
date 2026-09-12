@@ -143,7 +143,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
       `Hi ${to},`, '',
       `Thanks for getting in touch about ${draft.groupName ?? 'your group'} — it sounds like a good fit for us.`,
       '',
-      'Before I put a proposal together, could you let me know:',
+      'Before I put your agreement together, could you let me know:',
       ...draft.questions.map((q) => `  • ${q}`),
       '', 'Happy to talk it through on the phone if that is easier.', '',
       'Best,',

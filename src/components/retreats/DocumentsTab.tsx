@@ -102,7 +102,11 @@ async function viewFile(path: string) {
   else alert('Could not open this document.');
 }
 
-export function DocumentsTab({ embedded = false }: { embedded?: boolean } = {}) {
+export function DocumentsTab({ embedded = false, hideAgreement = false }: {
+  embedded?: boolean;
+  /** The agreement has its own place at the top of the page; do not show it twice. */
+  hideAgreement?: boolean;
+} = {}) {
   const { selectedRetreat, docsFor, openModal } = useRetreatStore();
   const { can } = useAuth();
   const canManage = can('manageRetreats');
@@ -182,10 +186,14 @@ export function DocumentsTab({ embedded = false }: { embedded?: boolean } = {}) 
     );
   }
 
-  const docs = retreat ? docsFor(retreat.id) : [];
+  const allDocs = retreat ? docsFor(retreat.id) : [];
+  // When the agreement has its own section above, this list is everything else.
+  const docs = hideAgreement ? allDocs.filter((d) => d.docType !== 'agreement') : allDocs;
   const coi = docs.find((d) => d.docType === 'coi');
   const coiMissing = retreat && (!coi || coi.status === 'missing');
-  const agreement = docs.find((d) => d.docType === 'agreement');
+  // From ALL documents, not the filtered list: when hideAgreement drops them, "is one missing?"
+  // must still answer about reality rather than about what this list happens to show.
+  const agreement = allDocs.find((d) => d.docType === 'agreement');
   const agreementMissing = retreat && !agreement;
 
   return (
@@ -315,7 +323,7 @@ export function DocumentsTab({ embedded = false }: { embedded?: boolean } = {}) 
               whole of the feature: invisible until it happened, and never explained if it had not.
               A camp that uploaded one and then looked at a group whose proposal predated it saw an
               empty slot and no reason. So the slot says which of the three states it is in. */}
-          {canManage && agreementMissing && campTemplateName && (
+          {!hideAgreement && canManage && agreementMissing && campTemplateName && (
             <div className="bg-white rounded-card border border-sage/40 px-5 py-4 mb-3">
               <p className="text-[13px] font-semibold text-forest mb-1">
                 Your agreement goes out with the next proposal
@@ -339,7 +347,7 @@ export function DocumentsTab({ embedded = false }: { embedded?: boolean } = {}) 
             </div>
           )}
 
-          {canManage && agreementMissing && !campTemplateName && (
+          {!hideAgreement && canManage && agreementMissing && !campTemplateName && (
             <div className="bg-white rounded-card border border-border px-5 py-4 mb-3">
               <p className="text-[13px] font-semibold text-forest mb-1">Add the retreat agreement</p>
               <p className="text-[12px] text-ink-soft mb-3.5">

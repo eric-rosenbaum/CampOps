@@ -178,11 +178,27 @@ export function Retreats() {
           </div>
         )}
         {currentTab === 'relationship' && retreat && (
-          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-7 sm:py-6 flex flex-col gap-6">
-            <ProposalsPanel retreatId={retreat.id} />
-            <DocumentsTab embedded />
-            <ContactsPanel retreatId={retreat.id} />
-            <TouchpointsPanel retreatId={retreat.id} />
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-7 sm:py-6">
+            {/* ── The agreement ──
+                The top of this page is one job: get the retreat agreement to this group and get
+                it signed, because signing it IS how they commit. Everything else on the page is
+                paperwork that moves between the two afterwards. */}
+            <div className="flex flex-col gap-6">
+              <ProposalsPanel retreatId={retreat.id} />
+            </div>
+
+            {/* ── Everything else that passes between you ── */}
+            <div className="mt-8 border-t border-border pt-7">
+              <h2 className="text-[14px] font-semibold text-forest">Other documents</h2>
+              <p className="mt-0.5 text-[12px] text-ink-soft">
+                Their certificate of insurance, and anything else either of you sends.
+              </p>
+              <div className="mt-4 flex flex-col gap-6">
+                <DocumentsTab embedded hideAgreement />
+                <ContactsPanel retreatId={retreat.id} />
+                <TouchpointsPanel retreatId={retreat.id} />
+              </div>
+            </div>
           </div>
         )}
         {currentTab === 'menu' && <RetreatMenuTab />}

@@ -51,7 +51,7 @@ function proposalHtml(p: RetreatProposal, r: Retreat, campName: string): string 
   const stay = r.arrivalDate && r.departureDate
     ? `${fmtDocDate(r.arrivalDate)} – ${fmtDocDate(r.departureDate)}`
     : r.dateFlexibility ?? 'Dates to be confirmed';
-  return `<!doctype html><html><head><meta charset="utf-8"><title>Proposal v${p.version} · ${esc(r.groupName)}</title>
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Agreement v${p.version} · ${esc(r.groupName)}</title>
   <style>
     *{box-sizing:border-box}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a2e1a;max-width:720px;margin:0 auto;padding:48px 40px;font-size:14px;line-height:1.5}
@@ -76,8 +76,8 @@ function proposalHtml(p: RetreatProposal, r: Retreat, campName: string): string 
     @media print{body{padding:24px}}
   </style></head><body>
     <div class="head">
-      <div><div class="camp">${esc(campName || 'Camp')}</div><div style="color:#6b7c6b;font-size:12px;margin-top:2px">Group booking proposal</div></div>
-      <div class="doc"><h1>Proposal</h1><div class="num">Version ${p.version}</div></div>
+      <div><div class="camp">${esc(campName || 'Camp')}</div><div style="color:#6b7c6b;font-size:12px;margin-top:2px">Retreat agreement</div></div>
+      <div class="doc"><h1>Retreat agreement</h1><div class="num">Version ${p.version}</div></div>
     </div>
     <div class="meta">
       <div><div class="label">Prepared for</div><div><strong>${esc(r.groupName)}</strong>${r.coordinatorName ? `<br><span style="color:#4a5a4a">${esc(r.coordinatorName)}</span>` : ''}</div></div>
@@ -89,7 +89,7 @@ function proposalHtml(p: RetreatProposal, r: Retreat, campName: string): string 
     <table><thead><tr><th>Description</th><th class="amt">Amount</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="total"><div class="box"><div class="due"><span>Total</span><span>${fmtMoney(p.total)}</span></div></div></div>
     ${p.terms ? `<div class="terms"><h2>Terms</h2>${esc(p.terms)}</div>` : ''}
-    <div class="foot">This proposal is not a booking. Dates are held once the agreement is signed and the deposit is received.</div>
+    <div class="foot">Signing this is how the booking is confirmed. Dates are held once it is signed and the deposit is received.</div>
   </body></html>`;
 }
 
@@ -152,11 +152,11 @@ export function ProposalsPanel({ retreatId }: { retreatId: string }) {
     <div className="bg-white border border-border rounded-card">
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
         <div>
-          <h3 className="text-[13px] font-semibold text-forest">Proposals</h3>
+          <h3 className="text-[13px] font-semibold text-forest">Retreat agreement</h3>
         </div>
         {canManage && (
           <Button size="sm" variant="ghost" onClick={() => setModal({})}>
-            <Plus className="w-3.5 h-3.5" /> {list.length ? 'New version' : 'New proposal'}
+            <Plus className="w-3.5 h-3.5" /> {list.length ? 'New version' : 'New agreement'}
           </Button>
         )}
       </div>

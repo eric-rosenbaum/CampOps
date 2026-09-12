@@ -33,7 +33,7 @@ const RULE_PREFIX: Record<string, string> = {
 };
 const RULE_EXACT: Record<string, string> = {
   balance_due: 'Balance still outstanding after the stay',
-  proposal_unopened: 'Proposal sent but never opened',
+  proposal_unopened: 'Agreement sent but never opened',
   arrival_brief: 'Arrival brief — three days out',
   setup_incomplete: 'Set-up work still open the night before',
   feedback: 'How was your stay?',

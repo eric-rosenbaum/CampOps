@@ -2494,6 +2494,13 @@ export interface RetreatProposal {
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+  /**
+   * The agreement as it was sent to THIS group, tokens already filled and reviewed.
+   *
+   * Frozen on send. Never re-rendered from the booking, because a rate edited in November must
+   * not change what somebody signed in June.
+   */
+  agreementBody: string | null;
 }
 
 /** What the intake endpoint returns from pasted call notes or an email thread. */

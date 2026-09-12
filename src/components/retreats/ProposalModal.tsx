@@ -12,7 +12,7 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import type { RetreatInvoiceLine, RetreatProposal } from '@/lib/types';
-import { dbAddProposal, dbUpdateProposal, fetchProposalLines, dbAttachAgreementFromTemplate } from '@/lib/retreatsDb';
+import { dbAddProposal, dbUpdateProposal, fetchProposalLines, dbAttachAgreementFromTemplate, dbAgreementForRetreat } from '@/lib/retreatsDb';
 import { generateId, parseDateStr, todayStr } from '@/lib/utils';
 import { money, inputClass, labelClass, fmtRange, nights as nightsBetween } from './retreatUi';
 import { sendEmail } from '@/lib/email';
@@ -53,7 +53,7 @@ interface Props {
 export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
   const currentCamp = useCampStore((s) => s.currentCamp);
   const setRentalDefaults = useCampStore((s) => s.setRentalDefaults);
-  const { proposals, setProposals, retreatById, portalUrl, openModal } = useRetreatStore();
+  const { proposals, setProposals, retreatById, portalUrl } = useRetreatStore();
   const campName = currentCamp?.name ?? 'the camp';
   const { can, currentUser } = useAuth();
   const canManage = can('manageRetreats');
@@ -75,6 +75,35 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
   const campTemplateName = useCampStore((s) => s.currentCamp?.agreementTemplateName) ?? null;
   const hasAgreement = Boolean(agreementDoc) || Boolean(campTemplateName);
   const existing = proposalId ? proposals.find((p) => p.id === proposalId) ?? null : null;
+
+  const campTemplateBody = useCampStore((s) => s.currentCamp?.agreementTemplateBody) ?? null;
+
+  /**
+   * The agreement this group will actually receive.
+   *
+   * Rendered from the camp's template with this booking's details, then EDITABLE -- a camp that
+   * has negotiated something for one group changes it here, and what is stored is what was sent
+   * rather than what the template happens to say later.
+   */
+  const [agreementText, setAgreementText] = useState<string | null>(existing?.agreementBody ?? null);
+  const [unfilled, setUnfilled] = useState<string[]>([]);
+  const [agreementOpen, setAgreementOpen] = useState(false);
+  const [renderedOnce, setRenderedOnce] = useState(false);
+
+  useEffect(() => {
+    // Only for a new agreement. An existing one is a record of what went out and must not be
+    // rewritten by today's rate.
+    if (existing?.agreementBody || !campTemplateBody || renderedOnce) return;
+    let live = true;
+    (async () => {
+      const r = await dbAgreementForRetreat(retreatId, campTemplateBody);
+      if (!live || !r) return;
+      setAgreementText(r.body);
+      setUnfilled(r.unfilled);
+      setRenderedOnce(true);
+    })();
+    return () => { live = false; };
+  }, [retreatId, campTemplateBody, existing?.agreementBody, renderedOnce]);
 
   /**
    * A per-person quote is three numbers and everything else is an extra.
@@ -178,6 +207,7 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
         ...lines.filter((l) => l.description.trim() !== ''),
       ],
       total,
+      agreementBody: agreementText,
       peopleCount: perPerson ? num(people) : null,
       nights: perPerson ? num(nights) : null,
       validUntil: validUntil || null,
@@ -230,7 +260,7 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
 
     const res = await sendEmail({
       to,
-      subject: `Your quote from ${campName}`,
+      subject: `Your retreat agreement from ${campName}`,
       html: proposalEmailHtml(p, retreat, campName, portalUrl(retreat), Boolean(agreementId) || hasAgreement),
       fromName: campName,
       replyTo: currentUser.email || undefined,
@@ -261,7 +291,7 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
 
   const title = existing
     ? `Proposal v${existing.version} · ${retreat?.groupName ?? ''}`
-    : `New proposal${nextVersion > 1 ? ` · v${nextVersion}` : ''}`;
+    : `New agreement${nextVersion > 1 ? ` · v${nextVersion}` : ''}`;
 
   return (
     <Modal title={title} onClose={onClose} width="min(680px, 94vw)">
@@ -410,59 +440,67 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
         </div>
       </div>
 
-      {/* ── What is actually going in the envelope ── */}
+      {/* ── The agreement itself ──
+          This IS the document the group signs, and signing it is how they commit. It is rendered
+          from the camp's template with this booking's details, and it is editable, because a camp
+          that negotiated something for one group must not have to change its template to say so.
+          What gets stored is what was sent. */}
       <div className="mt-5 rounded-card border border-border bg-cream px-4 py-3.5">
-        <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-soft">
-          Going with this quote
-        </p>
-        {agreementDoc ? (
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <FileSignature className="h-4 w-4 flex-shrink-0 text-forest" />
-            <span className="text-[13px] font-semibold text-forest">Retreat agreement</span>
-            <span className="min-w-0 truncate text-[12px] text-ink-soft">{agreementDoc.name}</span>
-            {canManage && (
-              <button
-                onClick={() => openModal({ kind: 'uploadDoc', retreatId, docType: 'agreement' })}
-                className="text-[12px] font-semibold text-forest hover:text-forest-mid"
-              >
-                Use a different one
-              </button>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-soft">
+            The agreement they sign
+          </p>
+          {agreementText && (
+            <button
+              onClick={() => setAgreementOpen((v) => !v)}
+              className="text-[12.5px] font-semibold text-forest hover:text-forest-mid"
+            >
+              {agreementOpen ? 'Hide it' : 'Read and edit it'}
+            </button>
+          )}
+        </div>
+
+        {agreementText ? (
+          <>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <FileSignature className="h-4 w-4 flex-shrink-0 text-forest" />
+              <span className="text-[13px] font-semibold text-forest">Retreat agreement</span>
+              <span className="text-[12px] text-ink-soft">
+                {existing?.agreementBody
+                  ? 'as it was sent'
+                  : 'your wording, filled in for this group'}
+              </span>
+            </div>
+
+            {unfilled.length > 0 && (
+              <p className="mt-1.5 text-[12px] leading-relaxed text-amber-text">
+                Nothing filled {unfilled.map((t) => `{{${t}}}`).join(', ')} — it is missing from
+                this booking, and it will appear in the agreement exactly like that. Fill it on the
+                booking, or edit the wording below.
+              </p>
             )}
-          </div>
+
+            {agreementOpen && (
+              <textarea
+                value={agreementText}
+                onChange={(e) => setAgreementText(e.target.value)}
+                rows={18}
+                className="mt-2 w-full resize-y rounded-btn border border-border bg-white px-3 py-2
+                           font-mono text-[12px] leading-relaxed text-ink focus:border-sage focus:outline-none"
+              />
+            )}
+          </>
         ) : campTemplateName ? (
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <FileSignature className="h-4 w-4 flex-shrink-0 text-forest" />
-            <span className="text-[13px] font-semibold text-forest">Retreat agreement</span>
-            <span className="min-w-0 truncate text-[12px] text-ink-soft">
-              {campTemplateName} — your standard one, attached when you send
-            </span>
-            {canManage && (
-              <button
-                onClick={() => openModal({ kind: 'uploadDoc', retreatId, docType: 'agreement' })}
-                className="text-[12px] font-semibold text-forest hover:text-forest-mid"
-              >
-                Use a different one for this group
-              </button>
-            )}
-          </div>
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">
+            Your uploaded file <strong>{campTemplateName}</strong> goes with this. A fixed file
+            cannot have this group&rsquo;s details filled in — write your agreement under Camp Info
+            &rsaquo; Rentals to get that.
+          </p>
         ) : (
-          <div className="mt-1.5">
-            <p className="text-[12.5px] leading-relaxed text-amber-text">
-              No agreement will go with this quote. Signing the agreement is how a group accepts,
-              so this sends a price with nothing to sign.
-            </p>
-            {canManage && (
-              <button
-                onClick={() => openModal({ kind: 'uploadDoc', retreatId, docType: 'agreement' })}
-                className="mt-1 text-[12px] font-semibold text-forest hover:text-forest-mid"
-              >
-                Attach one for this group
-              </button>
-            )}
-            <p className="mt-1 text-[11px] text-ink-faint">
-              Keep a standard one under Camp Info &rsaquo; Rentals and it goes with every proposal.
-            </p>
-          </div>
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-amber-text">
+            You have no agreement on file, so this sends a price with nothing to sign. Write one
+            under Camp Info &rsaquo; Rentals and every booking gets it, filled in.
+          </p>
         )}
       </div>
 
@@ -476,7 +514,7 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
         </Button>
         <Button onClick={sendToGroup} disabled={!canManage || loading || sending || !quotable}>
           <Send className="w-4 h-4" />
-          {sending ? 'Sending…' : hasAgreement ? 'Send quote and agreement' : 'Send quote'}
+          {sending ? 'Sending…' : agreementText || hasAgreement ? 'Send the agreement' : 'Send without an agreement'}
         </Button>
       </div>
       {sendResult && (

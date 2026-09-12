@@ -5,6 +5,7 @@ import { Plus, X, Pencil, Calendar, Sun, Copy, Check, Upload, CornerDownRight, C
 import * as XLSX from 'xlsx';
 import { useCampStore } from '@/store/campStore';
 import { dbUploadCampAgreement } from '@/lib/retreatsDb';
+import { AgreementTemplateEditor } from '@/components/retreats/AgreementTemplateEditor';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useLocationStore } from '@/store/locationStore';
 import { ImplementationDropzone, ImplementationFilesTab } from '@/components/settings/ImplementationFiles';
@@ -1063,7 +1064,7 @@ function RentalsTab() {
 
   async function removeAgreement() {
     if (!currentCamp) return;
-    if (!confirm('Remove the stored agreement? New proposals will stop attaching one. Groups that already have theirs keep it.')) return;
+    if (!confirm('Remove the stored agreement? New agreements will stop attaching one. Groups that already have theirs keep it.')) return;
     setAgreementError(null);
     try {
       await setCampAgreement(currentCamp.id, null, null);
@@ -1140,7 +1141,7 @@ function RentalsTab() {
       </div>
 
       <div className="rounded-card border border-border bg-white p-5">
-        <h3 className="font-display text-[15px] font-bold text-forest">Proposal defaults</h3>
+        <h3 className="font-display text-[15px] font-bold text-forest">Agreement defaults</h3>
         <div className="mt-4 space-y-3">
           <div className="max-w-[13rem]">
             <label className={label} htmlFor="rt-days">A quote stands for</label>
@@ -1218,12 +1219,18 @@ function RentalsTab() {
           )}
         </div>
 
+        {/* The wording, which is the half that can be filled in per group. The uploaded file
+            below stays for camps whose counsel insists on a fixed document. */}
+        <div className="mt-5 border-t border-border pt-4">
+          <AgreementTemplateEditor campId={currentCamp?.id ?? ''} editable={editable} />
+        </div>
+
         {/* ── The agreement itself ──
             One file, reused for every group. A proposal attaches it automatically to any booking
             that has no agreement of its own; a group that negotiated different terms gets their
             own uploaded on the retreat, and that one wins. */}
         <div className="mt-5 border-t border-border pt-4">
-          <p className={label}>Our retreat agreement</p>
+          <p className={label}>Or attach a fixed file instead</p>
           {agreementName ? (
             <div className="mt-1.5 flex flex-wrap items-center gap-2.5 rounded-card border border-border bg-cream px-3.5 py-2.5">
               <FileText className="h-4 w-4 flex-shrink-0 text-forest" />
@@ -1257,7 +1264,7 @@ function RentalsTab() {
               <p className="text-[13px] font-medium text-forest">
                 {agreementBusy ? 'Uploading…' : 'Upload the agreement you send every group'}
               </p>
-              <p className="mt-0.5 text-[11px] text-ink-faint">PDF, JPG or PNG · attached to each new proposal</p>
+              <p className="mt-0.5 text-[11px] text-ink-faint">PDF, JPG or PNG · sent with each new agreement</p>
             </button>
           )}
           <input

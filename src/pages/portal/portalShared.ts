@@ -222,6 +222,12 @@ export interface PortalData {
   meals: PortalMeal[];
   change_requests: PortalChangeRequest[];
   feedback_submitted: boolean;
+  /**
+   * The agreement this group has been sent, verbatim.
+   *
+   * The portal asks them to sign; it has to show them what. Null until the camp sends one.
+   */
+  agreement?: { version: number; body: string | null; status: string } | null;
 
   // ── Composed on by get_portal_data_v2 ──────────────────────────────────────
   // Flags and counts, not payloads: each new section fetches its own detail when it opens. The

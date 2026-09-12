@@ -289,12 +289,14 @@ function buildSteps(data: PortalData): Step[] {
 
   const steps: Step[] = [];
 
-  // 0, Proposal. Sits above everything because until a group has accepted, none of the rest of
-  // this list is theirs to do. Disappears once accepted rather than lingering as a done row.
+  // 0, The agreement. Sits above everything because until a group has signed, none of the rest of
+  // this list is theirs to do. Disappears once signed rather than lingering as a done row.
   if (data.proposal && data.proposal.status !== 'accepted') {
     steps.push({
-      key: 'proposal', label: 'Review your proposal',
-      hint: data.proposal.valid_until ? `Valid until ${fmtDateFull(data.proposal.valid_until)}` : 'Ready for you to look at',
+      key: 'proposal', label: 'Read and sign your retreat agreement',
+      hint: data.proposal.valid_until
+        ? `Signing it confirms your booking · stands until ${fmtDateFull(data.proposal.valid_until)}`
+        : 'Signing it confirms your booking',
       state: 'todo', dueDate: data.proposal.valid_until ?? null, sectionId: 'documents', counts: true,
     });
   }
@@ -749,8 +751,9 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
           <ProposalSection
             token={token}
             onAccepted={refetch}
-            hasAgreement={Boolean(agreementDoc)}
+            hasAgreement={Boolean(agreementDoc) && !data.agreement?.body}
             onGoToAgreement={() => setOpenStep('agreement')}
+            agreementBody={data.agreement?.body ?? null}
           />
         );
       case 'deposit':

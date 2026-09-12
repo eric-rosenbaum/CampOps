@@ -13,7 +13,7 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import type { RetreatInvoiceLine, RetreatProposal } from '@/lib/types';
-import { dbAddProposal, dbUpdateProposal, fetchProposalLines, dbAttachAgreementFromTemplate, dbAgreementForRetreat } from '@/lib/retreatsDb';
+import { dbAddProposal, dbUpdateProposal, fetchProposalLines, dbAgreementForRetreat } from '@/lib/retreatsDb';
 import { generateId, parseDateStr, todayStr } from '@/lib/utils';
 import { money, inputClass, labelClass, fmtRange, nights as nightsBetween } from './retreatUi';
 import { sendEmail } from '@/lib/email';
@@ -73,11 +73,10 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
    */
   const agreementDoc = useRetreatStore((s) => s.documents)
     .find((d) => d.retreatId === retreatId && d.docType === 'agreement');
-  const campTemplateName = useCampStore((s) => s.currentCamp?.agreementTemplateName) ?? null;
-  const hasAgreement = Boolean(agreementDoc) || Boolean(campTemplateName);
   const existing = proposalId ? proposals.find((p) => p.id === proposalId) ?? null : null;
 
   const campTemplateBody = useCampStore((s) => s.currentCamp?.agreementTemplateBody) ?? null;
+  const hasAgreement = Boolean(agreementDoc) || Boolean(campTemplateBody);
 
   /**
    * The agreement this group will actually receive.
@@ -262,19 +261,21 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
     }
     setSending(true);
     setSendResult(null);
+    // Any token still unfilled becomes a blank line. The camp was shown these and chose to send
+    // anyway, which is their call -- but a group reading "{{coordinator_phone}}" in a contract is
+    // being shown our internals, and a ruled blank is what a paper form would have had there.
     const p = build('sent');
+    if (p.agreementBody) p.agreementBody = p.agreementBody.replace(/\{\{[a-z_]+\}\}/g, '__________');
     if (existing) { setProposals(proposals.map((x) => (x.id === p.id ? p : x))); await dbUpdateProposal(p); }
     else { setProposals([p, ...proposals]); await dbAddProposal(p); }
 
-    // The quote and the thing that makes it binding travel together. If the camp keeps an
-    // agreement on file and this group has none, they get it now -- signing it is what accepts
-    // the quote, so sending one without the other asks them to agree to nothing.
-    const agreementId = await dbAttachAgreementFromTemplate(retreatId);
+    // The agreement travels WITH the quote because it is the same document: agreement_body was
+    // rendered, reviewed and stored above, and the group reads and signs it in their portal.
 
     const res = await sendEmail({
       to,
       subject: `Your retreat agreement from ${campName}`,
-      html: proposalEmailHtml(p, retreat, campName, portalUrl(retreat), Boolean(agreementId) || hasAgreement),
+      html: proposalEmailHtml(p, retreat, campName, portalUrl(retreat), Boolean(agreementText) || hasAgreement),
       fromName: campName,
       replyTo: currentUser.email || undefined,
     });
@@ -506,12 +507,6 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
               />
             )}
           </>
-        ) : campTemplateName ? (
-          <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink-soft">
-            Your uploaded file <strong>{campTemplateName}</strong> goes with this. A fixed file
-            cannot have this group&rsquo;s details filled in — write your agreement under Camp Info
-            &rsaquo; Rentals to get that.
-          </p>
         ) : (
           <p className="mt-2.5 text-[12.5px] leading-relaxed text-amber-text">
             You have no agreement on file, so this sends a price with nothing to sign. Write one

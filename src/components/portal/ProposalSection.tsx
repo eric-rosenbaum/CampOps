@@ -43,9 +43,11 @@ interface Props {
   hasAgreement?: boolean;
   /** Take them to the documents section, where the agreement is. */
   onGoToAgreement?: () => void;
+  /** The agreement text itself, so they can read what the button commits them to. */
+  agreementBody?: string | null;
 }
 
-export function ProposalSection({ token, onAccepted, hasAgreement, onGoToAgreement }: Props) {
+export function ProposalSection({ token, onAccepted, hasAgreement, onGoToAgreement, agreementBody }: Props) {
   const [proposal, setProposal] = useState<PortalProposal | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
@@ -128,6 +130,25 @@ export function ProposalSection({ token, onAccepted, hasAgreement, onGoToAgreeme
             <span className="text-[19px] font-bold text-forest tabular-nums">{money(proposal.total)}</span>
           </div>
         </div>
+
+        {/* ── The agreement, in full ──
+            The button below commits this group to a contract. It used to sit under a price and a
+            short terms blurb with the contract itself nowhere on the page -- a signature on a
+            document nobody showed you is worth nothing to either side. Scrollable rather than
+            collapsed, so the act of signing follows having had it in front of you. */}
+        {agreementBody && (
+          <div className="border-t border-border bg-cream px-5 py-4">
+            <p className={labelClass}>The agreement</p>
+            <div className="mt-1.5 max-h-96 overflow-y-auto rounded-card border border-border bg-white px-4 py-3">
+              <p className="whitespace-pre-wrap font-mono text-[12px] leading-relaxed text-ink">
+                {agreementBody}
+              </p>
+            </div>
+            <p className="mt-1.5 text-[11.5px] text-ink-soft">
+              Signing below accepts these terms. Keep a copy — your camp can send you one.
+            </p>
+          </div>
+        )}
 
         {proposal.terms && (
           <div className="px-5 py-4 bg-cream border-t border-border">

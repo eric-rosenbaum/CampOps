@@ -105,3 +105,6 @@ end;
 $fn$;
 
 grant execute on function public.render_agreement(text, jsonb) to authenticated;
+
+-- NOTE: the {{rate}} token built here has no currency symbol, while {{total}} and {{deposit}} do.
+-- Corrected in 20260912190801, which is where the live version of this function is.

@@ -384,10 +384,18 @@ export const dbDeleteDocument = (id: string) => del('retreat_documents', id);
  */
 export async function dbAgreementForRetreat(
   retreatId: string, template: string,
+  /**
+   * The money as it stands in the composer right now.
+   *
+   * Without this the agreement quoted whatever a PREVIOUSLY ACCEPTED version said, so a camp
+   * revising a booking would send wording that contradicted the figures on the same screen --
+   * $20,000 in the contract beside $18,000 in the lines. The numbers being sent win.
+   */
+  override?: Record<string, string | null>,
 ): Promise<{ body: string; values: Record<string, string | null>; unfilled: string[] } | null> {
   const { data, error } = await supabase.rpc('agreement_tokens', { p_retreat_id: retreatId });
   if (error) { campError('agreement tokens', error.message); return null; }
-  const values = (data ?? {}) as Record<string, string | null>;
+  const values = { ...(data ?? {}), ...(override ?? {}) } as Record<string, string | null>;
 
   let body = template;
   for (const [k, v] of Object.entries(values)) {

@@ -90,20 +90,6 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
   const [agreementOpen, setAgreementOpen] = useState(false);
   const [renderedOnce, setRenderedOnce] = useState(false);
 
-  useEffect(() => {
-    // Only for a new agreement. An existing one is a record of what went out and must not be
-    // rewritten by today's rate.
-    if (existing?.agreementBody || !campTemplateBody || renderedOnce) return;
-    let live = true;
-    (async () => {
-      const r = await dbAgreementForRetreat(retreatId, campTemplateBody);
-      if (!live || !r) return;
-      setAgreementText(r.body);
-      setUnfilled(r.unfilled);
-      setRenderedOnce(true);
-    })();
-    return () => { live = false; };
-  }, [retreatId, campTemplateBody, existing?.agreementBody, renderedOnce]);
 
   /**
    * A per-person quote is three numbers and everything else is an extra.
@@ -182,6 +168,32 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
    * an empty `lines`, so Send and Mark sent greyed out on a perfectly good $18,000 booking.
    */
   const quotable = total > 0 || lines.length > 0;
+
+  useEffect(() => {
+    // Only for a new agreement. An existing one is a record of what went out and must not be
+    // rewritten by today's rate.
+    if (existing?.agreementBody || !campTemplateBody || renderedOnce) return;
+    let live = true;
+    (async () => {
+      // The figures on THIS screen, not whatever an earlier accepted version said.
+      const cents = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const r = await dbAgreementForRetreat(retreatId, campTemplateBody, {
+        total: total > 0 ? `$${cents(total)}` : null,
+        deposit: num(deposit) > 0 ? `$${cents(num(deposit))}` : null,
+        // Flat pricing has no field in this composer; the server token derives it from the
+        // booking, so leave it alone rather than blanking it.
+        rate: perPerson && num(rate) > 0 ? `$${cents(num(rate))} per person per night` : null,
+        headcount: num(people) > 0 ? String(num(people)) : null,
+        nights: num(nights) > 0 ? String(num(nights)) : null,
+      });
+      if (!live || !r) return;
+      setAgreementText(r.body);
+      setUnfilled(r.unfilled);
+      setRenderedOnce(true);
+    })();
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [retreatId, campTemplateBody, existing?.agreementBody, renderedOnce]);
 
   const nextVersion = useMemo(() => {
     if (existing) return existing.version;

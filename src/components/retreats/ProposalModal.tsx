@@ -6,6 +6,7 @@
 // starting point, not a contract.
 import { useEffect, useMemo, useState } from 'react';
 import { FileSignature, Loader2, Plus, Send, Trash2 } from 'lucide-react';
+import { MissingBookingDetails } from './MissingBookingDetails';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
@@ -457,39 +458,42 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
           from the camp's template with this booking's details, and it is editable, because a camp
           that negotiated something for one group must not have to change its template to say so.
           What gets stored is what was sent. */}
-      <div className="mt-5 rounded-card border border-border bg-cream px-4 py-3.5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-soft">
-            The agreement they sign
-          </p>
+      <div className="mt-6 rounded-card border border-sage/40 bg-white px-4 py-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <div className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-sage-pale">
+              <FileSignature className="h-4 w-4 text-forest" />
+            </div>
+            <div>
+              <p className="text-[13.5px] font-semibold text-forest">Retreat agreement</p>
+              <p className="mt-0.5 text-[12px] text-ink-soft">
+                {existing?.agreementBody
+                  ? 'As it was sent to this group.'
+                  : agreementText
+                    ? 'Your wording, filled in for this group. Signing it confirms the booking.'
+                    : 'Nothing to sign yet.'}
+              </p>
+            </div>
+          </div>
           {agreementText && (
             <button
               onClick={() => setAgreementOpen((v) => !v)}
-              className="text-[12.5px] font-semibold text-forest hover:text-forest-mid"
+              className="rounded-btn border border-border px-2.5 py-1.5 text-[12.5px] font-semibold
+                         text-forest transition-colors hover:border-sage"
             >
-              {agreementOpen ? 'Hide it' : 'Read and edit it'}
+              {agreementOpen ? 'Hide' : 'Read and edit'}
             </button>
           )}
         </div>
 
         {agreementText ? (
           <>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <FileSignature className="h-4 w-4 flex-shrink-0 text-forest" />
-              <span className="text-[13px] font-semibold text-forest">Retreat agreement</span>
-              <span className="text-[12px] text-ink-soft">
-                {existing?.agreementBody
-                  ? 'as it was sent'
-                  : 'your wording, filled in for this group'}
-              </span>
-            </div>
-
-            {unfilled.length > 0 && (
-              <p className="mt-1.5 text-[12px] leading-relaxed text-amber-text">
-                Nothing filled {unfilled.map((t) => `{{${t}}}`).join(', ')} — it is missing from
-                this booking, and it will appear in the agreement exactly like that. Fill it on the
-                booking, or edit the wording below.
-              </p>
+            {unfilled.length > 0 && retreat && (
+              <MissingBookingDetails
+                retreat={retreat}
+                unfilled={unfilled}
+                onFilled={() => setRenderedOnce(false)}
+              />
             )}
 
             {agreementOpen && (
@@ -497,19 +501,19 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
                 value={agreementText}
                 onChange={(e) => setAgreementText(e.target.value)}
                 rows={18}
-                className="mt-2 w-full resize-y rounded-btn border border-border bg-white px-3 py-2
+                className="mt-3 w-full resize-y rounded-btn border border-border bg-cream px-3.5 py-3
                            font-mono text-[12px] leading-relaxed text-ink focus:border-sage focus:outline-none"
               />
             )}
           </>
         ) : campTemplateName ? (
-          <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">
+          <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink-soft">
             Your uploaded file <strong>{campTemplateName}</strong> goes with this. A fixed file
             cannot have this group&rsquo;s details filled in — write your agreement under Camp Info
             &rsaquo; Rentals to get that.
           </p>
         ) : (
-          <p className="mt-1.5 text-[12.5px] leading-relaxed text-amber-text">
+          <p className="mt-2.5 text-[12.5px] leading-relaxed text-amber-text">
             You have no agreement on file, so this sends a price with nothing to sign. Write one
             under Camp Info &rsaquo; Rentals and every booking gets it, filled in.
           </p>

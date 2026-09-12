@@ -1099,7 +1099,11 @@ function RentalsTab() {
   const label = 'block text-[11px] font-semibold uppercase tracking-wide text-ink-faint mb-1.5';
 
   return (
-    <div className="px-4 py-4 sm:px-7 sm:py-6 max-w-2xl space-y-5">
+    <div className="px-4 py-4 sm:px-7 sm:py-6 max-w-5xl space-y-5">
+      {/* Rate and defaults are short settings; side by side they read as one row instead of a
+          column of narrow cards with half the page empty beside them. The agreement below gets
+          the full width, because it is a document rather than a setting. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
       <div className="rounded-card border border-border bg-white p-5">
         <h3 className="font-display text-[15px] font-bold text-forest">Your rate</h3>
         <p className="text-[12.5px] text-ink-soft mt-0.5">
@@ -1143,8 +1147,8 @@ function RentalsTab() {
       <div className="rounded-card border border-border bg-white p-5">
         <h3 className="font-display text-[15px] font-bold text-forest">Agreement defaults</h3>
         <div className="mt-4 space-y-3">
-          <div className="max-w-[13rem]">
-            <label className={label} htmlFor="rt-days">A quote stands for</label>
+          <div className="max-w-[16rem]">
+            <label className={label} htmlFor="rt-days">An agreement stands for</label>
             <div className="flex items-center gap-2">
               <input
                 id="rt-days" className={input} inputMode="numeric" placeholder="30"
@@ -1155,8 +1159,8 @@ function RentalsTab() {
           </div>
           {/* A cheque that never came does not announce itself: the dates stay held, no money
               lands against them, and somebody notices in the week of arrival. */}
-          <div className="max-w-[13rem]">
-            <label className={label} htmlFor="rt-chase">Ask us about an unpaid deposit after</label>
+          <div className="max-w-[16rem]">
+            <label className={label} htmlFor="rt-chase">Chase an unpaid deposit after</label>
             <div className="flex items-center gap-2">
               <input
                 id="rt-chase" className={input} inputMode="numeric" placeholder="Never"
@@ -1178,11 +1182,15 @@ function RentalsTab() {
           </div>
         </div>
 
-        {/* ── The front door ──
-            Every other way into Retreats assumes a booking already exists. This is the link a
-            group uses before there is one: it lands as an enquiry in the pipeline with its fields
-            filled in, instead of as an email somebody has to retype. */}
-        <div className="mt-5 border-t border-border pt-4">
+      </div>
+      </div>
+
+      {/* ── The front door ──
+          Every other way into Retreats assumes a booking already exists. This is the link a
+          group uses before there is one: it lands as an enquiry in the pipeline with its fields
+          filled in, instead of as an email somebody has to retype. */}
+      <div className="rounded-card border border-border bg-white p-5">
+        <div>
           <p className={label}>Public enquiry link</p>
           {enquiryToken ? (
             <div className="mt-1.5 space-y-2">
@@ -1219,11 +1227,12 @@ function RentalsTab() {
           )}
         </div>
 
-        {/* The wording, which is the half that can be filled in per group. The uploaded file
-            below stays for camps whose counsel insists on a fixed document. */}
-        <div className="mt-5 border-t border-border pt-4">
-          <AgreementTemplateEditor campId={currentCamp?.id ?? ''} editable={editable} />
-        </div>
+      </div>
+
+      {/* The wording, which is the half that can be filled in per group. The uploaded file
+          below stays for camps whose counsel insists on a fixed document. */}
+      <div className="rounded-card border border-border bg-white p-5">
+        <AgreementTemplateEditor campId={currentCamp?.id ?? ''} editable={editable} />
 
         {/* ── The agreement itself ──
             One file, reused for every group. A proposal attaches it automatically to any booking

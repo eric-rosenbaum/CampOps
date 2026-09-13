@@ -1342,6 +1342,13 @@ export interface Retreat {
    */
   enquirySeenAt: string | null;
   dietaryNotes: string | null;
+  /**
+   * How far each side has read the meeting-spaces thread. Two marks rather than a per-message
+   * read table: there are exactly two parties, and "is there anything new for me" is the only
+   * question either of them asks.
+   */
+  spacesCampReadAt: string | null;
+  spacesGroupReadAt: string | null;
   /** They actively said nobody has a need. Distinct from nobody having been asked. */
   dietaryNoneConfirmed: boolean;
   notes: string | null;
@@ -2348,15 +2355,22 @@ export interface RetreatSpaceRequest {
   campId: string;
   retreatId: string;
   locationId: string;
-  /** First day of the run. */
+  /**
+   * First day the group has the room. Since the portal stopped asking about days this is the
+   * arrival date, and `endDate` the departure date — "set up when we arrive, reset when we go".
+   */
   dayDate: string;
-  /** Last day, inclusive. Equal to dayDate for a single-day ask. */
+  /** Last day, inclusive. */
   endDate: string;
+  /**
+   * All five were asked for by a six-field form the portal no longer shows. Kept because rows
+   * filed under it still mean what they said; null on anything filed since.
+   */
   startLabel: string | null;
   endLabel: string | null;
   purpose: string | null;
   expectedCount: number | null;
-  layout: SpaceLayout;
+  layout: SpaceLayout | null;
   layoutOther: string | null;
   /** The group's words, verbatim. The camp adds beside it, never edits it. */
   setupNotes: string | null;
@@ -2371,6 +2385,27 @@ export interface RetreatSpaceRequest {
   strikeOrderId: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * One thread per retreat about its meeting spaces, both sides writing into it.
+ *
+ * An approval used to be a status badge and a sentence the group could not answer, so a group
+ * that wanted to ask "could we have the Barn instead?" had to ring the camp — the point at
+ * which the product stops being where the booking happens. Approvals and declines post in here
+ * as `system` messages, so the answer and the reply to it sit in one place.
+ */
+export interface RetreatSpaceMessage {
+  id: string;
+  campId: string;
+  retreatId: string;
+  /** Named when the message is about one room. A status message always names one. */
+  locationId: string | null;
+  authorKind: 'camp' | 'group' | 'system';
+  authorName: string | null;
+  kind: 'message' | 'status';
+  body: string;
+  createdAt: string;
 }
 
 /** What the camp sees at the moment of approving. Warnings, plus exactly one hard stop. */

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { dbMarkEnquirySeen } from '@/lib/retreatsDb';
 import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
@@ -89,6 +89,23 @@ export function OverviewTab() {
   const seasonRevenue = revenueReceived + revenueEstimated;
 
   // ─── Banners ──────────────────────────────────────────────────────────────
+  // A group that writes in the meeting-spaces thread is asking a question nobody is standing
+  // next to. It goes at the top of the banners, above the paperwork chasing, because it is the
+  // only one where somebody is waiting on an answer rather than on a deadline.
+  const spaceMessages = useRetreatStore((s) => s.spaceMessages);
+  const unreadSpaces = useMemo(() => {
+    const byRetreat = new Map<string, number>();
+    for (const m of spaceMessages) {
+      if (m.authorKind !== 'group') continue;
+      const r = retreats.find((x) => x.id === m.retreatId);
+      if (!r || (r.spacesCampReadAt && m.createdAt <= r.spacesCampReadAt)) continue;
+      byRetreat.set(m.retreatId, (byRetreat.get(m.retreatId) ?? 0) + 1);
+    }
+    return retreats
+      .filter((r) => byRetreat.has(r.id))
+      .map((r): { retreat: Retreat; count: number } => ({ retreat: r, count: byRetreat.get(r.id) as number }));
+  }, [spaceMessages, retreats]);
+
   const coiOverdue = retreats.filter((r) => ACTIVEISH.includes(r.status) && !derive(r).coiOk);
   const housingOpen = retreats.filter(
     (r) => (r.status === 'confirmed' || r.status === 'ready') && derive(r).coiOk && !derive(r).housingLocked,
@@ -238,6 +255,14 @@ export function OverviewTab() {
       </div>
 
       {/* Banners */}
+      {unreadSpaces.map(({ retreat: r, count }) => (
+        <AlertBanner
+          key={`spacemsg-${r.id}`}
+          variant="warn"
+          message={`${r.groupName} sent ${count} message${count === 1 ? '' : 's'} about meeting spaces.`}
+          action={{ label: 'Open', onClick: () => enterRetreat(r.id, 'spaces') }}
+        />
+      ))}
       {coiOverdue.map((r) => (
         <AlertBanner
           key={`coi-${r.id}`}

@@ -423,9 +423,11 @@ function buildSteps(data: PortalData): Step[] {
     steps.push({
       key: 'spaces',
       label: 'Choose your meeting spaces',
-      hint: asked > 0
-        ? `${asked} space${asked === 1 ? '' : 's'} requested`
-        : 'Tell us where you want to meet, and how to set it up',
+      hint: (data.spaces_unread ?? 0) > 0
+        ? `${data.spaces_unread} new message${data.spaces_unread === 1 ? '' : 's'} from the camp`
+        : asked > 0
+          ? `${asked} space${asked === 1 ? '' : 's'} picked`
+          : 'Tick the rooms you need set up when you arrive',
       state: asked > 0 ? 'done' : urgency(spacesDue), dueDate: spacesDue, sectionId: 'spaces', counts: true,
     });
   }
@@ -504,16 +506,17 @@ function buildUpdates(data: PortalData): PortalUpdate[] {
       detail: r.body,
       view: 'todo', step: 'requests',
     }));
-  // A reply on a space request. Previously invisible unless the group happened to open that
-  // section, which is not a way to learn the chairs are in the back closet.
-  (data.space_replies ?? [])
-    .filter((q) => q.response_message)
-    .forEach((q) => out.push({
-      id: `spacereply:${q.id}:${q.responded_at ?? q.status}`,
-      title: q.space_name ? `The camp replied about ${q.space_name}` : 'The camp replied about your space request',
-      detail: q.response_message as string,
+  // Unread messages about meeting spaces. Previously invisible unless the group happened to
+  // open that section, which is not a way to learn the chairs are in the back closet.
+  if ((data.spaces_unread ?? 0) > 0) {
+    const n = data.spaces_unread as number;
+    out.push({
+      id: `spacemsg:${n}`,
+      title: `${n} new message${n === 1 ? '' : 's'} about your spaces`,
+      detail: 'The camp has replied. Open the spaces step to read and answer.',
       view: 'todo', step: 'spaces',
-    }));
+    });
+  }
   // Sending a quote is the loudest thing a camp does; the banner should say so.
   if (data.proposal && data.proposal.status !== 'accepted' && data.proposal.status !== 'declined') {
     out.push({

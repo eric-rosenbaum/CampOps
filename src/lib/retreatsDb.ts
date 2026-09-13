@@ -13,7 +13,7 @@ import type {
   RetreatChangeRequest, RetreatCost, RetreatCharge, RetreatPayment, RetreatIssue,
   RetreatChecklistItem, RetreatScheduleItem, RetreatFeedback, RetreatReminder, MealPeriod,
   RetreatInvoice, RetreatInvoiceLine,
-  RetreatSpaceRequest, RetreatContact, RetreatTouchpoint, RetreatProposal, RetreatAddon,
+  RetreatSpaceRequest, RetreatSpaceMessage, RetreatContact, RetreatTouchpoint, RetreatProposal, RetreatAddon,
   ScheduledMessage, SpaceRequestConflicts, RetreatIntakeDraft,
 } from './types';
 
@@ -42,6 +42,8 @@ export function rowToRetreat(r: Row): Retreat {
     dietaryFlags: (r.dietary_flags as Record<string, number>) ?? null,
     dietaryNotes: s(r.dietary_notes),
     enquirySeenAt: s(r.enquiry_seen_at),
+    spacesCampReadAt: s(r.spaces_camp_read_at),
+    spacesGroupReadAt: s(r.spaces_group_read_at),
     dietaryNoneConfirmed: Boolean(r.dietary_none_confirmed),
     notes: s(r.notes), portalToken: r.portal_token as string,
     // Pipeline. Rows written before these columns existed are real bookings, not leads, so an
@@ -127,7 +129,9 @@ function rowToSpaceRequest(r: Row): RetreatSpaceRequest {
     endDate: (r.end_date as string) ?? (r.day_date as string),
     startLabel: s(r.start_label), endLabel: s(r.end_label), purpose: s(r.purpose),
     expectedCount: n(r.expected_count),
-    layout: (r.layout as RetreatSpaceRequest['layout']) ?? 'open',
+    // Null, not 'open': the portal stopped asking, and claiming the group chose a layout puts
+    // an instruction in front of a crew that nobody gave.
+    layout: (r.layout as RetreatSpaceRequest['layout']) ?? null,
     layoutOther: s(r.layout_other),
     setupNotes: s(r.setup_notes), campNotes: s(r.camp_notes),
     status: (r.status as RetreatSpaceRequest['status']) ?? 'requested',
@@ -137,6 +141,18 @@ function rowToSpaceRequest(r: Row): RetreatSpaceRequest {
     createdAt: r.created_at as string, updatedAt: r.updated_at as string,
   };
 }
+function rowToSpaceMessage(r: Row): RetreatSpaceMessage {
+  return {
+    id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string,
+    locationId: s(r.location_id),
+    authorKind: (r.author_kind as RetreatSpaceMessage['authorKind']) ?? 'camp',
+    authorName: s(r.author_name),
+    kind: (r.kind as RetreatSpaceMessage['kind']) ?? 'message',
+    body: r.body as string,
+    createdAt: r.created_at as string,
+  };
+}
+
 function rowToContact(r: Row): RetreatContact {
   return {
     id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string,
@@ -207,6 +223,8 @@ export interface RetreatData {
   checklist: RetreatChecklistItem[]; scheduleItems: RetreatScheduleItem[]; feedback: RetreatFeedback[]; reminders: RetreatReminder[];
   invoices: RetreatInvoice[];
   spaceRequests: RetreatSpaceRequest[];
+  /** The meeting-spaces thread, one per retreat, both sides writing into it. */
+  spaceMessages: RetreatSpaceMessage[];
   contacts: RetreatContact[];
   touchpoints: RetreatTouchpoint[];
   proposals: RetreatProposal[];
@@ -219,14 +237,14 @@ const RETREAT_TABLES = [
   'retreats', 'retreat_spaces', 'retreat_housing', 'retreat_housing_versions', 'retreat_guests', 'retreat_documents',
   'retreat_meals', 'retreat_change_requests', 'retreat_costs', 'retreat_charges', 'retreat_payments',
   'retreat_issues', 'retreat_checklist', 'retreat_schedule_items', 'retreat_feedback', 'retreat_reminders',
-  'retreat_invoices', 'retreat_space_requests', 'retreat_contacts', 'retreat_touchpoints',
+  'retreat_invoices', 'retreat_space_requests', 'retreat_space_messages', 'retreat_contacts', 'retreat_touchpoints',
   'retreat_proposals', 'retreat_addon_catalog', 'scheduled_messages',
 ];
 
 async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
   const q = (t: string) => supabase.from(t).select('*').eq('camp_id', campId);
   const [re, sp, ho, hv, gst, docs, meals, cr, costs, charges, pays, iss, chk, sched, fb, rem, inv,
-         sreq, cont, touch, props, addons, obox] = await Promise.all([
+         sreq, smsg, cont, touch, props, addons, obox] = await Promise.all([
     q('retreats').order('arrival_date', { ascending: true }),
     q('retreat_spaces').order('sort_order', { ascending: true }),
     q('retreat_housing').order('sort_order', { ascending: true }),
@@ -245,6 +263,7 @@ async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
     q('retreat_reminders').order('sent_at', { ascending: false }),
     q('retreat_invoices').order('issued_at', { ascending: false }),
     q('retreat_space_requests').order('day_date', { ascending: true }),
+    q('retreat_space_messages').order('created_at', { ascending: true }),
     q('retreat_contacts').order('created_at', { ascending: true }),
     q('retreat_touchpoints').order('occurred_at', { ascending: false }),
     q('retreat_proposals').order('version', { ascending: false }),
@@ -252,7 +271,7 @@ async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
     q('scheduled_messages').order('send_after', { ascending: true }),
   ]);
   assertLoaded('retreats', re, sp, ho, hv, gst, docs, meals, cr, costs, charges, pays, iss, chk,
-               sched, fb, rem, inv, sreq, cont, touch, props, addons, obox);
+               sched, fb, rem, inv, sreq, smsg, cont, touch, props, addons, obox);
   return {
     retreats: (re.data ?? []).map((r) => rowToRetreat(r as Row)),
     spaces: (sp.data ?? []).map((r) => rowToSpace(r as Row)),
@@ -272,6 +291,7 @@ async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
     reminders: (rem.data ?? []).map((r) => rowToReminder(r as Row)),
     invoices: (inv.data ?? []).map((r) => rowToInvoice(r as Row)),
     spaceRequests: (sreq.data ?? []).map((r) => rowToSpaceRequest(r as Row)),
+    spaceMessages: (smsg.data ?? []).map((r) => rowToSpaceMessage(r as Row)),
     contacts: (cont.data ?? []).map((r) => rowToContact(r as Row)),
     touchpoints: (touch.data ?? []).map((r) => rowToTouchpoint(r as Row)),
     proposals: (props.data ?? []).map((r) => rowToProposal(r as Row)),
@@ -606,11 +626,36 @@ export async function dbApproveSpaceRequest(
   return { setupId: d.setup_id as string, strikeId: (d.strike_id as string) ?? null };
 }
 
+/**
+ * Decline, and say so where the group can answer.
+ *
+ * This used to be a bare table UPDATE, so the group's only clue was a status badge changing
+ * colour on a page they were not looking at. It now posts into the meeting-spaces thread.
+ */
 export async function dbDeclineSpaceRequest(id: string, message: string | null) {
-  const { error } = await supabase.from('retreat_space_requests')
-    .update({ status: 'declined', response_message: message, responded_at: new Date().toISOString() })
-    .eq('id', id);
+  const { error } = await supabase.rpc('decline_space_request',
+    { p_request_id: id, p_message: message });
   if (error) campError('decline space request', error.message);
+}
+
+// ─── The meeting-spaces thread ──────────────────────────────────────────────
+
+export async function dbPostSpaceMessage(
+  retreatId: string, body: string, locationId: string | null, authorName: string | null,
+): Promise<void> {
+  const { error } = await supabase.from('retreat_space_messages').insert({
+    camp_id: CID(), retreat_id: retreatId, location_id: locationId,
+    author_kind: 'camp', author_name: authorName, kind: 'message', body,
+  });
+  if (error) { campError('post space message', error.message); return; }
+  // Writing is reading: the camp has seen everything up to its own reply.
+  await dbMarkSpacesRead(retreatId);
+}
+
+/** Move the camp's read mark to now, so the unread badge clears. */
+export async function dbMarkSpacesRead(retreatId: string): Promise<void> {
+  const { error } = await supabase.rpc('mark_spaces_read', { p_retreat_id: retreatId });
+  if (error) campError('mark spaces read', error.message);
 }
 
 /**

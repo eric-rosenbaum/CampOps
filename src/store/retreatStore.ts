@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useCommissaryStore } from './commissaryStore';
 import type {
-  RetreatSpaceRequest, RetreatContact, RetreatTouchpoint, RetreatProposal,
+  RetreatSpaceRequest, RetreatSpaceMessage, RetreatContact, RetreatTouchpoint, RetreatProposal,
   RetreatAddon, ScheduledMessage,
   Retreat, RetreatStatus, RetreatSpace, RetreatHousing, RetreatHousingVersion, RetreatGuest, RetreatDocument,
   RetreatDocType, RetreatMeal, RetreatChangeRequest, RetreatRequestStatus, RetreatCost, RetreatCharge,
@@ -89,6 +89,8 @@ interface RetreatState {
   retreats: Retreat[];
   // ── The seam and the pipeline ─────────────────────────────────────────────
   spaceRequests: RetreatSpaceRequest[];
+  /** One thread per retreat about its meeting spaces. Camp, group and status messages. */
+  spaceMessages: RetreatSpaceMessage[];
   contacts: RetreatContact[];
   touchpoints: RetreatTouchpoint[];
   proposals: RetreatProposal[];
@@ -122,6 +124,7 @@ interface RetreatState {
 
   setRetreats: (r: Retreat[]) => void;
   setSpaceRequests: (x: RetreatSpaceRequest[]) => void;
+  setSpaceMessages: (x: RetreatSpaceMessage[]) => void;
   setContacts: (x: RetreatContact[]) => void;
   setTouchpoints: (x: RetreatTouchpoint[]) => void;
   setProposals: (x: RetreatProposal[]) => void;
@@ -281,7 +284,7 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   modal: null,
 
   retreats: [], spaces: [], housing: [], housingVersions: [], guests: [], documents: [], meals: [],
-  spaceRequests: [], contacts: [], touchpoints: [], proposals: [], addons: [], outbox: [],
+  spaceRequests: [], spaceMessages: [], contacts: [], touchpoints: [], proposals: [], addons: [], outbox: [],
   changeRequests: [], costs: [], charges: [], payments: [], issues: [], checklist: [],
   scheduleItems: [], feedback: [], reminders: [], invoices: [],
 
@@ -318,6 +321,7 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
       : null,
   })),
   setSpaceRequests: (rows) => set({ spaceRequests: rows }),
+  setSpaceMessages: (rows) => set({ spaceMessages: rows }),
   setContacts: (rows) => set({ contacts: rows }),
   setTouchpoints: (rows) => set({ touchpoints: rows }),
   setProposals: (rows) => set({ proposals: rows }),

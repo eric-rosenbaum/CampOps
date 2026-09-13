@@ -189,11 +189,19 @@ export function ApproveSpaceModal({
               ? `${fmtDateFull(request.dayDate)} – ${fmtDateFull(request.endDate)}`
               : fmtDateFull(request.dayDate)}
           </p>
-          <p className="text-[12.5px] text-ink-soft mt-0.5">
-            {time && `${time} · `}
-            {request.layout === 'other' ? (request.layoutOther || 'Custom layout') : LAYOUT_LABELS[request.layout]}
-            {request.expectedCount != null && ` · ${request.expectedCount} people`}
-          </p>
+          {/* Times, layout and headcount came from a form the portal no longer shows. Null means
+              the group was never asked, and printing a default would invent an instruction. */}
+          {(time || request.layout || request.expectedCount != null) && (
+            <p className="text-[12.5px] text-ink-soft mt-0.5">
+              {[
+                time || null,
+                request.layout
+                  ? (request.layout === 'other' ? (request.layoutOther || 'Custom layout') : LAYOUT_LABELS[request.layout])
+                  : null,
+                request.expectedCount != null ? `${request.expectedCount} people` : null,
+              ].filter(Boolean).join(' · ')}
+            </p>
+          )}
           {request.purpose && <p className="text-[12.5px] text-ink mt-1.5">{request.purpose}</p>}
           {request.setupNotes && (
             <p className="text-[12.5px] text-ink mt-2 pl-3 border-l-2 border-sage/60 italic leading-relaxed">

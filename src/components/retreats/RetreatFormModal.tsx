@@ -173,7 +173,7 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
         dietaryFlags: null,
         dietaryNotes: null,
         dietaryNoneConfirmed: false,
-        enquirySeenAt: null,
+        enquirySeenAt: null, spacesCampReadAt: null, spacesGroupReadAt: null,
         notes: notes.trim() || null,
         portalToken: generateId() + generateId(),
         menuPublished: false,

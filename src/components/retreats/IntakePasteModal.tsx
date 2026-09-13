@@ -193,7 +193,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
       dietaryFlags: null,
       dietaryNotes: null,
       dietaryNoneConfirmed: false,
-      enquirySeenAt: null,
+      enquirySeenAt: null, spacesCampReadAt: null, spacesGroupReadAt: null,
       notes: notes.trim() || null,
       leadStage: 'new',
       leadSource: leadSource.trim() || null,

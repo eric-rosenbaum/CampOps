@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Presentation, Plus, Check, X, Pencil, Trash2, ClipboardList, ArrowRight,
-  Users, Clock, AlertTriangle,
+  Users, Clock, AlertTriangle, MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -10,12 +10,12 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useLocationStore } from '@/store/locationStore';
 import { useAuth } from '@/lib/auth';
-import { dbDeleteSpaceRequest } from '@/lib/retreatsDb';
+import { dbDeleteSpaceRequest, dbMarkSpacesRead, dbPostSpaceMessage } from '@/lib/retreatsDb';
+import { MessageThread, type ThreadMessage } from '@/components/shared/MessageThread';
 import { LAYOUT_LABELS, type IssueStatus, type RetreatSpaceRequest } from '@/lib/types';
 import { Badge, fmtDateFull, type BadgeTone } from './retreatUi';
 import { SpaceRequestModal } from './SpaceRequestModal';
 import { ApproveSpaceModal } from './ApproveSpaceModal';
-import { TurnoverCard } from './TurnoverCard';
 
 /**
  * The seam, from the camp's side.
@@ -24,9 +24,13 @@ import { TurnoverCard } from './TurnoverCard';
  * module is about the booking — this one is where the booking becomes work, and it is the
  * reason property management and rentals belong in one product rather than two.
  *
- * Grouped by day, because that is how a crew works: Saturday's list, not "the Adams group's
- * list". A request that has been approved shows the work orders it produced, so the link
- * between the ask and the job is visible from both ends.
+ * One row per room, because that is now what the group is asked for: which rooms do you need
+ * set up when you arrive, and is there anything we should know. Rooms are held for the whole
+ * stay, so the day grouping this used to have said nothing a reader did not already know. A
+ * request filed under the old per-day form keeps showing its span.
+ *
+ * The thread at the bottom is where an answer goes. An approval used to be a status the group
+ * could only respond to by ringing the camp.
  */
 
 const STATUS_TONE: Record<RetreatSpaceRequest['status'], BadgeTone> = {
@@ -48,6 +52,7 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
   // by exactly that before.
   const spaceRequests = useRetreatStore((s) => s.spaceRequests);
   const setSpaceRequests = useRetreatStore((s) => s.setSpaceRequests);
+  const spaceMessages = useRetreatStore((s) => s.spaceMessages);
   const selectedRetreat = useRetreatStore((s) => s.selectedRetreat);
   const retreatById = useRetreatStore((s) => s.retreatById);
   const locations = useLocationStore((s) => s.locations);
@@ -57,8 +62,9 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
 
   /** The set-up and strike this ask produced. */
   const jobsFor = (requestId: string) => issues.filter((i) => i.retreatSpaceRequestId === requestId);
-  const { can } = useAuth();
+  const { can, currentUser } = useAuth();
   const canManage = can('manageRetreats');
+  const [sending, setSending] = useState(false);
 
   const [editing, setEditing] = useState<{ id?: string } | null>(null);
   const [deciding, setDeciding] = useState<{ id: string; mode: 'approve' | 'decline' } | null>(null);
@@ -73,16 +79,43 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
     [spaceRequests, rid],
   );
 
-  const byDay = useMemo(() => {
-    const m = new Map<string, RetreatSpaceRequest[]>();
-    for (const r of requests) (m.get(r.dayDate) ?? m.set(r.dayDate, []).get(r.dayDate)!).push(r);
-    return Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [requests]);
+  const sorted = useMemo(
+    () => [...requests].sort((a, b) => a.dayDate.localeCompare(b.dayDate)),
+    [requests],
+  );
+
+  const thread = useMemo(
+    () => (rid ? spaceMessages.filter((m) => m.retreatId === rid) : []),
+    [spaceMessages, rid],
+  );
+  const readAt = retreat?.spacesCampReadAt ?? null;
+  const unread = useMemo(
+    () => thread.filter((m) => m.authorKind === 'group'
+      && (!readAt || m.createdAt > readAt)).length,
+    [thread, readAt],
+  );
 
   const locById = useMemo(() => new Map(locations.map((l) => [l.id, l])), [locations]);
   const issueById = useMemo(() => new Map(issues.map((i) => [i.id, i])), [issues]);
 
+  const threadMessages: ThreadMessage[] = useMemo(() => thread.map((m) => ({
+    id: m.id,
+    authorKind: m.authorKind,
+    authorName: m.authorName,
+    body: m.body,
+    subject: m.kind === 'status' ? null : (m.locationId ? locById.get(m.locationId)?.name ?? null : null),
+    createdAt: m.createdAt,
+    unread: m.authorKind === 'group' && (!readAt || m.createdAt > readAt),
+  })), [thread, locById, readAt]);
+
+  // Read on the way OUT, not on the way in. Clearing the mark while someone is still looking at
+  // the tab takes the highlight off the messages they came to read, mid-read.
+  const unreadRef = useRef(0);
+  useEffect(() => { unreadRef.current = unread; }, [unread]);
+  useEffect(() => () => { if (rid && unreadRef.current > 0) void dbMarkSpacesRead(rid); }, [rid]);
+
   const pending = requests.filter((r) => r.status === 'requested' || r.status === 'countered').length;
+  const needsYou = pending + unread;
 
   if (!retreat) {
     return (
@@ -100,6 +133,13 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
     );
   }
 
+  async function post(body: string) {
+    if (!rid) return;
+    setSending(true);
+    await dbPostSpaceMessage(rid, body, null, currentUser.name || null);
+    setSending(false);
+  }
+
   async function remove(id: string, alsoJobs: boolean) {
     if (alsoJobs) {
       // issues.retreat_space_request_id is ON DELETE SET NULL, so the set-up and the strike
@@ -114,20 +154,22 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
 
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6 space-y-4">
-      <div className={`rounded-card border px-5 py-4 ${pending > 0 ? 'bg-amber-bg border-amber/30' : 'bg-sage-pale border-sage/40'}`}>
-        <p className={`text-[13px] font-semibold mb-1 ${pending > 0 ? 'text-amber-text' : 'text-forest'}`}>
-          {pending > 0
-            ? `${pending} space request${pending === 1 ? '' : 's'} waiting on you`
-            : requests.length === 0 ? 'No program spaces requested yet' : 'Every request has an answer'}
+      <div className={`rounded-card border px-5 py-4 ${needsYou > 0 ? 'bg-amber-bg border-amber/30' : 'bg-sage-pale border-sage/40'}`}>
+        <p className={`text-[13px] font-semibold mb-1 ${needsYou > 0 ? 'text-amber-text' : 'text-forest'}`}>
+          {[
+            pending > 0 ? `${pending} space request${pending === 1 ? '' : 's'} waiting on you` : null,
+            unread > 0 ? `${unread} new message${unread === 1 ? '' : 's'} from the group` : null,
+          ].filter(Boolean).join(' · ')
+            || (requests.length === 0 ? 'No spaces requested yet' : 'Every request has an answer')}
         </p>
-        <p className={`text-[12px] leading-relaxed ${pending > 0 ? 'text-amber-text' : 'text-forest/80'}`}>
-          Approving writes a set-up and a strike, carrying the group's notes.
+        <p className={`text-[12px] leading-relaxed ${needsYou > 0 ? 'text-amber-text' : 'text-forest/80'}`}>
+          Approving writes a set-up and a strike, carrying the group's note to the crew verbatim.
         </p>
       </div>
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h3 className="text-[14px] font-semibold text-forest">
-          Program spaces · {retreat.groupName}
+          Meeting spaces · {retreat.groupName}
         </h3>
         {canManage && (
           <Button size="sm" onClick={() => setEditing({})}>
@@ -136,22 +178,17 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
         )}
       </div>
 
-      {byDay.length === 0 ? (
+      {sorted.length === 0 ? (
         <div className="bg-white rounded-card border border-border px-5 py-8 text-center">
           <Presentation className="w-7 h-7 text-ink-faint mx-auto mb-2.5" />
           <p className="text-[13px] text-ink-soft max-w-md mx-auto leading-relaxed">
-            No rooms requested yet. They can ask in their portal, or you can log it here.
+            No rooms picked yet. The group ticks what they need in their portal, or you can log
+            it here.
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {byDay.map(([day, rows]) => (
-            <div key={day}>
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint mb-2">
-                {fmtDateFull(day)}
-              </p>
-              <div className="space-y-2">
-                {rows.map((r) => {
+        <div className="space-y-2">
+          {sorted.map((r) => {
                   const loc = locById.get(r.locationId);
                   const building = loc?.parentId ? locById.get(loc.parentId)?.name ?? null : null;
                   const cap = loc?.capacitySeated ?? null;
@@ -168,14 +205,26 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
                             {loc?.name ?? 'Space'}
                             {building && <span className="font-normal text-ink-soft"> · {building}</span>}
                           </p>
+                          {/* When they have it. The whole stay for anything picked in the
+                              portal now; a per-day ask filed under the old form keeps its span. */}
                           <p className="text-[12px] text-ink-soft mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                            {time && <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{time}</span>}
+                            <span className="inline-flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5" />
+                              {r.endDate > r.dayDate
+                                ? `${fmtDateFull(r.dayDate)} – ${fmtDateFull(r.endDate)}`
+                                : fmtDateFull(r.dayDate)}
+                              {time && ` · ${time}`}
+                            </span>
                             {r.expectedCount != null && (
                               <span className={`inline-flex items-center gap-1 ${over ? 'text-amber-text font-semibold' : ''}`}>
                                 <Users className="w-3.5 h-3.5" />{r.expectedCount}{cap != null && `/${cap} seated`}
                               </span>
                             )}
-                            <span>{r.layout === 'other' ? (r.layoutOther || 'Custom layout') : LAYOUT_LABELS[r.layout]}</span>
+                            {/* Asked for by a form the portal no longer shows. Null means the
+                                group was never asked, so printing a layout would invent one. */}
+                            {r.layout && (
+                              <span>{r.layout === 'other' ? (r.layoutOther || 'Custom layout') : LAYOUT_LABELS[r.layout]}</span>
+                            )}
                           </p>
                           {r.purpose && <p className="text-[12.5px] text-ink mt-1">{r.purpose}</p>}
                         </div>
@@ -240,15 +289,37 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
                         </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      <TurnoverCard retreatId={retreat.id} />
+      {/* ── The conversation ──
+          An approval was a status the group could only answer by ringing the camp. */}
+      <div className="bg-white rounded-card border border-border px-4 py-4">
+        <div className="flex items-center gap-2 mb-1">
+          <MessageSquare className="w-4 h-4 text-forest" />
+          <p className="text-[14px] font-semibold text-forest">Messages with {retreat.groupName}</p>
+          {unread > 0 && (
+            <span className="text-[10.5px] font-bold text-white bg-amber rounded-full px-2 py-0.5">
+              {unread} new
+            </span>
+          )}
+        </div>
+        <p className="text-[12px] text-ink-soft mb-3">
+          The group reads this in their portal. Approvals and declines land here too.
+        </p>
+        <MessageThread
+          messages={threadMessages}
+          mine="camp"
+          onSend={post}
+          busy={sending}
+          disabled={!canManage}
+          otherPartyName={retreat.coordinatorName || retreat.groupName}
+          emptyMessage="No messages yet."
+        />
+      </div>
+
 
       {editing && (
         <SpaceRequestModal

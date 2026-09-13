@@ -15,12 +15,12 @@ import { campLog } from '@/lib/campLog';
 import { generateId, todayStr } from '@/lib/utils';
 import type {
   ServiceVendor, WorkRouting, WorkSchedule, WorkChecklistTemplate,
-  IssueChecklistItem, IssueComment, Trade, CampSession, Issue,
+  IssueChecklistItem, IssueComment, Trade, CampSession, Issue, CampWorkDefault,
 } from '@/lib/types';
 import {
   dbAddVendor, dbUpdateVendor, dbDeleteVendor, dbSetRouting,
   dbAddSchedule, dbUpdateSchedule, dbDeleteSchedule,
-  dbAddTemplate, dbUpdateTemplate, dbDeleteTemplate,
+  dbAddTemplate, dbUpdateTemplate, dbDeleteTemplate, dbSetWorkDefault,
   dbAddComment, dbDeleteComment, dbMarkThreadRead,
   dbSetChecklistItemDone, dbApplyChecklist, dbAddChecklistItem, dbDeleteChecklistItem,
   dbFetchChecklistItems,
@@ -35,6 +35,8 @@ interface CampgroundState {
   routing: WorkRouting[];
   schedules: WorkSchedule[];
   templates: WorkChecklistTemplate[];
+  /** Which of the camp's own checklists each automatic work order starts from. */
+  workDefaults: CampWorkDefault[];
   checklistItems: IssueChecklistItem[];
   comments: IssueComment[];
   sessions: CampSession[];
@@ -49,6 +51,8 @@ interface CampgroundState {
   setRouting: (r: WorkRouting[]) => void;
   setSchedules: (s: WorkSchedule[]) => void;
   setTemplates: (t: WorkChecklistTemplate[]) => void;
+  setWorkDefaults: (x: CampWorkDefault[]) => void;
+  setWorkDefault: (purpose: CampWorkDefault['purpose'], templateId: string | null) => void;
   /** Returns an error message, or null on success — a duplicate key is a real answer. */
   /** Only safe when nothing has ever been filed under it — the card enforces that. */
   setChecklistItems: (i: IssueChecklistItem[]) => void;
@@ -85,7 +89,7 @@ interface CampgroundState {
 }
 
 export const useCampgroundStore = create<CampgroundState>((set, get) => ({
-  vendors: [], routing: [], schedules: [], templates: [], viewers: [],
+  vendors: [], routing: [], schedules: [], templates: [], workDefaults: [], viewers: [],
   checklistItems: [], comments: [], sessions: [],
   readAt: {},
   tradeFilter: 'all',
@@ -94,6 +98,16 @@ export const useCampgroundStore = create<CampgroundState>((set, get) => ({
   setRouting: (routing) => set({ routing }),
   setSchedules: (schedules) => set({ schedules }),
   setTemplates: (templates) => set({ templates }),
+  setWorkDefaults: (rows) => set({ workDefaults: rows }),
+  setWorkDefault: (purpose, templateId) => {
+    set((st) => ({
+      workDefaults: [
+        ...st.workDefaults.filter((d) => d.purpose !== purpose),
+        { purpose, templateId },
+      ],
+    }));
+    void dbSetWorkDefault(purpose, templateId);
+  },
 
   // ── Trades ─────────────────────────────────────────────────────────────────
   setChecklistItems: (checklistItems) => set({ checklistItems }),

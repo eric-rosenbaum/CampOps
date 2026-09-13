@@ -177,7 +177,7 @@ function CampDataLoader() {
   } = useRetreatStore();
   const {
     setVendors: setServiceVendors, setRouting: setWorkRouting,
-    setSchedules: setWorkSchedules, setTemplates: setChecklistTemplates,
+    setSchedules: setWorkSchedules, setTemplates: setChecklistTemplates, setWorkDefaults,
     setChecklistItems, setComments: setIssueComments, setSessions: setCampSessions,
     setViewers: setIssueViewers,
   } = useCampgroundStore();
@@ -328,7 +328,7 @@ function CampDataLoader() {
     // has its own optimistic write queue and must not be reloaded by a comment landing.
     const applyCampground = (d: import('@/lib/campgroundDb').CampgroundData) => {
       setServiceVendors(d.vendors); setWorkRouting(d.routing); setWorkSchedules(d.schedules);
-      setChecklistTemplates(d.templates); setChecklistItems(d.checklistItems);
+      setChecklistTemplates(d.templates); setWorkDefaults(d.workDefaults); setChecklistItems(d.checklistItems);
       setIssueComments(d.comments); setCampSessions(d.sessions);
       setIssueViewers(d.viewers);
     };

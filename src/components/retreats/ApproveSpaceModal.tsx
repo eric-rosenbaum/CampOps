@@ -46,6 +46,7 @@ export function ApproveSpaceModal({
   const currentCamp = useCampStore((s) => s.currentCamp);
   const locations = useLocationStore((s) => s.locations);
   const templates = useCampgroundStore((s) => s.templates);
+  const workDefaults = useCampgroundStore((s) => s.workDefaults);
 
   const request = useMemo(
     () => spaceRequests.find((r) => r.id === requestId) ?? null,
@@ -60,11 +61,14 @@ export function ApproveSpaceModal({
    */
   const crewSteps = useMemo(() => {
     if (!request) return [];
-    const fallback = templates.find((t) => t.name === 'Program space reset' && t.isActive) ?? null;
+    // The camp's own answer for this job. Never matched by name: that is what made a checklist
+    // appear on a work order nobody could trace.
+    const chosen = workDefaults.find((d) => d.purpose === 'space_setup')?.templateId ?? null;
+    const fallback = templates.find((t) => t.id === chosen && t.isActive) ?? null;
     const rooms = locations
       .filter((l) => l.parentId === request.locationId && l.isActive)
       .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
-    const out = [{ room: null as string | null, checklist: fallback?.name ?? 'No checklist' }];
+    const out = [{ room: null as string | null, checklist: fallback?.name ?? 'None chosen' }];
     // A room the camp has not described earns one step rather than the space's whole list: a
     // bathroom told to "reset AV and lights" teaches people to tick without reading.
     rooms.forEach((rm) => out.push({
@@ -72,7 +76,7 @@ export function ApproveSpaceModal({
       checklist: templates.find((t) => t.id === rm.checklistTemplateId)?.name ?? 'One step to tick',
     }));
     return out;
-  }, [request, locations, templates]);
+  }, [request, locations, templates, workDefaults]);
 
   const [conflicts, setConflicts] = useState<SpaceRequestConflicts | null>(null);
   const [checking, setChecking] = useState(true);
@@ -262,10 +266,10 @@ export function ApproveSpaceModal({
               {crewSteps.length > 1
                 ? `${spaceName} has ${crewSteps.length - 1} rooms inside it, and each one gets its own line so the crew cannot finish the job having done one of them. `
                 : ''}
-              Change these in{' '}
+              Chosen under <em>Automatic checklists</em> in{' '}
               <Link to="/campground?tab=routines" className="underline hover:text-forest">Campground › Checklists</Link>
               {crewSteps.length > 1 && (
-                <>, or point a room at a different one in{' '}
+                <>, and per room in{' '}
                   <Link to="/settings?tab=locations" className="underline hover:text-forest">Camp Info › Locations</Link></>
               )}.
             </p>

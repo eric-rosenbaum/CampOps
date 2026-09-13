@@ -9,15 +9,18 @@ import { useAuth } from '@/lib/auth';
 import { generateId } from '@/lib/utils';
 import { useTradeKeys, useTradeLabel } from '@/lib/useTrades';
 import { tradePill } from '@/lib/workOrder';
-import type { ChecklistTemplateItem, Trade, WorkChecklistTemplate } from '@/lib/types';
+import type { ChecklistTemplateItem, Trade, WorkChecklistTemplate, WorkDefaultPurpose } from '@/lib/types';
 
 /**
  * Checklists, as templates rather than as prose in a description field.
  *
  * The point of a template is that the eleventh step is the same eleventh step every time, and
- * that the person who did it is recorded against it. Six ship seeded (cabin turnover, bathhouse
- * daily, program space reset, vehicle pre-trip, cabin opening, cabin closing) because a camp
- * that has to author six checklists before it can use the feature never uses the feature.
+ * that the person who did it is recorded against it.
+ *
+ * Every checklist here is one the camp wrote. Six used to be inserted into every camp at
+ * creation, and the automatic work orders picked one of them BY NAME from inside a database
+ * function -- so steps appeared on a job the camp had never chosen and could not trace. The
+ * "Automatic checklists" card below is where that decision lives now, in the open.
  *
  * `requiresPhoto` asks for a photo, it does not demand one: the step still ticks without it. A
  * checklist that refuses to close is a checklist people stop opening, and the crew with no signal
@@ -73,12 +76,15 @@ export function ChecklistTemplatesPanel() {
         )}
       </div>
 
+      <AutomaticChecklists />
+
       {templates.length === 0 ? (
         <div className="rounded-card border border-border bg-white px-6 py-10 text-center">
           <ListChecks className="w-6 h-6 text-sage mx-auto mb-3" aria-hidden="true" />
           <p className="font-display text-[16px] font-bold text-forest">No checklists yet</p>
           <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-md mx-auto mt-2">
-            A cabin turnover, a bathhouse round, a vehicle pre-trip.
+            A cabin turnover, a bathhouse round, a vehicle pre-trip — whatever your crew
+            actually does, in your words.
           </p>
         </div>
       ) : (
@@ -375,5 +381,89 @@ function TemplateModal({ template, onClose }: {
         </div>
       </div>
     </Modal>
+  );
+}
+
+/**
+ * Which checklist each automatic work order starts from.
+ *
+ * This is the answer to "where did this checklist come from?", and it did not used to exist:
+ * three database functions matched a checklist BY NAME -- 'Program space reset' when a meeting
+ * space was approved, 'Cabin turnover' when a group departed -- against six checklists inserted
+ * into every camp at creation. A camp that renamed its own list silently lost the automation,
+ * and a camp that did not recognise the steps had nowhere to look.
+ *
+ * Nothing is chosen by default. No steps is a real answer: the work order still names every room
+ * it covers, because that comes from the location tree rather than from a checklist.
+ */
+const AUTOMATIC_JOBS: { purpose: WorkDefaultPurpose; label: string; when: string }[] = [
+  {
+    purpose: 'space_setup',
+    label: 'Setting up a meeting space',
+    when: 'When you approve a group’s request for a room.',
+  },
+  {
+    purpose: 'space_reset',
+    label: 'Putting a meeting space back',
+    when: 'Raised with the set-up, due the day after the group leaves.',
+  },
+  {
+    purpose: 'room_turnover',
+    label: 'Turning over a cabin',
+    when: 'When a rental group departs, and at the end of a camp session.',
+  },
+];
+
+function AutomaticChecklists() {
+  const templates = useCampgroundStore((s) => s.templates);
+  const workDefaults = useCampgroundStore((s) => s.workDefaults);
+  const setWorkDefault = useCampgroundStore((s) => s.setWorkDefault);
+  const { role } = useAuth();
+  const canEdit = role !== 'viewer';
+
+  const active = useMemo(
+    () => templates.filter((t) => t.isActive).sort((a, b) => a.name.localeCompare(b.name)),
+    [templates],
+  );
+  const chosen = (p: WorkDefaultPurpose) =>
+    workDefaults.find((d) => d.purpose === p)?.templateId ?? '';
+
+  return (
+    <section className="rounded-card border border-border bg-white px-4 py-4 mb-6">
+      <h3 className="text-[14px] font-semibold text-forest">Automatic checklists</h3>
+      <p className="text-[12.5px] text-ink-soft leading-relaxed mt-1 mb-3 max-w-2xl">
+        Some work orders raise themselves. Pick which of your checklists each one starts from, or
+        leave it as none — the job still lists every room it covers either way.
+      </p>
+
+      <ul className="space-y-2.5">
+        {AUTOMATIC_JOBS.map((job) => (
+          <li
+            key={job.purpose}
+            className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 rounded-btn bg-cream px-3.5 py-3"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-forest">{job.label}</p>
+              <p className="text-[11.5px] text-ink-soft mt-0.5">{job.when}</p>
+            </div>
+            <select
+              value={chosen(job.purpose)}
+              disabled={!canEdit || active.length === 0}
+              onChange={(e) => setWorkDefault(job.purpose, e.target.value || null)}
+              className="text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage disabled:opacity-50 sm:w-60 flex-shrink-0"
+            >
+              <option value="">None — no steps added</option>
+              {active.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </li>
+        ))}
+      </ul>
+
+      {active.length === 0 && (
+        <p className="text-[11.5px] text-ink-faint mt-2.5">
+          Write a checklist below first, then you can point one of these at it.
+        </p>
+      )}
+    </section>
   );
 }

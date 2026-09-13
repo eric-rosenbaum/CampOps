@@ -16,7 +16,7 @@ import { todayStr } from './utils';
 import { loadAndApply, debounce, WAL_DEBOUNCE_MS } from './syncGuard';
 import type {
   ServiceVendor, WorkRouting, WorkSchedule, WorkChecklistTemplate, ChecklistTemplateItem,
-  IssueChecklistItem, IssueComment, Trade, QrTarget, SeasonReview, RentalsReview,
+  IssueChecklistItem, IssueComment, Trade, QrTarget, SeasonReview, RentalsReview, CampWorkDefault,
   PropertyCalendar, WorkOrderDraft, CampSession, CampTrade,
 } from './types';
 
@@ -139,6 +139,8 @@ export interface CampgroundData {
   sessions: CampSession[];
   /** Who has been let in on a work order they could not otherwise see, by being tagged into it. */
   viewers: { issueId: string; userId: string }[];
+  /** Which of the camp's own checklists each automatic work order starts from. */
+  workDefaults: CampWorkDefault[];
 }
 
 const CAMPGROUND_TABLES = [
@@ -146,12 +148,12 @@ const CAMPGROUND_TABLES = [
   // issue_comments is deliberately absent: it gets its own channel below. This one carries
   // eight tables and the app opens dozens of postgres_changes bindings across every module;
   // a message somebody is waiting on cannot be the binding that quietly loses that queue.
-  'issue_checklist_items', 'camp_sessions', 'issue_viewers',
+  'issue_checklist_items', 'camp_sessions', 'issue_viewers', 'camp_work_defaults',
 ];
 
 async function loadInner(campId: string): Promise<CampgroundData> {
   const q = (t: string) => supabase.from(t).select('*').eq('camp_id', campId);
-  const [ven, rout, sched, tmpl, items, comments, sessions, viewers] = await Promise.all([
+  const [ven, rout, sched, tmpl, items, comments, sessions, viewers, defaults] = await Promise.all([
     q('service_vendors').order('name'),
     q('work_routing'),
     q('work_schedules').order('title'),
@@ -163,13 +165,18 @@ async function loadInner(campId: string): Promise<CampgroundData> {
     q('issue_comments').is('deleted_at', null).order('created_at'),
     q('issue_viewers'),
     q('camp_sessions').order('start_date'),
+    q('camp_work_defaults'),
   ]);
-  assertLoaded('campground', ven, rout, sched, tmpl, items, comments, sessions, viewers);
+  assertLoaded('campground', ven, rout, sched, tmpl, items, comments, sessions, viewers, defaults);
   return {
     vendors: (ven.data ?? []).map((r) => rowToVendor(r as Row)),
     routing: (rout.data ?? []).map((r) => rowToRouting(r as Row)),
     schedules: (sched.data ?? []).map((r) => rowToSchedule(r as Row)),
     templates: (tmpl.data ?? []).map((r) => rowToTemplate(r as Row)),
+    workDefaults: (defaults.data ?? []).map((r) => ({
+      purpose: (r as Row).purpose as CampWorkDefault['purpose'],
+      templateId: ((r as Row).template_id as string) ?? null,
+    })),
     checklistItems: (items.data ?? []).map((r) => rowToChecklistItem(r as Row)),
     comments: (comments.data ?? []).map((r) => rowToComment(r as Row)),
     viewers: (viewers.data ?? []).map((r) => ({
@@ -339,6 +346,21 @@ const templateRow = (t: WorkChecklistTemplate): Row => ({
 export const dbAddTemplate = (t: WorkChecklistTemplate) => ins('work_checklist_templates', { id: t.id, camp_id: CID(), ...templateRow(t) });
 export const dbUpdateTemplate = (t: WorkChecklistTemplate) => upd('work_checklist_templates', t.id, templateRow(t));
 export const dbDeleteTemplate = (id: string) => del('work_checklist_templates', id);
+
+/**
+ * Say which checklist an automatic work order starts from — or that none does.
+ *
+ * Upsert rather than insert: a camp changes its mind, and the row is keyed on (camp, purpose)
+ * precisely so there is one answer per job rather than a history of them.
+ */
+export async function dbSetWorkDefault(
+  purpose: CampWorkDefault['purpose'], templateId: string | null,
+): Promise<void> {
+  const { error } = await supabase.from('camp_work_defaults')
+    .upsert({ camp_id: CID(), purpose, template_id: templateId, updated_at: new Date().toISOString() },
+            { onConflict: 'camp_id,purpose' });
+  if (error) campError('set work default', error.message);
+}
 
 export async function dbApplyChecklist(issueId: string, templateId: string): Promise<number> {
   const { data, error } = await supabase.rpc('apply_checklist_template',

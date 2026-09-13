@@ -2252,6 +2252,21 @@ export interface WorkChecklistTemplate {
 }
 
 /** One checkable step on a work order. Rows, not jsonb, because each is done by a named person. */
+/**
+ * Which of the camp's own checklists each automatic work order starts from.
+ *
+ * These used to be matched BY NAME inside database functions — 'Program space reset' for a
+ * meeting space, 'Cabin turnover' for a departure — so steps appeared on work orders the camp
+ * had never chosen, and renaming its own checklist silently switched the automation off. The
+ * camp picks now, and "none" is a legitimate answer meaning no steps are added.
+ */
+export type WorkDefaultPurpose = 'space_setup' | 'space_reset' | 'room_turnover';
+
+export interface CampWorkDefault {
+  purpose: WorkDefaultPurpose;
+  templateId: string | null;
+}
+
 export interface IssueChecklistItem {
   id: string;
   campId: string;

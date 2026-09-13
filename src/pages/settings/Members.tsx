@@ -169,11 +169,11 @@ export function Members() {
                   <p className="text-[11px] text-ink-faint">{DEPT_LABELS[m.department] ?? m.department}</p>
                 )}
               </div>
-              {/* Who hears about a new enquiry. Per person, because it is usually one or two of
+              {/* Who hears about a new inquiry. Per person, because it is usually one or two of
                   them and a form that notifies everybody gets muted by everybody. */}
               <label
                 className="flex items-center gap-1.5 cursor-pointer text-[11.5px] text-ink-soft"
-                title="Email this person when a new enquiry arrives through the public link"
+                title="Email this person when a new inquiry arrives through the public link"
               >
                 <input
                   type="checkbox"
@@ -187,7 +187,7 @@ export function Members() {
                   }}
                   className="accent-forest"
                 />
-                Enquiries
+                Inquiries
               </label>
               <select
                 value={m.role}

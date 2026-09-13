@@ -48,7 +48,7 @@ const REMINDER_TYPES: ReminderType[] = [
   },
   {
     value: 'proposal',
-    label: 'Proposal awaiting an answer',
+    label: 'Agreement awaiting a signature',
     message: (r) =>
       `Hi ${r?.coordinatorName ?? 'there'},\n\nJust following up on the quote we sent for ${r?.groupName ?? 'your group'}${r ? ` (${fmtRange(r.arrivalDate, r.departureDate)})` : ''}. It is in your guest portal whenever you are ready, and you can accept it there. Happy to talk through any of it.\n\nThank you!`,
   },

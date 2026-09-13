@@ -29,9 +29,18 @@ export function RetreatCostsTab() {
   });
 
   const yearRetreats = useMemo(
-    // A costs view is per-year, so an enquiry with no dates belongs to no year yet.
-    () => retreats.filter((r) => r.arrivalDate?.slice(0, 4) === year).sort(byArrival),
-    [retreats, year],
+    // A costs view is per-year, so an inquiry with no dates belongs to no year yet.
+    //
+    // Settled groups sink. This tab is opened to find out who still owes; a group that has paid
+    // in full is a receipt, and sorting purely by arrival buries the one card needing a chase
+    // under a dozen that do not.
+    () => retreats
+      .filter((r) => r.arrivalDate?.slice(0, 4) === year)
+      .sort((a, b) => {
+        const owes = (r: Retreat) => (financialsFor(r.id).outstanding > 0 ? 0 : 1);
+        return owes(a) - owes(b) || byArrival(a, b);
+      }),
+    [retreats, year, financialsFor],
   );
 
   if (retreats.length === 0) {

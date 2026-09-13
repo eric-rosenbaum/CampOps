@@ -8,7 +8,7 @@ import { supabasePublic } from './portalShared';
  *
  * Everything else in Retreats assumes a retreat already exists — the guest portal is reached by a
  * token, and a token only exists once somebody at the camp has typed the booking in. So an
- * enquiry had to arrive as an email or a phone call and be transcribed, and the AI intake that
+ * inquiry had to arrive as an email or a phone call and be transcribed, and the AI intake that
  * helps with that is still a person doing data entry from a message.
  *
  * This is the page that was missing. It writes an `inquiry`: the same row every other lead is,
@@ -31,7 +31,7 @@ const field =
   'focus:border-sage focus:outline-none';
 const label = 'block text-[13px] font-semibold text-forest mb-1.5';
 
-export function EnquiryForm() {
+export function InquiryForm() {
   const { token = '' } = useParams();
   const [camp, setCamp] = useState<{ camp_name: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,7 +54,7 @@ export function EnquiryForm() {
   useEffect(() => {
     let live = true;
     (async () => {
-      const { data } = await supabasePublic.rpc('camp_enquiry_page', { p_token: token });
+      const { data } = await supabasePublic.rpc('camp_inquiry_page', { p_token: token });
       if (!live) return;
       setCamp((data as { camp_name: string } | null) ?? null);
       setLoading(false);
@@ -66,7 +66,7 @@ export function EnquiryForm() {
     e.preventDefault();
     setSending(true);
     setError(null);
-    const { error: err } = await supabasePublic.rpc('submit_camp_enquiry', {
+    const { error: err } = await supabasePublic.rpc('submit_camp_inquiry', {
       p_token: token,
       p_group_name: groupName,
       p_contact_name: contactName,
@@ -112,7 +112,7 @@ export function EnquiryForm() {
           <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-sage" />
           <h1 className="font-display text-[22px] font-bold text-forest">Thank you — that&rsquo;s with us</h1>
           <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">
-            {camp.camp_name} has your enquiry and will be in touch. Nothing is booked yet, and
+            {camp.camp_name} has your inquiry and will be in touch. Nothing is booked yet, and
             nothing is owed.
           </p>
         </div>
@@ -123,7 +123,7 @@ export function EnquiryForm() {
   return (
     <div className="min-h-screen w-full bg-cream px-5 py-10">
       <div className="mx-auto max-w-xl">
-        <h1 className="font-display text-[26px] font-bold text-forest">Enquire at {camp.camp_name}</h1>
+        <h1 className="font-display text-[26px] font-bold text-forest">Inquire at {camp.camp_name}</h1>
         <p className="mt-1.5 text-[15px] leading-relaxed text-ink-soft">
           Enter all the information you know about your retreat. Missing or undecided information
           is fine!
@@ -199,7 +199,7 @@ export function EnquiryForm() {
           <button type="submit" disabled={sending}
                   className="w-full rounded-xl bg-forest px-4 py-3 text-[15px] font-bold text-paper
                              transition-colors hover:bg-forest-mid disabled:opacity-50">
-            {sending ? 'Sending…' : 'Send enquiry'}
+            {sending ? 'Sending…' : 'Send inquiry'}
           </button>
         </form>
       </div>

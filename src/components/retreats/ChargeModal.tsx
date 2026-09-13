@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal } from '@/components/shared/Modal';
+import { GuardedSave, Req } from '@/components/shared/RequiredFields';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
@@ -29,8 +30,8 @@ export function ChargeModal({ retreatId, chargeId }: { retreatId: string; charge
   const computed = Number.isFinite(q) && Number.isFinite(rate) ? q * rate : 0;
   const effectiveAmount = amountTouched && amount.trim() !== '' ? Number(amount) : computed;
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!canManage) return;
     if (!description.trim() || !Number.isFinite(q) || !Number.isFinite(rate)) return;
     const amt = Number.isFinite(effectiveAmount) ? effectiveAmount : 0;
@@ -67,6 +68,11 @@ export function ChargeModal({ retreatId, chargeId }: { retreatId: string; charge
     }
   }
 
+  // Named rather than boolean: the save button says what it is waiting for.
+  const missing = [
+    !description.trim() ? 'a description' : null,
+  ].filter(Boolean) as string[];
+
   return (
     <Modal title={existing ? 'Edit charge' : 'Add charge'} onClose={closeModal} width="460px">
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -75,7 +81,7 @@ export function ChargeModal({ retreatId, chargeId }: { retreatId: string; charge
           but you can override it directly.
         </p>
         <div>
-          <label className={labelClass}>Description</label>
+          <label className={labelClass}>Description<Req /></label>
           <input autoFocus value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} placeholder="e.g. Lodging, 3 nights per person" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -104,9 +110,12 @@ export function ChargeModal({ retreatId, chargeId }: { retreatId: string; charge
           {!amountTouched && Number.isFinite(computed) && <span className="text-ink-faint"> · auto from {q || 0} × {money(rate || 0)}</span>}
         </p>
         <div className="flex gap-2 pt-1">
-          <Button type="submit" className="flex-1 justify-center" disabled={!canManage || !description.trim()}>
-            {existing ? 'Save changes' : 'Add charge'}
-          </Button>
+          <GuardedSave
+            className="flex-1 items-stretch"
+            missing={canManage ? missing : ['permission to change this']}
+            onSave={() => handleSubmit()}
+            label={existing ? 'Save changes' : 'Add charge'}
+          />
           {existing && canManage && (
             <Button type="button" variant="danger" onClick={handleDelete}>Delete</Button>
           )}

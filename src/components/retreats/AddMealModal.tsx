@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal } from '@/components/shared/Modal';
+import { GuardedSave, Req } from '@/components/shared/RequiredFields';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
@@ -46,8 +47,8 @@ export function AddMealModal({
     setAllergens((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]));
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!canManage || !day) return;
     const now = new Date().toISOString();
     const shared = {
@@ -75,12 +76,17 @@ export function AddMealModal({
     }
   }
 
+  // Named rather than boolean: the save button says what it is waiting for.
+  const missing = [
+    !day ? 'a day' : null,
+  ].filter(Boolean) as string[];
+
   return (
     <Modal title={existing ? 'Edit meal' : 'Add meal'} onClose={closeModal} width="520px">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className={labelClass}>Day</label>
+            <label className={labelClass}>Day<Req /></label>
             <select value={day} onChange={(e) => setDay(e.target.value)} className={inputClass}>
               {days.length === 0 && <option value="">No dates</option>}
               {days.map((d) => (
@@ -140,9 +146,12 @@ export function AddMealModal({
         </div>
 
         <div className="flex gap-2 pt-1">
-          <Button type="submit" className="flex-1 justify-center" disabled={!canManage || !day}>
-            {existing ? 'Save meal' : 'Add meal'}
-          </Button>
+          <GuardedSave
+            className="flex-1 items-stretch"
+            missing={canManage ? missing : ['permission to change this']}
+            onSave={() => handleSubmit()}
+            label={existing ? 'Save meal' : 'Add meal'}
+          />
           {existing && canManage && (
             <Button type="button" variant="ghost" className="text-red hover:bg-red-bg" onClick={handleDelete}>Delete</Button>
           )}

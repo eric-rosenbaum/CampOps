@@ -46,7 +46,7 @@ export function fmtDateFull(d: string | null): string {
   return new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 /**
- * A date range, tolerating an enquiry that does not have one yet.
+ * A date range, tolerating an inquiry that does not have one yet.
  *
  * A lead says "some weekend in October" before it says October 10th, so `arrivalDate` and
  * `departureDate` are null until it becomes a real booking (a check constraint enforces that
@@ -85,7 +85,7 @@ export function nights(a: string | null, b: string | null): number {
 }
 
 /**
- * Sort by arrival, with undated enquiries last.
+ * Sort by arrival, with undated inquiries last.
  *
  * They are not "earliest"; they are unscheduled, and putting them at the top of a season view
  * would bury the groups actually arriving.

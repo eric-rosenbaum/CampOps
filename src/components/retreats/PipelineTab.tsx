@@ -1,4 +1,4 @@
-// The rental pipeline: a kanban of enquiries with next-actions and nothing else.
+// The rental pipeline: a kanban of inquiries with next-actions and nothing else.
 //
 // A camp hosts fifteen to forty groups a year. That is not a CRM problem, so this is not a CRM:
 // six stages, a follow-up strip, and two numbers that tell the director whether the rental side
@@ -29,8 +29,7 @@ const MONTH_LABELS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'
 /** Stage column tints. Won is the only one that gets a colour — it is the only one that pays. */
 const STAGE_TINT: Record<LeadStage, string> = {
   new: 'bg-cream-dark/40',
-  qualifying: 'bg-cream-dark/40',
-  proposal: 'bg-blue-bg/50',
+  agreement: 'bg-blue-bg/50',
   contract_out: 'bg-amber-bg/50',
   won: 'bg-green-muted-bg/60',
   lost: 'bg-cream-dark/30',
@@ -72,7 +71,7 @@ export function PipelineTab() {
 
   const byStage = useMemo(() => {
     const out: Record<LeadStage, Retreat[]> = {
-      new: [], qualifying: [], proposal: [], contract_out: [], won: [], lost: [],
+      new: [], agreement: [], contract_out: [], won: [], lost: [],
     };
     for (const r of retreats) out[r.leadStage]?.push(r);
     // Inside a column, whatever is due soonest is what you should be doing. Leads with no
@@ -130,7 +129,7 @@ export function PipelineTab() {
     const won = inYear.filter((r) => r.leadStage === 'won').length;
     const lost = inYear.filter((r) => r.leadStage === 'lost').length;
     const open = inYear.length - won - lost;
-    // Won over DECIDED enquiries. Dividing by every enquiry ever received would make a camp
+    // Won over DECIDED inquiries. Dividing by every inquiry ever received would make a camp
     // with a healthy full pipeline look like it is failing, which is the opposite of true.
     const decided = won + lost;
     return { won, lost, open, decided, pct: decided ? Math.round((won / decided) * 100) : null };
@@ -175,7 +174,7 @@ export function PipelineTab() {
           </div>
           {canManage && (
             <Button onClick={() => setIntakeOpen(true)}>
-              <Plus className="w-4 h-4" /> New enquiry
+              <Plus className="w-4 h-4" /> New inquiry
             </Button>
           )}
         </div>
@@ -192,11 +191,11 @@ export function PipelineTab() {
             : `Nothing booked in ${year - 1} to compare against`}
         />
         <StatCard
-          label="Enquiry → booked"
+          label="Inquiry → booked"
           value={conversion.pct == null ? '—' : `${conversion.pct}%`}
           hint={conversion.decided
             ? `${conversion.won} booked, ${conversion.lost} lost · ${conversion.open} still open`
-            : `${conversion.open} enquiries still open, none decided yet`}
+            : `${conversion.open} inquiries still open, none decided yet`}
         />
       </div>
 
@@ -253,7 +252,7 @@ export function PipelineTab() {
         {undated.count > 0 && (
           <p className="text-[11.5px] text-ink-soft mt-3 pt-3 border-t border-border">
             Plus <strong className="text-ink">{undated.count}</strong> open{' '}
-            {undated.count === 1 ? 'enquiry' : 'enquiries'} worth{' '}
+            {undated.count === 1 ? 'inquiry' : 'inquiries'} worth{' '}
             <strong className="text-ink tabular-nums">{money(undated.value)}</strong> with no dates yet —
             they have no month to sit in.
           </p>

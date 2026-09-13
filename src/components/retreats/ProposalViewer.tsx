@@ -32,7 +32,7 @@ export function ProposalViewer({ proposal, retreat, campName, portalUrl, onPrint
   const html = proposalEmailHtml(proposal, retreat, campName, portalUrl);
 
   return (
-    <Modal title={`Proposal v${proposal.version}`} onClose={onClose} width="640px">
+    <Modal title={`Agreement v${proposal.version}`} onClose={onClose} width="640px">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12.5px] text-ink-soft">
           <span className="text-[15px] font-semibold text-ink tabular-nums">{money(proposal.total)}</span>
@@ -54,7 +54,7 @@ export function ProposalViewer({ proposal, retreat, campName, portalUrl, onPrint
         {/* An iframe, so the email's own styles cannot leak into the app or inherit from it —
             this is the group's inbox, not a CampCommand screen. */}
         <iframe
-          title={`Proposal v${proposal.version} as sent`}
+          title={`Agreement v${proposal.version} as sent`}
           srcDoc={`<body style="margin:0;padding:20px;background:#fff">${html}</body>`}
           sandbox=""
           className="w-full h-[420px] border border-border rounded-xl bg-white"

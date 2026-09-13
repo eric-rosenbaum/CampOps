@@ -80,7 +80,7 @@ export interface CampMember {
   staffGroupId: string | null;
   displayName: string | null;
   isActive: boolean;
-  /** Emailed when a new enquiry arrives through the camp's public link. */
+  /** Emailed when a new inquiry arrives through the camp's public link. */
   notifyRetreats: boolean;
 }
 
@@ -104,8 +104,8 @@ export interface Camp {
   /** Default payment/banking instructions prefilled into retreat invoice notes. */
   retreatPaymentNote: string | null;
   /** Storage path of the agreement sent to every group by default; null when the camp keeps none. */
-  /** Public enquiry link slug, or null when the camp is not taking enquiries through the platform. */
-  enquiryToken: string | null;
+  /** Public inquiry link slug, or null when the camp is not taking inquiries through the platform. */
+  inquiryToken: string | null;
   /**
    * The camp's standing retreat agreement, written once with {{tokens}} for the parts that vary
    * by group. This is the primary path: a text template can be filled in per booking, where a
@@ -156,7 +156,7 @@ function rowToCamp(c: Record<string, unknown>): Camp {
     locations: (c.locations as string[]) ?? [],
     dietaryDefaults: (c.dietary_defaults as Record<string, boolean>) ?? {},
     retreatPaymentNote: (c.retreat_payment_note as string) ?? null,
-    enquiryToken: (c.enquiry_token as string) ?? null,
+    inquiryToken: (c.inquiry_token as string) ?? null,
     agreementTemplateBody: (c.agreement_template_body as string) ?? null,
     agreementTemplatePath: (c.agreement_template_path as string) ?? null,
     agreementTemplateName: (c.agreement_template_name as string) ?? null,
@@ -242,7 +242,7 @@ interface CampState {
   setAgreementScheduleEnabled: (campId: string, on: boolean) => Promise<void>;
   setCampAgreement: (campId: string, path: string | null, name: string | null) => Promise<void>;
   setAgreementTemplateBody: (campId: string, body: string | null) => Promise<void>;
-  setEnquiryToken: (campId: string, on: boolean) => Promise<void>;
+  setInquiryToken: (campId: string, on: boolean) => Promise<void>;
   /** Write any part of the camp's rate card / proposal defaults. */
   setRentalDefaults: (campId: string, patch: Partial<Pick<Camp,
     'defaultPricingModel' | 'defaultRatePerPersonNight' | 'defaultFlatRate' | 'defaultDepositAmount'
@@ -291,7 +291,7 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     const { data, error } = await supabase
       .from('camp_members')
-      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, address_line1, city, state, modules, locations, dietary_defaults, retreat_payment_note, enquiry_token, agreement_template_body, agreement_template_path, agreement_template_name, agreement_schedule_enabled, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
+      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, address_line1, city, state, modules, locations, dietary_defaults, retreat_payment_note, inquiry_token, agreement_template_body, agreement_template_path, agreement_template_name, agreement_schedule_enabled, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
       .eq('user_id', user.id)
       .eq('is_active', true);
 
@@ -487,8 +487,8 @@ export const useCampStore = create<CampState>((set, get) => ({
   },
 
   /** Record (or clear) the camp's stored agreement, once its file is known to be readable. */
-  /** Turn the public enquiry link on (a slug from the camp's own name) or off. */
-  setEnquiryToken: async (campId, on) => {
+  /** Turn the public inquiry link on (a slug from the camp's own name) or off. */
+  setInquiryToken: async (campId, on) => {
     const current = get().currentCamp;
     let token: string | null = null;
     if (on) {
@@ -496,9 +496,9 @@ export const useCampStore = create<CampState>((set, get) => ({
       // A short random tail, so the link cannot be guessed from the camp's name alone.
       token = `${base}-${Math.random().toString(36).slice(2, 8)}`;
     }
-    const { error } = await supabase.from('camps').update({ enquiry_token: token }).eq('id', campId);
+    const { error } = await supabase.from('camps').update({ inquiry_token: token }).eq('id', campId);
     if (error) throw new Error(error.message);
-    if (current && current.id === campId) set({ currentCamp: { ...current, enquiryToken: token } });
+    if (current && current.id === campId) set({ currentCamp: { ...current, inquiryToken: token } });
   },
 
   /** Save the camp's agreement wording. One template, reused for every group. */
@@ -595,7 +595,7 @@ export const useCampStore = create<CampState>((set, get) => ({
     set((s) => ({ members: s.members.filter((m) => m.id !== memberId) }));
   },
 
-  /** Turn a person's new-enquiry emails on or off. Nobody is opted in without being shown. */
+  /** Turn a person's new-inquiry emails on or off. Nobody is opted in without being shown. */
   setMemberNotifyRetreats: async (memberId, on) => {
     set((s2) => ({ members: s2.members.map((m) => (m.id === memberId ? { ...m, notifyRetreats: on } : m)) }));
     const { error } = await supabase.from('camp_members').update({ notify_retreats: on }).eq('id', memberId);

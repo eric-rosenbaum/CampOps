@@ -41,7 +41,7 @@ export function rowToRetreat(r: Row): Retreat {
     housingSubmittedAt: s(r.housing_submitted_at), housingSubmittedBy: s(r.housing_submitted_by),
     dietaryFlags: (r.dietary_flags as Record<string, number>) ?? null,
     dietaryNotes: s(r.dietary_notes),
-    enquirySeenAt: s(r.enquiry_seen_at),
+    inquirySeenAt: s(r.inquiry_seen_at),
     spacesCampReadAt: s(r.spaces_camp_read_at),
     spacesGroupReadAt: s(r.spaces_group_read_at),
     dietaryNoneConfirmed: Boolean(r.dietary_none_confirmed),
@@ -425,10 +425,10 @@ export async function dbAgreementForRetreat(
   return { body, values, unfilled };
 }
 
-/** Somebody has looked at this enquiry, so the banner can stop announcing it. */
-export async function dbMarkEnquirySeen(retreatId: string) {
-  const { error } = await supabase.rpc('mark_enquiry_seen', { p_retreat_id: retreatId });
-  if (error) campError('mark enquiry seen', error.message);
+/** Somebody has looked at this inquiry, so the banner can stop announcing it. */
+export async function dbMarkInquirySeen(retreatId: string) {
+  const { error } = await supabase.rpc('mark_inquiry_seen', { p_retreat_id: retreatId });
+  if (error) campError('mark inquiry seen', error.message);
 }
 
 /**

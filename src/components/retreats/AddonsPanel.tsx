@@ -7,6 +7,7 @@
 import { useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, Eye, EyeOff, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
+import { GuardedSave, Req } from '@/components/shared/RequiredFields';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { AddonUnit, RetreatAddon, RetreatCharge } from '@/lib/types';
@@ -199,8 +200,8 @@ function AddonForm({ existing, nextSort, onCancel, onSave }: {
   const [rate, setRate] = useState(existing ? String(existing.rate) : '');
   const [guestSelectable, setGuestSelectable] = useState(existing?.guestSelectable ?? true);
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
+  function submit(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!name.trim()) return;
     const ts = now();
     onSave({
@@ -218,11 +219,16 @@ function AddonForm({ existing, nextSort, onCancel, onSave }: {
     });
   }
 
+  // Named rather than boolean: the save button says what it is waiting for.
+  const missing = [
+    !name.trim() ? 'a name' : null,
+  ].filter(Boolean) as string[];
+
   return (
     <form onSubmit={submit} className="px-4 py-4 bg-cream-dark/40 border-b border-border space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className={labelClass}>Name</label>
+          <label className={labelClass}>Name<Req /></label>
           <input
             value={name} onChange={(e) => setName(e.target.value)} className={inputClass}
             placeholder="e.g. Linen set" autoFocus
@@ -261,7 +267,12 @@ function AddonForm({ existing, nextSort, onCancel, onSave }: {
       </label>
       <div className="flex justify-end gap-2">
         <Button size="sm" variant="ghost" type="button" onClick={onCancel}>Cancel</Button>
-        <Button size="sm" type="submit" disabled={!name.trim()}>{existing ? 'Save' : 'Add add-on'}</Button>
+        <GuardedSave
+          size="sm"
+          missing={missing}
+          onSave={() => submit()}
+          label={existing ? 'Save' : 'Add add-on'}
+        />
       </div>
     </form>
   );

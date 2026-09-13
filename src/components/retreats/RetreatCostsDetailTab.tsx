@@ -25,7 +25,15 @@ export function RetreatCostsDetailTab() {
 
   const fin = financialsFor(r.id);
   const payments = paymentsFor(r.id).slice().sort((a, b) => b.paidOn.localeCompare(a.paidOn));
-  const invoices = invoicesFor(r.id).slice().sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
+  /**
+   * Settled invoices sink. What a camp opens this tab for is what is still owed; a paid invoice
+   * is a receipt, and a list that leads with receipts buries the one thing needing a chase.
+   * Voids sink with them -- they are not owed either.
+   */
+  const invoices = invoicesFor(r.id).slice().sort((a, b) => {
+    const settled = (i: typeof a) => (i.status === 'paid' || i.status === 'void' ? 1 : 0);
+    return settled(a) - settled(b) || b.issuedAt.localeCompare(a.issuedAt);
+  });
   const charges = chargesFor(r.id);
   const costs = costsFor(r.id);
 

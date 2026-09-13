@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Trash2, Pencil } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
-import { Button } from '@/components/shared/Button';
+import { GuardedSave, Req } from '@/components/shared/RequiredFields';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { RetreatPayment, RetreatPaymentKind } from '@/lib/types';
@@ -40,8 +40,8 @@ export function PaymentModal({ retreatId, defaultKind }: { retreatId: string; de
     setMethod(p.method ?? ''); setKind(p.kind); setNote(p.note ?? '');
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!canManage) return;
     const amt = Number(amount);
     if (!paidOn || !Number.isFinite(amt) || amt <= 0) return;
@@ -58,6 +58,11 @@ export function PaymentModal({ retreatId, defaultKind }: { retreatId: string; de
     setAmount(''); setNote('');
   }
 
+  // Named rather than boolean: the save button says what it is waiting for.
+  const missing = [
+    !amount ? 'an amount' : null,
+  ].filter(Boolean) as string[];
+
   return (
     <Modal title="Payments" onClose={closeModal} width="500px">
       <div className="space-y-5">
@@ -73,7 +78,7 @@ export function PaymentModal({ retreatId, defaultKind }: { retreatId: string; de
                 <input type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} className={inputClass} />
               </div>
               <div>
-                <label className={labelClass}>Amount ($)</label>
+                <label className={labelClass}>Amount ($)<Req /></label>
                 <input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} placeholder="0.00" />
               </div>
             </div>
@@ -95,7 +100,12 @@ export function PaymentModal({ retreatId, defaultKind }: { retreatId: string; de
               <label className={labelClass}>Note</label>
               <input value={note} onChange={(e) => setNote(e.target.value)} className={inputClass} placeholder="Optional" />
             </div>
-            <Button type="submit" className="justify-center" disabled={!amount}>{editingId ? 'Save changes' : '+ Record payment'}</Button>
+            <GuardedSave
+              className="items-stretch"
+              missing={missing}
+              onSave={() => handleSubmit()}
+              label={editingId ? 'Save changes' : '+ Record payment'}
+            />
           </form>
         )}
 

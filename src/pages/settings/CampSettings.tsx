@@ -1130,16 +1130,16 @@ function RentalsTab() {
   const [scheduleOn, setScheduleOn] = useState(Boolean(currentCamp?.agreementScheduleEnabled));
   const setAgreementScheduleEnabled = useCampStore((st) => st.setAgreementScheduleEnabled);
 
-  // ── The public enquiry link ──
-  const setEnquiryToken = useCampStore((st) => st.setEnquiryToken);
-  const [enquiryToken, setEnquiryTokenLocal] = useState(currentCamp?.enquiryToken ?? null);
+  // ── The public inquiry link ──
+  const setInquiryToken = useCampStore((st) => st.setInquiryToken);
+  const [inquiryToken, setInquiryTokenLocal] = useState(currentCamp?.inquiryToken ?? null);
   const [copiedLink, setCopiedLink] = useState(false);
-  const enquiryUrl = enquiryToken ? `${window.location.origin}/enquire/${enquiryToken}` : '';
+  const inquiryUrl = inquiryToken ? `${window.location.origin}/inquire/${inquiryToken}` : '';
 
-  async function toggleEnquiry(on: boolean) {
+  async function toggleInquiry(on: boolean) {
     if (!currentCamp) return;
-    await setEnquiryToken(currentCamp.id, on);
-    setEnquiryTokenLocal(useCampStore.getState().currentCamp?.enquiryToken ?? null);
+    await setInquiryToken(currentCamp.id, on);
+    setInquiryTokenLocal(useCampStore.getState().currentCamp?.inquiryToken ?? null);
   }
 
   const [days, setDays] = useState(
@@ -1256,24 +1256,24 @@ function RentalsTab() {
 
       {/* ── The front door ──
           Every other way into Retreats assumes a booking already exists. This is the link a
-          group uses before there is one: it lands as an enquiry in the pipeline with its fields
+          group uses before there is one: it lands as an inquiry in the pipeline with its fields
           filled in, instead of as an email somebody has to retype. */}
       <div className="rounded-card border border-border bg-white p-5">
         <div>
-          <p className={label}>Public enquiry link</p>
-          {enquiryToken ? (
+          <p className={label}>Public inquiry link</p>
+          {inquiryToken ? (
             <div className="mt-1.5 space-y-2">
               <div className="flex flex-wrap items-center gap-2 rounded-card border border-border bg-cream px-3.5 py-2.5">
-                <code className="min-w-0 flex-1 truncate text-[12.5px] text-ink">{enquiryUrl}</code>
+                <code className="min-w-0 flex-1 truncate text-[12.5px] text-ink">{inquiryUrl}</code>
                 <button
-                  onClick={() => { void navigator.clipboard.writeText(enquiryUrl); setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000); }}
+                  onClick={() => { void navigator.clipboard.writeText(inquiryUrl); setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000); }}
                   className="text-[12.5px] font-semibold text-forest hover:text-forest-mid"
                 >
                   {copiedLink ? 'Copied' : 'Copy'}
                 </button>
                 {editable && (
                   <button
-                    onClick={() => { if (confirm('Turn the enquiry link off? Anyone using the old link will see "not recognised".')) void toggleEnquiry(false); }}
+                    onClick={() => { if (confirm('Turn the inquiry link off? Anyone using the old link will see "not recognised".')) void toggleInquiry(false); }}
                     className="text-[12.5px] font-semibold text-red hover:opacity-80"
                   >
                     Turn off
@@ -1281,13 +1281,13 @@ function RentalsTab() {
                 )}
               </div>
               <p className="text-[11px] text-ink-soft">
-                Put it on your website or in a reply. Enquiries arrive in the pipeline as new leads.
+                Put it on your website or in a reply. Inquiries arrive in the pipeline as new leads.
               </p>
             </div>
           ) : (
             <div className="mt-1.5">
-              <Button size="sm" variant="ghost" disabled={!editable} onClick={() => void toggleEnquiry(true)}>
-                Create an enquiry link
+              <Button size="sm" variant="ghost" disabled={!editable} onClick={() => void toggleInquiry(true)}>
+                Create an inquiry link
               </Button>
               <p className="mt-1 text-[11px] text-ink-soft">
                 Off by default. Nothing is public until you make one.

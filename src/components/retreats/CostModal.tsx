@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal } from '@/components/shared/Modal';
+import { GuardedSave, Req } from '@/components/shared/RequiredFields';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
@@ -21,8 +22,8 @@ export function CostModal({ retreatId, costId }: { retreatId: string; costId?: s
   const [budgeted, setBudgeted] = useState(existing ? String(existing.budgeted) : '');
   const [actual, setActual] = useState(existing?.actual != null ? String(existing.actual) : '');
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!canManage) return;
     const b = Number(budgeted);
     if (!category.trim() || !Number.isFinite(b)) return;
@@ -54,6 +55,12 @@ export function CostModal({ retreatId, costId }: { retreatId: string; costId?: s
     }
   }
 
+  // Named rather than boolean: the save button says what it is waiting for.
+  const missing = [
+    !category.trim() ? 'a category' : null,
+    budgeted === '' ? 'a budgeted amount' : null,
+  ].filter(Boolean) as string[];
+
   return (
     <Modal title={existing ? 'Edit cost line' : 'Add cost line'} onClose={closeModal} width="440px">
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -61,7 +68,7 @@ export function CostModal({ retreatId, costId }: { retreatId: string; costId?: s
           What this retreat costs the camp. Margin uses actual when set, otherwise budgeted.
         </p>
         <div>
-          <label className={labelClass}>Category</label>
+          <label className={labelClass}>Category<Req /></label>
           <input
             autoFocus
             value={category}
@@ -72,7 +79,7 @@ export function CostModal({ retreatId, costId }: { retreatId: string; costId?: s
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className={labelClass}>Budgeted ($)</label>
+            <label className={labelClass}>Budgeted ($)<Req /></label>
             <input type="number" step="1" min="0" value={budgeted} onChange={(e) => setBudgeted(e.target.value)} className={inputClass} placeholder="0" />
           </div>
           <div>
@@ -81,9 +88,12 @@ export function CostModal({ retreatId, costId }: { retreatId: string; costId?: s
           </div>
         </div>
         <div className="flex gap-2 pt-1">
-          <Button type="submit" className="flex-1 justify-center" disabled={!canManage || !category.trim() || budgeted === ''}>
-            {existing ? 'Save changes' : 'Add cost'}
-          </Button>
+          <GuardedSave
+            className="flex-1 items-stretch"
+            missing={canManage ? missing : ['permission to change this']}
+            onSave={() => handleSubmit()}
+            label={existing ? 'Save changes' : 'Add cost'}
+          />
           {existing && canManage && (
             <Button type="button" variant="danger" onClick={handleDelete}>Delete</Button>
           )}

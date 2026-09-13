@@ -39,7 +39,7 @@ import { BuildingSystems } from '@/pages/BuildingSystems';
 import { Compliance } from '@/pages/Compliance';
 import { Commissary } from '@/pages/Commissary';
 import { Retreats } from '@/pages/Retreats';
-import { EnquiryForm } from '@/pages/portal/EnquiryForm';
+import { InquiryForm } from '@/pages/portal/InquiryForm';
 import { RetreatPortal } from '@/pages/portal/RetreatPortal';
 import { StaffIntake } from '@/pages/StaffIntake';
 import { Support } from '@/pages/legal/Support';
@@ -569,7 +569,10 @@ export default function App() {
               reported a broken door can find out what happened to it. */}
           <Route path="/report/receipt/:token" element={<ReportReceipt />} />
           <Route path="/portal/:token" element={<RetreatPortal />} />
-          <Route path="/enquire/:token" element={<EnquiryForm />} />
+          <Route path="/inquire/:token" element={<InquiryForm />} />
+          {/* The spelling changed in Sep 2026 and the token values did not. A camp that put
+              /enquire/... on its website or in a signature is not going to go and edit it. */}
+          <Route path="/enquire/:token" element={<InquiryForm />} />
           {/* A camp's staff member filling in their own permit details. No login, no camp data. */}
           <Route path="/staff-intake/:token" element={<StaffIntake />} />
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { dbMarkEnquirySeen } from '@/lib/retreatsDb';
+import { dbMarkInquirySeen } from '@/lib/retreatsDb';
 import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { StatCard } from '@/components/shared/StatCard';
@@ -144,8 +144,8 @@ export function OverviewTab() {
    * looking back at what a group needed last October needs to find last October.
    */
   // Arrived through the public link and not yet opened by anyone.
-  const newEnquiries = retreats.filter(
-    (r) => r.leadSource === 'website' && !r.enquirySeenAt && !dismissed.includes(r.id),
+  const newInquiries = retreats.filter(
+    (r) => r.leadSource === 'website' && !r.inquirySeenAt && !dismissed.includes(r.id),
   );
 
   const past = seasonList
@@ -169,22 +169,22 @@ export function OverviewTab() {
 
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
-      {/* ── Enquiries nobody has looked at ──
-          An enquiry that lands in the pipeline and tells nobody is a lead the camp finds next
+      {/* ── Inquiries nobody has looked at ──
+          An inquiry that lands in the pipeline and tells nobody is a lead the camp finds next
           week. The email reaches whoever is not in the app; this reaches whoever is. It clears on
           being opened, because a notice that never goes away stops being read. */}
-      {newEnquiries.length > 0 && (
+      {newInquiries.length > 0 && (
         <div className="mb-4 rounded-card border border-sage/50 bg-sage-pale/50 px-5 py-4">
           <p className="text-[13.5px] font-semibold text-forest">
-            {newEnquiries.length === 1
-              ? 'A new enquiry came in through your website'
-              : `${newEnquiries.length} new enquiries came in through your website`}
+            {newInquiries.length === 1
+              ? 'A new inquiry came in through your website'
+              : `${newInquiries.length} new inquiries came in through your website`}
           </p>
           <div className="mt-2.5 flex flex-col gap-1.5">
-            {newEnquiries.map((r) => (
+            {newInquiries.map((r) => (
               <button
                 key={r.id}
-                onClick={() => { setDismissed((d) => [...d, r.id]); void dbMarkEnquirySeen(r.id); enterRetreat(r.id); }}
+                onClick={() => { setDismissed((d) => [...d, r.id]); void dbMarkInquirySeen(r.id); enterRetreat(r.id); }}
                 className="flex items-center justify-between gap-3 rounded-card border border-border
                            bg-white px-4 py-2.5 text-left transition-colors hover:border-sage"
               >

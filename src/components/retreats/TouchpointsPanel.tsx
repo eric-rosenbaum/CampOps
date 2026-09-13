@@ -6,6 +6,7 @@
 import { useMemo, useState } from 'react';
 import { Phone, Mail, Users, MapPin, StickyNote, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
+import { GuardedSave, Req } from '@/components/shared/RequiredFields';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { RetreatTouchpoint, TouchpointKind } from '@/lib/types';
@@ -57,8 +58,8 @@ export function TouchpointsPanel({ retreatId }: { retreatId: string }) {
     [touchpoints, retreatId],
   );
 
-  function add(e: React.FormEvent) {
-    e.preventDefault();
+  function add(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!summary.trim()) return;
     const parsed = when ? new Date(when) : new Date();
     const row: RetreatTouchpoint = {
@@ -82,6 +83,11 @@ export function TouchpointsPanel({ retreatId }: { retreatId: string }) {
     setTouchpoints(touchpoints.filter((x) => x.id !== t.id));
     void dbDeleteTouchpoint(t.id);
   }
+
+  // Named rather than boolean: the save button says what it is waiting for.
+  const missing = [
+    !summary.trim() ? 'a summary' : null,
+  ].filter(Boolean) as string[];
 
   return (
     <div className="bg-white border border-border rounded-card">
@@ -112,7 +118,7 @@ export function TouchpointsPanel({ retreatId }: { retreatId: string }) {
             ))}
           </div>
           <div>
-            <label className={labelClass}>What was said</label>
+            <label className={labelClass}>What was said<Req /></label>
             <textarea
               value={summary} onChange={(e) => setSummary(e.target.value)} rows={3} autoFocus
               className={`${inputClass} resize-y`}
@@ -128,7 +134,7 @@ export function TouchpointsPanel({ retreatId }: { retreatId: string }) {
           </div>
           <div className="flex justify-end gap-2">
             <Button size="sm" variant="ghost" type="button" onClick={() => setAdding(false)}>Cancel</Button>
-            <Button size="sm" type="submit" disabled={!summary.trim()}>Add to the log</Button>
+            <GuardedSave size="sm" missing={missing} onSave={() => add()} label="Add to the log" />
           </div>
         </form>
       )}

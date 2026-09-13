@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal } from '@/components/shared/Modal';
+import { GuardedSave, Req } from '@/components/shared/RequiredFields';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useCampStore } from '@/store/campStore';
@@ -64,7 +65,18 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
   const [status, setStatus] = useState<RetreatStatus>(existing?.status ?? 'confirmed');
   const [notes, setNotes] = useState(existing?.notes ?? '');
 
-  const valid = groupName.trim() && groupType && arrivalDate && departureDate && Number(headcount) > 0 && departureDate >= arrivalDate;
+  // Named rather than boolean, so the save button can say what it is waiting for instead of
+  // going grey and refusing to explain itself.
+  const missing = [
+    !groupName.trim() ? 'a group name' : null,
+    !groupType ? 'a group type' : null,
+    !(Number(headcount) > 0) ? 'a headcount' : null,
+    !arrivalDate ? 'an arrival date' : null,
+    !departureDate ? 'a departure date' : null,
+    arrivalDate && departureDate && departureDate < arrivalDate
+      ? 'a departure date that is not before the arrival' : null,
+  ].filter(Boolean) as string[];
+  const valid = missing.length === 0;
 
   /**
    * The deadlines the reminder emails are anchored to.
@@ -100,8 +112,8 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
     : pricingModel === 'per_cabin_night' ? 'Rate ($/cabin/night)'
     : 'Flat facility fee ($ total)';
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!valid || !canManage) return;
     // This address is where every reminder, proposal and portal code goes. A typo here is
     // silent until the day someone needs it to work.
@@ -139,7 +151,7 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
       updateRetreat(updated);
     } else {
       const r: Retreat = {
-        // A retreat created from this form is a real booking, not a lead. Enquiries come in
+        // A retreat created from this form is a real booking, not a lead. Inquiries come in
         // through the pipeline (or the intake paste) and start at 'new'.
         leadStage: 'won', leadSource: null, lostReason: null,
         nextAction: null, nextActionOn: null, ownerId: null,
@@ -173,7 +185,7 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
         dietaryFlags: null,
         dietaryNotes: null,
         dietaryNoneConfirmed: false,
-        enquirySeenAt: null, spacesCampReadAt: null, spacesGroupReadAt: null,
+        inquirySeenAt: null, spacesCampReadAt: null, spacesGroupReadAt: null,
         notes: notes.trim() || null,
         portalToken: generateId() + generateId(),
         menuPublished: false,
@@ -197,20 +209,20 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
     <Modal title={editing ? 'Edit retreat' : 'New retreat'} onClose={closeModal} width="560px">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className={labelClass}>Group name</label>
+          <label className={labelClass}>Group name<Req /></label>
           <input value={groupName} onChange={(e) => setGroupName(e.target.value)} className={inputClass} placeholder="e.g. Congregation Beth Shalom Shabbaton" autoFocus />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className={labelClass}>Group type</label>
+            <label className={labelClass}>Group type<Req /></label>
             <select value={groupType} onChange={(e) => setGroupType(e.target.value)} className={inputClass}>
               <option value="" disabled>Select…</option>
               {GROUP_TYPE_OPTIONS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>
           <div>
-            <label className={labelClass}>Headcount</label>
+            <label className={labelClass}>Headcount<Req /></label>
             <input type="number" min="1" value={headcount} onChange={(e) => setHeadcount(e.target.value)} className={inputClass} placeholder="0" />
           </div>
         </div>
@@ -222,7 +234,7 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
             and will not share a half-width column without overflowing it. */}
         <div className="space-y-3">
           <div>
-            <label className={labelClass}>Arrival</label>
+            <label className={labelClass}>Arrival<Req /></label>
             <div className="flex min-w-0 gap-2">
               <input type="date" value={arrivalDate} onChange={(e) => setArrivalDate(e.target.value)}
                      className={`${fieldClass} min-w-0 flex-1`} />
@@ -232,7 +244,7 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
             </div>
           </div>
           <div>
-            <label className={labelClass}>Departure</label>
+            <label className={labelClass}>Departure<Req /></label>
             <div className="flex min-w-0 gap-2">
               <input type="date" value={departureDate} onChange={(e) => setDepartureDate(e.target.value)}
                      className={`${fieldClass} min-w-0 flex-1`} />
@@ -316,9 +328,12 @@ export function RetreatFormModal({ retreatId }: { retreatId?: string }) {
         </div>
 
         <div className="flex gap-2 pt-1">
-          <Button type="submit" className="flex-1 justify-center" disabled={!valid || !canManage}>
-            {editing ? 'Save changes' : 'Create retreat'}
-          </Button>
+          <GuardedSave
+            className="flex-1 items-stretch"
+            missing={canManage ? missing : ['permission to change this retreat']}
+            onSave={() => handleSubmit()}
+            label={editing ? 'Save changes' : 'Create retreat'}
+          />
           {editing ? (
             <Button type="button" variant="danger" onClick={() => setConfirmingDelete(true)} disabled={!canManage}>Delete</Button>
           ) : (

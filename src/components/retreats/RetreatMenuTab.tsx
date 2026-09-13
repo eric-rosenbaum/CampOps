@@ -90,7 +90,8 @@ function Cell({ retreat, day, meal, editable }: {
       placeholder="—"
       className="w-full min-w-[9rem] resize-y rounded-btn border border-transparent bg-transparent px-2 py-1.5
                  text-[12.5px] text-ink placeholder:text-ink-faint/50
-                 hover:border-border focus:border-sage focus:bg-white focus:outline-none disabled:opacity-70"
+                 hover:border-border focus:border-sage focus:bg-white focus:outline-none
+                 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:border-transparent"
     />
   );
 }
@@ -208,7 +209,28 @@ export function RetreatMenuTab() {
         </div>
       )}
 
-      <MenuGrid retreat={retreat} editable={canManage} />
+      {/* Published means the group is reading it. Letting a camp type into a live menu means
+          a coordinator can be looking at Thursday's dinner while somebody changes it under
+          them, with no version anywhere saying which one they planned around. Unpublish, edit,
+          publish again -- three clicks that make the change deliberate. */}
+      {retreat.menuPublished && canManage && (
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-cream-dark border border-border rounded-card px-4 py-3 mb-3">
+          <p className="text-[12px] text-ink leading-relaxed">
+            <strong className="font-semibold text-forest">This menu is live.</strong>{' '}
+            {retreat.groupName} can read it in their portal, so it is locked. Unpublish to change
+            it, then publish again.
+          </p>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => updateRetreat({ ...retreat, menuPublished: false, updatedAt: new Date().toISOString() })}
+          >
+            <EyeOff className="w-3.5 h-3.5" /> Unpublish to edit
+          </Button>
+        </div>
+      )}
+
+      <MenuGrid retreat={retreat} editable={canManage && !retreat.menuPublished} />
 
       {!retreat.menuPublished && (
         <p className="text-[11px] text-ink-faint mt-3">

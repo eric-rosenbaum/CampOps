@@ -1335,12 +1335,12 @@ export interface Retreat {
   dietaryFlags: Record<string, number> | null;
   /** What the group wrote in their own words — the primary answer; the counts are secondary. */
   /**
-   * When somebody at camp acknowledged an enquiry that arrived through the public link.
+   * When somebody at camp acknowledged an inquiry that arrived through the public link.
    *
    * Null AND lead_source 'website' means nobody has looked at it yet, which is what the banner
    * counts. Always null for a retreat the camp typed in themselves -- they were looking at it.
    */
-  enquirySeenAt: string | null;
+  inquirySeenAt: string | null;
   dietaryNotes: string | null;
   /**
    * How far each side has read the meeting-spaces thread. Two marks rather than a per-message
@@ -1441,7 +1441,12 @@ export interface RetreatHousingVersion {
   createdAt: string;
 }
 
-export type RetreatDocType = 'agreement' | 'coi' | 'waiver' | 'deposit' | 'other';
+/**
+ * 'schedule' is the group's OWN plan for the week — the spreadsheet or run-sheet they built
+ * themselves. It is not something the camp asks them to sign, so it sits on the Active retreat
+ * tab beside today's schedule rather than in the paperwork list with the agreement and the COI.
+ */
+export type RetreatDocType = 'agreement' | 'coi' | 'waiver' | 'deposit' | 'schedule' | 'other';
 export type RetreatDocStatus = 'missing' | 'pending' | 'received' | 'signed' | 'approved';
 
 export interface RetreatDocument {
@@ -2442,14 +2447,21 @@ export interface SpaceRequestConflicts {
   capacitySeated: number | null;
 }
 
-export type LeadStage = 'new' | 'qualifying' | 'proposal' | 'contract_out' | 'won' | 'lost';
+/**
+ * 'qualifying' was dropped: deciding whether a lead is real is something a person does between
+ * reading an inquiry and answering it, not a column a booking sits in for a week.
+ *
+ * 'agreement' was 'proposal'. The retreat agreement IS the proposal here — one document that
+ * quotes the stay and is signed to accept it — and the pipeline was the last place calling it
+ * something else.
+ */
+export type LeadStage = 'new' | 'agreement' | 'contract_out' | 'won' | 'lost';
 
-export const LEAD_STAGES: LeadStage[] = ['new', 'qualifying', 'proposal', 'contract_out', 'won', 'lost'];
+export const LEAD_STAGES: LeadStage[] = ['new', 'agreement', 'contract_out', 'won', 'lost'];
 
 export const LEAD_STAGE_LABELS: Record<LeadStage, string> = {
-  new: 'New enquiry',
-  qualifying: 'Qualifying',
-  proposal: 'Proposal out',
+  new: 'New inquiry',
+  agreement: 'Agreement out',
   contract_out: 'Contract out',
   won: 'Booked',
   lost: 'Lost',

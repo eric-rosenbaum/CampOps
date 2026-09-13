@@ -16,6 +16,7 @@ const DOC_TYPE_LABEL: Record<RetreatDocType, string> = {
   coi: 'Certificate of insurance',
   waiver: 'Activity waiver',
   deposit: 'Deposit',
+  schedule: 'Their schedule',
   other: 'Document',
 };
 
@@ -166,7 +167,10 @@ export function DocumentsTab({ embedded = false, hideAgreement = false }: {
     );
   }
 
-  const allDocs = retreat ? docsFor(retreat.id) : [];
+  // The group's own run-sheet lives on the Active retreat tab beside today's schedule, which is
+  // where it gets read. It is not paperwork the camp is chasing, so it does not belong in a list
+  // whose job is "what is still outstanding".
+  const allDocs = retreat ? docsFor(retreat.id).filter((d) => d.docType !== 'schedule') : [];
   // When the agreement has its own section above, this list is everything else.
   const docs = hideAgreement ? allDocs.filter((d) => d.docType !== 'agreement') : allDocs;
   const coi = docs.find((d) => d.docType === 'coi');

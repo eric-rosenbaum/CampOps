@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal } from '@/components/shared/Modal';
+import { GuardedSave, Req } from '@/components/shared/RequiredFields';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
@@ -20,8 +21,8 @@ export function ScheduleItemModal({ retreatId, itemId }: { retreatId: string; it
   const [title, setTitle] = useState(existing?.title ?? '');
   const [location, setLocation] = useState(existing?.location ?? '');
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!title.trim() || !canManage) return;
     const now = new Date().toISOString();
 
@@ -58,6 +59,11 @@ export function ScheduleItemModal({ retreatId, itemId }: { retreatId: string; it
     closeModal();
   }
 
+  // Named rather than boolean: the save button says what it is waiting for.
+  const missing = [
+    !title.trim() ? 'a title' : null,
+  ].filter(Boolean) as string[];
+
   return (
     <Modal title={editing ? 'Edit schedule item' : 'Add schedule item'} onClose={closeModal} width="460px">
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -72,7 +78,7 @@ export function ScheduleItemModal({ retreatId, itemId }: { retreatId: string; it
           </div>
         </div>
         <div>
-          <label className={labelClass}>Title</label>
+          <label className={labelClass}>Title<Req /></label>
           <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} placeholder="e.g. Breakfast" autoFocus />
         </div>
         <div>
@@ -80,9 +86,12 @@ export function ScheduleItemModal({ retreatId, itemId }: { retreatId: string; it
           <input value={location} onChange={(e) => setLocation(e.target.value)} className={inputClass} placeholder="e.g. Dining hall" />
         </div>
         <div className="flex gap-2 pt-1">
-          <Button type="submit" className="flex-1 justify-center" disabled={!title.trim() || !canManage}>
-            {editing ? 'Save' : 'Add'}
-          </Button>
+          <GuardedSave
+            className="flex-1 items-stretch"
+            missing={canManage ? missing : ['permission to change this']}
+            onSave={() => handleSubmit()}
+            label={editing ? 'Save' : 'Add'}
+          />
           {editing ? (
             <Button type="button" variant="danger" onClick={handleDelete} disabled={!canManage}>Delete</Button>
           ) : (

@@ -1,4 +1,5 @@
-import { Bell } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Bell, FileText, Trash2 } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
@@ -6,7 +7,8 @@ import type { Retreat, RetreatIssue } from '@/lib/types';
 import {
   money, fmtDate, fmtRange, nights, Badge, GROUP_TYPE_LABELS, rateSummary, pricingRate, PhaseTracker, type BadgeTone, billableHeadcount
 } from './retreatUi';
-import { todayStr, fmtClock } from '@/lib/utils';
+import { todayStr, fmtClock, generateId } from '@/lib/utils';
+import { dbUploadRetreatDocument, dbSignRetreatDocument } from '@/lib/retreatsDb';
 
 function dayOf(r: Retreat): { day: number; total: number } {
   const total = Math.max(1, nights(r.arrivalDate, r.departureDate));
@@ -200,6 +202,13 @@ export function ActiveRetreatTab() {
               </span>
             </button>
           ))}
+
+          {/* The group's own plan, as they wrote it.
+              Most groups arrive with a run-sheet already built in a spreadsheet, and retyping
+              it into hour-by-hour items is work nobody does -- so the camp ends up with an
+              empty schedule and a PDF in somebody's inbox. Keep the file where the schedule is
+              read, and the typed items stay for the handful of things the CAMP needs to know. */}
+          <GroupPlan retreatId={r.id} canManage={canManage} />
         </div>
 
         {/* Housing summary */}
@@ -314,6 +323,108 @@ export function ActiveRetreatTab() {
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The group's own schedule document, uploaded and read where the schedule is read.
+ *
+ * Filed as an ordinary retreat document with docType 'schedule', so it is one thing in one
+ * place rather than a second kind of attachment — but kept OUT of the paperwork tab, because
+ * this is not something the camp is chasing a signature on.
+ */
+function GroupPlan({ retreatId, canManage }: { retreatId: string; canManage: boolean }) {
+  const docsFor = useRetreatStore((s) => s.docsFor);
+  const addDocument = useRetreatStore((s) => s.addDocument);
+  const deleteDocument = useRetreatStore((s) => s.deleteDocument);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const plans = docsFor(retreatId).filter((d) => d.docType === 'schedule');
+
+  async function upload(file: File) {
+    setBusy(true); setError(null);
+    const path = await dbUploadRetreatDocument(file, retreatId);
+    if (!path) { setBusy(false); setError('That file did not upload. Try it again.'); return; }
+    const now = new Date().toISOString();
+    addDocument({
+      id: generateId(), campId: '', retreatId, docType: 'schedule',
+      name: file.name, status: 'received', filePath: path,
+      signedBy: null, signedAt: null, dueDate: null, meta: null,
+      sortOrder: plans.length, createdAt: now, updatedAt: now,
+    });
+    setBusy(false);
+  }
+
+  async function open(path: string) {
+    const url = await dbSignRetreatDocument(path);
+    if (url) window.open(url, '_blank', 'noopener');
+    else setError('That file could not be opened. It may have been removed.');
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-cream-dark">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+          The group's own plan
+        </p>
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            className="text-[12px] font-medium text-ink-soft hover:text-forest disabled:opacity-50"
+          >
+            {busy ? 'Uploading…' : plans.length > 0 ? '+ add another' : '+ upload'}
+          </button>
+        )}
+      </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (f) void upload(f);
+        }}
+      />
+
+      {plans.length === 0 ? (
+        <p className="text-[12px] text-ink-faint italic mt-1">
+          Nothing uploaded. If the group sent a run-sheet, put it here.
+        </p>
+      ) : (
+        <ul className="mt-1 space-y-1">
+          {plans.map((d) => (
+            <li key={d.id} className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => d.filePath && void open(d.filePath)}
+                className="min-w-0 flex-1 flex items-center gap-1.5 text-left text-[12.5px] text-forest hover:text-sage"
+              >
+                <FileText className="w-3.5 h-3.5 flex-shrink-0 text-ink-faint" />
+                <span className="truncate underline decoration-border">{d.name}</span>
+              </button>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => deleteDocument(d.id)}
+                  title="Remove this file"
+                  className="p-1 text-ink-faint hover:text-red flex-shrink-0"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {error && <p className="text-[11.5px] text-red mt-1">{error}</p>}
     </div>
   );
 }

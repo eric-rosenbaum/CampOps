@@ -1,4 +1,4 @@
-// Paste the notes you typed during the call. Get a reviewed enquiry, never a silent one.
+// Paste the notes you typed during the call. Get a reviewed inquiry, never a silent one.
 //
 // The extraction NEVER creates anything. It fills a form, quotes the sentence each value came
 // from, and says out loud what the notes did not answer. Provenance is the whole trick: without
@@ -76,7 +76,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
   }
 
   /**
-   * Skip the AI and type the enquiry in.
+   * Skip the AI and type the inquiry in.
    *
    * The review form was previously unreachable without a successful read — `if (!draft)` returned
    * the paste step — so the error message's advice to "fill the form in by hand" was something
@@ -94,7 +94,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
       specialRequests: null, estimatedValue: null, leadSource: null,
       questions: [], provenance: {}, replyDraft: null,
     });
-    setNextAction('Follow up on the enquiry');
+    setNextAction('Follow up on the inquiry');
     setNextActionOn(addDays(todayStr(), 1));
   }
 
@@ -131,7 +131,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
     })));
     // The open questions ARE the follow-up. Pre-filling the next action means the lead cannot
     // land on the board without one, which is the failure this whole tab exists to prevent.
-    setNextAction(d.questions.length ? 'Reply with the open questions' : 'Follow up on the enquiry');
+    setNextAction(d.questions.length ? 'Reply with the open questions' : 'Follow up on the inquiry');
     setNextActionOn(addDays(todayStr(), 1));
   }
 
@@ -154,7 +154,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
     // Validate here rather than disabling the button. A disabled control with no message is the
     // worst of both: nothing happens, and the reason is a field the user has scrolled past.
     if (!groupName.trim()) {
-      setCreateError('Give the group a name before creating the enquiry.');
+      setCreateError('Give the group a name before creating the inquiry.');
       nameRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       nameRef.current?.focus({ preventScroll: true });
       return;
@@ -165,9 +165,9 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
     const r: Retreat = {
       id,
       campId: '',
-      groupName: groupName.trim() || 'Untitled enquiry',
+      groupName: groupName.trim() || 'Untitled inquiry',
       groupType,
-      // An enquiry legitimately has no dates. The check constraint allows null only while the
+      // An inquiry legitimately has no dates. The check constraint allows null only while the
       // status is 'inquiry', which is exactly what this is.
       arrivalDate: arrival || null,
       departureDate: departure || null,
@@ -193,7 +193,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
       dietaryFlags: null,
       dietaryNotes: null,
       dietaryNoneConfirmed: false,
-      enquirySeenAt: null, spacesCampReadAt: null, spacesGroupReadAt: null,
+      inquirySeenAt: null, spacesCampReadAt: null, spacesGroupReadAt: null,
       notes: notes.trim() || null,
       leadStage: 'new',
       leadSource: leadSource.trim() || null,
@@ -243,10 +243,10 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
   // ── Paste step ────────────────────────────────────────────────────────────
   if (!draft) {
     return (
-      <Modal title="New enquiry" onClose={onClose} width="min(620px, 94vw)">
+      <Modal title="New inquiry" onClose={onClose} width="min(620px, 94vw)">
         <p className="text-[12.5px] text-ink-soft mb-3">
           Paste your notes or the email thread and AI will fill the form in, or skip it and type
-          the enquiry yourself.
+          the inquiry yourself.
         </p>
         <textarea
           value={raw}
@@ -305,7 +305,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
 
   return (
     <Modal
-      title={fromAI ? 'Check this before it becomes an enquiry' : 'New enquiry'}
+      title={fromAI ? 'Check this before it becomes an inquiry' : 'New inquiry'}
       onClose={onClose}
       width="min(720px, 94vw)"
     >
@@ -379,7 +379,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
             value={groupName}
             onChange={(e) => { setGroupName(e.target.value); if (createError) setCreateError(null); }}
             className={`${inputClass} ${createError ? 'border-red' : ''}`}
-            placeholder="Who is the enquiry from?"
+            placeholder="Who is the inquiry from?"
           />
           {createError && <p className="mt-1 text-[12px] text-red-text">{createError}</p>}
         </Field>
@@ -514,7 +514,7 @@ export function IntakePasteModal({ onClose, onCreated }: Props) {
         </Button>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={create}>Create enquiry</Button>
+          <Button onClick={create}>Create inquiry</Button>
         </div>
       </div>
     </Modal>

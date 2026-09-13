@@ -111,8 +111,8 @@ export function TermsScheduleModal({ retreatId, groupName, onClose, onConfirmed 
                   They become a page in front of your own agreement, which {groupName} signs. Your
                   agreement itself is not changed or read — only this page is generated.
                   {fromProposal
-                    ? ' The money comes from the proposal this group accepted.'
-                    : ' There is no accepted proposal on file, so the money was worked out from the booking — check it especially.'}
+                    ? ' The money comes from the agreement this group accepted.'
+                    : ' There is no signed agreement on file, so the money was worked out from the booking — check it especially.'}
                 </p>
               </div>
             </div>

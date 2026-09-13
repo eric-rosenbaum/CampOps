@@ -172,7 +172,7 @@ export function ProposalSection({ token, onAccepted, hasAgreement, onGoToAgreeme
           // with what to do next, beats a disabled button with no explanation.
           <div className="px-5 py-4 border-t border-border bg-amber-bg">
             <p className="flex items-center gap-2 text-[14px] font-semibold text-amber-text">
-              <AlertTriangle className="w-4 h-4" /> This proposal has expired
+              <AlertTriangle className="w-4 h-4" /> This agreement has expired
             </p>
             <p className="text-[13px] text-amber-text mt-1">
               It was valid until {fmtDateFull(proposal.valid_until)}. Please ask the camp for a new

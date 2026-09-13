@@ -488,7 +488,7 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   activeRetreat: () => {
     const t = today();
     return get().retreats.find((r) => r.status === 'active')
-      // An enquiry has no dates yet, so it cannot be the retreat happening right now.
+      // An inquiry has no dates yet, so it cannot be the retreat happening right now.
       ?? get().retreats.find((r) => !!r.arrivalDate && !!r.departureDate
                                     && r.arrivalDate <= t && r.departureDate >= t)
       ?? null;

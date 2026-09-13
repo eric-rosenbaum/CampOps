@@ -14,6 +14,7 @@ import { LAYOUT_LABELS, type SpaceRequestConflicts } from '@/lib/types';
 import { fmtDateFull, inputClass, labelClass } from './retreatUi';
 import { useCampStore } from '@/store/campStore';
 import { useLocationStore } from '@/store/locationStore';
+import { useCampgroundStore } from '@/store/campgroundStore';
 import { sendEmail } from '@/lib/email';
 import { spaceDecisionHtml } from './spaceDecisionEmail';
 
@@ -44,6 +45,7 @@ export function ApproveSpaceModal({
   const portalUrl = useRetreatStore((s) => s.portalUrl);
   const currentCamp = useCampStore((s) => s.currentCamp);
   const locations = useLocationStore((s) => s.locations);
+  const templates = useCampgroundStore((s) => s.templates);
 
   const request = useMemo(
     () => spaceRequests.find((r) => r.id === requestId) ?? null,
@@ -51,6 +53,26 @@ export function ApproveSpaceModal({
   );
   const retreat = request ? retreatById(request.retreatId) : null;
   const spaceName = locations.find((l) => l.id === request?.locationId)?.name ?? 'the space';
+
+  /**
+   * The same decision approve_space_request makes, mirrored so the camp can read it first: a
+   * section per room for a space that has rooms, otherwise one flat list.
+   */
+  const crewSteps = useMemo(() => {
+    if (!request) return [];
+    const fallback = templates.find((t) => t.name === 'Program space reset' && t.isActive) ?? null;
+    const rooms = locations
+      .filter((l) => l.parentId === request.locationId && l.isActive)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+    const out = [{ room: null as string | null, checklist: fallback?.name ?? 'No checklist' }];
+    // A room the camp has not described earns one step rather than the space's whole list: a
+    // bathroom told to "reset AV and lights" teaches people to tick without reading.
+    rooms.forEach((rm) => out.push({
+      room: rm.name,
+      checklist: templates.find((t) => t.id === rm.checklistTemplateId)?.name ?? 'One step to tick',
+    }));
+    return out;
+  }, [request, locations, templates]);
 
   const [conflicts, setConflicts] = useState<SpaceRequestConflicts | null>(null);
   const [checking, setChecking] = useState(true);
@@ -219,6 +241,37 @@ export function ApproveSpaceModal({
           <ConflictPanel conflicts={conflicts} expectedCount={request.expectedCount} />
         )}
 
+        {/* ── What the crew gets ──
+            "Where did this checklist come from?" is a fair question when the answer is a
+            template matched BY NAME inside a database function. Saying it here, before the
+            button, is the only place the answer is useful. */}
+        {mode !== 'decline' && crewSteps.length > 0 && (
+          <div className="rounded-card border border-border bg-white px-3.5 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-soft mb-2">
+              The crew's checklist
+            </p>
+            <ul className="space-y-1.5">
+              {crewSteps.map((row) => (
+                <li key={row.room ?? 'one'} className="flex items-baseline justify-between gap-3 text-[12.5px]">
+                  <span className="text-forest font-medium">{row.room ?? spaceName}</span>
+                  <span className="text-ink-soft text-right">{row.checklist}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-[11px] text-ink-faint mt-2">
+              {crewSteps.length > 1
+                ? `${spaceName} has ${crewSteps.length - 1} rooms inside it, and each one gets its own line so the crew cannot finish the job having done one of them. `
+                : ''}
+              Change these in{' '}
+              <Link to="/campground?tab=routines" className="underline hover:text-forest">Campground › Checklists</Link>
+              {crewSteps.length > 1 && (
+                <>, or point a room at a different one in{' '}
+                  <Link to="/settings?tab=locations" className="underline hover:text-forest">Camp Info › Locations</Link></>
+              )}.
+            </p>
+          </div>
+        )}
+
         {/* ── The camp's own notes, beside the group's words ──
             Only on an approval. A decline creates no work order, so there is no crew to write
             notes to -- and this field sat ABOVE "Message to the group", so a decline reason typed
@@ -260,11 +313,11 @@ export function ApproveSpaceModal({
             />
             <span className="text-[12.5px] text-ink">
               Email this to {retreat?.coordinatorName || 'the group'}
-              <span className="block text-[11px] text-ink-soft mt-0.5">
-                {mode === 'decline'
-                  ? 'They planned around this room, so they should hear it rather than find it.'
-                  : 'It is already in their portal; tick this if it is worth an email too.'}
-              </span>
+              {mode !== 'decline' && (
+                <span className="block text-[11px] text-ink-soft mt-0.5">
+                  It is already in their portal; tick this if it is worth an email too.
+                </span>
+              )}
             </span>
           </label>
           {emailNote && <p className="text-[11.5px] text-ink-soft mt-1.5">{emailNote}</p>}

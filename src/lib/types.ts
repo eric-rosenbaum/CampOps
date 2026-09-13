@@ -2262,6 +2262,12 @@ export interface IssueChecklistItem {
   requiresPhoto: boolean;
   /** The checklist this step came from, or null if somebody typed it on the job. */
   templateId: string | null;
+  /**
+   * The room this step is in, on a job covering a building with more than one — the Barn is a
+   * main room and a bathroom, and a crew that ticks one list has done half of it. Null on a
+   * single-room job, where the checklist's own name is the heading.
+   */
+  section: string | null;
   isDone: boolean;
   doneBy: string | null;
   doneByName: string | null;

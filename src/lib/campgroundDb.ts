@@ -90,6 +90,7 @@ export function rowToChecklistItem(r: Row): IssueChecklistItem {
     id: r.id as string, campId: r.camp_id as string, issueId: r.issue_id as string,
     position: Number(r.position ?? 0), text: r.text as string, note: s(r.note),
     requiresPhoto: Boolean(r.requires_photo), templateId: s(r.template_id),
+    section: s(r.section),
     isDone: Boolean(r.is_done),
     doneBy: s(r.done_by), doneByName: s(r.done_by_name), doneAt: s(r.done_at),
     photoUrl: s(r.photo_url), createdAt: r.created_at as string,

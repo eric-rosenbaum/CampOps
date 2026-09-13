@@ -218,7 +218,7 @@ export const useCampgroundStore = create<CampgroundState>((set, get) => ({
     const existing = get().checklistItems.filter((i) => i.issueId === issueId);
     const item: IssueChecklistItem = {
       id: generateId(), campId: '', issueId,
-      position: existing.length, text, note: null, requiresPhoto: false, templateId: null,
+      position: existing.length, text, note: null, requiresPhoto: false, templateId: null, section: null,
       isDone: false, doneBy: null, doneByName: null, doneAt: null, photoUrl: null,
       createdAt: new Date().toISOString(),
     };

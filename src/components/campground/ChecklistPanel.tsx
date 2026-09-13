@@ -50,15 +50,19 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
   const unappliedTemplates = activeTemplates.filter((t) => !appliedIds.has(t.id));
 
   /**
-   * Steps in the order they were added, grouped by the checklist they came from. Hand-typed
-   * steps are their own unnamed group, so a job can carry a checklist and a couple of one-offs
-   * without either looking like the other.
+   * Steps in the order they were added, grouped by where they belong. A job covering a building
+   * with more than one room groups by ROOM, because that is the thing a crew can miss: the Barn
+   * is a main room and a bathroom, and one undivided list of six steps looks finished after the
+   * main room. Everything else groups by the checklist it came from, and hand-typed steps are
+   * their own unnamed group, so a job can carry a checklist and a couple of one-offs without
+   * either looking like the other.
    */
   const groups = (() => {
+    const keyOf = (i: IssueChecklistItem) => i.section ?? i.templateId ?? 'loose';
     const runs: { key: string; name: string | null; items: IssueChecklistItem[] }[] = [];
     items.forEach((item, idx) => {
-      const key = item.templateId ?? 'loose';
-      const prev = idx > 0 ? (items[idx - 1].templateId ?? 'loose') : null;
+      const key = keyOf(item);
+      const prev = idx > 0 ? keyOf(items[idx - 1]) : null;
       if (key === prev) {
         const last = runs[runs.length - 1];
         runs[runs.length - 1] = { ...last, items: [...last.items, item] };
@@ -66,9 +70,10 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
       }
       runs.push({
         key: `${key}-${idx}`,
-        name: item.templateId
-          ? templates.find((t) => t.id === item.templateId)?.name ?? 'Checklist'
-          : null,
+        name: item.section
+          ?? (item.templateId
+            ? templates.find((t) => t.id === item.templateId)?.name ?? 'Checklist'
+            : null),
         items: [item],
       });
     });

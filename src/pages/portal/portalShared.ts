@@ -137,6 +137,8 @@ export interface PortalSpace {
   name: string;
   building_id: string | null;
   building: string | null;
+  /** What the building as a whole is like, written once on the building in Camp Info. */
+  building_description?: string | null;
   bed_capacity: number | null;
   accessible: boolean | null;
   /** Held by another retreat whose stay overlaps these dates. Not pickable. */

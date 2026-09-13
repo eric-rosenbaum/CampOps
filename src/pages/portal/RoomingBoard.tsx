@@ -83,10 +83,17 @@ export function RoomingBoard({
 
   // Rooms grouped under their building, in the order the camp lists them.
   const buildings = useMemo(() => {
-    const m = new Map<string, { id: string; name: string; rooms: PortalSpace[] }>();
+    const m = new Map<string, { id: string; name: string; description: string | null; rooms: PortalSpace[] }>();
     spaces.forEach((s) => {
       const key = s.building_id ?? s.id;
-      const entry = m.get(key) ?? { id: key, name: s.building ?? s.name, rooms: [] };
+      const entry = m.get(key) ?? {
+        id: key,
+        name: s.building ?? s.name,
+        // A cabin with no parent stands as its own "building"; then its own description is
+        // already shown on the room row, so don't repeat it in the header.
+        description: s.building_id ? (s.building_description ?? null) : null,
+        rooms: [],
+      };
       entry.rooms.push(s);
       m.set(key, entry);
     });
@@ -106,6 +113,7 @@ export function RoomingBoard({
   const buildingVMs: BuildingVM[] = useMemo(() => buildings.map((b) => ({
     id: b.id,
     name: b.name,
+    description: b.description,
     rooms: b.rooms.map((room) => ({
       id: room.id,
       name: room.name,

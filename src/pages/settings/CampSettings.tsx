@@ -7,6 +7,9 @@ import { useCampStore } from '@/store/campStore';
 import { AgreementTemplateEditor } from '@/components/retreats/AgreementTemplateEditor';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useLocationStore } from '@/store/locationStore';
+import { SavedDescriptions } from '@/components/rooming/SavedDescriptions';
+import { useCabinTypes } from '@/components/rooming/useCabinTypes';
+import { useCampgroundStore } from '@/store/campgroundStore';
 import { ImplementationDropzone, ImplementationFilesTab } from '@/components/settings/ImplementationFiles';
 import { StaffRosterTab } from '@/pages/settings/StaffRegister';
 import { usePoolStore, POOL_TYPE_LABELS } from '@/store/poolStore';
@@ -448,6 +451,8 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
   // A room can only be offered to retreats if its building is. Guard the toggle + save.
   const parent = useLocationStore((s) => (loc.parentId ? s.locations.find((l) => l.id === loc.parentId) ?? null : null));
   const parentAvailable = !!parent?.retreatAvailable;
+  const [cabinTypes] = useCabinTypes();
+  const templates = useCampgroundStore((st) => st.templates);
 
   const [name, setName] = useState(loc.name);
   const [categoryId, setCategoryId] = useState(loc.categoryId ?? '');
@@ -457,6 +462,10 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
   const [isActive, setIsActive] = useState(loc.isActive);
   const [beds, setBeds] = useState(loc.bedCapacity != null ? String(loc.bedCapacity) : '');
   const [notes, setNotes] = useState(loc.notes ?? '');
+  const [cabinTypeId, setCabinTypeId] = useState(loc.cabinTypeId ?? '');
+  const [checklistTemplateId, setChecklistTemplateId] = useState(loc.checklistTemplateId ?? '');
+  const [programSpace, setProgramSpace] = useState(loc.programSpace ?? false);
+  const [seats, setSeats] = useState(loc.capacitySeated != null ? String(loc.capacitySeated) : '');
 
   function save() {
     updateLocation({
@@ -469,6 +478,11 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
       isActive,
       bedCapacity: isRoom ? (beds === '' ? null : Math.max(0, Math.round(Number(beds) || 0))) : loc.bedCapacity,
       notes: notes.trim() || null,
+      cabinTypeId: cabinTypeId || null,
+      checklistTemplateId: checklistTemplateId || null,
+      programSpace: isDorm ? false : programSpace,
+      capacitySeated: !isDorm && programSpace && seats !== ''
+        ? Math.max(0, Math.round(Number(seats) || 0)) : (isDorm ? null : loc.capacitySeated),
     });
     onClose();
   }
@@ -484,6 +498,12 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
   }
 
   const sortedCats = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
+  // Saved descriptions only make sense on a ROOM people sleep in: a camp has twenty identical
+  // cabins, not two identical villages. A building offered without rooms is one too -- that is
+  // the shape the portal treats as a bookable space.
+  const isSleeping = isRoom ? !!parent?.isDorm : (isDorm && kids.length === 0);
+  const chosenType = cabinTypes.find((t) => t.id === cabinTypeId) ?? null;
+  const activeTemplates = templates.filter((t) => t.isActive);
   const toggle = (on: boolean) => `inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1.5 rounded-pill border transition-colors ${on ? 'bg-sage text-white border-sage' : 'bg-white text-ink-soft border-border hover:border-forest/30'}`;
 
   return (
@@ -534,10 +554,90 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
           <button type="button" onClick={() => setIsActive(v => !v)} className={toggle(isActive)}>{isActive ? <><Check className="w-3 h-3" /> Active</> : 'Blocked / inactive'}</button>
         </div>
 
+        {/* This is `locations.notes`, and it is what the GUEST PORTAL shows a group choosing rooms
+            and spaces. It was labelled "Notes — optional", so camps wrote internal reminders into
+            a field their customers read. Same column, honest label. */}
+        {isSleeping && cabinTypes.length > 0 && (
+          <div>
+            <label className="block text-[12px] font-medium text-ink mb-1">Saved description</label>
+            <select value={cabinTypeId} onChange={e => setCabinTypeId(e.target.value)} className={inputCls}>
+              <option value="">None — write it below</option>
+              {cabinTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+            {chosenType && (
+              <p className="mt-1.5 text-[11.5px] text-ink-soft bg-cream border border-border rounded-btn px-2.5 py-2 whitespace-pre-line">
+                {chosenType.description || 'This saved description is empty.'}
+              </p>
+            )}
+          </div>
+        )}
+
         <div>
-          <label className="block text-[12px] font-medium text-ink mb-1">Notes</label>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={`${inputCls} resize-none`} placeholder="optional" />
+          <label className="block text-[12px] font-medium text-ink mb-1">
+            {cabinTypeId ? 'Anything true of this one only' : 'Description groups see'}
+          </label>
+          <textarea
+            value={notes} onChange={e => setNotes(e.target.value)} rows={3}
+            className={`${inputCls} resize-y`}
+            placeholder={isRoom
+              ? 'Bunk beds for eight, screened porch, closest to the bathhouse.'
+              : 'Eight cabins around a central green. Bathhouse a short walk, no heating.'}
+          />
+          <p className="mt-1 text-[11px] text-ink-soft">
+            {cabinTypeId
+              ? 'Added under the saved description in the guest portal. Leave empty if there is nothing extra.'
+              : 'Shown in the guest portal when a group picks rooms and spaces. The same for every group — write it once.'}
+          </p>
         </div>
+
+        {/* Meeting spaces had no editor anywhere except a modal buried inside a retreat, so a camp
+            could not add one, describe it, or say how many it seats. */}
+        {!isDorm && (
+          <div className="border-t border-border pt-3">
+            <button
+              type="button"
+              onClick={() => setProgramSpace(v => !v)}
+              className={toggle(programSpace)}
+            >
+              {programSpace && <Check className="w-3 h-3" />} Groups can book this to meet in
+            </button>
+            {programSpace && (
+              <div className="mt-2.5">
+                <label className="block text-[12px] font-medium text-ink mb-1">Seats</label>
+                <input
+                  type="number" min={0} value={seats}
+                  onChange={e => setSeats(e.target.value)}
+                  className={`${inputCls} w-28`} placeholder="0"
+                />
+                <p className="mt-1 text-[11px] text-ink-soft">
+                  Shown beside the name when a group chooses where to run a session.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Crew-facing, and kept apart from the description above on purpose: this used to sit in
+            the same row a camp used to write what GROUPS read, so an internal checklist choice
+            looked like part of the guest copy. */}
+        {activeTemplates.length > 0 && (
+          <div className="border-t border-border pt-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint mb-1.5">
+              Crew only — groups never see this
+            </p>
+            <label className="block text-[12px] font-medium text-ink mb-1">
+              Turnover steps for {isRoom ? 'this room' : 'this location'}
+            </label>
+            <select value={checklistTemplateId} onChange={e => setChecklistTemplateId(e.target.value)} className={inputCls}>
+              <option value="">One step, named after it</option>
+              {activeTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+            <p className="mt-1 text-[11px] text-ink-soft">
+              When a work order covers the whole building, this checklist's steps go inside it —
+              instead of one line a crew has to remember the shape of.
+            </p>
+          </div>
+        )}
 
         {!isRoom && (
           <div className="border-t border-border pt-3">
@@ -827,6 +927,12 @@ function LocationsTab() {
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
         </div>
+      </div>
+
+      {/* Descriptions a camp reuses across rooms. Here rather than inside a retreat, because
+          what a cabin is like is true of the camp, not of one group's week. */}
+      <div className={cardCls}>
+        <SavedDescriptions canManage />
       </div>
 
       {/* Category management */}

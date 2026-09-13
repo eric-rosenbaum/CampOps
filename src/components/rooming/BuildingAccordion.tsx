@@ -52,6 +52,12 @@ export interface RoomVM {
 export interface BuildingVM {
   id: string;
   name: string;
+  /**
+   * What the building is like, as the camp wrote it. Shown under the name, because the
+   * decision a group makes first is which village or lodge they want -- not which cabin
+   * inside it.
+   */
+  description?: string | null;
   rooms: RoomVM[];
 }
 
@@ -109,6 +115,9 @@ export function BuildingAccordion({
               />
               <div className="min-w-0 flex-1">
                 <p className="text-[14px] font-semibold text-forest truncate">{b.name}</p>
+                {b.description && (
+                  <p className="text-[12px] text-ink-soft mt-0.5 whitespace-pre-line">{b.description}</p>
+                )}
                 <p className="text-[11.5px] text-ink-soft mt-0.5">
                   {stats.rooms} room{stats.rooms === 1 ? '' : 's'} · {stats.beds} bed{stats.beds === 1 ? '' : 's'}
                   {stats.accessibleRooms > 0 && ` · ${stats.accessibleRooms} step-free`}

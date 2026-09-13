@@ -1,10 +1,12 @@
-// What a group is told about the cabin it is choosing.
+// A description written once and pointed at as many rooms as it fits.
 //
 // A coordinator picking between "Cabin 1" and "Cabin 7" had a name and a bed count and nothing
 // else, and the camp had no way to say that one is a heated lodge room and the other is a
-// screened summer cabin. A cabin type is that description written once and pointed at as many
-// cabins as it fits -- edit the type and every cabin using it changes, which is the reason to
-// write it once rather than paste it eight times.
+// screened summer cabin. Twenty identical cabins should not mean pasting the same paragraph
+// twenty times: edit the saved description and every room using it changes.
+//
+// Lives in Camp Info > Locations, beside the rooms it describes -- it used to sit inside a
+// modal buried in one retreat, where a camp setting up its site would never find it.
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
@@ -13,10 +15,12 @@ import { useCampStore } from '@/store/campStore';
 import { generateId } from '@/lib/utils';
 import type { CabinType } from '@/lib/types';
 import { useCabinTypes } from './useCabinTypes';
-import { inputClass, labelClass } from './retreatUi';
+
+const inputClass = 'w-full text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
+const labelClass = 'block text-[12px] font-medium text-ink mb-1';
 
 
-export function CabinTypesBlock({ canManage }: { canManage: boolean }) {
+export function SavedDescriptions({ canManage }: { canManage: boolean }) {
   const campId = useCampStore((s) => s.currentCamp?.id ?? null);
   const [types, refresh] = useCabinTypes();
   const [adding, setAdding] = useState(false);
@@ -53,15 +57,16 @@ export function CabinTypesBlock({ canManage }: { canManage: boolean }) {
   return (
     <div>
       <div className="flex items-center justify-between gap-2 mb-1">
-        <h3 className="text-[13px] font-semibold text-forest">Cabin types</h3>
+        <h3 className="text-[13px] font-semibold text-forest">Saved descriptions</h3>
         {canManage && !adding && (
           <Button size="sm" variant="ghost" onClick={() => setAdding(true)}>
-            <Plus className="w-3.5 h-3.5" /> Add a type
+            <Plus className="w-3.5 h-3.5" /> Add one
           </Button>
         )}
       </div>
       <p className="text-[12px] text-ink-soft mb-3">
-        Written once, shown to every group choosing one of these cabins.
+        Write a description once, then point as many rooms at it as it fits. Editing it here
+        changes every room using it.
       </p>
 
       {adding && (
@@ -91,7 +96,8 @@ export function CabinTypesBlock({ canManage }: { canManage: boolean }) {
 
       {types.length === 0 && !adding ? (
         <p className="text-[12.5px] text-ink-faint">
-          None yet. Without one, a group sees a cabin's name and its bed count.
+          None yet. Rooms can still be described one at a time — these are for descriptions you
+          would otherwise paste into a dozen rooms.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -114,7 +120,7 @@ export function CabinTypesBlock({ canManage }: { canManage: boolean }) {
                 {canManage && (
                   <button
                     type="button" onClick={() => void remove(t)}
-                    title="Delete this type. Cabins using it keep their own notes."
+                    title="Delete this description. Rooms using it keep their own."
                     className="p-1.5 text-ink-faint hover:text-red flex-shrink-0"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

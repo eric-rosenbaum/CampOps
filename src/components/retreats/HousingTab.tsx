@@ -314,6 +314,9 @@ export function HousingTab() {
     return {
       id: b.id,
       name: b.name,
+      // The same sentence the group reads in the portal. Shown here so the camp can see what
+      // it published without opening the guest view -- and notice when it says nothing.
+      description: rms.length > 0 ? b.notes : null,
       rooms: asRooms.map((rm) => {
         const h = rowByLocation.get(rm.id);
         return {

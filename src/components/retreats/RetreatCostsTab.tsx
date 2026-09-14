@@ -31,14 +31,23 @@ export function RetreatCostsTab() {
   const yearRetreats = useMemo(
     // A costs view is per-year, so an inquiry with no dates belongs to no year yet.
     //
-    // Settled groups sink. This tab is opened to find out who still owes; a group that has paid
-    // in full is a receipt, and sorting purely by arrival buries the one card needing a chase
-    // under a dozen that do not.
+    // Settled groups sink, and paid-in-full sinks furthest. This tab is opened to find out who
+    // still owes, so the order is: still owes, then nothing billed yet, then done.
+    //
+    // The middle tier matters. A group with no rate set owes nothing YET -- it is unfinished
+    // work, not a receipt -- and sorting it purely on "outstanding is zero" put it below the
+    // groups that had actually paid, which is the opposite of what the bottom of this list is
+    // supposed to mean.
     () => retreats
       .filter((r) => r.arrivalDate?.slice(0, 4) === year)
       .sort((a, b) => {
-        const owes = (r: Retreat) => (financialsFor(r.id).outstanding > 0 ? 0 : 1);
-        return owes(a) - owes(b) || byArrival(a, b);
+        const tier = (r: Retreat) => {
+          const fin = financialsFor(r.id);
+          if (fin.outstanding > 0) return 0;   // owes money
+          if (fin.expected <= 0) return 1;     // nothing billed yet
+          return 2;                            // paid in full
+        };
+        return tier(a) - tier(b) || byArrival(a, b);
       }),
     [retreats, year, financialsFor],
   );

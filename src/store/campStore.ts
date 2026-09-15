@@ -120,7 +120,6 @@ export interface Camp {
    * OFF by default and opted into deliberately. A camp must never find that an upgrade started
    * filling in their contracts.
    */
-  agreementScheduleEnabled: boolean;
   /** The camp's rate card. A booking priced individually overrides these; they fill the gap. */
   defaultPricingModel: string | null;
   defaultRatePerPersonNight: number | null;
@@ -160,7 +159,6 @@ function rowToCamp(c: Record<string, unknown>): Camp {
     agreementTemplateBody: (c.agreement_template_body as string) ?? null,
     agreementTemplatePath: (c.agreement_template_path as string) ?? null,
     agreementTemplateName: (c.agreement_template_name as string) ?? null,
-    agreementScheduleEnabled: Boolean(c.agreement_schedule_enabled),
     defaultPricingModel: (c.default_pricing_model as string) ?? null,
     defaultRatePerPersonNight: (c.default_rate_per_person_night as number) ?? null,
     defaultFlatRate: (c.default_flat_rate as number) ?? null,
@@ -239,7 +237,6 @@ interface CampState {
   acceptInvitation: (token: string) => Promise<{ campId: string } | { error: string }>;
   updateCamp: (campId: string, data: Partial<Pick<Camp, 'name' | 'campType' | 'state' | 'modules' | 'locations' | 'dietaryDefaults'>>) => Promise<void>;
   setRetreatPaymentNote: (campId: string, note: string | null) => Promise<void>;
-  setAgreementScheduleEnabled: (campId: string, on: boolean) => Promise<void>;
   setCampAgreement: (campId: string, path: string | null, name: string | null) => Promise<void>;
   setAgreementTemplateBody: (campId: string, body: string | null) => Promise<void>;
   setInquiryToken: (campId: string, on: boolean) => Promise<void>;
@@ -291,7 +288,7 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     const { data, error } = await supabase
       .from('camp_members')
-      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, address_line1, city, state, modules, locations, dietary_defaults, retreat_payment_note, inquiry_token, agreement_template_body, agreement_template_path, agreement_template_name, agreement_schedule_enabled, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
+      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, address_line1, city, state, modules, locations, dietary_defaults, retreat_payment_note, inquiry_token, agreement_template_body, agreement_template_path, agreement_template_name, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
       .eq('user_id', user.id)
       .eq('is_active', true);
 
@@ -471,19 +468,6 @@ export const useCampStore = create<CampState>((set, get) => ({
     if (patch.depositChaseDays !== undefined) row.deposit_chase_days = patch.depositChaseDays;
     const { error } = await supabase.from('camps').update(row).eq('id', campId);
     if (error) console.error('[campStore] setRentalDefaults error:', error);
-  },
-
-  /**
-   * Turn the generated terms page on or off for this camp.
-   *
-   * Its own action rather than a field on a bigger save, because switching it ON changes what
-   * appears in front of a legal document -- that deserves to be a deliberate, single act.
-   */
-  setAgreementScheduleEnabled: async (campId, on) => {
-    const current = get().currentCamp;
-    if (current && current.id === campId) set({ currentCamp: { ...current, agreementScheduleEnabled: on } });
-    const { error } = await supabase.from('camps').update({ agreement_schedule_enabled: on }).eq('id', campId);
-    if (error) console.error('[campStore] setAgreementScheduleEnabled error:', error);
   },
 
   /** Record (or clear) the camp's stored agreement, once its file is known to be readable. */

@@ -1,11 +1,20 @@
-// Build the document that wins the booking.
+// Build the document the group signs.
 //
 // The lines are built for you from the rate card and whatever charges already exist, because
-// asking a director to retype "48 people × 2 nights @ $85" is how proposals end up going out as
+// asking a director to retype "48 people × 2 nights @ $85" is how agreements end up going out as
 // a paragraph in an email instead. Everything stays editable — the generated lines are a
 // starting point, not a contract.
-import { useEffect, useMemo, useState } from 'react';
-import { FileSignature, Loader2, Plus, Send, Trash2 } from 'lucide-react';
+//
+// The page is the numbers on the left and the document on the right, and the document is the
+// real one: the same `agreementHtml` that prints and that the group downloads, in an iframe. It
+// used to be a stack of form fields with the contract itself folded away behind a "Read and
+// edit" button at the bottom, so the usual way to send one was without having looked at it.
+//
+// "Opening" and "Terms" are gone. They were a second and third place to write contract language,
+// competing with the camp's own agreement wording — three boxes, and the one that legally
+// mattered was the one you had to expand.
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { FileSignature, Loader2, Plus, Send, Trash2, Pencil, Eye } from 'lucide-react';
 import { MissingBookingDetails } from './MissingBookingDetails';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
@@ -14,6 +23,8 @@ import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import type { RetreatInvoiceLine, RetreatProposal } from '@/lib/types';
 import { dbAddProposal, dbUpdateProposal, fetchProposalLines, dbAgreementForRetreat } from '@/lib/retreatsDb';
+import { agreementHtml } from '@/lib/agreementHtml';
+import { DocumentFrame } from '@/components/shared/DocumentFrame';
 import { generateId, parseDateStr, todayStr } from '@/lib/utils';
 import { money, inputClass, labelClass, fmtRange, nights as nightsBetween } from './retreatUi';
 import { sendEmail } from '@/lib/email';
@@ -38,22 +49,15 @@ function addDays(d: string, days: number): string {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 }
 
-const DEFAULT_TERMS = [
-  'A signed agreement and a deposit hold the dates. Until both are in, the dates stay open to other groups.',
-  'The final headcount is due by the cutoff on your agreement; the balance is billed on that number.',
-  'A certificate of insurance naming the camp as additional insured is required before arrival.',
-].join('\n');
-
 interface Props {
   retreatId: string;
-  /** Editing an existing draft. Sent proposals are never edited — a change is a new version. */
+  /** Editing an existing draft. Sent agreements are never edited — a change is a new version. */
   proposalId?: string;
   onClose: () => void;
 }
 
 export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
   const currentCamp = useCampStore((s) => s.currentCamp);
-  const setRentalDefaults = useCampStore((s) => s.setRentalDefaults);
   const { proposals, setProposals, retreatById, portalUrl } = useRetreatStore();
   const campName = currentCamp?.name ?? 'the camp';
   const { can, currentUser } = useAuth();
@@ -63,13 +67,11 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
   /**
    * The agreement that goes out with this quote.
    *
-   * A proposal and its agreement are one send -- the quote says what it costs and the agreement is
-   * what makes it binding, and signing the agreement is how the group accepts. Which one is going
-   * belongs HERE, at the moment of sending, not on a documents tab somebody has to know to open.
+   * A quote and its agreement are one send -- the document says what it costs and what the terms
+   * are, and signing it is how the group accepts.
    *
-   * Three cases, in order of precedence: this group has their own uploaded (negotiated terms win),
-   * else the camp's standing template attaches itself on send, else there is none and the camp
-   * should be told rather than left to find out from the group.
+   * Two cases: this group has their own uploaded file (negotiated terms win), else the camp's
+   * standing template is rendered with this booking's details below.
    */
   const agreementDoc = useRetreatStore((s) => s.documents)
     .find((d) => d.retreatId === retreatId && d.docType === 'agreement');
@@ -87,9 +89,26 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
    */
   const [agreementText, setAgreementText] = useState<string | null>(existing?.agreementBody ?? null);
   const [unfilled, setUnfilled] = useState<string[]>([]);
-  const [agreementOpen, setAgreementOpen] = useState(false);
-  const [renderedOnce, setRenderedOnce] = useState(false);
+  const [editingWording, setEditingWording] = useState(false);
+  const [rendering, setRendering] = useState(false);
+  /**
+   * Once the camp types in the document, the template stops driving it.
+   *
+   * Otherwise changing the rate afterwards would silently throw away wording somebody wrote by
+   * hand into a contract, which is the single worst thing this screen could do.
+   */
+  const [handEdited, setHandEdited] = useState(Boolean(existing?.agreementBody));
 
+  /**
+   * Every gap this document has EVER had, in the order they appeared.
+   *
+   * The fields used to be driven straight off `unfilled`, so filling one made its own box vanish
+   * under the cursor -- no confirmation, no way to check what you typed, and the remaining boxes
+   * jumped up a row each time. They stay now, and show a tick instead.
+   */
+  const [gapTokens, setGapTokens] = useState<string[]>([]);
+  /** Bumped when a gap is filled on the booking, to ask the server for the document again. */
+  const [renderNonce, setRenderNonce] = useState(0);
 
   /**
    * A per-person quote is three numbers and everything else is an extra.
@@ -110,8 +129,6 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
 
   const [lines, setLines] = useState<RetreatInvoiceLine[]>(
     perPerson ? withoutBase(existing?.lineItems ?? []) : (existing?.lineItems ?? []));
-  const [intro, setIntro] = useState(existing?.intro ?? '');
-  const [terms, setTerms] = useState(existing?.terms ?? currentCamp?.proposalTerms ?? DEFAULT_TERMS);
   const [validUntil, setValidUntil] = useState(
     existing?.validUntil ?? addDays(todayStr(), currentCamp?.proposalValidDays ?? 30));
   const [deposit, setDeposit] = useState(() => {
@@ -121,19 +138,8 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
   const [loading, setLoading] = useState(!existing);
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; text: string } | null>(null);
-  const [termsSaved, setTermsSaved] = useState(false);
 
-  const savedTerms = (currentCamp?.proposalTerms ?? '').trim();
-  const termsIsDefault = savedTerms !== '' && terms.trim() === savedTerms;
-
-  async function saveTermsAsDefault() {
-    if (!currentCamp || !terms.trim()) return;
-    await setRentalDefaults(currentCamp.id, { proposalTerms: terms.trim() });
-    setTermsSaved(true);
-    setTimeout(() => setTermsSaved(false), 2500);
-  }
-
-  // Seed a new proposal from the rate card. One round trip, in Postgres, so the arithmetic
+  // Seed a new agreement from the rate card. One round trip, in Postgres, so the arithmetic
   // matches what the invoice will later say rather than being computed twice in two places.
   useEffect(() => {
     if (existing) return;
@@ -164,36 +170,48 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
    *
    * NOT `lines.length` -- that was right when `lines` was the whole quote, and stopped being
    * right when per-person pricing became three inputs and the base line was stripped out of the
-   * array. A straight rate quote with no add-ons is the commonest proposal there is, and it had
+   * array. A straight rate quote with no add-ons is the commonest agreement there is, and it had
    * an empty `lines`, so Send and Mark sent greyed out on a perfectly good $18,000 booking.
    */
   const quotable = total > 0 || lines.length > 0;
 
+  /**
+   * Re-render the agreement whenever the money on this screen changes.
+   *
+   * It used to render exactly once. Edit the rate afterwards and the document still carried the
+   * old total, in the sentence the group signs — the two halves of the same screen disagreed
+   * about the price. Debounced, because these are text inputs.
+   */
+  const moneyKey = `${total}|${num(deposit)}|${perPerson ? num(rate) : ''}|${num(people)}|${num(nights)}`;
+  const renderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    // Only for a new agreement. An existing one is a record of what went out and must not be
-    // rewritten by today's rate.
-    if (existing?.agreementBody || !campTemplateBody || renderedOnce) return;
+    if (!campTemplateBody || handEdited) return;
     let live = true;
-    (async () => {
-      // The figures on THIS screen, not whatever an earlier accepted version said.
-      const cents = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const r = await dbAgreementForRetreat(retreatId, campTemplateBody, {
-        total: total > 0 ? `$${cents(total)}` : null,
-        deposit: num(deposit) > 0 ? `$${cents(num(deposit))}` : null,
-        // Flat pricing has no field in this composer; the server token derives it from the
-        // booking, so leave it alone rather than blanking it.
-        rate: perPerson && num(rate) > 0 ? `$${cents(num(rate))} per person per night` : null,
-        headcount: num(people) > 0 ? String(num(people)) : null,
-        nights: num(nights) > 0 ? String(num(nights)) : null,
-      });
-      if (!live || !r) return;
-      setAgreementText(r.body);
-      setUnfilled(r.unfilled);
-      setRenderedOnce(true);
-    })();
-    return () => { live = false; };
+    if (renderTimer.current) clearTimeout(renderTimer.current);
+    renderTimer.current = setTimeout(() => {
+      void (async () => {
+        setRendering(true);
+        // The figures on THIS screen, not whatever an earlier accepted version said.
+        const cents = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const r = await dbAgreementForRetreat(retreatId, campTemplateBody, {
+          total: total > 0 ? `$${cents(total)}` : null,
+          deposit: num(deposit) > 0 ? `$${cents(num(deposit))}` : null,
+          // Flat pricing has no field in this composer; the server token derives it from the
+          // booking, so leave it alone rather than blanking it.
+          rate: perPerson && num(rate) > 0 ? `$${cents(num(rate))} per person per night` : null,
+          headcount: num(people) > 0 ? String(num(people)) : null,
+          nights: num(nights) > 0 ? String(num(nights)) : null,
+        });
+        if (!live || !r) { setRendering(false); return; }
+        setAgreementText(r.body);
+        setUnfilled(r.unfilled);
+        setGapTokens((prev) => [...prev, ...r.unfilled.filter((t) => !prev.includes(t))]);
+        setRendering(false);
+      })();
+    }, 400);
+    return () => { live = false; if (renderTimer.current) clearTimeout(renderTimer.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [retreatId, campTemplateBody, existing?.agreementBody, renderedOnce]);
+  }, [retreatId, campTemplateBody, handEdited, moneyKey, renderNonce]);
 
   const nextVersion = useMemo(() => {
     if (existing) return existing.version;
@@ -223,8 +241,10 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
       peopleCount: perPerson ? num(people) : null,
       nights: perPerson ? num(nights) : null,
       validUntil: validUntil || null,
-      terms: terms.trim() || null,
-      intro: intro.trim() || null,
+      // The agreement wording IS the terms and the covering note now. Two more boxes of contract
+      // language beside it meant three places to say the same thing and no answer to which won.
+      terms: null,
+      intro: null,
       status,
       sentAt: status === 'sent' ? (existing?.sentAt ?? ts) : existing?.sentAt ?? null,
       // viewedAt / acceptedAt are the group's to write, through the portal RPC, and are never
@@ -303,219 +323,35 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
     onClose();
   }
 
+  /** The document, exactly as it will print and exactly as the group will download it. */
+  const previewHtml = useMemo(() => agreementHtml({
+    campName: currentCamp?.name ?? '',
+    groupName: retreat?.groupName ?? '',
+    coordinatorName: retreat?.coordinatorName,
+    version: nextVersion,
+    arrivalDate: retreat?.arrivalDate,
+    departureDate: retreat?.departureDate,
+    dateNote: retreat?.dateFlexibility,
+    headcount: perPerson ? num(people) : retreat?.headcount,
+    lineItems: [
+      ...(perPerson && base > 0 ? [{ description: baseLabel, amount: base }] : []),
+      ...lines.filter((l) => l.description.trim() !== ''),
+    ],
+    total,
+    agreementBody: agreementText,
+    validUntil: validUntil || null,
+    highlightGaps: true,
+  }), [currentCamp?.name, retreat, nextVersion, perPerson, people, base, baseLabel, lines, total, agreementText, validUntil]);
+
   const title = existing
-    ? `Proposal v${existing.version} · ${retreat?.groupName ?? ''}`
+    ? `Retreat agreement v${existing.version} · ${retreat?.groupName ?? ''}`
     : `New agreement${nextVersion > 1 ? ` · v${nextVersion}` : ''}`;
 
-  return (
-    <Modal title={title} onClose={onClose} width="min(680px, 94vw)">
-      {retreat && (
-        <p className="text-[12.5px] text-ink-soft mb-4">
-          {retreat.groupName} · {fmtRange(retreat.arrivalDate, retreat.departureDate)}
-          {retreat.headcount > 0 && ` · ${retreat.headcount} people`}
-        </p>
-      )}
-
-      <div className="space-y-4">
-        <div>
-          <label className={labelClass}>Opening</label>
-          <textarea
-            value={intro} onChange={(e) => setIntro(e.target.value)} rows={3}
-            className={`${inputClass} resize-y`}
-            placeholder="Thank you for thinking of us. Here is what a weekend for your group would look like and what it would cost."
-          />
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className={labelClass}>Lines</label>
-            {loading && (
-              <span className="inline-flex items-center gap-1.5 text-[11.5px] text-ink-soft">
-                <Loader2 className="w-3 h-3 animate-spin" /> Building from the rate card…
-              </span>
-            )}
-          </div>
-          {/* The price, as three numbers. The camp used to be able to type any total it liked
-              beside the arithmetic that was supposed to produce it, and the two disagreed on
-              the document the group signs. */}
-          {perPerson && (
-            <div className="border border-border rounded-card px-3 py-3 mb-2">
-              <div className="grid grid-cols-3 gap-2.5">
-                <div>
-                  <label className={labelClass}>Rate</label>
-                  <input
-                    inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)}
-                    className={inputClass} placeholder="0"
-                  />
-                  <p className="text-[10.5px] text-ink-soft mt-1">per person per night</p>
-                </div>
-                <div>
-                  <label className={labelClass}>People</label>
-                  <input
-                    inputMode="numeric" value={people} onChange={(e) => setPeople(e.target.value)}
-                    className={inputClass} placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>Nights</label>
-                  <input
-                    inputMode="numeric" value={nights} onChange={(e) => setNights(e.target.value)}
-                    className={inputClass} placeholder="0"
-                  />
-                </div>
-              </div>
-              <div className="flex items-baseline justify-between mt-2.5 pt-2.5 border-t border-border">
-                <span className="text-[12.5px] text-ink-soft">{baseLabel}</span>
-                <span className="text-[13.5px] font-semibold text-forest tabular-nums">{money(base)}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="border border-border rounded-card divide-y divide-border">
-            {lines.length === 0 && !loading && (
-              <p className="px-3 py-4 text-[12.5px] text-ink-faint text-center">
-                {perPerson
-                  ? 'No extras. Add a line for firewood, a discount, anything outside the rate.'
-                  : 'No lines yet. Add one, or set a rate on the booking first.'}
-              </p>
-            )}
-            {lines.map((l, i) => (
-              <div key={i} className="flex items-center gap-2 px-2.5 py-2">
-                <input
-                  value={l.description}
-                  onChange={(e) => setLine(i, { description: e.target.value })}
-                  className="flex-1 min-w-0 text-body bg-transparent px-1 py-1 focus:outline-none focus:bg-cream-dark/40 rounded"
-                  placeholder={perPerson ? 'Firewood bundle, shoulder-week discount…' : 'Description'}
-                />
-                <input
-                  type="number" value={Number.isFinite(l.amount) ? l.amount : 0}
-                  onChange={(e) => setLine(i, { amount: Number(e.target.value) })}
-                  className="w-28 text-body text-right bg-transparent px-1 py-1 tabular-nums focus:outline-none focus:bg-cream-dark/40 rounded"
-                />
-                <button
-                  type="button" aria-label="Remove line"
-                  onClick={() => setLines((xs) => xs.filter((_, j) => j !== i))}
-                  className="p-1 text-ink-faint hover:text-red transition-colors flex-shrink-0"
-                ><Trash2 className="w-3.5 h-3.5" /></button>
-              </div>
-            ))}
-            <div className="flex items-center justify-between px-3 py-2 bg-cream-dark/40">
-              <button
-                type="button"
-                onClick={() => setLines((xs) => [...xs, { description: '', amount: 0 }])}
-                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-forest hover:underline"
-              ><Plus className="w-3.5 h-3.5" /> {perPerson ? 'Add an extra or a discount' : 'Add a line'}</button>
-              <span className="text-[14px] font-bold text-forest tabular-nums">{money(total)}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className={labelClass}>Deposit to hold the dates</label>
-            <input
-              inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)}
-              className={inputClass} placeholder="0"
-            />
-            <p className="text-[11px] text-ink-soft mt-1">
-              Set on the booking when they accept.
-            </p>
-          </div>
-          <div>
-            <label className={labelClass}>Valid until</label>
-            <input
-              type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)}
-              className={inputClass}
-            />
-            <p className="text-[11px] text-ink-soft mt-1">
-              After this date they cannot accept it.
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-baseline justify-between gap-2">
-            <label className={labelClass}>Terms</label>
-            {/* Written once, reused. Same affordance the invoice note already has. */}
-            {!termsIsDefault && (
-              <button
-                type="button"
-                onClick={saveTermsAsDefault}
-                className="text-[11.5px] font-semibold text-forest underline"
-              >
-                {termsSaved ? 'Saved as your default' : 'Save as our default'}
-              </button>
-            )}
-          </div>
-          <textarea
-            value={terms} onChange={(e) => setTerms(e.target.value)} rows={4}
-            className={`${inputClass} resize-y`}
-          />
-        </div>
-      </div>
-
-      {/* ── The agreement itself ──
-          This IS the document the group signs, and signing it is how they commit. It is rendered
-          from the camp's template with this booking's details, and it is editable, because a camp
-          that negotiated something for one group must not have to change its template to say so.
-          What gets stored is what was sent. */}
-      <div className="mt-6 rounded-card border border-sage/40 bg-white px-4 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-start gap-2.5">
-            <div className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-sage-pale">
-              <FileSignature className="h-4 w-4 text-forest" />
-            </div>
-            <div>
-              <p className="text-[13.5px] font-semibold text-forest">Retreat agreement</p>
-              <p className="mt-0.5 text-[12px] text-ink-soft">
-                {existing?.agreementBody
-                  ? 'As it was sent to this group.'
-                  : agreementText
-                    ? 'Your wording, filled in for this group. Signing it confirms the booking.'
-                    : 'Nothing to sign yet.'}
-              </p>
-            </div>
-          </div>
-          {agreementText && (
-            <button
-              onClick={() => setAgreementOpen((v) => !v)}
-              className="rounded-btn border border-border px-2.5 py-1.5 text-[12.5px] font-semibold
-                         text-forest transition-colors hover:border-sage"
-            >
-              {agreementOpen ? 'Hide' : 'Read and edit'}
-            </button>
-          )}
-        </div>
-
-        {agreementText ? (
-          <>
-            {unfilled.length > 0 && retreat && (
-              <MissingBookingDetails
-                retreat={retreat}
-                unfilled={unfilled}
-                onFilled={() => setRenderedOnce(false)}
-              />
-            )}
-
-            {agreementOpen && (
-              <textarea
-                value={agreementText}
-                onChange={(e) => setAgreementText(e.target.value)}
-                rows={18}
-                className="mt-3 w-full resize-y rounded-btn border border-border bg-cream px-3.5 py-3
-                           font-mono text-[12px] leading-relaxed text-ink focus:border-sage focus:outline-none"
-              />
-            )}
-          </>
-        ) : (
-          <p className="mt-2.5 text-[12.5px] leading-relaxed text-amber-text">
-            You have no agreement on file, so this sends a price with nothing to sign. Write one
-            under Camp Info &rsaquo; Rentals and every booking gets it, filled in.
-          </p>
-        )}
-      </div>
-
-      <div className="flex flex-col sm:flex-row justify-end gap-2 mt-5 pt-4 border-t border-border">
+  /* The document below is a contract and therefore long. The send button used to sit past the end
+     of it, so the way to find out how to send was to scroll the whole agreement looking. */
+  const footer = (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
         <Button variant="ghost" onClick={() => save('draft')} disabled={!canManage || loading}>
           Save draft
@@ -524,15 +360,199 @@ export function ProposalModal({ retreatId, proposalId, onClose }: Props) {
           Mark sent
         </Button>
         <Button onClick={sendToGroup} disabled={!canManage || loading || sending || !quotable}>
-          <Send className="w-4 h-4" />
+          <Send className="h-4 w-4" />
           {sending ? 'Sending…' : agreementText || hasAgreement ? 'Send the agreement' : 'Send without an agreement'}
         </Button>
       </div>
       {sendResult && (
-        <p className={`text-[12.5px] mt-2 text-right ${sendResult.ok ? 'text-green-muted-text' : 'text-red-text'}`}>
+        <p className={`text-right text-[12.5px] ${sendResult.ok ? 'text-green-muted-text' : 'text-red-text'}`}>
           {sendResult.text}
         </p>
       )}
+    </div>
+  );
+
+  return (
+    <Modal title={title} onClose={onClose} width="min(1120px, 96vw)" footer={footer}>
+      {retreat && (
+        <p className="mb-4 text-[12.5px] text-ink-soft">
+          {retreat.groupName} · {fmtRange(retreat.arrivalDate, retreat.departureDate)}
+          {retreat.headcount > 0 && ` · ${retreat.headcount} people`}
+        </p>
+      )}
+
+      <div className="lg:grid lg:grid-cols-[minmax(0,330px)_minmax(0,1fr)] lg:items-start lg:gap-6">
+        {/* ── What it costs ──
+            The numbers, on their own, beside the document they appear in. */}
+        <div className="space-y-4 lg:sticky lg:top-0 lg:z-10 lg:bg-white lg:pb-3">
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <label className={labelClass}>What it costs</label>
+              {loading && (
+                <span className="inline-flex items-center gap-1.5 text-[11.5px] text-ink-soft">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Building…
+                </span>
+              )}
+            </div>
+
+            {/* The price, as three numbers. The camp used to be able to type any total it liked
+                beside the arithmetic that was supposed to produce it, and the two disagreed on
+                the document the group signs. */}
+            {perPerson && (
+              <div className="mb-2 rounded-card border border-border px-3 py-3">
+                <div className="grid grid-cols-3 gap-2.5">
+                  <div>
+                    <label className={labelClass}>Rate</label>
+                    <input
+                      inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)}
+                      className={inputClass} placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>People</label>
+                    <input
+                      inputMode="numeric" value={people} onChange={(e) => setPeople(e.target.value)}
+                      className={inputClass} placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Nights</label>
+                    <input
+                      inputMode="numeric" value={nights} onChange={(e) => setNights(e.target.value)}
+                      className={inputClass} placeholder="0"
+                    />
+                  </div>
+                </div>
+                <p className="mt-1 text-[10.5px] text-ink-soft">per person per night</p>
+                <div className="mt-2.5 flex items-baseline justify-between border-t border-border pt-2.5">
+                  <span className="text-[12.5px] text-ink-soft">{baseLabel}</span>
+                  <span className="text-[13.5px] font-semibold tabular-nums text-forest">{money(base)}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="divide-y divide-border rounded-card border border-border">
+              {lines.length === 0 && !loading && (
+                <p className="px-3 py-3.5 text-center text-[12px] text-ink-faint">
+                  {perPerson
+                    ? 'No extras. Add a line for firewood, a discount, anything outside the rate.'
+                    : 'No lines yet. Add one, or set a rate on the booking first.'}
+                </p>
+              )}
+              {lines.map((l, i) => (
+                <div key={i} className="flex items-center gap-2 px-2.5 py-2">
+                  <input
+                    value={l.description}
+                    onChange={(e) => setLine(i, { description: e.target.value })}
+                    className="min-w-0 flex-1 rounded bg-transparent px-1 py-1 text-body focus:bg-cream-dark/40 focus:outline-none"
+                    placeholder={perPerson ? 'Firewood, shoulder-week discount…' : 'Description'}
+                  />
+                  <input
+                    type="number" value={Number.isFinite(l.amount) ? l.amount : 0}
+                    onChange={(e) => setLine(i, { amount: Number(e.target.value) })}
+                    className="w-20 rounded bg-transparent px-1 py-1 text-right text-body tabular-nums focus:bg-cream-dark/40 focus:outline-none"
+                  />
+                  <button
+                    type="button" aria-label="Remove line"
+                    onClick={() => setLines((xs) => xs.filter((_, j) => j !== i))}
+                    className="flex-shrink-0 p-1 text-ink-faint transition-colors hover:text-red"
+                  ><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              ))}
+              <div className="flex items-center justify-between bg-cream-dark/40 px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => setLines((xs) => [...xs, { description: '', amount: 0 }])}
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-forest hover:underline"
+                ><Plus className="h-3.5 w-3.5" /> {perPerson ? 'Add an extra' : 'Add a line'}</button>
+                <span className="text-[14px] font-bold tabular-nums text-forest">{money(total)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Deposit</label>
+              <input
+                inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)}
+                className={inputClass} placeholder="0"
+              />
+              <p className="mt-1 text-[11px] text-ink-soft">Holds the dates.</p>
+            </div>
+            <div>
+              <label className={labelClass}>Valid until</label>
+              <input
+                type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)}
+                className={inputClass}
+              />
+              <p className="mt-1 text-[11px] text-ink-soft">Then they cannot accept.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── The document ──
+            Not a preview of the document: the document. Same renderer as the print button and
+            the group's own download, so what is on this screen is what lands in their inbox. */}
+        <div className="mt-6 lg:mt-0">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <FileSignature className="h-4 w-4 text-forest" />
+              <span className={labelClass} style={{ marginBottom: 0 }}>The agreement</span>
+              {rendering && <Loader2 className="h-3 w-3 animate-spin text-ink-faint" />}
+            </div>
+            {agreementText && (
+              <button
+                type="button"
+                onClick={() => setEditingWording((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-btn border border-border px-2.5 py-1.5
+                           text-[12.5px] font-semibold text-forest transition-colors hover:border-sage"
+              >
+                {editingWording
+                  ? <><Eye className="h-3.5 w-3.5" /> Done editing</>
+                  : <><Pencil className="h-3.5 w-3.5" /> Edit the wording</>}
+              </button>
+            )}
+          </div>
+
+          {/* The gaps, as the fields that close them, above the document they are gaps in. */}
+          {gapTokens.length > 0 && retreat && (
+            <MissingBookingDetails
+              retreat={retreat}
+              tokens={gapTokens}
+              unfilled={unfilled}
+              onFilled={() => setRenderNonce((n) => n + 1)}
+            />
+          )}
+
+          {agreementText ? (
+            editingWording ? (
+              <textarea
+                value={agreementText}
+                onChange={(e) => { setAgreementText(e.target.value); setHandEdited(true); }}
+                className="h-[540px] w-full resize-y rounded-card border border-border bg-cream px-4 py-3.5
+                           font-mono text-[12px] leading-relaxed text-ink focus:border-sage focus:outline-none"
+              />
+            ) : (
+              <DocumentFrame html={previewHtml} title="Retreat agreement" minHeight={480} />
+            )
+          ) : (
+            <div className="rounded-card border border-amber/40 bg-amber-bg/50 px-4 py-5">
+              <p className="text-[12.5px] leading-relaxed text-amber-text">
+                You have no agreement on file, so this sends a price with nothing to sign. Write
+                one under Camp Info &rsaquo; Rentals and every booking gets it, filled in.
+              </p>
+            </div>
+          )}
+
+          {handEdited && !existing?.agreementBody && (
+            <p className="mt-1.5 text-[11px] text-ink-soft">
+              You have edited this copy by hand, so changing the numbers no longer rewrites it.
+              Your template is untouched.
+            </p>
+          )}
+        </div>
+      </div>
+
     </Modal>
   );
 }

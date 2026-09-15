@@ -303,12 +303,17 @@ export function PhaseTracker({
             type="button"
             title={tip}
             onClick={(e) => { e.stopPropagation(); onOpen(PHASE_TAB[k]); }}
-            className="group text-center rounded-btn py-1 hover:bg-cream-dark/50 transition-colors"
+            // `relative` for the sr-only span inside `body`: Tailwind's sr-only is
+            // position:absolute, so without a positioned ancestor its containing block is the
+            // page itself. Seven of them per card, sitting at a static position a long way down
+            // a scrolled panel, stretched the document to ~2600px -- which is why the Overview
+            // tab scrolled past the end of its own content into two screens of nothing.
+            className="group relative text-center rounded-btn py-1 hover:bg-cream-dark/50 transition-colors"
           >
             {body}
           </button>
         ) : (
-          <div key={k} className="group text-center" title={tip}>{body}</div>
+          <div key={k} className="group relative text-center" title={tip}>{body}</div>
         );
       })}
     </div>

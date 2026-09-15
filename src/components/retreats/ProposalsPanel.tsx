@@ -12,6 +12,7 @@ import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import type { Retreat, RetreatProposal } from '@/lib/types';
 import { dbDeleteProposal } from '@/lib/retreatsDb';
+import { printAgreement } from '@/lib/agreementHtml';
 import { todayStr } from '@/lib/utils';
 import { money, fmtDateFull, fmtRange, Badge, type BadgeTone } from './retreatUi';
 import { ProposalModal } from './ProposalModal';
@@ -25,82 +26,33 @@ function fmtOpened(iso: string): string {
     .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase().replace(' ', '')}`;
 }
 
-function esc(s: string): string {
-  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
-}
-
-function fmtMoney(n: number): string {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-}
-
-function fmtDocDate(d: string | null | undefined): string {
-  if (!d) return '-';
-  const dt = d.length <= 10 ? new Date(`${d}T00:00:00`) : new Date(d);
-  return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-}
-
 /**
- * The proposal as a standalone document, deliberately built the same way `invoiceHtml.ts` builds
- * an invoice: one self-contained string, opened in a new window, printed straight to PDF. It is
- * the same camp on the same letterhead, so it should not look like a different company.
+ * The agreement as a standalone document, rendered by the shared `agreementHtml` so the copy the
+ * camp prints and the copy the group downloads from their portal are the same document.
+ *
+ * The version that used to live here omitted `agreementBody` entirely: it printed a price, a
+ * validity date and a short terms blurb under the heading "Retreat agreement", with the agreement
+ * itself nowhere on the page.
  */
-function proposalHtml(p: RetreatProposal, r: Retreat, campName: string): string {
-  const rows = p.lineItems.length
-    ? p.lineItems.map((l) => `<tr><td>${esc(l.description)}</td><td class="amt">${fmtMoney(l.amount)}</td></tr>`).join('')
-    : `<tr><td>Your stay</td><td class="amt">${fmtMoney(p.total)}</td></tr>`;
-  const stay = r.arrivalDate && r.departureDate
-    ? `${fmtDocDate(r.arrivalDate)} – ${fmtDocDate(r.departureDate)}`
-    : r.dateFlexibility ?? 'Dates to be confirmed';
-  return `<!doctype html><html><head><meta charset="utf-8"><title>Agreement v${p.version} · ${esc(r.groupName)}</title>
-  <style>
-    *{box-sizing:border-box}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a2e1a;max-width:720px;margin:0 auto;padding:48px 40px;font-size:14px;line-height:1.5}
-    .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #2f4a2f;padding-bottom:20px;margin-bottom:28px}
-    .camp{font-size:20px;font-weight:700;color:#2f4a2f}
-    .doc{text-align:right}
-    .doc h1{font-size:22px;margin:0 0 4px;letter-spacing:.02em;text-transform:uppercase;color:#2f4a2f}
-    .doc .num{font-family:ui-monospace,Menlo,monospace;color:#6b7c6b;font-size:13px}
-    .meta{display:flex;gap:48px;margin-bottom:28px;flex-wrap:wrap}
-    .meta .label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#8a9a8a;font-weight:600;margin-bottom:4px}
-    .intro{margin-bottom:28px;color:#4a5a4a;white-space:pre-wrap}
-    table{width:100%;border-collapse:collapse;margin-bottom:8px}
-    th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#8a9a8a;border-bottom:1px solid #d9e0d5;padding:8px 0}
-    th.amt,td.amt{text-align:right;font-variant-numeric:tabular-nums}
-    td{padding:11px 0;border-bottom:1px solid #eef1ea}
-    .total{display:flex;justify-content:flex-end;margin-top:16px}
-    .total .box{min-width:240px}
-    .total .due{display:flex;justify-content:space-between;font-size:18px;font-weight:700;color:#2f4a2f;border-top:2px solid #2f4a2f;padding-top:10px}
-    .terms{margin-top:32px;padding:16px;background:#f4f6f1;border-radius:8px;color:#4a5a4a;font-size:13px;white-space:pre-wrap}
-    .terms h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#8a9a8a;margin:0 0 8px}
-    .foot{margin-top:40px;text-align:center;color:#9aa89a;font-size:11px}
-    @media print{body{padding:24px}}
-  </style></head><body>
-    <div class="head">
-      <div><div class="camp">${esc(campName || 'Camp')}</div><div style="color:#6b7c6b;font-size:12px;margin-top:2px">Retreat agreement</div></div>
-      <div class="doc"><h1>Retreat agreement</h1><div class="num">Version ${p.version}</div></div>
-    </div>
-    <div class="meta">
-      <div><div class="label">Prepared for</div><div><strong>${esc(r.groupName)}</strong>${r.coordinatorName ? `<br><span style="color:#4a5a4a">${esc(r.coordinatorName)}</span>` : ''}</div></div>
-      <div><div class="label">Stay</div><div>${esc(stay)}</div></div>
-      <div><div class="label">People</div><div>${r.headcount || '—'}</div></div>
-      <div><div class="label">Valid until</div><div>${fmtDocDate(p.validUntil)}</div></div>
-    </div>
-    ${p.intro ? `<div class="intro">${esc(p.intro)}</div>` : ''}
-    <table><thead><tr><th>Description</th><th class="amt">Amount</th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="total"><div class="box"><div class="due"><span>Total</span><span>${fmtMoney(p.total)}</span></div></div></div>
-    ${p.terms ? `<div class="terms"><h2>Terms</h2>${esc(p.terms)}</div>` : ''}
-    <div class="foot">Signing this is how the booking is confirmed. Dates are held once it is signed and the deposit is received.</div>
-  </body></html>`;
-}
-
 function printProposal(p: RetreatProposal, r: Retreat, campName: string): boolean {
-  const w = window.open('', '_blank');
-  if (!w) return false;
-  w.document.write(proposalHtml(p, r, campName));
-  w.document.close();
-  w.focus();
-  setTimeout(() => w.print(), 250);
-  return true;
+  return printAgreement({
+    campName,
+    groupName: r.groupName,
+    coordinatorName: r.coordinatorName,
+    version: p.version,
+    arrivalDate: r.arrivalDate,
+    departureDate: r.departureDate,
+    dateNote: r.dateFlexibility,
+    headcount: p.peopleCount ?? r.headcount,
+    lineItems: p.lineItems,
+    total: p.total,
+    intro: p.intro,
+    agreementBody: p.agreementBody,
+    terms: p.terms,
+    validUntil: p.validUntil,
+    signedBy: p.status === 'accepted' ? p.acceptedByName : null,
+    signedAt: p.status === 'accepted' ? p.acceptedAt : null,
+  });
 }
 
 function statusTone(p: RetreatProposal, expired: boolean): { tone: BadgeTone; label: string } {

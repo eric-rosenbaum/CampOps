@@ -3,6 +3,7 @@
 // These live outside RetreatPortal.tsx purely so the rooming board can use them without an
 // import cycle. The portal renders the board, so the board cannot import from the portal.
 
+import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 // The portal renders OUTSIDE the authenticated app shell. It talks to Supabase only through
@@ -22,6 +23,51 @@ export function portalFnHeaders(): Record<string, string> {
     apikey: SUPABASE_ANON,
     Authorization: `Bearer ${SUPABASE_ANON}`,
   };
+}
+
+/**
+ * Live updates, for a page with no login.
+ *
+ * postgres_changes is not available here: the portal's client is anonymous and every retreat
+ * table's RLS is `is_camp_member(camp_id)`, so realtime would deliver nothing and say nothing
+ * about why. The database broadcasts on `portal:<token>` instead (see
+ * `portal_broadcast_change()`), carrying no row data — just "something moved". The answer is to
+ * re-run the token-keyed RPCs the page already uses.
+ *
+ * Returns a counter rather than calling back, so a section can put it in a dependency array and
+ * reload the slice it owns. Bursts are coalesced: one save that writes six rows is one reload.
+ *
+ * `visibilitychange` is the backstop. A phone that slept through the websocket dropping comes
+ * back to a stale page otherwise, and a coordinator who has been away is exactly who needs the
+ * newest version.
+ */
+export function usePortalLiveUpdates(token: string | undefined): number {
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!token) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const bump = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setTick((n) => n + 1), 300);
+    };
+
+    const channel = supabasePublic
+      .channel(`portal:${token}`)
+      .on('broadcast', { event: 'changed' }, bump)
+      .subscribe();
+
+    const onVisible = () => { if (document.visibilityState === 'visible') bump(); };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      void supabasePublic.removeChannel(channel);
+    };
+  }, [token]);
+
+  return tick;
 }
 
 // ─── Shared visual language ──────────────────────────────────────────────────

@@ -81,7 +81,10 @@ export function ApproveSpaceModal({
   const [conflicts, setConflicts] = useState<SpaceRequestConflicts | null>(null);
   const [checking, setChecking] = useState(true);
   const [campNotes, setCampNotes] = useState(request?.campNotes ?? '');
-  const [message, setMessage] = useState('');
+  // Re-opening a decline starts from the words the group was actually given, so editing it is
+  // editing rather than rewriting from a blank box.
+  const [message, setMessage] = useState(
+    mode === 'decline' ? (request?.responseMessage ?? '') : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ setupId: string; strikeId: string | null } | null>(null);

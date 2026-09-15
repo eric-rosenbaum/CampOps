@@ -7,23 +7,11 @@
 import { useEffect, useState } from 'react';
 import { FileText, Check, Loader2, AlertTriangle } from 'lucide-react';
 import { supabasePublic, cardClass, inputClass, labelClass, btnPrimary } from '@/pages/portal/portalShared';
-import { money, fmtDateFull } from '@/components/retreats/retreatUi';
+import { AgreementDownloadButton, type PortalProposal } from './SignedAgreement';
+import { DocumentFrame } from '@/components/shared/DocumentFrame';
+import { agreementHtml } from '@/lib/agreementHtml';
+import { fmtDateFull } from '@/components/retreats/retreatUi';
 import { todayStr } from '@/lib/utils';
-
-interface PortalProposal {
-  id: string;
-  version: number;
-  line_items: { description: string; amount: number }[];
-  total: number;
-  valid_until: string | null;
-  terms: string | null;
-  intro: string | null;
-  status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined' | 'expired';
-  accepted_at: string | null;
-  group_name: string;
-  arrival: string | null;
-  departure: string | null;
-}
 
 /**
  * `accepted_at` is an instant, not a calendar day, so it is formatted from the timestamp rather
@@ -94,6 +82,26 @@ export function ProposalSection({ token, onAccepted, hasAgreement, onGoToAgreeme
   );
   const accepted = proposal.status === 'accepted';
 
+  /** The agreement, exactly as it prints and exactly as they will download it. */
+  const documentHtml = agreementHtml({
+    campName: proposal.camp_name ?? '',
+    groupName: proposal.group_name,
+    coordinatorName: proposal.coordinator_name,
+    version: proposal.version,
+    arrivalDate: proposal.arrival,
+    departureDate: proposal.departure,
+    headcount: proposal.headcount,
+    lineItems: proposal.line_items ?? [],
+    total: proposal.total,
+    intro: proposal.intro,
+    // The prop is the same text by another route; the proposal's own copy is the frozen one.
+    agreementBody: proposal.agreement_body ?? agreementBody ?? null,
+    terms: proposal.terms,
+    validUntil: proposal.valid_until,
+    signedBy: accepted ? proposal.accepted_by_name : null,
+    signedAt: accepted ? proposal.accepted_at : null,
+  });
+
   return (
     <section id="proposal" className="scroll-mt-20">
       <div className="flex items-center gap-2.5 mb-3">
@@ -109,68 +117,37 @@ export function ProposalSection({ token, onAccepted, hasAgreement, onGoToAgreeme
         </div>
       </div>
 
+      {/* ── The document ──
+          Not a summary of the agreement and a box of contract text underneath it: the agreement,
+          rendered by the same `agreementHtml` the camp prints and the group downloads. The price,
+          the terms and the wording were three separate panels saying three parts of one document,
+          and the part that legally mattered was in a monospaced scroll box that read like a
+          terminal. */}
+      <DocumentFrame html={documentHtml} title="Your retreat agreement" minHeight={420} className="mb-3" />
+
       <div className={cardClass}>
-        {proposal.intro && (
-          <p className="px-5 pt-5 text-[14px] text-ink leading-relaxed whitespace-pre-wrap">
-            {proposal.intro}
-          </p>
-        )}
-
-        <div className="px-5 py-5">
-          <ul className="divide-y divide-border">
-            {proposal.line_items.map((l, i) => (
-              <li key={i} className="flex items-baseline justify-between gap-4 py-2.5">
-                <span className="text-[14px] text-ink">{l.description}</span>
-                <span className="text-[14px] text-forest tabular-nums flex-shrink-0">{money(l.amount)}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="flex items-baseline justify-between gap-4 pt-3 mt-1 border-t-2 border-forest">
-            <span className="text-[15px] font-bold text-forest">Total</span>
-            <span className="text-[19px] font-bold text-forest tabular-nums">{money(proposal.total)}</span>
-          </div>
-        </div>
-
-        {/* ── The agreement, in full ──
-            The button below commits this group to a contract. It used to sit under a price and a
-            short terms blurb with the contract itself nowhere on the page -- a signature on a
-            document nobody showed you is worth nothing to either side. Scrollable rather than
-            collapsed, so the act of signing follows having had it in front of you. */}
-        {agreementBody && (
-          <div className="border-t border-border bg-cream px-5 py-4">
-            <p className={labelClass}>The agreement</p>
-            <div className="mt-1.5 max-h-96 overflow-y-auto rounded-card border border-border bg-white px-4 py-3">
-              <p className="whitespace-pre-wrap font-mono text-[12px] leading-relaxed text-ink">
-                {agreementBody}
-              </p>
-            </div>
-            <p className="mt-1.5 text-[11.5px] text-ink-soft">
-              Signing below accepts these terms. Keep a copy — your camp can send you one.
-            </p>
-          </div>
-        )}
-
-        {proposal.terms && (
-          <div className="px-5 py-4 bg-cream border-t border-border">
-            <p className={labelClass}>Terms</p>
-            <p className="text-[13px] text-ink-soft leading-relaxed whitespace-pre-wrap">{proposal.terms}</p>
-          </div>
-        )}
-
         {accepted ? (
-          <div className="px-5 py-4 border-t border-border bg-green-muted-bg">
+          /* Signed, and still here. The checklist used to drop this step the instant it was
+             accepted, which took the contract off the page at the exact moment the group had
+             just agreed to it -- and the line under it told them to ask the camp for a copy of
+             something this page was already holding. */
+          <div className="px-5 py-4 bg-green-muted-bg rounded-2xl">
             <p className="flex items-center gap-2 text-[14px] font-semibold text-green-muted-text">
-              <Check className="w-4 h-4" /> Accepted
+              <Check className="w-4 h-4" /> Signed
+              {proposal.accepted_by_name && ` by ${proposal.accepted_by_name}`}
               {proposal.accepted_at && ` on ${fmtStamp(proposal.accepted_at)}`}
             </p>
             <p className="text-[13px] text-green-muted-text mt-1">
-              Thank you. The camp will be in touch with your agreement and deposit.
+              Thank you — your booking is confirmed. Keep a copy for your records.
             </p>
+            <div className="mt-3">
+              <AgreementDownloadButton proposal={proposal} />
+            </div>
           </div>
         ) : expired ? (
           // Never let someone accept a price the camp is no longer offering. Saying so plainly,
           // with what to do next, beats a disabled button with no explanation.
-          <div className="px-5 py-4 border-t border-border bg-amber-bg">
+          <div className="px-5 py-4 bg-amber-bg rounded-2xl">
             <p className="flex items-center gap-2 text-[14px] font-semibold text-amber-text">
               <AlertTriangle className="w-4 h-4" /> This agreement has expired
             </p>
@@ -184,7 +161,7 @@ export function ProposalSection({ token, onAccepted, hasAgreement, onGoToAgreeme
           /* An agreement is the stronger act of agreement -- an emailed code, an IP, a hash of
              the file -- so it is the one that counts. Typing a name into a second box days later
              added nothing and left the camp checking two places to know it had a booking. */
-          <div className="px-5 py-4 border-t border-border">
+          <div className="px-5 py-4">
             <p className="text-[13px] text-ink leading-relaxed">
               To accept this, sign the retreat agreement in your documents. Signing it is what
               confirms the quote — there is nothing else to send back.
@@ -198,7 +175,7 @@ export function ProposalSection({ token, onAccepted, hasAgreement, onGoToAgreeme
             </button>
           </div>
           ) : (
-          <div className="px-5 py-4 border-t border-border">
+          <div className="px-5 py-4">
             <label className={labelClass} htmlFor="proposal-accept-name">Type your name to accept</label>
             <input
               id="proposal-accept-name"
@@ -219,7 +196,8 @@ export function ProposalSection({ token, onAccepted, hasAgreement, onGoToAgreeme
                 : <><Check className="w-4 h-4" /> Sign and confirm the booking</>}
             </button>
             <p className="text-[12px] text-ink-soft mt-2 text-center">
-              Accepting holds the dates while the agreement and deposit are sorted out.
+              Typing your name signs the agreement above and confirms your booking. You can
+              download a copy from here afterwards.
             </p>
             {error && <p className="text-[13px] text-red mt-2 text-center">{error}</p>}
           </div>

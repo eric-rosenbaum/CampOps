@@ -16,11 +16,12 @@ import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCom
 import { RoomingBoard } from './RoomingBoard';
 import { ProgramSpacesSection } from '@/components/portal/ProgramSpacesSection';
 import { ProposalSection } from '@/components/portal/ProposalSection';
+import { SignedAgreementCard } from '@/components/portal/SignedAgreement';
 import { AddonsSection } from '@/components/portal/AddonsSection';
 import { PaySection } from '@/components/portal/PaySection';
 import {
   supabasePublic, SUPABASE_URL, portalFnHeaders, portalFnPost,
-  readPortalSession, writePortalSession, clearPortalSession,
+  readPortalSession, writePortalSession, clearPortalSession, usePortalLiveUpdates,
   cardClass, inputClass, labelClass, btnPrimary,
   type PortalRetreat, type PortalDocument, type PortalSpace, type PortalHousing,
   type PortalGuest, type PortalMeal, type PortalChangeRequest, type PortalInvoice,
@@ -213,6 +214,18 @@ export function RetreatPortal() {
     return () => { active = false; };
   }, [token]);
 
+  // The camp moved something. Zero on the first render, so this never doubles the initial load.
+  // Refetched from an async continuation, the shape the mount effect above uses: `fetchData` has
+  // a synchronous setState on its no-token path, and calling that straight from an effect body
+  // is a cascading render.
+  const liveTick = usePortalLiveUpdates(token);
+  useEffect(() => {
+    if (liveTick === 0) return;
+    let active = true;
+    (async () => { await Promise.resolve(); if (active) await fetchData(); })();
+    return () => { active = false; };
+  }, [liveTick, fetchData]);
+
   if (pageState === 'loading') {
     return <FullScreenLoading fixed={false} label="Opening your portal" sublabel="Loading everything for your stay" />;
   }
@@ -251,7 +264,7 @@ export function RetreatPortal() {
     );
   }
 
-  return <PortalContent data={data} token={token!} refetch={fetchData} />;
+  return <PortalContent data={data} token={token!} refetch={fetchData} liveTick={liveTick} />;
 }
 
 // ─── Workflow checklist model ─────────────────────────────────────────────────
@@ -290,14 +303,25 @@ function buildSteps(data: PortalData): Step[] {
   const steps: Step[] = [];
 
   // 0, The agreement. Sits above everything because until a group has signed, none of the rest of
-  // this list is theirs to do. Disappears once signed rather than lingering as a done row.
-  if (data.proposal && data.proposal.status !== 'accepted') {
+  // this list is theirs to do.
+  //
+  // It used to vanish the moment it was accepted. That took the contract off the page at the
+  // exact moment somebody had just agreed to it, and left the one document a group is bound by
+  // retrievable nowhere in their own portal. It stays as a finished row instead, and opening it
+  // is how they get a copy.
+  if (data.proposal) {
+    const signedProposal = data.proposal.status === 'accepted';
     steps.push({
-      key: 'proposal', label: 'Read and sign your retreat agreement',
-      hint: data.proposal.valid_until
-        ? `Signing it confirms your booking · stands until ${fmtDateFull(data.proposal.valid_until)}`
-        : 'Signing it confirms your booking',
-      state: 'todo', dueDate: data.proposal.valid_until ?? null, sectionId: 'documents', counts: true,
+      key: 'proposal',
+      label: signedProposal ? 'Your signed agreement' : 'Read and sign your retreat agreement',
+      hint: signedProposal
+        ? `Signed${data.proposal.accepted_at ? ` ${fmtDateTime(data.proposal.accepted_at)}` : ''} · open it to download a copy`
+        : data.proposal.valid_until
+          ? `Signing it confirms your booking · stands until ${fmtDateFull(data.proposal.valid_until)}`
+          : 'Signing it confirms your booking',
+      state: signedProposal ? 'done' : 'todo',
+      dueDate: signedProposal ? null : data.proposal.valid_until ?? null,
+      sectionId: 'documents', counts: true,
     });
   }
 
@@ -675,7 +699,9 @@ function useIsDesktop(): boolean {
   return is;
 }
 
-function PortalContent({ data, token, refetch }: { data: PortalData; token: string; refetch: () => Promise<void>; }) {
+function PortalContent({ data, token, refetch, liveTick }: {
+  data: PortalData; token: string; refetch: () => Promise<void>; liveTick: number;
+}) {
   const { retreat, documents, invoices, spaces, housing, guests, meals, change_requests, feedback_submitted } = data;
   const today = todayISO();
   const numNights = nights(retreat.arrival_date, retreat.departure_date);
@@ -802,7 +828,7 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
           />
         );
       case 'spaces':
-        return <ProgramSpacesSection token={token} retreat={retreat} onChanged={refetch} />;
+        return <ProgramSpacesSection token={token} retreat={retreat} onChanged={refetch} liveTick={liveTick} />;
       case 'addons':
         return (
           <AddonsSection
@@ -948,7 +974,7 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
               <p className="text-[15px] font-bold text-forest">Welcome, {retreat.coordinator_name?.split(' ')[0] ?? retreat.group_name}</p>
               <p className="text-[13px] text-forest/75 mt-1.5 leading-relaxed">
                 This is your private hub for {retreat.group_name}'s stay. Everything the camp
-                needs from you is below. Open an item to deal with it. Your changes save automatically.
+                needs from you is below. Open an item to deal with it.
               </p>
               <p className="text-[12px] text-ink-soft mt-2.5">
                 Bookmark this page. It's your private link, so there's no password to remember.
@@ -1162,7 +1188,13 @@ function PortalContent({ data, token, refetch }: { data: PortalData; token: stri
             </Section>
 
             <Section id="documents" icon={<FileText className="w-4.5 h-4.5" />} title="Your documents" subtitle="Agreement, invoices & insurance">
-              <DocumentsBlock documents={documents} token={token} refetch={refetch} unlocked={unlocked} hint={data.verify_email_hint} />
+              <div className="space-y-3">
+                {/* The signed agreement is not a retreat_documents row -- it lives on the
+                    proposal -- so it was absent from the one list a group goes to looking for
+                    it. It leads this section because it is the document that matters most. */}
+                <SignedAgreementCard token={token} />
+                <DocumentsBlock documents={documents} token={token} refetch={refetch} unlocked={unlocked} hint={data.verify_email_hint} />
+              </div>
             </Section>
           </div>
         )}
@@ -1708,10 +1740,18 @@ function DocumentCard({ doc, token, refetch, unlocked, hint }: {
   const isSigned = doc.status === 'signed' || !!doc.signed_at;
   const signable = !isSigned && (doc.doc_type === 'agreement' || doc.doc_type === 'waiver' || doc.doc_type === 'contract');
   const isCOI = doc.doc_type === 'coi';
+  /** What this card is holding, in words. Every label on it said "the agreement", including the
+   *  one on a certificate of insurance. */
+  const what = isCOI ? 'certificate of insurance'
+    : doc.doc_type === 'waiver' ? 'waiver'
+    : doc.doc_type === 'agreement' || doc.doc_type === 'contract' ? 'agreement'
+    // Not the filename: half of them are "scan_0031.pdf", and "read your scan_0031.pdf" is
+    // worse than the generic word.
+    : 'document';
 
   /** The single next thing standing between the guest and a signature, or null when ready. */
   const blocker = doc.has_file && !opened
-    ? 'Open the agreement above first, then this unlocks.'
+    ? `Open the ${what} above first, then this unlocks.`
     : !consented
       ? 'Tick the box above to confirm you have read it.'
       : !name.trim()
@@ -1861,7 +1901,7 @@ function DocumentCard({ doc, token, refetch, unlocked, hint }: {
               className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-forest hover:text-forest-mid"
             >
               <Lock className="w-4 h-4" />
-              {isSigned ? 'Unlock to view your signed agreement' : 'Unlock to read the agreement'}
+              {isSigned ? `Unlock to view your signed ${what}` : `Unlock to read your ${what}`}
             </button>
           )}
           {doc.has_file && unlocked && (
@@ -1877,7 +1917,7 @@ function DocumentCard({ doc, token, refetch, unlocked, hint }: {
               }
             >
               {opening ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-              {isSigned ? 'View or download your signed agreement' : 'Read the agreement'}
+              {isSigned ? `View or download your signed ${what}` : `Read your ${what}`}
             </button>
           )}
 
@@ -1889,7 +1929,7 @@ function DocumentCard({ doc, token, refetch, unlocked, hint }: {
                 <UnlockPanel
                   token={token}
                   hint={hint}
-                  what={doc.doc_type === 'agreement' ? 'your retreat agreement' : `your ${doc.name.toLowerCase()}`}
+                  what={`your ${what}`}
                   onUnlocked={refetch}
                 />
               ) : (
@@ -1906,7 +1946,7 @@ function DocumentCard({ doc, token, refetch, unlocked, hint }: {
             <div className="mt-3 border-t border-cream-dark pt-3">
               {doc.has_file && !opened && (
                 <p className="text-[12px] text-ink-soft mb-2.5">
-                  Open and read the agreement above before signing.
+                  Open and read the {what} above before signing.
                 </p>
               )}
 

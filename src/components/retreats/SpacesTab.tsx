@@ -263,23 +263,28 @@ export function SpacesTab({ retreatId }: { retreatId?: string }) {
                         </div>
                       )}
 
+                      {/* ── Both answers, always ──
+                          Declining used to remove the Decline button, so a request the camp had
+                          already turned down showed nothing but a green "Review and approve" --
+                          it read as still waiting, and there was no way back to the wording the
+                          group had been given. Neither answer disappears now; the labels carry
+                          the state instead. */}
                       {canManage && (
                         <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-cream-dark">
-                          {r.status !== 'approved' && (
-                            <Button size="sm" onClick={() => setDeciding({ id: r.id, mode: 'approve' })}>
-                              <Check className="w-3.5 h-3.5" /> Review and approve
-                            </Button>
-                          )}
-                          {r.status === 'approved' && (
-                            <Button size="sm" variant="ghost" onClick={() => setDeciding({ id: r.id, mode: 'approve' })}>
-                              <Check className="w-3.5 h-3.5" /> Re-approve
-                            </Button>
-                          )}
-                          {r.status !== 'declined' && (
-                            <Button size="sm" variant="ghost" onClick={() => setDeciding({ id: r.id, mode: 'decline' })}>
-                              <X className="w-3.5 h-3.5" /> Decline
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            variant={r.status === 'requested' || r.status === 'countered' ? 'primary' : 'ghost'}
+                            onClick={() => setDeciding({ id: r.id, mode: 'approve' })}
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            {r.status === 'approved' ? 'Re-approve'
+                              : r.status === 'declined' ? 'Approve instead'
+                              : 'Review and approve'}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setDeciding({ id: r.id, mode: 'decline' })}>
+                            <X className="w-3.5 h-3.5" />
+                            {r.status === 'declined' ? 'Edit the decline' : 'Decline'}
+                          </Button>
                           <Button size="sm" variant="ghost" onClick={() => setEditing({ id: r.id })}>
                             <Pencil className="w-3.5 h-3.5" /> Edit
                           </Button>

@@ -7,7 +7,7 @@ import { fmtRange, GROUP_TYPE_LABELS, billableHeadcount } from '@/components/ret
 
 import { OverviewTab } from '@/components/retreats/OverviewTab';
 import { ActiveRetreatTab } from '@/components/retreats/ActiveRetreatTab';
-import { DocumentsTab } from '@/components/retreats/DocumentsTab';
+import { PaperworkTab } from '@/components/retreats/PaperworkTab';
 import { HousingTab } from '@/components/retreats/HousingTab';
 import { RetreatMenuTab } from '@/components/retreats/RetreatMenuTab';
 import { ChangeRequestsTab } from '@/components/retreats/ChangeRequestsTab';
@@ -18,9 +18,6 @@ import { FeedbackTab } from '@/components/retreats/FeedbackTab';
 import { PipelineTab } from '@/components/retreats/PipelineTab';
 import { SpacesTab } from '@/components/retreats/SpacesTab';
 import { TurnoverCard } from '@/components/retreats/TurnoverCard';
-import { ContactsPanel } from '@/components/retreats/ContactsPanel';
-import { TouchpointsPanel } from '@/components/retreats/TouchpointsPanel';
-import { ProposalsPanel } from '@/components/retreats/ProposalsPanel';
 import { AddonsPanel } from '@/components/retreats/AddonsPanel';
 import { OutboxPanel } from '@/components/retreats/OutboxPanel';
 import { RentalsReview } from '@/components/retreats/RentalsReview';
@@ -179,26 +176,7 @@ export function Retreats() {
         )}
         {currentTab === 'relationship' && retreat && (
           <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-7 sm:py-6">
-            {/* ── The agreement ──
-                The top of this page is one job: get the retreat agreement to this group and get
-                it signed, because signing it IS how they commit. Everything else on the page is
-                paperwork that moves between the two afterwards. */}
-            <div className="flex flex-col gap-6">
-              <ProposalsPanel retreatId={retreat.id} />
-            </div>
-
-            {/* ── Everything else that passes between you ── */}
-            <div className="mt-8 border-t border-border pt-7">
-              <h2 className="text-[14px] font-semibold text-forest">Other documents</h2>
-              <p className="mt-0.5 text-[12px] text-ink-soft">
-                Their certificate of insurance, and anything else either of you sends.
-              </p>
-              <div className="mt-4 flex flex-col gap-6">
-                <DocumentsTab embedded hideAgreement />
-                <ContactsPanel retreatId={retreat.id} />
-                <TouchpointsPanel retreatId={retreat.id} />
-              </div>
-            </div>
+            <PaperworkTab retreatId={retreat.id} />
           </div>
         )}
         {currentTab === 'menu' && <RetreatMenuTab />}

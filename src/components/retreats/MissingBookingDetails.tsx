@@ -78,9 +78,17 @@ const ELSEWHERE: Record<string, string> = {
  * wrong and then asked them to go somewhere else to fix it — so the likely outcome was sending the
  * contract with the braces still in it. Each gap is now the field that closes it, and filling it
  * writes to the booking, so the next agreement for this group is already right.
+ *
+ * `tokens` is every gap this document has had; `unfilled` is the ones still open. The fields used
+ * to be driven off `unfilled` alone, so a box vanished the instant you finished typing in it —
+ * no confirmation that the right thing had been saved, and the boxes below jumping up a row each
+ * time. A filled one stays, with a tick.
  */
-export function MissingBookingDetails({ retreat, unfilled, onFilled }: {
+export function MissingBookingDetails({ retreat, tokens, unfilled, onFilled }: {
   retreat: Retreat;
+  /** Every gap seen so far, in the order it appeared. */
+  tokens: string[];
+  /** The subset still missing. */
   unfilled: string[];
   onFilled: () => void;
 }) {
@@ -89,8 +97,11 @@ export function MissingBookingDetails({ retreat, unfilled, onFilled }: {
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  const editable = unfilled.filter((t) => FIELDS[t]);
-  const elsewhere = unfilled.filter((t) => !FIELDS[t]);
+  const open = new Set(unfilled);
+  const editable = tokens.filter((t) => FIELDS[t]);
+  // Only the ones we cannot offer a field for, and only while they are still open — a resolved
+  // one has nothing left to say.
+  const elsewhere = tokens.filter((t) => !FIELDS[t] && open.has(t));
   if (editable.length === 0 && elsewhere.length === 0) return null;
 
   async function commit(token: string, value: string) {
@@ -121,17 +132,24 @@ export function MissingBookingDetails({ retreat, unfilled, onFilled }: {
   }
 
   const n = unfilled.length;
+  const done = n === 0;
   return (
-    <div className="mt-2.5 rounded-card border border-amber-text/25 bg-amber-bg/50 px-4 py-3.5">
+    <div className={`mb-2.5 rounded-card border px-4 py-3.5 ${
+      done ? 'border-green-muted-text/25 bg-green-muted-bg/50' : 'border-amber-text/25 bg-amber-bg/50'}`}>
       <div className="flex items-start gap-2.5">
-        <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-text" />
+        {done
+          ? <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-muted-text" />
+          : <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-text" />}
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold text-amber-text">
-            {n === 1 ? 'One detail is' : `${n} details are`} missing from this booking
+          <p className={`text-[13px] font-semibold ${done ? 'text-green-muted-text' : 'text-amber-text'}`}>
+            {done
+              ? 'Every gap in this agreement is filled'
+              : `${n === 1 ? 'One detail is' : `${n} details are`} missing from this booking`}
           </p>
-          <p className="mt-0.5 text-[12px] leading-relaxed text-amber-text/85">
-            Fill {n === 1 ? 'it' : 'them'} in here and the agreement updates as you type. Left
-            blank, {n === 1 ? 'it prints' : 'they print'} as a placeholder in the document.
+          <p className={`mt-0.5 text-[12px] leading-relaxed ${done ? 'text-green-muted-text/85' : 'text-amber-text/85'}`}>
+            {done
+              ? 'These are saved on the booking, so the next version starts from them. Edit any of them here.'
+              : `Fill ${n === 1 ? 'it' : 'them'} in here and the document updates as you type. Left blank, ${n === 1 ? 'it prints' : 'they print'} as a ruled blank in the contract.`}
           </p>
 
           {editable.length > 0 && (
@@ -139,23 +157,26 @@ export function MissingBookingDetails({ retreat, unfilled, onFilled }: {
               {editable.map((token) => {
                 const f = FIELDS[token];
                 const value = draft[token] ?? f.get(retreat);
+                const stillOpen = open.has(token);
                 return (
                   <label key={token} className="block">
                     <span className="mb-1 flex items-baseline gap-1.5">
                       <span className="text-[11.5px] font-semibold text-forest">{f.label}</span>
                       {f.hint && <span className="text-[11px] text-ink-faint">{f.hint}</span>}
-                      {savedKey === token && (
+                      {savedKey === token ? (
                         <span className="ml-auto inline-flex items-center gap-0.5 text-[11px] font-medium text-green-muted-text">
                           <Check className="h-3 w-3" /> saved
                         </span>
-                      )}
+                      ) : !stillOpen ? (
+                        <Check className="ml-auto h-3.5 w-3.5 text-green-muted-text" />
+                      ) : null}
                     </span>
                     <input
                       type={f.type}
                       value={value}
                       onChange={(e) => edit(token, e.target.value)}
                       onBlur={(e) => { void commit(token, e.target.value); }}
-                      className={`${fieldClass} w-full`}
+                      className={`${fieldClass} w-full ${stillOpen ? '' : 'border-green-muted-text/40 bg-white'}`}
                     />
                   </label>
                 );

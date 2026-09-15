@@ -1126,9 +1126,6 @@ function RentalsTab() {
     currentCamp?.defaultRatePerPersonNight != null ? String(currentCamp.defaultRatePerPersonNight) : '');
   const [flat, setFlat] = useState(
     currentCamp?.defaultFlatRate != null ? String(currentCamp.defaultFlatRate) : '');
-  const [terms, setTerms] = useState(currentCamp?.proposalTerms ?? '');
-  const [scheduleOn, setScheduleOn] = useState(Boolean(currentCamp?.agreementScheduleEnabled));
-  const setAgreementScheduleEnabled = useCampStore((st) => st.setAgreementScheduleEnabled);
 
   // ── The public inquiry link ──
   const setInquiryToken = useCampStore((st) => st.setInquiryToken);
@@ -1156,7 +1153,6 @@ function RentalsTab() {
       defaultPricingModel: model,
       defaultRatePerPersonNight: num(rate),
       defaultFlatRate: num(flat),
-      proposalTerms: terms.trim() || null,
       proposalValidDays: days.trim() === '' ? null : Number(days),
       depositChaseDays: num(chase),
     });
@@ -1241,14 +1237,6 @@ function RentalsTab() {
               Counted from the day the deposit invoice went out. Blank means never.
             </p>
           </div>
-          <div>
-            <label className={label} htmlFor="rt-terms">Terms</label>
-            <textarea
-              id="rt-terms" className={`${input} resize-y`} rows={5} value={terms}
-              disabled={!editable} onChange={(e) => setTerms(e.target.value)}
-              placeholder="A signed agreement and a deposit hold the dates…"
-            />
-          </div>
         </div>
 
       </div>
@@ -1309,33 +1297,6 @@ function RentalsTab() {
             keeping it as a "fallback" meant offering camps a path that quietly produced worse
             contracts. Uploading a file for ONE group still exists, on that retreat's Paperwork
             tab, which is the right place for a negotiated one-off or a signed copy coming back. */}
-
-        {/* Opting in to a machine-filled page in front of a legal document. Saved on the spot
-            rather than with the rest of the form: it is not the same kind of decision as a
-            default rate, and it should not ride along with one. */}
-        <div className="mt-5 border-t border-border pt-4">
-          <label className="flex items-start gap-2.5 cursor-pointer">
-            <input
-              type="checkbox"
-              className="mt-0.5 accent-forest"
-              checked={scheduleOn}
-              disabled={!editable}
-              onChange={(e) => {
-                setScheduleOn(e.target.checked);
-                if (currentCamp) void setAgreementScheduleEnabled(currentCamp.id, e.target.checked);
-              }}
-            />
-            <span className="text-[13px] text-ink">
-              Put a terms page in front of our agreement
-              <span className="mt-0.5 block text-[11.5px] leading-relaxed text-ink-soft">
-                Group, dates, headcount, total, deposit and cancellation date, filled in from each
-                booking. Your own agreement file is never changed or read. Somebody has to check
-                and confirm every value before it counts for anything — nothing is ever sent
-                automatically.
-              </span>
-            </span>
-          </label>
-        </div>
       </div>
 
       {editable && (

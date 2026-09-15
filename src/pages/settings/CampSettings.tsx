@@ -1168,6 +1168,16 @@ function RentalsTab() {
 
   return (
     <div className="px-4 py-4 sm:px-7 sm:py-6 max-w-5xl space-y-5">
+      {/* Save leads the page. At the bottom it sat under a full-height agreement editor, so the
+          way to find out how to keep a changed rate was to scroll past the contract looking for
+          a button -- and the page has no other affordance that says these are unsaved. */}
+      {editable && (
+        <div className="flex items-center justify-end gap-3">
+          {saved && <span className="text-[12.5px] text-green-muted-text">Saved.</span>}
+          <Button onClick={save}>Save</Button>
+        </div>
+      )}
+
       {/* Rate and defaults are short settings; side by side they read as one row instead of a
           column of narrow cards with half the page empty beside them. The agreement below gets
           the full width, because it is a document rather than a setting. */}
@@ -1315,12 +1325,6 @@ function RentalsTab() {
             tab, which is the right place for a negotiated one-off or a signed copy coming back. */}
       </div>
 
-      {editable && (
-        <div className="flex items-center gap-3">
-          <Button onClick={save}>Save</Button>
-          {saved && <span className="text-[12.5px] text-green-muted-text">Saved.</span>}
-        </div>
-      )}
     </div>
   );
 }

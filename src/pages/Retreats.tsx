@@ -18,7 +18,6 @@ import { FeedbackTab } from '@/components/retreats/FeedbackTab';
 import { PipelineTab } from '@/components/retreats/PipelineTab';
 import { SpacesTab } from '@/components/retreats/SpacesTab';
 import { TurnoverCard } from '@/components/retreats/TurnoverCard';
-import { AddonsPanel } from '@/components/retreats/AddonsPanel';
 import { OutboxPanel } from '@/components/retreats/OutboxPanel';
 import { RentalsReview } from '@/components/retreats/RentalsReview';
 import { PropertyCalendar } from '@/components/campground/PropertyCalendar';
@@ -55,7 +54,6 @@ const SEASON_TABS: { id: RetreatTab; label: string }[] = [
   { id: 'costs', label: 'Costs & invoice' },
   { id: 'outbox', label: 'Reminders' },
   { id: 'rentalsReview', label: 'Occupancy & revenue' },
-  { id: 'addons', label: 'Extras' },
 ];
 
 // The life of one booking, in the order it happens: what is true now, then winning it, the
@@ -157,11 +155,6 @@ export function Retreats() {
         {currentTab === 'rentalsReview' && <RentalsReview />}
         {currentTab === 'calendar' && <PropertyCalendar />}
         {currentTab === 'outbox' && <OutboxPanel />}
-        {currentTab === 'addons' && (
-          <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
-            <AddonsPanel />
-          </div>
-        )}
         {currentTab === 'costs' && <RetreatCostsTab />}
         {currentTab === 'retreatCosts' && <RetreatCostsDetailTab />}
         {currentTab === 'active' && <ActiveRetreatTab />}

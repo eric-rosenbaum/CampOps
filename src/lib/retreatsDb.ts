@@ -13,7 +13,7 @@ import type {
   RetreatChangeRequest, RetreatCost, RetreatCharge, RetreatPayment, RetreatIssue,
   RetreatChecklistItem, RetreatScheduleItem, RetreatFeedback, RetreatReminder, MealPeriod,
   RetreatInvoice, RetreatInvoiceLine,
-  RetreatSpaceRequest, RetreatSpaceMessage, RetreatContact, RetreatTouchpoint, RetreatProposal, RetreatAddon,
+  RetreatSpaceRequest, RetreatSpaceMessage, RetreatContact, RetreatTouchpoint, RetreatProposal,
   ScheduledMessage, SpaceRequestConflicts, RetreatIntakeDraft,
 } from './types';
 
@@ -86,7 +86,7 @@ function rowToCost(r: Row): RetreatCost {
   return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, category: r.category as string, budgeted: Number(r.budgeted ?? 0), actual: n(r.actual), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
 }
 function rowToCharge(r: Row): RetreatCharge {
-  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, description: r.description as string, qty: Number(r.qty ?? 1), unitRate: Number(r.unit_rate ?? 0), amount: Number(r.amount ?? 0), addonId: s(r.addon_id), requestedByGuest: Boolean(r.requested_by_guest), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, description: r.description as string, qty: Number(r.qty ?? 1), unitRate: Number(r.unit_rate ?? 0), amount: Number(r.amount ?? 0), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
 }
 function rowToPayment(r: Row): RetreatPayment {
   return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, paidOn: r.paid_on as string, amount: Number(r.amount ?? 0), method: s(r.method), kind: (r.kind as RetreatPayment['kind']) ?? 'payment', note: s(r.note), createdAt: r.created_at as string };
@@ -190,15 +190,6 @@ function rowToProposal(r: Row): RetreatProposal {
     createdAt: r.created_at as string, updatedAt: r.updated_at as string,
   };
 }
-function rowToAddon(r: Row): RetreatAddon {
-  return {
-    id: r.id as string, campId: r.camp_id as string, name: r.name as string,
-    description: s(r.description), unit: (r.unit as RetreatAddon['unit']) ?? 'per_person',
-    rate: Number(r.rate ?? 0), guestSelectable: Boolean(r.guest_selectable),
-    isActive: r.is_active !== false, sortOrder: Number(r.sort_order ?? 0),
-    createdAt: r.created_at as string, updatedAt: r.updated_at as string,
-  };
-}
 function rowToScheduledMessage(r: Row): ScheduledMessage {
   return {
     id: r.id as string, campId: r.camp_id as string,
@@ -228,7 +219,6 @@ export interface RetreatData {
   contacts: RetreatContact[];
   touchpoints: RetreatTouchpoint[];
   proposals: RetreatProposal[];
-  addons: RetreatAddon[];
   /** What is queued to go out. Nothing sends silently — the camp can see and cancel it. */
   outbox: ScheduledMessage[];
 }
@@ -238,13 +228,13 @@ const RETREAT_TABLES = [
   'retreat_meals', 'retreat_change_requests', 'retreat_costs', 'retreat_charges', 'retreat_payments',
   'retreat_issues', 'retreat_checklist', 'retreat_schedule_items', 'retreat_feedback', 'retreat_reminders',
   'retreat_invoices', 'retreat_space_requests', 'retreat_space_messages', 'retreat_contacts', 'retreat_touchpoints',
-  'retreat_proposals', 'retreat_addon_catalog', 'scheduled_messages',
+  'retreat_proposals', 'scheduled_messages',
 ];
 
 async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
   const q = (t: string) => supabase.from(t).select('*').eq('camp_id', campId);
   const [re, sp, ho, hv, gst, docs, meals, cr, costs, charges, pays, iss, chk, sched, fb, rem, inv,
-         sreq, smsg, cont, touch, props, addons, obox] = await Promise.all([
+         sreq, smsg, cont, touch, props, obox] = await Promise.all([
     q('retreats').order('arrival_date', { ascending: true }),
     q('retreat_spaces').order('sort_order', { ascending: true }),
     q('retreat_housing').order('sort_order', { ascending: true }),
@@ -267,11 +257,10 @@ async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
     q('retreat_contacts').order('created_at', { ascending: true }),
     q('retreat_touchpoints').order('occurred_at', { ascending: false }),
     q('retreat_proposals').order('version', { ascending: false }),
-    q('retreat_addon_catalog').order('sort_order', { ascending: true }),
     q('scheduled_messages').order('send_after', { ascending: true }),
   ]);
   assertLoaded('retreats', re, sp, ho, hv, gst, docs, meals, cr, costs, charges, pays, iss, chk,
-               sched, fb, rem, inv, sreq, smsg, cont, touch, props, addons, obox);
+               sched, fb, rem, inv, sreq, smsg, cont, touch, props, obox);
   return {
     retreats: (re.data ?? []).map((r) => rowToRetreat(r as Row)),
     spaces: (sp.data ?? []).map((r) => rowToSpace(r as Row)),
@@ -295,7 +284,6 @@ async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
     contacts: (cont.data ?? []).map((r) => rowToContact(r as Row)),
     touchpoints: (touch.data ?? []).map((r) => rowToTouchpoint(r as Row)),
     proposals: (props.data ?? []).map((r) => rowToProposal(r as Row)),
-    addons: (addons.data ?? []).map((r) => rowToAddon(r as Row)),
     outbox: (obox.data ?? []).map((r) => rowToScheduledMessage(r as Row)),
   };
 }
@@ -457,8 +445,8 @@ export const dbAddCost = (x: RetreatCost) => ins('retreat_costs', { id: x.id, ca
 export const dbUpdateCost = (x: RetreatCost) => upd('retreat_costs', x.id, { category: x.category, budgeted: x.budgeted, actual: x.actual, sort_order: x.sortOrder });
 export const dbDeleteCost = (id: string) => del('retreat_costs', id);
 
-export const dbAddCharge = (x: RetreatCharge) => ins('retreat_charges', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, description: x.description, qty: x.qty, unit_rate: x.unitRate, amount: x.amount, addon_id: x.addonId, requested_by_guest: x.requestedByGuest, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
-export const dbUpdateCharge = (x: RetreatCharge) => upd('retreat_charges', x.id, { description: x.description, qty: x.qty, unit_rate: x.unitRate, amount: x.amount, addon_id: x.addonId, sort_order: x.sortOrder });
+export const dbAddCharge = (x: RetreatCharge) => ins('retreat_charges', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, description: x.description, qty: x.qty, unit_rate: x.unitRate, amount: x.amount, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
+export const dbUpdateCharge = (x: RetreatCharge) => upd('retreat_charges', x.id, { description: x.description, qty: x.qty, unit_rate: x.unitRate, amount: x.amount, sort_order: x.sortOrder });
 export const dbDeleteCharge = (id: string) => del('retreat_charges', id);
 
 export const dbAddPayment = (x: RetreatPayment) => ins('retreat_payments', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, paid_on: x.paidOn, amount: x.amount, method: x.method, kind: x.kind, note: x.note, created_at: x.createdAt });
@@ -729,13 +717,6 @@ export async function fetchProposalLines(retreatId: string): Promise<RetreatInvo
   return (data as RetreatInvoiceLine[]) ?? [];
 }
 
-const addonRow = (x: RetreatAddon): Row => ({
-  name: x.name, description: x.description, unit: x.unit, rate: x.rate,
-  guest_selectable: x.guestSelectable, is_active: x.isActive, sort_order: x.sortOrder,
-});
-export const dbAddAddon = (x: RetreatAddon) => ins('retreat_addon_catalog', { id: x.id, camp_id: CID(), ...addonRow(x) });
-export const dbUpdateAddon = (x: RetreatAddon) => upd('retreat_addon_catalog', x.id, addonRow(x));
-export const dbDeleteAddon = (id: string) => del('retreat_addon_catalog', id);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Payments (Stripe Connect — the money is the camp's, not ours)

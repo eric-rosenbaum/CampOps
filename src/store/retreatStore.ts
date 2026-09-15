@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { useCommissaryStore } from './commissaryStore';
 import type {
   RetreatSpaceRequest, RetreatSpaceMessage, RetreatContact, RetreatTouchpoint, RetreatProposal,
-  RetreatAddon, ScheduledMessage,
+  ScheduledMessage,
   Retreat, RetreatStatus, RetreatSpace, RetreatHousing, RetreatHousingVersion, RetreatGuest, RetreatDocument,
   RetreatDocType, RetreatMeal, RetreatChangeRequest, RetreatRequestStatus, RetreatCost, RetreatCharge,
   RetreatPayment, RetreatIssue, RetreatChecklistItem, RetreatChecklistPhase, RetreatScheduleItem,
@@ -32,7 +32,7 @@ import { estimateRevenue } from '@/components/retreats/retreatUi';
 
 export type RetreatTab =
   // Season-wide: these answer questions about the whole year, not about one group.
-  | 'overview' | 'pipeline' | 'costs' | 'rentalsReview' | 'calendar' | 'outbox' | 'addons'
+  | 'overview' | 'pipeline' | 'costs' | 'rentalsReview' | 'calendar' | 'outbox'
   // Per-retreat: only meaningful once you have said which group you mean.
   | 'active' | 'documents' | 'housing' | 'spaces' | 'menu' | 'relationship'
   | 'retreatCosts' | 'requests' | 'portal' | 'feedback';
@@ -94,7 +94,6 @@ interface RetreatState {
   contacts: RetreatContact[];
   touchpoints: RetreatTouchpoint[];
   proposals: RetreatProposal[];
-  addons: RetreatAddon[];
   /** What is queued to go out. Nothing sends silently; the camp can see and cancel it. */
   outbox: ScheduledMessage[];
 
@@ -128,7 +127,6 @@ interface RetreatState {
   setContacts: (x: RetreatContact[]) => void;
   setTouchpoints: (x: RetreatTouchpoint[]) => void;
   setProposals: (x: RetreatProposal[]) => void;
-  setAddons: (x: RetreatAddon[]) => void;
   setOutbox: (x: ScheduledMessage[]) => void;
   setSpaces: (r: RetreatSpace[]) => void;
   setHousing: (r: RetreatHousing[]) => void;
@@ -284,7 +282,7 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   modal: null,
 
   retreats: [], spaces: [], housing: [], housingVersions: [], guests: [], documents: [], meals: [],
-  spaceRequests: [], spaceMessages: [], contacts: [], touchpoints: [], proposals: [], addons: [], outbox: [],
+  spaceRequests: [], spaceMessages: [], contacts: [], touchpoints: [], proposals: [], outbox: [],
   changeRequests: [], costs: [], charges: [], payments: [], issues: [], checklist: [],
   scheduleItems: [], feedback: [], reminders: [], invoices: [],
 
@@ -325,7 +323,6 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   setContacts: (rows) => set({ contacts: rows }),
   setTouchpoints: (rows) => set({ touchpoints: rows }),
   setProposals: (rows) => set({ proposals: rows }),
-  setAddons: (rows) => set({ addons: rows }),
   setOutbox: (rows) => set({ outbox: rows }),
   setSpaces: (rows) => set({ spaces: rows }),
   setHousing: (rows) => set({ housing: rows }),

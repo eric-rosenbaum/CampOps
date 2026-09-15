@@ -173,7 +173,7 @@ function CampDataLoader() {
     setRetreats, setSpaces, setHousing, setHousingVersions, setGuests: setRetreatGuests, setDocuments: setRetreatDocs,
     setMeals: setRetreatMeals, setChangeRequests, setCosts: setRetreatCosts, setCharges, setPayments,
     setIssues: setRetreatIssues, setChecklist, setScheduleItems, setFeedback, setReminders, setInvoices,
-    setSpaceRequests, setSpaceMessages, setContacts, setTouchpoints, setProposals, setAddons, setOutbox,
+    setSpaceRequests, setSpaceMessages, setContacts, setTouchpoints, setProposals, setOutbox,
   } = useRetreatStore();
   const {
     setVendors: setServiceVendors, setRouting: setWorkRouting,
@@ -319,7 +319,7 @@ function CampDataLoader() {
       setChecklist(d.checklist); setScheduleItems(d.scheduleItems); setFeedback(d.feedback); setReminders(d.reminders);
       setInvoices(d.invoices);
       setSpaceRequests(d.spaceRequests); setSpaceMessages(d.spaceMessages); setContacts(d.contacts); setTouchpoints(d.touchpoints);
-      setProposals(d.proposals); setAddons(d.addons); setOutbox(d.outbox);
+      setProposals(d.proposals); setOutbox(d.outbox);
     };
     unsubRetreats = subscribeToRetreats(campId, applyRetreatData);
 

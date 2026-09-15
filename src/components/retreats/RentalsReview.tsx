@@ -235,32 +235,8 @@ export function RentalsReview({ from: initialFrom, to: initialTo }: Props) {
               />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="bg-white border border-border rounded-card">
-                <p className="px-4 py-2.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-ink-soft border-b border-border">
-                  Add-ons, by revenue
-                </p>
-                {data.revenue.addons.length === 0 ? (
-                  <p className="px-4 py-5 text-[12.5px] text-ink-faint text-center">
-                    No add-ons sold in this range.
-                  </p>
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {data.revenue.addons.map((a) => (
-                      <li key={a.name} className="px-4 py-2.5 flex items-baseline justify-between gap-3">
-                        <span className="text-[13px] text-ink min-w-0">{a.name}</span>
-                        <span className="text-right flex-shrink-0">
-                          <span className="block text-[13px] font-semibold text-forest tabular-nums">
-                            {money(a.revenue)}
-                          </span>
-                          <span className="block text-[11px] text-ink-soft">sold {a.times_sold}×</span>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
+            {/* One card wide now that the add-on breakdown beside it is gone with the feature. */}
+            <div className="grid grid-cols-1 gap-4">
               <div className="bg-white border border-border rounded-card">
                 <p className="px-4 py-2.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-ink-soft border-b border-border">
                   By group

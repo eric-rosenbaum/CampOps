@@ -17,7 +17,6 @@ import { RoomingBoard } from './RoomingBoard';
 import { ProgramSpacesSection } from '@/components/portal/ProgramSpacesSection';
 import { ProposalSection } from '@/components/portal/ProposalSection';
 import { SignedAgreementCard } from '@/components/portal/SignedAgreement';
-import { AddonsSection } from '@/components/portal/AddonsSection';
 import { PaySection } from '@/components/portal/PaySection';
 import {
   supabasePublic, SUPABASE_URL, portalFnHeaders, portalFnPost,
@@ -75,12 +74,6 @@ const STATUS_LABELS: Record<string, string> = {
   complete: 'Complete', cancelled: 'Cancelled',
 };
 
-/** Nights between two calendar days, tolerating a booking that has not got dates yet. */
-function nightsBetween(a: string | null, b: string | null): number {
-  if (!a || !b) return 1;
-  const ms = new Date(`${b}T00:00:00`).getTime() - new Date(`${a}T00:00:00`).getTime();
-  return Math.max(1, Math.round(ms / 86_400_000));
-}
 
 // ─── Reusable atoms ──────────────────────────────────────────────────────────
 function Section({ id, icon, title, subtitle, children }: {
@@ -484,16 +477,6 @@ function buildSteps(data: PortalData): Step[] {
     });
   }
 
-  // Extras never block anything, so they never count toward the checklist — a group that wants
-  // no linens has not left something undone.
-  if (data.has_addons) {
-    steps.push({
-      key: 'addons', label: 'Anything else you need?',
-      hint: 'Linens, boats, AV, firewood',
-      state: 'todo', dueDate: null, sectionId: 'addons', counts: false,
-    });
-  }
-
   return steps;
 }
 
@@ -874,15 +857,6 @@ function PortalContent({ data, token, refetch, liveTick }: {
         );
       case 'spaces':
         return <ProgramSpacesSection token={token} retreat={retreat} onChanged={refetch} liveTick={liveTick} />;
-      case 'addons':
-        return (
-          <AddonsSection
-            token={token}
-            headcount={retreat.final_headcount ?? retreat.headcount ?? 0}
-            nights={nightsBetween(retreat.arrival_date, retreat.departure_date)}
-            onChanged={refetch}
-          />
-        );
       default:
         return null;
     }

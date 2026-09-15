@@ -293,7 +293,6 @@ export interface PortalData {
    */
   spaces_unread?: number;
   space_request_count?: number;
-  has_addons?: boolean;
   /** How the camp says to pay when it has not connected Stripe. */
   payment_note?: string | null;
   payments_enabled?: boolean;

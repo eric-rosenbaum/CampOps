@@ -1529,9 +1529,7 @@ export interface RetreatCharge {
   amount: number;
   /** Which catalogue extra this came from, when it came from one. Joining on the description
    *  works only until a camp renames "Linen service", so the review reads this instead. */
-  addonId: string | null;
   /** The group asked for it in the portal rather than the camp adding it. */
-  requestedByGuest: boolean;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -2495,32 +2493,6 @@ export interface RetreatTouchpoint {
   createdAt: string;
 }
 
-export type AddonUnit = 'per_person' | 'per_night' | 'per_person_night' | 'per_unit' | 'flat';
-
-export const ADDON_UNIT_LABELS: Record<AddonUnit, string> = {
-  per_person: 'Per person',
-  per_night: 'Per night',
-  per_person_night: 'Per person, per night',
-  per_unit: 'Each',
-  flat: 'Flat fee',
-};
-
-/** The only upsell surface in the product. */
-export interface RetreatAddon {
-  id: string;
-  campId: string;
-  name: string;
-  description: string | null;
-  unit: AddonUnit;
-  rate: number;
-  /** Whether the guest portal offers it, or it is camp-side only. */
-  guestSelectable: boolean;
-  isActive: boolean;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export type ProposalStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined' | 'expired';
 
 /**
@@ -2690,7 +2662,6 @@ export interface RentalsReview {
   };
   revenue: {
     invoiced: number; collected: number; outstanding: number;
-    addons: { name: string; times_sold: number; revenue: number }[];
     by_group: { group: string; invoiced: number; people: number }[];
   };
   pipeline: {

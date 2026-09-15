@@ -5,7 +5,7 @@
 // after four days is not a nudge email, it is a wrong address. Everything else here — versions,
 // the printable document, the portal link — is in service of that one fact.
 import { useMemo, useState } from 'react';
-import { Plus, Printer, Trash2, Eye, EyeOff, Check, Copy, Link2, FileText } from 'lucide-react';
+import { Plus, Printer, Trash2, Eye, EyeOff, Check, X, Copy, Link2, FileText } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useRetreatStore } from '@/store/retreatStore';
 import { useCampStore } from '@/store/campStore';
@@ -113,35 +113,52 @@ export function ProposalsPanel({ retreatId }: { retreatId: string }) {
         )}
       </div>
 
-      {/* Opened / not opened, said loudly, for the newest version only — that is the one
-          whose answer you are waiting on. */}
-      {current && current.status !== 'draft' && (
-        <div className={`px-4 py-3 border-b border-border ${current.viewedAt ? 'bg-blue-bg/50' : 'bg-cream-dark/50'}`}>
-          <p className="flex items-center gap-2 text-[14px] font-semibold text-forest">
-            {current.viewedAt
-              ? <><Eye className="w-4 h-4 text-blue" /> Opened {fmtOpened(current.viewedAt)}</>
-              : <><EyeOff className="w-4 h-4 text-ink-faint" /> Not opened yet</>}
-          </p>
-          <div className="flex items-end justify-between gap-3 flex-wrap">
-            <p className="text-[11.5px] text-ink-soft mt-0.5">
-              {current.viewedAt
-                ? 'They have read v' + current.version + '. A call converts better than a second email.'
-                : current.sentAt
-                  ? 'Sent ' + fmtOpened(current.sentAt) + '.'
-                  : 'Send it and this will start tracking.'}
+      {/* Where the newest version has got to, said loudly — that is the one whose answer you are
+          waiting on. Signed beats opened: it used to stop at "Opened Mon, Sep 14 10:09pm" on an
+          agreement that had been signed an hour later, which is the wrong end of the story. */}
+      {current && current.status !== 'draft' && (() => {
+        const state = current.acceptedAt ? 'signed'
+          : current.declinedAt ? 'declined'
+          : current.viewedAt ? 'opened' : 'sent';
+        const band = state === 'signed' ? 'bg-green-muted-bg/60'
+          : state === 'declined' ? 'bg-red-bg/50'
+          : state === 'opened' ? 'bg-blue-bg/50' : 'bg-cream-dark/50';
+        return (
+          <div className={`px-4 py-3 border-b border-border ${band}`}>
+            <p className="flex items-center gap-2 text-[14px] font-semibold text-forest">
+              {state === 'signed' ? (
+                <><Check className="w-4 h-4 text-green-muted-text" /> Signed {fmtOpened(current.acceptedAt!)}</>
+              ) : state === 'declined' ? (
+                <><X className="w-4 h-4 text-red" /> Declined {fmtOpened(current.declinedAt!)}</>
+              ) : state === 'opened' ? (
+                <><Eye className="w-4 h-4 text-blue" /> Opened {fmtOpened(current.viewedAt!)}</>
+              ) : (
+                <><EyeOff className="w-4 h-4 text-ink-faint" /> Not opened yet</>
+              )}
             </p>
-            {/* The nudge belongs where you learn it is needed. */}
-            {canManage && current.sentAt && !current.acceptedAt && !current.declinedAt && (
-              <Button
-                size="sm" variant="ghost"
-                onClick={() => openModal({ kind: 'sendReminder', retreatId, reminderType: 'proposal' })}
-              >
-                Send reminder
-              </Button>
-            )}
+            <div className="flex items-end justify-between gap-3 flex-wrap">
+              <p className="text-[11.5px] text-ink-soft mt-0.5">
+                {state === 'signed'
+                  ? `v${current.version}${current.acceptedByName ? ` · by ${current.acceptedByName}` : ''}${current.viewedAt ? ` · opened ${fmtOpened(current.viewedAt)}` : ''}`
+                  : state === 'declined'
+                    ? current.declineReason ?? `v${current.version}`
+                    : current.sentAt
+                      ? 'Sent ' + fmtOpened(current.sentAt) + '.'
+                      : 'Send it and this will start tracking.'}
+              </p>
+              {/* The nudge belongs where you learn it is needed. */}
+              {canManage && current.sentAt && !current.acceptedAt && !current.declinedAt && (
+                <Button
+                  size="sm" variant="ghost"
+                  onClick={() => openModal({ kind: 'sendReminder', retreatId, reminderType: 'proposal' })}
+                >
+                  Send reminder
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* The portal link. They already have it — the proposal lives at the same address as
           everything else, so there is no second link to lose. */}

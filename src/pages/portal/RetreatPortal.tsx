@@ -335,6 +335,34 @@ function buildSteps(data: PortalData): Step[] {
     });
   }
 
+  // 1b, Everything else the camp has sent: a waiver, a permit, a parking map, their own run
+  // sheet. Not the agreement (its own step above) and not the COI (theirs to send, step below).
+  //
+  // There was no step for these at all. The "New from the camp" banner offered a View button
+  // pointing at a step key nothing rendered, so the one click a group would make dismissed the
+  // banner for good and opened nothing -- and the document was then reachable only from a
+  // section inside the "Your stay" tab, which does not advertise that it holds documents.
+  const sharedDocs = documents.filter(
+    (d) => d.doc_type !== 'coi' && d.doc_type !== 'agreement' && d.doc_type !== 'contract',
+  );
+  if (sharedDocs.length > 0) {
+    // Only a waiver is signable among these; the rest are theirs to read and keep.
+    const toSign = sharedDocs.filter(
+      (d) => d.doc_type === 'waiver' && d.status !== 'signed' && d.status !== 'approved' && !d.signed_at,
+    );
+    const dueDates = toSign.map((d) => d.due_date).filter((x): x is string => Boolean(x)).sort();
+    const docsDue = dueDates[0] ?? null;
+    steps.push({
+      key: 'documents',
+      label: toSign.length > 0 ? 'Sign what the camp sent you' : 'Documents from the camp',
+      hint: toSign.length > 0
+        ? `${toSign.length} waiting on your signature`
+        : `${sharedDocs.length} to read or download`,
+      state: toSign.length > 0 ? urgency(docsDue) : 'done',
+      dueDate: docsDue, sectionId: 'documents', counts: true,
+    });
+  }
+
   // 2, Deposit (only if one is required)
   if (retreat.deposit_required != null && retreat.deposit_required > 0) {
     const paid = (retreat.deposit_received ?? 0) >= retreat.deposit_required;
@@ -552,12 +580,17 @@ function buildUpdates(data: PortalData): PortalUpdate[] {
       view: 'todo', step: 'proposal',
     });
   }
+  // Locked, the banner says a document arrived without saying which: the name alone can be
+  // "Smith family medical form", and this is the half of the portal a forwarded link must not
+  // open. Unlocking is the point of the click either way.
   data.documents
     .filter((d) => d.doc_type !== 'coi' && d.has_file && d.status !== 'signed' && d.status !== 'approved')
     .forEach((d) => out.push({
       id: `doc:${d.id}:${d.status}`,
-      title: `${d.name} needs your attention`,
-      detail: d.due_date ? `Due ${fmtDateFull(d.due_date)}` : 'Shared by the camp',
+      title: data.unlocked === false ? 'The camp sent you a document' : `${d.name} needs your attention`,
+      detail: data.unlocked === false
+        ? 'Unlock the portal to read it'
+        : d.due_date ? `Due ${fmtDateFull(d.due_date)}` : 'Shared by the camp',
       view: 'todo', step: d.doc_type === 'agreement' ? 'agreement' : 'documents',
     }));
   return out;
@@ -774,7 +807,19 @@ function PortalContent({ data, token, refetch, liveTick }: {
   function stepBody(key: string) {
     switch (key) {
       case 'agreement':
-        return <DocumentsBlock documents={documents.filter((d) => d.doc_type !== 'coi')} token={token} refetch={refetch} unlocked={unlocked} hint={data.verify_email_hint} />;
+        // The agreement only. It used to hand over every non-COI document, so opening "Sign the
+        // retreat agreement" showed you the waiver and the parking map as well.
+        return unlocked
+          ? <DocumentsBlock documents={documents.filter((d) => d.doc_type === 'agreement' || d.doc_type === 'contract')} token={token} refetch={refetch} unlocked={unlocked} hint={data.verify_email_hint} />
+          : lock('the agreement the camp sent you');
+      case 'documents':
+        // Behind the code, like the roster and the invoices. A portal link forwarded to a
+        // mailing list must not carry the camp's paperwork with it; the card inside already
+        // refused to OPEN a file without a session, but the list itself named every document,
+        // its status and who had signed it.
+        return unlocked
+          ? <DocumentsBlock documents={documents.filter((d) => d.doc_type !== 'coi' && d.doc_type !== 'agreement' && d.doc_type !== 'contract')} token={token} refetch={refetch} unlocked={unlocked} hint={data.verify_email_hint} />
+          : lock('the documents the camp has sent you');
       case 'proposal':
         return (
           <ProposalSection
@@ -1193,7 +1238,9 @@ function PortalContent({ data, token, refetch, liveTick }: {
                     proposal -- so it was absent from the one list a group goes to looking for
                     it. It leads this section because it is the document that matters most. */}
                 <SignedAgreementCard token={token} />
-                <DocumentsBlock documents={documents} token={token} refetch={refetch} unlocked={unlocked} hint={data.verify_email_hint} />
+                {unlocked
+                  ? <DocumentsBlock documents={documents} token={token} refetch={refetch} unlocked={unlocked} hint={data.verify_email_hint} />
+                  : lock('the documents the camp has sent you')}
               </div>
             </Section>
           </div>

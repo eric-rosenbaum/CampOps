@@ -1126,6 +1126,8 @@ function RentalsTab() {
     currentCamp?.defaultRatePerPersonNight != null ? String(currentCamp.defaultRatePerPersonNight) : '');
   const [flat, setFlat] = useState(
     currentCamp?.defaultFlatRate != null ? String(currentCamp.defaultFlatRate) : '');
+  const [deposit, setDeposit] = useState(
+    currentCamp?.defaultDepositAmount != null ? String(currentCamp.defaultDepositAmount) : '');
 
   // ── The public inquiry link ──
   const setInquiryToken = useCampStore((st) => st.setInquiryToken);
@@ -1153,6 +1155,7 @@ function RentalsTab() {
       defaultPricingModel: model,
       defaultRatePerPersonNight: num(rate),
       defaultFlatRate: num(flat),
+      defaultDepositAmount: num(deposit),
       proposalValidDays: days.trim() === '' ? null : Number(days),
       depositChaseDays: num(chase),
     });
@@ -1206,6 +1209,19 @@ function RentalsTab() {
               />
             </div>
           )}
+          {/* The deposit had a column, a store field and a save path, and no box anywhere to
+              type it in -- so every new agreement quietly proposed whatever number happened to
+              be in the database, and no camp could change it. */}
+          <div>
+            <label className={label} htmlFor="rt-deposit">Deposit to hold the dates</label>
+            <input
+              id="rt-deposit" className={input} inputMode="decimal" placeholder="None"
+              value={deposit} disabled={!editable} onChange={(e) => setDeposit(e.target.value)}
+            />
+            <p className="mt-1 text-[11px] text-ink-soft">
+              Filled in on every new agreement. Blank asks for no deposit.
+            </p>
+          </div>
         </div>
       </div>
 

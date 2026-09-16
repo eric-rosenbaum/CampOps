@@ -12,6 +12,7 @@ import { MODULES, MODULE_KEYS, platformAllows, campWants, type ModuleKey } from 
 import { DemoGuidePanel } from '@/components/admin/DemoGuidePanel';
 import { SPOTLIGHTS, SPOTLIGHT_BY_KEY, SEEDABLE, defaultBriefSpotlights, type SpotlightKey } from '@/lib/demoSpotlights';
 import { saveDemoBrief, seedDemoData } from '@/lib/demoGuideDb';
+import { supabase } from '@/lib/supabase';
 
 const TYPE_STYLE: Record<string, string> = {
   customer: 'bg-green-muted-bg text-green-muted-text',
@@ -597,6 +598,16 @@ function ProvisionCustomerModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+async function setDemoCampModules(campId: string, needed: Set<ModuleKey>) {
+  if (needed.size === 0) return;
+  const { data, error } = await supabase.from('camps').select('modules').eq('id', campId).single();
+  if (error) throw new Error(error.message);
+  const modules = { ...((data?.modules as Record<string, boolean>) ?? {}) };
+  for (const k of needed) modules[k] = true;
+  const { error: setErr } = await supabase.rpc('admin_set_camp_modules', { p_camp_id: campId, p_platform_modules: null, p_modules: modules });
+  if (setErr) throw new Error(setErr.message);
+}
+
 function SpinUpTrialModal({ onClose }: { onClose: () => void }) {
   const { camps, spinUpTrial, setPlatformModules, load } = useAdminStore();
   const founderEmail = useAuthStore((s) => s.user?.email ?? '');
@@ -626,6 +637,10 @@ function SpinUpTrialModal({ onClose }: { onClose: () => void }) {
       await setPlatformModules(campId, Object.fromEntries(
         MODULES.map((m) => [m.key, m.defaultOn || needed.has(m.key)]),
       ));
+      // The clone keeps the seed camp's own switches, and a seed that turned Kitchen Manager off
+      // for itself would hand the prospect a guide pointing at a module they cannot open. The
+      // modules the guide needs are switched on for the camp as well; the rest stay as cloned.
+      await setDemoCampModules(campId, needed);
       if (spotlights.length > 0) {
         setBusy('Writing the demo guide…');
         await saveDemoBrief({

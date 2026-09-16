@@ -56,10 +56,12 @@ test('J5: a founder spins up a demo, a prospect opens the link and follows the g
   await fshot(founder.page, 'demo-ready');
   await founder.page.getByRole('button', { name: 'Done' }).click();
 
-  const [camp] = sql<{ id: string; platform_modules: Record<string, boolean> }>(
-    `select id, platform_modules from camps where name = '${campName}' and deleted_at is null`);
+  const [camp] = sql<{ id: string; platform_modules: Record<string, boolean>; modules: Record<string, boolean> }>(
+    `select id, platform_modules, modules from camps where name = '${campName}' and deleted_at is null`);
   expect(camp.platform_modules.trips).toBe(true);
   expect(camp.platform_modules.receipts).toBe(true);
+  // Switched on for the camp too, even though the source camp had Kitchen Manager off for itself.
+  expect(camp.modules.commissary).toBe(true);
 
   // Write the intro in the prospect's words.
   const row = founder.page.locator('tr', { hasText: campName });

@@ -438,6 +438,16 @@ export const dbUpdateComment = (id: string, body: string) =>
   supabase.from('issue_comments').update({ body, edited_at: new Date().toISOString() }).eq('id', id)
     .then(({ error }) => { if (error) campError('edit comment', error.message); });
 
+/**
+ * Send a message the camp already wrote to the person who reported the work.
+ *
+ * One-way on purpose. Un-sending is not a thing that exists -- the reporter may have read it --
+ * so this only ever opens a message up, never takes one back.
+ */
+export const dbShareCommentWithReporter = (id: string) =>
+  supabase.from('issue_comments').update({ visible_to_reporter: true }).eq('id', id)
+    .then(({ error }) => { if (error) campError('share comment with reporter', error.message); });
+
 /** Soft delete: the timeline keeps its shape, and a deleted message does not silently rewrite history. */
 export const dbDeleteComment = (id: string) =>
   supabase.from('issue_comments').update({ deleted_at: new Date().toISOString() }).eq('id', id)

@@ -35,3 +35,6 @@ supabase/.temp/
 # test output
 test-results/
 playwright-report/
+
+# Journey screenshots (Playwright wipes test-results/ on every run)
+e2e-screens/

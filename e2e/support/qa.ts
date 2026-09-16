@@ -48,7 +48,7 @@ export async function asUser(browser: Browser, role: QaRole, opts: Parameters<Br
  */
 export function stepper(journey: string, project: string) {
   let n = 0;
-  const dir = path.resolve(process.cwd(), `test-results/journeys/${journey}/${project}`);
+  const dir = path.resolve(process.cwd(), `e2e-screens/${journey}/${project}`);
   fs.mkdirSync(dir, { recursive: true });
   return async (page: Page, label: string) => {
     n += 1;

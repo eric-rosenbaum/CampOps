@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Wrench,
   Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
-  ClipboardCheck, ShoppingBasket,
+  ClipboardCheck, ShoppingBasket, Car,
 } from 'lucide-react';
 import { Sparkles } from 'lucide-react';
 import { useDemoBrief } from '@/lib/useDemoBrief';
@@ -102,6 +102,12 @@ const retreatItems: NavItem[] = [
   { path: '/retreats', label: 'Retreat Manager', icon: CalendarRange, end: false, module: 'retreats' },
 ];
 
+// Town Trips is sold to particular camps (defaultOn: false), so for most camps this section is
+// filtered to nothing and disappears.
+const logisticsItems: NavItem[] = [
+  { path: '/trips', label: 'Town Trips', icon: Car, end: false, module: 'trips' },
+];
+
 const settingsItems: NavItem[] = [
   { path: '/settings', label: 'Camp Info', icon: Settings, end: true },
   { path: '/settings/team', label: 'Team', icon: Settings, end: false },
@@ -167,6 +173,7 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
     { section: 'Commissary', items: visible(commissaryItems) },
     { section: 'Aquatics', items: visible(aquaticsItems) },
     { section: 'Retreats', items: visible(retreatItems) },
+    { section: 'Logistics', items: visible(logisticsItems) },
   ].filter((s) => s.items.length > 0);
 
   return (

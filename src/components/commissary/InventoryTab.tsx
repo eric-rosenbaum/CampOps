@@ -16,6 +16,7 @@ import {
   todayStr,
 } from '@/lib/commissaryUnits';
 import { OnHandValue, ParValue, CategoryIcon } from './commissaryUi';
+import { setAsideByItem, formatDay, formatClock } from '@/lib/foodRequests';
 
 const STORAGE_ORDER = ['walk_in_refrigerator', 'walk_in_freezer', 'reach_in_refrigerator', 'dry_storage', 'other'];
 
@@ -34,6 +35,7 @@ export function InventoryTab() {
     inventoryFilter, setInventoryFilter, inventorySearch, setInventorySearch,
     activeWeek, weekShortfalls, unlinkedEntryCount, activeSession,
     storageMap, consumptionByItemDate, incomingByItemDate, projectionHorizon,
+    foodRequests, foodRequestLines, foodPrograms,
   } = useCommissaryStore();
   const { tempLogs } = useSafetyStore();
   const { can } = useAuth();
@@ -65,6 +67,13 @@ export function InventoryTab() {
     if (!w) { alert('Enable pop-ups to print the count sheet.'); return; }
     w.document.write(html); w.document.close(); w.focus(); w.print();
   }
+
+  // Food promised to programs from today on. Already inside "Projected now" and "Runs out" (it
+  // is demand); shown on the row so the cook does not use the flour the cooking club is getting.
+  const setAside = useMemo(
+    () => setAsideByItem(foodRequests, foodRequestLines, todayStr(), foodPrograms),
+    [foodRequests, foodRequestLines, foodPrograms],
+  );
 
   const counts = stockCounts();
   const setup = setupCounts();
@@ -237,6 +246,22 @@ export function InventoryTab() {
                   <p className="text-[11px] text-ink-faint truncate">
                     {CATEGORY_LABELS[item.category]} · {STORAGE_LABELS[item.storageLocation]}
                   </p>
+                  {(() => {
+                    const aside = setAside.get(item.id);
+                    if (!aside) return null;
+                    const qty = (base: number) => formatQty(fromBase(base, item.stockUnitInBase), item.stockUnit);
+                    const first = aside.entries[0];
+                    const more = aside.entries.length - 1;
+                    return (
+                      <button type="button" data-testid="set-aside"
+                        onClick={() => setActiveTab('requests')}
+                        title={aside.entries.map((e) => `${qty(e.base)} · ${e.who} · ${formatDay(e.pickupDate)} ${formatClock(e.pickupTime)}${e.status === 'ready' ? ' (ready)' : ''}`).join('\n')}
+                        className="mt-1 inline-flex max-w-full items-center gap-1 rounded-tag border border-amber/40 bg-amber-bg px-1.5 py-0.5 text-[11px] text-amber-text hover:border-amber">
+                        <span className="font-semibold whitespace-nowrap">Set aside {qty(aside.totalBase)}</span>
+                        <span className="truncate">· {first.who} {formatDay(first.pickupDate, { weekday: true }).split(',')[0]}{more > 0 ? ` +${more}` : ''}</span>
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
               <OnHandValue item={item} />

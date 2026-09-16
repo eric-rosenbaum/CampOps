@@ -43,6 +43,10 @@ import {
 } from '@/lib/commissaryUnits';
 import { generateId } from '@/lib/utils';
 import { useRetreatStore } from '@/store/retreatStore';
+import type { FoodProgram, FoodRequest, FoodRequestLine, FoodRequestSettings } from '@/lib/foodRequestTypes';
+import {
+  requestDemandByItemDate, mergeDemandInto, requestDemandInWindow, pendingByItem, type RequestDemandEntry,
+} from '@/lib/foodRequests';
 
 /** Line actuals collected in the receiving screen. */
 export interface ReceivingLineInput {
@@ -52,7 +56,7 @@ export interface ReceivingLineInput {
   receivedNote: string | null;
 }
 
-export type CommissaryTab = 'inventory' | 'menu' | 'recipes' | 'production' | 'allergy' | 'ordering' | 'waste' | 'cost' | 'settings';
+export type CommissaryTab = 'inventory' | 'menu' | 'recipes' | 'production' | 'allergy' | 'ordering' | 'requests' | 'waste' | 'cost' | 'settings';
 
 /** The module plans either camp sessions (default) or retreats (all combined). */
 export type CommissaryMode = 'session' | 'retreats';
@@ -124,6 +128,22 @@ interface CommissaryState {
   camperSessions: CamperSession[];
   /** Aggregate counts. Populated for every member, including those denied names. */
   restrictionSummary: RestrictionSummaryRow[];
+
+  // Food requests (programs asking the kitchen). Loaded with the menu domain; written by RPC only.
+  foodPrograms: FoodProgram[];
+  foodRequests: FoodRequest[];
+  foodRequestLines: FoodRequestLine[];
+  foodRequestSettings: FoodRequestSettings | null;
+  setFoodPrograms: (rows: FoodProgram[]) => void;
+  setFoodRequests: (rows: FoodRequest[]) => void;
+  setFoodRequestLines: (rows: FoodRequestLine[]) => void;
+  setFoodRequestSettings: (row: FoodRequestSettings | null) => void;
+  /**
+   * Show a transition the moment its RPC returns. The realtime reload that follows replaces the
+   * row with the server's copy; without this the card sat in its old column for a third of a
+   * second after every tap, which reads as the tap not having worked.
+   */
+  patchFoodRequest: (id: string, patch: Partial<FoodRequest>) => void;
 
   /** Whether the module is planning camp sessions or retreats (combined). */
   mode: CommissaryMode;
@@ -292,7 +312,13 @@ interface CommissaryState {
   orderMath: (windowEndDate: string) => {
     item: InventoryItem; onHandNow: number; draw: number; inTransit: number;
     floor: number; projectedAtEnd: number; need: number; orderQty: number;
+    /** The part of `draw` that is program requests, and which ones. */
+    requestBase: number; requests: RequestDemandEntry[];
+    /** Requests still waiting for a decision: not in `draw`, shown so they are not a surprise. */
+    pending: RequestDemandEntry[];
   }[];
+  /** Waiting-for-a-decision request lines in an ordering window, by item. Not demand yet. */
+  pendingRequestsInWindow: (windowEndDate: string) => Map<string, { totalBase: number; entries: RequestDemandEntry[] }>;
   /** Items below the critical threshold, regardless of what's on the menu. */
   criticalItems: () => InventoryItem[];
   /** Draft orders (to reorder level) covering only the critically-low items. */
@@ -461,6 +487,18 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   setRetreatMenuTarget: (id) => set({ retreatMenuTarget: id }),
   setRetreatCoverage: (start, end) => set({ retreatCoverageStart: start, retreatCoverageEnd: end }),
   setRetreatMenuEntries: (rows) => set({ retreatMenuEntries: rows }),
+
+  foodPrograms: [],
+  foodRequests: [],
+  foodRequestLines: [],
+  foodRequestSettings: null,
+  setFoodPrograms: (rows) => set({ foodPrograms: rows }),
+  setFoodRequests: (rows) => set({ foodRequests: rows }),
+  setFoodRequestLines: (rows) => set({ foodRequestLines: rows }),
+  setFoodRequestSettings: (row) => set({ foodRequestSettings: row }),
+  patchFoodRequest: (id, patch) => set((s) => ({
+    foodRequests: s.foodRequests.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+  })),
   addRetreatMenuEntry: (m) => { set((s) => ({ retreatMenuEntries: [...s.retreatMenuEntries, m] })); dbAddRetreatMenuEntry(m); },
   updateRetreatMenuEntry: (m) => { set((s) => ({ retreatMenuEntries: s.retreatMenuEntries.map((x) => x.id === m.id ? m : x) })); dbUpdateRetreatMenuEntry(m); },
   deleteRetreatMenuEntry: (id) => { set((s) => ({ retreatMenuEntries: s.retreatMenuEntries.filter((x) => x.id !== id) })); dbDeleteRetreatMenuEntry(id); },
@@ -1212,6 +1250,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       campers: [], restrictions: [], camperSessions: [], restrictionSummary: [],
       expenses: [], templates: [], templateEntries: [], dietCounts: [], mealEvents: [],
       countSessions: [], storageMap: [], courses: [], substitutions: [], files: [],
+      foodPrograms: [], foodRequests: [], foodRequestLines: [], foodRequestSettings: null,
       activeSessionId: null, modal: null,
     });
     return true;
@@ -1289,6 +1328,11 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       if (!byDate) { byDate = new Map(); map.set(itemId, byDate); }
       byDate.set(dateStr, (byDate.get(dateStr) ?? 0) + base);
     };
+
+    // Program requests are demand in BOTH modes, so they go in before the mode branch: the
+    // retreats branch returns early, and anything added after it vanished the moment the kitchen
+    // switched to Retreats.
+    mergeDemandInto(map, requestDemandByItemDate(state.foodRequests, state.foodRequestLines));
 
     if (state.mode === 'retreats') {
       // All retreats combined: each entry draws on its absolute date, scaled by its own
@@ -1518,12 +1562,17 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       if (m) for (const [d, b] of m) if (d > today && d <= windowEndDate) sum += b;
       return sum;
     };
+    const reqInWindow = requestDemandInWindow(state.foodRequests, state.foodRequestLines, today, windowEndDate, state.foodPrograms);
+    const pending = state.pendingRequestsInWindow(windowEndDate);
     const rows = [];
     for (const item of state.items) {
       const inp = makeProjectionInput(item, today, consMap, incMap);
       const need = coverageNeedBase(inp, windowEndDate, item.parLevelBase, item.shelfLifeDays);
       if (need <= 0) continue;
       rows.push({
+        requestBase: reqInWindow.get(item.id)?.totalBase ?? 0,
+        requests: reqInWindow.get(item.id)?.entries ?? [],
+        pending: pending.get(item.id)?.entries ?? [],
         item,
         onHandNow: projectedOnHandBase(inp, today),
         draw: inWindow(consMap.get(item.id)),
@@ -1535,6 +1584,11 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       });
     }
     return rows.sort((a, b) => a.item.name.localeCompare(b.item.name));
+  },
+
+  pendingRequestsInWindow: (windowEndDate) => {
+    const state = get();
+    return pendingByItem(state.foodRequests, state.foodRequestLines, todayStr(), windowEndDate, state.foodPrograms);
   },
 
   criticalItems: () => get().items.filter((i) => stockStatus(i) === 'critical'),

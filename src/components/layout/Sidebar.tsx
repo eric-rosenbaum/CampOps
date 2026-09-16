@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Wrench,
   Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
-  ClipboardCheck,
+  ClipboardCheck, ShoppingBasket,
 } from 'lucide-react';
 import { Sparkles } from 'lucide-react';
 import { useDemoBrief } from '@/lib/useDemoBrief';
@@ -89,6 +89,9 @@ const facilityItems: NavItem[] = [
 
 const commissaryItems: NavItem[] = [
   { path: '/commissary', label: 'Kitchen Manager', icon: UtensilsCrossed, end: false, module: 'commissary' },
+  // For the people who ASK the kitchen (program leads), who should not have to find a form inside
+  // the kitchen's own inventory screens.
+  { path: '/food-requests', label: 'Food requests', icon: ShoppingBasket, end: false, module: 'commissary' },
 ];
 
 const aquaticsItems: NavItem[] = [

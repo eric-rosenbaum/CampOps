@@ -27,6 +27,7 @@ import type {
   CountSession, StorageMap, MenuCourse, MenuSubstitution, CommissaryFile,
 } from './types';
 import { todayStr } from '@/lib/utils';
+import { queryFoodRequestData, FOOD_REQUEST_TABLES, type FoodRequestData } from './foodRequestsDb';
 
 // ─── Camp ID ──────────────────────────────────────────────────────────────────
 // Set by campStore when a camp is selected, used by all write functions.
@@ -1816,7 +1817,8 @@ function rowToRetreatMenuEntry(r: Record<string, unknown>): RetreatMenuEntry {
   };
 }
 
-export interface CommissaryMenuData {
+// Food requests ride the menu domain: they are kitchen demand, and this channel already feeds it.
+export interface CommissaryMenuData extends FoodRequestData {
   sessions: CommissarySession[];
   menuEntries: MenuEntry[];
   retreatMenuEntries: RetreatMenuEntry[];
@@ -1864,7 +1866,7 @@ async function loadCatalogData(campId: string): Promise<CommissaryCatalogData> {
 }
 
 async function loadMenuData(campId: string): Promise<CommissaryMenuData> {
-  const [sRes, mRes, rmRes, tRes, teRes, dcRes, meRes, coRes, subRes] = await Promise.all([
+  const [sRes, mRes, rmRes, tRes, teRes, dcRes, meRes, coRes, subRes, food] = await Promise.all([
     supabase.from('commissary_sessions').select('*').eq('camp_id', campId).order('start_date', { ascending: true }),
     supabase.from('menu_entries').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('retreat_menu_entries').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
@@ -1874,9 +1876,11 @@ async function loadMenuData(campId: string): Promise<CommissaryMenuData> {
     supabase.from('commissary_meal_events').select('*').eq('camp_id', campId).order('date', { ascending: true }),
     supabase.from('commissary_menu_courses').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('menu_substitutions').select('*').eq('camp_id', campId),
+    queryFoodRequestData(campId),
   ]);
-  assertLoaded('commissary menu', sRes, mRes, rmRes, tRes, teRes, dcRes, meRes, coRes, subRes);
+  assertLoaded('commissary menu', sRes, mRes, rmRes, tRes, teRes, dcRes, meRes, coRes, subRes, ...food.results);
   return {
+    ...food.build(),
     sessions: (sRes.data ?? []).map((r) => rowToSession(r as Record<string, unknown>)),
     menuEntries: (mRes.data ?? []).map((r) => rowToMenuEntry(r as Record<string, unknown>)),
     retreatMenuEntries: (rmRes.data ?? []).map((r) => rowToRetreatMenuEntry(r as Record<string, unknown>)),
@@ -2269,7 +2273,8 @@ export function subscribeToCommissaryMenu(campId: string, onUpdate: (d: Commissa
   return makeCommissaryChannel(
     `commissary-menu-${++commissaryChannelCount}`, campId,
     ['commissary_sessions', 'menu_entries', 'retreat_menu_entries', 'menu_templates', 'menu_template_entries',
-     'commissary_diet_counts', 'commissary_meal_events', 'commissary_menu_courses', 'menu_substitutions'],
+     'commissary_diet_counts', 'commissary_meal_events', 'commissary_menu_courses', 'menu_substitutions',
+     ...FOOD_REQUEST_TABLES],
     loadMenuData, onUpdate,
   );
 }

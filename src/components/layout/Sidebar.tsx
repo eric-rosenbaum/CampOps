@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Wrench,
   Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
-  ClipboardCheck,
+  ClipboardCheck, ReceiptText,
 } from 'lucide-react';
 import { SidebarContours } from '@/components/shared/SidebarContours';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
@@ -95,6 +95,10 @@ const retreatItems: NavItem[] = [
   { path: '/retreats', label: 'Retreat Manager', icon: CalendarRange, end: false, module: 'retreats' },
 ];
 
+const financeItems: NavItem[] = [
+  { path: '/receipts', label: 'Receipts', icon: ReceiptText, end: false, module: 'receipts' },
+];
+
 const settingsItems: NavItem[] = [
   { path: '/settings', label: 'Camp Info', icon: Settings, end: true },
   { path: '/settings/team', label: 'Team', icon: Settings, end: false },
@@ -156,6 +160,7 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
     { section: 'Commissary', items: visible(commissaryItems) },
     { section: 'Aquatics', items: visible(aquaticsItems) },
     { section: 'Retreats', items: visible(retreatItems) },
+    { section: 'Finance', items: visible(financeItems) },
   ].filter((s) => s.items.length > 0);
 
   return (

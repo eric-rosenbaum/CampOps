@@ -39,6 +39,8 @@ import { BuildingSystems } from '@/pages/BuildingSystems';
 import { Compliance } from '@/pages/Compliance';
 import { Commissary } from '@/pages/Commissary';
 import { Retreats } from '@/pages/Retreats';
+import { Receipts } from '@/pages/Receipts';
+import { ReceiptsDataLoader } from '@/components/receipts/ReceiptsDataLoader';
 import { InquiryForm } from '@/pages/portal/InquiryForm';
 import { RetreatPortal } from '@/pages/portal/RetreatPortal';
 import { StaffIntake } from '@/pages/StaffIntake';
@@ -641,7 +643,7 @@ export default function App() {
 
             {/* Authenticated + camp required */}
             <Route element={<CampRoute />}>
-              <Route element={<><CampDataLoader /><Layout /></>}>
+              <Route element={<><CampDataLoader /><ReceiptsDataLoader /><Layout /></>}>
                 {/* Each module waits for its own data before rendering. Gating here rather
                     than inside every page keeps it to one list and out of the pages' hook
                     order. See <Gate> for why an empty state is the wrong thing to show. */}
@@ -684,6 +686,8 @@ export default function App() {
                 <Route path="/building" element={<ModuleRoute of="building"><Gate of={['building', 'locations']} label="Opening building systems"><BuildingSystems /></Gate></ModuleRoute>} />
                 <Route path="/commissary" element={<ModuleRoute of="commissary"><Gate of={COMMISSARY_DOMAINS} label="Opening the kitchen manager"><Commissary /></Gate></ModuleRoute>} />
                 <Route path="/retreats" element={<ModuleRoute of="retreats"><Gate of={['retreats', 'locations']} label="Opening the retreat manager"><Retreats /></Gate></ModuleRoute>} />
+                <Route path="/receipts" element={<ModuleRoute of="receipts"><Gate of={['receipts']} label="Opening receipts"><Receipts /></Gate></ModuleRoute>} />
+                <Route path="/receipts/reconcile" element={<ModuleRoute of="receipts"><Gate of={['receipts']} label="Opening receipts"><Receipts /></Gate></ModuleRoute>} />
                 <Route path="/settings" element={<CampSettings />} />
                 <Route path="/settings/team" element={<Team />} />
                 {/* Staff is a Camp Info tab now; this path deep-links straight to it. */}

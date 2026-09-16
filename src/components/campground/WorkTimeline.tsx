@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Lock, Trash2 } from 'lucide-react';
 import type { Issue, IssueComment } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
 import { useCampgroundStore, commentsFor } from '@/store/campgroundStore';
@@ -32,6 +32,10 @@ export function WorkTimeline({ issue }: Props) {
   const { currentUser } = useAuth();
   const comments = useCampgroundStore((s) => s.comments);
   const removeComment = useCampgroundStore((s) => s.removeComment);
+  const shareCommentWithReporter = useCampgroundStore((s) => s.shareCommentWithReporter);
+
+  /** Is there somebody outside the camp reading this thread's public half? */
+  const canReachReporter = issue.isPublicReport && Boolean(issue.reporterToken);
 
   const rows = useMemo<Row[]>(() => {
     const events: Row[] = issue.activityLog.map((e) => ({
@@ -63,7 +67,9 @@ export function WorkTimeline({ issue }: Props) {
             key={row.id}
             comment={row.comment}
             mine={row.comment.authorId === currentUser.id}
+            canReachReporter={canReachReporter}
             onDelete={() => removeComment(row.comment.id)}
+            onShare={() => shareCommentWithReporter(row.comment.id)}
           />
         ),
       )}
@@ -106,13 +112,19 @@ function attribution(
   return { name: comment.authorName, badge: 'former' };
 }
 
-function Message({ comment, mine, onDelete }: {
+function Message({ comment, mine, canReachReporter, onDelete, onShare }: {
   comment: IssueComment;
   mine: boolean;
+  /** This work order was reported by somebody outside the camp who can read replies. */
+  canReachReporter: boolean;
   onDelete: () => void;
+  onShare: () => void;
 }) {
   const members = useCampStore((s) => s.members);
   const who = attribution(comment, members);
+  // Only the camp's own messages have an audience to get wrong. What the reporter wrote is
+  // obviously visible to the reporter, and a system note is not addressed to anyone.
+  const fromCamp = comment.authorId !== null;
 
   return (
     <div className="group flex gap-2.5 rounded-card bg-paper px-3 py-2.5">
@@ -170,11 +182,27 @@ function Message({ comment, mine, onDelete }: {
             ))}
           </div>
         )}
-        {comment.visibleToReporter && (
+        {comment.visibleToReporter ? (
           <p className="mt-1 text-[11px] font-semibold text-green-muted-text">
             Sent to the person who reported this
           </p>
-        )}
+        ) : canReachReporter && fromCamp ? (
+          /* Said out loud, because a thread of internal notes on a public report otherwise
+             reads exactly like a conversation somebody is having with the reporter -- and the
+             person on the other end is looking at a page with no answer on it. */
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-faint">
+            <span className="inline-flex items-center gap-1 font-semibold">
+              <Lock className="h-3 w-3" />
+              Internal · the reporter cannot see this
+            </span>
+            <button
+              onClick={onShare}
+              className="font-semibold text-forest underline underline-offset-2 hover:text-forest-mid"
+            >
+              Send it to them
+            </button>
+          </p>
+        ) : null}
       </div>
     </div>
   );

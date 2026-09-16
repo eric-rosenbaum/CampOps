@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Camera, Send, X } from 'lucide-react';
+import { Camera, Lock, Send, X } from 'lucide-react';
 import type { Issue } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
 import { useCampgroundStore } from '@/store/campgroundStore';
@@ -31,13 +31,19 @@ export function CommentComposer({ issue }: Props) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /**
-   * OFF by default, and only offered at all when there is somebody on the other end.
+   * Whether there is anybody on the other end of this thread at all.
    *
-   * A camp talking to itself about a report ("the guy who called this in has it backwards")
-   * must never accidentally publish that to the person who scanned the sticker. Reaching the
-   * reporter has to be a deliberate act, so it is a switch that starts closed every time.
+   * When there is, the audience is chosen by WHICH SEND BUTTON gets clicked rather than by a
+   * checkbox above them. This used to be a checkbox defaulting to off, which had the safety
+   * right and the ergonomics exactly wrong: a camp replied to somebody who had scanned a
+   * sticker, the reply went internal because the box was never ticked, and the person waiting
+   * on their phone saw a report with no answer on it. A default that quietly picks the wrong
+   * audience is worse than asking, because nothing about the screen says it chose.
+   *
+   * Still no way to reach them by accident: neither button is pre-selected, and a camp talking
+   * to itself about a report ("the guy who called this in has it backwards") has to click the
+   * one that says Internal note.
    */
-  const [replyToReporter, setReplyToReporter] = useState(false);
   const canReachReporter = issue.isPublicReport && Boolean(issue.reporterToken);
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -158,7 +164,7 @@ export function CommentComposer({ issue }: Props) {
     setPreviews((p) => p.filter((_, i) => i !== index));
   }
 
-  async function handleSend() {
+  async function handleSend(toReporter: boolean) {
     const text = body.trim();
     if (!text && files.length === 0) return;
     setSending(true);
@@ -186,7 +192,7 @@ export function CommentComposer({ issue }: Props) {
       text,
       { id: currentUser.id, name: currentUser.name },
       urls,
-      canReachReporter && replyToReporter,
+      canReachReporter && toReporter,
       stillNamed,
     );
 
@@ -202,7 +208,6 @@ export function CommentComposer({ issue }: Props) {
     setPreviews([]);
     setMentioned([]);
     setQuery(null);
-    setReplyToReporter(false);
     setSending(false);
     if (blocked.length > 0) setNeedsAccess(blocked);
   }
@@ -344,23 +349,6 @@ export function CommentComposer({ issue }: Props) {
         </div>
       )}
 
-      {canReachReporter && (
-        <label className="mb-2 flex items-start gap-2 text-[12px] text-ink cursor-pointer">
-          <input
-            type="checkbox"
-            checked={replyToReporter}
-            onChange={(e) => setReplyToReporter(e.target.checked)}
-            className="mt-[3px] h-3.5 w-3.5 flex-none accent-sage"
-          />
-          <span>
-            Reply to the person who reported this
-            <span className="block text-[11px] text-ink-soft">
-              Visible to the reporter. Everything else stays internal.
-            </span>
-          </span>
-        </label>
-      )}
-
       {error && <p className="mb-2 text-[11.5px] text-red">{error}</p>}
 
       <div className="flex items-center gap-2">
@@ -387,17 +375,56 @@ export function CommentComposer({ issue }: Props) {
         <span className="text-[11px] text-ink-faint">
           {files.length > 0 ? `${files.length} of ${MAX_PHOTOS} photos` : ''}
         </span>
-        <button
-          onClick={handleSend}
-          disabled={sending || (!body.trim() && files.length === 0)}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-btn bg-forest px-3 py-1.5
-                     text-[12.5px] font-bold text-paper transition-colors hover:bg-forest-mid
-                     disabled:opacity-50"
-        >
-          <Send className="h-3.5 w-3.5" />
-          {sending ? 'Sending…' : 'Send'}
-        </button>
+        {canReachReporter ? (
+          // Two buttons, no pre-selected answer. Whoever is typing says who it is for, every
+          // time, and the words on the button are the whole explanation.
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => void handleSend(false)}
+              disabled={sending || (!body.trim() && files.length === 0)}
+              title="Only people at the camp will see this"
+              className="inline-flex items-center gap-1.5 rounded-btn border border-border px-3 py-1.5
+                         text-[12.5px] font-semibold text-ink-soft transition-colors
+                         hover:border-sage hover:text-forest disabled:opacity-50"
+            >
+              <Lock className="h-3.5 w-3.5" />
+              Internal note
+            </button>
+            <button
+              onClick={() => void handleSend(true)}
+              disabled={sending || (!body.trim() && files.length === 0)}
+              title="The person who reported this will see it on their receipt link"
+              className="inline-flex items-center gap-1.5 rounded-btn bg-forest px-3 py-1.5
+                         text-[12.5px] font-bold text-paper transition-colors hover:bg-forest-mid
+                         disabled:opacity-50"
+            >
+              <Send className="h-3.5 w-3.5" />
+              {sending ? 'Sending…' : 'Reply to reporter'}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => void handleSend(false)}
+            disabled={sending || (!body.trim() && files.length === 0)}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-btn bg-forest px-3 py-1.5
+                       text-[12.5px] font-bold text-paper transition-colors hover:bg-forest-mid
+                       disabled:opacity-50"
+          >
+            <Send className="h-3.5 w-3.5" />
+            {sending ? 'Sending…' : 'Send'}
+          </button>
+        )}
       </div>
+
+      {/* Said under the buttons rather than over them: by the time somebody is deciding which to
+          press, this is the sentence that decides it. */}
+      {canReachReporter && (
+        <p className="mt-1.5 text-[11px] text-ink-faint">
+          {issue.reporterName ? `${issue.reporterName} reported this` : 'This was reported from a QR code'}
+          {' '}and can open a link showing what you send them. Everything else on this thread stays
+          inside the camp.
+        </p>
+      )}
     </div>
   );
 }

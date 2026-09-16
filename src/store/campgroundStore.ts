@@ -21,7 +21,7 @@ import {
   dbAddVendor, dbUpdateVendor, dbDeleteVendor, dbSetRouting,
   dbAddSchedule, dbUpdateSchedule, dbDeleteSchedule,
   dbAddTemplate, dbUpdateTemplate, dbDeleteTemplate, dbSetWorkDefault,
-  dbAddComment, dbDeleteComment, dbMarkThreadRead,
+  dbAddComment, dbDeleteComment, dbShareCommentWithReporter, dbMarkThreadRead,
   dbSetChecklistItemDone, dbApplyChecklist, dbAddChecklistItem, dbDeleteChecklistItem,
   dbFetchChecklistItems,
   dbGrantIssueView,
@@ -79,6 +79,8 @@ interface CampgroundState {
   postComment: (issueId: string, body: string, author: { id: string; name: string },
                 photoUrls?: string[], visibleToReporter?: boolean, mentions?: string[]) => void;
   removeComment: (id: string) => void;
+  /** Open an already-posted internal message to the reporter. Never the reverse -- see the db fn. */
+  shareCommentWithReporter: (id: string) => void;
   markRead: (issueId: string, userId: string) => void;
 
   applyTemplate: (issueId: string, templateId: string) => Promise<void>;
@@ -197,6 +199,11 @@ export const useCampgroundStore = create<CampgroundState>((set, get) => ({
     // Soft delete, so the timeline keeps its shape rather than silently rewriting history.
     set((s) => ({ comments: s.comments.filter((c) => c.id !== id) }));
     void dbDeleteComment(id);
+  },
+
+  shareCommentWithReporter: (id) => {
+    set((s) => ({ comments: s.comments.map((c) => (c.id === id ? { ...c, visibleToReporter: true } : c)) }));
+    void dbShareCommentWithReporter(id);
   },
   markRead: (issueId, userId) => {
     const now = new Date().toISOString();

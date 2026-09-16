@@ -41,5 +41,26 @@ begin
       insert into camp_members (camp_id, user_id, role, display_name, is_active) values (v_camp, r.id, r.role, r.name, true);
     end if;
   end loop;
+
+  -- A founder (platform admin, member of no camp) and a visitor (member of no camp) for the demo
+  -- journey: the founder spins up a demo in /admin, the visitor opens its /try/ link. Staging
+  -- has anonymous sign-ins off, and /try/ reuses an existing session, so a signed-in visitor
+  -- walks the same join-and-land path a prospect does.
+  for r in select * from (values
+    ('e2e00000-0000-4000-8000-000000000010'::uuid,'qa-founder@example.com','Fran Founder'),
+    ('e2e00000-0000-4000-8000-000000000011'::uuid,'qa-visitor@example.com','Vic Visitor')) t(id,email,name)
+  loop
+    insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+      confirmation_token, recovery_token, email_change_token_new, email_change,
+      raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+    values (r.id,'00000000-0000-0000-0000-000000000000','authenticated','authenticated', r.email, v_pw, now(),
+      '','','','', '{"provider":"email","providers":["email"]}', json_build_object('full_name', r.name), now(), now())
+    on conflict (id) do update set encrypted_password = excluded.encrypted_password;
+    insert into auth.identities (id, user_id, provider_id, provider, identity_data, created_at, updated_at, last_sign_in_at)
+    select gen_random_uuid(), r.id, r.id::text, 'email', json_build_object('sub', r.id::text, 'email', r.email, 'email_verified', true), now(), now(), now()
+    where not exists (select 1 from auth.identities i where i.user_id = r.id and i.provider = 'email');
+    insert into profiles (id, full_name) values (r.id, r.name) on conflict (id) do update set full_name = excluded.full_name;
+  end loop;
+  insert into platform_admins (user_id) values ('e2e00000-0000-4000-8000-000000000010') on conflict do nothing;
 end $$;
 select id, name, slug, share_token, timezone from camps where slug = 'prospect-qa';

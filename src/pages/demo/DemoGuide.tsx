@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { ArrowUpRight, Check, Copy, Mail, Sparkles } from 'lucide-react';
+import { ArrowUpRight, Check, Copy, Download, Mail, Sparkles } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { CampLoader } from '@/components/shared/ModuleLoading';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
 import { useModules } from '@/lib/modules';
 import { fillHref, resolveSpotlights, type AutoCheckId, type DemoBrief, type ResolvedSpotlight, type SpotlightStep } from '@/lib/demoSpotlights';
-import { loadDemoBrief, loadGuideContext, loadJoinedAt, runAutoChecks, type GuideContext } from '@/lib/demoGuideDb';
+import { buildSampleStatementCsv, loadDemoBrief, loadGuideContext, loadJoinedAt, runAutoChecks, type GuideContext } from '@/lib/demoGuideDb';
 
 /**
  * The page a prospect lands on when they open their demo link.
@@ -161,6 +161,7 @@ function SpotlightCard({ number, spotlight: s, ctx, isDone, onToggle }: {
       </div>
 
       {s.key === 'food_requests' && ctx.foodLink && <CounselorPanel link={ctx.foodLink} qrDataUrl={ctx.foodLinkQr ?? null} programName={ctx.foodProgramName ?? null} />}
+      {s.key === 'receipts' && <SampleStatementPanel />}
 
       <ol className="border-t border-cream-dark divide-y divide-cream-dark">
         {s.steps.map((st, i) => {
@@ -229,6 +230,49 @@ function CounselorPanel({ link, qrDataUrl, programName }: { link: string; qrData
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * "Import a statement yourself" needs a statement. It is built from this demo's own sample
+ * receipts, so the import actually matches instead of producing a page of unmatched charges.
+ */
+function SampleStatementPanel() {
+  const camp = useCampStore((s) => s.currentCamp);
+  const [busy, setBusy] = useState(false);
+  const [missing, setMissing] = useState(false);
+
+  async function download() {
+    if (!camp) return;
+    setBusy(true);
+    try {
+      const sample = await buildSampleStatementCsv(camp.id);
+      if (!sample) { setMissing(true); return; }
+      const url = URL.createObjectURL(new Blob([sample.csv], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = sample.fileName;
+      document.body.appendChild(a); a.click(); a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="mx-4 sm:mx-6 mb-4 rounded-card bg-cream-dark/50 border border-cream-dark p-3 sm:p-4 flex flex-col sm:flex-row gap-2 sm:items-center">
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-semibold text-forest">A statement to try it with</p>
+        <p className="text-[12.5px] text-ink-soft mt-0.5">
+          {missing
+            ? 'This demo has no sample receipts for the third card yet, so there is nothing to build a statement from.'
+            : 'Download last month’s statement for Visa ··1156 as a CSV, like your bank exports, then import it on the Reconcile screen.'}
+        </p>
+      </div>
+      {!missing && (
+        <button type="button" onClick={download} disabled={busy} data-testid="sample-statement"
+          className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-forest bg-white border border-border hover:border-sage rounded-btn px-3 py-1.5 flex-shrink-0 disabled:opacity-50">
+          <Download className="w-3.5 h-3.5" /> {busy ? 'Preparing…' : 'Download sample CSV'}
+        </button>
+      )}
     </div>
   );
 }

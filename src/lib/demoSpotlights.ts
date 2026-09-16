@@ -121,7 +121,7 @@ export const SPOTLIGHTS: SpotlightTemplate[] = [
       },
       {
         text: 'Add something you need from town to the shopping list — no need to know who’s driving.',
-        href: '/trips?tab=list',
+        href: '/trips?tab=shopping',
         check: { kind: 'auto', id: 'trip_errand_added' },
       },
       {
@@ -142,23 +142,23 @@ export const SPOTLIGHTS: SpotlightTemplate[] = [
     steps: [
       {
         text: 'Snap or upload a receipt. Confirm what was read — the uncertain fields are highlighted.',
-        href: '/receipts?tab=snap',
+        href: '/receipts',
         check: { kind: 'auto', id: 'receipt_saved' },
       },
       {
         text: 'Open last month’s reconciliation. Resolve the missing receipt and the duplicate.',
         notice: 'The header turns green when the month agrees with the Visa statement.',
-        href: '/receipts/reconcile',
+        href: '{reconcileStatement}',
         check: { kind: 'manual' },
       },
       {
         text: 'Import a statement yourself using the sample CSV.',
-        href: '/receipts/reconcile',
+        href: '{reconcileImport}',
         check: { kind: 'auto', id: 'statement_imported' },
       },
       {
         text: 'Open the tax summary, then export the month for QuickBooks.',
-        href: '/receipts?tab=export',
+        href: '/receipts?tab=summary',
         check: { kind: 'auto', id: 'receipts_exported' },
       },
     ],

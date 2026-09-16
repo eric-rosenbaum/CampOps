@@ -4,6 +4,7 @@
  */
 import { supabase } from '@/lib/supabase';
 import { qrToSvg } from '@/lib/qr';
+import { todayInZone } from '@/lib/foodRequests';
 import type { AutoCheckId, BriefSpotlight, DemoBrief } from '@/lib/demoSpotlights';
 
 function rowToBrief(r: Record<string, unknown>): DemoBrief {
@@ -74,7 +75,7 @@ const AUTO_CHECKS: Record<AutoCheckId, CountQuery> = {
   trip_seat_claimed: count('trip_seats'),
   trip_errand_added: count('trip_errands'),
   trip_planned: count('trips'),
-  receipt_saved: count('receipts'),
+  receipt_saved: (campId, since) => base('receipts').eq('camp_id', campId).gte('reviewed_at', since),
   statement_imported: count('card_statements'),
   receipts_exported: count('expense_exports'),
 };
@@ -98,6 +99,9 @@ export interface GuideContext {
   foodLink?: string | null;
   foodProgramName?: string | null;
   foodLinkQr?: string | null;
+  /** Reconcile deep links: the card with last month's statement, and the card still without one. */
+  reconcileStatement?: string | null;
+  reconcileImport?: string | null;
 }
 
 export async function loadGuideContext(campId: string): Promise<GuideContext> {
@@ -109,6 +113,19 @@ export async function loadGuideContext(campId: string): Promise<GuideContext> {
     supabase.from('food_programs').select('name, request_token').eq('camp_id', campId).eq('active', true)
       .order('sort_order', { ascending: true }).limit(1),
   ]);
+  // The reconcile steps open the exact card and month the seed prepared. Without sample cards
+  // they still open the screen, just not a particular card.
+  ctx.reconcileStatement = '/receipts/reconcile';
+  ctx.reconcileImport = '/receipts/reconcile';
+  const [lastMonth, { data: cards }] = await Promise.all([
+    campLastMonth(campId),
+    supabase.from('expense_cards').select('id, last4').eq('camp_id', campId).in('last4', ['4821', '1156']),
+  ]);
+  for (const c of cards ?? []) {
+    const href = `/receipts/reconcile?card=${c.id as string}&month=${lastMonth}`;
+    if (c.last4 === '4821') ctx.reconcileStatement = href;
+    if (c.last4 === '1156') ctx.reconcileImport = href;
+  }
   const share = campRes.data?.share_token as string | undefined;
   if (share) ctx.shareUrl = `${origin}/try/${share}`;
   const program = programRes.error ? null : programRes.data?.[0];
@@ -126,6 +143,69 @@ export async function loadGuideContext(campId: string): Promise<GuideContext> {
  * before).
  */
 export async function seedDemoData(campId: string, keys: string[]): Promise<void> {
-  const { error } = await supabase.rpc('seed_demo_data', { p_camp_id: campId, p_keys: keys });
+  const { data, error } = await supabase.rpc('seed_demo_data', { p_camp_id: campId, p_keys: keys });
   if (error) throw new Error(error.message);
+  // Storage can't be written from SQL, so the receipts seed returns which rows need a photo and
+  // the sample image each one shows; the images ship with the app under /demo/receipts/.
+  const files = ((data as { receipt_files?: { file_path: string; sample_file: string }[] } | null)?.receipt_files) ?? [];
+  const failed: string[] = [];
+  for (const f of files) {
+    try {
+      const res = await fetch(`/demo/receipts/${f.sample_file}`);
+      if (!res.ok) throw new Error(String(res.status));
+      const blob = await res.blob();
+      // Re-seeding re-uploads: remove first, because an upsert needs a read policy check the
+      // uploader may not pass.
+      await supabase.storage.from('receipts').remove([f.file_path]);
+      const { error: upErr } = await supabase.storage.from('receipts')
+        .upload(f.file_path, blob, { contentType: 'image/jpeg' });
+      if (upErr) throw upErr;
+    } catch {
+      failed.push(f.sample_file);
+    }
+  }
+  if (failed.length > 0) {
+    throw new Error(`Sample data added, but ${failed.length} receipt photo(s) did not upload: ${failed.join(', ')}`);
+  }
+}
+
+/**
+ * A card statement for the demo's third card, built from that card's own sample receipts for last
+ * month plus one charge with no receipt, so "import a statement yourself" works and matches.
+ * Returned as CSV text in the shape a Canadian bank export takes.
+ */
+export async function buildSampleStatementCsv(campId: string): Promise<{ csv: string; fileName: string } | null> {
+  const { data: card } = await supabase.from('expense_cards').select('id, last4')
+    .eq('camp_id', campId).eq('last4', '1156').maybeSingle();
+  if (!card) return null;
+  const { data: rows } = await supabase.from('receipts').select('vendor, purchase_date, total')
+    .eq('camp_id', campId).eq('card_id', card.id).in('status', ['ready', 'needs_review'])
+    .not('purchase_date', 'is', null).order('purchase_date');
+  if (!rows || rows.length === 0) return null;
+  // Last month in the camp's time zone -- the month the seed dates this card's receipts in, and
+  // the month the guide's "import it yourself" link opens.
+  const month = await campLastMonth(campId);
+  const monthRows = rows.filter((r) => (r.purchase_date as string).startsWith(month));
+  if (monthRows.length === 0) return null;
+  const lines = monthRows.map((r) => {
+    const [y, m, d] = (r.purchase_date as string).split('-').map(Number);
+    const posted = new Date(Date.UTC(y, m - 1, d + 1));
+    const mm = String(posted.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(posted.getUTCDate()).padStart(2, '0');
+    return `${mm}/${dd}/${posted.getUTCFullYear()},"${String(r.vendor).toUpperCase()}",${Number(r.total).toFixed(2)},`;
+  });
+  const [y, m] = month.split('-');
+  lines.push(`${m}/28/${y},"CEDAR PARK PARKING",14.00,`);
+  return {
+    csv: ['Transaction Date,Description,Debit,Credit', ...lines].join('\r\n') + '\r\n',
+    fileName: `visa-${card.last4}-${y}-${m}.csv`,
+  };
+}
+
+/** `YYYY-MM` of last month in the camp's own time zone. */
+async function campLastMonth(campId: string): Promise<string> {
+  const { data } = await supabase.from('camps').select('timezone').eq('id', campId).maybeSingle();
+  const today = todayInZone((data?.timezone as string) || Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [y, m] = today.split('-').map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
 }

@@ -6,7 +6,7 @@ import path from 'path';
 export const QA_CAMP_SLUG = 'prospect-qa';
 export const STAGING_REF = 'mvxnpofopbmljzpgnycg';
 
-export type QaRole = 'admin' | 'kitchen' | 'program' | 'holder' | 'holder2' | 'viewer';
+export type QaRole = 'admin' | 'kitchen' | 'program' | 'holder' | 'holder2' | 'viewer' | 'founder' | 'visitor';
 export const QA_USERS: Record<QaRole, { email: string; name: string }> = {
   admin: { email: 'qa-admin@example.com', name: 'Teddy Admin' },
   kitchen: { email: 'qa-kitchen@example.com', name: 'Kim Kitchen' },
@@ -14,6 +14,8 @@ export const QA_USERS: Record<QaRole, { email: string; name: string }> = {
   holder: { email: 'qa-holder@example.com', name: 'Hana Holder' },
   holder2: { email: 'qa-holder2@example.com', name: 'Omar Holder' },
   viewer: { email: 'qa-viewer@example.com', name: 'Val Viewer' },
+  founder: { email: 'qa-founder@example.com', name: 'Fran Founder' },
+  visitor: { email: 'qa-visitor@example.com', name: 'Vic Visitor' },
 };
 
 export function qaPassword(): string {

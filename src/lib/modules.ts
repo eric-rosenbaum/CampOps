@@ -24,7 +24,8 @@ import { useCampStore } from '@/store/campStore';
 import type { Camp } from '@/store/campStore';
 
 export type ModuleKey =
-  | 'issues' | 'pool' | 'safety' | 'assets' | 'building' | 'commissary' | 'retreats';
+  | 'issues' | 'pool' | 'safety' | 'assets' | 'building' | 'commissary' | 'retreats'
+  | 'trips' | 'receipts';
 
 export interface ModuleDef {
   key: ModuleKey;
@@ -37,23 +38,35 @@ export interface ModuleDef {
    * an old email or a typed URL walks straight past the switch.
    */
   paths: string[];
+  /**
+   * What a camp gets when nobody has said. The original seven are sold by default — the rows
+   * predate them. A module added later for particular camps (Town Trips, Receipts) is NOT: with
+   * "absent means on" it would have appeared in every camp's sidebar the day it deployed.
+   * Applies to the platform switch only; once a camp is sold a module, the camp's own switch
+   * still reads absent as on.
+   */
+  defaultOn: boolean;
 }
 
 export const MODULES: ModuleDef[] = [
   { key: 'issues', label: 'Campground', desc: 'Work orders, routines, housekeeping and repairs',
-    paths: ['/campground', '/issues', '/hub'] },
+    paths: ['/campground', '/issues', '/hub'], defaultOn: true },
   { key: 'safety', label: 'Compliance', desc: 'Permit, safety plan, inspections, staff certifications',
-    paths: ['/compliance', '/safety'] },
+    paths: ['/compliance', '/safety'], defaultOn: true },
   { key: 'assets', label: 'Assets & Vehicles', desc: 'Fleet, equipment, checkouts, service records',
-    paths: ['/assets'] },
+    paths: ['/assets'], defaultOn: true },
   { key: 'building', label: 'Building Systems', desc: 'Electrical & plumbing infrastructure by room',
-    paths: ['/building'] },
+    paths: ['/building'], defaultOn: true },
   { key: 'commissary', label: 'Kitchen Manager', desc: 'Inventory, recipes, menu planning, ordering',
-    paths: ['/commissary'] },
+    paths: ['/commissary'], defaultOn: true },
   { key: 'pool', label: 'Pool & Waterfront', desc: 'Chemical readings, inspections, equipment',
-    paths: ['/pool'] },
+    paths: ['/pool'], defaultOn: true },
   { key: 'retreats', label: 'Retreat Manager', desc: 'External group rentals, guest portal, invoicing',
-    paths: ['/retreats'] },
+    paths: ['/retreats'], defaultOn: true },
+  { key: 'trips', label: 'Town Trips', desc: 'Rides into town, seats, return trips and a shared errand list',
+    paths: ['/trips'], defaultOn: false },
+  { key: 'receipts', label: 'Receipts', desc: 'Company-card receipts, statement matching, tax summary, QuickBooks export',
+    paths: ['/receipts'], defaultOn: false },
 ];
 
 export const MODULE_KEYS: ModuleKey[] = MODULES.map((m) => m.key);
@@ -68,25 +81,34 @@ export const MODULE_LABELS: Record<ModuleKey, string> =
  * it ran, and nothing stops an old seed or a restored backup reintroducing them.
  */
 const ALIASES: Record<ModuleKey, string[]> = {
-  issues: [], pool: [], assets: [], retreats: [],
+  issues: [], pool: [], assets: [], retreats: [], trips: [], receipts: [],
   safety: ['compliance'],
   building: ['building_systems'],
   commissary: ['kitchen'],
 };
 
-/** Off only when explicitly false, under the key or any of its old names. */
-function readSwitch(obj: Record<string, boolean> | null | undefined, key: ModuleKey): boolean {
-  if (!obj) return true;
+/**
+ * An explicit answer under the key or any of its old names wins; otherwise `fallback`.
+ * Exported for tests.
+ */
+export function readSwitch(
+  obj: Record<string, boolean> | null | undefined, key: ModuleKey, fallback = true,
+): boolean {
+  if (!obj) return fallback;
   if (typeof obj[key] === 'boolean') return obj[key];
   for (const alias of ALIASES[key]) {
     if (typeof obj[alias] === 'boolean') return obj[alias];
   }
-  return true;
+  return fallback;
 }
 
-/** Is the camp sold this module? The founder's answer. */
+export function moduleDefaultOn(key: ModuleKey): boolean {
+  return MODULES.find((m) => m.key === key)?.defaultOn ?? true;
+}
+
+/** Is the camp sold this module? The founder's answer. Unanswered = the module's default. */
 export function platformAllows(camp: Pick<Camp, 'platformModules'> | null, key: ModuleKey): boolean {
-  return readSwitch(camp?.platformModules, key);
+  return readSwitch(camp?.platformModules, key, moduleDefaultOn(key));
 }
 
 /** Has the camp switched it on for itself? Only meaningful where the platform allows it. */

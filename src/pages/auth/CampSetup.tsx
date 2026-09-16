@@ -4,7 +4,7 @@ import { Check, ArrowLeft, Plus, Users } from 'lucide-react';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
-import { MODULES, MODULE_KEYS } from '@/lib/modules';
+import { MODULES } from '@/lib/modules';
 
 const CAMP_TYPES = ['Day Camp', 'Overnight Camp'];
 
@@ -24,8 +24,9 @@ const MODULE_OPTIONS = MODULES.map((m) => ({ key: m.key, label: m.label, descrip
 // Everything on. A camp is sold the whole product unless somebody decides otherwise, and this
 // wizard is the founder's, so an unticked box here means "this camp does not get it" rather
 // than "we have not asked them yet".
+// Modules added for particular camps (defaultOn: false) start unticked.
 const DEFAULT_MODULES: Record<string, boolean> =
-  Object.fromEntries(MODULE_KEYS.map((k) => [k, true]));
+  Object.fromEntries(MODULES.map((m) => [m.key, m.defaultOn]));
 
 function slugify(name: string) {
   const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 44);

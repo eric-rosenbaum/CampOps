@@ -8,7 +8,7 @@ import { useAdminStore, type AdminCamp, type CampAccount } from '@/store/adminSt
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
 import { PasswordSection } from '@/components/settings/PasswordSection';
-import { MODULES, MODULE_KEYS } from '@/lib/modules';
+import { MODULES, MODULE_KEYS, platformAllows, campWants } from '@/lib/modules';
 
 const TYPE_STYLE: Record<string, string> = {
   customer: 'bg-green-muted-bg text-green-muted-text',
@@ -162,7 +162,7 @@ function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: stri
   const wrap = (fn: () => Promise<void>) => async () => { setBusy(true); try { await fn(); } finally { setBusy(false); } };
 
   // Sold count, by the same rule the app reads: off only when explicitly false.
-  const soldCount = MODULE_KEYS.filter((k) => c.platformModules[k] !== false).length;
+  const soldCount = MODULE_KEYS.filter((k) => platformAllows(c, k)).length;
 
   async function toggleAccounts() {
     const next = !open;
@@ -274,7 +274,7 @@ function CampModulesPanel({ camp }: { camp: AdminCamp }) {
       // half-filled object relies on "absent means on" forever, and the next person reading the
       // row cannot tell a deliberate yes from a key nobody ever set.
       const full = Object.fromEntries(
-        MODULE_KEYS.map((k) => [k, k === key ? next : camp.platformModules[k] !== false]),
+        MODULE_KEYS.map((k) => [k, k === key ? next : platformAllows(camp, k)]),
       );
       await setPlatformModules(camp.id, full);
     } catch (e) {
@@ -291,8 +291,8 @@ function CampModulesPanel({ camp }: { camp: AdminCamp }) {
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
         {MODULES.map((m) => {
-          const sold = camp.platformModules[m.key] !== false;
-          const campOn = camp.modules[m.key] !== false;
+          const sold = platformAllows(camp, m.key);
+          const campOn = campWants(camp, m.key);
           return (
             <div key={m.key} className="flex items-center gap-2.5 py-1">
               <button

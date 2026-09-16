@@ -1,0 +1,383 @@
+-- Receipts: who can see which receipt, and the rules that keep the books straight.
+--   bash scripts/run-sql-tests.sh receipts
+--
+-- Runs as the real `authenticated` role with a real JWT subject, so table RLS and storage
+-- policies are exercised, not bypassed. Everything is rolled back.
+begin;
+
+create function pg_temp.login(p_user uuid) returns void language plpgsql as $f$
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+end $f$;
+
+do $$
+declare
+  -- Camp under test, and a second camp whose admin must see nothing of the first.
+  v_camp  uuid := 'f0000000-0000-4000-8000-00000000e001';
+  v_other uuid := 'f0000000-0000-4000-8000-00000000e002';
+  -- Existing staging QA logins, given roles in the fixture camps only for this transaction.
+  u_admin   uuid := 'e2e00000-0000-4000-8000-00000000000a';
+  u_outside uuid := 'e2e00000-0000-4000-8000-00000000000b';  -- admin of the OTHER camp only
+  u_staff   uuid := 'e2e00000-0000-4000-8000-00000000000c';  -- staff, holds no card
+  u_h1      uuid := 'e2e00000-0000-4000-8000-00000000000d';  -- holder of card 1
+  u_h2      uuid := 'e2e00000-0000-4000-8000-00000000000e';  -- holder of card 2
+  u_viewer  uuid := 'e2e00000-0000-4000-8000-00000000000f';
+  m_h1 uuid; m_h2 uuid;
+  c1 uuid; c2 uuid; c_other uuid; code1 uuid;
+  r1 uuid := gen_random_uuid(); r2 uuid := gen_random_uuid(); r3 uuid := gen_random_uuid();
+  r4 uuid := gen_random_uuid(); r5 uuid := gen_random_uuid();
+  v_stmt uuid; l1 uuid; l2 uuid;
+  v_n int; v_ok boolean; v_j jsonb; v_passed int := 0; v_fn record;
+begin
+  -- ── Fixtures (as postgres) ────────────────────────────────────────────────
+  insert into camps (id, name, slug, timezone, account_type, platform_modules, modules)
+  values (v_camp, 'R Test Camp', 'r-test-camp-receipts', 'America/Toronto', 'customer', '{"receipts":true}', '{"receipts":true}'),
+         (v_other, 'R Other Camp', 'r-other-camp-receipts', 'America/Vancouver', 'customer', '{"receipts":true}', '{"receipts":true}');
+  insert into camp_members (camp_id, user_id, role, display_name, is_active) values
+    (v_camp, u_admin, 'admin', 'Admin', true),
+    (v_camp, u_staff, 'staff', 'Staff NoCard', true),
+    (v_camp, u_h1, 'staff', 'Holder One', true),
+    (v_camp, u_h2, 'staff', 'Holder Two', true),
+    (v_camp, u_viewer, 'viewer', 'Viewer', true),
+    (v_other, u_outside, 'admin', 'Outside Admin', true);
+  select id into m_h1 from camp_members where camp_id = v_camp and user_id = u_h1;
+  select id into m_h2 from camp_members where camp_id = v_camp and user_id = u_h2;
+
+  insert into expense_budget_codes (camp_id, code, name, qb_account) values (v_camp, 'PRG', 'Programs', 'Program Supplies') returning id into code1;
+  insert into expense_cards (camp_id, label, holder_member_id, last4, holder_email) values (v_camp, 'Visa 1111', m_h1, '1111', 'holder.one@campcommand.app') returning id into c1;
+  insert into expense_cards (camp_id, label, holder_member_id, last4) values (v_camp, 'Visa 2222', m_h2, '2222') returning id into c2;
+  insert into expense_cards (camp_id, label, last4) values (v_other, 'Visa 9999', '9999') returning id into c_other;
+
+  insert into receipts (id, camp_id, card_id, submitted_by, vendor, purchase_date, total, status, file_path) values
+    (r1, v_camp, c1, u_h1, 'Maple Hardware', '2026-08-03', 45.20, 'ready', v_camp || '/' || r1 || '.jpg'),
+    (r2, v_camp, c2, u_h2, 'Lakeview Grocers', '2026-08-04', 12.00, 'ready', v_camp || '/' || r2 || '.jpg'),
+    (r3, v_camp, c1, u_staff, 'Borrowed Card Books', '2026-08-05', 30.00, 'needs_review', v_camp || '/' || r3 || '.jpg'),
+    (r4, v_camp, null, u_admin, 'Admin Supplies', '2026-08-06', 99.99, 'ready', v_camp || '/' || r4 || '.png'),
+    (r5, v_camp, c1, u_h1, 'Maple Hardware', '2026-08-03', 45.20, 'ready', null);
+
+  insert into storage.objects (bucket_id, name) values
+    ('receipts', v_camp || '/' || r1 || '.jpg'), ('receipts', v_camp || '/' || r2 || '.jpg'),
+    ('receipts', v_camp || '/' || r3 || '.jpg'), ('receipts', v_camp || '/' || r4 || '.png');
+
+  -- ── R1: nothing here is callable by a signed-out visitor; internals not even by members ──
+  select count(*) into v_n from pg_proc p
+   where p.pronamespace = 'public'::regnamespace
+     and p.proname in ('is_expense_card_holder','can_see_receipt','can_use_receipts','can_read_receipt_file',
+                       'can_write_receipt_file','receipts_guard','statement_lines_guard','card_statements_guard',
+                       'expense_cards_guard','expense_html','claim_ai_quota','import_card_statement',
+                       'resolve_statement_lines','remind_card_holder','export_receipts','plan_receipt_messages_internal')
+     and has_function_privilege('anon', p.oid, 'execute');
+  if v_n <> 0 then raise exception 'R1 FAIL: % receipts functions executable by anon', v_n; end if;
+  select count(*) into v_n from pg_proc p
+   where p.pronamespace = 'public'::regnamespace
+     and p.proname in ('receipts_guard','statement_lines_guard','card_statements_guard','expense_cards_guard',
+                       'expense_html','plan_receipt_messages_internal')
+     and has_function_privilege('authenticated', p.oid, 'execute');
+  if v_n <> 0 then raise exception 'R1 FAIL: % internal receipts functions executable by authenticated', v_n; end if;
+  select count(*) into v_n from (values ('receipts'),('expense_cards'),('expense_budget_codes'),('expense_tax_settings'),
+                                         ('card_statements'),('statement_lines'),('expense_exports'),('ai_usage')) t(n)
+   where has_table_privilege('anon', 'public.' || t.n, 'select');
+  if v_n <> 0 then raise exception 'R1 FAIL: anon can select % receipts tables', v_n; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R2: who sees which receipt ─────────────────────────────────────────────
+  perform pg_temp.login(u_admin);
+  select count(*) into v_n from receipts where camp_id = v_camp;
+  reset role;
+  if v_n <> 5 then raise exception 'R2 FAIL: admin sees % of 5', v_n; end if;
+
+  perform pg_temp.login(u_h1);
+  select count(*) into v_n from receipts where camp_id = v_camp;
+  if v_n <> 3 then raise exception 'R2 FAIL: holder one sees % (own two + borrowed-card one)', v_n; end if;
+  select count(*) into v_n from receipts where id = r2;
+  reset role;
+  if v_n <> 0 then raise exception 'R2 FAIL: holder one can see holder two''s receipt'; end if;
+
+  perform pg_temp.login(u_h2);
+  select count(*) into v_n from receipts where camp_id = v_camp;
+  reset role;
+  if v_n <> 1 then raise exception 'R2 FAIL: holder two sees % (own one)', v_n; end if;
+
+  perform pg_temp.login(u_staff);
+  select count(*) into v_n from receipts where camp_id = v_camp;
+  reset role;
+  if v_n <> 1 then raise exception 'R2 FAIL: non-holder staff sees % (only what they submitted)', v_n; end if;
+
+  perform pg_temp.login(u_viewer);
+  select count(*) into v_n from receipts where camp_id = v_camp;
+  reset role;
+  if v_n <> 0 then raise exception 'R2 FAIL: viewer sees % receipts', v_n; end if;
+
+  perform pg_temp.login(u_outside);
+  select count(*) into v_n from receipts where camp_id = v_camp;
+  reset role;
+  if v_n <> 0 then raise exception 'R2 FAIL: another camp''s admin sees % receipts', v_n; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R3: staff writes are fenced ────────────────────────────────────────────
+  perform pg_temp.login(u_h2);
+  update receipts set vendor = 'hijacked' where id = r1;
+  get diagnostics v_n = row_count;
+  reset role;
+  if v_n <> 0 then raise exception 'R3 FAIL: holder two updated holder one''s receipt'; end if;
+
+  perform pg_temp.login(u_h1);
+  v_ok := false;
+  begin insert into receipts (camp_id, card_id, submitted_by, total) values (v_camp, c1, u_h2, 1);
+  exception when others then v_ok := true; end;
+  if not v_ok then reset role; raise exception 'R3 FAIL: staff submitted a receipt as someone else'; end if;
+  v_ok := false;
+  begin update receipts set status = 'exported' where id = r1;
+  exception when others then v_ok := true; end;
+  if not v_ok then reset role; raise exception 'R3 FAIL: staff marked a receipt exported'; end if;
+  v_ok := false;
+  begin update receipts set card_id = c_other where id = r1;
+  exception when others then v_ok := true; end;
+  if not v_ok then reset role; raise exception 'R3 FAIL: a receipt was hung on another camp''s card'; end if;
+  -- Own receipt, ordinary edit: allowed.
+  update receipts set purpose = 'Craft supplies', budget_code_id = code1 where id = r1;
+  get diagnostics v_n = row_count;
+  reset role;
+  if v_n <> 1 then raise exception 'R3 FAIL: holder could not edit their own receipt'; end if;
+
+  perform pg_temp.login(u_viewer);
+  v_ok := false;
+  begin insert into receipts (camp_id, submitted_by, total) values (v_camp, u_viewer, 1);
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R3 FAIL: a viewer submitted a receipt'; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R4: cards and codes: staff read, only admins write, viewers nothing ───
+  perform pg_temp.login(u_staff);
+  select count(*) into v_n from expense_cards where camp_id = v_camp;
+  if v_n <> 2 then reset role; raise exception 'R4 FAIL: staff sees % cards', v_n; end if;
+  v_ok := false;
+  begin insert into expense_cards (camp_id, label) values (v_camp, 'Sneaky');
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R4 FAIL: staff created a card'; end if;
+  perform pg_temp.login(u_viewer);
+  select count(*) into v_n from expense_cards where camp_id = v_camp;
+  reset role;
+  if v_n <> 0 then raise exception 'R4 FAIL: viewer sees % cards', v_n; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R5 + R6: statements are admin-only, and one per card-month ─────────────
+  perform pg_temp.login(u_admin);
+  v_stmt := import_card_statement(c1, '2026-08-01', 90.40, 'aug.csv',
+    '[{"posted_date":"2026-08-04","description":"MAPLE HARDWARE #12","amount":45.20},
+      {"posted_date":"2026-08-05","description":"MAPLE HARDWARE #12","amount":45.20}]'::jsonb);
+  select count(*) into v_n from statement_lines where statement_id = v_stmt;
+  if v_n <> 2 then reset role; raise exception 'R6 FAIL: % lines imported', v_n; end if;
+  v_ok := false;
+  begin perform import_card_statement(c1, '2026-08-01', 1, 'again.csv', '[{"posted_date":"2026-08-04","description":"x","amount":1}]'::jsonb);
+  exception when unique_violation then v_ok := true; end;
+  if not v_ok then reset role; raise exception 'R6 FAIL: the same card-month imported twice'; end if;
+  v_ok := false;
+  begin insert into card_statements (camp_id, card_id, period_month) values (v_camp, c1, '2026-08-01');
+  exception when unique_violation then v_ok := true; end;
+  if not v_ok then reset role; raise exception 'R6 FAIL: a direct duplicate statement insert was accepted'; end if;
+  -- Replace is explicit, and replaces.
+  v_stmt := import_card_statement(c1, '2026-08-01', 90.40, 'aug-v2.csv',
+    '[{"posted_date":"2026-08-04","description":"MAPLE HARDWARE #12","amount":45.20},
+      {"posted_date":"2026-08-05","description":"MAPLE HARDWARE #12","amount":45.20}]'::jsonb, true);
+  select count(*) into v_n from card_statements where card_id = c1;
+  reset role;
+  if v_n <> 1 then raise exception 'R6 FAIL: replace left % statements', v_n; end if;
+
+  perform pg_temp.login(u_h1);
+  select count(*) into v_n from card_statements where camp_id = v_camp;
+  if v_n <> 0 then reset role; raise exception 'R5 FAIL: holder sees % statements', v_n; end if;
+  select count(*) into v_n from statement_lines where camp_id = v_camp;
+  if v_n <> 0 then reset role; raise exception 'R5 FAIL: holder sees % statement lines', v_n; end if;
+  v_ok := false;
+  begin perform import_card_statement(c1, '2026-07-01', 1, 'x.csv', '[{"posted_date":"2026-07-04","description":"x","amount":1}]'::jsonb);
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R5 FAIL: staff imported a statement'; end if;
+  v_passed := v_passed + 2;
+
+  -- ── R7: one receipt pays for one charge ────────────────────────────────────
+  select id into l1 from statement_lines where statement_id = v_stmt order by posted_date limit 1;
+  select id into l2 from statement_lines where statement_id = v_stmt order by posted_date desc limit 1;
+  perform pg_temp.login(u_admin);
+  perform resolve_statement_lines(jsonb_build_array(jsonb_build_object('line_id', l1, 'match_state', 'matched', 'receipt_id', r1)));
+  v_ok := false;
+  begin perform resolve_statement_lines(jsonb_build_array(jsonb_build_object('line_id', l2, 'match_state', 'matched', 'receipt_id', r1)));
+  exception when unique_violation then v_ok := true; end;
+  if not v_ok then reset role; raise exception 'R7 FAIL: one receipt matched two charges via the RPC'; end if;
+  v_ok := false;
+  begin update statement_lines set match_state = 'matched', receipt_id = r1 where id = l2;
+  exception when unique_violation then v_ok := true; end;
+  if not v_ok then reset role; raise exception 'R7 FAIL: one receipt matched two charges by direct update'; end if;
+  v_ok := false;
+  begin update statement_lines set match_state = 'matched', receipt_id = null where id = l2;
+  exception when check_violation then v_ok := true; end;
+  if not v_ok then reset role; raise exception 'R7 FAIL: a line was matched to no receipt'; end if;
+  -- All-or-nothing: the valid first change is rolled back with the invalid second one.
+  v_ok := false;
+  begin perform resolve_statement_lines(jsonb_build_array(
+      jsonb_build_object('line_id', l2, 'match_state', 'matched', 'receipt_id', r5),
+      jsonb_build_object('line_id', l1, 'match_state', 'matched', 'receipt_id', r5)));
+  exception when unique_violation then v_ok := true; end;
+  select count(*) into v_n from statement_lines where receipt_id = r5;
+  reset role;
+  if not v_ok or v_n <> 0 then raise exception 'R7 FAIL: a failed bulk resolve left % partial matches', v_n; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R8: export marks rows and refuses a silent second export ──────────────
+  perform pg_temp.login(u_h1);
+  v_ok := false;
+  begin perform export_receipts(v_camp, array[r1], '2026-08-01', '2026-08-31', array[c1], 'qbo_3col', 'x.csv', false);
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R8 FAIL: staff exported receipts'; end if;
+
+  perform pg_temp.login(u_admin);
+  v_j := export_receipts(v_camp, array[r1, r2], '2026-08-01', '2026-08-31', array[c1, c2], 'qbo_3col', 'aug.csv', false);
+  if (v_j->>'row_count')::int <> 2 or (v_j->>'total')::numeric <> 57.20 then
+    reset role; raise exception 'R8 FAIL: export recorded %', v_j;
+  end if;
+  select count(*) into v_n from receipts where id in (r1, r2) and status = 'exported' and export_id = (v_j->>'export_id')::uuid;
+  if v_n <> 2 then reset role; raise exception 'R8 FAIL: % of 2 rows marked exported', v_n; end if;
+  v_ok := false;
+  begin perform export_receipts(v_camp, array[r1, r4], null, null, null, 'qbo_3col', 'again.csv', false);
+  exception when others then v_ok := sqlerrm like '%already exported%'; end;
+  if not v_ok then reset role; raise exception 'R8 FAIL: an exported receipt was exported again without opting in'; end if;
+  select count(*) into v_n from receipts where id = r4 and status = 'exported';
+  if v_n <> 0 then reset role; raise exception 'R8 FAIL: the refused export still marked r4'; end if;
+  v_j := export_receipts(v_camp, array[r1, r4], null, null, null, 'detailed', 'again.csv', true);
+  if (v_j->>'row_count')::int <> 2 then reset role; raise exception 'R8 FAIL: opted-in re-export recorded %', v_j; end if;
+  v_ok := false;
+  begin perform export_receipts(v_camp, array[r3], null, null, null, 'qbo_3col', 'r.csv', false);
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R8 FAIL: a receipt still needing review was exported'; end if;
+
+  -- An exported receipt is locked for its holder.
+  perform pg_temp.login(u_h1);
+  v_ok := false;
+  begin update receipts set total = 1 where id = r1;
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R8 FAIL: a holder edited an exported receipt'; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R9: AI quota ───────────────────────────────────────────────────────────
+  update camps set account_type = 'trial' where id = v_camp;
+  insert into ai_usage (camp_id, user_id, function, created_at)
+    select v_camp, u_h1, 'read-receipt', now() from generate_series(1, 24);
+  -- Yesterday's reads do not count against today.
+  insert into ai_usage (camp_id, user_id, function, created_at)
+    select v_camp, u_h1, 'read-receipt', now() - interval '2 days' from generate_series(1, 30);
+  perform pg_temp.login(u_h1);
+  v_j := claim_ai_quota(v_camp, 'read-receipt');
+  if not (v_j->>'allowed')::boolean or (v_j->>'limit')::int <> 25 then reset role; raise exception 'R9 FAIL: 25th trial read refused: %', v_j; end if;
+  v_j := claim_ai_quota(v_camp, 'read-receipt');
+  reset role;
+  if (v_j->>'allowed')::boolean or v_j->>'reason' <> 'quota' then raise exception 'R9 FAIL: 26th trial read allowed: %', v_j; end if;
+  update camps set account_type = 'customer' where id = v_camp;
+  perform pg_temp.login(u_h1);
+  v_j := claim_ai_quota(v_camp, 'read-receipt');
+  reset role;
+  if not (v_j->>'allowed')::boolean or (v_j->>'limit')::int <> 60 then raise exception 'R9 FAIL: customer limit not 60: %', v_j; end if;
+  perform pg_temp.login(u_viewer);
+  v_j := claim_ai_quota(v_camp, 'read-receipt');
+  reset role;
+  if (v_j->>'allowed')::boolean or v_j->>'reason' <> 'not_member' then raise exception 'R9 FAIL: viewer claimed AI: %', v_j; end if;
+  perform pg_temp.login(u_outside);
+  v_j := claim_ai_quota(v_camp, 'read-receipt');
+  reset role;
+  if (v_j->>'allowed')::boolean then raise exception 'R9 FAIL: another camp''s admin spent this camp''s quota'; end if;
+  select count(*) into v_n from ai_usage where camp_id = v_camp and created_at > now() - interval '1 hour';
+  if v_n <> 26 then raise exception 'R9 FAIL: % usage rows today, expected 26', v_n; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R10: storage mirrors the table ─────────────────────────────────────────
+  perform pg_temp.login(u_h1);
+  select count(*) into v_n from storage.objects where bucket_id = 'receipts' and name like v_camp || '/%';
+  reset role;
+  if v_n <> 2 then raise exception 'R10 FAIL: holder one can list % receipt files (own + borrowed-card)', v_n; end if;
+  perform pg_temp.login(u_h2);
+  select count(*) into v_n from storage.objects where bucket_id = 'receipts' and name = v_camp || '/' || r1 || '.jpg';
+  reset role;
+  if v_n <> 0 then raise exception 'R10 FAIL: holder two can read holder one''s receipt file'; end if;
+  perform pg_temp.login(u_viewer);
+  select count(*) into v_n from storage.objects where bucket_id = 'receipts' and name like v_camp || '/%';
+  reset role;
+  if v_n <> 0 then raise exception 'R10 FAIL: viewer can read % receipt files', v_n; end if;
+  perform pg_temp.login(u_outside);
+  select count(*) into v_n from storage.objects where bucket_id = 'receipts' and name like v_camp || '/%';
+  reset role;
+  if v_n <> 0 then raise exception 'R10 FAIL: another camp''s admin can read % receipt files', v_n; end if;
+  perform pg_temp.login(u_admin);
+  select count(*) into v_n from storage.objects where bucket_id = 'receipts' and name like v_camp || '/%';
+  reset role;
+  if v_n <> 4 then raise exception 'R10 FAIL: admin reads % of 4 files', v_n; end if;
+
+  -- Writes: only to a receipt you submitted and that is not exported.
+  perform pg_temp.login(u_h2);
+  v_ok := false;
+  begin insert into storage.objects (bucket_id, name) values ('receipts', v_camp || '/' || r5 || '.jpg');
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R10 FAIL: holder two uploaded a file for holder one''s receipt'; end if;
+  perform pg_temp.login(u_h1);
+  insert into storage.objects (bucket_id, name) values ('receipts', v_camp || '/' || r5 || '.jpg');
+  v_ok := false;
+  begin insert into storage.objects (bucket_id, name) values ('receipts', v_other || '/' || r5 || '.jpg');
+  exception when others then v_ok := true; end;
+  if not v_ok then reset role; raise exception 'R10 FAIL: a file was written under another camp''s folder'; end if;
+  v_ok := false;
+  begin insert into storage.objects (bucket_id, name) values ('receipts', v_camp || '/' || gen_random_uuid() || '.jpg');
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R10 FAIL: a file was written for a receipt that does not exist'; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R11: Remind holder queues one text-ready message a day ────────────────
+  perform pg_temp.login(u_admin);
+  v_j := remind_card_holder(l2);
+  if not (v_j->>'queued')::boolean or v_j->>'to_email' <> 'holder.one@campcommand.app' then
+    reset role; raise exception 'R11 FAIL: reminder not queued: %', v_j;
+  end if;
+  perform remind_card_holder(l2);
+  reset role;
+  select count(*) into v_n from scheduled_messages
+   where subject_type = 'statement_line' and subject_id = l2 and recipient_kind = 'card_holder'
+     and rule_key like 'receipt_missing:%' and body_text like 'Receipt needed: $45.20%';
+  if v_n <> 1 then raise exception 'R11 FAIL: % reminder rows (want exactly 1 with body_text)', v_n; end if;
+  perform pg_temp.login(u_h1);
+  v_ok := false;
+  begin perform remind_card_holder(l2);
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R11 FAIL: staff sent a reminder'; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R12: the nightly planner nudges people with receipts left unchecked ───
+  update receipts set status = 'needs_review', created_at = now() - interval '3 days' where id = r5;
+  perform plan_receipt_messages_internal();
+  select count(*) into v_n from scheduled_messages
+   where camp_id = v_camp and subject_type = 'receipt_review' and rule_key like 'needs_review:' || u_h1 || ':%';
+  if v_n <> 1 then raise exception 'R12 FAIL: % review digests for holder one', v_n; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R13: a cloned camp's card holds nobody instead of failing the clone ──
+  insert into expense_cards (camp_id, label, holder_member_id) values (v_other, 'Cloned', m_h1) returning id into c_other;
+  select count(*) into v_n from expense_cards where id = c_other and holder_member_id is null;
+  if v_n <> 1 then raise exception 'R13 FAIL: a foreign holder survived the insert'; end if;
+  v_ok := false;
+  begin update expense_cards set holder_member_id = m_h1 where id = c_other;
+  exception when others then v_ok := true; end;
+  if not v_ok then raise exception 'R13 FAIL: a card was given a holder from another camp'; end if;
+  v_passed := v_passed + 1;
+
+  raise notice 'receipts: %/13 passed', v_passed;
+  if v_passed <> 13 then raise exception 'receipts FAIL: only % of 13', v_passed; end if;
+end $$;
+
+select 'receipts: 13/13 passed' as result;
+rollback;

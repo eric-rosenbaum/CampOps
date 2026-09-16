@@ -36,8 +36,9 @@ export function RequestCard({ request, lines, program, actions, onOpen, showStat
           {request.purpose ? <span className="text-ink-soft"> · {request.purpose}</span> : null}
         </p>
         {request.status === 'submitted' && (
+          // The late chip already says the hours; this line only adds what it cannot.
           <p className={`text-[12px] ${request.isLate ? 'font-semibold text-amber-text' : 'text-ink-soft'}`}>
-            {formatNotice(request.noticeHours)} notice{request.isLate ? ` — under the ${Math.round(request.cutoffHours)}h cutoff` : ''}
+            {request.isLate ? `Under the ${Math.round(request.cutoffHours)}-hour cutoff` : `${formatNotice(request.noticeHours)}’ notice`}
           </p>
         )}
         <ul className="mt-2 flex flex-wrap gap-1.5">

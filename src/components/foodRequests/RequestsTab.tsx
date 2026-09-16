@@ -93,15 +93,16 @@ export function RequestsTab({ openRequestId, onOpenRequest }: {
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-4 flex flex-wrap items-center gap-x-2 border-b border-border">
+        <div className="mb-4 flex items-center gap-x-1 border-b border-border sm:gap-x-2">
           <FilterPill label="Inbox" active={view === 'inbox'} onClick={() => setView('inbox')} count={inbox.length} />
           <FilterPill label="Pickups" active={view === 'pickups'} onClick={() => setView('pickups')} count={pickupCount} />
           <FilterPill label="History" active={view === 'history'} onClick={() => setView('history')} />
           <span className="flex-1" />
           {canManage && (
             <button type="button" onClick={() => setActiveTab('settings')}
+              aria-label="Programs and links" title="Programs and links"
               className="mb-1.5 inline-flex items-center gap-1.5 rounded-btn px-2 py-1 text-[12px] font-semibold text-ink-soft hover:text-forest">
-              <Settings2 className="h-3.5 w-3.5" /> Programs &amp; links
+              <Settings2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" /> <span className="hidden sm:inline">Programs &amp; links</span>
             </button>
           )}
         </div>

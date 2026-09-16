@@ -434,7 +434,7 @@ export function pullListHtml(opts: {
     const rows = (byReq.get(r.id) ?? []).sort((a, b) => a.sortOrder - b.sortOrder).map((l) => {
       const unavailable = l.lineState === 'unavailable';
       const qty = unavailable ? 'not available' : formatLineQty(l.qtyApproved ?? l.qtyRequested, l.qtyApproved != null ? l.approvedUnitLabel : l.unitLabel);
-      return `<tr${unavailable ? ' class="na"' : ''}><td class="box">${unavailable ? '' : '&#9744;'}</td><td>${esc(l.label)}${l.note ? `<div class="note">${esc(l.note)}</div>` : ''}</td><td class="qty">${esc(qty)}</td></tr>`;
+      return `<tr${unavailable ? ' class="na"' : ''}><td class="box">${unavailable ? '' : '&#9744;'}</td><td>${unavailable ? `<s>${esc(l.label)}</s>` : esc(l.label)}${l.note ? `<div class="note">${esc(l.note)}</div>` : ''}</td><td class="qty">${esc(qty)}</td></tr>`;
     }).join('');
     const who = (r.programId && names.get(r.programId)) || r.requesterName;
     return `<section><h2>${esc(formatClock(r.pickupTime))} · ${esc(who)}</h2>
@@ -444,13 +444,15 @@ export function pullListHtml(opts: {
   }).join('');
   return `<!doctype html><html><head><meta charset="utf-8"><title>Pull list · ${esc(opts.dayLabel)}</title>
   <style>
+    /* An unavailable line strikes the item's name only: text-decoration is inherited and cannot be
+       removed by a child, so striking the row also struck "not available", the one word to read. */
     body{font-family:-apple-system,Segoe UI,sans-serif;color:#23201B;margin:32px;font-size:13px}
     h1{font-size:20px;margin:0 0 2px} .sub{color:#6B6357;margin:0 0 20px}
     section{break-inside:avoid;border-top:1px solid #DED3BB;padding:12px 0}
     h2{font-size:15px;margin:0 0 2px} .meta{color:#6B6357;margin:2px 0}
     table{width:100%;border-collapse:collapse;margin-top:6px} td{padding:4px 6px;border-bottom:1px dotted #DED3BB;vertical-align:top}
     td.box{width:20px;font-size:16px} td.qty{text-align:right;white-space:nowrap;font-family:ui-monospace,monospace}
-    tr.na td{color:#9AA98F;text-decoration:line-through} .note{color:#6B6357;font-size:11px}
+    tr.na td{color:#9AA98F} .note{color:#6B6357;font-size:11px}
   </style></head><body>
   <h1>Pull list · ${esc(opts.dayLabel)}</h1>
   <p class="sub">${esc(opts.campName)}${opts.pickupLocation ? ` · pickup at ${esc(opts.pickupLocation)}` : ''} · ${opts.requests.length} request${opts.requests.length === 1 ? '' : 's'}</p>

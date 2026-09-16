@@ -17,6 +17,9 @@ begin
   delete from scheduled_messages where camp_id = v_camp and subject_type = 'food_request';
   delete from food_request_lines where camp_id = v_camp;
   delete from food_requests where camp_id = v_camp;
+  -- The public link allows 10 requests an hour per address, and a day of journey runs from one
+  -- laptop exceeds that. Only this camp's buckets are cleared.
+  delete from food_request_throttle where bucket like v_camp::text || ':%';
 
   select id into v_vendor from commissary_vendors where camp_id = v_camp and name = 'Northern Foodservice';
   if v_vendor is null then

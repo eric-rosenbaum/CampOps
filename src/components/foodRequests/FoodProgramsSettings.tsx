@@ -43,7 +43,7 @@ export function FoodProgramsSettings() {
           <h2 className="text-[15px] font-semibold text-forest">Food requests</h2>
           <p className="text-[12px] text-ink-soft">Programs ask the kitchen for food through their own link. No account needed.</p>
         </div>
-        {canManage && <Button size="sm" onClick={() => setEditing('new')}>+ Program</Button>}
+        {canManage && <Button size="sm" className="flex-shrink-0 whitespace-nowrap" onClick={() => setEditing('new')}>+ Program</Button>}
       </div>
 
       <div className="overflow-hidden rounded-card border border-border bg-white">

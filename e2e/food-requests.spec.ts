@@ -101,11 +101,15 @@ test('J1–J2: a counselor asks, the kitchen approves with changes, sets it asid
   await page.getByLabel('Email').fill(`j1-${tag}@example.com`);
   await page.getByLabel('Mobile phone (optional)').fill('416-555-0100');
   await page.getByRole('button', { name: 'Text message' }).click();
+  await expect(page.getByRole('button', { name: 'Text message' })).toHaveAttribute('aria-pressed', 'true');
+  await page.waitForTimeout(300); // let the 150ms colour transition finish before the screenshot
   await shot(page, 'counselor-form-filled-late-warning');
 
   await page.getByRole('button', { name: 'Send to the kitchen' }).click();
   const sentAt = Date.now();
-  await page.waitForURL(/\/food\/status\/.+\?sent=1/);
+  // A refusal (the throttle, a validation message) shows as an alert on the form; fail on it
+  // instead of waiting out the test timeout for a navigation that will never happen.
+  await page.waitForURL(/\/food\/status\/.+\?sent=1/, { timeout: 20_000 });
   await expect(page.getByTestId('status-headline')).toHaveText('Waiting for the kitchen');
   await expect(page.getByText('Sent to the kitchen')).toBeVisible();
   await shot(page, 'counselor-status-submitted');
@@ -207,4 +211,59 @@ test('J1–J2: a counselor asks, the kitchen approves with changes, sets it asid
   expect(counselorErrors.filter((e) => !noise(e))).toEqual([]);
   expect(kitchenErrors.filter((e) => !noise(e))).toEqual([]);
   await kitchen.context.close();
+});
+
+test('the other food-request screens: programs & QR, a staff request in the app, a dead link', async ({ page, browser }, info) => {
+  test.setTimeout(180_000);
+  const shot = stepper('food-requests-screens', info.project.name);
+  const viewport = info.project.use.viewport ?? { width: 1280, height: 800 };
+  const isPhone = viewport.width < 640;
+  const tag = `${info.project.name}-${Date.now().toString(36)}`;
+
+  // A dead program link says so, in words a counselor understands.
+  await page.goto('/food/not-a-real-link');
+  await expect(page.getByRole('heading', { name: 'This link is not active' })).toBeVisible();
+  await shot(page, 'public-dead-link');
+
+  // Settings › Food requests: programs, link, QR, kitchen rules.
+  const admin = await asUser(browser, 'admin', { viewport, isMobile: isPhone, hasTouch: isPhone });
+  await admin.page.addLocatorHandler(
+    admin.page.getByRole('alert').filter({ hasText: 'get_camp_staff_personal' }),
+    async (banner) => { await banner.getByRole('button', { name: 'Dismiss' }).last().click(); },
+  );
+  await admin.page.goto('/commissary?tab=settings');
+  const section = admin.page.getByTestId('food-programs-settings');
+  await expect(section.getByTestId('food-program-row').filter({ hasText: 'Cooking Club' })).toBeVisible({ timeout: 30_000 });
+  await section.scrollIntoViewIfNeeded();
+  await shot(admin.page, 'settings-programs');
+  await section.getByRole('button', { name: 'QR code for Cooking Club' }).click();
+  await expect(admin.page.getByTestId('food-program-link')).toHaveText(/\/food\/qa-cooking-club$/);
+  await shot(admin.page, 'settings-program-qr');
+  await admin.page.getByRole('button', { name: 'Done' }).click();
+  await admin.context.close();
+
+  // A staff member asks in the app and watches it in My requests.
+  const program = await asUser(browser, 'program', { viewport, isMobile: isPhone, hasTouch: isPhone });
+  await program.page.addLocatorHandler(
+    program.page.getByRole('alert').filter({ hasText: 'get_camp_staff_personal' }),
+    async (banner) => { await banner.getByRole('button', { name: 'Dismiss' }).last().click(); },
+  );
+  await program.page.goto('/food-requests');
+  await expect(program.page.getByRole('heading', { name: 'Food requests', exact: true })).toBeVisible({ timeout: 30_000 });
+  await shot(program.page, 'my-requests-empty');
+  await program.page.getByRole('button', { name: '+ New request' }).filter({ visible: true }).first().click();
+  await program.page.getByLabel('For which program?').selectOption({ label: 'Canoe trips' });
+  await program.page.getByRole('combobox', { name: 'Item 1' }).fill('graham');
+  await program.page.getByRole('option', { name: /Graham crackers/ }).click();
+  await program.page.getByRole('textbox', { name: 'How much Graham crackers' }).fill('4');
+  await program.page.getByLabel('Pickup day').fill(addDays(todayInZone(CAMP_TZ), 6));
+  await program.page.getByLabel('Time').fill('07:30');
+  await program.page.getByLabel('What’s it for?').fill(`S'mores ${tag}`);
+  await expect(program.page.getByTestId('late-warning')).toHaveCount(0);
+  await shot(program.page, 'my-requests-form');
+  await program.page.getByRole('button', { name: 'Send to the kitchen' }).click();
+  await expect(program.page.getByText('Sent to the kitchen.')).toBeVisible();
+  await expect(program.page.getByTestId('my-food-requests')).toContainText('Waiting for the kitchen');
+  await shot(program.page, 'my-requests-sent');
+  await program.context.close();
 });

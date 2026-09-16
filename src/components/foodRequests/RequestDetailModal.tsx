@@ -3,6 +3,7 @@ import { Copy, Check, Mail, MessageSquareText } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useAuth } from '@/lib/auth';
+import { useCommissaryStore } from '@/store/commissaryStore';
 import type { FoodProgram, FoodRequest, FoodRequestLine, FoodRequestMessage } from '@/lib/foodRequestTypes';
 import {
   FOOD_STATUS_LABELS, canTransition, formatClock, formatLineQty, formatNotice, formatPickup, isPastDue, lineChangeSummary,
@@ -40,6 +41,7 @@ export function RequestDetailModal({ request, lines, program, onClose, onDecide 
   const actions = useFoodRequestActions();
   const [messages, setMessages] = useState<FoodRequestMessage[] | null>(null);
   const [copied, setCopied] = useState(false);
+  const items = useCommissaryStore((s) => s.items);
   const busy = actions.busyId === request.id;
 
   // Reloaded whenever the request changes: every transition queues or cancels something.
@@ -103,13 +105,12 @@ export function RequestDetailModal({ request, lines, program, onClose, onDecide 
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <ProgramDot color={program?.color ?? null} />
-            <span className="text-[14px] font-semibold text-forest">{FOOD_STATUS_LABELS[request.status]}</span>
-            <FoodStatusChip status={request.status} />
+            <FoodStatusChip status={request.status} label={FOOD_STATUS_LABELS[request.status]} />
             {request.isLate && <LateChip hours={request.noticeHours} />}
           </div>
           <p className="mt-1.5 text-[15px] font-semibold text-ink">{formatPickup(request.pickupDate, request.pickupTime)}</p>
           <p className="text-[12.5px] text-ink-soft">
-            {formatNotice(request.noticeHours)} notice when sent (cutoff {Math.round(request.cutoffHours)}h)
+            {formatNotice(request.noticeHours)}&rsquo; notice when sent (cutoff {Math.round(request.cutoffHours)}h)
             {request.headcount ? ` · ${request.headcount} people` : ''}{request.purpose ? ` · ${request.purpose}` : ''}
           </p>
           <p className="mt-1 text-[12.5px] text-ink-soft">
@@ -133,7 +134,8 @@ export function RequestDetailModal({ request, lines, program, onClose, onDecide 
                   <div className="min-w-0">
                     <p className={`text-[13px] ${l.lineState === 'unavailable' ? 'text-ink-faint' : 'text-forest'}`}>{l.label}</p>
                     <p className="text-[11.5px] text-ink-soft">
-                      {l.itemId ? 'On the inventory list' : 'Own words — not linked to an item'}{l.note ? ` · “${l.note}”` : ''}
+                      {!l.itemId ? 'Own words — not linked to an item'
+                        : (() => { const name = items.find((i) => i.id === l.itemId)?.name; return name && name !== l.label ? `Linked to ${name}` : 'On the inventory list'; })()}{l.note ? ` · “${l.note}”` : ''}
                     </p>
                   </div>
                   <div className="flex-shrink-0 text-right">
@@ -153,8 +155,8 @@ export function RequestDetailModal({ request, lines, program, onClose, onDecide 
           <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">History</h3>
           <ul className="space-y-0.5 text-[12.5px]">
             {stamps.filter(([, at]) => at).map(([label, at, by]) => (
-              <li key={label} className="flex flex-wrap gap-x-2 text-ink">
-                <span className="w-24 flex-shrink-0 font-semibold text-forest">{label}</span>
+              <li key={label} className="grid grid-cols-[6.5rem_1fr] gap-x-2 text-ink">
+                <span className="font-semibold text-forest">{label}</span>
                 <span className="text-ink-soft">{new Date(at!).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}{by ? ` · ${by}` : ''}</span>
               </li>
             ))}

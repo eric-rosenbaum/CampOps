@@ -32,7 +32,7 @@ import { CoursesModal } from '@/components/commissary/CoursesModal';
 import { SubstitutionModal } from '@/components/commissary/SubstitutionModal';
 import { SettingsTab } from '@/components/commissary/SettingsTab';
 import { RequestsTab } from '@/components/foodRequests/RequestsTab';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 // Production guide, Cost and Waste tabs are archived. Their components, store selectors,
@@ -69,6 +69,16 @@ export function Commissary() {
   useEffect(() => {
     if (tabParam && TABS.some((t) => t.id === tabParam)) setActiveTab(tabParam as CommissaryTab);
   }, [tabParam, setActiveTab]);
+  // A deep link to a tab past a phone's width must not open on a tab you cannot see. Keyed on the
+  // tab, not every render, so a realtime reload never yanks a bar someone is scrolling.
+  const tabBarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = tabBarRef.current?.querySelector<HTMLElement>(`[data-tab="${activeTab}"]`);
+    const bar = tabBarRef.current;
+    if (el && bar && (el.offsetLeft + el.offsetWidth > bar.scrollLeft + bar.clientWidth || el.offsetLeft < bar.scrollLeft)) {
+      bar.scrollLeft = el.offsetLeft - 16;
+    }
+  }, [activeTab]);
   function openRequest(id: string | null) {
     const next = new URLSearchParams(searchParams);
     next.set('tab', 'requests');
@@ -130,11 +140,12 @@ export function Commissary() {
     <div className="flex flex-col h-full min-h-0">
       <Topbar title="Commissary" subtitle={subtitle} actions={topAction()} />
 
-      <div className="bg-paper-raised border-b border-border px-4 sm:px-7 flex-shrink-0 flex items-center justify-between gap-3 overflow-x-auto overflow-y-hidden no-scrollbar">
+      <div ref={tabBarRef} className="relative bg-paper-raised border-b border-border px-4 sm:px-7 flex-shrink-0 flex items-center justify-between gap-3 overflow-x-auto overflow-y-hidden no-scrollbar">
         <div className="flex">
           {visibleTabs.map((tab) => (
             <button
               key={tab.id}
+              data-tab={tab.id}
               onClick={() => chooseTab(tab.id)}
               className={`-mb-px whitespace-nowrap border-b-[3px] px-4 pb-2.5 pt-3 text-[13px] font-semibold transition-colors ${
                 activeTab === tab.id

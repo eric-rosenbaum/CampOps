@@ -29,12 +29,13 @@ interface Props {
   onEdit: (trip: Trip) => void;
   onAddErrand: (tripId: string) => void;
   onOpenTrip: (id: string) => void;
+  onAskForRide: () => void;
   notify: Notify;
 }
 
 const LEGS: SeatLeg[] = ['both', 'there', 'back'];
 
-export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onClose, onEdit, onAddErrand, onOpenTrip, notify }: Props) {
+export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onClose, onEdit, onAddErrand, onOpenTrip, onAskForRide, notify }: Props) {
   const [leg, setLeg] = useState<SeatLeg>('both');
   const [busy, setBusy] = useState<string | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
@@ -107,34 +108,36 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
         data-trip-id={trip.id}
         className="flex h-full w-full flex-col bg-paper shadow-2xl sm:max-w-[460px]"
       >
-        {/* Header */}
-        <div className="flex-shrink-0 border-b border-border bg-white px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))]" style={{ borderTop: `4px solid ${trip.status === 'cancelled' ? '#C9BFA9' : k.color}` }}>
-          <div className="flex items-center gap-2">
-            <KindTag kind={trip.kind} />
-            {trip.status === 'cancelled' && <span className="rounded-tag bg-red-bg px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-red-text">Cancelled</span>}
-            {trip.status === 'out' && <span className="rounded-tag bg-blue-bg px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-blue-text">On the road</span>}
-            {trip.status === 'back' && <span className="rounded-tag bg-cream-dark px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-ink-soft">Back</span>}
-            <button onClick={onClose} aria-label="Close trip" className="-mr-2 ml-auto grid h-11 w-11 place-items-center rounded-btn text-ink-soft hover:bg-cream hover:text-forest">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <h2 className={`mt-1 font-display text-[22px] font-bold leading-tight text-forest ${trip.status === 'cancelled' ? 'line-through decoration-ink-faint' : ''}`}>
-            {trip.title}
-          </h2>
-          {trip.destination && <p className="text-[14px] text-ink-soft">→ {trip.destination}</p>}
-          <ul className="mt-3 space-y-1.5 text-[13px] text-ink">
-            <li className="flex items-center gap-2"><CalendarDays className="h-4 w-4 flex-none text-ink-faint" />{dayLabel(trip.departDate)} · {tripTimeLabel(trip)}</li>
-            <li className="flex items-center gap-2">
-              <UserRound className="h-4 w-4 flex-none text-ink-faint" />
-              {trip.driverName ? <>Driver: <b className="font-semibold">{trip.driverName}</b>{iDrive && ' (you)'}</> : <span className="italic text-ink-soft">No driver yet</span>}
-            </li>
-            {trip.vehicleLabel && <li className="flex items-center gap-2"><Car className="h-4 w-4 flex-none text-ink-faint" />{trip.vehicleLabel}</li>}
-            {trip.notes && <li className="flex items-start gap-2"><StickyNote className="mt-0.5 h-4 w-4 flex-none text-ink-faint" /><span className="whitespace-pre-wrap">{trip.notes}</span></li>}
-            {trip.cancelledReason && <li className="flex items-start gap-2 text-red-text"><Ban className="mt-0.5 h-4 w-4 flex-none" />{trip.cancelledReason}</li>}
-          </ul>
+        {/* A slim bar that stays put; the trip's details scroll with everything else, because on a
+            phone a fixed 200px header left the seat button below the fold. */}
+        <div className="flex flex-shrink-0 items-center gap-2 border-b border-border bg-white px-5 pb-1 pt-[max(0.5rem,env(safe-area-inset-top))]" style={{ borderTop: `4px solid ${trip.status === 'cancelled' ? '#C9BFA9' : k.color}` }}>
+          <KindTag kind={trip.kind} />
+          {trip.status === 'cancelled' && <span className="rounded-tag bg-red-bg px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-red-text">Cancelled</span>}
+          {trip.status === 'out' && <span className="rounded-tag bg-blue-bg px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-blue-text">On the road</span>}
+          {trip.status === 'back' && <span className="rounded-tag bg-cream-dark px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-ink-soft">Back</span>}
+          <button onClick={onClose} aria-label="Close trip" className="-mr-2 ml-auto grid h-11 w-11 place-items-center rounded-btn text-ink-soft hover:bg-cream hover:text-forest">
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto" data-testid="trip-drawer-body">
+          <div className="border-b border-border bg-white px-5 pb-4 pt-2">
+            <h2 className={`font-display text-[22px] font-bold leading-tight text-forest ${trip.status === 'cancelled' ? 'line-through decoration-ink-faint' : ''}`}>
+              {trip.title}
+            </h2>
+            {trip.destination && <p className="text-[14px] text-ink-soft">→ {trip.destination}</p>}
+            <ul className="mt-3 space-y-1.5 text-[13px] text-ink">
+              <li className="flex items-center gap-2"><CalendarDays className="h-4 w-4 flex-none text-ink-faint" />{dayLabel(trip.departDate)} · {tripTimeLabel(trip)}</li>
+              <li className="flex items-center gap-2">
+                <UserRound className="h-4 w-4 flex-none text-ink-faint" />
+                {trip.driverName ? <span>Driver: <b className="font-semibold">{trip.driverName}</b>{iDrive && ' (you)'}</span> : <span className="italic text-ink-soft">No driver yet</span>}
+              </li>
+              {trip.vehicleLabel && <li className="flex items-center gap-2"><Car className="h-4 w-4 flex-none text-ink-faint" />{trip.vehicleLabel}</li>}
+              {trip.notes && <li className="flex items-start gap-2"><StickyNote className="mt-0.5 h-4 w-4 flex-none text-ink-faint" /><span className="whitespace-pre-wrap">{trip.notes}</span></li>}
+              {trip.cancelledReason && <li className="flex items-start gap-2 text-red-text"><Ban className="mt-0.5 h-4 w-4 flex-none" />{trip.cancelledReason}</li>}
+            </ul>
+          </div>
+
           {/* Your seat */}
           {canWrite && planned && (
             <section className="border-b border-border bg-white px-5 py-4" data-testid="my-seat">
@@ -169,7 +172,10 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
                         <AlertTriangle className="h-4 w-4" /> You have no ride back yet
                       </p>
                       {myReturnOptions.length === 0 ? (
-                        <p className="mt-1 text-[12.5px] text-red-text">No trip that day or the next has a seat back. Ask for one on the Ride requests tab.</p>
+                        <p className="mt-1 text-[12.5px] text-red-text">
+                          No trip that day or the next has a seat back.{' '}
+                          <button type="button" onClick={onAskForRide} className="font-bold underline">Ask for a ride back</button>
+                        </p>
                       ) : (
                         <ul className="mt-2 space-y-1.5">
                           {myReturnOptions.slice(0, 3).map((t) => (

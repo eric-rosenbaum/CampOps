@@ -30,7 +30,7 @@ interface Props {
   onPlan: (date: string) => void;
 }
 
-function DayChips({ day, onOpenTrip }: { day: BoardDay; onOpenTrip: (id: string) => void }) {
+function DayChips({ day, onOpenTrip, compact = false }: { day: BoardDay; onOpenTrip: (id: string) => void; compact?: boolean }) {
   if (day.rideDemand.length === 0 && day.stranded.length === 0) return null;
   const strandedNames = day.stranded.map((s) => s.seat.riderName).join(', ');
   return (
@@ -42,7 +42,7 @@ function DayChips({ day, onOpenTrip }: { day: BoardDay; onOpenTrip: (id: string)
           className="inline-flex items-center gap-1 rounded-pill bg-blue-bg px-2 py-0.5 text-[11px] font-bold text-blue-text"
         >
           <Users className="h-3 w-3" />
-          {day.rideDemand.length} want{day.rideDemand.length === 1 ? 's' : ''} a ride
+          {day.rideDemand.length} want{day.rideDemand.length === 1 ? 's' : ''} {compact ? 'rides' : 'a ride'}
         </span>
       )}
       {day.stranded.length > 0 && (
@@ -54,7 +54,8 @@ function DayChips({ day, onOpenTrip }: { day: BoardDay; onOpenTrip: (id: string)
           className="inline-flex items-center gap-1 rounded-pill bg-red px-2 py-0.5 text-[11px] font-bold text-paper hover:bg-red-text"
         >
           <AlertTriangle className="h-3 w-3" />
-          {day.stranded.length} with no ride back
+          {/* The column is ~120px wide on a laptop; the full sentence is in the title. */}
+          {day.stranded.length} {compact ? 'no ride back' : 'with no ride back'}
         </button>
       )}
     </div>
@@ -156,6 +157,7 @@ export function WeekBoard({ days, weekStart, isCurrentWeek, leaving, now, lookup
       mine={lookups.mySeat(t.id)}
       iDrive={lookups.iDrive(t)}
       strandedCount={lookups.strandedOn(t.id)}
+      departed={minutesUntil(now, t.departDate, t.departTime) <= 0}
       onOpen={() => onOpenTrip(t.id)}
     />
   );
@@ -240,7 +242,7 @@ export function WeekBoard({ days, weekStart, isCurrentWeek, leaving, now, lookup
                   {Number(day.date.slice(8))}
                 </span>
               </div>
-              <div className="mb-1.5 px-0.5 empty:hidden"><DayChips day={day} onOpenTrip={onOpenTrip} /></div>
+              <div className="mb-1.5 px-0.5 empty:hidden"><DayChips day={day} onOpenTrip={onOpenTrip} compact /></div>
               <div className="flex flex-1 flex-col gap-1.5">
                 {day.trips.map((t) => card(t, 'column'))}
                 {day.trips.length === 0 && <EmptyDay day={day} canWrite={canWrite} onPlan={onPlan} />}

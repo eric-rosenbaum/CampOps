@@ -134,7 +134,8 @@ export function ToastView({ toast, onDone }: { toast: Toast | null; onDone: () =
   if (!toast) return null;
   const tone = toast.tone === 'ok' ? 'bg-forest text-paper' : toast.tone === 'warn' ? 'bg-amber-bg text-amber-text border border-amber/40' : 'bg-red text-paper';
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[60] flex justify-center px-4">
+    // Top of the screen on a phone: at the bottom it sat over the drawer's own action buttons.
+    <div className="pointer-events-none fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-[60] flex justify-center px-4 sm:bottom-5 sm:top-auto">
       <div role="status" data-testid="trips-toast" className={`pointer-events-auto max-w-md rounded-btn px-4 py-2.5 text-[13.5px] font-semibold shadow-lg ${tone}`}>
         {toast.text}
       </div>

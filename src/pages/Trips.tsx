@@ -16,7 +16,7 @@ import { useAssetStore } from '@/store/assetStore';
 import { useAuth } from '@/lib/auth';
 import { useModules } from '@/lib/modules';
 import {
-  seatUsage, strandedRiders, layoutWeek, leavingNext, weekStartOf, addDays, isDateStr, shoppingList, canManageTrip,
+  seatUsage, strandedRiders, layoutWeek, leavingNext, weekStartOf, addDays, isDateStr, shoppingList, canManageTrip, weekRangeLabel,
   type SeatUsage,
 } from '@/lib/trips';
 import type { Trip, SeatStatus } from '@/lib/tripTypes';
@@ -129,7 +129,7 @@ export function Trips() {
   );
 
   const weekTripCount = days.reduce((n, d) => n + d.trips.filter((t) => t.status !== 'cancelled').length, 0);
-  const subtitle = `${weekTripCount} trip${weekTripCount === 1 ? '' : 's'} this week · ${list.needsTripCount} errand${list.needsTripCount === 1 ? '' : 's'} need${list.needsTripCount === 1 ? 's' : ''} a trip`;
+  const subtitle = `${weekTripCount} trip${weekTripCount === 1 ? '' : 's'} ${weekStart === thisWeek ? 'this week' : `week of ${weekRangeLabel(weekStart)}`} · ${list.needsTripCount} errand${list.needsTripCount === 1 ? '' : 's'} need${list.needsTripCount === 1 ? 's' : ''} a trip`;
 
   if (!currentCamp) return null;
 
@@ -228,6 +228,7 @@ export function Trips() {
           onEdit={(t) => setPlanning({ date: null, editing: t })}
           onAddErrand={(tripId) => setErrandFor({ tripId })}
           onOpenTrip={openTripById}
+          onAskForRide={() => update((p) => { p.delete('trip'); p.set('tab', 'rides'); })}
           notify={notify}
         />
       )}

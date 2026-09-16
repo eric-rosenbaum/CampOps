@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useCampStore } from '@/store/campStore';
 import { CampCommandMark } from '@/components/shared/CampCommandMark';
 import { CampLoader } from '@/components/shared/ModuleLoading';
+import { loadDemoBrief } from '@/lib/demoGuideDb';
 
 // Frictionless demo entry. The shareable link (app.campcommand.app/try/:token) drops anyone -
 // no email, no password, straight into ONE demo camp via an anonymous session. Multiple people
@@ -37,7 +38,10 @@ export function TryDemo() {
       // Load this (anonymous) user's camps (they're a member of exactly this demo) then open it.
       await useCampStore.getState().loadMyCamps();
       if (r.camp_id) await useCampStore.getState().selectCamp(r.camp_id);
-      navigate('/home', { replace: true });
+      // A demo written for a particular prospect opens on their guide, not on a dashboard they
+      // would have to make sense of first.
+      const brief = r.camp_id ? await loadDemoBrief(r.camp_id).catch(() => null) : null;
+      navigate(brief ? '/demo-guide' : '/home', { replace: true });
     })();
   }, [token, navigate]);
 

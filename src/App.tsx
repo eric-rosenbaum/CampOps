@@ -50,6 +50,7 @@ import { LandingPage } from '@/pages/landing/LandingPage';
 
 // My Tasks
 import { MyTasks } from '@/pages/MyTasks';
+import { DemoGuide } from '@/pages/demo/DemoGuide';
 
 // Settings
 import { Team } from '@/pages/settings/Team';
@@ -647,6 +648,7 @@ export default function App() {
                     order. See <Gate> for why an empty state is the wrong thing to show. */}
                 <Route path="/home" element={<Gate of={['issues', 'tasks']} label="Building your dashboard"><HomeRouter /></Gate>} />
                 <Route path="/my-tasks" element={<Gate of={['tasks']} label="Loading your tasks"><MyTasks /></Gate>} />
+                <Route path="/demo-guide" element={<DemoGuide />} />
                 <Route
                   path="/campground"
                   element={(

@@ -7,11 +7,13 @@ import { useCampStore } from '@/store/campStore';
 import { useUIStore } from '@/store/uiStore';
 import { CampCommandMark } from '@/components/shared/CampCommandMark';
 import { UnsavedChangesBanner } from '@/components/shared/UnsavedChangesBanner';
+import { useDemoBrief } from '@/lib/useDemoBrief';
 
 // Shown when a founder is viewing a camp they don't belong to, or when a trial is counting down.
 function StatusBanners() {
   const { impersonating, currentCamp, exitImpersonation } = useCampStore();
   const navigate = useNavigate();
+  const hasGuide = !!useDemoBrief(currentCamp?.id, currentCamp?.accountType === 'trial' || currentCamp?.accountType === 'demo');
   const trialDays = currentCamp?.accountType === 'trial' && currentCamp.trialEndsAt
     ? Math.ceil((new Date(currentCamp.trialEndsAt).getTime() - new Date().getTime()) / 86400000) : null;
 
@@ -30,6 +32,11 @@ function StatusBanners() {
       <div className="flex items-center justify-center gap-2 bg-amber-bg text-amber-text text-[12px] font-medium px-4 py-1.5 flex-shrink-0">
         <Clock className="w-3.5 h-3.5" />
         {trialDays >= 0 ? `Demo · ${trialDays} day${trialDays === 1 ? '' : 's'} left` : 'Demo ended'}
+        {trialDays >= 0 && hasGuide && (
+          <button onClick={() => navigate('/demo-guide')} className="underline font-semibold hover:text-forest ml-1">
+            Open the demo guide
+          </button>
+        )}
       </div>
     );
   }

@@ -48,12 +48,28 @@ export async function asUser(browser: Browser, role: QaRole, opts: Parameters<Br
  */
 export function stepper(journey: string, project: string) {
   let n = 0;
-  const dir = path.resolve(process.cwd(), `test-results/journeys/${journey}/${project}`);
+  const dir = path.resolve(process.cwd(), `e2e-screens/${journey}/${project}`);
   fs.mkdirSync(dir, { recursive: true });
   return async (page: Page, label: string) => {
     n += 1;
     const file = path.join(dir, `${String(n).padStart(2, '0')}-${label.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`);
+    // The app scrolls inside its own panes (h-screen shell), so a "full page" screenshot is
+    // only the viewport. Grow the viewport to the tallest scroll pane for the shot, then restore.
+    const vp = page.viewportSize();
+    const extra = await page.evaluate(() => {
+      let most = 0;
+      document.querySelectorAll<HTMLElement>('*').forEach((el) => {
+        const cs = getComputedStyle(el);
+        if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll') && el.scrollHeight > el.clientHeight + 1) {
+          most = Math.max(most, el.scrollHeight - el.clientHeight);
+        }
+      });
+      return most;
+    });
+    if (vp && extra > 0) await page.setViewportSize({ width: vp.width, height: Math.min(vp.height + extra, 8000) });
+    await page.waitForTimeout(150);
     await page.screenshot({ path: file, fullPage: true });
+    if (vp && extra > 0) await page.setViewportSize(vp);
     return file;
   };
 }

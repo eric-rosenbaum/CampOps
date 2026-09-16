@@ -35,3 +35,4 @@ supabase/.temp/
 # test output
 test-results/
 playwright-report/
+e2e-screens/

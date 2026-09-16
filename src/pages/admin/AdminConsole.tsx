@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
-import { Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2, LogOut, Users, ChevronDown, ChevronRight, KeyRound, Link as LinkIcon, Blocks } from 'lucide-react';
+import { Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2, LogOut, Users, ChevronDown, ChevronRight, KeyRound, Link as LinkIcon, Blocks, Sparkles } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useAdminStore, type AdminCamp, type CampAccount } from '@/store/adminStore';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
 import { PasswordSection } from '@/components/settings/PasswordSection';
-import { MODULES, MODULE_KEYS, platformAllows, campWants } from '@/lib/modules';
+import { MODULES, MODULE_KEYS, platformAllows, campWants, type ModuleKey } from '@/lib/modules';
+import { DemoGuidePanel } from '@/components/admin/DemoGuidePanel';
+import { SPOTLIGHTS, SPOTLIGHT_BY_KEY, SEEDABLE, defaultBriefSpotlights, type SpotlightKey } from '@/lib/demoSpotlights';
+import { saveDemoBrief, seedDemoData } from '@/lib/demoGuideDb';
 
 const TYPE_STYLE: Record<string, string> = {
   customer: 'bg-green-muted-bg text-green-muted-text',
@@ -78,9 +81,9 @@ export function AdminConsole() {
     }
   }
 
-  async function open(campId: string) {
+  async function open(campId: string, path = '/home') {
     await openCampAsAdmin(campId);
-    navigate('/home');
+    navigate(path);
   }
 
   const byType = (t: string) => camps.filter((c) => c.accountType === t).length;
@@ -135,7 +138,7 @@ export function AdminConsole() {
                 </tr>
               </thead>
               <tbody>
-                {camps.map((c) => <CampRow key={c.id} c={c} orgs={orgs} onOpen={() => open(c.id)} onDelete={() => setDeleteTarget(c)} />)}
+                {camps.map((c) => <CampRow key={c.id} c={c} orgs={orgs} onOpen={() => open(c.id)} onOpenGuide={() => open(c.id, '/demo-guide')} onDelete={() => setDeleteTarget(c)} />)}
               </tbody>
             </table>
           </div>
@@ -151,11 +154,13 @@ export function AdminConsole() {
   );
 }
 
-function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: string; name: string }[]; onOpen: () => void; onDelete: () => void }) {
+function CampRow({ c, orgs, onOpen, onOpenGuide, onDelete }: { c: AdminCamp; orgs: { id: string; name: string }[]; onOpen: () => void; onOpenGuide: () => void; onDelete: () => void }) {
   const { setStatus, extendTrial, setPlan, setSeed, setCampOrg, listCampAccounts } = useAdminStore();
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [modulesOpen, setModulesOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const isDemoType = c.accountType === 'trial' || c.accountType === 'demo';
   const [accounts, setAccounts] = useState<CampAccount[] | null>(null);
   const [accErr, setAccErr] = useState<string | null>(null);
   const dl = daysLeft(c.trialEndsAt);
@@ -213,6 +218,11 @@ function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: stri
           {c.status === 'active'
             ? <Button size="sm" variant="ghost" disabled={busy} onClick={wrap(() => setStatus(c.id, 'suspended'))}>Suspend</Button>
             : <Button size="sm" variant="ghost" disabled={busy} onClick={wrap(() => setStatus(c.id, 'active'))}>Reactivate</Button>}
+          {isDemoType && (
+            <Button size="sm" variant="ghost" onClick={() => setGuideOpen((v) => !v)}>
+              <Sparkles className="w-3.5 h-3.5" /> Guide
+            </Button>
+          )}
           {c.accountType === 'trial' && (
             <>
               <DemoLinkButton campId={c.id} />
@@ -233,6 +243,13 @@ function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: stri
         </div>
       </td>
     </tr>
+    {guideOpen && (
+      <tr className="border-t border-cream-dark bg-cream-dark/20">
+        <td colSpan={8} className="px-4 py-3">
+          <DemoGuidePanel campId={c.id} onOpenGuide={onOpenGuide} />
+        </td>
+      </tr>
+    )}
     {modulesOpen && (
       <tr className="border-t border-cream-dark bg-cream-dark/20">
         <td colSpan={8} className="px-4 py-3">
@@ -581,26 +598,60 @@ function ProvisionCustomerModal({ onClose }: { onClose: () => void }) {
 }
 
 function SpinUpTrialModal({ onClose }: { onClose: () => void }) {
-  const { camps, spinUpTrial } = useAdminStore();
+  const { camps, spinUpTrial, setPlatformModules, load } = useAdminStore();
+  const founderEmail = useAuthStore((s) => s.user?.email ?? '');
   const seeds = camps.filter((c) => c.isSeed);
   const [name, setName] = useState('');
   const [source, setSource] = useState(seeds[0]?.id ?? camps[0]?.id ?? '');
-  const [busy, setBusy] = useState(false);
+  const [prospect, setProspect] = useState('');
+  const [spotlights, setSpotlights] = useState<SpotlightKey[]>(['food_requests', 'town_trips', 'receipts']);
+  const [seedData, setSeedData] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
+  const toggleSpot = (k: SpotlightKey) =>
+    setSpotlights((prev) => (prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]));
+
+  // One flow instead of five buttons: clone, sell what the guide needs, write the guide, seed.
+  // Every opt-in module a chosen spotlight opens is sold; everything already on by default stays.
   async function submit() {
     if (!name.trim() || !source) return;
-    setBusy(true); setErr(null);
+    setErr(null);
     try {
-      const { shareUrl } = await spinUpTrial({ name: name.trim(), sourceCampId: source });
+      setBusy('Cloning the seed camp…');
+      const { campId, shareUrl } = await spinUpTrial({ name: name.trim(), sourceCampId: source });
+      const needed = new Set<ModuleKey>(spotlights.flatMap((k) => SPOTLIGHT_BY_KEY[k].modules));
+      setBusy('Switching on the modules…');
+      await setPlatformModules(campId, Object.fromEntries(
+        MODULES.map((m) => [m.key, m.defaultOn || needed.has(m.key)]),
+      ));
+      if (spotlights.length > 0) {
+        setBusy('Writing the demo guide…');
+        await saveDemoBrief({
+          campId, prospectName: prospect.trim() || null, headline: null, intro: null,
+          spotlights: defaultBriefSpotlights(spotlights), founderName: null, founderEmail: founderEmail || null,
+        });
+      }
+      const toSeed = spotlights.filter((k) => SEEDABLE.includes(k));
+      if (seedData && toSeed.length > 0) {
+        setBusy('Adding sample data…');
+        await seedDemoData(campId, toSeed);
+      }
+      await load();
       setResult(shareUrl);
-    } catch (e) { setErr(e instanceof Error ? e.message : 'Failed'); } finally { setBusy(false); }
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Failed'); } finally { setBusy(null); }
   }
 
   return (
-    <Modal title="Spin up a demo" onClose={onClose} width="480px">
-      {result ? <div className="space-y-4"><ShareLinkResult url={result} /><Button className="w-full justify-center" onClick={onClose}>Done</Button></div> : (
+    <Modal title="Spin up a demo" onClose={onClose} width="520px">
+      {result ? (
+        <div className="space-y-4">
+          <ShareLinkResult url={result} />
+          {spotlights.length > 0 && <p className="text-[12px] text-ink-soft">The link opens on the demo guide. Write it to the prospect from the camp’s <span className="font-semibold">Guide</span> button in the table.</p>}
+          <Button className="w-full justify-center" onClick={onClose}>Done</Button>
+        </div>
+      ) : (
         <div className="space-y-3.5">
           <p className="text-[12px] text-ink-soft bg-cream-dark/40 rounded-btn px-3 py-2">A fresh 30-day demo is cloned from the seed, fake data only, fully isolated from every other camp. You’ll get one no-login link the whole prospect team can share.</p>
           <Field label="Prospect / camp name *"><input autoFocus value={name} onChange={(e) => setName(e.target.value)} className={INPUT} placeholder="e.g. Maplewood (demo)" /></Field>
@@ -610,9 +661,25 @@ function SpinUpTrialModal({ onClose }: { onClose: () => void }) {
               {(seeds.length ? seeds : camps).map((c) => <option key={c.id} value={c.id}>{c.name}{c.isSeed ? ' (seed)' : ''}</option>)}
             </select>
           </Field>
+          <Field label="Who it’s for (first name)"><input value={prospect} onChange={(e) => setProspect(e.target.value)} className={INPUT} placeholder="e.g. Teddy" /></Field>
+          <div>
+            <label className="block text-[12px] font-semibold uppercase tracking-wide text-ink-faint mb-1">Demo guide spotlights</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {SPOTLIGHTS.map((t) => (
+                <label key={t.key} className="flex items-center gap-2 text-[13px] text-ink">
+                  <input type="checkbox" checked={spotlights.includes(t.key)} onChange={() => toggleSpot(t.key)} />
+                  {t.title}
+                </label>
+              ))}
+            </div>
+            <label className="flex items-center gap-2 text-[13px] text-ink mt-2">
+              <input type="checkbox" checked={seedData} onChange={(e) => setSeedData(e.target.checked)} />
+              Add sample data for the spotlights that have it
+            </label>
+          </div>
           {err && <p className="text-[12px] text-red">{err}</p>}
           <div className="flex gap-2 pt-1">
-            <Button className="flex-1 justify-center" disabled={busy || !name.trim() || !source} onClick={submit}>{busy ? 'Cloning…' : 'Spin up demo'}</Button>
+            <Button className="flex-1 justify-center" disabled={!!busy || !name.trim() || !source} onClick={submit}>{busy ?? 'Spin up demo'}</Button>
             <Button variant="ghost" onClick={onClose}>Cancel</Button>
           </div>
         </div>

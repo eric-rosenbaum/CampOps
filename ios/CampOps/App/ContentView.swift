@@ -9,6 +9,7 @@ struct ContentView: View {
     @StateObject private var buildingVM  = BuildingViewModel()
     @StateObject private var syncService = SyncService.shared
     @ObservedObject private var push = PushService.shared
+    @ObservedObject private var deepLink = DeepLinkRouter.shared
     @Environment(\.scenePhase) private var scenePhase
 
     /// Bound so a tapped notification can put the Issues tab in front. Nothing else moves it.
@@ -47,6 +48,20 @@ struct ContentView: View {
                     // itself opens it, and clears the request once it has.
                     .task(id: push.pendingWorkOrderId) {
                         if push.pendingWorkOrderId != nil { selectedTab = .issues }
+                    }
+                    // A scanned sticker names a place. Same idea: bring the right tab forward
+                    // and narrow it to what they are standing in front of.
+                    .task(id: deepLink.pending) { routeScannedSticker() }
+                    .alert(
+                        "That sticker",
+                        isPresented: Binding(
+                            get: { deepLink.failure != nil },
+                            set: { if !$0 { deepLink.failure = nil } }
+                        )
+                    ) {
+                        Button("OK", role: .cancel) { deepLink.failure = nil }
+                    } message: {
+                        Text(deepLink.failure ?? "")
                     }
                     .onChange(of: scenePhase) { _, phase in
                         if phase == .active {
@@ -112,6 +127,23 @@ struct ContentView: View {
         // An admin with every module sees six tabs, which iPhone collapses into "More".
         // On iPad the same set becomes a proper sidebar instead of a cramped tab strip.
         .tabViewStyle(.sidebarAdaptable)
+    }
+
+    /// Where a scanned sticker lands.
+    ///
+    /// A location filters the work list down to that one place; an equipment tag just brings
+    /// the fleet forward, because a work order does not carry the asset it belongs to on this
+    /// client and filtering by a guess would show an empty list for a door with work on it.
+    private func routeScannedSticker() {
+        guard let target = deepLink.pending else { return }
+        deepLink.pending = nil
+        if target.kind == "asset" {
+            selectedTab = .assets
+            return
+        }
+        issueVM.scannedLocationId = target.targetId
+        issueVM.scannedLocationName = target.targetName
+        selectedTab = .issues
     }
 
     private func loadCampData() async {

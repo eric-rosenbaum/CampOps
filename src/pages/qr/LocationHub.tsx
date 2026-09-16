@@ -32,6 +32,7 @@ import {
 } from '@/lib/workOrder';
 import { formatDate, relativeTime, todayStr } from '@/lib/utils';
 import { LogIssueModal } from '@/components/shared/LogIssueModal';
+import { OpenInAppCard } from '@/components/qr/OpenInAppCard';
 import { CampCommandMark } from '@/components/shared/CampCommandMark';
 
 const UNDO_MS = 5000;
@@ -78,16 +79,18 @@ export function LocationHub({ target: targetProp }: { target?: QrTarget } = {}) 
     return <NotHere token={token} target={remote} />;
   }
 
-  return <Hub location={location} asset={asset} />;
+  return <Hub location={location} asset={asset} token={token} />;
 }
 
 // ─── The page ─────────────────────────────────────────────────────────────────
 
 function Hub({
-  location, asset,
+  location, asset, token,
 }: {
   location: CampLocation | null;
   asset: CampAsset | null;
+  /** The scanned sticker, carried through so the app card can hand the app the same URL. */
+  token: string;
 }) {
   const { currentUser, can, canAccessModule } = useAuth();
   const currentCamp = useCampStore((s) => s.currentCamp);
@@ -439,6 +442,13 @@ function Hub({
           }}
         />
       )}
+
+      {/* ── The app ───────────────────────────────────────────────────────── */}
+      {/* Last, not first: they are already signed in and already looking at the work, so this is
+          an offer rather than a wall. Renders nothing off iOS. */}
+      <div className="px-4 pb-2">
+        <OpenInAppCard token={token} targetName={location?.name ?? asset?.name ?? null} />
+      </div>
 
       {/* Rendered here because this route is not the Campground page, which is where the modal
           normally lives. It reads its target from the UI store either way. */}

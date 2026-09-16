@@ -1482,7 +1482,16 @@ export interface RetreatMeal {
   updatedAt: string;
 }
 
-export type RetreatRequestKind = 'housing' | 'menu' | 'headcount' | 'other';
+/**
+ * What a request is about.
+ *
+ * The full set the guest portal offers, not the four the camp's own "Ask the group" form used
+ * to list. The portal has written `program_space`, `dietary`, `childcare` and `equipment` for a
+ * long time; the narrower type meant the camp's Requests tab rendered a blank subject for those
+ * -- "The group asked ·" with nothing after the separator.
+ */
+export type RetreatRequestKind =
+  | 'housing' | 'menu' | 'headcount' | 'program_space' | 'dietary' | 'childcare' | 'equipment' | 'other';
 export type RetreatRequestStatus = 'pending' | 'approved' | 'declined' | 'countered';
 
 /** Who started the thread. 'camp' requests are answered by the group in the portal. */
@@ -1503,8 +1512,37 @@ export interface RetreatChangeRequest {
   internalNote: string | null;
   respondedBy: string | null;
   respondedAt: string | null;
+  /**
+   * The conversation's own state, kept apart from `status`.
+   *
+   * `status` is the camp's ruling on the ask (approved / declined / countered). It is not a
+   * state machine for the exchange, and using it as one is why a reply to an already-approved
+   * request had nowhere to be counted. A thread stays open until the camp closes it, and any
+   * new message from the group opens it again.
+   */
+  lastMessageAt: string | null;
+  lastMessageFrom: 'camp' | 'group' | null;
+  closedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * One thing said on a request, after the opening ask.
+ *
+ * The opening ask stays on `RetreatChangeRequest.body` -- it is the subject line. Everything
+ * after it is one of these, from either side, in order.
+ */
+export interface RetreatRequestMessage {
+  id: string;
+  campId: string;
+  retreatId: string;
+  requestId: string;
+  /** Which side spoke. Not a user id: the group's side has no account. */
+  author: 'camp' | 'group';
+  authorName: string | null;
+  body: string;
+  createdAt: string;
 }
 
 export interface RetreatCost {

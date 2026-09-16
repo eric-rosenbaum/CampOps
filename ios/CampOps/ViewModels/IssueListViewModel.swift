@@ -10,8 +10,22 @@ final class IssueListViewModel: ObservableObject {
     @Published var filterStatus: IssueStatus? = nil
     @Published var filterPriority: Priority? = nil
 
+    /// Narrowed to one place because a sticker on its door was scanned. Held as id + name: the
+    /// id is what filters (a location can be renamed mid-season), the name is what the banner
+    /// says so the list never claims to be showing everything when it is not.
+    @Published var scannedLocationId: String?
+    @Published var scannedLocationName: String?
+
+    func clearScannedLocation() {
+        scannedLocationId = nil
+        scannedLocationName = nil
+    }
+
     var filteredIssues: [Issue] {
         var result = issues
+        if let locId = scannedLocationId {
+            result = result.filter { $0.locationIds.contains(locId) }
+        }
         if !searchText.isEmpty {
             let q = searchText.lowercased()
             result = result.filter {

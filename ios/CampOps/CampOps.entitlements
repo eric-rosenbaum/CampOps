@@ -4,5 +4,15 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- Universal links. What makes a camera pointed at a cabin-door sticker open THIS app on
+	     that cabin instead of opening the web page in Safari. It only works once
+	     https://app.campcommand.app/.well-known/apple-app-site-association is live and names
+	     this app id; Apple fetches it at install time, so a build shipped before the file is up
+	     will not link until the app is reinstalled or the file is re-fetched. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:app.campcommand.app</string>
+		<string>webcredentials:app.campcommand.app</string>
+	</array>
 </dict>
 </plist>

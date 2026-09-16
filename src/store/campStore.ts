@@ -97,7 +97,14 @@ export interface Camp {
   addressLine1: string | null;
   city: string | null;
   state: string | null;
+  /** The camp's own module switches. See lib/modules.ts -- off only when explicitly false. */
   modules: Record<string, boolean>;
+  /**
+   * What the platform sells this camp. Founder-only; a camp admin writing this column is
+   * silently reverted by the guard_platform_modules trigger. A module switched off here is
+   * not even listed in the camp's own module settings.
+   */
+  platformModules: Record<string, boolean>;
   locations: string[];
   /** Camp-wide dietary facts, e.g. { kosher: true }. Used by Commissary. */
   dietaryDefaults: Record<string, boolean>;
@@ -152,6 +159,7 @@ function rowToCamp(c: Record<string, unknown>): Camp {
     campType: (c.camp_type as string) ?? null,
     state: (c.state as string) ?? null,
     modules: (c.modules as Record<string, boolean>) ?? {},
+    platformModules: (c.platform_modules as Record<string, boolean>) ?? {},
     locations: (c.locations as string[]) ?? [],
     dietaryDefaults: (c.dietary_defaults as Record<string, boolean>) ?? {},
     retreatPaymentNote: (c.retreat_payment_note as string) ?? null,
@@ -288,7 +296,7 @@ export const useCampStore = create<CampState>((set, get) => ({
 
     const { data, error } = await supabase
       .from('camp_members')
-      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, address_line1, city, state, modules, locations, dietary_defaults, retreat_payment_note, inquiry_token, agreement_template_body, agreement_template_path, agreement_template_name, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
+      .select('camp_id, role, department, display_name, is_active, id, user_id, camps(id, name, slug, logo_url, camp_type, address_line1, city, state, modules, platform_modules, locations, dietary_defaults, retreat_payment_note, inquiry_token, agreement_template_body, agreement_template_path, agreement_template_name, account_type, status, plan, trial_ends_at, org_id, deleted_at)')
       .eq('user_id', user.id)
       .eq('is_active', true);
 

@@ -14,6 +14,7 @@ import { generateId } from '@/lib/utils';
 import type { QrTarget } from '@/lib/types';
 import { Camera, X, CheckCircle, AlertCircle, Copy, Check, Clock } from 'lucide-react';
 import { CampCommandMark } from '@/components/shared/CampCommandMark';
+import { OpenInAppCard } from '@/components/qr/OpenInAppCard';
 
 interface CampLocationOption { id: string; name: string; }
 
@@ -392,6 +393,15 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
             {target.targetPath && (
               <p className="text-[12.5px] text-ink-faint mt-0.5">{target.targetPath}</p>
             )}
+          </div>
+        )}
+
+        {/* Sits under "you're at", above the form: whoever is holding the phone is more likely
+            to be crew than a guest once they are scanning a door, and the crew's answer is the
+            app. It renders nothing off iOS, so a guest on Android sees the form and no clutter. */}
+        {target && token && (
+          <div className="mb-5">
+            <OpenInAppCard token={token} targetName={target.targetName} />
           </div>
         )}
 

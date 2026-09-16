@@ -1,0 +1,16 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["57ZK9N7ZMJ.com.ericrosenbaum.CampOps"],
+        "components": [
+          { "/": "/l/*", "comment": "A scanned sticker opens the app on that location or asset." },
+          { "/": "/hub/*", "comment": "Same door, reached from a link inside the product." }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["57ZK9N7ZMJ.com.ericrosenbaum.CampOps"]
+  }
+}

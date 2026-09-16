@@ -240,6 +240,27 @@ export interface PortalChangeRequest {
   response_message: string | null;
   responded_by: string | null;
   responded_at: string | null;
+  /**
+   * The conversation after the opening ask, oldest first, from both sides.
+   *
+   * `body` above is the opening ask and stays where it is; these are everything said since.
+   * Always present (the RPC coalesces to []), because a missing key here would be an
+   * `undefined.map` on a page a coordinator reaches with no way to refresh past it.
+   */
+  messages: PortalRequestMessage[];
+  /** Who spoke last. 'camp' means the ball is with this group. */
+  last_message_from: 'camp' | 'group' | null;
+  last_message_at: string | null;
+  /** Set when the camp has closed the thread. A new message from this group reopens it. */
+  closed_at: string | null;
+}
+
+export interface PortalRequestMessage {
+  id: string;
+  author: 'camp' | 'group';
+  author_name: string | null;
+  body: string;
+  created_at: string;
 }
 
 export interface PortalInvoice {

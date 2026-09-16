@@ -22,6 +22,7 @@ import type { QrTarget } from '@/lib/types';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
 import { CampCommandMark } from '@/components/shared/CampCommandMark';
+import { OpenInAppCard } from '@/components/qr/OpenInAppCard';
 import { PublicReportForm } from '@/pages/report/PublicReportForm';
 
 /** Where a staff member is sent. Lives inside the app shell, where the camp's data is loaded. */
@@ -203,6 +204,12 @@ function WrongCamp({ token, target }: { token: string; target: QrTarget }) {
             <span>Report a problem here</span>
             <ArrowRight className="w-4 h-4 flex-none" />
           </button>
+        </div>
+
+        {/* Signed in to the wrong camp is exactly where the app helps: it holds its own session
+            and can already be signed in to the camp on the sticker. */}
+        <div className="mt-4">
+          <OpenInAppCard token={token} targetName={target.targetName} />
         </div>
       </div>
     </Shell>

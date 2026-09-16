@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { useIssuesStore } from '@/store/issuesStore';
 import { usePoolStore } from '@/store/poolStore';
+import { useModules } from '@/lib/modules';
 import { useCampStore } from '@/store/campStore';
 
 export function ViewerHome() {
@@ -20,7 +21,8 @@ export function ViewerHome() {
     return latest?.poolStatus ?? null;
   }, [pools, readings]);
 
-  const modules = currentCamp?.modules ?? {};
+  // Reads both switches (the platform's and the camp's) -- see lib/modules.ts.
+  const modules = useModules();
 
   return (
     <div className="p-7 max-w-4xl">
@@ -39,7 +41,7 @@ export function ViewerHome() {
             <p className="text-[11px] text-red-600/70 mt-1">{urgentIssues.length} urgent</p>
           )}
         </div>
-        {modules.pool && poolStatus && (
+        {modules.enabled('pool') && poolStatus && (
           <div className="rounded-xl border border-border bg-white p-5">
             <p className="text-[11px] font-medium uppercase tracking-wider text-ink-faint mb-2">Pool Status</p>
             <p className="text-2xl font-bold text-forest capitalize">

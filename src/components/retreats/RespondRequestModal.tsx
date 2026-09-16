@@ -5,6 +5,7 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { useAuth } from '@/lib/auth';
 import type { RetreatRequestStatus } from '@/lib/types';
 import { inputClass, labelClass } from './retreatUi';
+import { RequestThread } from './RequestThread';
 
 type Decision = 'approved' | 'approved_mod' | 'countered' | 'declined';
 
@@ -16,7 +17,7 @@ const DECISIONS: { value: Decision; label: string; status: RetreatRequestStatus 
 ];
 
 export function RespondRequestModal({ requestId }: { requestId: string }) {
-  const { changeRequests, retreatById, respondToRequest, closeModal } = useRetreatStore();
+  const { changeRequests, retreatById, respondToRequest, messagesFor, closeModal } = useRetreatStore();
   const { can, currentUser } = useAuth();
   const canManage = can('manageRetreats');
 
@@ -47,15 +48,14 @@ export function RespondRequestModal({ requestId }: { requestId: string }) {
   return (
     <Modal title={`Respond · ${groupName}`} onClose={closeModal} width="520px">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Read-only request body */}
+        {/* The whole conversation so far, not just the opening ask. Answering the first
+            sentence of a thread that has moved on three messages is how a camp ends up
+            approving something the group has since changed. */}
         <div>
-          <label className={labelClass}>Group's request</label>
-          <div className="bg-cream-dark/50 border border-border rounded-btn px-3 py-2.5 text-[13px] text-forest/75 leading-relaxed">
-            {request.body}
+          <label className={labelClass}>The conversation</label>
+          <div className="max-h-64 overflow-y-auto rounded-btn border border-border bg-cream-dark/30 px-3 py-3">
+            <RequestThread request={request} messages={messagesFor(request.id)} compact />
           </div>
-          {request.submittedBy && (
-            <p className="text-[11px] text-ink-faint mt-1">Submitted by {request.submittedBy}</p>
-          )}
         </div>
 
         <div>
@@ -72,7 +72,9 @@ export function RespondRequestModal({ requestId }: { requestId: string }) {
           <textarea value={responseMessage} onChange={(e) => setResponseMessage(e.target.value)} rows={4}
                     className={`${inputClass} resize-y`}
                     placeholder="What the group will see in their portal…" />
-          <p className="text-[11px] text-ink-faint mt-1">Visible to the group.</p>
+          <p className="text-[11px] text-ink-faint mt-1">
+            Visible to the group, and added to the thread above. They can reply to it.
+          </p>
         </div>
 
         <div>

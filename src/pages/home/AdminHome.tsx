@@ -15,6 +15,7 @@ import {
 } from '@/store/safetyStore';
 import { useAssetStore, SERVICE_TYPE_LABELS } from '@/store/assetStore';
 import { formatCost } from '@/lib/utils';
+import { useModules } from '@/lib/modules';
 import type { CampPool, ChemicalReading } from '@/lib/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -60,11 +61,14 @@ function Sparkline({ values, field }: { values: number[]; field: ChemicalField }
 // ─── Stat tile ────────────────────────────────────────────────────────────────
 
 function StatTile({
-  label, value, sub, variant = 'default', to,
+  label, value, sub, variant = 'default', to, hidden = false,
 }: {
   label: string; value: string | number; sub?: string;
   variant?: 'default' | 'red' | 'amber' | 'green'; to: string;
+  /** The tile's module is off for this camp. Its link would bounce straight back to here. */
+  hidden?: boolean;
 }) {
+  if (hidden) return null;
   const valCls = variant === 'red' ? 'text-red' : variant === 'amber' ? 'text-amber' : variant === 'green' ? 'text-green-muted-text' : 'text-forest';
   const bg = variant === 'red' ? 'bg-red-bg/50 border-red/25' : variant === 'amber' ? 'bg-amber-bg/50 border-amber/25' : 'bg-white border-border';
   return (
@@ -388,6 +392,7 @@ function SectionHeader({
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export function AdminHome() {
+  const modules = useModules();
   // ── Stores ────────────────────────────────────────────────────────────────
   const { issues, urgentCount, openCount, totalCosts, selectIssue } = useIssuesStore();
   const { season } = useChecklistStore();
@@ -613,6 +618,7 @@ export function AdminHome() {
             sub={safetyStats.overdue > 0 ? `${safetyStats.overdue} overdue` : safetyStats.dueSoon > 0 ? `${safetyStats.dueSoon} due soon` : 'All current'}
             variant={safetyStats.overdue > 0 ? 'red' : safetyStats.dueSoon > 0 ? 'amber' : 'green'}
             to="/safety"
+            hidden={!modules.enabled('safety')}
           />
           <StatTile
             label="Assets out"
@@ -620,6 +626,7 @@ export function AdminHome() {
             sub={overdueOuts.length > 0 ? `${overdueOuts.length} overdue` : fleet.available > 0 ? `${fleet.available} available` : 'All checked out'}
             variant={overdueOuts.length > 0 ? 'red' : 'default'}
             to="/assets"
+            hidden={!modules.enabled('assets')}
           />
           {acaDays !== null ? (
             <StatTile
@@ -628,6 +635,7 @@ export function AdminHome() {
               sub={acaDays < 0 ? 'Date has passed' : acaDays === 0 ? 'Today!' : format(new Date(season!.acaInspectionDate! + 'T00:00:00'), 'MMM d')}
               variant={acaDays < 0 ? 'red' : acaDays <= 14 ? 'amber' : 'default'}
               to="/safety"
+              hidden={!modules.enabled('safety')}
             />
           ) : (
             <StatTile
@@ -692,7 +700,7 @@ export function AdminHome() {
         {deadlineItems.length > 0 && <DeadlineStrip items={deadlineItems} />}
 
         {/* ── Pools & waterfront ───────────────────────────────────────── */}
-        {activePools.length > 0 && (
+        {modules.enabled('pool') && activePools.length > 0 && (
           <div>
             <SectionHeader
               icon={<Droplets className="w-4 h-4 text-ink-faint" />}
@@ -716,6 +724,7 @@ export function AdminHome() {
         )}
 
         {/* ── Compliance ───────────────────────────────────────────────── */}
+        {modules.enabled('safety') && (
         <div>
           <SectionHeader
             icon={<Shield className="w-4 h-4 text-ink-faint" />}
@@ -883,7 +892,10 @@ export function AdminHome() {
           </div>
         </div>
 
+        )}
+
         {/* ── Assets & vehicles ────────────────────────────────────────── */}
+        {modules.enabled('assets') && (
         <div>
           <SectionHeader
             icon={<Truck className="w-4 h-4 text-ink-faint" />}
@@ -995,6 +1007,8 @@ export function AdminHome() {
             </div>
           </div>
         </div>
+
+        )}
 
         {/* ── Activity feed ────────────────────────────────────────────── */}
         <ActivityFeed items={recentActivity} />

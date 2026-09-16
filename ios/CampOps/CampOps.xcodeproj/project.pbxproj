@@ -100,6 +100,7 @@
 		0FF11E0000000000000B0001 /* SyncTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0001 /* SyncTypes.swift */; };
 		0FF11E0000000000000B0002 /* OfflineCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0002 /* OfflineCache.swift */; };
 		0FF11E0000000000000B0100 /* PushService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0100 /* PushService.swift */; };
+		0FF11E0000000000000B0200 /* DeepLinkRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0200 /* DeepLinkRouter.swift */; };
 		0FF11E0000000000000B0003 /* MutationQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0003 /* MutationQueue.swift */; };
 		0FF11E0000000000000B0004 /* SyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0004 /* SyncEngine.swift */; };
 		0FF11E0000000000000B0005 /* OfflineWrites.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF11E0000000000000A0005 /* OfflineWrites.swift */; };
@@ -197,6 +198,7 @@
 		0FF11E0000000000000A0001 /* SyncTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncTypes.swift; sourceTree = "<group>"; };
 		0FF11E0000000000000A0002 /* OfflineCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineCache.swift; sourceTree = "<group>"; };
 		0FF11E0000000000000A0100 /* PushService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushService.swift; sourceTree = "<group>"; };
+		0FF11E0000000000000A0200 /* DeepLinkRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkRouter.swift; sourceTree = "<group>"; };
 		0FF11E0000000000000A0101 /* CampOps.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CampOps.entitlements; sourceTree = "<group>"; };
 		0FF11E0000000000000A0003 /* MutationQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MutationQueue.swift; sourceTree = "<group>"; };
 		0FF11E0000000000000A0004 /* SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEngine.swift; sourceTree = "<group>"; };
@@ -322,6 +324,7 @@
 				49E5A7642F81A74E007122C8 /* PhotoService.swift */,
 				FE3436681011FFFFFFFFFFFF /* NetworkService.swift */,
 				0FF11E0000000000000A0100 /* PushService.swift */,
+				0FF11E0000000000000A0200 /* DeepLinkRouter.swift */,
 				49E5A7652F81A74E007122C8 /* SupabaseService.swift */,
 				49E5A7662F81A74E007122C8 /* SyncService.swift */,
 				FB1C2D3E4F5A0B1C2D3E4F5A /* TestStripService.swift */,
@@ -583,6 +586,7 @@
 				0FF11E0000000000000B0001 /* SyncTypes.swift in Sources */,
 				0FF11E0000000000000B0002 /* OfflineCache.swift in Sources */,
 				0FF11E0000000000000B0100 /* PushService.swift in Sources */,
+				0FF11E0000000000000B0200 /* DeepLinkRouter.swift in Sources */,
 				0FF11E0000000000000B0003 /* MutationQueue.swift in Sources */,
 				0FF11E0000000000000B0004 /* SyncEngine.swift in Sources */,
 				0FF11E0000000000000B0005 /* OfflineWrites.swift in Sources */,

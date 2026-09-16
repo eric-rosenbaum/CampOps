@@ -21,6 +21,7 @@ import { Button } from '@/components/shared/Button';
 import type { Season, CampLocation } from '@/lib/types';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { PaymentsCard } from '@/components/settings/PaymentsCard';
+import { useModules, MODULE_KEYS } from '@/lib/modules';
 import { PrintLabelsModal } from '@/components/qr/PrintLabelsModal';
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
@@ -61,23 +62,21 @@ const US_STATES  = [
   'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT',
   'VA','WA','WV','WI','WY',
 ];
-const MODULE_OPTIONS = [
-  { key: 'issues',     label: 'Campground',           desc: 'Work orders, routines, housekeeping and repairs' },
-  { key: 'pool',       label: 'Pool & Waterfront',    desc: 'Chemical readings, inspections, equipment' },
-  { key: 'safety',     label: 'Compliance',  desc: 'Permit, safety plan, inspections, staff certifications' },
-  { key: 'assets',     label: 'Assets & Vehicles',    desc: 'Fleet, equipment, checkouts, service records' },
-  { key: 'building',   label: 'Building Systems',     desc: 'Electrical & plumbing infrastructure by room' },
-  // NOTE: camp.modules uses short keys; StaffGroupModules uses long ones
-  // ('building_systems'). Inconsistent, but load-bearing, match, don't refactor.
-  { key: 'commissary', label: 'Commissary',           desc: 'Inventory, recipes, menu planning' },
-  { key: 'retreats',   label: 'Retreat Manager',      desc: 'External group rentals, guest portal, invoicing' },
-];
+// The module list lives in lib/modules.ts now, next to the rule that reads it, so this screen
+// and the sidebar can never disagree about which modules exist or what they are called.
+//
+// NOTE: camp.modules uses short keys; StaffGroupModules uses long ones ('building_systems').
+// Inconsistent, but load-bearing: match, don't refactor.
 
 // ── Profile tab ───────────────────────────────────────────────────────────────
 
 function ProfileTab() {
   const { currentCamp, updateCamp } = useCampStore();
   const { role } = useAuth();
+  // Only what the platform sells this camp. A module the founder switched off is not rendered
+  // here as a disabled row with a padlock -- it is absent, so the camp never learns it exists
+  // and never asks why they cannot have it.
+  const { allowedModules } = useModules();
   const [name, setName]       = useState('');
   const [campType, setCampType] = useState('');
   const [state, setState]     = useState('');
@@ -91,7 +90,13 @@ function ProfileTab() {
     setName(currentCamp.name);
     setCampType(currentCamp.campType ?? '');
     setState(currentCamp.state ?? '');
-    setModules(currentCamp.modules ?? {});
+    // Absent means on (see lib/modules.ts), so the form is seeded with an explicit answer for
+    // every key. Without this a camp that had never saved this screen would see every toggle
+    // dark while every module was live, and turning one ON would look like a no-op.
+    const stored = currentCamp.modules ?? {};
+    setModules(Object.fromEntries(
+      MODULE_KEYS.map((k) => [k, stored[k] !== false]),
+    ));
   }, [currentCamp]);
 
   async function handleSave(e: React.FormEvent) {
@@ -144,9 +149,12 @@ function ProfileTab() {
 
         <div className={cardCls}>
           <h2 className="text-[13px] font-semibold text-forest mb-1">Modules</h2>
-          <p className="text-[11px] text-ink-faint mb-4">Enable only the modules your camp uses</p>
+          <p className="text-[11px] text-ink-faint mb-4">
+            Enable only the modules your camp uses. Switching one off removes it from the sidebar
+            for everyone at this camp; the data stays and comes back if you switch it on again.
+          </p>
           <div className="space-y-3">
-            {MODULE_OPTIONS.map(mod => (
+            {allowedModules.map(mod => (
               <div
                 key={mod.key}
                 className="flex items-center gap-3 cursor-pointer"

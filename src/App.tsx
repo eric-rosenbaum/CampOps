@@ -95,6 +95,7 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { loadLocations, subscribeToLocations } from '@/lib/locationsDb';
 import { useLocationStore } from '@/store/locationStore';
 import { useCampStore as useCamp } from '@/store/campStore';
+import { useModules, type ModuleKey } from '@/lib/modules';
 
 /** The old Issues route. Kept forever: stickers and bookmarks outlive a rename. */
 function LegacyIssuesRedirect() {
@@ -129,6 +130,24 @@ const COMMISSARY_DOMAINS = [
  * wrong one, and "No issues", "No retreats yet", "Nothing overdue" all look settled enough to
  * be believed. Someone glancing at the page during that second walks away misinformed.
  */
+/**
+ * A module the camp does not have is not a page with an empty state -- it is not a page.
+ *
+ * The sidebar already hides it, but a bookmark, a link in an old email, a typed URL or the
+ * browser's back button all walk straight past the sidebar. Sending them to the dashboard is
+ * the same answer the nav gives: for this camp, that screen does not exist.
+ *
+ * It waits for the camp to load first. Redirecting during the blank moment before
+ * `currentCamp` arrives would bounce every deep link on a cold refresh.
+ */
+function ModuleRoute({ of, children }: { of: ModuleKey; children: React.ReactNode }) {
+  const { currentCamp } = useCamp();
+  const allowed = useModules().enabled(of);
+  if (!currentCamp) return null;
+  if (!allowed) return <Navigate to="/home" replace />;
+  return <>{children}</>;
+}
+
 function Gate({ of, label, children }: { of: string[]; label: string; children: React.ReactNode }) {
   const ready = useHydrated(...of);
   if (!ready) {
@@ -171,7 +190,7 @@ function CampDataLoader() {
   } = useCommissaryStore();
   const {
     setRetreats, setSpaces, setHousing, setHousingVersions, setGuests: setRetreatGuests, setDocuments: setRetreatDocs,
-    setMeals: setRetreatMeals, setChangeRequests, setCosts: setRetreatCosts, setCharges, setPayments,
+    setMeals: setRetreatMeals, setChangeRequests, setRequestMessages, setCosts: setRetreatCosts, setCharges, setPayments,
     setIssues: setRetreatIssues, setChecklist, setScheduleItems, setFeedback, setReminders, setInvoices,
     setSpaceRequests, setSpaceMessages, setContacts, setTouchpoints, setProposals, setOutbox,
   } = useRetreatStore();
@@ -206,6 +225,7 @@ function CampDataLoader() {
     let unsubLocations: (() => void) | null = null;
     let unsubCampground: (() => void) | null = null;
     let unsubComments: (() => void) | null = null;
+    let unsubSeason: (() => void) | null = null;
 
     // Start the Supabase keep-alive heartbeat.  Pings every 30 s while visible to
     // keep the TCP socket from going stale and to refresh the JWT before expiry.
@@ -315,6 +335,7 @@ function CampDataLoader() {
       setRetreats(d.retreats); setSpaces(d.spaces); setHousing(d.housing); setHousingVersions(d.housingVersions);
       setRetreatGuests(d.guests);
       setRetreatDocs(d.documents); setRetreatMeals(d.meals); setChangeRequests(d.changeRequests);
+      setRequestMessages(d.requestMessages);
       setRetreatCosts(d.costs); setCharges(d.charges); setPayments(d.payments); setRetreatIssues(d.issues);
       setChecklist(d.checklist); setScheduleItems(d.scheduleItems); setFeedback(d.feedback); setReminders(d.reminders);
       setInvoices(d.invoices);
@@ -394,8 +415,26 @@ function CampDataLoader() {
     // loaded after that resolves rather than in parallel, because a compliance picture without
     // a season is a picture of nothing.
     loadIssuesAndTasksTracked().then(() => {
-      const seasonId = useChecklistStore.getState().season?.id ?? null;
+      let seasonId = useChecklistStore.getState().season?.id ?? null;
       useComplianceStore.setState({ campId, seasonId });
+
+      // ...and it has to KEEP depending on it. This used to be the snapshot above and nothing
+      // else, so a season created after the camp finished loading never reached the compliance
+      // store: the Compliance page reads the season live and let you in, every write there
+      // reads `seasonId` from this store and found null, and the setup interview answered
+      // "Could not save your setup. Please try again." to something retrying could not fix.
+      // Every camp in production had no season, so this was the whole module's front door.
+      //
+      // Compared by id rather than by object: the season is re-set on every reload, and
+      // reloading compliance each time would be a request per refetch cycle for no change.
+      unsubSeason = useChecklistStore.subscribe((cs) => {
+        const next = cs.season?.id ?? null;
+        if (next === seasonId) return;
+        seasonId = next;
+        useComplianceStore.setState({ campId, seasonId: next });
+        void loadAndApply('compliance', () => loadCompliance(campId, next), applyCompliance);
+      });
+
       return loadAndApply('compliance', () => loadCompliance(campId, seasonId), applyCompliance);
     });
     loadAndApply('locations', () => loadLocations(campId), applyLocationData);
@@ -491,6 +530,7 @@ function CampDataLoader() {
       unsubCampground?.();
       unsubComments?.();
       unsubLocations?.();
+      unsubSeason?.();
       stopHeartbeat();
       stopWriteQueue();
       document.removeEventListener('visibilitychange', handleVisibility);
@@ -610,9 +650,11 @@ export default function App() {
                 <Route
                   path="/campground"
                   element={(
-                    <Gate of={['issues', 'locations', 'campground']} label="Opening the campground">
-                      <Campground />
-                    </Gate>
+                    <ModuleRoute of="issues">
+                      <Gate of={['issues', 'locations', 'campground']} label="Opening the campground">
+                        <Campground />
+                      </Gate>
+                    </ModuleRoute>
                   )}
                 />
                 {/* Renamed 2026-09-02. Every old link, bookmark and printed QR keeps working, and
@@ -626,20 +668,22 @@ export default function App() {
                 <Route
                   path="/hub/:token"
                   element={(
-                    <Gate of={['issues', 'locations', 'assets', 'campground']} label="Opening this spot">
-                      <LocationHub />
-                    </Gate>
+                    <ModuleRoute of="issues">
+                      <Gate of={['issues', 'locations', 'assets', 'campground']} label="Opening this spot">
+                        <LocationHub />
+                      </Gate>
+                    </ModuleRoute>
                   )}
                 />
-                <Route path="/pool" element={<Gate of={['pool']} label="Opening pool & waterfront"><PoolManagement /></Gate>} />
+                <Route path="/pool" element={<ModuleRoute of="pool"><Gate of={['pool']} label="Opening pool & waterfront"><PoolManagement /></Gate></ModuleRoute>} />
                 {/* Folded into /compliance and removed from the nav. Kept so existing links,
                     bookmarks and any deep link out of the new Records page still resolve. */}
-                <Route path="/safety" element={<Gate of={['safety', 'locations']} label="Opening safety"><SafetyCompliance /></Gate>} />
-                <Route path="/compliance" element={<Gate of={['compliance', 'safety']} label="Opening compliance"><Compliance /></Gate>} />
-                <Route path="/assets" element={<Gate of={['assets', 'locations']} label="Opening assets & vehicles"><AssetVehicles /></Gate>} />
-                <Route path="/building" element={<Gate of={['building', 'locations']} label="Opening building systems"><BuildingSystems /></Gate>} />
-                <Route path="/commissary" element={<Gate of={COMMISSARY_DOMAINS} label="Opening the kitchen manager"><Commissary /></Gate>} />
-                <Route path="/retreats" element={<Gate of={['retreats', 'locations']} label="Opening the retreat manager"><Retreats /></Gate>} />
+                <Route path="/safety" element={<ModuleRoute of="safety"><Gate of={['safety', 'locations']} label="Opening safety"><SafetyCompliance /></Gate></ModuleRoute>} />
+                <Route path="/compliance" element={<ModuleRoute of="safety"><Gate of={['compliance', 'safety']} label="Opening compliance"><Compliance /></Gate></ModuleRoute>} />
+                <Route path="/assets" element={<ModuleRoute of="assets"><Gate of={['assets', 'locations']} label="Opening assets & vehicles"><AssetVehicles /></Gate></ModuleRoute>} />
+                <Route path="/building" element={<ModuleRoute of="building"><Gate of={['building', 'locations']} label="Opening building systems"><BuildingSystems /></Gate></ModuleRoute>} />
+                <Route path="/commissary" element={<ModuleRoute of="commissary"><Gate of={COMMISSARY_DOMAINS} label="Opening the kitchen manager"><Commissary /></Gate></ModuleRoute>} />
+                <Route path="/retreats" element={<ModuleRoute of="retreats"><Gate of={['retreats', 'locations']} label="Opening the retreat manager"><Retreats /></Gate></ModuleRoute>} />
                 <Route path="/settings" element={<CampSettings />} />
                 <Route path="/settings/team" element={<Team />} />
                 {/* Staff is a Camp Info tab now; this path deep-links straight to it. */}

@@ -2,5 +2,11 @@
   "rewrites": [
     { "source": "/setup-guide", "destination": "/setup-guide.html" },
     { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/.well-known/apple-app-site-association",
+      "headers": [{ "key": "Content-Type", "value": "application/json" }]
+    }
   ]
 }

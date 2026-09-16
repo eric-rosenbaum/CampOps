@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/shared/Button';
 import { useComplianceStore } from '@/store/complianceStore';
 import { useAuth } from '@/lib/auth';
@@ -58,6 +59,10 @@ const QUESTIONS: Q[] = [
 
 export function SetupInterview({ onDone }: { onDone: () => void }) {
   const { answers, runSetup, busy } = useComplianceStore();
+  // Everything on this page is stored against a season. Without one there is nothing to save
+  // to, and the save used to fail with "please try again" -- advice that could not work, on a
+  // page that had already made the camp answer twenty questions.
+  const seasonId = useComplianceStore((s) => s.seasonId);
   // Counted from the catalog rather than written into the copy, so seeding another county does
   // not leave a stale number on the page.
   const totalRequirements = useComplianceStore((s) => s.requirements.length);
@@ -70,6 +75,10 @@ export function SetupInterview({ onDone }: { onDone: () => void }) {
   const unanswered = QUESTIONS.filter((q) => draft[q.key] === undefined || draft[q.key] === '');
 
   async function submit() {
+    if (!seasonId) {
+      setError('This camp has no season yet, and every compliance deadline is measured against your opening date. Add one under Camp Info \u203a Season, then come back — your answers here are still on screen.');
+      return;
+    }
     if (unanswered.length > 0) {
       setError(`${unanswered.length} question${unanswered.length === 1 ? '' : 's'} still to answer. Anything you leave blank stays on your list marked "needs an answer". We will not tell you a rule does not apply when we have not asked.`);
       return;
@@ -77,7 +86,7 @@ export function SetupInterview({ onDone }: { onDone: () => void }) {
     setError(null);
     const ok = await runSetup(draft, currentUser.name || null);
     if (ok) onDone();
-    else setError('Could not save your setup. Please try again.');
+    else setError('Could not save your setup. Your answers are still on screen — try again, and tell us if it keeps failing.');
   }
 
   return (
@@ -89,6 +98,23 @@ export function SetupInterview({ onDone }: { onDone: () => void }) {
         leave unanswered stays on your list until you answer it: we will not tell you a rule does
         not apply when we have not asked. You can change these answers later.
       </p>
+
+      {/* Said before the twenty questions rather than after them. The page is reachable the
+          moment a season exists in the checklist store, and if the compliance store has not
+          caught up there is nothing to save the answers against. */}
+      {!seasonId && (
+        <div className="mt-5 rounded-card border border-amber/30 bg-amber-bg px-4 py-3">
+          <p className="text-[13px] font-semibold text-amber-text">Add your season first</p>
+          <p className="text-[12.5px] text-amber-text/85 mt-1 leading-relaxed">
+            Every compliance deadline is measured against your opening date, so there is nowhere
+            to file these answers until a season exists. Add one under{' '}
+            <Link to="/settings?tab=season" className="font-semibold underline underline-offset-2">
+              Camp Info &rsaquo; Season
+            </Link>
+            , then come back.
+          </p>
+        </div>
+      )}
 
       <div className="mt-6 space-y-1">
         {QUESTIONS.map((q) => (

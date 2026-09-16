@@ -8,6 +8,7 @@ import {
 import { SidebarContours } from '@/components/shared/SidebarContours';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
 import { useAuth } from '@/lib/auth';
+import { useModules, type ModuleKey } from '@/lib/modules';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
 import { APP_HOST, MARKETING_ORIGIN } from '@/lib/env';
@@ -51,6 +52,12 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   end: boolean;
+  /**
+   * Which module has to be on for this to exist. Omitted for the parts of the app nobody can
+   * switch off. This used to be absent entirely, which is why a camp could turn Kitchen
+   * Manager off in Camp Info and keep looking at it in the sidebar every day.
+   */
+  module?: ModuleKey;
 }
 
 const todayItems: NavItem[] = [
@@ -64,28 +71,28 @@ const facilityItems: NavItem[] = [
   // the camp's own word for the physical place. The TABLE is still `issues` and the module key is
   // still `issues_repairs`: the word on the screen is the product, the word in Postgres is
   // plumbing, and renaming a table thirteen surfaces read from buys nothing.
-  { path: '/campground', label: 'Campground', icon: Wrench, end: false },
+  { path: '/campground', label: 'Campground', icon: Wrench, end: false, module: 'issues' },
   // The old Safety module was folded in here: its records are reached from the Requirements tab,
   // grouped by the party that asks for them, and its dialogs open in place. The /safety route
   // still resolves so old links and bookmarks keep working.
   //
   // Named just "Compliance". It absorbed Safety rather than sitting beside it, and a camp opening
   // this looks for the thing the county asks about, not for two words joined by an ampersand.
-  { path: '/compliance', label: 'Compliance', icon: ClipboardCheck, end: false },
-  { path: '/assets', label: 'Assets & Vehicles', icon: Truck, end: false },
-  { path: '/building', label: 'Building Systems', icon: Building2, end: false },
+  { path: '/compliance', label: 'Compliance', icon: ClipboardCheck, end: false, module: 'safety' },
+  { path: '/assets', label: 'Assets & Vehicles', icon: Truck, end: false, module: 'assets' },
+  { path: '/building', label: 'Building Systems', icon: Building2, end: false, module: 'building' },
 ];
 
 const commissaryItems: NavItem[] = [
-  { path: '/commissary', label: 'Kitchen Manager', icon: UtensilsCrossed, end: false },
+  { path: '/commissary', label: 'Kitchen Manager', icon: UtensilsCrossed, end: false, module: 'commissary' },
 ];
 
 const aquaticsItems: NavItem[] = [
-  { path: '/pool', label: 'Pool Manager', icon: Waves, end: false },
+  { path: '/pool', label: 'Pool Manager', icon: Waves, end: false, module: 'pool' },
 ];
 
 const retreatItems: NavItem[] = [
-  { path: '/retreats', label: 'Retreat Manager', icon: CalendarRange, end: false },
+  { path: '/retreats', label: 'Retreat Manager', icon: CalendarRange, end: false, module: 'retreats' },
 ];
 
 const settingsItems: NavItem[] = [
@@ -107,6 +114,7 @@ interface SidebarProps {
 
 export function Sidebar({ open = false, onClose, collapsed = false }: SidebarProps) {
   const { currentUser, role, roleLabel, canAccessModule } = useAuth();
+  const modules = useModules();
   const { currentCamp } = useCampStore();
   const signOut = useAuthStore((s) => s.signOut);
 
@@ -129,9 +137,18 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
   const location = useLocation();
   useEffect(() => { onClose?.(); }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Staff see every module; only a viewer is held out. Crews used to gate this per module,
-  // which meant a camp had to decide whether the groundskeeper may open the pool page.
-  const visible = (items: NavItem[]) => (canAccessModule() ? items : []);
+  // Two independent filters, and the second one is the one that was missing.
+  //
+  // Who you are: staff see every module the camp has; only a viewer is held out. Crews used to
+  // gate this per module, which meant a camp had to decide whether the groundskeeper may open
+  // the pool page.
+  //
+  // What the camp has: the module's own switch — the platform's, folded with the camp's own.
+  // A section with nothing left in it disappears rather than sitting there as a heading over
+  // empty space.
+  const visible = (items: NavItem[]) => (
+    canAccessModule() ? items.filter((i) => !i.module || modules.enabled(i.module)) : []
+  );
 
   const navSections = [
     { section: 'Today', items: todayItems },

@@ -28,6 +28,20 @@
 	<string>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZiZnhldXBxZ3V6eHJieXFvanlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMzAyNDksImV4cCI6MjA5MDcwNjI0OX0.Jl0QAxRSqBbZBsIbmkXPRlrnC9PNfsax1456Nqzson4</string>
 	<key>CFBundleDisplayName</key>
 	<string>CampCommand</string>
+	<!-- Secondary entry point for the same sticker: campcommand://l/<token>. Universal links are
+	     the primary path and the only one the web ever navigates to; this exists so a link can
+	     still reach the app on a device where iOS has been told to keep this domain in Safari. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>app.campcommand.sticker</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>campcommand</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>CampCommand uses your photo library to attach photos to issues.</string>
 	<key>NSCameraUsageDescription</key>

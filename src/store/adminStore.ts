@@ -16,6 +16,11 @@ export interface AdminCamp {
   createdAt: string;
   memberCount: number;
   deletedAt: string | null;
+  /** What we sell them. Ours to set; see lib/modules.ts for how the two switches fold. */
+  platformModules: Record<string, boolean>;
+  /** What they have switched on for themselves. Shown here read-only, so we can tell a
+   *  "they do not have it" support question apart from a "they turned it off" one. */
+  modules: Record<string, boolean>;
 }
 export interface AdminOrg { id: string; name: string; }
 export interface PlatformAdmin { userId: string; email: string; addedAt: string; }
@@ -52,6 +57,9 @@ interface AdminState {
   setSeed: (campId: string, isSeed: boolean) => Promise<void>;
   createOrg: (name: string) => Promise<void>;
   setCampOrg: (campId: string, orgId: string | null) => Promise<void>;
+  /** Founder-level entitlement. Goes through an RPC because platform admins hold no camp_members
+   *  row, so the camps UPDATE policy does not let them write the column directly. */
+  setPlatformModules: (campId: string, platformModules: Record<string, boolean>) => Promise<void>;
 }
 
 function slugify(name: string): string {
@@ -72,7 +80,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   load: async () => {
     set({ loading: true });
     const [campsRes, orgsRes, membersRes, adminsRes] = await Promise.all([
-      supabase.from('camps').select('id, name, slug, account_type, status, plan, trial_ends_at, org_id, is_seed, created_at, deleted_at').order('created_at', { ascending: false }),
+      supabase.from('camps').select('id, name, slug, account_type, status, plan, trial_ends_at, org_id, is_seed, created_at, deleted_at, modules, platform_modules').order('created_at', { ascending: false }),
       supabase.from('organizations').select('id, name').order('name'),
       supabase.from('camp_members').select('camp_id').eq('is_active', true),
       supabase.rpc('list_platform_admins'),
@@ -87,6 +95,8 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       plan: c.plan ?? null, trialEndsAt: c.trial_ends_at ?? null, orgId: c.org_id ?? null,
       isSeed: !!c.is_seed, createdAt: c.created_at, memberCount: counts.get(c.id) ?? 0,
       deletedAt: c.deleted_at ?? null,
+      platformModules: (c.platform_modules as Record<string, boolean>) ?? {},
+      modules: (c.modules as Record<string, boolean>) ?? {},
     }));
     set({
       camps: all.filter((c) => !c.deletedAt),
@@ -161,4 +171,13 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   restoreCamp: async (campId) => { const { error } = await supabase.rpc('restore_camp', { p_camp_id: campId }); if (error) throw new Error(error.message); await get().load(); },
   createOrg: async (name) => { await supabase.from('organizations').insert({ name }); await get().load(); },
   setCampOrg: async (campId, orgId) => { await supabase.from('camps').update({ org_id: orgId }).eq('id', campId); await get().load(); },
+  setPlatformModules: async (campId, platformModules) => {
+    const { error } = await supabase.rpc('admin_set_camp_modules', {
+      p_camp_id: campId, p_platform_modules: platformModules,
+    });
+    if (error) throw new Error(error.message);
+    // Patch in place rather than reloading the whole console: the toggles are flipped one at a
+    // time, and a full reload between each one made the row jump and the switch feel unreliable.
+    set((s) => ({ camps: s.camps.map((c) => (c.id === campId ? { ...c, platformModules } : c)) }));
+  },
 }));

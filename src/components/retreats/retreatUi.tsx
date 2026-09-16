@@ -41,6 +41,19 @@ export function fmtDate(d: string | null): string {
       ? { month: 'short', day: 'numeric', year: 'numeric' }
       : { month: 'short', day: 'numeric' });
 }
+/**
+ * "Jul 6, 2:15 PM" — a date WITH the hour.
+ *
+ * Used on request threads, where the messages arrive minutes apart and a bare date makes two
+ * sides of an exchange look simultaneous.
+ */
+export function fmtStamp(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
 export function fmtDateFull(d: string | null): string {
   if (!d) return '-';
   return new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -204,7 +217,7 @@ export const PHASE_LABELS: Record<(typeof PHASE_KEYS)[number], string> = {
 };
 
 const PHASE_STATE_LABELS: Record<PhaseState, string> = {
-  done: 'completed', active: 'in progress', locked: 'not started',
+  done: 'completed', active: 'in progress', locked: 'not started', na: 'not required',
 };
 
 /** Which tab actually lets you finish a step. */
@@ -230,46 +243,56 @@ export const PHASE_HINTS: Record<(typeof PHASE_KEYS)[number], Record<PhaseState,
     locked: 'Upload the retreat agreement so the group can sign it in their portal.',
     active: 'The agreement is uploaded and waiting on the group to sign it.',
     done: 'Signed and on file.',
+    na: 'No agreement is being tracked for this booking.',
   },
   deposit: {
     locked: 'Raise a deposit invoice, or record the deposit here once it arrives.',
     active: 'Part of the deposit is in. Log the rest to secure the dates.',
     done: 'Deposit received in full.',
+    na: 'No deposit was asked for on this booking. Set one in Edit details if you want to hold the dates against it.',
   },
   headcount: {
     locked: 'Set a headcount cutoff so the group knows when to confirm their numbers.',
     active: 'Waiting for the group to confirm their final headcount in the portal.',
     done: 'Final headcount confirmed by the group.',
+    na: 'No headcount is being tracked for this booking.',
   },
   housing: {
     locked: 'Nobody is in a room yet. Add the guest list, then place people.',
     active: 'Assignments are being built. The Housing tab says whether the group has marked theirs complete. Use "Lock housing" to finalise the plan and tick this off.',
     done: 'Housing is locked and final.',
+    na: 'This group is not staying overnight.',
   },
   menu: {
     locked: 'Plan the menu in Commissary, then publish it to the portal.',
     active: 'Dishes are planned but the menu is not published to the portal yet.',
     done: 'Menu published to the guest portal.',
+    na: 'The camp is not catering this group.',
   },
   coi: {
     locked: 'No certificate of insurance yet. The group can upload it in their portal.',
     active: 'A certificate is attached and waiting to be accepted.',
     done: 'Certificate of insurance received.',
+    na: 'No certificate of insurance is required from this group.',
   },
   finalInvoice: {
-    locked: 'Send the balance invoice when you are ready to bill the stay.',
-    active: 'The balance invoice is out. This ticks off once it is paid in full.',
+    locked: 'Nothing has been billed yet. Enter the charges or send the balance invoice when you are ready to bill the stay.',
+    active: 'The stay is billed and part-paid. This ticks off once the account is settled in full.',
     done: 'Paid in full.',
+    na: 'Nothing is being billed for this booking.',
   },
 };
 
 function PhaseDot({ state }: { state: PhaseState }) {
   const cls = state === 'done' ? 'bg-sage text-white border-sage'
     : state === 'active' ? 'bg-amber text-white border-amber'
+    // Dashed and dimmed, so "nothing to do here" is visibly a different thing from the solid
+    // empty circle of "this is still outstanding".
+    : state === 'na' ? 'bg-transparent text-ink-faint/70 border-dashed border-border'
     : 'bg-white text-ink-faint border-border';
   return (
     <div className={`w-6 h-6 rounded-full mx-auto flex items-center justify-center border text-[11px] font-bold leading-none transition-transform group-hover:scale-110 ${cls}`}>
-      {state === 'done' ? '✓' : state === 'active' ? '→' : ''}
+      {state === 'done' ? '✓' : state === 'active' ? '→' : state === 'na' ? '–' : ''}
     </div>
   );
 }

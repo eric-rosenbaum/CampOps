@@ -4,7 +4,7 @@ import type {
   RetreatSpaceRequest, RetreatSpaceMessage, RetreatContact, RetreatTouchpoint, RetreatProposal,
   ScheduledMessage,
   Retreat, RetreatStatus, RetreatSpace, RetreatHousing, RetreatHousingVersion, RetreatGuest, RetreatDocument,
-  RetreatDocType, RetreatMeal, RetreatChangeRequest, RetreatRequestStatus, RetreatCost, RetreatCharge,
+  RetreatDocType, RetreatMeal, RetreatChangeRequest, RetreatRequestMessage, RetreatRequestStatus, RetreatCost, RetreatCharge,
   RetreatPayment, RetreatIssue, RetreatChecklistItem, RetreatChecklistPhase, RetreatScheduleItem,
   RetreatFeedback, RetreatReminder, RetreatInvoice, MealPeriod,
 } from '@/lib/types';
@@ -15,7 +15,7 @@ import {
   dbAddDocument, dbUpdateDocument, dbDeleteDocument, dbUploadRetreatDocument,
   dbVerifyRetreatDocument, dbConfirmDocumentStored,
   dbAddMeal, dbUpdateMeal, dbDeleteMeal,
-  dbAddChangeRequest, dbUpdateChangeRequest,
+  dbAddChangeRequest, dbUpdateChangeRequest, dbAddRequestMessage,
   dbAddCost, dbUpdateCost, dbDeleteCost,
   dbAddCharge, dbUpdateCharge, dbDeleteCharge,
   dbAddPayment, dbUpdatePayment, dbDeletePayment,
@@ -37,8 +37,14 @@ export type RetreatTab =
   | 'active' | 'documents' | 'housing' | 'spaces' | 'menu' | 'relationship'
   | 'retreatCosts' | 'requests' | 'portal' | 'feedback';
 
-/** The 5-phase readiness tracker shown on the overview cards. */
-export type PhaseState = 'done' | 'active' | 'locked';
+/**
+ * The readiness tracker shown on the overview cards and at the top of an open retreat.
+ *
+ * `na` is the state that was missing. Without it a step nobody ever has to do -- a deposit the
+ * camp never asked this group for -- drew the same empty circle as a step that is genuinely
+ * outstanding, and the whole row read as "you have done almost none of this".
+ */
+export type PhaseState = 'done' | 'active' | 'locked' | 'na';
 export interface PhaseProgress {
   contract: PhaseState;
   deposit: PhaseState;
@@ -104,6 +110,8 @@ interface RetreatState {
   documents: RetreatDocument[];
   meals: RetreatMeal[];
   changeRequests: RetreatChangeRequest[];
+  /** Everything said on a request after the opening ask, both sides. */
+  requestMessages: RetreatRequestMessage[];
   costs: RetreatCost[];
   charges: RetreatCharge[];
   payments: RetreatPayment[];
@@ -186,6 +194,12 @@ interface RetreatState {
   // Change requests
   addChangeRequest: (x: RetreatChangeRequest) => void;
   respondToRequest: (id: string, status: RetreatRequestStatus, responseMessage: string | null, internalNote: string | null, by: string | null) => void;
+  setRequestMessages: (rows: RetreatRequestMessage[]) => void;
+  /** Say the next thing on a thread. The group sees it in their portal and can answer back. */
+  postRequestMessage: (requestId: string, body: string, authorName: string | null) => void;
+  /** Finished, without needing a decision to record. Any new message from the group reopens it. */
+  setRequestClosed: (requestId: string, closed: boolean) => void;
+  messagesFor: (requestId: string) => RetreatRequestMessage[];
 
   // Costs / charges / payments
   addCost: (x: RetreatCost) => void;
@@ -283,7 +297,7 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
 
   retreats: [], spaces: [], housing: [], housingVersions: [], guests: [], documents: [], meals: [],
   spaceRequests: [], spaceMessages: [], contacts: [], touchpoints: [], proposals: [], outbox: [],
-  changeRequests: [], costs: [], charges: [], payments: [], issues: [], checklist: [],
+  changeRequests: [], requestMessages: [], costs: [], charges: [], payments: [], issues: [], checklist: [],
   scheduleItems: [], feedback: [], reminders: [], invoices: [],
 
   setActiveTab: (t) => set((st) => {
@@ -331,6 +345,7 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   setDocuments: (rows) => set({ documents: rows }),
   setMeals: (rows) => set({ meals: rows }),
   setChangeRequests: (rows) => set({ changeRequests: rows }),
+  setRequestMessages: (rows) => set({ requestMessages: rows }),
   setCosts: (rows) => set({ costs: rows }),
   setCharges: (rows) => set({ charges: rows }),
   setPayments: (rows) => set({ payments: rows }),
@@ -433,8 +448,43 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
 
   addChangeRequest: (x) => { set((s) => ({ changeRequests: [x, ...s.changeRequests] })); dbAddChangeRequest(x); },
   respondToRequest: (id, status, responseMessage, internalNote, by) => {
+    const stamp = now();
     let updated: RetreatChangeRequest | undefined;
-    set((s) => ({ changeRequests: s.changeRequests.map((r) => r.id === id ? (updated = { ...r, status, responseMessage, internalNote, respondedBy: by, respondedAt: now() }) : r) }));
+    // Recording a decision also closes the thread: the camp has answered, so it stops sitting in
+    // "waiting on you". A later message from the group reopens it (see the touch_request_thread
+    // trigger) -- which is the whole point of the thread and the reason `closed_at` is not
+    // `status`.
+    set((s) => ({ changeRequests: s.changeRequests.map((r) => r.id === id
+      ? (updated = { ...r, status, responseMessage, internalNote, respondedBy: by, respondedAt: stamp, closedAt: stamp })
+      : r) }));
+    if (updated) dbUpdateChangeRequest(updated);
+    // The response message is also the camp's next line in the conversation. Written as a
+    // message too so the thread reads in order rather than keeping the camp's answer in a
+    // separate field the group's replies then appear to precede.
+    if (responseMessage && responseMessage.trim()) {
+      get().postRequestMessage(id, responseMessage.trim(), by);
+    }
+  },
+  postRequestMessage: (requestId, body, authorName) => {
+    const req = get().changeRequests.find((r) => r.id === requestId);
+    if (!req || !body.trim()) return;
+    const msg: RetreatRequestMessage = {
+      id: generateId(), campId: req.campId, retreatId: req.retreatId, requestId,
+      author: 'camp', authorName, body: body.trim(), createdAt: now(),
+    };
+    // Optimistic on both the message and the summary the tab buckets on, because realtime is a
+    // round trip and the reply should land under the thread the moment it is sent.
+    set((s) => ({
+      requestMessages: [...s.requestMessages, msg],
+      changeRequests: s.changeRequests.map((r) => r.id === requestId
+        ? { ...r, lastMessageAt: msg.createdAt, lastMessageFrom: 'camp' as const } : r),
+    }));
+    dbAddRequestMessage(msg);
+  },
+  setRequestClosed: (requestId, closed) => {
+    let updated: RetreatChangeRequest | undefined;
+    set((s) => ({ changeRequests: s.changeRequests.map((r) => r.id === requestId
+      ? (updated = { ...r, closedAt: closed ? now() : null }) : r) }));
     if (updated) dbUpdateChangeRequest(updated);
   },
 
@@ -507,6 +557,9 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
   versionsFor: (id) => get().housingVersions.filter((v) => v.retreatId === id).sort((a, b) => b.version - a.version),
   mealsFor: (id) => get().meals.filter((m) => m.retreatId === id).sort((a, b) => a.dayDate.localeCompare(b.dayDate) || a.sortOrder - b.sortOrder),
   requestsFor: (id) => get().changeRequests.filter((r) => r.retreatId === id),
+  messagesFor: (requestId) => get().requestMessages
+    .filter((m) => m.requestId === requestId)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
   costsFor: (id) => get().costs.filter((c) => c.retreatId === id).sort((a, b) => a.sortOrder - b.sortOrder),
   chargesFor: (id) => get().charges.filter((c) => c.retreatId === id).sort((a, b) => a.sortOrder - b.sortOrder),
   paymentsFor: (id) => get().payments.filter((p) => p.retreatId === id),
@@ -587,16 +640,25 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
       ? 'done' : agreement ? 'active' : 'locked';
 
     // Money in hand is what closes the deposit step, so a deposit invoice that has been
-    // raised but not paid reads as in-progress rather than done. Comparing received against
-    // required (rather than requiring a non-zero required) keeps a retreat that was never
-    // asked for a deposit from being stuck at locked once a payment lands.
+    // raised but not paid reads as in-progress rather than done.
+    //
+    // "In hand" counts EVERY payment on the booking, not only the ones somebody remembered to
+    // tag `deposit`. A camp that logged one ACH for the whole stay had money in the account and
+    // an empty deposit circle, which is the report this was written from. Whatever arrived
+    // first is the deposit as far as securing the dates goes.
     const depositInvoice = invoices.find((i) => i.kind === 'deposit' && i.status !== 'void');
-    const deposit: PhaseState = fin.depositReceived > 0 && fin.depositReceived >= fin.depositRequired
-      ? 'done' : fin.depositReceived > 0 || depositInvoice ? 'active' : 'locked';
+    const depositInHand = Math.max(fin.depositReceived, fin.collected);
+    const deposit: PhaseState = fin.depositRequired > 0
+      ? (depositInHand >= fin.depositRequired ? 'done'
+        : depositInHand > 0 || depositInvoice ? 'active' : 'locked')
+      // No deposit was ever asked for. That is a finished thought, not an unfinished step.
+      : (depositInHand > 0 ? 'done' : depositInvoice ? 'active' : 'na');
 
-    // Confirmed through the portal is the only thing that counts as done; a cutoff on the
-    // calendar means we have asked and are waiting.
-    const headcount: PhaseState = r?.finalHeadcountAt
+    // A confirmed final headcount is the done state, however it got there. This tested
+    // `finalHeadcountAt`, while the Guest portal tab next to it tested `finalHeadcount` -- so a
+    // number confirmed without a timestamp showed as confirmed in one panel and missing in the
+    // other. A cutoff on the calendar means we have asked and are waiting.
+    const headcount: PhaseState = r?.finalHeadcount != null
       ? 'done' : r?.headcountCutoff ? 'active' : 'locked';
 
     // Locked by the camp is the finished state. The group's own sign-off does not close the
@@ -626,19 +688,32 @@ export const useRetreatStore = create<RetreatState>((set, get) => ({
     // account is actually settled: someone who logs a payment covering (or exceeding) the
     // balance has finished paying, whether or not anyone went back to flip the invoice's own
     // status, and showing that as still in progress reads as a mistake.
+    //
+    // But settled has to mean settled against a BILL. `fin.expected` falls back to a rate-card
+    // estimate when nothing has been invoiced, so a group that had been quoted nothing and paid
+    // one round number matching the estimate showed "Final invoice · Paid in full" while the
+    // deposit beside it was still empty. Only a real billed figure -- an invoice, or charges
+    // entered on the booking -- can close this step.
     const balanceInvoice = invoices.filter((i) => i.kind === 'balance' && i.status !== 'void');
-    const settled = fin.expected > 0 && fin.collected >= fin.expected;
+    const billed = fin.source === 'invoice' || fin.source === 'charges';
+    const settled = billed && fin.expected > 0 && fin.collected >= fin.expected;
     const finalInvoice: PhaseState = balanceInvoice.some((i) => i.status === 'paid') || settled
-      ? 'done' : balanceInvoice.length > 0 ? 'active' : 'locked';
+      ? 'done' : balanceInvoice.length > 0 || (billed && fin.collected > 0) ? 'active' : 'locked';
 
     return { contract, deposit, headcount, housing: housingState, menu: menuState, coi: coiState, finalInvoice };
   },
 
-  // Only what the camp still owes an answer to. A request the camp raised is also 'pending',
-  // but it is pending on the group, and counting it would put a number on the season header
-  // for work nobody at the camp can do.
+  // Only what the camp still owes an answer to: an open thread where the group spoke last. A
+  // thread the camp raised is waiting on the group, and counting it would put a number on the
+  // season header for work nobody at the camp can do.
+  //
+  // Counted off who spoke last rather than off `status`, so a follow-up on an already-approved
+  // request is counted too. `status` is the ruling on the original ask; it stops being a
+  // description of the conversation the moment there is more than one round of it. Rows written
+  // before the thread existed have no `lastMessageFrom`, so they fall back to their origin.
   pendingRequestCount: (retreatId) => get().changeRequests.filter((r) =>
-    r.status === 'pending' && r.origin !== 'camp'
+    !r.closedAt
+    && (r.lastMessageFrom ?? (r.origin === 'camp' ? 'camp' : 'group')) === 'group'
     && (retreatId === undefined || r.retreatId === retreatId)).length,
   portalUrl: (r) => `${typeof window !== 'undefined' ? window.location.origin : ''}/portal/${r.portalToken}`,
 }));

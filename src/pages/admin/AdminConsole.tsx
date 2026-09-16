@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
-import { Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2, LogOut, Users, ChevronDown, ChevronRight, KeyRound, Link as LinkIcon } from 'lucide-react';
+import { Plus, FlaskConical, LogIn, Copy, Check, Building2, ShieldCheck, Trash2, LogOut, Users, ChevronDown, ChevronRight, KeyRound, Link as LinkIcon, Blocks } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useAdminStore, type AdminCamp, type CampAccount } from '@/store/adminStore';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
 import { PasswordSection } from '@/components/settings/PasswordSection';
+import { MODULES, MODULE_KEYS } from '@/lib/modules';
 
 const TYPE_STYLE: Record<string, string> = {
   customer: 'bg-green-muted-bg text-green-muted-text',
@@ -128,6 +129,7 @@ export function AdminConsole() {
                   <th className="text-left px-3 py-2.5">Status</th>
                   <th className="text-left px-3 py-2.5">Plan</th>
                   <th className="text-left px-3 py-2.5">Members</th>
+                  <th className="text-left px-3 py-2.5">Modules</th>
                   <th className="text-left px-3 py-2.5">Trial</th>
                   <th className="text-right px-4 py-2.5">Actions</th>
                 </tr>
@@ -153,10 +155,14 @@ function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: stri
   const { setStatus, extendTrial, setPlan, setSeed, setCampOrg, listCampAccounts } = useAdminStore();
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
+  const [modulesOpen, setModulesOpen] = useState(false);
   const [accounts, setAccounts] = useState<CampAccount[] | null>(null);
   const [accErr, setAccErr] = useState<string | null>(null);
   const dl = daysLeft(c.trialEndsAt);
   const wrap = (fn: () => Promise<void>) => async () => { setBusy(true); try { await fn(); } finally { setBusy(false); } };
+
+  // Sold count, by the same rule the app reads: off only when explicitly false.
+  const soldCount = MODULE_KEYS.filter((k) => c.platformModules[k] !== false).length;
 
   async function toggleAccounts() {
     const next = !open;
@@ -187,6 +193,19 @@ function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: stri
           <Users className="w-3.5 h-3.5" /> {c.memberCount}
         </button>
       </td>
+      <td className="px-3 py-3">
+        <button
+          onClick={() => setModulesOpen((v) => !v)}
+          className="inline-flex items-center gap-1 text-ink-soft hover:text-forest transition-colors"
+          title="Which modules this camp is sold"
+        >
+          {modulesOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          <Blocks className="w-3.5 h-3.5" />
+          <span className={soldCount < MODULE_KEYS.length ? 'text-amber-text font-semibold' : ''}>
+            {soldCount}/{MODULE_KEYS.length}
+          </span>
+        </button>
+      </td>
       <td className="px-3 py-3 text-ink-soft">{c.accountType === 'trial' && dl != null ? (dl >= 0 ? `${dl}d left` : 'expired') : '-'}</td>
       <td className="px-4 py-3">
         <div className="flex flex-wrap gap-1.5 justify-end">
@@ -214,14 +233,89 @@ function CampRow({ c, orgs, onOpen, onDelete }: { c: AdminCamp; orgs: { id: stri
         </div>
       </td>
     </tr>
+    {modulesOpen && (
+      <tr className="border-t border-cream-dark bg-cream-dark/20">
+        <td colSpan={8} className="px-4 py-3">
+          <CampModulesPanel camp={c} />
+        </td>
+      </tr>
+    )}
     {open && (
       <tr className="border-t border-cream-dark bg-cream-dark/20">
-        <td colSpan={7} className="px-4 py-3">
+        <td colSpan={8} className="px-4 py-3">
           <AccountsPanel accounts={accounts} error={accErr} />
         </td>
       </tr>
     )}
     </>
+  );
+}
+
+/**
+ * Which modules this camp is sold, and what they have done with them.
+ *
+ * The switch here is ours. Turning one off does not grey the module out in their Camp Info --
+ * it removes it from the list entirely, and from their sidebar, and from the router, so the
+ * camp has no way to learn it exists or to ask why they cannot have it.
+ *
+ * Their own switch is shown beside it, read-only, because "they do not have Retreats" and
+ * "they turned Retreats off themselves" arrive as the same support email and are answered very
+ * differently.
+ */
+function CampModulesPanel({ camp }: { camp: AdminCamp }) {
+  const setPlatformModules = useAdminStore((s) => s.setPlatformModules);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function toggle(key: string, next: boolean) {
+    setBusyKey(key); setErr(null);
+    try {
+      // Written as an explicit answer for every key, not a patch of the one that moved: a
+      // half-filled object relies on "absent means on" forever, and the next person reading the
+      // row cannot tell a deliberate yes from a key nobody ever set.
+      const full = Object.fromEntries(
+        MODULE_KEYS.map((k) => [k, k === key ? next : camp.platformModules[k] !== false]),
+      );
+      await setPlatformModules(camp.id, full);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not save');
+    } finally { setBusyKey(null); }
+  }
+
+  return (
+    <div className="max-w-3xl">
+      <p className="text-[11px] text-ink-faint mb-2.5">
+        What <span className="font-semibold text-forest">{camp.name}</span> is sold. A module
+        switched off here is invisible to them — no sidebar entry, no route, and no toggle in
+        their own Camp Info.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
+        {MODULES.map((m) => {
+          const sold = camp.platformModules[m.key] !== false;
+          const campOn = camp.modules[m.key] !== false;
+          return (
+            <div key={m.key} className="flex items-center gap-2.5 py-1">
+              <button
+                type="button"
+                disabled={busyKey === m.key}
+                onClick={() => void toggle(m.key, !sold)}
+                aria-label={`${sold ? 'Remove' : 'Grant'} ${m.label} for ${camp.name}`}
+                className={`w-9 h-5 rounded-full flex-shrink-0 flex items-center transition-colors disabled:opacity-50 ${sold ? 'bg-forest' : 'bg-cream-dark'}`}
+              >
+                <span className={`w-4 h-4 bg-white rounded-full shadow mx-0.5 transition-transform ${sold ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+              <span className="text-[12px] font-medium text-forest">{m.label}</span>
+              {sold && !campOn && (
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
+                  camp switched it off
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {err && <p className="text-[12px] text-red mt-2">{err}</p>}
+    </div>
   );
 }
 

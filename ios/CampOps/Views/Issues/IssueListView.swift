@@ -48,12 +48,15 @@ struct IssueListView: View {
     var body: some View {
         NavigationStack(path: $path) {
             Group {
-                if vm.isLoading && vm.issues.isEmpty {
-                    ProgressView("Loading...").frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if staffFilteredIssues.isEmpty {
-                    emptyState
-                } else {
-                    issueList
+                VStack(spacing: 0) {
+                    scannedBanner
+                    if vm.isLoading && vm.issues.isEmpty {
+                        ProgressView("Loading...").frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if staffFilteredIssues.isEmpty {
+                        emptyState
+                    } else {
+                        issueList
+                    }
                 }
             }
             // On the stack rather than on the list, so a notification can still open a work order
@@ -79,6 +82,30 @@ struct IssueListView: View {
             .sheet(isPresented: $showingLogIssue) {
                 LogIssueView { newIssue in vm.issues.insert(newIssue, at: 0) }
             }
+        }
+    }
+
+    /// Says what the list is actually showing after a sticker narrowed it.
+    ///
+    /// Without this, a scan that finds nothing looks identical to a camp with no open work, and
+    /// the way out of the filter is invisible.
+    @ViewBuilder
+    private var scannedBanner: some View {
+        if let name = vm.scannedLocationName {
+            HStack(spacing: Spacing.sm) {
+                Image(systemName: "qrcode.viewfinder")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("You scanned").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
+                    Text(name).font(.campBodyMedium).foregroundStyle(Color.forest)
+                }
+                Spacer(minLength: Spacing.sm)
+                Button("Show all") { vm.clearScannedLocation() }
+                    .font(.campMeta)
+            }
+            .padding(Spacing.md)
+            .background(Color.sagePale, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.horizontal, Spacing.md)
+            .padding(.top, Spacing.sm)
         }
     }
 

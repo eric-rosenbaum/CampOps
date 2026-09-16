@@ -44,7 +44,15 @@ export function ActiveRetreatTab() {
   const { can } = useAuth();
   const canManage = can('manageRetreats');
 
-  const r = activeRetreat() ?? selectedRetreat();
+  // The retreat you entered, always. This read `activeRetreat() ?? selectedRetreat()`, and
+  // `activeRetreat()` is "whoever is on property today" -- so while any group was mid-stay,
+  // opening ANY other booking and clicking this tab showed that group's name, dates, headcount
+  // and booking progress under the header of the one you had opened.
+  //
+  // This tab only exists inside a retreat (see RETREAT_TABS in pages/Retreats.tsx), so the
+  // fallback can never be the right answer here; it is kept only so the panel degrades to the
+  // group on property rather than to an empty state if it is ever rendered season-wide.
+  const r = selectedRetreat() ?? activeRetreat();
 
   if (!r) {
     return (

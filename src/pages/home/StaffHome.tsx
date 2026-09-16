@@ -4,6 +4,7 @@ import { ChevronRight, Waves } from 'lucide-react';
 import { useIssuesStore } from '@/store/issuesStore';
 import { usePoolStore } from '@/store/poolStore';
 import { useAuth } from '@/lib/auth';
+import { useModules } from '@/lib/modules';
 import { useCampStore } from '@/store/campStore';
 
 export function StaffHome() {
@@ -26,7 +27,9 @@ export function StaffHome() {
   }, [pools, readings]);
 
   const isWaterfront = department === 'waterfront';
-  const modules = currentCamp?.modules ?? {};
+  // Reads both switches (the platform's and the camp's), so a camp without the Pool module
+  // does not get a pool banner on the dashboard that its sidebar has no page for.
+  const modules = useModules();
 
   const deptLabel: Record<string, string> = {
     waterfront: 'Waterfront', maintenance: 'Maintenance', kitchen: 'Kitchen',
@@ -50,7 +53,7 @@ export function StaffHome() {
       </div>
 
       {/* Pool status for waterfront */}
-      {isWaterfront && modules.pool && poolStatus && (
+      {isWaterfront && modules.enabled('pool') && poolStatus && (
         <div className={`rounded-xl border px-5 py-4 mb-5 flex items-center justify-between ${statusLabel[poolStatus]?.color ?? ''}`}>
           <div className="flex items-center gap-2.5">
             <Waves className="w-4 h-4" />

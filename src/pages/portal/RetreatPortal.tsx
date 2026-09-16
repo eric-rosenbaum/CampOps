@@ -261,6 +261,19 @@ export function RetreatPortal() {
 }
 
 // ─── Workflow checklist model ─────────────────────────────────────────────────
+/**
+ * Who said the last thing on a request thread.
+ *
+ * Rows written before threads existed carry no `last_message_from`, so they fall back to the
+ * shape of the old one-shot world: whoever opened it, unless the single reply had happened.
+ */
+function lastSpeaker(r: PortalChangeRequest): 'camp' | 'group' {
+  if (r.last_message_from) return r.last_message_from;
+  const msgs = r.messages ?? [];
+  if (msgs.length > 0) return msgs[msgs.length - 1].author;
+  return r.origin === 'camp' ? 'camp' : 'group';
+}
+
 type StepState = 'done' | 'overdue' | 'due_soon' | 'todo' | 'locked';
 interface Step {
   key: string;
@@ -449,14 +462,20 @@ function buildSteps(data: PortalData): Step[] {
   });
 
   if (retreat.change_requests_enabled) {
-    const pending = data.change_requests.filter((r) => r.status === 'pending').length;
-    const answered = data.change_requests.filter((r) => r.status !== 'pending').length;
+    // Counted by who spoke last, not by `status`. `status` is the camp's ruling on the opening
+    // ask; once a request is a conversation it stops describing whose turn it is, and a thread
+    // this group still owes an answer on was showing as "answered".
+    const open = data.change_requests.filter((r) => !r.closed_at);
+    const yourTurn = open.filter((r) => lastSpeaker(r) === 'camp').length;
+    const withCamp = open.filter((r) => lastSpeaker(r) === 'group').length;
+    const settled = data.change_requests.length - open.length;
     steps.push({
       key: 'requests', label: 'Requests',
-      hint: pending > 0 ? `${pending} awaiting a reply from the camp`
-        : answered > 0 ? `${answered} answered`
+      hint: yourTurn > 0 ? `${yourTurn} waiting on your reply`
+        : withCamp > 0 ? `${withCamp} with the camp`
+        : settled > 0 ? `${settled} settled`
         : 'Program spaces, dietary, childcare & more',
-      state: 'todo', dueDate: null, sectionId: 'requests', counts: false,
+      state: yourTurn > 0 ? 'overdue' : 'todo', dueDate: null, sectionId: 'requests', counts: false,
     });
   }
 
@@ -523,24 +542,24 @@ function buildUpdates(data: PortalData): PortalUpdate[] {
       detail: i.due_date ? `Due ${fmtDateFull(i.due_date)}` : 'Sent by the camp',
       view: 'stay',
     }));
+  // Anything the camp said last, on any open thread -- their answer to a request this group
+  // raised, or a question of their own. Both used to be matched separately by `status` and
+  // `responded_at`, which meant a second message from the camp on a request already marked
+  // answered surfaced nowhere at all.
   data.change_requests
-    .filter((r) => r.origin !== 'camp' && r.status !== 'pending' && r.response_message)
-    .forEach((r) => out.push({
-      id: `request:${r.id}:${r.responded_at ?? r.status}`,
-      title: 'The camp replied to your request',
-      detail: r.response_message as string,
-      view: 'todo', step: 'requests',
-    }));
-  // A question the camp is waiting on. Louder than a reply to something you already sent,
-  // because nothing else on the page tells you it is there.
-  data.change_requests
-    .filter((r) => r.origin === 'camp' && !r.responded_at)
-    .forEach((r) => out.push({
-      id: `ask:${r.id}`,
-      title: 'The camp has a question for you',
-      detail: r.body,
-      view: 'todo', step: 'requests',
-    }));
+    .filter((r) => !r.closed_at && lastSpeaker(r) === 'camp')
+    .forEach((r) => {
+      const last = (r.messages ?? []).at(-1);
+      const fromCamp = last && last.author === 'camp';
+      out.push({
+        id: `request:${r.id}:${r.last_message_at ?? r.submitted_at ?? r.status}`,
+        title: r.origin === 'camp' && !fromCamp
+          ? 'The camp has a question for you'
+          : 'The camp replied — you can answer back',
+        detail: fromCamp ? last.body : r.body,
+        view: 'todo', step: 'requests',
+      });
+    });
   // Unread messages about meeting spaces. Previously invisible unless the group happened to
   // open that section, which is not a way to learn the chairs are in the back closet.
   if ((data.spaces_unread ?? 0) > 0) {
@@ -2352,7 +2371,7 @@ function ChangeRequestsBlock({ requests, defaultName, token, refetch }: {
         <div className="space-y-3">
           <p className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">From the camp</p>
           {fromCamp.map((r) => (
-            <CampAsk key={r.id} request={r} defaultName={defaultName} token={token} refetch={refetch} />
+            <RequestConversation key={r.id} request={r} defaultName={defaultName} token={token} refetch={refetch} />
           ))}
         </div>
       )}
@@ -2363,50 +2382,18 @@ function ChangeRequestsBlock({ requests, defaultName, token, refetch }: {
           <p className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">Your requests</p>
           {mine
             .slice()
-            .sort((a, b) => (b.submitted_at ?? '').localeCompare(a.submitted_at ?? ''))
-            .map((r) => {
-              const accent = r.status === 'approved' ? 'border-l-sage'
-                : r.status === 'declined' || r.status === 'rejected' ? 'border-l-red' : 'border-l-amber';
-              const tone = r.status === 'approved' ? 'bg-green-muted-bg text-green-muted-text'
-                : r.status === 'declined' || r.status === 'rejected' ? 'bg-red-bg text-red' : 'bg-amber-bg text-amber-text';
-              return (
-                <div key={r.id} className={`${cardClass} border-l-4 ${accent} p-4`}>
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-soft">{KIND_LABELS[r.kind] ?? r.kind}</span>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${tone}`}>
-                      {r.status}
-                    </span>
-                  </div>
-                  <p className="text-[13px] text-ink leading-relaxed">{r.body}</p>
-                  <div className="mt-1.5 flex items-center justify-between gap-2">
-                    <p className="text-[11px] text-ink-faint inline-flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Submitted {fmtDateTime(r.submitted_at)}
-                    </p>
-                    {r.status === 'pending' && !r.responded_at && (
-                      <button
-                        onClick={() => remove(r.id)}
-                        disabled={removingId === r.id}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink-soft
-                                   transition-colors hover:text-red disabled:opacity-50"
-                      >
-                        {removingId === r.id
-                          ? <Loader2 className="w-3 h-3 animate-spin" />
-                          : <Trash2 className="w-3 h-3" />}
-                        Withdraw
-                      </button>
-                    )}
-                  </div>
-                  {r.response_message && (
-                    <div className="mt-2.5 pt-2.5 border-t border-cream-dark">
-                      <p className="text-[12px] text-ink leading-relaxed italic">
-                        <span className="font-semibold not-italic text-forest">Camp response:</span> {r.response_message}
-                      </p>
-                      {r.responded_at && <p className="text-[11px] text-ink-faint mt-1">{fmtDateTime(r.responded_at)}</p>}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            .sort((a, b) => (b.last_message_at ?? b.submitted_at ?? '').localeCompare(a.last_message_at ?? a.submitted_at ?? ''))
+            .map((r) => (
+              <RequestConversation
+                key={r.id}
+                request={r}
+                defaultName={defaultName}
+                token={token}
+                refetch={refetch}
+                onWithdraw={() => remove(r.id)}
+                withdrawing={removingId === r.id}
+              />
+            ))}
         </div>
       )}
     </div>
@@ -2553,87 +2540,153 @@ function EmptyCard({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Something the camp asked this group, and the box to answer it in.
+ * One request, as the conversation it is.
  *
- * Answered ones stay on the page rather than disappearing: the exchange is part of what was
- * agreed about the booking, and the coordinator should be able to find what they said.
+ * Both directions live here now. A camp question and a request this group raised are the same
+ * object with the first bubble coming from a different side, and both stay open to another
+ * message — which is the thing that did not exist before. The camp answered once into a
+ * `response_message` field and the exchange was over: there was physically nowhere for "yes,
+ * but can we move it to Friday?" to go, so it went to email and off the booking.
+ *
+ * Answered threads stay on the page rather than disappearing. What was agreed about the
+ * booking is part of the booking, and the coordinator should be able to find what they said.
  */
-function CampAsk({ request, defaultName, token, refetch }: {
-  request: PortalChangeRequest; defaultName: string | null; token: string; refetch: () => Promise<void>;
+function RequestConversation({ request, defaultName, token, refetch, onWithdraw, withdrawing }: {
+  request: PortalChangeRequest; defaultName: string | null; token: string;
+  refetch: () => Promise<void>;
+  /** Only offered on this group's own requests, and only while nothing has been said back. */
+  onWithdraw?: () => void;
+  withdrawing?: boolean;
 }) {
   const [reply, setReply] = useState('');
   const [name, setName] = useState(defaultName ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const answered = !!request.responded_at;
+  const messages = request.messages ?? [];
+  const fromCamp = request.origin === 'camp';
+  const closed = !!request.closed_at;
+  const needsUs = !closed && lastSpeaker(request) === 'camp';
+  // Nothing has been said back yet, so pulling the request is still an honest thing to do.
+  const canWithdraw = !!onWithdraw && messages.length === 0 && !request.responded_at;
+
+  const status = closed
+    ? (request.status === 'declined' || request.status === 'rejected' ? 'Declined'
+      : request.status === 'countered' ? 'Countered'
+        : request.status === 'approved' ? 'Approved' : 'Settled')
+    : needsUs ? 'Your turn' : 'With the camp';
+  const tone = closed
+    ? (request.status === 'declined' || request.status === 'rejected'
+      ? 'bg-red-bg text-red' : 'bg-green-muted-bg text-green-muted-text')
+    : needsUs ? 'bg-blue-bg text-blue-text' : 'bg-amber-bg text-amber-text';
+  const accent = closed
+    ? (request.status === 'declined' || request.status === 'rejected' ? 'border-l-red' : 'border-l-sage')
+    : needsUs ? 'border-l-blue' : 'border-l-amber';
 
   async function send() {
-    if (!reply.trim()) { setError('Please write a reply.'); return; }
+    if (!reply.trim()) { setError('Please write a message.'); return; }
     if (!name.trim()) { setError('Please enter your name.'); return; }
     setBusy(true); setError(null);
-    const { error: err } = await supabasePublic.rpc('portal_respond_to_request', {
-      p_token: token, p_request_id: request.id, p_body: reply.trim(), p_submitted_by: name.trim(),
+    const { error: err } = await supabasePublic.rpc('portal_post_request_message', {
+      p_token: token, p_request_id: request.id, p_body: reply.trim(), p_author_name: name.trim(),
     });
-    if (err) { setError('Could not send your reply. Please try again.'); setBusy(false); return; }
+    if (err) { setError('Could not send your message. Please try again.'); setBusy(false); return; }
     setReply('');
     setBusy(false);
     await refetch();
   }
 
   return (
-    <div className={`${cardClass} border-l-4 ${answered ? 'border-l-sage' : 'border-l-blue'} p-4`}>
-      <div className="flex items-center justify-between gap-2 mb-1.5">
+    <div className={`${cardClass} border-l-4 ${accent} p-4`}>
+      <div className="flex items-center justify-between gap-2 mb-2.5">
         <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-soft">
           {KIND_LABELS[request.kind] ?? request.kind}
         </span>
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${
-          answered ? 'bg-green-muted-bg text-green-muted-text' : 'bg-blue-bg text-blue-text'
-        }`}>
-          {answered ? 'Answered' : 'Needs your reply'}
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${tone}`}>
+          {status}
         </span>
       </div>
-      <p className="text-[13px] text-ink leading-relaxed">{request.body}</p>
-      <p className="text-[11px] text-ink-faint mt-1.5 inline-flex items-center gap-1">
-        <Clock className="w-3 h-3" /> Asked {fmtDateTime(request.submitted_at)}
-        {request.submitted_by ? ` by ${request.submitted_by}` : ''}
-      </p>
 
-      {answered ? (
-        <div className="mt-2.5 pt-2.5 border-t border-cream-dark">
-          <p className="text-[12px] text-ink leading-relaxed italic">
-            <span className="font-semibold not-italic text-forest">Your reply:</span> {request.response_message}
-          </p>
-          {request.responded_at && (
-            <p className="text-[11px] text-ink-faint mt-1">
-              {request.responded_by ? `${request.responded_by} · ` : ''}{fmtDateTime(request.responded_at)}
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="mt-3 pt-3 border-t border-cream-dark space-y-2.5">
-          <textarea
-            value={reply}
-            onChange={(e) => setReply(e.target.value)}
-            className={`${inputClass} resize-none`}
-            rows={3}
-            placeholder="Write your reply to the camp…"
-            disabled={busy}
+      <div className="space-y-2">
+        {/* The opening ask lives on the request itself, not in the message list. */}
+        <PortalBubble
+          fromCamp={fromCamp}
+          name={request.submitted_by}
+          body={request.body}
+          at={request.submitted_at}
+        />
+        {messages.map((m) => (
+          <PortalBubble
+            key={m.id}
+            fromCamp={m.author === 'camp'}
+            name={m.author_name}
+            body={m.body}
+            at={m.created_at}
           />
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={inputClass}
-            placeholder="Your name"
-            disabled={busy}
-          />
-          {error && <p className="text-[13px] text-red">{error}</p>}
-          <button onClick={send} disabled={busy} className={`${btnPrimary} w-full`}>
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquarePlus className="w-4 h-4" />}
-            {busy ? 'Sending…' : 'Send reply'}
+        ))}
+      </div>
+
+      {canWithdraw && (
+        <div className="mt-2 flex justify-end">
+          <button
+            onClick={onWithdraw}
+            disabled={withdrawing}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink-soft
+                       transition-colors hover:text-red disabled:opacity-50"
+          >
+            {withdrawing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+            Withdraw
           </button>
         </div>
       )}
+
+      <div className="mt-3 pt-3 border-t border-cream-dark space-y-2.5">
+        <textarea
+          value={reply}
+          onChange={(e) => setReply(e.target.value)}
+          className={`${inputClass} resize-none`}
+          rows={3}
+          placeholder={needsUs ? 'Write your reply to the camp…' : 'Add something to this request…'}
+          disabled={busy}
+        />
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className={inputClass}
+          placeholder="Your name"
+          disabled={busy}
+        />
+        {error && <p className="text-[13px] text-red">{error}</p>}
+        <button onClick={send} disabled={busy} className={`${btnPrimary} w-full`}>
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquarePlus className="w-4 h-4" />}
+          {busy ? 'Sending…' : needsUs ? 'Send reply' : 'Send message'}
+        </button>
+        {closed && (
+          <p className="text-[11px] text-ink-faint text-center">
+            The camp has marked this settled. Sending a message reopens it.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PortalBubble({ fromCamp, name, body, at }: {
+  fromCamp: boolean; name: string | null; body: string; at: string | null;
+}) {
+  return (
+    <div className={`flex ${fromCamp ? 'justify-start' : 'justify-end'}`}>
+      <div className={`max-w-[88%] rounded-xl px-3.5 py-2.5 ${
+        fromCamp ? 'bg-cream-dark text-ink' : 'bg-forest text-cream'
+      }`}>
+        <p className={`text-[10px] font-bold uppercase tracking-wide mb-1 ${
+          fromCamp ? 'text-ink-faint' : 'text-sage-light'
+        }`}>
+          {fromCamp ? (name ?? 'The camp') : (name ?? 'You')}
+          {at && <span className="font-medium normal-case tracking-normal"> · {fmtDateTime(at)}</span>}
+        </p>
+        <p className="text-[13px] leading-relaxed whitespace-pre-wrap">{body}</p>
+      </div>
     </div>
   );
 }

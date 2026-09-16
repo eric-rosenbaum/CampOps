@@ -16,6 +16,13 @@ struct CampCommandApp: App {
                 .environmentObject(authManager)
                 .tint(Color.sage)
                 .task { await authManager.initialize() }
+                // A scanned sticker arrives one of two ways and both land in the same router:
+                // a universal link comes in as a browsing user activity, a campcommand:// link
+                // as a plain URL.
+                .onOpenURL { DeepLinkRouter.shared.handle($0) }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    if let url = activity.webpageURL { DeepLinkRouter.shared.handle(url) }
+                }
         }
     }
 

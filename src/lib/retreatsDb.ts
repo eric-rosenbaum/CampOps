@@ -10,7 +10,7 @@ import { getCampId, assertLoaded } from './db';
 import { loadAndApply, debounce, WAL_DEBOUNCE_MS } from './syncGuard';
 import type {
   Retreat, RetreatGuest, RetreatSpace, RetreatHousing, RetreatHousingVersion, RetreatDocument, RetreatMeal,
-  RetreatChangeRequest, RetreatCost, RetreatCharge, RetreatPayment, RetreatIssue,
+  RetreatChangeRequest, RetreatRequestMessage, RetreatCost, RetreatCharge, RetreatPayment, RetreatIssue,
   RetreatChecklistItem, RetreatScheduleItem, RetreatFeedback, RetreatReminder, MealPeriod,
   RetreatInvoice, RetreatInvoiceLine,
   RetreatSpaceRequest, RetreatSpaceMessage, RetreatContact, RetreatTouchpoint, RetreatProposal,
@@ -80,7 +80,12 @@ function rowToMeal(r: Row): RetreatMeal {
   return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, dayDate: r.day_date as string, mealPeriod: (r.meal_period as MealPeriod) ?? 'breakfast', name: s(r.name), items: s(r.items), allergens: (r.allergens as string[]) ?? [], alternatives: s(r.alternatives), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
 }
 function rowToChangeRequest(r: Row): RetreatChangeRequest {
-  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, origin: (r.origin as RetreatChangeRequest['origin']) ?? 'guest', kind: (r.kind as RetreatChangeRequest['kind']) ?? 'other', submittedBy: s(r.submitted_by), submittedAt: r.submitted_at as string, body: r.body as string, status: (r.status as RetreatChangeRequest['status']) ?? 'pending', responseMessage: s(r.response_message), internalNote: s(r.internal_note), respondedBy: s(r.responded_by), respondedAt: s(r.responded_at), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, origin: (r.origin as RetreatChangeRequest['origin']) ?? 'guest', kind: (r.kind as RetreatChangeRequest['kind']) ?? 'other', submittedBy: s(r.submitted_by), submittedAt: r.submitted_at as string, body: r.body as string, status: (r.status as RetreatChangeRequest['status']) ?? 'pending', responseMessage: s(r.response_message), internalNote: s(r.internal_note), respondedBy: s(r.responded_by), respondedAt: s(r.responded_at), lastMessageAt: s(r.last_message_at), lastMessageFrom: (r.last_message_from as RetreatChangeRequest['lastMessageFrom']) ?? null, closedAt: s(r.closed_at), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+}
+function rowToRequestMessage(r: Row): RetreatRequestMessage {
+  return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string,
+           requestId: r.request_id as string, author: (r.author as RetreatRequestMessage['author']) ?? 'camp',
+           authorName: s(r.author_name), body: r.body as string, createdAt: r.created_at as string };
 }
 function rowToCost(r: Row): RetreatCost {
   return { id: r.id as string, campId: r.camp_id as string, retreatId: r.retreat_id as string, category: r.category as string, budgeted: Number(r.budgeted ?? 0), actual: n(r.actual), sortOrder: Number(r.sort_order ?? 0), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
@@ -210,6 +215,7 @@ export interface RetreatData {
   retreats: Retreat[]; spaces: RetreatSpace[]; housing: RetreatHousing[]; housingVersions: RetreatHousingVersion[];
   guests: RetreatGuest[];
   documents: RetreatDocument[]; meals: RetreatMeal[]; changeRequests: RetreatChangeRequest[];
+  requestMessages: RetreatRequestMessage[];
   costs: RetreatCost[]; charges: RetreatCharge[]; payments: RetreatPayment[]; issues: RetreatIssue[];
   checklist: RetreatChecklistItem[]; scheduleItems: RetreatScheduleItem[]; feedback: RetreatFeedback[]; reminders: RetreatReminder[];
   invoices: RetreatInvoice[];
@@ -225,7 +231,7 @@ export interface RetreatData {
 
 const RETREAT_TABLES = [
   'retreats', 'retreat_spaces', 'retreat_housing', 'retreat_housing_versions', 'retreat_guests', 'retreat_documents',
-  'retreat_meals', 'retreat_change_requests', 'retreat_costs', 'retreat_charges', 'retreat_payments',
+  'retreat_meals', 'retreat_change_requests', 'retreat_request_messages', 'retreat_costs', 'retreat_charges', 'retreat_payments',
   'retreat_issues', 'retreat_checklist', 'retreat_schedule_items', 'retreat_feedback', 'retreat_reminders',
   'retreat_invoices', 'retreat_space_requests', 'retreat_space_messages', 'retreat_contacts', 'retreat_touchpoints',
   'retreat_proposals', 'scheduled_messages',
@@ -233,7 +239,7 @@ const RETREAT_TABLES = [
 
 async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
   const q = (t: string) => supabase.from(t).select('*').eq('camp_id', campId);
-  const [re, sp, ho, hv, gst, docs, meals, cr, costs, charges, pays, iss, chk, sched, fb, rem, inv,
+  const [re, sp, ho, hv, gst, docs, meals, cr, crm, costs, charges, pays, iss, chk, sched, fb, rem, inv,
          sreq, smsg, cont, touch, props, obox] = await Promise.all([
     q('retreats').order('arrival_date', { ascending: true }),
     q('retreat_spaces').order('sort_order', { ascending: true }),
@@ -243,6 +249,7 @@ async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
     q('retreat_documents').order('sort_order', { ascending: true }),
     q('retreat_meals').order('day_date', { ascending: true }),
     q('retreat_change_requests').order('submitted_at', { ascending: false }),
+    q('retreat_request_messages').order('created_at', { ascending: true }),
     q('retreat_costs').order('sort_order', { ascending: true }),
     q('retreat_charges').order('sort_order', { ascending: true }),
     q('retreat_payments').order('paid_on', { ascending: false }),
@@ -259,7 +266,7 @@ async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
     q('retreat_proposals').order('version', { ascending: false }),
     q('scheduled_messages').order('send_after', { ascending: true }),
   ]);
-  assertLoaded('retreats', re, sp, ho, hv, gst, docs, meals, cr, costs, charges, pays, iss, chk,
+  assertLoaded('retreats', re, sp, ho, hv, gst, docs, meals, cr, crm, costs, charges, pays, iss, chk,
                sched, fb, rem, inv, sreq, smsg, cont, touch, props, obox);
   return {
     retreats: (re.data ?? []).map((r) => rowToRetreat(r as Row)),
@@ -270,6 +277,7 @@ async function loadRetreatDataInner(campId: string): Promise<RetreatData> {
     documents: (docs.data ?? []).map((r) => rowToDocument(r as Row)),
     meals: (meals.data ?? []).map((r) => rowToMeal(r as Row)),
     changeRequests: (cr.data ?? []).map((r) => rowToChangeRequest(r as Row)),
+    requestMessages: (crm.data ?? []).map((r) => rowToRequestMessage(r as Row)),
     costs: (costs.data ?? []).map((r) => rowToCost(r as Row)),
     charges: (charges.data ?? []).map((r) => rowToCharge(r as Row)),
     payments: (pays.data ?? []).map((r) => rowToPayment(r as Row)),
@@ -439,7 +447,19 @@ export const dbUpdateMeal = (x: RetreatMeal) => upd('retreat_meals', x.id, { day
 export const dbDeleteMeal = (id: string) => del('retreat_meals', id);
 
 export const dbAddChangeRequest = (x: RetreatChangeRequest) => ins('retreat_change_requests', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, origin: x.origin, kind: x.kind, submitted_by: x.submittedBy, submitted_at: x.submittedAt, body: x.body, status: x.status, response_message: x.responseMessage, internal_note: x.internalNote, responded_by: x.respondedBy, responded_at: x.respondedAt, created_at: x.createdAt, updated_at: x.updatedAt });
-export const dbUpdateChangeRequest = (x: RetreatChangeRequest) => upd('retreat_change_requests', x.id, { kind: x.kind, body: x.body, status: x.status, response_message: x.responseMessage, internal_note: x.internalNote, responded_by: x.respondedBy, responded_at: x.respondedAt });
+export const dbUpdateChangeRequest = (x: RetreatChangeRequest) => upd('retreat_change_requests', x.id, { kind: x.kind, body: x.body, status: x.status, response_message: x.responseMessage, internal_note: x.internalNote, responded_by: x.respondedBy, responded_at: x.respondedAt, closed_at: x.closedAt });
+
+/**
+ * The camp's side of a request thread.
+ *
+ * Inserted rather than written onto the request: a trigger on this table is what keeps
+ * `last_message_at` / `last_message_from` / `closed_at` honest, so every writer -- here, the
+ * portal's RPC, anything added later -- lands the same way.
+ */
+export const dbAddRequestMessage = (x: RetreatRequestMessage) => ins('retreat_request_messages', {
+  id: x.id, camp_id: CID(), retreat_id: x.retreatId, request_id: x.requestId,
+  author: x.author, author_name: x.authorName, body: x.body, created_at: x.createdAt,
+});
 
 export const dbAddCost = (x: RetreatCost) => ins('retreat_costs', { id: x.id, camp_id: CID(), retreat_id: x.retreatId, category: x.category, budgeted: x.budgeted, actual: x.actual, sort_order: x.sortOrder, created_at: x.createdAt, updated_at: x.updatedAt });
 export const dbUpdateCost = (x: RetreatCost) => upd('retreat_costs', x.id, { category: x.category, budgeted: x.budgeted, actual: x.actual, sort_order: x.sortOrder });

@@ -4,6 +4,7 @@ import { Check, ArrowLeft, Plus, Users } from 'lucide-react';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
+import { MODULES, MODULE_KEYS } from '@/lib/modules';
 
 const CAMP_TYPES = ['Day Camp', 'Overnight Camp'];
 
@@ -14,20 +15,17 @@ const US_STATES = [
   'VA','WA','WV','WI','WY',
 ];
 
-const MODULE_OPTIONS = [
-  { key: 'issues',     label: 'Campground',           description: 'Work orders, routines, housekeeping and repairs' },
-  { key: 'pool',       label: 'Pool & Waterfront',    description: 'Chemical logs, equipment, inspections' },
-  { key: 'safety',     label: 'Compliance',  description: 'Permit, safety plan, licensing, inspections' },
-  { key: 'assets',     label: 'Assets & Vehicles',    description: 'Fleet, equipment, maintenance records' },
-];
+// One list, from lib/modules.ts. This screen used to carry its own four-module copy plus a
+// `DEFAULT_MODULES` object naming `checklists` -- which has not been a module for a long time --
+// so every camp provisioned here was born with a modules object that did not describe the
+// product, and nothing noticed because nothing read it.
+const MODULE_OPTIONS = MODULES.map((m) => ({ key: m.key, label: m.label, description: m.desc }));
 
-const DEFAULT_MODULES: Record<string, boolean> = {
-  issues: true,
-  checklists: true,
-  safety: true,
-  pool: false,
-  assets: false,
-};
+// Everything on. A camp is sold the whole product unless somebody decides otherwise, and this
+// wizard is the founder's, so an unticked box here means "this camp does not get it" rather
+// than "we have not asked them yet".
+const DEFAULT_MODULES: Record<string, boolean> =
+  Object.fromEntries(MODULE_KEYS.map((k) => [k, true]));
 
 function slugify(name: string) {
   const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 44);

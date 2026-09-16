@@ -43,11 +43,34 @@ function contextOptions(info: TestInfo): BrowserContextOptions {
   return { viewport: u.viewport, userAgent: u.userAgent, deviceScaleFactor: u.deviceScaleFactor, isMobile: u.isMobile, hasTouch: u.hasTouch, acceptDownloads: true, baseURL: u.baseURL };
 }
 
-const ignorable = (e: string) => /favicon|ResizeObserver|Failed to load resource.*(401|406)|realtime|websocket/i.test(e);
+/**
+ * A pre-existing bug outside Receipts: every staff page load calls get_camp_staff_personal, which
+ * is admin-only, and the fetch layer reports the refusal as "2 changes didn't save", in a banner
+ * that covers the bottom-right of the screen. Dismissed here ONLY when that is the RPC it names,
+ * so a real failed save from this module still fails the journey.
+ */
+async function dismissForeignWriteBanner(page: Page) {
+  const banner = page.getByRole('alert').filter({ hasText: 'get_camp_staff_personal' });
+  await page.addLocatorHandler(banner, async () => {
+    await banner.getByText('Dismiss', { exact: true }).click();
+  });
+}
+
+/** Every HTTP failure the page saw, by URL, so a console "400" can be traced to what failed. */
+function watchHttp(page: Page) {
+  const failures: string[] = [];
+  page.on('response', (r) => { if (r.status() >= 400) failures.push(`${r.status()} ${r.url().split('?')[0]}`); });
+  return () => failures.filter((f) => !/get_camp_staff_personal/.test(f));
+}
+
+// Console "Failed to load resource" lines carry no URL; watchHttp is what checks those.
+const ignorable = (e: string) => /favicon|ResizeObserver|Failed to load resource|realtime|websocket/i.test(e);
 
 test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ browser }, info) => {
   test.setTimeout(360_000);
-  const shot = stepper('j4-receipts', info.project.name);
+  const rawShot = stepper('j4-receipts', info.project.name);
+  // Tabs animate their underline; a screenshot taken mid-transition shows the previous tab lit.
+  const shot = async (page: Page, label: string) => { await page.waitForTimeout(400); return rawShot(page, label); };
 
   // ── Reset the QA camp's receipts and give two seeded receipts their photos ──────────────
   execFileSync('scripts/staging-sql.sh', ['e2e/receipts-reset.sql'], { encoding: 'utf8' });
@@ -63,12 +86,27 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   // ── 1. Hana snaps the receipt ────────────────────────────────────────────────────────────
   const hana = await asUser(browser, 'holder', contextOptions(info));
   const hanaErrors = watchConsole(hana.page);
+  const hanaHttp = watchHttp(hana.page);
+  await dismissForeignWriteBanner(hana.page);
   await hana.page.goto('/receipts');
   await expect(hana.page.getByRole('heading', { name: 'Receipts' })).toBeVisible();
-  await expect(hana.page.getByText('Northwind Hardware').first()).toBeVisible();
+  await expect(hana.page.getByText('Northwind Hardware').filter({ visible: true }).first()).toBeVisible();
   await expect(hana.page.getByText('Harbourview')).toHaveCount(0);
   await shot(hana.page, 'holder-list');
 
+  // The AI read is live with E2E_REAL_AI=1. By default it is the response the deployed function
+  // gave for this fixture (vendor, amounts and card read; the stained date returned empty at
+  // confidence 0), so the journey does not spend model credit or fail when staging has none.
+  // scripts/eval-receipts.mjs is what holds the live function to account.
+  if (!process.env.E2E_REAL_AI) {
+    await hana.page.route('**/functions/v1/read-receipt', async (route) => {
+      const body = route.request().postDataJSON() as { campId: string; path: string };
+      expect(body.path).toMatch(new RegExp(`^${campId}/[0-9a-f-]{36}\\.jpg$`));
+      await new Promise((r) => setTimeout(r, 1500));
+      await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' },
+        body: fs.readFileSync(path.join(root, 'e2e/fixtures/read-receipt-12-stained-date.json'), 'utf8') });
+    });
+  }
   await hana.page.locator('[data-testid="snap-input"]').setInputFiles(fixture('12-stained-date.jpg'));
   const dialog = hana.page.getByRole('dialog', { name: 'Check the receipt' });
   await expect(dialog.getByText(/Reading the receipt|Uploading|Preparing/)).toBeVisible();
@@ -102,11 +140,13 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   expect(saved.data).toMatchObject({ status: 'ready', purchase_date: '2026-08-14', total: 87.53 });
   expect(saved.data!.ai_result.readable).toBe(true);
   expect(hanaErrors.filter((e) => !ignorable(e))).toEqual([]);
+  expect(hanaHttp()).toEqual([]);
 
   // ── 2. Omar cannot see Hana's receipts, in the app or by URL ─────────────────────────────
   const omar = await asUser(browser, 'holder2', contextOptions(info));
+  await dismissForeignWriteBanner(omar.page);
   await omar.page.goto('/receipts');
-  await expect(omar.page.getByText('Harbourview Books & Gifts').first()).toBeVisible();
+  await expect(omar.page.getByText('Harbourview Books & Gifts').filter({ visible: true }).first()).toBeVisible();
   await expect(omar.page.getByText('Trillium')).toHaveCount(0);
   await expect(omar.page.getByText('Northwind')).toHaveCount(0);
   await expect(omar.page.locator('[data-tab="reconcile"]')).toHaveCount(0);
@@ -123,6 +163,7 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   // ── 3. Teddy reconciles August ───────────────────────────────────────────────────────────
   const teddy = await asUser(browser, 'admin', contextOptions(info));
   const teddyErrors = watchConsole(teddy.page);
+  const teddyHttp = watchHttp(teddy.page);
   const p: Page = teddy.page;
   await p.goto(`/receipts/reconcile?card=${CARD_HANA}&month=2026-08`);
   await expect(p.getByTestId('statement-import')).toBeVisible();
@@ -136,7 +177,7 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   await expect(mapper.locator('select[data-column="6"]')).toHaveValue('amount');
   // The location column is description too; Teddy decides he does not want it in the text.
   await mapper.locator('select[data-column="5"]').selectOption('skip');
-  await expect(mapper.getByText('7 lines')).toBeVisible();
+  await expect(mapper.getByText(/Preview · 7 lines/)).toBeVisible();
   await mapper.locator('#st-total').fill('126.29');
   await shot(p, 'finance-mapper');
   await mapper.getByRole('button', { name: /Import 7 lines/ }).click();
@@ -211,6 +252,7 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   await shot(hana.page, 'holder-exported-locked');
 
   expect(teddyErrors.filter((e) => !ignorable(e))).toEqual([]);
+  expect(teddyHttp()).toEqual([]);
   await hana.context.close();
   await teddy.context.close();
 });

@@ -97,7 +97,7 @@ function SpendTable({ rows, taxTypes, fig, firstLabel, totals, showExported }: {
         <tbody>
           {rows.map((r) => (
             <tr key={r.key} className="border-b border-border/60">
-              <td className="px-3 py-2 font-semibold">{r.label}</td>
+              <td className="whitespace-nowrap px-3 py-2 font-semibold">{r.label}</td>
               <td className={td}>{r.count}</td>
               <td className={td}>{fig(r.subtotalCents)}</td>
               {taxTypes.map((t) => <td key={t} className={td}>{fig(r.taxes[t])}</td>)}

@@ -17,7 +17,7 @@ import { todayStr } from '@/lib/utils';
 import type { Receipt, StatementLine } from '@/lib/receiptTypes';
 import { StatementImport } from './StatementImport';
 import {
-  Callout, EmptyState, Figure, SectionTitle, StatusChip, Thumb, fmtDay, inputClass, money, selectClass, useSignedUrls,
+  Callout, EmptyState, Figure, SectionTitle, StatusChip, Thumb, fmtDay, fmtInstantDay, inputClass, money, selectClass, useSignedUrls,
 } from './receiptsUi';
 
 function shiftMonth(yyyyMm: string, by: number): string {
@@ -77,7 +77,8 @@ export function ReconcileView({ onOpen, onCompare }: { onOpen: (id: string) => v
   const suggestions = useMemo(() => {
     if (!statement) return [];
     return autoMatch(lines, candidates.filter((r) => !matchedAnywhere.has(r.id)))
-      .filter((s) => !rejected.has(`${s.lineId}:${s.receiptId}`));
+      .filter((s) => !rejected.has(`${s.lineId}:${s.receiptId}`))
+      .sort((a, b) => (lines.find((l) => l.id === a.lineId)?.postedDate ?? '').localeCompare(lines.find((l) => l.id === b.lineId)?.postedDate ?? ''));
   }, [statement, lines, candidates, matchedAnywhere, rejected]);
   const suggestedLine = useMemo(() => new Map(suggestions.map((s) => [s.lineId, s])), [suggestions]);
   const suggestedReceipt = useMemo(() => new Set(suggestions.map((s) => s.receiptId)), [suggestions]);
@@ -190,7 +191,7 @@ export function ReconcileView({ onOpen, onCompare }: { onOpen: (id: string) => v
           <div className="mt-4 overflow-hidden rounded-card border border-border bg-white">
             <div className="grid grid-cols-2 divide-border sm:grid-cols-4 sm:divide-x">
               <Figure label="Statement total" value={summary.statementTotalCents != null ? formatCents(summary.statementTotalCents) : '—'} hint="from the bill" />
-              <Figure label="Lines add up to" value={formatCents(summary.netCents)} hint={`${summary.chargeCount} charges · ${credits.length} credits`}
+              <Figure label="Lines add up to" value={formatCents(summary.netCents)} hint={`${summary.chargeCount} charge${summary.chargeCount === 1 ? '' : 's'} · ${credits.length} credit${credits.length === 1 ? '' : 's'}`}
                       tone={summary.statementAddsUp ? 'default' : 'red'} />
               <Figure label="Matched receipts" value={formatCents(summary.matchedReceiptCents)} hint={`against ${formatCents(summary.matchedLineCents)} of charges`}
                       tone={summary.matchedReceiptCents === summary.matchedLineCents ? 'default' : 'red'} />
@@ -200,7 +201,7 @@ export function ReconcileView({ onOpen, onCompare }: { onOpen: (id: string) => v
             {summary.agrees ? (
               <div className="flex items-center gap-2 border-t border-green-muted-text/20 bg-green-muted-bg px-4 py-3 text-green-muted-text" data-testid="month-agrees">
                 <CheckCircle2 className="h-5 w-5 flex-none" />
-                <p className="text-[14px] font-bold">This month agrees with the Visa bill ✓</p>
+                <p className="text-[14px] font-bold">This month agrees with the Visa bill</p>
               </div>
             ) : (
               <div className="border-t border-amber/30 bg-amber-bg px-4 py-3 text-amber-text" data-testid="month-disagrees">
@@ -246,7 +247,7 @@ export function ReconcileView({ onOpen, onCompare }: { onOpen: (id: string) => v
                     <Button size="sm" variant="ghost" disabled={busy} onClick={() => setNoteFor({ line: l, state: 'personal' })}>Personal</Button>
                   </div>
                   {(reminded[l.id] || l.remindedAt) && (
-                    <p className="mt-2 text-[12.5px] text-ink-soft" data-testid="reminded">{reminded[l.id] ?? `Holder reminded ${fmtDay(l.remindedAt!.slice(0, 10))}.`}</p>
+                    <p className="mt-2 text-[12.5px] text-ink-soft" data-testid="reminded">{reminded[l.id] ?? `Holder reminded ${fmtInstantDay(l.remindedAt)}.`}</p>
                   )}
                 </li>
               ))}
@@ -266,16 +267,18 @@ export function ReconcileView({ onOpen, onCompare }: { onOpen: (id: string) => v
                   return (
                     <li key={r.id} className="flex items-center gap-3 rounded-card border border-border bg-white p-2.5" data-orphan={r.id}>
                       <Thumb receipt={r} url={r.filePath ? signed[r.filePath] : undefined} size={44} onClick={() => onOpen(r.id)} />
-                      <button className="min-w-0 flex-1 text-left" onClick={() => onOpen(r.id)}>
-                        <p className="truncate text-[13.5px] font-bold text-ink">{r.vendor ?? 'Not read yet'}</p>
-                        <p className="text-[12px] text-ink-soft">{fmtDay(r.purchaseDate)} · {r.submitterName ?? ''}</p>
-                      </button>
-                      {other && (
-                        <button className="rounded-tag bg-amber-bg px-2 py-1 text-[12px] font-bold text-amber-text hover:underline"
-                                onClick={() => onCompare(dupOf.has(r.id) ? other : r.id, dupOf.has(r.id) ? r.id : other)}>
-                          Possible duplicate
+                      <div className="min-w-0 flex-1">
+                        <button className="block max-w-full text-left" onClick={() => onOpen(r.id)}>
+                          <span className="block truncate text-[13.5px] font-bold text-ink">{r.vendor ?? 'Not read yet'}</span>
+                          <span className="block text-[12px] text-ink-soft">{fmtDay(r.purchaseDate)} · {r.submitterName ?? ''}</span>
                         </button>
-                      )}
+                        {other && (
+                          <button className="mt-1 rounded-tag bg-amber-bg px-2 py-0.5 text-[12px] font-bold text-amber-text hover:underline"
+                                  onClick={() => onCompare(dupOf.has(r.id) ? other : r.id, dupOf.has(r.id) ? r.id : other)}>
+                            Possible duplicate
+                          </button>
+                        )}
+                      </div>
                       <span className="text-right text-[14px] font-bold tabular-nums">{money(r.total, r.currency)}</span>
                     </li>
                   );

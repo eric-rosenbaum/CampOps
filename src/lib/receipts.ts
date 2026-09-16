@@ -226,9 +226,9 @@ export const STATEMENT_FIELDS: { value: StatementField; label: string }[] = [
   { value: 'skip', label: 'Ignore' },
   { value: 'date', label: 'Date' },
   { value: 'description', label: 'Description' },
-  { value: 'amount', label: 'Amount (one column)' },
-  { value: 'debit', label: 'Charges / debit' },
-  { value: 'credit', label: 'Payments / credit' },
+  { value: 'amount', label: 'Amount' },
+  { value: 'debit', label: 'Charges (debit)' },
+  { value: 'credit', label: 'Payments (credit)' },
 ];
 
 export interface StatementMapping {

@@ -66,13 +66,13 @@ export function DuplicateCompare({ originalId, duplicateId, onClose }: { origina
               const canDelete = isFinance || (r.submittedBy === userId && r.status !== 'exported');
               const t = taxCents(r.taxes);
               return (
-                <div key={r.id} className="min-w-0 rounded-card border border-border bg-white" data-compare={i === 0 ? 'original' : 'duplicate'}>
-                  <div className="flex h-40 items-center justify-center overflow-hidden rounded-t-card bg-[#3d3a35] sm:h-64">
+                <div key={r.id} className="flex min-w-0 flex-col rounded-card border border-border bg-white" data-compare={i === 0 ? 'original' : 'duplicate'}>
+                  <div className={`flex items-center justify-center overflow-hidden rounded-t-card bg-[#3d3a35] ${r.filePath ? 'h-40 sm:h-64' : 'h-16'}`}>
                     {r.filePath && signed[r.filePath] && r.fileType !== 'application/pdf'
                       ? <img src={signed[r.filePath]} alt={`Receipt ${i + 1}`} className="h-full w-full object-contain" />
                       : <span className="text-[12px] text-cream/70">{r.fileType === 'application/pdf' ? 'PDF' : 'No photo'}</span>}
                   </div>
-                  <dl className="space-y-1 p-3 text-[12.5px]">
+                  <dl className="flex-1 space-y-1 p-3 text-[12.5px]">
                     <div className="flex items-center justify-between gap-2"><dt className="text-ink-soft">{i === 0 ? 'Saved first' : 'Saved later'}</dt><dd><StatusChip status={r.status} /></dd></div>
                     <p className="truncate font-bold text-ink">{r.vendor}</p>
                     <p className="text-ink-soft">{fmtDay(r.purchaseDate)} · {cardLabel(cards, r.cardId)}</p>

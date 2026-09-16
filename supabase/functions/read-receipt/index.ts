@@ -277,7 +277,7 @@ Deno.serve(async (req) => {
       : { type: "image" as const, source: { type: "base64" as const, media_type: media.mediaType, data: b64 } };
 
     const started = Date.now();
-    // deno-lint-ignore no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped model JSON and SDK beta params, re-validated below
     const message: any = await client.beta.messages.create({
       model: MODEL,
       max_tokens: 16000,
@@ -291,16 +291,16 @@ Deno.serve(async (req) => {
         role: "user",
         content: [block, { type: "text", text: `Today at the camp is ${today}.\n\n${PROMPT}` }],
       }],
-    // deno-lint-ignore no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped model JSON and SDK beta params, re-validated below
     } as any);
     console.log(`read-receipt ${message.model} ${media.mediaType} ${Date.now() - started}ms in=${message.usage?.input_tokens} out=${message.usage?.output_tokens} stop=${message.stop_reason}`);
 
     if (message.stop_reason === "refusal") return unreadable("This file could not be read. Enter the receipt by hand.");
-    // deno-lint-ignore no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped model JSON and SDK beta params, re-validated below
     const text = message.content.find((b: any) => b.type === "text")?.text;
     if (!text) return unreadable("The receipt could not be read. Try a clearer photo.");
 
-    // deno-lint-ignore no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped model JSON and SDK beta params, re-validated below
     let parsed: any;
     try {
       parsed = JSON.parse(text.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim());
@@ -342,7 +342,7 @@ Deno.serve(async (req) => {
     confidence.total = total == null ? 0 : clamp01(parsed.total?.confidence);
 
     const taxes = (Array.isArray(parsed.taxes) ? parsed.taxes : [])
-      // deno-lint-ignore no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped model JSON and SDK beta params, re-validated below
       .map((t: any) => ({
         type: (TAX_TYPES as readonly string[]).includes(t?.type) ? t.type as TaxType : "other" as TaxType,
         ratePct: typeof t?.rate_pct === "number" && t.rate_pct > 0 && t.rate_pct < 30 ? Math.round(t.rate_pct * 1000) / 1000 : null,
@@ -380,6 +380,11 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error("read-receipt error:", err instanceof Error ? err.message : err);
+    // An exhausted account is not a bad photo. Saying "try again" sent people round a loop that
+    // could not succeed; this tells them to type it in and lets the client stop retrying.
+    if (err instanceof Anthropic.APIError && /credit balance/i.test(err.message)) {
+      return json({ readable: false, error: "Receipt reading is unavailable right now. Enter the details by hand." }, 503);
+    }
     return json({ readable: false, error: "Reading failed. Please try again, or enter the receipt by hand." }, 502);
   }
 });

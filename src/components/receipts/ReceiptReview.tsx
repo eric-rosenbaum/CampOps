@@ -6,7 +6,7 @@ import { dbDeleteReceipt, dbUpdateReceipt } from '@/lib/receiptsDb';
 import { LOW_CONFIDENCE, mathCheck, parseMoney, toCents, formatCents } from '@/lib/receipts';
 import { TAX_LABELS, TAX_TYPES, type AiField, type Receipt, type TaxType } from '@/lib/receiptTypes';
 import {
-  Callout, StatusChip, fieldClass, fmtDay, inputClass, labelClass, money, useReceiptsRole, useSignedUrls,
+  Callout, StatusChip, fieldClass, fmtDay, fmtInstantDay, inputClass, labelClass, money, useReceiptsRole, useSignedUrls,
 } from './receiptsUi';
 import type { CaptureItem } from './useReceiptCapture';
 
@@ -109,7 +109,8 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
 
   /** Amber when the reader was unsure of it, or could not find it, and nobody has touched it. */
   const amber = (field: AiField): string | null => {
-    if (!ai?.readable || touched[field] || !form) return null;
+    // Only while the draft is unconfirmed: once someone has saved it, the numbers are theirs.
+    if (!ai?.readable || touched[field] || !form || receipt?.status !== 'needs_review') return null;
     const c = ai.confidence?.[field];
     const empty = {
       vendor: !form.vendor, date: !form.date, total: !form.total, subtotal: !form.subtotal,
@@ -206,7 +207,7 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
             </h2>
             {receipt && !reading && (
               <p className="truncate text-[12px] text-ink-soft">
-                {receipt.submitterName ? `Snapped by ${receipt.submitterName}` : 'Snapped'} · {fmtDay(receipt.createdAt.slice(0, 10))}
+                {receipt.submitterName ? `Snapped by ${receipt.submitterName}` : 'Snapped'} · {fmtInstantDay(receipt.createdAt)}
               </p>
             )}
           </div>
@@ -252,7 +253,7 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
               </div>
             ) : form ? (
               <div className="space-y-4 px-4 py-4 sm:px-6">
-                {locked && <Callout tone="blue">Exported to the books on {fmtDay(receipt!.exportedAt?.slice(0, 10) ?? null)}. Ask finance to change it.</Callout>}
+                {locked && <Callout tone="blue">Exported to the books on {fmtInstantDay(receipt!.exportedAt)}. Ask finance to change it.</Callout>}
                 {ai && !ai.readable && (
                   <Callout tone="amber">
                     <b>Couldn't read this one.</b> {ai.error ?? capture?.aiError ?? ''} Type the details from the receipt.
@@ -339,17 +340,21 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
                               <input aria-label={`${TAX_LABELS[t.type]} amount`} inputMode="decimal" className={`${fieldClass} w-full pl-6 text-right tabular-nums`} value={t.amount}
                                      onChange={(e) => set('taxes', form.taxes.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)), 'taxes')} />
                             </div>
-                            <button type="button" aria-label="Remove tax line" className="flex-none rounded-btn p-2 text-ink-soft hover:bg-cream hover:text-red"
-                                    onClick={() => set('taxes', form.taxes.filter((_, j) => j !== i), 'taxes')}>
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            {!locked && (
+                              <button type="button" aria-label="Remove tax line" className="flex-none rounded-btn p-2 text-ink-soft hover:bg-cream hover:text-red"
+                                      onClick={() => set('taxes', form.taxes.filter((_, j) => j !== i), 'taxes')}>
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
-                      <button type="button" className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-forest hover:underline"
-                              onClick={() => set('taxes', [...form.taxes, { type: 'HST', rate: '', amount: '' }], 'taxes')}>
-                        <Plus className="h-3.5 w-3.5" /> Add a tax line
-                      </button>
+                      {!locked && (
+                        <button type="button" className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-forest hover:underline"
+                                onClick={() => set('taxes', [...form.taxes, { type: 'HST', rate: '', amount: '' }], 'taxes')}>
+                          <Plus className="h-3.5 w-3.5" /> Add a tax line
+                        </button>
+                      )}
                       {hint('taxes')}
                     </div>
 
@@ -381,7 +386,7 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
 
                   {/* Split */}
                   {form.splits.length === 0 ? (
-                    codes.length > 1 && (
+                    codes.length > 1 && !locked && (
                       <button type="button" className="text-[13px] font-semibold text-forest hover:underline"
                               onClick={() => set('splits', [{ codeId: '', amount: '' }])}>
                         Split across budget codes…

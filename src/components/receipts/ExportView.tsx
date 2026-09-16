@@ -6,11 +6,16 @@ import { useCampStore } from '@/store/campStore';
 import { dbExportReceipts, refreshReceipts } from '@/lib/receiptsDb';
 import { parseCsv } from '@/lib/csv';
 import {
-  EXPORT_FORMATS, QBO_MAX_LINES, exportFileName, formatCents, monthBounds, monthKey, monthLabel, toCents, toQuickBooksCsv,
+  EXPORT_FORMATS, QBO_MAX_LINES, exportFileName, formatCents, monthBounds, monthKey, toCents, toQuickBooksCsv,
 } from '@/lib/receipts';
 import { todayStr } from '@/lib/utils';
 import type { ExportFormat } from '@/lib/receiptTypes';
-import { Callout, EmptyState, SectionTitle, downloadText, fmtDay, labelClass, selectClass } from './receiptsUi';
+import { Callout, EmptyState, SectionTitle, downloadText, fmtInstantDay, labelClass, selectClass } from './receiptsUi';
+
+const shortMonth = (m: string) => {
+  const [y, mo] = m.split('-').map(Number);
+  return new Date(Date.UTC(y, mo - 1, 15)).toLocaleDateString('en-CA', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+};
 
 /**
  * Pick a period and cards, see exactly the rows that will be written, download, and the rows are
@@ -84,11 +89,11 @@ export function ExportView() {
           <p className={labelClass}>Period</p>
           <div className="flex flex-wrap items-center gap-2">
             <select aria-label="From month" className={selectClass} value={fromMonth} onChange={(e) => setFromMonth(e.target.value)}>
-              {months.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
+              {months.map((m) => <option key={m} value={m}>{shortMonth(m)}</option>)}
             </select>
             <span className="text-[13px] text-ink-soft">to</span>
             <select aria-label="To month" className={selectClass} value={toMonth} onChange={(e) => setToMonth(e.target.value)}>
-              {months.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
+              {months.map((m) => <option key={m} value={m}>{shortMonth(m)}</option>)}
             </select>
           </div>
         </div>
@@ -164,7 +169,7 @@ export function ExportView() {
           <ul className="divide-y divide-border rounded-card border border-border bg-white text-[13px]">
             {exports.slice(0, 20).map((x) => (
               <li key={x.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-3 py-2">
-                <span className="font-semibold">{fmtDay(x.createdAt.slice(0, 10))}</span>
+                <span className="font-semibold">{fmtInstantDay(x.createdAt)}</span>
                 <span className="text-ink-soft">{x.fileName}</span>
                 <span className="text-ink-soft">{EXPORT_FORMATS.find((f) => f.value === x.format)?.label}</span>
                 <span className="ml-auto tabular-nums">{x.rowCount} · {formatCents(toCents(x.total))}</span>

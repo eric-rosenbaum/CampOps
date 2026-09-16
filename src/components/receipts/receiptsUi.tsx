@@ -7,6 +7,7 @@ import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import { signReceiptUrls } from '@/lib/receiptsDb';
 import { formatMoney } from '@/lib/receipts';
+import { toDateStr } from '@/lib/utils';
 import type { ExpenseCard, Receipt, ReceiptStatus } from '@/lib/receiptTypes';
 
 /**
@@ -27,6 +28,14 @@ export function money(n: number | null | undefined, currency = 'CAD'): string {
 export function fmtDay(d: string | null): string {
   if (!d) return '—';
   return new Date(`${d}T00:00:00`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/**
+ * The local calendar day of an instant (created_at, exported_at). Slicing the ISO string gave the
+ * UTC day, so anything done after 8pm in Ontario was stamped tomorrow (CLAUDE.md trap 3).
+ */
+export function fmtInstantDay(iso: string | null): string {
+  return iso ? fmtDay(toDateStr(new Date(iso))) : '—';
 }
 
 export const STATUS_LABEL: Record<ReceiptStatus, string> = {
@@ -71,11 +80,13 @@ export function cardLabel(cards: ExpenseCard[], id: string | null): string {
  * Signed URLs for the receipts on screen, fetched in one batch and cached in the store. The
  * bucket is private: a URL is only ever issued for a receipt this person can read.
  */
-export function useSignedUrls(receipts: Pick<Receipt, 'filePath'>[]) {
+export function useSignedUrls(receipts: Pick<Receipt, 'filePath' | 'status'>[]) {
   const signed = useReceiptsStore((s) => s.signedUrls);
   const addSignedUrls = useReceiptsStore((s) => s.addSignedUrls);
   const missing = useMemo(
-    () => receipts.map((r) => r.filePath).filter((p): p is string => !!p && !signed[p]),
+    // A receipt still `processing` may not have its file yet. Signing it then failed, and the
+    // missing-path key never changed again, so a fresh snap showed no thumbnail until a reload.
+    () => receipts.filter((r) => r.status !== 'processing').map((r) => r.filePath).filter((p): p is string => !!p && !signed[p]),
     [receipts, signed],
   );
   const key = missing.join('|');

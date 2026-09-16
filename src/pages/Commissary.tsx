@@ -31,6 +31,9 @@ import { CountModal } from '@/components/commissary/CountModal';
 import { CoursesModal } from '@/components/commissary/CoursesModal';
 import { SubstitutionModal } from '@/components/commissary/SubstitutionModal';
 import { SettingsTab } from '@/components/commissary/SettingsTab';
+import { RequestsTab } from '@/components/foodRequests/RequestsTab';
+import { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 // Production guide, Cost and Waste tabs are archived. Their components, store selectors,
 // and DB loaders remain in place and unreachable, re-add the entries here (and the renders
@@ -42,6 +45,9 @@ const TABS: { id: CommissaryTab; label: string }[] = [
   { id: 'menu', label: 'Menu builder' },
   { id: 'allergy', label: 'Allergy program' },
   { id: 'ordering', label: 'Ordering' },
+  // Program food requests. Visible in both modes: a cooking club needs flour whether the kitchen
+  // is planning sessions or retreats.
+  { id: 'requests', label: 'Requests' },
   { id: 'settings', label: 'Settings' },
 ];
 
@@ -52,6 +58,28 @@ export function Commissary() {
   } = useCommissaryStore();
   const { can, canViewCamperHealth } = useAuth();
   const canManage = can('manageCommissary');
+  const foodRequests = useCommissaryStore((s) => s.foodRequests);
+  const waitingRequests = foodRequests.filter((r) => r.status === 'submitted').length;
+
+  // Deep links: /commissary?tab=requests&request=<id>. The emails to the kitchen and the demo
+  // guide both land here, so the URL has to choose the tab rather than whatever was open last.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const openRequestId = searchParams.get('request');
+  useEffect(() => {
+    if (tabParam && TABS.some((t) => t.id === tabParam)) setActiveTab(tabParam as CommissaryTab);
+  }, [tabParam, setActiveTab]);
+  function openRequest(id: string | null) {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', 'requests');
+    if (id) next.set('request', id); else next.delete('request');
+    setSearchParams(next, { replace: true });
+  }
+  function chooseTab(id: CommissaryTab) {
+    setActiveTab(id);
+    // A tab picked by hand wins over the link that opened the page, including on refresh.
+    if (searchParams.has('tab') || searchParams.has('request')) setSearchParams({}, { replace: true });
+  }
 
   const session = activeSession();
   const total = portions();
@@ -92,7 +120,7 @@ export function Commissary() {
       if (!canViewCamperHealth) return undefined;
       return <Button size="sm" onClick={() => openModal({ kind: 'camper' })}>+ Add camper</Button>;
     }
-    if (activeTab === 'ordering' || activeTab === 'settings') return undefined;
+    if (activeTab === 'ordering' || activeTab === 'settings' || activeTab === 'requests') return undefined;
     // Menu tab: session mode offers "+ New session"; retreats mode manages menus per retreat inside the builder.
     if (retreatsMode) return undefined;
     return <Button size="sm" onClick={() => openModal({ kind: 'session' })}>+ New session</Button>;
@@ -107,7 +135,7 @@ export function Commissary() {
           {visibleTabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => chooseTab(tab.id)}
               className={`-mb-px whitespace-nowrap border-b-[3px] px-4 pb-2.5 pt-3 text-[13px] font-semibold transition-colors ${
                 activeTab === tab.id
                   ? 'border-red text-forest'
@@ -115,6 +143,11 @@ export function Commissary() {
               }`}
             >
               {tab.label}
+              {tab.id === 'requests' && waitingRequests > 0 && (
+                <span data-testid="requests-badge" className="ml-1.5 inline-grid min-w-[18px] place-items-center rounded-pill bg-red px-1 text-[10.5px] font-bold leading-[18px] text-paper">
+                  {waitingRequests}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -140,6 +173,7 @@ export function Commissary() {
         {activeTab === 'recipes' && <RecipesTab />}
         {activeTab === 'allergy' && !retreatsMode && <AllergyTab />}
         {activeTab === 'ordering' && <OrderingTab />}
+        {activeTab === 'requests' && <RequestsTab openRequestId={openRequestId} onOpenRequest={openRequest} />}
         {activeTab === 'settings' && <SettingsTab />}
       </div>
 

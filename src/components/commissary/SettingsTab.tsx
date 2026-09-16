@@ -5,6 +5,7 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
 import { WEEKDAYS } from '@/lib/commissaryUnits';
 import type { CommissarySession } from '@/lib/types';
+import { FoodProgramsSettings } from '@/components/foodRequests/FoodProgramsSettings';
 
 function fmtDate(d: string) {
   return new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -95,6 +96,8 @@ export function SettingsTab() {
             ))}
           </div>
         </section>
+
+        <FoodProgramsSettings />
 
         {/* ── Danger zone ──────────────────────────────────────────────────── */}
         {canManage && (

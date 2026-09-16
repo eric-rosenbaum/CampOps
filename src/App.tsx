@@ -8,6 +8,9 @@ import { useCampStore } from '@/store/campStore';
 
 // Public
 import { PublicReportForm } from '@/pages/report/PublicReportForm';
+import { PublicFoodRequest } from '@/pages/food/PublicFoodRequest';
+import { PublicFoodStatus } from '@/pages/food/PublicFoodStatus';
+import { FoodRequests } from '@/pages/FoodRequests';
 
 // Auth pages
 import { Login } from '@/pages/auth/Login';
@@ -605,6 +608,9 @@ export default function App() {
           {/* Public, handles auth inline */}
           <Route path="/join" element={<JoinCamp />} />
           <Route path="/report/:camp" element={<PublicReportForm />} />
+          {/* A program's no-login link to the kitchen, and the requester's status page. */}
+          <Route path="/food/:token" element={<PublicFoodRequest />} />
+          <Route path="/food/status/:token" element={<PublicFoodStatus />} />
           {/* One sticker, two audiences. /l/:token renders the location hub for a signed-in
               member of that camp and the public report form for everyone else — a camp cannot
               manage two sticker types per door. Deliberately OUTSIDE ProtectedRoute: the whole
@@ -688,6 +694,7 @@ export default function App() {
                 <Route path="/assets" element={<ModuleRoute of="assets"><Gate of={['assets', 'locations']} label="Opening assets & vehicles"><AssetVehicles /></Gate></ModuleRoute>} />
                 <Route path="/building" element={<ModuleRoute of="building"><Gate of={['building', 'locations']} label="Opening building systems"><BuildingSystems /></Gate></ModuleRoute>} />
                 <Route path="/commissary" element={<ModuleRoute of="commissary"><Gate of={COMMISSARY_DOMAINS} label="Opening the kitchen manager"><Commissary /></Gate></ModuleRoute>} />
+                <Route path="/food-requests" element={<ModuleRoute of="commissary"><Gate of={['commissary-inventory', 'commissary-menu']} label="Opening food requests"><FoodRequests /></Gate></ModuleRoute>} />
                 <Route path="/retreats" element={<ModuleRoute of="retreats"><Gate of={['retreats', 'locations']} label="Opening the retreat manager"><Retreats /></Gate></ModuleRoute>} />
                 <Route path="/settings" element={<CampSettings />} />
                 <Route path="/settings/team" element={<Team />} />

@@ -58,7 +58,7 @@ export const MODULES: ModuleDef[] = [
   { key: 'building', label: 'Building Systems', desc: 'Electrical & plumbing infrastructure by room',
     paths: ['/building'], defaultOn: true },
   { key: 'commissary', label: 'Kitchen Manager', desc: 'Inventory, recipes, menu planning, ordering',
-    paths: ['/commissary'], defaultOn: true },
+    paths: ['/commissary', '/food-requests'], defaultOn: true },
   { key: 'pool', label: 'Pool & Waterfront', desc: 'Chemical readings, inspections, equipment',
     paths: ['/pool'], defaultOn: true },
   { key: 'retreats', label: 'Retreat Manager', desc: 'External group rentals, guest portal, invoicing',

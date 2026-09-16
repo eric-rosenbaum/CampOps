@@ -13,6 +13,7 @@ import {
 import { AlertTriangle } from 'lucide-react';
 import { InlineNumberEdit } from './commissaryUi';
 import type { PurchaseOrder } from '@/lib/types';
+import { formatDay } from '@/lib/foodRequests';
 
 const STATUS_STYLES: Record<string, string> = {
   draft: 'bg-cream-dark text-ink border-border',
@@ -470,9 +471,9 @@ export function OrderingTab() {
           {showMath && (() => {
             const rows = orderMath(windowEnd);
             return (
-              <div className="mt-2 bg-white rounded-card border border-border overflow-x-auto">
-                <div className="grid grid-cols-[1.6fr_1fr_1.1fr_0.8fr_1fr_1fr] min-w-[760px] sm:min-w-0 gap-2 px-4 py-2 bg-cream-dark/40 border-b border-border">
-                  {['Item', 'On hand now', `Used by ${windowLabel}`, 'Floor', 'In transit', '→ Order'].map((h) => (
+              <div className="mt-2 bg-white rounded-card border border-border overflow-x-auto" data-testid="order-math">
+                <div className="grid grid-cols-[1.6fr_1fr_1.1fr_1fr_0.8fr_1fr_1fr] min-w-[860px] sm:min-w-0 gap-2 px-4 py-2 bg-cream-dark/40 border-b border-border">
+                  {['Item', 'On hand now', `Used by ${windowLabel}`, 'Program requests', 'Floor', 'In transit', '→ Order'].map((h) => (
                     <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>
                   ))}
                 </div>
@@ -480,21 +481,33 @@ export function OrderingTab() {
                   const su = r.item.stockUnit, sib = r.item.stockUnitInBase;
                   const f = (base: number) => formatQty(fromBase(base, sib), su);
                   const packs = `${tidy(r.orderQty).toLocaleString()} ${pluralizeUnit(r.item.purchaseUnit, r.orderQty)}`;
+                  // "6 lb for Cooking Club on Jul 18", merged per program and day.
+                  const forWhom = (entries: typeof r.requests) => entries.map((e) => `${f(e.base)} for ${e.who} on ${formatDay(e.pickupDate, { weekday: false })}`).join(', ');
                   return (
                     <div key={r.item.id} className="px-4 py-2 border-b border-border last:border-0">
-                      <div className="grid grid-cols-[1.6fr_1fr_1.1fr_0.8fr_1fr_1fr] min-w-[760px] sm:min-w-0 gap-2 items-center">
+                      <div className="grid grid-cols-[1.6fr_1fr_1.1fr_1fr_0.8fr_1fr_1fr] min-w-[860px] sm:min-w-0 gap-2 items-center">
                         <span className="text-[13px] text-forest truncate">{r.item.name}</span>
                         <span className="font-mono text-[12px] text-ink">{f(r.onHandNow)}</span>
                         <span className="font-mono text-[12px] text-ink">{f(r.draw)}</span>
+                        <span className="font-mono text-[12px] text-ink" title={forWhom(r.requests) || undefined}>
+                          {r.requestBase > 0 ? f(r.requestBase) : '-'}
+                          {r.pending.length > 0 && <span className="block font-sans text-[10.5px] text-amber-text">+{r.pending.length} waiting</span>}
+                        </span>
                         <span className="font-mono text-[12px] text-ink">{f(r.floor)}</span>
                         <span className="font-mono text-[12px] text-ink">{r.inTransit > 0 ? f(r.inTransit) : '-'}</span>
                         <span className="font-mono text-[12px] font-medium text-forest">{packs}</span>
                       </div>
                       <p className="text-[11px] text-ink-faint mt-0.5 leading-relaxed">
                         {f(r.onHandNow)} on hand − {f(r.draw)} used by {windowLabel}
+                        {r.requests.length > 0 && ` (including ${forWhom(r.requests)})`}
                         {r.inTransit > 0 && ` + ${f(r.inTransit)} in transit`} = {f(r.projectedAtEnd)} projected,
                         {' '}below your {f(r.floor)} floor → order {f(r.need)} → rounds up to {packs}.
                       </p>
+                      {r.pending.length > 0 && (
+                        <p className="text-[11px] text-amber-text mt-0.5 leading-relaxed">
+                          Waiting for a decision, not counted yet: {forWhom(r.pending)}.
+                        </p>
+                      )}
                     </div>
                   );
                 })}

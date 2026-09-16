@@ -139,6 +139,13 @@ test('J5: a founder spins up a demo, a prospect opens the link and follows the g
   // The receipts waiting for review carry their sample photos.
   await page.goto('/receipts');
   await expect(page.locator(':text("Northwind Hardware"):visible').first()).toBeVisible({ timeout: 30_000 });
+  // The six photographed receipts show their photos (signed URLs, loaded after the list).
+  await page.waitForFunction(() => {
+    // Only the copies on screen: the list renders a hidden phone layout too, whose lazy images
+    // never load at desktop width.
+    const imgs = [...document.images].filter((i) => i.src.includes('/receipts/') && i.getBoundingClientRect().height > 0);
+    return imgs.length >= 6 && imgs.every((i) => i.complete && i.naturalWidth > 0);
+  }, undefined, { timeout: 30_000 });
   await shot(page, 'receipts-list-seeded');
 
   // The sample statement downloads and is a real CSV of the third card's charges.
@@ -152,6 +159,24 @@ test('J5: a founder spins up a demo, a prospect opens the link and follows the g
   expect(csv.split('\r\n')[0]).toBe('Transaction Date,Description,Debit,Credit');
   expect(csv).toContain('TRILLIUM CRAFT SUPPLY');
   expect(csv).toContain('CEDAR PARK PARKING');
+
+  // …and it imports: the column mapper reads the bank-style file on its own, every sample
+  // receipt on the card matches, and only the parking charge is left without one.
+  await expect(page.getByTestId('spotlight-receipts').getByRole('button', { name: /Open/ })).toHaveCount(4);
+  await page.getByTestId('spotlight-receipts').getByRole('button', { name: /Open/ }).nth(2).click();
+  await page.waitForURL(/\/receipts\/reconcile\?card=/);
+  await expect(page.getByTestId('statement-import')).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('statement-file').setInputFiles(csvPath!);
+  const mapper = page.getByTestId('statement-mapper');
+  await expect(mapper).toBeVisible();
+  await shot(page, 'sample-statement-mapper');
+  await mapper.getByRole('button', { name: /Import \d+ lines/ }).click();
+  await expect(page.getByTestId('suggestions')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /Accept all \d+/ }).click();
+  await expect(page.getByTestId('suggestions')).toHaveCount(0);
+  await expect(page.getByTestId('missing').locator('li')).toHaveCount(1);
+  await expect(page.getByTestId('missing')).toContainText('CEDAR PARK PARKING');
+  await shot(page, 'sample-statement-imported');
 
   expect(errors.filter((e) => !/favicon|ResizeObserver/.test(e))).toEqual([]);
 

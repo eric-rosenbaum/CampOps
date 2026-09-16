@@ -69,7 +69,8 @@ export function stepper(journey: string, project: string) {
       return most;
     });
     if (vp && extra > 0) await page.setViewportSize({ width: vp.width, height: Math.min(vp.height + extra, 8000) });
-    await page.waitForTimeout(150);
+    // Growing the viewport brings lazy images into view; give them a moment to paint.
+    await page.waitForTimeout(600);
     await page.screenshot({ path: file, fullPage: true });
     if (vp && extra > 0) await page.setViewportSize(vp);
     return file;

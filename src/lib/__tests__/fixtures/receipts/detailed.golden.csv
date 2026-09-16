@@ -1,0 +1,6 @@
+Date,Vendor,QuickBooks account,Budget code,Budget name,Card,Card holder,Currency,Subtotal,GST,HST,PST,QST,Other tax,Tip,Total,Purpose,Split,Receipt ID,Receipt link
+2026-08-03,Northwind Hardware,Repairs & Maintenance,MAINT,Maintenance,Visa ··4821,Hana Holder,CAD,75.00,0.00,9.75,0.00,0.00,0.00,0.00,84.75,Dock hinges,,a1,https://app.example/receipts?receipt=a1
+2026-08-06,"Café Birchbark, Bakery",Program Food,FOOD,Food,Visa ··4821,Hana Holder,CAD,23.40,0.00,0.00,0.00,0.00,0.00,0.00,23.40,'=cmd,,b2,https://app.example/receipts?receipt=b2
+2026-08-10,Loons Landing Craft Supply,Program Supplies,PRG,Programs,Visa ··7390,Omar Holder,CAD,714.28,35.72,0.00,50.00,0.00,0.00,0.00,800.00,Craft week,1 of 2,c3,https://app.example/receipts?receipt=c3
+2026-08-10,Loons Landing Craft Supply,Arts Supplies,ARTS,Arts,Visa ··7390,Omar Holder,CAD,308.84,15.44,0.00,21.62,0.00,0.00,0.00,345.90,Craft week,2 of 2,c3,https://app.example/receipts?receipt=c3
+2026-08-12,Northwind Hardware,Repairs & Maintenance,MAINT,Maintenance,Visa ··4821,Hana Holder,CAD,-8.85,0.00,-1.15,0.00,0.00,0.00,0.00,-10.00,Returned hinge,,d4,https://app.example/receipts?receipt=d4

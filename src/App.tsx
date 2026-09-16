@@ -187,6 +187,7 @@ function CampDataLoader() {
     setCountSessions, setStorageMap, setTemplates, setTemplateEntries,
     setDietCounts, setMealEvents, setExpenses,
     setCourses, setSubstitutions, setFiles,
+    setFoodPrograms, setFoodRequests, setFoodRequestLines, setFoodRequestSettings,
   } = useCommissaryStore();
   const {
     setRetreats, setSpaces, setHousing, setHousingVersions, setGuests: setRetreatGuests, setDocuments: setRetreatDocs,
@@ -295,6 +296,10 @@ function CampDataLoader() {
       setMealEvents(d.mealEvents);
       setCourses(d.courses);
       setSubstitutions(d.substitutions);
+      setFoodPrograms(d.foodPrograms);
+      setFoodRequests(d.foodRequests);
+      setFoodRequestLines(d.foodRequestLines);
+      setFoodRequestSettings(d.foodRequestSettings);
     };
     const applyCommOrders = (d: NonNullable<Awaited<ReturnType<typeof loadCommissaryOrders>>>) => {
       setOrders(d.orders);

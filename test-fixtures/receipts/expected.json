@@ -1,0 +1,154 @@
+{
+  "01-thermal-faded.jpg": {
+    "readable": true,
+    "vendor": "Pinegrove General Store",
+    "date": "2026-08-14",
+    "subtotal": 30.47,
+    "taxes": {
+      "HST": 3.96
+    },
+    "tip": null,
+    "total": 34.43,
+    "currency": "CAD",
+    "note": "Thermal paper faded to low contrast"
+  },
+  "02-on-hst.jpg": {
+    "readable": true,
+    "vendor": "Northwind Hardware",
+    "date": "2026-08-03",
+    "subtotal": 75,
+    "taxes": {
+      "HST": 9.75
+    },
+    "tip": null,
+    "total": 84.75,
+    "currency": "CAD",
+    "note": "Ontario HST 13%, a clean photo on a desk"
+  },
+  "03-bc-gst-pst.jpg": {
+    "readable": true,
+    "vendor": "Cedar Coast Outfitters",
+    "date": "2026-07-22",
+    "subtotal": 153.99,
+    "taxes": {
+      "GST": 7.7,
+      "PST": 10.78
+    },
+    "tip": null,
+    "total": 172.47,
+    "currency": "CAD",
+    "note": "British Columbia GST 5% + PST 7%"
+  },
+  "04-qc-gst-qst.jpg": {
+    "readable": true,
+    "vendor": "Épicerie Lac-Bleu",
+    "date": "2026-07-09",
+    "subtotal": 39.47,
+    "taxes": {
+      "GST": 1.97,
+      "QST": 3.94
+    },
+    "tip": null,
+    "total": 45.38,
+    "currency": "CAD",
+    "note": "Quebec, in French: TPS 5% + TVQ 9,975%, decimal commas"
+  },
+  "05-ab-gst.jpg": {
+    "readable": true,
+    "vendor": "Foothills Farm & Feed",
+    "date": "2026-08-19",
+    "subtotal": 50.5,
+    "taxes": {
+      "GST": 2.53
+    },
+    "tip": null,
+    "total": 53.03,
+    "currency": "CAD",
+    "note": "Alberta, GST 5% only"
+  },
+  "06-restaurant-tip.jpg": {
+    "readable": true,
+    "vendor": "The Loon's Nest Grill",
+    "date": "2026-08-08",
+    "subtotal": 142,
+    "taxes": {
+      "HST": 18.46
+    },
+    "tip": 25,
+    "total": 185.46,
+    "currency": "CAD",
+    "note": "Restaurant slip with a handwritten tip and total"
+  },
+  "07-invoice-multipage.pdf": {
+    "readable": true,
+    "vendor": "Maritime Marine Supply",
+    "date": "2026-07-15",
+    "subtotal": 1248,
+    "taxes": {
+      "HST": 187.2
+    },
+    "tip": null,
+    "total": 1435.2,
+    "currency": "CAD",
+    "note": "Two-page supplier invoice, NB HST 15%, totals on page 2"
+  },
+  "08-rotated.jpg": {
+    "readable": true,
+    "vendor": "Prairie Sky Fuel & Snacks",
+    "date": "2026-08-27",
+    "subtotal": 48.97,
+    "taxes": {
+      "GST": 2.45,
+      "PST": 2.94
+    },
+    "tip": null,
+    "total": 54.36,
+    "currency": "CAD",
+    "note": "Photographed sideways (rotated 90°), Saskatchewan GST + PST"
+  },
+  "09-crumpled.jpg": {
+    "readable": true,
+    "vendor": "Harbourview Books & Gifts",
+    "date": "2026-09-02",
+    "subtotal": 76.47,
+    "taxes": {
+      "GST": 3.82,
+      "PST": 5.35
+    },
+    "tip": null,
+    "total": 85.64,
+    "currency": "CAD",
+    "note": "Crumpled and flattened: creases, shading and a slight blur"
+  },
+  "10-usd.jpg": {
+    "readable": true,
+    "vendor": "Lakeshore Mercantile",
+    "date": "2026-08-01",
+    "subtotal": 64.95,
+    "taxes": {
+      "other": 5.2
+    },
+    "tip": null,
+    "total": 70.15,
+    "currency": "USD",
+    "note": "A US store charged in US dollars, with state sales tax"
+  },
+  "11-not-a-receipt.jpg": {
+    "readable": false,
+    "note": "A photo of the lake. Must come back unreadable."
+  },
+  "12-stained-date.jpg": {
+    "readable": true,
+    "vendor": "Trillium Craft Supply",
+    "date": "2026-08-14",
+    "dateHidden": true,
+    "subtotal": 77.46,
+    "taxes": {
+      "HST": 10.07
+    },
+    "tip": null,
+    "total": 87.53,
+    "currency": "CAD",
+    "note": "A coffee stain hides the date. The date must come back empty or low confidence."
+  }
+}

@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Wrench,
   Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
-  ClipboardCheck, ShoppingBasket, Car,
+  ClipboardCheck, ShoppingBasket, Car, ReceiptText,
 } from 'lucide-react';
 import { Sparkles } from 'lucide-react';
 import { useDemoBrief } from '@/lib/useDemoBrief';
@@ -108,6 +108,10 @@ const logisticsItems: NavItem[] = [
   { path: '/trips', label: 'Town Trips', icon: Car, end: false, module: 'trips' },
 ];
 
+const financeItems: NavItem[] = [
+  { path: '/receipts', label: 'Receipts', icon: ReceiptText, end: false, module: 'receipts' },
+];
+
 const settingsItems: NavItem[] = [
   { path: '/settings', label: 'Camp Info', icon: Settings, end: true },
   { path: '/settings/team', label: 'Team', icon: Settings, end: false },
@@ -174,6 +178,7 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
     { section: 'Aquatics', items: visible(aquaticsItems) },
     { section: 'Retreats', items: visible(retreatItems) },
     { section: 'Logistics', items: visible(logisticsItems) },
+    { section: 'Finance', items: visible(financeItems) },
   ].filter((s) => s.items.length > 0);
 
   return (

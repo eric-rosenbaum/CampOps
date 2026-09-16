@@ -12,7 +12,8 @@
     "test:campground": "node scripts/runsql.js supabase/tests/campground_rentals_test.sql",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
-    "test:sql": "bash scripts/run-sql-tests.sh"
+    "test:sql": "bash scripts/run-sql-tests.sh",
+    "eval:receipts": "node scripts/eval-receipts.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",

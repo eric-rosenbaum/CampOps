@@ -42,6 +42,8 @@ import { BuildingSystems } from '@/pages/BuildingSystems';
 import { Compliance } from '@/pages/Compliance';
 import { Commissary } from '@/pages/Commissary';
 import { Retreats } from '@/pages/Retreats';
+import { Receipts } from '@/pages/Receipts';
+import { ReceiptsDataLoader } from '@/components/receipts/ReceiptsDataLoader';
 import { InquiryForm } from '@/pages/portal/InquiryForm';
 import { RetreatPortal } from '@/pages/portal/RetreatPortal';
 import { StaffIntake } from '@/pages/StaffIntake';
@@ -655,8 +657,8 @@ export default function App() {
 
             {/* Authenticated + camp required */}
             <Route element={<CampRoute />}>
-              {/* TripsDataLoader after CampDataLoader: its load must land after CampDataLoader's hydration reset. */}
-              <Route element={<><CampDataLoader /><TripsDataLoader /><Layout /></>}>
+              {/* The opt-in loaders come after CampDataLoader: their loads must land after its hydration reset. */}
+              <Route element={<><CampDataLoader /><TripsDataLoader /><ReceiptsDataLoader /><Layout /></>}>
                 {/* Each module waits for its own data before rendering. Gating here rather
                     than inside every page keeps it to one list and out of the pages' hook
                     order. See <Gate> for why an empty state is the wrong thing to show. */}
@@ -704,6 +706,8 @@ export default function App() {
                 {/* Opt-in: only camps sold Town Trips. ModuleRoute redirects before the Gate renders, so a
                     camp without it never waits on a `trips` load that TripsDataLoader skipped. */}
                 <Route path="/trips" element={<ModuleRoute of="trips"><Gate of={['trips']} label="Opening town trips"><Trips /></Gate></ModuleRoute>} />
+                <Route path="/receipts" element={<ModuleRoute of="receipts"><Gate of={['receipts']} label="Opening receipts"><Receipts /></Gate></ModuleRoute>} />
+                <Route path="/receipts/reconcile" element={<ModuleRoute of="receipts"><Gate of={['receipts']} label="Opening receipts"><Receipts /></Gate></ModuleRoute>} />
                 <Route path="/settings" element={<CampSettings />} />
                 <Route path="/settings/team" element={<Team />} />
                 {/* Staff is a Camp Info tab now; this path deep-links straight to it. */}

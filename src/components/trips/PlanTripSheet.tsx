@@ -3,7 +3,7 @@ import { Minus, Plus } from 'lucide-react';
 import type { Trip, TripDraft, TripKind, TripDirection } from '@/lib/tripTypes';
 import {
   KIND_PRESETS, applyPreset, addMinutesLocal, fromMinutes, toMinutes, daysBetween, leavingSoonNote, clock, dayLabel,
-  DIRECTION_LABELS, DIRECTION_HINTS, type LocalNow,
+  DIRECTION_LABELS, DIRECTION_HINTS, defaultDeparture, driverOptions, type LocalNow,
 } from '@/lib/trips';
 import { dbCreateTrip, dbUpdateTrip } from '@/lib/tripsDb';
 import type { CampAsset } from '@/lib/types';
@@ -29,16 +29,10 @@ interface Props {
 const KINDS: TripKind[] = ['town_run', 'day_off', 'supply_run', 'pickup', 'other'];
 const DIRECTIONS: TripDirection[] = ['round_trip', 'outbound', 'pickup'];
 
-/** The next whole hour, at least 45 minutes away, so a trip planned now is not already leaving. */
-function defaultDepart(now: LocalNow, date: string): string {
-  if (date !== now.date) return '13:00';
-  const next = Math.ceil((now.minutes + 45) / 60) * 60;
-  return next >= 22 * 60 ? '13:00' : fromMinutes(next);
-}
-
 export function PlanTripSheet({ campId, userId, now, initialDate, editing, members, vehicles, onClose, onSaved, notify }: Props) {
-  const startDate = editing?.departDate ?? initialDate ?? now.date;
-  const startTime = editing?.departTime ?? defaultDepart(now, startDate);
+  const start = editing ? { date: editing.departDate, time: editing.departTime } : defaultDeparture(now, initialDate ?? null);
+  const startDate = start.date;
+  const startTime = start.time;
   const startPreset = applyPreset(editing?.kind ?? 'town_run', startDate, startTime);
 
   const [kind, setKind] = useState<TripKind>(editing?.kind ?? 'town_run');
@@ -61,9 +55,10 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
     { ret: !!editing, close: !!editing, seats: !!editing, title: !!editing, direction: !!editing },
   );
 
-  const drivers = useMemo(
-    () => members.filter((m) => m.isActive && m.role !== 'viewer').sort((a, b) => a.fullName.localeCompare(b.fullName)),
-    [members],
+  const drivers = useMemo(() => members.filter((m) => m.isActive && m.role !== 'viewer'), [members]);
+  const driverChoices = useMemo(
+    () => driverOptions(members, userId, editing?.driverUserId ?? null),
+    [members, userId, editing?.driverUserId],
   );
 
   /**
@@ -133,7 +128,7 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
     onSaved(editing ? editing.id : (r.data as string));
   }
 
-  const reminder = departDate && departTime ? leavingSoonNote(departDate, departTime) : null;
+  const reminder = departDate && departTime ? leavingSoonNote(departDate, departTime, direction) : null;
   const pickup = direction === 'pickup';
 
   return (
@@ -221,7 +216,7 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
 
         <fieldset className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className={labelClass}>{pickup ? 'Leaves camp' : 'Leaves'}</span>
+            <span className={labelClass}>{pickup ? 'Picks up in town' : 'Leaves'}</span>
             <input type="date" value={departDate} onChange={(e) => moveDeparture(e.target.value, departTime)} className={inputClass} name="departDate" required />
           </label>
           <label className="block">
@@ -270,7 +265,7 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
             <span className={labelClass}>Driver</span>
             <select value={driverId} onChange={(e) => setDriverId(e.target.value)} className={inputClass} name="driver">
               <option value="">No driver yet</option>
-              {drivers.map((m) => <option key={m.userId} value={m.userId}>{m.fullName}{m.userId === userId ? ' (me)' : ''}</option>)}
+              {driverChoices.map((m) => <option key={m.userId} value={m.userId}>{m.label}</option>)}
             </select>
           </label>
           {vehicles && (

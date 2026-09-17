@@ -3,7 +3,7 @@ import { Plus, Store, Car, Check, X, ChevronDown, AlertTriangle } from 'lucide-r
 import type { Trip, TripErrand } from '@/lib/tripTypes';
 import {
   shoppingList, neededByState, errandTargets, errandListOpen, dayLabel, clock, shortDow, monthDay, canManageTrip,
-  errandPeople, type LocalNow, type StoreGroup,
+  errandPeople, errandQuantity, overdueBack, dueBackAt, tripOptionLabel, type LocalNow, type StoreGroup,
 } from '@/lib/trips';
 import { dbAttachErrands, dbSetErrandStatus, dbDetachErrand } from '@/lib/tripsDb';
 import type { CampRole } from '@/store/campStore';
@@ -66,15 +66,28 @@ export function ShoppingListTab({ trips, errands, now, userId, role, onAddErrand
           : { borderColor: k.color, color: k.ink, background: k.wash }}
       >
         <Car className="h-3.5 w-3.5 flex-none" />
-        <span className="truncate">{departed ? 'Left ' : ''}{shortDow(trip.departDate)} {clock(trip.departTime)} · {trip.title}</span>
+        <span className="truncate">{departed ? (trip.status === 'back' ? 'Back · ' : overdueBack(trip, now) ? 'Due back · ' : 'Left ') : ''}{shortDow(trip.departDate)} {clock(trip.departTime)} · {trip.title}</span>
       </button>
     );
+  };
+
+  /**
+   * Why an errand on a car that left is flagged. "Already out — reassign?" hours after the car was
+   * due back read as if it were still in town; once it is due (or back) that is what it says.
+   */
+  const departedNote = (trip: Trip) => {
+    const due = dueBackAt(trip);
+    const at = due ? `${due.date === now.date ? '' : `${shortDow(due.date)} `}${clock(due.time)}` : null;
+    if (trip.status === 'back') return 'The car came back and it isn’t ticked off — put it on another trip?';
+    if (overdueBack(trip, now)) return `The car was due back at ${at} and it isn’t ticked off — reassign?`;
+    return at ? `On a car that’s out now, due back ${at}.` : 'On a car that’s already left — reassign?';
   };
 
   const row = (e: TripErrand, pile: Pile) => {
     const nb = neededByState(e.neededBy, now.date);
     const trip = e.tripId ? tripById.get(e.tripId) : undefined;
-    const mine = e.requestedBy === userId;
+    // Waiting on it counts as yours: whoever said "I need it too" can move it to another car.
+    const mine = e.requestedBy === userId || e.alsoNeededBy.some((x) => x.userId === userId);
     // Your own errand onto any trip still taking errands; somebody else's only onto a trip you
     // manage (the database says the same).
     const choices = targets.filter((t) => t.id !== e.tripId && (managed.has(t.id) || (mine && errandListOpen(t, now))));
@@ -83,10 +96,10 @@ export function ShoppingListTab({ trips, errands, now, userId, role, onAddErrand
       <li key={e.id} data-testid="shopping-row" data-errand-id={e.id} data-pile={pile} className="flex flex-col gap-2 px-3.5 py-3 sm:flex-row sm:items-center">
         <div className="min-w-0 flex-1">
           <p className="text-[14.5px] font-semibold leading-snug text-ink">
-            {e.item}{e.quantity && <span className="font-normal text-ink-soft"> · {e.quantity}</span>}
+            {e.item}{errandQuantity(e) && <span className="font-normal text-ink-soft"> · {errandQuantity(e)}</span>}
           </p>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-ink-soft">
-            <span>{errandPeople(e)}{mine ? ' (you)' : ''}</span>
+            <span>{errandPeople(e)}{e.requestedBy === userId ? ' (you)' : ''}</span>
             {e.forActivity && <span>· {e.forActivity}</span>}
             {e.neededBy && (
               <span className={`rounded-pill px-1.5 font-bold ${nb === 'overdue' ? 'bg-red text-paper' : nb === 'soon' ? 'bg-amber-bg text-amber-text' : 'bg-cream-dark text-ink-soft'}`}>
@@ -94,9 +107,9 @@ export function ShoppingListTab({ trips, errands, now, userId, role, onAddErrand
               </span>
             )}
           </p>
-          {pile === 'departed' && (
+          {pile === 'departed' && trip && (
             <p className="mt-1 flex items-center gap-1 text-[12px] font-semibold text-amber-text" data-testid="departed-note">
-              <AlertTriangle className="h-3.5 w-3.5 flex-none" /> On a trip that’s already out — reassign?
+              <AlertTriangle className="h-3.5 w-3.5 flex-none" /> {departedNote(trip)}
             </p>
           )}
         </div>
@@ -122,7 +135,7 @@ export function ShoppingListTab({ trips, errands, now, userId, role, onAddErrand
               className={`${fieldClass} min-h-11 min-w-0 flex-1 font-semibold text-forest sm:min-h-0 sm:max-w-[15rem] sm:flex-initial`}
             >
               <option value="">{pile === 'departed' ? 'Reassign…' : 'Put on a trip…'}</option>
-              {choices.map((t) => <option key={t.id} value={t.id}>{dayLabel(t.departDate)} {clock(t.departTime)} · {t.title}</option>)}
+              {choices.map((t) => <option key={t.id} value={t.id}>{tripOptionLabel(t)}</option>)}
             </select>
           )}
           {pile !== 'needs' && canDetach && (pile === 'departed' || mine) && (
@@ -131,7 +144,7 @@ export function ShoppingListTab({ trips, errands, now, userId, role, onAddErrand
               {pile === 'departed' ? 'Back to list' : 'Take off trip'}
             </button>
           )}
-          {(mine || role === 'admin') && (
+          {(e.requestedBy === userId || role === 'admin') && (
             <button type="button" disabled={busy !== null} aria-label={`Remove ${e.item}`}
               onClick={() => act(`cancel-${e.id}`, () => dbSetErrandStatus(e.id, 'cancelled'), `Removed ${e.item}.`)}
               className="grid h-11 w-11 flex-none place-items-center rounded-btn text-ink-faint hover:bg-red-bg hover:text-red-text sm:h-8 sm:w-8">

@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
 import { CopyCheck } from 'lucide-react';
 import type { Trip, TripErrand } from '@/lib/tripTypes';
-import { errandTargets, findDuplicateErrand, errandPeople, dayLabel, clock, shortDow, type LocalNow } from '@/lib/trips';
-import { dbAddErrand, dbAlsoNeedErrand } from '@/lib/tripsDb';
+import {
+  errandTargets, findDuplicateErrand, errandPeople, errandQuantity, clock, shortDow, hasDeparted, overdueBack, dueBackAt,
+  tripOptionLabel, errandListOpen, type LocalNow,
+} from '@/lib/trips';
+import { dbAddErrand, dbAlsoNeedErrand, dbAttachErrands, dbDetachErrand } from '@/lib/tripsDb';
 import { Sheet } from './tripUi';
 import { inputClass, labelClass } from './tripStyle';
 
@@ -41,14 +44,28 @@ export function ErrandSheet({ campId, trips, errands, userId, now, tripId, manag
   const duplicate = useMemo(() => findDuplicateErrand(errands, item), [errands, item]);
   const dupMine = !!duplicate && (duplicate.requestedBy === userId || duplicate.alsoNeededBy.some((x) => x.userId === userId));
   const dupTrip = duplicate?.tripId ? trips.find((t) => t.id === duplicate.tripId) : undefined;
+  // The errand you'd join is on a car that already went. Joining it quietly left it there; now the
+  // join offers to move it -- back to the list, or onto a trip still taking errands.
+  const dupGone = !!dupTrip && dupTrip.status !== 'cancelled' && hasDeparted(dupTrip, now);
+  const dupDue = dupTrip ? dueBackAt(dupTrip) : null;
+  const moveTargets = options.filter((t) => t.id !== dupTrip?.id && (errandListOpen(t, now) || managedTripIds.has(t.id)));
+  const [moveTo, setMoveTo] = useState<string | null>(null);
+  const moveChoice = moveTo ?? (dupGone && dupTrip && (dupTrip.status === 'back' || overdueBack(dupTrip, now)) ? 'list' : 'stay');
 
   async function alsoNeed() {
     if (!duplicate) return;
     setSaving(true);
-    const r = await dbAlsoNeedErrand(duplicate.id);
+    const r = await dbAlsoNeedErrand(duplicate.id, quantity.trim() || null);
+    if (!r.ok) { setSaving(false); setError(r.error); return; }
+    let moved = '';
+    if (dupGone && moveChoice !== 'stay') {
+      const m = moveChoice === 'list' ? await dbDetachErrand(duplicate.id) : await dbAttachErrands(moveChoice, [duplicate.id]);
+      const t = trips.find((x) => x.id === moveChoice);
+      moved = m.ok ? (t ? ` Moved onto the ${shortDow(t.departDate)} ${clock(t.departTime)} ${t.title}.` : ' Put back on the shopping list for the next trip.')
+        : ` It’s still on the ${dupTrip!.title}: ${m.error ?? 'the move didn’t save'}`;
+    }
     setSaving(false);
-    if (!r.ok) { setError(r.error); return; }
-    notify(`Added you to ${duplicate.requesterName}’s ${duplicate.item}. You’ll both hear when it’s picked up.`);
+    notify(`Added you${quantity.trim() ? ` (${quantity.trim()})` : ''} to ${duplicate.requesterName}’s ${duplicate.item}. You’ll both hear when it’s picked up.${moved}`);
     onClose();
   }
 
@@ -93,10 +110,32 @@ export function ErrandSheet({ campId, trips, errands, userId, now, tripId, manag
             <p className="flex items-start gap-1.5 text-[13px] font-semibold text-blue-text">
               <CopyCheck className="mt-0.5 h-4 w-4 flex-none" />
               <span>
-                Already on the list: {duplicate.item}{duplicate.quantity ? ` · ${duplicate.quantity}` : ''} ({dupMine ? 'you asked' : `${errandPeople(duplicate)} asked`})
-                {dupTrip && <span className="block text-[12px] font-normal">On the {shortDow(dupTrip.departDate)} {clock(dupTrip.departTime)} {dupTrip.title}</span>}
+                Already on the list: {duplicate.item}{errandQuantity(duplicate) ? ` · ${errandQuantity(duplicate)}` : ''} ({dupMine ? 'you asked' : `${errandPeople(duplicate)} asked`})
+                {dupTrip && (
+                  <span className="block text-[12px] font-normal" data-testid="duplicate-trip">
+                    {dupGone
+                      ? `It went on the ${shortDow(dupTrip.departDate)} ${clock(dupTrip.departTime)} ${dupTrip.title}, which already left${dupDue ? ` (due back ${clock(dupDue.time)})` : ''}.`
+                      : `On the ${shortDow(dupTrip.departDate)} ${clock(dupTrip.departTime)} ${dupTrip.title}`}
+                  </span>
+                )}
               </span>
             </p>
+            {!dupMine && (
+              <label className="mt-2 block">
+                <span className="text-[11.5px] font-bold text-blue-text">How much do you need?</span>
+                <input value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="e.g. 12" className={`${inputClass} mt-1`} name="alsoQuantity" data-testid="also-need-quantity" />
+              </label>
+            )}
+            {!dupMine && dupGone && (
+              <label className="mt-2 block">
+                <span className="text-[11.5px] font-bold text-blue-text">Where should it go?</span>
+                <select value={moveChoice} onChange={(e) => setMoveTo(e.target.value)} className={`${inputClass} mt-1`} data-testid="also-need-move">
+                  <option value="stay">Leave it on the {dupTrip!.title} (the driver may have it)</option>
+                  <option value="list">Back on the shopping list — whoever goes next</option>
+                  {moveTargets.map((t) => <option key={t.id} value={t.id}>{tripOptionLabel(t)}</option>)}
+                </select>
+              </label>
+            )}
             {!dupMine && (
               <button
                 type="button"
@@ -108,7 +147,7 @@ export function ErrandSheet({ campId, trips, errands, userId, now, tripId, manag
                 I need it too
               </button>
             )}
-            <p className="mt-1.5 text-[11.5px] text-blue-text">Need a different amount or something separate? Use “Add anyway”.</p>
+            <p className="mt-1.5 text-[11.5px] text-blue-text">Need something separate? Use “Add anyway”.</p>
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">
@@ -138,7 +177,7 @@ export function ErrandSheet({ campId, trips, errands, userId, now, tripId, manag
             <option value="">The shopping list — whoever goes next</option>
             {options.map((t) => (
               <option key={t.id} value={t.id}>
-                {dayLabel(t.departDate)} {clock(t.departTime)} · {t.title}{t.destination ? ` → ${t.destination}` : ''}
+                {tripOptionLabel(t)}
               </option>
             ))}
           </select>

@@ -6,6 +6,8 @@ import {
   neededByState, hhmm, clock, tripTimeLabel, weekRangeLabel, isDateStr, canManageTrip, addMinutesLocal,
   legsFor, naturalLeg, routeLabel, seatSummary, freeSeats, seatClash, strandedHelp, errandTargets, hasDeparted,
   findDuplicateErrand, errandPeople, leavingSoonNote, coveredLeg, KIND_PRESETS,
+  backSeatWantedBy, takesLastSeatBack, waitingLines, journeyLabel, linkedSeat, wayBackLabel, backLegAt, directionLine,
+  defaultDeparture, driverOptions, overdueBack, pickupReminderAt, errandQuantity, tripOptionLabel,
 } from '@/lib/trips';
 import type { Trip, TripSeat, TripErrand, RideRequest, SeatLeg } from '@/lib/tripTypes';
 
@@ -239,7 +241,10 @@ describe('stranding rule', () => {
     const full = trip({ id: 'FULL', departDate: '2026-09-19', departTime: '16:00', passengerSeats: 1 });
     const open = trip({ id: 'OPEN', departDate: '2026-09-20', departTime: '10:00' });
     const seats = [seat('OUT', 'sam', 'there'), seat('FULL', 'kim', 'both')];
-    expect(returnOptions(out, [out, full, open], seats).map((t) => t.id)).toEqual(['OPEN']);
+    // OUT is itself a round trip with seats free on its way back: the rider's own car comes first.
+    expect(returnOptions(out, [out, full, open], seats).map((t) => t.id)).toEqual(['OUT', 'OPEN']);
+    const outOneWay = { ...out, direction: 'outbound' as const, returnTime: null };
+    expect(returnOptions(outOneWay, [outOneWay, full, open], seats).map((t) => t.id)).toEqual(['OPEN']);
   });
 });
 
@@ -534,5 +539,186 @@ describe('errands: where they can go, and duplicates', () => {
     expect(leavingSoonNote('2026-09-19', '08:30')).toBe('a “leaving soon” reminder at 8am (no messages go out 8pm–8am)');
     expect(leavingSoonNote('2026-09-19', '21:30')).toBe('a “leaving soon” reminder at 7pm (no messages go out 8pm–8am)');
     expect(leavingSoonNote('2026-09-19', '00:30')).toBe('a “leaving soon” reminder the evening before at 7pm (no messages go out 8pm–8am)');
+  });
+});
+
+
+describe('the car they rode in is a way back (Marcus Webb)', () => {
+  // The demo: Marcus rides in on the 9:30am day-off shuttle, a round trip home at 5:30pm, 6 seats.
+  const shuttle = trip({ id: 'SH', kind: 'day_off', title: 'Day-off shuttle into town', departTime: '09:30', returnTime: '17:30', passengerSeats: 6 });
+  const marcus = { ...seat('SH', 'marcus', 'there'), riderUserId: null, riderName: 'Marcus Webb' };
+  const others = ['tess', 'kai', 'hannah'].map((r) => seat('SH', r, 'both'));
+
+  it('is still flagged, but offered the ride back on the same shuttle first', () => {
+    const seats = [marcus, ...others];
+    const stranded = strandedRiders([shuttle], seats);
+    expect(stranded.map((r) => r.seat.id)).toEqual([marcus.id]);
+    const help = strandedHelp(stranded, [shuttle], seats, [], 'devon', 'admin');
+    expect(help[0].options.map((t) => t.id)).toEqual(['SH']);
+    expect(wayBackLabel(shuttle, help[0].options[0])).toBe('Add the ride back on this shuttle (5:30pm)');
+  });
+
+  it('is not offered the same car when its way back is full, or once the car is back', () => {
+    const full = { ...shuttle, passengerSeats: 4 };
+    expect(returnOptions(full, [full], [marcus, ...others, seat('SH', 'x', 'back')])).toEqual([]);
+    const back = { ...shuttle, status: 'back' as const };
+    expect(returnOptions(back, [back], [marcus])).toEqual([]);
+    const out = { ...shuttle, status: 'out' as const };
+    expect(returnOptions(out, [out], [marcus]).map((t) => t.id)).toEqual(['SH']);
+  });
+
+  it('labels another trip by when it comes back, not when it leaves', () => {
+    const later = trip({ id: 'L', title: 'Town run', departTime: '13:00', returnTime: '15:00' });
+    const pickup = trip({ id: 'P', direction: 'pickup', title: 'Late pickup', departTime: '21:30', returnTime: '22:15' });
+    expect(backLegAt(later)).toEqual({ date: '2026-09-19', time: '15:00' });
+    expect(backLegAt(pickup)).toEqual({ date: '2026-09-19', time: '21:30' });
+    expect(wayBackLabel(shuttle, later)).toBe('Back on the 3pm Town run');
+  });
+});
+
+describe('the last seat back', () => {
+  const evening = trip({ id: 'EV', direction: 'outbound', title: 'Evening ride into town', departDate: '2026-09-19', departTime: '17:00', returnTime: null, returnDate: null, passengerSeats: 4 });
+  const pickup = trip({ id: 'PU', kind: 'pickup', direction: 'pickup', title: 'Late pickup from town', departDate: '2026-09-19', departTime: '21:30', returnTime: '22:15', passengerSeats: 3 });
+  const named = (tripId: string, name: string, leg: SeatLeg) => ({ ...seat(tripId, name, leg), riderUserId: null, riderName: name });
+  const seats = [
+    named('EV', 'Ines Moreau', 'there'), named('EV', 'Jamal Carter', 'there'), named('EV', 'Ruby Walsh', 'there'),
+    named('PU', 'Ines Moreau', 'back'), named('PU', 'Jamal Carter', 'back'),
+  ];
+  const ruby: RideRequest = {
+    id: 'rq', campId: 'c', requestedBy: null, requesterName: 'Ruby Walsh', wantedDate: '2026-09-19', earliestTime: '20:00',
+    latestTime: '23:00', destination: 'Back to camp', leg: 'back', note: null, status: 'open', matchedTripId: null, matchedSeatId: null,
+    createdAt: '2026-09-18T10:00:00Z',
+  };
+
+  it('names Ruby, once, as having asked', () => {
+    const usage = seatUsage(pickup, seats);
+    expect(takesLastSeatBack('back', usage)).toBe(true);
+    expect(takesLastSeatBack('there', usage)).toBe(false);
+    const waiting = backSeatWantedBy(pickup, [evening, pickup], seats, [ruby], 'me');
+    expect(waiting).toEqual([{ name: 'Ruby Walsh', reason: 'asked' }]);
+    expect(waitingLines(waiting)).toEqual(['Ruby Walsh asked for this ride back.']);
+  });
+
+  it('still names a stranded rider who never asked, but not the viewer, and not for a morning request', () => {
+    expect(backSeatWantedBy(pickup, [evening, pickup], seats, [], 'me')).toEqual([{ name: 'Ruby Walsh', reason: 'stranded' }]);
+    const morning = { ...ruby, id: 'm', requesterName: 'Owen Brooks', earliestTime: '08:00', latestTime: '12:00' };
+    expect(backSeatWantedBy(pickup, [evening, pickup], seats.filter((s) => s.riderName !== 'Ruby Walsh'), [morning], 'me')).toEqual([]);
+    const mine = [...seats.filter((s) => s.riderName !== 'Ruby Walsh'), seat('EV', 'me', 'there')];
+    expect(backSeatWantedBy(pickup, [evening, pickup], mine, [], 'me')).toEqual([]);
+  });
+
+  it('never has anyone waiting on an into-town-only car', () => {
+    expect(backSeatWantedBy(evening, [evening, pickup], seats, [ruby], 'me')).toEqual([]);
+  });
+});
+
+describe('a rider’s whole journey', () => {
+  const evening = trip({ id: 'EV', direction: 'outbound', title: 'Evening ride into town', departTime: '17:00', returnTime: null, returnDate: null });
+  const pickup = trip({ id: 'PU', direction: 'pickup', title: 'Late pickup from town', departTime: '21:30', returnTime: '22:15' });
+
+  it('says in and back in one phrase, from either seat', () => {
+    const inSeat = seat('EV', 'me', 'there');
+    const backSeat = seat('PU', 'me', 'back');
+    const seats = [inSeat, backSeat];
+    expect(linkedSeat(inSeat, [evening, pickup], seats)?.seat.id).toBe(backSeat.id);
+    expect(journeyLabel(inSeat, [evening, pickup], seats)).toBe('In on the 5pm · back on the 9:30pm Late pickup from town');
+    expect(journeyLabel(backSeat, [evening, pickup], seats)).toBe('In on the 5pm Evening ride into town · back on the 9:30pm');
+  });
+
+  it('says when there is no way back yet, and ignores a cancelled return', () => {
+    const inSeat = seat('EV', 'me', 'there');
+    expect(journeyLabel(inSeat, [evening, pickup], [inSeat])).toBe('In on the 5pm · no ride back yet');
+    const cancelled = { ...pickup, status: 'cancelled' as const };
+    expect(journeyLabel(inSeat, [evening, cancelled], [inSeat, seat('PU', 'me', 'back')])).toBe('In on the 5pm · no ride back yet');
+    expect(journeyLabel(seat('PU', 'me', 'back'), [pickup], [])).toBe('Picked up at 9:30pm');
+  });
+
+  it('says there and back on a round trip, with when it heads home', () => {
+    const t = trip({ id: 'RT', departTime: '09:30', returnTime: '17:30' });
+    const both = seat('RT', 'me', 'both');
+    expect(journeyLabel(both, [t], [both])).toBe('There & back · home at 5:30pm');
+  });
+});
+
+describe('pickup wording and reminders', () => {
+  const pickup = trip({ direction: 'pickup', title: 'Late pickup from town', destination: 'Town centre', departTime: '21:30', returnTime: '22:15' });
+
+  it('says it picks up in town, never that it leaves camp', () => {
+    expect(directionLine(pickup)).toBe('Picks up in Town centre at 9:30pm, back at camp around 10:15pm');
+    expect(tripOptionLabel(pickup)).toBe('Sat Sep 19 9:30pm · Late pickup from town · Town centre → camp');
+    expect(tripOptionLabel(trip({ title: 'Town run', destination: 'Main Street' }))).toBe('Sat Sep 19 1pm · Town run → Main Street');
+  });
+
+  it('reminds as close to an hour before the pickup as quiet hours allow, and says why', () => {
+    expect(pickupReminderAt('2026-09-19', '21:30')).toEqual({ date: '2026-09-19', time: '19:30' });
+    expect(pickupReminderAt('2026-09-19', '20:45')).toEqual({ date: '2026-09-19', time: '19:45' });
+    expect(pickupReminderAt('2026-09-19', '15:00')).toEqual({ date: '2026-09-19', time: '14:00' });
+    expect(pickupReminderAt('2026-09-19', '06:00')).toEqual({ date: '2026-09-18', time: '19:30' });
+    expect(leavingSoonNote('2026-09-19', '21:30', 'pickup'))
+      .toBe('a pickup reminder at 7:30pm — an hour before would be 8:30pm, and no messages go out 8pm–8am');
+    expect(leavingSoonNote('2026-09-19', '15:00', 'pickup')).toBe('a pickup reminder at 2pm, an hour before');
+  });
+});
+
+describe('planning defaults', () => {
+  it('starts at the next sensible upcoming slot, never in the past', () => {
+    expect(defaultDeparture({ date: '2026-09-16', minutes: 22 * 60 }, null)).toEqual({ date: '2026-09-17', time: '13:00' });
+    expect(defaultDeparture({ date: '2026-09-16', minutes: 22 * 60 }, '2026-09-16')).toEqual({ date: '2026-09-17', time: '13:00' });
+    expect(defaultDeparture({ date: '2026-09-16', minutes: 10 * 60 + 20 }, null)).toEqual({ date: '2026-09-16', time: '12:00' });
+    expect(defaultDeparture({ date: '2026-09-16', minutes: 5 * 60 }, null)).toEqual({ date: '2026-09-16', time: '08:00' });
+    expect(defaultDeparture({ date: '2026-09-16', minutes: 20 * 60 }, '2026-09-19')).toEqual({ date: '2026-09-19', time: '13:00' });
+    expect(defaultDeparture({ date: '2026-09-16', minutes: 9 * 60 }, '2026-09-10')).toEqual({ date: '2026-09-16', time: '10:00' });
+  });
+
+  it('offers each person once, and the viewer as "(you)", when everyone is a Demo guest', () => {
+    const m = (userId: string, fullName: string, role = 'admin') => ({ userId, fullName, role, isActive: true });
+    const members = [m('g1', 'Demo guest'), m('me', 'Demo guest'), m('g3', 'Demo guest'), m('a', 'Aisha Rahman', 'staff'), m('v', 'Val', 'viewer'), m('me', 'Demo guest')];
+    expect(driverOptions(members, 'me')).toEqual([
+      { userId: 'me', label: 'Demo guest (you)' },
+      { userId: 'a', label: 'Aisha Rahman' },
+    ]);
+    expect(driverOptions(members, 'me', 'g3').map((o) => o.label)).toEqual(['Demo guest (you)', 'Aisha Rahman', 'Another demo guest']);
+  });
+});
+
+describe('a trip past its return time', () => {
+  it('should be back, whether it was marked out or never marked at all', () => {
+    const t = trip({ departTime: '14:00', returnTime: '16:00' });
+    const at = (h: number) => ({ date: '2026-09-19', minutes: h * 60 });
+    expect(overdueBack(t, at(15))).toBe(false);
+    expect(overdueBack(t, at(16))).toBe(true);
+    expect(overdueBack({ ...t, status: 'out' }, at(22))).toBe(true);
+    expect(overdueBack({ ...t, status: 'back' }, at(22))).toBe(false);
+    expect(overdueBack({ ...t, returnTime: null, returnDate: null }, at(22))).toBe(false);
+  });
+
+  it('counts its unticked errands as needing a trip once it is due back', () => {
+    const t = trip({ id: 'T', departTime: '14:00', returnTime: '16:00' });
+    const errands = [errand({ tripId: 'T' }), errand({ tripId: null })];
+    expect(shoppingList(errands, [t], { date: '2026-09-19', minutes: 15 * 60 }).attentionCount).toBe(1);
+    expect(shoppingList(errands, [t], { date: '2026-09-19', minutes: 20 * 60 }).attentionCount).toBe(2);
+    expect(shoppingList(errands, [{ ...t, status: 'back' }], { date: '2026-09-19', minutes: 15 * 60 }).attentionCount).toBe(2);
+  });
+});
+
+describe('cancelled trips on the board', () => {
+  it('are hidden by default and counted per day', () => {
+    const live = trip({ id: 'live', departDate: '2026-09-18' });
+    const off = trip({ id: 'off', departDate: '2026-09-18', status: 'cancelled' });
+    const hidden = layoutWeek('2026-09-14', '2026-09-16', [live, off], [], []);
+    expect(hidden[4].trips.map((t) => t.id)).toEqual(['live']);
+    expect(hidden[4].cancelled.map((t) => t.id)).toEqual(['off']);
+    const shown = layoutWeek('2026-09-14', '2026-09-16', [live, off], [], [], true);
+    expect(shown[4].trips.map((t) => t.id).sort()).toEqual(['live', 'off']);
+  });
+});
+
+describe('"I need it too" keeps each amount', () => {
+  it('shows each person with their amount', () => {
+    const e = errand({ requesterName: 'Noor Haddad', quantity: '24', alsoNeededBy: [{ userId: 'u9', name: 'Demo guest', quantity: '12' }] });
+    expect(errandPeople(e)).toBe('Noor Haddad 24, Demo guest 12');
+    expect(errandQuantity(e)).toBe('24 + 12');
+    const plain = errand({ requesterName: 'Noor Haddad', quantity: '24', alsoNeededBy: [{ userId: 'u9', name: 'Kai' }] });
+    expect(errandQuantity(plain)).toBe('24');
   });
 });

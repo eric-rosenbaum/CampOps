@@ -61,7 +61,7 @@ export function RequestCard({ request, lines, program, actions, onOpen, showStat
         {request.status === 'submitted' && (
           // The chip already says the hours; this line says the rule it was measured against.
           <p className="text-[12px] text-ink-soft">
-            {late ? `You ask for ${formatNoticeRule(request.cutoffHours)}` : `${formatNotice(request.noticeHours)}’ notice`}
+            {late ? `You ask for ${formatNoticeRule(request.cutoffHours)}` : `${formatNotice(request.noticeHours)} of notice`}
           </p>
         )}
         <ul className="mt-2 flex flex-wrap gap-1.5">
@@ -80,6 +80,9 @@ export function RequestCard({ request, lines, program, actions, onOpen, showStat
                   <span className="font-mono text-[11px] text-ink-soft">{l.lineState === 'unavailable' ? 'n/a' : v.qty}</span>
                 </span>
                 {v.asked && <span className="truncate text-[10.5px] text-ink-soft">asked: {v.asked}</span>}
+                {!v.linked && l.lineState !== 'unavailable' && request.status !== 'submitted' && (
+                  <span data-testid="buy-source" className="text-[10.5px] font-semibold text-amber-text">buy / source</span>
+                )}
               </li>
             );
           })}

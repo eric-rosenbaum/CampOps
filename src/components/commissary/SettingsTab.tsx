@@ -40,8 +40,17 @@ export function SettingsTab() {
   const programsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (section !== 'programs' || !programsRef.current) return;
-    programsRef.current.scrollIntoView({ block: 'start' });
-    programsRef.current.focus({ preventScroll: true });
+    // Scroll only this tab's own scroller, with room above the heading. scrollIntoView also moved
+    // the page behind it, and on a phone the "Programs & request links" heading ended up under the
+    // tab bar.
+    const el = programsRef.current;
+    const scroller = el.closest<HTMLElement>('.overflow-y-auto');
+    if (scroller) {
+      scroller.scrollTop += el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 20;
+    } else {
+      el.scrollIntoView({ block: 'start' });
+    }
+    el.focus({ preventScroll: true });
   }, [section]);
   const [wiping, setWiping] = useState(false);
   const [wiped, setWiped] = useState(false);

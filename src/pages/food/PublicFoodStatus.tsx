@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Check, CheckCircle2, Copy, Loader2, MapPin, UtensilsCrossed } from 'lucide-react';
 import { publicCancelFoodRequest, publicGetFoodStatus, type PublicFoodStatus as Status } from '@/lib/foodRequestsDb';
-import { formatClock, formatLineQty, formatPickup, formatNotice, formatNoticeRule } from '@/lib/foodRequests';
+import { formatClock, formatDay, formatLineQty, formatPickup, formatNotice, formatNoticeRule, todayInZone } from '@/lib/foodRequests';
 import { ConfirmDialog } from '@/components/foodRequests/ConfirmDialog';
 
 /**
@@ -35,7 +35,6 @@ export function PublicFoodStatus() {
   }, [token]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- the first fetch of a page that has nothing else to show
     void refresh();
     const onFocus = () => { if (document.visibilityState === 'visible') void refresh(); };
     window.addEventListener('focus', onFocus);
@@ -84,7 +83,8 @@ export function PublicFoodStatus() {
 
   const when = formatPickup(data.pickup_date, data.pickup_time.slice(0, 5));
   const where = data.pickup_location || 'the kitchen';
-  const headline = headlineFor(data, where);
+  const today = todayInZone(data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const headline = headlineFor(data, where, today);
 
   return (
     <div className="min-h-screen w-full bg-cream px-4 pb-28 pt-6 sm:px-5 sm:pt-10">
@@ -104,6 +104,12 @@ export function PublicFoodStatus() {
             <p className="mt-1 text-[14px] leading-snug text-green-muted-text">
               We emailed you this page, and it updates as the kitchen works on your request. It’s also listed under “Your requests on this phone” on your program’s link.
             </p>
+            {data.notify_by === 'text' && (
+              // They chose text and the choice was silently ignored; say so.
+              <p className="mt-1.5 text-[14px] font-semibold leading-snug text-green-muted-text" data-testid="texts-not-on">
+                Texts aren’t switched on yet, so we emailed you instead. The kitchen can see {data.has_phone ? 'your number and ' : ''}that you’d rather get a text.
+              </p>
+            )}
             <button type="button" onClick={copyLink} className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-semibold text-forest underline underline-offset-2">
               {copied ? <><Check className="h-3.5 w-3.5" /> Link copied</> : <><Copy className="h-3.5 w-3.5" /> Copy link to this page</>}
             </button>
@@ -170,6 +176,14 @@ export function PublicFoodStatus() {
                       <p data-testid="kitchen-item" className="text-[12.5px] font-semibold text-forest">The kitchen is giving you: {l.item_name}</p>
                     )}
                     {l.note && <p className="text-[12.5px] text-ink-soft">{l.note}</p>}
+                    {l.line_state === 'unavailable' && l.kitchen_reason && (
+                      <p data-testid="kitchen-reason" className="text-[13px] text-ink">Kitchen: {l.kitchen_reason}</p>
+                    )}
+                    {decided && l.line_state !== 'unavailable' && !l.on_kitchen_list && data.status !== 'declined' && (
+                      <p data-testid="not-on-list" className="text-[12.5px] font-semibold text-amber-text">
+                        The kitchen will get this separately — it isn’t on their list.
+                      </p>
+                    )}
                   </div>
                   <div className="flex-shrink-0 text-right text-[14px]">
                     {l.line_state === 'unavailable' ? (
@@ -207,11 +221,14 @@ export function PublicFoodStatus() {
   );
 }
 
-function headlineFor(d: Status, where: string): string {
+function headlineFor(d: Status, where: string, today: string): string {
   switch (d.status) {
     case 'submitted': return 'Waiting for the kitchen';
     case 'approved': return d.changed_by_kitchen ? 'Approved, with changes' : 'Approved';
-    case 'ready': return `Ready at ${where}`;
+    // Ready early for a pickup days away: "Ready at the kitchen back door" read as come now.
+    case 'ready': return d.pickup_date > today
+      ? `Ready for pickup ${formatDay(d.pickup_date).replace(',', '')} ${formatClock(d.pickup_time.slice(0, 5))}`
+      : `Ready at ${where}`;
     case 'picked_up': return 'Picked up';
     case 'declined': return 'The kitchen can’t fill this one';
     case 'missed': return 'Not picked up';

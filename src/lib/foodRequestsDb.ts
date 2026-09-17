@@ -86,6 +86,7 @@ export function rowToFoodRequestLine(r: Record<string, unknown>): FoodRequestLin
     qtyApprovedBase: num(r.qty_approved_base),
     note: str(r.note),
     lineState: (r.line_state as FoodRequestLine['lineState']) ?? 'ok',
+    kitchenReason: str(r.kitchen_reason),
     sortOrder: Number(r.sort_order ?? 0),
   };
 }
@@ -150,6 +151,8 @@ export interface DecisionLineInput {
   qty?: number;
   item_id?: string | null;
   unavailable?: boolean;
+  /** A line marked not available says why, or what to use instead. */
+  reason?: string;
 }
 
 export async function dbDecideFoodRequest(id: string, decision: 'approve' | 'decline', lines: DecisionLineInput[], note: string | null) {
@@ -163,6 +166,25 @@ export async function dbMarkFoodRequestPickedUp(id: string, byName: string | nul
 }
 export async function dbMarkFoodRequestMissed(id: string) {
   return (await call('mark_food_request_missed', { p_request_id: id })).error;
+}
+/** Approve/Decline taken back while the decision email is unsent. */
+export async function dbReopenFoodRequest(id: string) {
+  return (await call('reopen_food_request', { p_request_id: id })).error;
+}
+/** A missed pickup put back to ready or approved. Resolves to the status it went back to. */
+export async function dbUndoFoodRequestMissed(id: string) {
+  const { data, error } = await call('undo_food_request_missed', { p_request_id: id });
+  return { error, status: (data as 'ready' | 'approved' | null) ?? null };
+}
+/** A typed-in line's words added to the kitchen's list (or the same-named item already there). */
+export async function dbAddKitchenItemForRequest(campId: string, item: {
+  name: string; dimension: string; baseUnit: string; stockUnit: string; stockUnitInBase: number; category: string;
+}) {
+  const { data, error } = await call('add_kitchen_item_for_request', {
+    p_camp_id: campId, p_name: item.name, p_dimension: item.dimension, p_base_unit: item.baseUnit,
+    p_stock_unit: item.stockUnit, p_stock_unit_in_base: item.stockUnitInBase, p_category: item.category,
+  });
+  return { error, id: (data as string | null) ?? null };
 }
 export async function dbCancelFoodRequest(id: string) {
   return (await call('cancel_food_request', { p_request_id: id })).error;
@@ -260,6 +282,10 @@ export interface PublicFoodStatus {
   /** The request's id: lets the form hide this phone's own rows from the "others" list. */
   ref: string;
   camp: { name: string; logo_url: string | null };
+  /** How they asked to hear back; texts are not switched on, so 'text' is sent by email. */
+  notify_by: 'email' | 'text';
+  has_phone: boolean;
+  timezone: string;
   purpose: string | null;
   headcount: number | null;
   program_name: string | null;
@@ -285,6 +311,9 @@ export interface PublicFoodStatus {
     approved_unit_label: string | null; line_state: FoodRequestLine['lineState']; note: string | null;
     /** The kitchen item the line is linked to, when it has been linked. */
     item_name: string | null;
+    kitchen_reason: string | null;
+    /** False for a typed-in line the kitchen approved without linking: they source it separately. */
+    on_kitchen_list: boolean;
   }[];
 }
 

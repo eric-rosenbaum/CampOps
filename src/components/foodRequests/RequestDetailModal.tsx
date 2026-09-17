@@ -11,7 +11,7 @@ import {
 } from '@/lib/foodRequests';
 import { loadFoodRequestMessages } from '@/lib/foodRequestsDb';
 import { FoodStatusChip, LateChip, ProgramDot, foodStatusUrl } from './foodUi';
-import { useFoodRequestActions } from './useFoodRequestActions';
+import type { useFoodRequestActions } from './useFoodRequestActions';
 import { useCampClock } from './useCampClock';
 
 const RULE_LABELS: Record<string, string> = {
@@ -31,17 +31,18 @@ const RULE_LABELS: Record<string, string> = {
  * copy each person gets, and when. It is there so the camp (and anyone watching a demo) can see
  * exactly what a counselor receives, rather than trusting that "they'll get a reminder".
  */
-export function RequestDetailModal({ request, lines, program, onClose, onDecide }: {
+export function RequestDetailModal({ request, lines, program, onClose, onDecide, actions }: {
   request: FoodRequest;
   lines: FoodRequestLine[];
   program: FoodProgram | undefined;
   onClose: () => void;
   onDecide: (mode: 'approve' | 'decline') => void;
+  /** The Requests tab's actions, so a toast and its Undo outlive this dialog. */
+  actions: ReturnType<typeof useFoodRequestActions>;
 }) {
   const { can } = useAuth();
   const canManage = can('manageCommissary');
   const { timeZone, now } = useCampClock();
-  const actions = useFoodRequestActions(timeZone);
   const [messages, setMessages] = useState<FoodRequestMessage[] | null>(null);
   const [copied, setCopied] = useState(false);
   const items = useCommissaryStore((s) => s.items);
@@ -97,14 +98,14 @@ export function RequestDetailModal({ request, lines, program, onClose, onDecide 
             </>
           )}
           {canTransition(request.status, 'missed') && pastDue && (
-            <Button variant="danger" size="sm" disabled={busy} onClick={() => actions.missed(request)}>Missed</Button>
+            // Secondary on purpose: it was a red button louder than Picked up, beside it.
+            <Button variant="ghost" size="sm" disabled={busy} onClick={() => actions.missed(request)}>Not picked up…</Button>
           )}
           {request.status === 'approved' && <Button size="sm" disabled={busy} onClick={() => actions.ready(request)}>Mark ready</Button>}
           {request.status === 'ready' && <Button size="sm" disabled={busy} onClick={() => actions.pickedUp(request)}>Picked up</Button>}
         </div>
       ) : undefined}
     >
-      {actions.dialog}
       <div className="space-y-5">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -117,14 +118,18 @@ export function RequestDetailModal({ request, lines, program, onClose, onDecide 
           </div>
           <p className="mt-1.5 text-[15px] font-semibold text-ink">{formatPickup(request.pickupDate, request.pickupTime)}</p>
           <p className="text-[12.5px] text-ink-soft">
-            {formatNotice(request.noticeHours)}&rsquo; notice when sent (you ask for {formatNoticeRule(request.cutoffHours)})
+            {formatNotice(request.noticeHours)} of notice when sent (you ask for {formatNoticeRule(request.cutoffHours)})
             {request.headcount ? ` · ${request.headcount} people` : ''}{request.purpose ? ` · ${request.purpose}` : ''}
           </p>
           <p className="mt-1 text-[12.5px] text-ink-soft">
             {request.requesterName}
             {request.requesterEmail ? ` · ${request.requesterEmail}` : ''}
             {request.requesterPhone ? ` · ${request.requesterPhone}` : ''}
-            {request.notifyBy === 'text' ? ' · prefers text' : ''}
+          </p>
+          <p className="text-[12.5px] text-ink-soft" data-testid="contact-preference">
+            {request.notifyBy === 'text'
+              ? `Asked to be texted${request.requesterPhone ? ` at ${request.requesterPhone}` : ''}. Texts aren’t switched on yet, so updates go by email; call or text them yourself if it’s urgent.`
+              : 'Updates by email.'}
           </p>
           <button type="button" onClick={copyStatusLink} className="mt-1 inline-flex items-center gap-1 text-[12px] font-semibold text-forest underline underline-offset-2">
             {copied ? <><Check className="h-3 w-3" /> Copied</> : <><Copy className="h-3 w-3" /> Copy their status page link</>}
@@ -142,8 +147,11 @@ export function RequestDetailModal({ request, lines, program, onClose, onDecide 
                   <div className="min-w-0">
                     <p className={`text-[13px] ${l.lineState === 'unavailable' ? 'text-ink-faint' : 'text-forest'}`}>{v.name}</p>
                     <p className="text-[11.5px] text-ink-soft">
-                      {!v.linked ? 'Not on your kitchen list, in their own words' : v.asked ? `asked: ${v.asked}` : 'On the kitchen list'}{l.note ? ` · “${l.note}”` : ''}
+                      {!v.linked
+                        ? (request.status === 'submitted' ? 'Not on your kitchen list, in their own words' : 'Not on your kitchen list: buy or source it separately')
+                        : v.asked ? `asked: ${v.asked}` : 'On the kitchen list'}{l.note ? ` · “${l.note}”` : ''}
                     </p>
+                    {l.kitchenReason && <p className="text-[11.5px] text-ink">Kitchen: {l.kitchenReason}</p>}
                   </div>
                   <div className="flex-shrink-0 text-right">
                     <p className="font-mono text-[12.5px] text-ink">{v.qty}</p>

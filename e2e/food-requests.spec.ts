@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { execFileSync } from 'child_process';
 import { asUser, stepper, watchConsole } from './support/qa';
-import { todayInZone } from '../src/lib/foodRequests';
+import { formatClock, formatDay, todayInZone } from '../src/lib/foodRequests';
 
 /**
  * J1 — a counselor on the Cooking Club's no-login link asks for three things (one in their own
@@ -96,7 +96,13 @@ test('J1–J2: a counselor asks, the kitchen approves with changes, sets it asid
 
   await page.getByRole('combobox', { name: 'Item 2' }).fill('eggs');
   await page.getByRole('option', { name: /Large eggs/ }).click();
-  await page.getByRole('textbox', { name: 'How much Large eggs' }).fill('2');
+  await expect(page.getByTestId('line-1').getByTestId('on-kitchen-list')).toHaveText('On the kitchen’s list');
+  // Words around the amount are kept for the kitchen, not silently dropped.
+  await page.getByRole('textbox', { name: 'How much Large eggs' }).fill('enough for 2');
+  await expect(page.getByTestId('line-1').getByTestId('qty-words')).toContainText('“enough for 2”');
+  // Egg is not suggested twice once it is picked.
+  await page.getByRole('combobox', { name: 'Item 3' }).fill('egg');
+  await expect(page.getByRole('option', { name: /Large eggs/ })).toHaveCount(0);
 
   // The amount typed into the words becomes the quantity and unit when the field is left.
   await page.getByRole('combobox', { name: 'Item 3' }).fill('Big marshmallows, like 3 bags');
@@ -113,7 +119,7 @@ test('J1–J2: a counselor asks, the kitchen approves with changes, sets it asid
   await expect(page.getByTestId('late-warning')).toContainText('Short notice');
 
   await page.getByLabel('What’s it for?').fill(purpose);
-  await page.getByLabel('People').fill('14');
+  await page.getByLabel('How many people').fill('14');
   await page.getByLabel('Your name').fill('Casey Counselor');
   await page.getByLabel('Email').fill(`j1-${tag}@example.com`);
   await page.getByLabel('Mobile phone (optional)').fill('416-555-0100');
@@ -129,6 +135,8 @@ test('J1–J2: a counselor asks, the kitchen approves with changes, sets it asid
   await page.waitForURL(/\/food\/status\/.+\?sent=1/, { timeout: 20_000 });
   await expect(page.getByTestId('status-headline')).toHaveText('Waiting for the kitchen');
   await expect(page.getByText('Sent to the kitchen')).toBeVisible();
+  // They chose text; the page says plainly that it went by email.
+  await expect(page.getByTestId('texts-not-on')).toContainText('Texts aren’t switched on yet, so we emailed you instead.');
   await shot(page, 'counselor-status-submitted');
 
   // The outbox has the receipt and the kitchen alert, each with its text-message copy.
@@ -154,23 +162,41 @@ test('J1–J2: a counselor asks, the kitchen approves with changes, sets it asid
   const modal = kitchen.page.getByRole('heading', { name: 'Review Cooking Club' }).locator('xpath=ancestor::div[contains(@class,"rounded-modal")]');
   await expect(modal).toBeVisible();
   await modal.getByRole('textbox', { name: 'Approved quantity for All-purpose flour' }).fill('3');
-  // The shelf for the line: 12 lb on it, nothing promised yet, 9 lb left after this, below the 10 lb min.
+  // The shelf for the line, term by term: 12 lb on it, nothing promised, no menu, this request 3 lb, 9 lb left.
   const flourLine = modal.getByTestId('decision-line').filter({ hasText: 'All-purpose flour' });
-  await expect(flourLine.getByTestId('stock-context')).toContainText('On shelf 12 lb');
-  await expect(flourLine.getByTestId('stock-context')).toContainText('Left after this 9 lb (below min on hand)');
-  await modal.getByRole('textbox', { name: 'Link Big marshmallows to an item' }).fill('marsh');
+  await expect(flourLine.getByTestId('stock-on')).toHaveText('12 lb');
+  await expect(flourLine.getByTestId('stock-promised')).toHaveText('0');
+  await expect(flourLine.getByTestId('stock-this')).toHaveText('− 3 lb');
+  await expect(flourLine.getByTestId('stock-left')).toHaveText('9 lb');
+  await expect(flourLine.getByTestId('stock-context')).toContainText('Below your 10 lb minimum on hand');
+  // The eggs line carries the counselor's own words.
+  await expect(modal.getByTestId('decision-line').filter({ hasText: 'Large eggs' })).toContainText('“enough for 2”');
+  // A search with no match says so and offers to add it; Escape closes only the search.
+  const link = modal.getByRole('textbox', { name: 'Link Big marshmallows to an item' });
+  await link.fill('saffron');
+  await expect(modal.getByTestId('link-empty')).toContainText('Nothing on your kitchen list matches “saffron”');
+  await expect(modal.getByTestId('quick-add-item')).toHaveText('Add “saffron” to the kitchen list');
+  await shot(kitchen.page, 'kitchen-decision-link-empty');
+  await link.press('Escape');
+  await expect(modal.getByTestId('link-results')).toHaveCount(0);
+  await expect(modal).toBeVisible();
+  await expect(modal.getByRole('textbox', { name: 'Approved quantity for All-purpose flour' })).toHaveValue('3');
+  await link.fill('marsh');
   await modal.getByRole('option', { name: /Mini marshmallows/ }).click();
-  // "3 bags" is not "3 bag" of the kitchen's item: the amount clears and must be entered in its unit.
+  // "3 bags" and the kitchen's item counted in bags are one unit, so the amount carries over.
+  // A different unit (bags linked to an item counted in lb) still clears it.
   const marshQty = modal.getByRole('textbox', { name: 'Approved quantity for Big marshmallows' });
-  await expect(marshQty).toHaveValue('');
+  await expect(marshQty).toHaveValue('3');
   await expect(modal.getByTestId('asked-for')).toHaveText('Asked for: 3 bags of Big marshmallows');
-  await expect(modal.getByRole('button', { name: /^Approve/ })).toBeDisabled();
   await shot(kitchen.page, 'kitchen-decision-unit-cleared');
   await marshQty.fill('2');
   await modal.getByLabel(/Note to Casey/).fill('Only 3 lb of flour until Monday.');
   await shot(kitchen.page, 'kitchen-decision-edited');
   await modal.getByRole('button', { name: 'Approve with changes' }).click();
   await expect(card).toHaveCount(0);
+  await expect(kitchen.page.getByTestId('food-toast')).toContainText('Approved Cooking Club');
+  await expect(kitchen.page.getByTestId('toast-undo')).toBeVisible();
+  await shot(kitchen.page, 'kitchen-approved-toast');
 
   await expect(await statusHeadline(page)).toHaveText('Approved, with changes');
   await expect(page.getByText('Only 3 lb of flour until Monday.')).toBeVisible();
@@ -187,13 +213,16 @@ test('J1–J2: a counselor asks, the kitchen approves with changes, sets it asid
   await shot(kitchen.page, 'kitchen-request-detail-messages');
   await kitchen.page.keyboard.press('Escape');
 
-  // ── Inventory: on shelf, promised, left after — and the tiles agree with the rows ─────────
+  // ── Inventory: on shelf, promised, menu use, left — the dialog's numbers, and the tiles agree ─
   await kitchen.page.getByRole('button', { name: 'Inventory', exact: true }).click();
+  await expect(kitchen.page.getByTestId('shelf-legend')).toContainText('Left = on shelf − promised to programs − planned menu use');
   const flourRow = kitchen.page.locator('[data-testid="inventory-row"][data-item="All-purpose flour"]');
-  await expect(flourRow.getByTestId('on-shelf')).toHaveText('12 lb');
-  await expect(flourRow.getByTestId('set-aside')).toContainText('3 lb');
+  await expect(flourRow.getByTestId('on-shelf-value')).toHaveText('12 lb');
+  await expect(flourRow.getByTestId('on-shelf')).toContainText('counted');
+  await expect(flourRow.getByTestId('promised-value')).toHaveText('3 lb');
   await expect(flourRow.getByTestId('set-aside')).toContainText('Cooking Club');
-  await expect(flourRow.getByTestId('left-after')).toContainText('9 lb');
+  await expect(flourRow.getByTestId('left-value')).toHaveText('9 lb');
+  await expect(flourRow.getByTestId('left-after').locator('span[title]').first()).toHaveAttribute('title', /12 lb on shelf − 3 lb promised to programs − 0 lb planned menu use through .* = 9 lb left/);
   await expect(flourRow).toHaveAttribute('data-status', 'low');
   const marshRow = kitchen.page.locator('[data-testid="inventory-row"][data-item="Mini marshmallows"]');
   await expect(marshRow.getByTestId('set-aside')).toContainText('2 bags');
@@ -212,10 +241,12 @@ test('J1–J2: a counselor asks, the kitchen approves with changes, sets it asid
     .toContainText('Includes 3 lb for Cooking Club');
   await kitchen.page.getByRole('button', { name: /Show the math/ }).click();
   const math = kitchen.page.getByTestId('order-math');
-  await expect(math).toContainText('Program requests');
+  await expect(math).toContainText('Promised to programs');
   await expect(math).toContainText('Min on hand');
   await expect(math).toContainText('1 × 50 lb bag');
-  await expect(math).toContainText(/including 3 lb for Cooking Club on/);
+  // The same on-shelf figure as Inventory, and the request named with its date.
+  await expect(math.locator('[data-item="All-purpose flour"]').getByTestId('math-on-shelf')).toHaveText('12 lb');
+  await expect(math).toContainText(`− 3 lb promised (3 lb for Cooking Club (${formatDay(addDays(todayInZone(CAMP_TZ), 2)).replace(',', '')}))`);
   await math.scrollIntoViewIfNeeded();
   await shot(kitchen.page, 'kitchen-order-math');
 
@@ -236,7 +267,8 @@ test('J1–J2: a counselor asks, the kitchen approves with changes, sets it asid
   await confirm.getByRole('button', { name: 'Mark ready now' }).click();
   await expect(handover.getByRole('button', { name: 'Picked up' })).toBeVisible();
   await shot(kitchen.page, 'kitchen-pickups-ready');
-  await expect(await statusHeadline(page)).toHaveText('Ready at the kitchen back door');
+  // Ready two days ahead of the pickup says when, not "come now".
+  await expect(await statusHeadline(page)).toHaveText(`Ready for pickup ${formatDay(pickupDate).replace(',', '')} ${formatClock('14:00')}`);
   await shot(page, 'counselor-status-ready');
 
   await handover.getByRole('button', { name: 'Picked up' }).click();
@@ -254,7 +286,7 @@ test('J1–J2: a counselor asks, the kitchen approves with changes, sets it asid
   expect(used.map((u) => u.name)).toEqual(['All-purpose flour', 'Large eggs', 'Mini marshmallows']);
   expect(used[0].notes).toMatch(/^Food request picked up: Cooking Club, pickup /);
   await kitchen.page.getByRole('button', { name: 'Inventory', exact: true }).click();
-  await expect(flourRow.getByTestId('on-shelf')).toHaveText('9 lb');
+  await expect(flourRow.getByTestId('on-shelf-value')).toHaveText('9 lb');
   await expect(flourRow.getByTestId('set-aside')).toHaveCount(0);
   await shot(kitchen.page, 'kitchen-inventory-after-pickup');
   await kitchen.page.getByRole('button', { name: /^Requests/ }).click();
@@ -264,6 +296,7 @@ test('J1–J2: a counselor asks, the kitchen approves with changes, sets it asid
   await expect(await statusHeadline(page)).toHaveText('Picked up');
   await expect(page.getByTestId('picked-up-when')).toContainText('(pickup was ');
   await expect(page.getByTestId('status-purpose')).toContainText(`${purpose} · 14 people`);
+  await expect(page.getByText('enough for 2', { exact: true })).toBeVisible();
   await expect(page.getByTestId('kitchen-item')).toHaveText('The kitchen is giving you: Mini marshmallows');
   await expect(page.getByRole('button', { name: 'Cancel this request' })).toHaveCount(0);
   await shot(page, 'counselor-status-picked-up');
@@ -310,12 +343,19 @@ test('the other food-request screens: programs & QR, a missed pickup, a requeste
     async (banner) => { await banner.getByRole('button', { name: 'Dismiss' }).last().click(); },
   );
   // A pickup yesterday that nobody came for, and a request its counselor is about to cancel.
-  sql(`insert into food_requests (camp_id, program_id, requester_name, requester_email, source, pickup_date, pickup_time,
+  const [overdue] = sql<{ id: string }>(`insert into food_requests (camp_id, program_id, requester_name, requester_email, source, pickup_date, pickup_time,
          purpose, status, notice_hours, cutoff_hours, is_late, decided_at, decided_by_name)
        select c.id, p.id, 'Morgan Late', 'morgan@example.com', 'link',
               (now() at time zone c.timezone)::date - 1, '15:00', 'Overdue ${tag}', 'approved', 100, 72, false, now() - interval '3 days', 'Kitchen'
          from camps c join food_programs p on p.camp_id = c.id and p.name = 'Cooking Club' where c.slug = 'prospect-qa'
        returning id`);
+  // 4 lb of flour set aside for it: a missed pickup must give that back, not take it off the shelf.
+  sql(`insert into food_request_lines (request_id, camp_id, item_id, label, qty_requested, unit_label, unit_in_base, qty_requested_base, sort_order)
+       select '${overdue.id}', i.camp_id, i.id, i.name, 4, 'lb', i.stock_unit_in_base, 4 * i.stock_unit_in_base, 0
+         from inventory_items i join camps c on c.id = i.camp_id where c.slug = 'prospect-qa' and i.name = 'All-purpose flour'
+       returning id`);
+  const flourLb = () => Number(sql<{ lb: string }>(`select round(on_hand_base / stock_unit_in_base, 2) as lb from inventory_items i
+       join camps c on c.id = i.camp_id where c.slug = 'prospect-qa' and i.name = 'All-purpose flour'`)[0].lb);
   const [cancelMe] = sql<{ token: string }>(`select submit_food_request_public('qa-cooking-club', jsonb_build_object(
       'requester_name', 'Riley Cancel', 'requester_email', 'riley-${tag}@example.com', 'pickup_date', (now() at time zone 'America/Toronto')::date + 5,
       'pickup_time', '11:00', 'purpose', 'Cancel ${tag}', 'lines', jsonb_build_array(jsonb_build_object('label', 'Apples', 'qty', 4))))->>'status_token' as token`);
@@ -324,11 +364,33 @@ test('the other food-request screens: programs & QR, a missed pickup, a requeste
   await admin.page.goto('/commissary?tab=requests&view=pickups');
   const late = admin.page.getByTestId('food-request-card').filter({ hasText: `Overdue ${tag}` });
   await expect(late.getByTestId('overdue-chip')).toHaveText(/^Not picked up yet · \d+(h| days) late$/, { timeout: 30_000 });
-  await expect(admin.page.getByTestId('overdue-badge')).toHaveText('1');
+  await expect(admin.page.getByTestId('overdue-badge')).toHaveText('1 late');
   await shot(admin.page, 'pickups-overdue');
-  await late.getByRole('button', { name: 'Missed' }).click();
+  // Not picked up asks first, says the food goes back, and can be undone.
+  await late.getByRole('button', { name: 'Not picked up…' }).click();
+  const confirmMissed = admin.page.getByTestId('confirm-dialog');
+  await expect(confirmMissed).toContainText('Nothing comes off the shelf count');
+  await shot(admin.page, 'pickups-missed-confirm');
+  await confirmMissed.getByRole('button', { name: 'Mark not picked up' }).click();
   await expect(late).toHaveCount(0);
   await expect(admin.page.getByTestId('overdue-badge')).toHaveCount(0);
+  await expect(admin.page.getByTestId('food-toast')).toContainText('back on the shelf');
+  expect(flourLb()).toBe(12);
+  await shot(admin.page, 'pickups-missed-toast');
+  await admin.page.getByTestId('toast-undo').click();
+  await expect(late).toBeVisible();
+  await expect(admin.page.getByTestId('food-toast')).toContainText('back on the pickup list');
+  await late.getByRole('button', { name: 'Not picked up…' }).click();
+  await confirmMissed.getByRole('button', { name: 'Mark not picked up' }).click();
+  await expect(late).toHaveCount(0);
+  expect(flourLb()).toBe(12);
+  // Inventory: the flour is still 12 lb on the shelf and nothing is promised any more.
+  await admin.page.getByRole('button', { name: 'Inventory', exact: true }).click();
+  const flourAfterMissed = admin.page.locator('[data-testid="inventory-row"][data-item="All-purpose flour"]');
+  await expect(flourAfterMissed.getByTestId('on-shelf-value')).toHaveText('12 lb');
+  await expect(flourAfterMissed.getByTestId('set-aside')).toHaveCount(0);
+  await expect(flourAfterMissed.getByTestId('left-value')).toHaveText('12 lb');
+  await admin.page.getByRole('button', { name: /^Requests/ }).click();
 
   // The counselor cancels on their status page, in the page, and the kitchen is told on screen.
   const counselor = await browser.newContext({ viewport, isMobile: isPhone, hasTouch: isPhone });
@@ -345,6 +407,71 @@ test('the other food-request screens: programs & QR, a missed pickup, a requeste
   await shot(admin.page, 'kitchen-requester-cancelled-notice');
   await notice.getByRole('button', { name: 'Got it' }).click();
   await expect(notice).toHaveCount(0);
+
+  // ── A request with a typed-in item, one to approve as is, and one the kitchen hasn't got ──────
+  const [typed] = sql<{ token: string }>(`select submit_food_request_public('qa-cooking-club', jsonb_build_object(
+      'requester_name', 'Jess Typed', 'requester_email', 'jess-${tag}@example.com', 'pickup_date', (now() at time zone 'America/Toronto')::date + 6,
+      'pickup_time', '13:00', 'purpose', 'Typed ${tag}', 'lines', jsonb_build_array(
+        jsonb_build_object('label', 'Rainbow sprinkles ${tag}', 'qty', 2, 'unit_label', 'jars'),
+        jsonb_build_object('label', 'Birthday candles', 'qty', 1, 'unit_label', 'box'),
+        jsonb_build_object('label', 'Saffron', 'qty', 1, 'unit_label', 'oz'))))->>'status_token' as token`);
+  await admin.page.getByRole('button', { name: /^Inbox/ }).click();
+  const typedCard = admin.page.getByTestId('food-request-card').filter({ hasText: `Typed ${tag}` });
+  await typedCard.getByRole('button', { name: 'Edit & approve' }).click();
+  const review = admin.page.getByRole('heading', { name: 'Review Cooking Club' }).locator('xpath=ancestor::div[contains(@class,"rounded-modal")]');
+  await review.getByRole('textbox', { name: `Link Rainbow sprinkles ${tag} to an item` }).fill(`Rainbow sprinkles ${tag}`);
+  await review.getByTestId('quick-add-item').click();
+  const quick = review.getByTestId('quick-add-form');
+  await expect(quick.getByLabel('New item name')).toHaveValue(`Rainbow sprinkles ${tag}`);
+  await quick.getByLabel('Counted in').selectOption('jar');
+  await shot(admin.page, 'kitchen-quick-add-item');
+  await quick.getByRole('button', { name: 'Add and link' }).click();
+  await expect(review.getByTestId('decision-line').filter({ hasText: `Rainbow sprinkles ${tag}` })).toContainText(`Rainbow sprinkles ${tag}`);
+  await expect(review.getByRole('textbox', { name: `Approved quantity for Rainbow sprinkles ${tag}` })).toHaveValue('2');
+  // Saffron: not available, and the kitchen has to say why.
+  const saffron = review.getByTestId('decision-line').filter({ hasText: 'Saffron' });
+  await saffron.getByLabel('Not available').check();
+  await expect(review.getByRole('button', { name: /^Approve/ })).toBeDisabled();
+  await saffron.getByLabel(/Why, or what to use instead/).fill('We don’t stock it; try turmeric');
+  // Escape with edits asks before throwing them away.
+  await admin.page.keyboard.press('Escape');
+  await expect(admin.page.getByTestId('confirm-dialog')).toContainText('Discard your changes?');
+  await admin.page.getByTestId('confirm-dialog').getByRole('button', { name: 'Keep editing' }).click();
+  await shot(admin.page, 'kitchen-decision-unavailable-reason');
+  await review.getByRole('button', { name: 'Approve with changes' }).click();
+  await expect(typedCard).toHaveCount(0);
+  const [newItem] = sql<{ id: string; stock_unit: string; linked: number }>(`select i.id, i.stock_unit,
+      (select count(*) from food_request_lines l where l.item_id = i.id)::int as linked
+      from inventory_items i join camps c on c.id = i.camp_id where c.slug = 'prospect-qa' and i.name = 'Rainbow sprinkles ${tag}'`);
+  expect(newItem).toMatchObject({ stock_unit: 'jar', linked: 1 });
+  // Approved as is, the candles are something to buy: the card says so.
+  await admin.page.getByRole('button', { name: /^Pickups/ }).click();
+  const typedPickup = admin.page.getByTestId('food-request-card').filter({ hasText: `Typed ${tag}` });
+  await expect(typedPickup.getByTestId('request-line').filter({ hasText: 'Birthday candles' }).getByTestId('buy-source')).toBeVisible();
+  // …and the counselor is told what happened to each line.
+  const cstatus = await browser.newContext({ viewport, isMobile: isPhone, hasTouch: isPhone });
+  const spage = await cstatus.newPage();
+  await spage.goto(`/food/status/${typed.token}`);
+  await expect(spage.getByTestId('kitchen-reason')).toHaveText('Kitchen: We don’t stock it; try turmeric');
+  await expect(spage.getByTestId('not-on-list')).toHaveText('The kitchen will get this separately — it isn’t on their list.');
+  await shot(spage, 'counselor-status-reason-and-sourced');
+  await cstatus.close();
+  // Undo an approval while its email is still unsent: back to the inbox.
+  const [undoMe] = sql<{ token: string }>(`select submit_food_request_public('qa-cooking-club', jsonb_build_object(
+      'requester_name', 'Una Undo', 'requester_email', 'una-${tag}@example.com', 'pickup_date', (now() at time zone 'America/Toronto')::date + 7,
+      'pickup_time', '10:00', 'purpose', 'Undo ${tag}', 'lines', jsonb_build_array(jsonb_build_object('label', 'Apples', 'qty', 4))))->>'status_token' as token`);
+  expect(undoMe.token).toBeTruthy();
+  await admin.page.getByRole('button', { name: /^Inbox/ }).click();
+  const undoCard = admin.page.getByTestId('food-request-card').filter({ hasText: `Undo ${tag}` });
+  const toastNow = admin.page.getByTestId('food-toast');
+  if (await toastNow.count()) await toastNow.getByRole('button', { name: 'Dismiss' }).click();
+  await undoCard.getByRole('button', { name: 'Approve', exact: true }).click();
+  await expect(undoCard).toHaveCount(0);
+  await admin.page.getByTestId('toast-undo').click();
+  await expect(undoCard).toBeVisible();
+  await expect(admin.page.getByTestId('food-toast')).toContainText('back in the inbox');
+  await expect.poll(() => sql<{ n: number }>(`select count(*)::int as n from scheduled_messages m join food_requests r on r.id = m.subject_id
+      where r.purpose = 'Undo ${tag}' and m.rule_key = 'request_decided'`)[0].n).toBe(0);
 
   // Programs & links lands on the programs, with the danger zone folded away below.
   await admin.page.getByRole('button', { name: 'Programs and links' }).click();
@@ -386,4 +513,87 @@ test('the other food-request screens: programs & QR, a missed pickup, a requeste
   await expect(program.page.getByTestId('my-food-requests')).toContainText('Waiting for the kitchen');
   await shot(program.page, 'my-requests-sent');
   await program.context.close();
+});
+
+test('a kosher kitchen: meat, dairy and pareve on the menu, and a dairy snack after a meat dinner is flagged', async ({ browser }, info) => {
+  test.setTimeout(120_000);
+  const shot = stepper('food-kosher-menu', info.project.name);
+  const viewport = info.project.use.viewport ?? { width: 1280, height: 800 };
+  const isPhone = viewport.width < 640;
+  // A two-week session starting today, two recipes from the fixture's pantry and a beef item made
+  // for this test: Monday-style dinner of beef with a butter-cookie snack (flagged), and the next
+  // day beef again with a sugar-only snack (pareve, not flagged).
+  sql(`do $x$
+    declare v_camp uuid; v_session uuid; v_beef uuid; v_butter uuid; v_sugar uuid; r_beef uuid; r_cookie uuid; r_candy uuid;
+    begin
+      select id into v_camp from camps where slug = 'prospect-qa';
+      delete from menu_entries where camp_id = v_camp;
+      delete from commissary_sessions where camp_id = v_camp and name = 'QA kosher session';
+      delete from recipe_ingredients where camp_id = v_camp and recipe_id in (select id from recipes where camp_id = v_camp and name like 'QA %');
+      delete from recipes where camp_id = v_camp and name like 'QA %';
+      delete from inventory_items where camp_id = v_camp and name = 'QA ground beef';
+      insert into inventory_items (camp_id, name, category, dimension, base_unit, stock_unit, stock_unit_in_base, on_hand_base, last_counted_at)
+        values (v_camp, 'QA ground beef', 'protein', 'weight', 'g', 'lb', 453.592, 453.592 * 40, now()) returning id into v_beef;
+      select id into v_butter from inventory_items where camp_id = v_camp and name = 'Unsalted butter';
+      select id into v_sugar from inventory_items where camp_id = v_camp and name = 'Granulated sugar';
+      insert into commissary_sessions (camp_id, name, start_date, end_date, camper_count, staff_count, is_active)
+        values (v_camp, 'QA kosher session', (now() at time zone 'America/Toronto')::date, (now() at time zone 'America/Toronto')::date + 13, 10, 2, true)
+        returning id into v_session;
+      update commissary_sessions set is_active = false where camp_id = v_camp and id <> v_session;
+      insert into recipes (camp_id, name, meal_period, base_yield) values (v_camp, 'QA beef tacos', 'dinner', 10) returning id into r_beef;
+      insert into recipes (camp_id, name, meal_period, base_yield) values (v_camp, 'QA butter cookies', 'snack', 10) returning id into r_cookie;
+      insert into recipes (camp_id, name, meal_period, base_yield) values (v_camp, 'QA sugar candy', 'snack', 10) returning id into r_candy;
+      insert into recipe_ingredients (camp_id, recipe_id, item_id, label, qty_in_base) values
+        (v_camp, r_beef, v_beef, 'QA ground beef', 453.592), (v_camp, r_cookie, v_butter, 'Unsalted butter', 100),
+        (v_camp, r_candy, v_sugar, 'Granulated sugar', 100);
+      insert into menu_entries (camp_id, session_id, week_number, day_index, meal_period, recipe_id, label, sort_order) values
+        (v_camp, v_session, 1, 0, 'dinner', r_beef, 'QA beef tacos', 0),
+        (v_camp, v_session, 1, 0, 'snack', r_cookie, 'QA butter cookies', 0),
+        (v_camp, v_session, 1, 1, 'dinner', r_beef, 'QA beef tacos', 0),
+        (v_camp, v_session, 1, 1, 'snack', r_candy, 'QA sugar candy', 0);
+      update camps set dietary_defaults = coalesce(dietary_defaults, '{}'::jsonb) || '{"kosher": false}'::jsonb where id = v_camp;
+    end $x$`);
+  const admin = await asUser(browser, 'admin', { viewport, isMobile: isPhone, hasTouch: isPhone });
+  await admin.page.addLocatorHandler(
+    admin.page.getByRole('alert').filter({ hasText: 'get_camp_staff_personal' }),
+    async (banner) => { await banner.getByRole('button', { name: 'Dismiss' }).last().click(); },
+  );
+  try {
+    await admin.page.goto('/commissary?tab=menu');
+    await expect(admin.page.getByRole('heading', { name: 'Kitchen Manager' })).toBeVisible({ timeout: 30_000 });
+    const toggle = admin.page.getByTestId('kosher-toggle');
+    await expect(toggle).toHaveText('Kosher kitchen: off');
+    await expect(admin.page.getByTestId('kosher-marker')).toHaveCount(0);
+    // Week 1 has nothing to copy from.
+    await expect(admin.page.getByRole('button', { name: /^Copy week/ })).toHaveCount(0);
+    await toggle.click();
+    await expect(toggle).toHaveText('Kosher kitchen: on');
+    const chip = (label: string, n = 0) => admin.page.getByTestId('menu-chip').filter({ hasText: label }).nth(n);
+    await expect(chip('QA beef tacos')).toHaveAttribute('data-kosher', 'meat');
+    await expect(chip('QA butter cookies')).toHaveAttribute('data-kosher', 'dairy');
+    await expect(chip('QA sugar candy')).toHaveAttribute('data-kosher', 'pareve');
+    await expect(chip('QA butter cookies')).toHaveAttribute('data-kosher-flag', 'true');
+    await expect(chip('QA butter cookies')).toHaveAttribute('title', /Dairy snack after a meat dinner \(QA beef tacos\)/);
+    await expect(chip('QA sugar candy')).not.toHaveAttribute('data-kosher-flag', /.*/);
+    await expect(chip('QA beef tacos')).not.toHaveAttribute('data-kosher-flag', /.*/);
+    await expect(admin.page.getByTestId('kosher-legend')).toContainText('1 dish flagged this week');
+    await chip('QA butter cookies').scrollIntoViewIfNeeded();
+    await shot(admin.page, 'menu-kosher-flag');
+    // Clicking a dish opens it to change.
+    await chip('QA sugar candy').getByRole('button', { name: 'Edit QA sugar candy' }).click();
+    await expect(admin.page.getByRole('heading', { name: 'Edit QA sugar candy' })).toBeVisible();
+    await shot(admin.page, 'menu-edit-dish');
+    await admin.page.getByRole('button', { name: 'Cancel' }).click();
+  } finally {
+    sql(`do $x$ declare v_camp uuid; begin
+      select id into v_camp from camps where slug = 'prospect-qa';
+      delete from menu_entries where camp_id = v_camp;
+      delete from commissary_sessions where camp_id = v_camp and name = 'QA kosher session';
+      delete from recipe_ingredients where camp_id = v_camp and recipe_id in (select id from recipes where camp_id = v_camp and name like 'QA %');
+      delete from recipes where camp_id = v_camp and name like 'QA %';
+      delete from inventory_items where camp_id = v_camp and name = 'QA ground beef';
+      update camps set dietary_defaults = coalesce(dietary_defaults, '{}'::jsonb) - 'kosher' where id = v_camp;
+    end $x$`);
+    await admin.context.close();
+  }
 });

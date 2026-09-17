@@ -17,6 +17,8 @@ begin
   delete from scheduled_messages where camp_id = v_camp and subject_type = 'food_request';
   delete from food_request_lines where camp_id = v_camp;
   delete from food_requests where camp_id = v_camp;
+  -- Items the journey adds to the kitchen list from a typed-in line.
+  delete from inventory_items where camp_id = v_camp and name like 'Rainbow sprinkles %';
   -- The public link allows 10 requests an hour per address, and a day of journey runs from one
   -- laptop exceeds that. Only this camp's buckets are cleared.
   delete from food_request_throttle where bucket like v_camp::text || ':%';

@@ -147,35 +147,30 @@ function summarize(
   return out;
 }
 
-/** What is set aside on the shelf: approved or ready requests picked up today or later. */
+/**
+ * What is set aside on the shelf: every approved or ready request not yet picked up. A pickup whose
+ * day has gone is still here until someone taps Picked up or Missed; it used to drop out of the
+ * shelf picture at midnight while the food was still sitting in the walk-in with a name on it.
+ */
 export function setAsideByItem(
   requests: FoodRequest[],
   lines: FoodRequestLine[],
-  today: string,
   programs: Pick<FoodProgram, 'id' | 'name'>[] = [],
 ): Map<string, RequestDemandSummary> {
-  return summarize(requests, lines, programs,
-    (r) => (r.status === 'approved' || r.status === 'ready') && r.pickupDate >= today,
-    lineDemandBase);
+  return summarize(requests, lines, programs, (r) => DEMAND_STATUSES.has(r.status), lineDemandBase);
 }
 
 /**
- * What each item has promised away, for the shelf picture: the total from today on, the part due
- * today (still physically on the shelf), and the last pickup day.
+ * Promised food per item and day, for the shelf math. Past-due pickups are filed under today:
+ * the food is still set aside, and it comes off the shelf the moment it is handed over.
  */
-export function promisesByItem(setAside: Map<string, RequestDemandSummary>, today: string):
-  Map<string, { totalBase: number; todayBase: number; lastDate: string | null }> {
-  const out = new Map<string, { totalBase: number; todayBase: number; lastDate: string | null }>();
-  for (const [itemId, s] of setAside) {
-    let todayBase = 0;
-    let lastDate: string | null = null;
-    for (const e of s.entries) {
-      if (e.pickupDate === today) todayBase += e.base;
-      if (!lastDate || e.pickupDate > lastDate) lastDate = e.pickupDate;
-    }
-    out.set(itemId, { totalBase: s.totalBase, todayBase, lastDate });
-  }
-  return out;
+export function promisedByItemDate(
+  requests: FoodRequest[],
+  lines: FoodRequestLine[],
+  today: string,
+): Map<string, Map<string, number>> {
+  const clamped = requests.map((r) => (r.pickupDate < today ? { ...r, pickupDate: today } : r));
+  return requestDemandByItemDate(clamped, lines);
 }
 
 /** Requests still waiting for a decision, by item: not demand yet, shown so nobody is surprised. */
@@ -192,18 +187,18 @@ export function pendingByItem(
 }
 
 /**
- * Request demand inside an ordering window, by item. The window matches orderMath's "used by":
- * after today, through the window end. Today's pickups are already inside "on hand now".
+ * Request demand inside an ordering window, by item: everything promised and not yet picked up,
+ * through the window end (today's and past-due pickups included, as in orderLineMath).
  */
 export function requestDemandInWindow(
   requests: FoodRequest[],
   lines: FoodRequestLine[],
-  today: string,
+  _today: string,
   windowEnd: string,
   programs: Pick<FoodProgram, 'id' | 'name'>[] = [],
 ): Map<string, RequestDemandSummary> {
   return summarize(requests, lines, programs,
-    (r) => DEMAND_STATUSES.has(r.status) && r.pickupDate > today && r.pickupDate <= windowEnd,
+    (r) => DEMAND_STATUSES.has(r.status) && r.pickupDate <= windowEnd,
     lineDemandBase);
 }
 
@@ -303,13 +298,17 @@ export function shortNoticeLabel(noticeHours: number): string {
   return `Short notice · ${Math.max(0, Math.round(noticeHours))}h`;
 }
 
-/** "26 hours" under two days, "3 days" beyond. Always of real notice. */
+/**
+ * "26 hours" under two days, "2 days (59 h)" beyond: whole days of real notice, with the hours the
+ * chip and the emails show. The chip rounded (44h) while this floored (43 hours), and "3 days" for
+ * 59 hours sat beside "you ask for 3 days’ notice (72 h)" on a request flagged short.
+ */
 export function formatNotice(hours: number): string {
   if (hours < 0) return 'already past';
-  if (hours < 1) return 'under an hour';
-  if (hours < 48) return `${Math.floor(hours)} hour${Math.floor(hours) === 1 ? '' : 's'}`;
-  const days = Math.floor(hours / 24);
-  return `${days} days`;
+  const h = Math.round(hours);
+  if (h < 1) return 'under an hour';
+  if (h < 48) return `${h} hour${h === 1 ? '' : 's'}`;
+  return `${Math.floor(h / 24)} days (${h} h)`;
 }
 
 /** Trims float noise for display: 1.5, 3, 0.25. */
@@ -449,7 +448,9 @@ export function checkDraft(draft: FoodRequestDraft, opts: { timeZone: string; cu
   for (const { l, i } of filled) {
     const q = Number(l.qty);
     if (!l.qty.trim() || !Number.isFinite(q) || q <= 0) {
-      fieldErrors.push({ field: `qty-${i}`, message: `Add how much${l.itemId && l.unitLabel ? ` (in ${pluralizeUnit(l.unitLabel, 2)})` : ' (e.g. 3 boxes)'}.` });
+      fieldErrors.push({ field: `qty-${i}`, message: l.qtyWords
+        ? `Add a number for how much too; the kitchen still gets “${l.qtyWords}”.`
+        : `Add how much${l.itemId && l.unitLabel ? ` (in ${pluralizeUnit(l.unitLabel, 2)})` : ' (e.g. 3 boxes)'}.` });
     }
   }
   let hours: number | null = null;
@@ -507,6 +508,19 @@ export function parseAmount(text: string): { qty: string; unit: string; rest: st
 const KNOWN_UNITS = /^(bags?|boxe?s|box|cans?|cases?(?: of \d+)?|dozens?|doz|lbs?|pounds?|oz|ounces?|kg|g|grams?|gal(?:lon)?s?|quarts?|qts?|pints?|jars?|bottles?|packs?|packages?|pkgs?|loaf|loaves|bunch(?:es)?|heads?|each|ea|cups?|tins?|tubs?|cartons?|bars?|sticks?|pieces?|pcs?|trays?|rolls?|sleeves?)$/i;
 
 /** The draft as the RPC payload. Empty lines are dropped. */
+/**
+ * A number typed with words around it ("enough for 2", "about 15", "a dozen or so"). The number
+ * box used to strip everything but digits, so "enough for 2" arrived as "2" with nobody the
+ * wiser. The number is taken for the kitchen's math and the words are kept to be passed on.
+ */
+export function readAmountText(raw: string): { value: string; words: string | null } {
+  const text = raw.replace(/\s+/g, ' ').slice(0, 80);
+  const t = text.trim();
+  if (/^\d*(?:\.\d*)?$/.test(t)) return { value: t, words: null };
+  const m = /\d+(?:\.\d+)?/.exec(t);
+  return { value: m ? m[0] : '', words: t || null };
+}
+
 export function draftToPayload(draft: FoodRequestDraft): Record<string, unknown> {
   return {
     program_id: draft.programId || null,
@@ -516,13 +530,18 @@ export function draftToPayload(draft: FoodRequestDraft): Record<string, unknown>
     notify_by: draft.notifyBy,
     pickup_date: draft.pickupDate,
     pickup_time: draft.pickupTime,
-    purpose: draft.purpose.trim() || null,
+    // "About 15" people is kept in their words beside the purpose; the number goes in headcount.
+    purpose: [draft.purpose.trim(), draft.headcountWords ? `${draft.headcountWords} people` : ''].filter(Boolean).join(' · ') || null,
     headcount: draft.headcount.trim() ? Number(draft.headcount) : null,
     lines: draft.lines
       .filter((l) => l.label.trim() || l.itemId)
-      .map((l) => (l.itemId
-        ? { item_id: l.itemId, qty: Number(l.qty), note: l.note?.trim() || null }
-        : { label: l.label.trim(), qty: Number(l.qty), unit_label: l.unitLabel.trim() || null, note: l.note?.trim() || null })),
+      .map((l) => {
+        // Their words for the amount travel as the line's note, so the kitchen reads "enough for 2".
+        const note = [l.qtyWords ?? '', l.note?.trim() ?? ''].filter(Boolean).join(' · ') || null;
+        return l.itemId
+          ? { item_id: l.itemId, qty: Number(l.qty), note }
+          : { label: l.label.trim(), qty: Number(l.qty), unit_label: l.unitLabel.trim() || null, note };
+      }),
   };
 }
 
@@ -565,7 +584,9 @@ export function pullListHtml(opts: {
     const rows = (byReq.get(r.id) ?? []).sort((a, b) => a.sortOrder - b.sortOrder).map((l) => {
       const unavailable = l.lineState === 'unavailable';
       const v = kitchenLineView(l, l.itemId ? opts.itemNames?.get(l.itemId) : undefined);
-      const extra = [v.asked ? `asked: ${v.asked}` : '', !v.linked ? 'not on the kitchen list' : '', l.note ?? ''].filter(Boolean).join(' · ');
+      // An approved line with no kitchen item is food nobody has on a shelf: say to go and get it.
+      const extra = [v.asked ? `asked: ${v.asked}` : '', !v.linked && !unavailable ? 'not on the kitchen list: buy or source it' : '',
+        unavailable && l.kitchenReason ? `not available: ${l.kitchenReason}` : '', l.note ?? ''].filter(Boolean).join(' · ');
       return `<tr${unavailable ? ' class="na"' : ''}><td class="box">${unavailable ? '' : '&#9744;'}</td><td>${unavailable ? `<s>${esc(v.name)}</s>` : esc(v.name)}${extra ? `<div class="note">${esc(extra)}</div>` : ''}</td><td class="qty">${esc(v.qty)}</td></tr>`;
     }).join('');
     const who = (r.programId && names.get(r.programId)) || r.requesterName;

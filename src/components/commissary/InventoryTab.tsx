@@ -9,8 +9,9 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import { useSafetyStore } from '@/store/safetyStore';
 import { useAuth } from '@/lib/auth';
 import {
-  CATEGORY_LABELS, STORAGE_LABELS, formatQty, fromBase,
-  onHandInStockUnit, parInStockUnit, countSheetToPrintHtml,
+  CATEGORY_LABELS, STORAGE_LABELS, formatInStockUnit,
+  onHandInStockUnit, parInStockUnit, countSheetToPrintHtml, shelfBreakdown, shelfEquation, countedPhrase, shortDay,
+  daysBetween, dateStrForCell,
   type PrintCountGroup, type StockStatus,
   todayStr,
 } from '@/lib/commissaryUnits';
@@ -18,7 +19,7 @@ import { OnHandValue, ParValue, CategoryIcon } from './commissaryUi';
 import { setAsideByItem, formatDay, formatClock } from '@/lib/foodRequests';
 
 // Width-only grid: the row and the header must share it exactly.
-const ROW_GRID = 'grid grid-cols-[2fr_1fr_1.2fr_1.3fr_0.9fr_150px] min-w-[880px] lg:min-w-0 gap-3';
+const ROW_GRID = 'grid grid-cols-[1.8fr_1.05fr_1.1fr_1fr_1.25fr_0.8fr_132px] min-w-[1000px] xl:min-w-0 gap-3';
 
 const STORAGE_ORDER = ['walk_in_refrigerator', 'walk_in_freezer', 'reach_in_refrigerator', 'dry_storage', 'other'];
 
@@ -35,8 +36,8 @@ export function InventoryTab() {
   const {
     items, filteredItems, setupCounts, openModal, setActiveTab,
     inventoryFilter, setInventoryFilter, inventorySearch, setInventorySearch,
-    activeWeek, weekShortfalls, unlinkedEntryCount, activeSession,
-    storageMap, shelfPictures,
+    unlinkedEntryCount, activeSession, weeksInSession,
+    storageMap, shelfPictures, shelfInputs, projectionHorizon, shelfThrough,
     foodRequests, foodRequestLines, foodPrograms,
   } = useCommissaryStore();
   const { tempLogs } = useSafetyStore();
@@ -70,10 +71,10 @@ export function InventoryTab() {
     w.document.write(html); w.document.close(); w.focus(); w.print();
   }
 
-  // Food promised to programs from today on. Already inside "Left after promises" and the run-out
-  // (it is demand); named on the row so the cook does not use the flour the cooking club is getting.
+  // Food promised to programs and not yet picked up. Named on the row so the cook does not use the
+  // flour the cooking club is getting.
   const setAside = useMemo(
-    () => setAsideByItem(foodRequests, foodRequestLines, todayStr(), foodPrograms),
+    () => setAsideByItem(foodRequests, foodRequestLines, foodPrograms),
     [foodRequests, foodRequestLines, foodPrograms],
   );
 
@@ -84,15 +85,28 @@ export function InventoryTab() {
   const setup = setupCounts();
   const rows = filteredItems();
   const session = activeSession();
+  const through = shelfThrough();
 
-  // The mock's alert banner is a hand-typed sentence that contradicts its own table
-  // (it lists canola oil as low while showing it fully stocked). This is the real
-  // computation: which items cannot cover the menu actually planned for this week.
-  const shortfalls = useMemo(
-    () => (session ? weekShortfalls(activeWeek) : []),
-    [session, activeWeek, weekShortfalls],
-  );
-  const unlinked = session ? unlinkedEntryCount(activeWeek) : 0;
+  // This week by the calendar, never the week last looked at on the Menu tab: the banner used to
+  // say "week 4's menu" on the first day of camp because someone had paged ahead.
+  const today = todayStr();
+  const thisWeek = session && today >= session.startDate && today <= session.endDate
+    ? Math.min(weeksInSession(), Math.floor(daysBetween(session.startDate, today) / 7) + 1)
+    : null;
+  const weekEnd = session && thisWeek ? dateStrForCell(session.startDate, thisWeek, 6) : null;
+  // Which items cannot cover what is still to be served this week: the same terms as the rows,
+  // through Sunday instead of the next delivery.
+  const shortfalls = session && thisWeek && weekEnd
+    ? (() => {
+      const inputs = shelfInputs();
+      const horizon = projectionHorizon();
+      return items.filter((i) => i.lastCountedAt != null && shelfBreakdown(i, inputs(i.id), weekEnd, horizon).left < 0);
+    })()
+    : [];
+  const unlinked = session && thisWeek ? unlinkedEntryCount(thisWeek) : 0;
+  const weekWords = session && thisWeek && weekEnd
+    ? `this week's menu (week ${thisWeek}, ${shortDay(dateStrForCell(session.startDate, thisWeek, 0))} – ${shortDay(weekEnd)})`
+    : '';
 
   // Soonest to run out first, then the worst left-after-promises. The reason anyone opens this screen.
   const severity: Record<StockStatus, number> = { critical: 0, low: 1, ok: 2 };
@@ -152,9 +166,9 @@ export function InventoryTab() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
         <StatCard label="Total items" value={items.length} hint="Across all categories" />
-        <StatCard label="Critically low" value={counts.critical} hint="Runs out in 3 days, or under half the min left after promises" variant={counts.critical > 0 ? 'red' : 'default'} />
-        <StatCard label="Low stock" value={counts.low} hint="Below the min after promises, or runs out this week" variant={counts.low > 0 ? 'amber' : 'default'} />
-        <StatCard label="Fully stocked" value={counts.ok} hint="At or above the min after promises" />
+        <StatCard label="Critically low" value={counts.critical} hint={`Runs out within 3 days, or under half the min left by ${shortDay(through)}`} variant={counts.critical > 0 ? 'red' : 'default'} />
+        <StatCard label="Low stock" value={counts.low} hint={`Under the min left by ${shortDay(through)}, or runs out within a week`} variant={counts.low > 0 ? 'amber' : 'default'} />
+        <StatCard label="Fully stocked" value={counts.ok} hint={`At or above the min left by ${shortDay(through)}`} />
       </div>
 
       {atRisk.length > 0 && (
@@ -171,8 +185,8 @@ export function InventoryTab() {
         <AlertBanner
           variant="alert"
           message={
-            `${shortfalls.length} item${shortfalls.length === 1 ? '' : 's'} cannot cover week ${activeWeek}'s menu: ` +
-            shortfalls.slice(0, 6).map((s) => s.item.name.toLowerCase()).join(', ') +
+            `${shortfalls.length} item${shortfalls.length === 1 ? '' : 's'} cannot cover ${weekWords}: ` +
+            shortfalls.slice(0, 6).map((s) => s.name.toLowerCase()).join(', ') +
             (shortfalls.length > 6 ? `, and ${shortfalls.length - 6} more` : '') + '.'
           }
           action={{ label: 'View menu', onClick: () => setActiveTab('menu') }}
@@ -183,7 +197,7 @@ export function InventoryTab() {
         <AlertBanner
           variant="warn"
           message={
-            `${unlinked} menu item${unlinked === 1 ? '' : 's'} in week ${activeWeek} ${unlinked === 1 ? 'is' : 'are'} ` +
+            `${unlinked} menu item${unlinked === 1 ? '' : 's'} on ${weekWords} ${unlinked === 1 ? 'is' : 'are'} ` +
             'not linked to a recipe, so nothing they use is counted in the demand above. ' +
             'Link them to a recipe to include their ingredients.'
           }
@@ -221,13 +235,19 @@ export function InventoryTab() {
         <SearchInput value={inventorySearch} onChange={setInventorySearch} placeholder="Search inventory…" />
       </div>
 
+      <p className="mb-2 text-[12px] leading-relaxed text-ink-soft" data-testid="shelf-legend">
+        <span className="font-semibold text-forest">Left</span> = on shelf − promised to programs − planned menu use
+        through <span className="font-semibold text-forest">{shortDay(through)}</span>
+        {session ? ' (the next delivery)' : ''} + deliveries due by then. Hover a figure for its math.
+      </p>
       <div className="bg-white rounded-card border border-border overflow-x-auto" data-testid="inventory-table">
         <div className={`${ROW_GRID} px-4 py-2.5 bg-cream-dark/50 border-b border-border`}>
           {[
             ['Item', null],
-            ['On shelf', 'What should be on the shelf right now: the last count, less what the menu has used since, plus deliveries'],
-            ['Promised to programs', 'Approved program requests from today on, still to be picked up'],
-            ['Left after promises', 'What is left once the promised pickups have gone, menu use included'],
+            ['On shelf', 'What should be on the shelf this morning: the last count (plus deliveries and adjustments since), less the menu cooked on the days after it'],
+            ['Promised to programs', 'Approved program requests not yet picked up. Still on the shelf, set aside'],
+            [`Menu use to ${shortDay(through)}`, `What the menu plans to use from today through ${shortDay(through)}${session ? ', the next delivery' : ''}`],
+            ['Left', `On shelf − promised − menu use through ${shortDay(through)} + deliveries due by then`],
             ['Min on hand', null],
             ['', null],
           ].map(([h, tip]) => (
@@ -237,10 +257,11 @@ export function InventoryTab() {
 
         {sorted.map((item) => {
           const p = pictures.get(item.id);
-          const qty = (base: number) => formatQty(fromBase(base, item.stockUnitInBase), item.stockUnit);
+          const qty = (base: number) => formatInStockUnit(item, base);
           const counted = item.lastCountedAt != null;
           const aside = setAside.get(item.id);
           const tone = !p ? 'text-ink' : p.status === 'critical' ? 'text-red' : p.status === 'low' ? 'text-amber-text' : 'text-green-muted-text';
+          const countedWords = p ? countedPhrase(item, p) : null;
           return (
             <div key={item.id} data-testid="inventory-row" data-item={item.name} data-status={p?.status}
               className={`${ROW_GRID} px-4 py-3 border-b border-border last:border-0 items-center hover:bg-cream-dark/30`}>
@@ -254,13 +275,15 @@ export function InventoryTab() {
                 </div>
               </div>
               <div className="min-w-0" data-testid="on-shelf">
-                {!counted ? <OnHandValue item={item} /> : (
-                  <>
-                    <span className="font-mono text-[13px] text-ink">{qty(p?.onShelf ?? item.onHandBase)}</span>
-                    {p && Math.abs(p.onShelf - item.onHandBase) > item.stockUnitInBase * 0.01 && (
-                      <span className="block text-[10.5px] text-ink-faint">counted {qty(item.onHandBase)}</span>
-                    )}
-                  </>
+                {!counted || !p ? <OnHandValue item={item} /> : (
+                  <span title={p.usedSinceCount > 0
+                    ? `${countedWords}, less ${qty(p.usedSinceCount)} the menu used since = ${qty(p.onShelf)}`
+                    : `${countedWords}. Nothing on the menu since, so the shelf is the count.`}>
+                    <span className="font-mono text-[13px] text-ink" data-testid="on-shelf-value">{qty(p.onShelf)}</span>
+                    <span className="block text-[10.5px] text-ink-faint underline decoration-dotted underline-offset-2">
+                      {p.usedSinceCount > 0 ? `counted ${qty(p.counted)} ${formatDay(p.countedOn!, { weekday: false })}` : `counted ${formatDay(p.countedOn!, { weekday: false })}`}
+                    </span>
+                  </span>
                 )}
               </div>
               <div className="min-w-0">
@@ -269,7 +292,7 @@ export function InventoryTab() {
                     onClick={() => setActiveTab('requests')}
                     title={aside.entries.map((e) => `${qty(e.base)} · ${e.who} · ${formatDay(e.pickupDate)} ${formatClock(e.pickupTime)}${e.status === 'ready' ? ' (ready)' : ''}`).join('\n')}
                     className="inline-flex max-w-full flex-col items-start rounded-tag border border-amber/40 bg-amber-bg px-1.5 py-0.5 text-left text-[11px] text-amber-text hover:border-amber">
-                    <span className="font-mono text-[12px] font-semibold whitespace-nowrap">{qty(aside.totalBase)}</span>
+                    <span className="font-mono text-[12px] font-semibold whitespace-nowrap" data-testid="promised-value">{qty(aside.totalBase)}</span>
                     <span className="max-w-full truncate">
                       {aside.entries[0].who} {formatDay(aside.entries[0].pickupDate).split(',')[0]}
                       {aside.entries.length > 1 ? ` +${aside.entries.length - 1}` : ''}
@@ -277,18 +300,26 @@ export function InventoryTab() {
                   </button>
                 ) : <span className="text-forest/25">-</span>}
               </div>
+              <div className="min-w-0" data-testid="menu-use">
+                {p && p.menuUse > 0
+                  ? <span className="font-mono text-[13px] text-ink" data-testid="menu-use-value">{qty(p.menuUse)}</span>
+                  : <span className="text-forest/25">-</span>}
+                {p && p.incoming > 0 && <span className="block text-[10.5px] text-green-muted-text">+{qty(p.incoming)} arriving</span>}
+              </div>
               <div className="min-w-0 text-[12px]" data-testid="left-after">
                 {!counted && !aside ? (
                   <span className="text-forest/25">-</span>
                 ) : p ? (
-                  <>
-                    <span className={`font-mono text-[13px] font-medium ${tone}`}>{qty(Math.max(0, p.leftAfter))}</span>
+                  <span title={shelfEquation(item, p)}>
+                    <span className={`font-mono text-[13px] font-medium ${tone}`} data-testid="left-value">
+                      {p.left < 0 ? `short ${qty(-p.left)}` : qty(p.left)}
+                    </span>
                     <span className={`block text-[11px] ${p.runOut ? tone : p.status === 'ok' ? 'text-ink-faint' : tone}`}>
                       {p.runOut
-                        ? <>Runs out {new Date(`${p.runOut}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}{p.cover != null && <span className="text-ink-faint"> · {p.cover}d</span>}</>
+                        ? <>Runs out {shortDay(p.runOut)}{p.cover != null && <span className="text-ink-faint"> · {p.cover === 0 ? 'today' : `${p.cover}d`}</span>}</>
                         : p.status === 'ok' ? 'Covered' : 'Below min on hand'}
                     </span>
-                  </>
+                  </span>
                 ) : null}
               </div>
               <ParValue item={item} />

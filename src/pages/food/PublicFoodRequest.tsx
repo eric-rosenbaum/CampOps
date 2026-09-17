@@ -136,7 +136,8 @@ export function PublicFoodRequest() {
                       {formatPickup(u.pickup_date, u.pickup_time.slice(0, 5))}
                       {u.asked_by && <span className="text-ink-soft"> · {u.asked_by}</span>}
                     </span>
-                    <FoodStatusChip status={u.status} />
+                    {/* Someone else's missed pickup is not this counselor's business: a neutral word. */}
+                    <FoodStatusChip status={u.status === 'missed' ? 'picked_up' : u.status} label={u.status === 'missed' ? 'Past' : undefined} />
                   </li>
                 ))}
               </ul>

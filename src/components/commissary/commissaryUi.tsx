@@ -6,7 +6,7 @@ import {
 import type { InventoryItem } from '@/lib/types';
 import {
   restrictionLabel, STOCK_STATUS_LABELS, stockPercent, stockStatus,
-  onHandInStockUnit, parInStockUnit, type StockStatus,
+  formatInStockUnit, type StockStatus,
 } from '@/lib/commissaryUnits';
 
 const STOCK_STYLES: Record<StockStatus, { bar: string; text: string; badge: string }> = {
@@ -44,14 +44,14 @@ export function OnHandValue({ item }: { item: InventoryItem }) {
   if (item.lastCountedAt == null) {
     return (
       <span className="font-mono text-[13px] text-ink-faint" title="On-hand not counted yet">
-        {onHandInStockUnit(item).toLocaleString()} {item.stockUnit}
+        {formatInStockUnit(item, item.onHandBase)}
         <span className="ml-1.5 text-[10px] font-sans text-amber-text">not counted</span>
       </span>
     );
   }
   return (
     <span className={`font-mono text-[13px] font-medium ${STOCK_STYLES[status].text}`}>
-      {onHandInStockUnit(item).toLocaleString()} {item.stockUnit}
+      {formatInStockUnit(item, item.onHandBase)}
     </span>
   );
 }
@@ -67,7 +67,7 @@ export function ParValue({ item }: { item: InventoryItem }) {
   }
   return (
     <span className="font-mono text-[13px] text-ink-soft">
-      {parInStockUnit(item).toLocaleString()} {item.stockUnit}
+      {formatInStockUnit(item, item.parLevelBase)}
     </span>
   );
 }

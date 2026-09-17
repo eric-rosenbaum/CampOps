@@ -81,6 +81,8 @@ export interface FoodRequestLine {
   qtyApprovedBase: number | null;
   note: string | null;
   lineState: FoodLineState;
+  /** Why the kitchen marked the line not available, or what to use instead. */
+  kitchenReason: string | null;
   sortOrder: number;
 }
 
@@ -100,6 +102,8 @@ export interface FoodRequestDraftLine {
   /** The item's unit when picked, or whatever the requester typed. */
   unitLabel: string;
   note?: string;
+  /** What was typed in the amount box when it was more than a number ("enough for 2"). */
+  qtyWords?: string;
 }
 
 export interface FoodRequestDraft {
@@ -113,6 +117,8 @@ export interface FoodRequestDraft {
   purpose: string;
   headcount: string;
   lines: FoodRequestDraftLine[];
+  /** What was typed for people when it was more than a number ("about 15"). */
+  headcountWords?: string;
 }
 
 /** An item as the request form sees it: a name and a unit, never stock or price. */

@@ -45,6 +45,14 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>CampCommand uses your photo library to attach photos to issues.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>CampCommand uses your camera to photograph maintenance issues and scan pool chemical test strips.</string>
+	<string>CampCommand uses your camera to photograph maintenance issues, scan the QR sticker on a cabin or a piece of equipment, and read pool chemical test strips.</string>
+	<!-- Both are required by iOS before the first microphone or speech request, and an app that
+	     asks without them is terminated rather than refused. Saying what is wrong out loud is
+	     often faster than typing it one-handed in the rain, so this is a real path, not a
+	     nicety. Speech is recognised on the device where the device can manage it. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>CampCommand can take a spoken description of what is wrong, so you can log a job without typing.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>CampCommand turns what you say about a problem into the description on the work order. You can always type instead.</string>
 </dict>
 </plist>

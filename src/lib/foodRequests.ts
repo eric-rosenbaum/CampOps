@@ -9,6 +9,7 @@
 import type {
   FoodRequest, FoodRequestLine, FoodRequestStatus, FoodRequestDraft, FoodProgram,
 } from './foodRequestTypes';
+import { pluralizeUnit } from './commissaryUnits';
 
 // ─── State machine ──────────────────────────────────────────────────────────────
 
@@ -51,11 +52,12 @@ export const FOOD_STATUS_SHORT: Record<FoodRequestStatus, string> = {
 // ─── Demand ─────────────────────────────────────────────────────────────────────
 
 /**
- * Statuses whose food counts against stock. `picked_up` is included: the food left the kitchen
- * and, like menu consumption, nothing wrote it into the book. `submitted` is not demand yet (it
- * shows as pending), and missed/declined/cancelled food never left.
+ * Statuses whose food is still to come off the shelf. `picked_up` is NOT here: marking a pickup
+ * writes a 'used' adjustment to stock (mark_food_request_picked_up), so the book already holds it.
+ * It used to count here instead, and the counted on-hand never went down. `submitted` is not demand
+ * yet (it shows as pending), and missed/declined/cancelled food never left.
  */
-export const DEMAND_STATUSES: ReadonlySet<FoodRequestStatus> = new Set(['approved', 'ready', 'picked_up']);
+export const DEMAND_STATUSES: ReadonlySet<FoodRequestStatus> = new Set(['approved', 'ready']);
 
 /** Base-unit quantity a line draws, or null when it is not linked to an item. */
 export function lineDemandBase(line: FoodRequestLine): number | null {
@@ -73,7 +75,7 @@ function linesByRequest(lines: FoodRequestLine[]): Map<string, FoodRequestLine[]
   return map;
 }
 
-/** Per-item, per-pickup-date demand (base units) from approved, ready and picked-up requests. */
+/** Per-item, per-pickup-date demand (base units) from approved and ready requests. */
 export function requestDemandByItemDate(
   requests: FoodRequest[],
   lines: FoodRequestLine[],
@@ -155,6 +157,25 @@ export function setAsideByItem(
   return summarize(requests, lines, programs,
     (r) => (r.status === 'approved' || r.status === 'ready') && r.pickupDate >= today,
     lineDemandBase);
+}
+
+/**
+ * What each item has promised away, for the shelf picture: the total from today on, the part due
+ * today (still physically on the shelf), and the last pickup day.
+ */
+export function promisesByItem(setAside: Map<string, RequestDemandSummary>, today: string):
+  Map<string, { totalBase: number; todayBase: number; lastDate: string | null }> {
+  const out = new Map<string, { totalBase: number; todayBase: number; lastDate: string | null }>();
+  for (const [itemId, s] of setAside) {
+    let todayBase = 0;
+    let lastDate: string | null = null;
+    for (const e of s.entries) {
+      if (e.pickupDate === today) todayBase += e.base;
+      if (!lastDate || e.pickupDate > lastDate) lastDate = e.pickupDate;
+    }
+    out.set(itemId, { totalBase: s.totalBase, todayBase, lastDate });
+  }
+  return out;
 }
 
 /** Requests still waiting for a decision, by item: not demand yet, shown so nobody is surprised. */
@@ -267,6 +288,21 @@ export function formatPickup(dateStr: string, timeStr: string): string {
   return `${formatDay(dateStr)}, ${formatClock(timeStr)}`;
 }
 
+/**
+ * The kitchen's rule, written one way everywhere: "3 days’ notice (72 h)", "36 hours’ notice".
+ * Mirrors food_request_notice_rule() in the database, which writes the emails.
+ */
+export function formatNoticeRule(hours: number): string {
+  const h = Math.round(hours * 100) / 100;
+  if (h >= 24 && h % 24 === 0) return `${h / 24} day${h === 24 ? '’s' : 's’'} notice (${h} h)`;
+  return `${h} hour${h === 1 ? '’s' : 's’'} notice`;
+}
+
+/** "Short notice · 44h", the chip the kitchen sees. */
+export function shortNoticeLabel(noticeHours: number): string {
+  return `Short notice · ${Math.max(0, Math.round(noticeHours))}h`;
+}
+
 /** "26 hours" under two days, "3 days" beyond. Always of real notice. */
 export function formatNotice(hours: number): string {
   if (hours < 0) return 'already past';
@@ -282,10 +318,34 @@ export function formatNumber(n: number | null | undefined): string {
   return String(Math.round(n * 1000) / 1000);
 }
 
-/** "5 lb" */
+/** "5 lb", "2 boxes", "1 box". A unit the requester typed already plural ("bags") is left alone. */
 export function formatLineQty(qty: number | null, unit: string | null): string {
   const q = formatNumber(qty);
-  return unit ? `${q} ${unit}` : q;
+  if (!unit) return q;
+  const n = Number(q);
+  const u = n !== 1 && /s$/i.test(unit.trim()) ? unit : pluralizeUnit(unit, n);
+  return `${q} ${u}`;
+}
+
+/** "2 bags of mini chocolate chips": what the requester asked for, in their own words and unit. */
+export function askedSummary(line: Pick<FoodRequestLine, 'label' | 'qtyRequested' | 'unitLabel'>): string {
+  return line.unitLabel ? `${formatLineQty(line.qtyRequested, line.unitLabel)} of ${line.label}` : `${formatNumber(line.qtyRequested)} ${line.label}`;
+}
+
+/**
+ * A line as the kitchen pulls it: the kitchen's item name and quantity first, and the requester's
+ * words only when they differ ("asked: 2 bags of mini chocolate chips").
+ */
+export function kitchenLineView(line: FoodRequestLine, itemName: string | undefined): {
+  name: string; qty: string; asked: string | null; linked: boolean;
+} {
+  const unavailable = line.lineState === 'unavailable';
+  const qty = unavailable ? 'not available'
+    : formatLineQty(line.qtyApproved ?? line.qtyRequested, line.qtyApproved != null ? line.approvedUnitLabel : line.unitLabel);
+  const name = line.itemId && itemName ? itemName : line.label;
+  const differs = !!line.itemId && !!itemName && (itemName !== line.label
+    || (line.qtyApproved != null && (line.qtyApproved !== line.qtyRequested || (line.approvedUnitLabel ?? '') !== (line.unitLabel ?? ''))));
+  return { name, qty, asked: differs ? askedSummary(line) : null, linked: !!line.itemId };
 }
 
 /** What the kitchen changed on one line, in the requester's words. Null when nothing changed. */
@@ -345,10 +405,31 @@ export function isPastDue(r: FoodRequest, now: Date, timeZone: string): boolean 
   return noticeHours(r.pickupDate, r.pickupTime, timeZone, now) < 0;
 }
 
+/** Hours since an approved/ready pickup's time passed, or null while it is not late. */
+export function hoursOverdue(r: FoodRequest, now: Date, timeZone: string): number | null {
+  if (!isPastDue(r, now, timeZone)) return null;
+  return -noticeHours(r.pickupDate, r.pickupTime, timeZone, now);
+}
+
+/** "Not picked up yet · 2h late", "… · 25 min late", "… · 2 days late". */
+export function overdueLabel(hours: number): string {
+  const late = hours < 1 ? `${Math.max(1, Math.round(hours * 60))} min` : hours < 48 ? `${Math.floor(hours)}h` : `${Math.floor(hours / 24)} days`;
+  return `Not picked up yet · ${late} late`;
+}
+
+/** Handing over before the pickup day is usually a mis-tap on the wrong card, so it is confirmed. */
+export function isBeforePickupDay(r: Pick<FoodRequest, 'pickupDate'>, today: string): boolean {
+  return r.pickupDate > today;
+}
+
 // ─── The request form ──────────────────────────────────────────────────────────
 
+export type DraftField = 'lines' | 'pickup' | 'name' | 'email' | `qty-${number}`;
+
 export interface DraftCheck {
+  /** In the order the fields appear on the form, so the first one is the one to scroll to. */
   errors: string[];
+  fieldErrors: { field: DraftField; message: string }[];
   /** Real hours of notice, or null until a day and time are both chosen. */
   hours: number | null;
   late: boolean;
@@ -356,26 +437,69 @@ export interface DraftCheck {
 
 /** Validates a draft the way the RPC will, and works out the late notice to show before submit. */
 export function checkDraft(draft: FoodRequestDraft, opts: { timeZone: string; cutoffHours: number; now: Date; requireContact: boolean }): DraftCheck {
-  const errors: string[] = [];
-  if (opts.requireContact) {
-    if (!draft.requesterName.trim()) errors.push('Add your name.');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.requesterEmail.trim())) errors.push('Add an email address so the kitchen can reply.');
+  const fieldErrors: { field: DraftField; message: string }[] = [];
+  // Form order: what you need, pickup, then who is asking.
+  const filled = draft.lines.map((l, i) => ({ l, i })).filter(({ l }) => l.label.trim() || l.itemId);
+  if (filled.length === 0) fieldErrors.push({ field: 'lines', message: 'Add at least one thing you need.' });
+  for (const { l, i } of filled) {
+    const q = Number(l.qty);
+    if (!l.qty.trim() || !Number.isFinite(q) || q <= 0) {
+      fieldErrors.push({ field: `qty-${i}`, message: `Add how much${l.itemId && l.unitLabel ? ` (in ${pluralizeUnit(l.unitLabel, 2)})` : ' (e.g. 3 boxes)'}.` });
+    }
   }
   let hours: number | null = null;
   if (!draft.pickupDate || !draft.pickupTime) {
-    errors.push('Pick a pickup day and time.');
+    fieldErrors.push({ field: 'pickup', message: !draft.pickupDate && !draft.pickupTime ? 'Pick a pickup day and time.' : !draft.pickupDate ? 'Pick a pickup day.' : 'Pick a pickup time.' });
   } else {
     hours = noticeHours(draft.pickupDate, draft.pickupTime, opts.timeZone, opts.now);
-    if (hours <= 0) errors.push('That pickup time has already passed.');
+    if (hours <= 0) fieldErrors.push({ field: 'pickup', message: 'That pickup time has already passed.' });
   }
-  const filled = draft.lines.filter((l) => l.label.trim() || l.itemId);
-  if (filled.length === 0) errors.push('Add at least one thing you need.');
-  for (const l of filled) {
-    const q = Number(l.qty);
-    if (!l.qty.trim() || !Number.isFinite(q) || q <= 0) { errors.push(`How much ${l.label.trim() || 'of each item'}?`); break; }
+  if (opts.requireContact) {
+    if (!draft.requesterName.trim()) fieldErrors.push({ field: 'name', message: 'Add your name.' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.requesterEmail.trim())) {
+      fieldErrors.push({ field: 'email', message: draft.requesterEmail.trim() ? 'That email address doesn’t look right.' : 'Add an email address so the kitchen can reply.' });
+    }
   }
-  return { errors, hours, late: hours != null && hours > 0 && isLate(hours, opts.cutoffHours) };
+  return {
+    errors: fieldErrors.map((e) => e.message),
+    fieldErrors,
+    hours,
+    late: hours != null && hours > 0 && isLate(hours, opts.cutoffHours),
+  };
 }
+
+/**
+ * An amount already written into the item text: "3 boxes graham crackers", "graham crackers, like
+ * 3 boxes", "marshmallows x2". Returns the amount and what is left of the words, or null.
+ */
+export function parseAmount(text: string): { qty: string; unit: string; rest: string } | null {
+  const s = text.trim();
+  const unitWord = '([a-z][a-z.]*(?: of \\d+)?)';
+  const patterns: RegExp[] = [
+    // trailing: "graham crackers, like 3 boxes" / "graham crackers - about 3 boxes" / "eggs 2 dozen"
+    new RegExp(`^(.*?)[,;:\\-–(\\s]+(?:like|about|around|approx\\.?|maybe|~)?\\s*(\\d+(?:\\.\\d+)?)\\s*${unitWord}?\\)?\\s*$`, 'i'),
+    // leading: "3 boxes of graham crackers" / "3 boxes graham crackers" / "3 graham crackers"
+    new RegExp(`^(?:like|about|around|~)?\\s*(\\d+(?:\\.\\d+)?)\\s+${unitWord}?(?:\\s+of)?\\s+(.+)$`, 'i'),
+    // "marshmallows x2"
+    /^(.*?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*$/i,
+  ];
+  let m = patterns[0].exec(s);
+  if (m && m[1].trim()) return { rest: m[1].trim(), qty: m[2], unit: (m[3] ?? '').trim() };
+  m = patterns[2].exec(s);
+  if (m && m[1].trim()) return { rest: m[1].trim(), qty: m[2], unit: '' };
+  m = patterns[1].exec(s);
+  if (m && m[3]?.trim()) {
+    // "3 graham crackers": with no "of", a single word after the number may be the item, not a unit.
+    const unit = (m[2] ?? '').trim();
+    if (unit && !/\bof\b/i.test(s.slice(m[1].length + 1 + unit.length, s.length - m[3].length)) && !KNOWN_UNITS.test(unit)) {
+      return { qty: m[1], unit: '', rest: `${unit} ${m[3]}`.trim() };
+    }
+    return { qty: m[1], unit, rest: m[3].trim() };
+  }
+  return null;
+}
+
+const KNOWN_UNITS = /^(bags?|boxe?s|box|cans?|cases?(?: of \d+)?|dozens?|doz|lbs?|pounds?|oz|ounces?|kg|g|grams?|gal(?:lon)?s?|quarts?|qts?|pints?|jars?|bottles?|packs?|packages?|pkgs?|loaf|loaves|bunch(?:es)?|heads?|each|ea|cups?|tins?|tubs?|cartons?|bars?|sticks?|pieces?|pcs?|trays?|rolls?|sleeves?)$/i;
 
 /** The draft as the RPC payload. Empty lines are dropped. */
 export function draftToPayload(draft: FoodRequestDraft): Record<string, unknown> {
@@ -427,14 +551,17 @@ export function pullListHtml(opts: {
   lines: FoodRequestLine[];
   programs: Pick<FoodProgram, 'id' | 'name'>[];
   pickupLocation: string | null;
+  /** Kitchen item names by id: the shelf is pulled by the kitchen's name, not the counselor's words. */
+  itemNames?: Map<string, string>;
 }): string {
   const names = new Map(opts.programs.map((p) => [p.id, p.name]));
   const byReq = linesByRequest(opts.lines);
   const blocks = opts.requests.map((r) => {
     const rows = (byReq.get(r.id) ?? []).sort((a, b) => a.sortOrder - b.sortOrder).map((l) => {
       const unavailable = l.lineState === 'unavailable';
-      const qty = unavailable ? 'not available' : formatLineQty(l.qtyApproved ?? l.qtyRequested, l.qtyApproved != null ? l.approvedUnitLabel : l.unitLabel);
-      return `<tr${unavailable ? ' class="na"' : ''}><td class="box">${unavailable ? '' : '&#9744;'}</td><td>${unavailable ? `<s>${esc(l.label)}</s>` : esc(l.label)}${l.note ? `<div class="note">${esc(l.note)}</div>` : ''}</td><td class="qty">${esc(qty)}</td></tr>`;
+      const v = kitchenLineView(l, l.itemId ? opts.itemNames?.get(l.itemId) : undefined);
+      const extra = [v.asked ? `asked: ${v.asked}` : '', !v.linked ? 'not on the kitchen list' : '', l.note ?? ''].filter(Boolean).join(' · ');
+      return `<tr${unavailable ? ' class="na"' : ''}><td class="box">${unavailable ? '' : '&#9744;'}</td><td>${unavailable ? `<s>${esc(v.name)}</s>` : esc(v.name)}${extra ? `<div class="note">${esc(extra)}</div>` : ''}</td><td class="qty">${esc(v.qty)}</td></tr>`;
     }).join('');
     const who = (r.programId && names.get(r.programId)) || r.requesterName;
     return `<section><h2>${esc(formatClock(r.pickupTime))} · ${esc(who)}</h2>

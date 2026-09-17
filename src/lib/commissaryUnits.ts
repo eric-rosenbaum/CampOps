@@ -217,6 +217,9 @@ const IRREGULAR_PLURALS: Record<string, string> = { loaf: 'loaves', leaf: 'leave
 /** Pluralize a stock/purchase unit for display: box→boxes, loaf→loaves, berry→berries. */
 export function pluralizeUnit(unit: string, n: number): string {
   if (n === 1 || NO_PLURAL.has(unit)) return unit;
+  // "case of 12" is counted in cases: "2 cases of 12", never "2 case of 12s".
+  const of = /^(.+?) (of .+)$/.exec(unit);
+  if (of) return `${pluralizeUnit(of[1], n)} ${of[2]}`;
   if (IRREGULAR_PLURALS[unit]) return IRREGULAR_PLURALS[unit];
   if (/(s|x|z|ch|sh)$/i.test(unit)) return `${unit}es`;          // box→boxes, dish→dishes
   if (/[^aeiou]y$/i.test(unit)) return `${unit.slice(0, -1)}ies`; // berry→berries
@@ -1140,6 +1143,62 @@ export function coverageNeedBase(
     need = Math.min(need, shelfCons + floorBase);   // at most a shelf-window of draw, plus the floor
   }
   return tidy(need, 4);
+}
+
+/**
+ * One item's shelf, in the words the Inventory tab uses, from ONE projection so the summary tiles
+ * and the rows cannot disagree. The tiles used to read the counted on-hand against the reorder
+ * level while the rows read the projection, so a demo showed "Low stock 0 · Fully stocked 12"
+ * above flour that ran out on Friday and eggs "Covered" with 7 of their 10 dozen promised away.
+ *
+ *   onShelf   — projected now, plus anything promised for pickup today that is still physically here
+ *   promised  — approved/ready program requests from today on (the set-aside)
+ *   leftAfter — projected once the last promised pickup has gone (menu draw and deliveries included)
+ *   status    — judged on leftAfter against the minimum on hand, and on how soon it runs out
+ */
+export interface ShelfPicture {
+  onShelf: number;
+  promised: number;
+  leftAfter: number;
+  runOut: string | null;
+  cover: number | null;
+  status: StockStatus;
+}
+
+export function shelfPicture(
+  item: InventoryItem,
+  inp: ProjectionInput,
+  horizonDate: string,
+  promise: { totalBase: number; todayBase: number; lastDate: string | null } | null,
+): ShelfPicture {
+  const now = projectedOnHandBase(inp, inp.today);
+  const promised = promise?.totalBase ?? 0;
+  const onShelf = Math.max(0, now + (promise?.todayBase ?? 0));
+  const until = promise?.lastDate && promise.lastDate > inp.today ? promise.lastDate : inp.today;
+  const leftAfter = tidy(projectedOnHandBase(inp, until), 4);
+  const runOut = runOutDate(inp, horizonDate);
+  const cover = runOut == null ? null : Math.max(0, daysBetween(inp.today, runOut));
+  let status: StockStatus;
+  if (item.lastCountedAt == null && promised <= 0) {
+    // Never counted and nothing promised: there is no projection worth judging, so keep the count rule.
+    status = stockStatus(item);
+  } else {
+    const par = item.parLevelBase;
+    if (leftAfter <= 0 || (cover != null && cover <= 3) || (par > 0 && leftAfter < par * CRITICAL_FRACTION)) status = 'critical';
+    else if ((par > 0 && leftAfter < par) || (cover != null && cover <= 7)) status = 'low';
+    else status = 'ok';
+  }
+  return { onShelf: tidy(onShelf, 4), promised, leftAfter, runOut, cover, status };
+}
+
+/**
+ * "2 × 50 lb bags", "3 cases": a count of packs. A pack whose name starts with a number read as
+ * "1 50 lb bag" when the two numbers were simply put side by side.
+ */
+export function formatPackQty(qty: number, packUnit: string): string {
+  const n = tidy(qty);
+  const unit = pluralizeUnit(packUnit, n);
+  return /^\d/.test(packUnit.trim()) ? `${n.toLocaleString()} × ${unit}` : `${n.toLocaleString()} ${unit}`;
 }
 
 /** Assemble a ProjectionInput for one item from the camp-wide consumption/incoming maps. */

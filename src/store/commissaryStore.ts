@@ -37,8 +37,8 @@ import {
   scaledIngredientLabel, formatInStockUnit, tidy, mealHeadCount, peopleDays, perDiem,
   menuForecastCost, dateForCell, dateStrForCell, toDateStr, todayStr,
   ITEM_FLAGS, MEAL_PERIOD_LABELS, PREP_SLOT_ORDER,
-  addDaysStr, makeProjectionInput, coverageNeedBase, projectedOnHandBase, WEEKDAYS, nextWeekdayOnOrAfter,
-  type DemandRow, type StockStatus, type DraftOrder, type MenuConflict,
+  addDaysStr, makeProjectionInput, coverageNeedBase, projectedOnHandBase, WEEKDAYS, nextWeekdayOnOrAfter, shelfPicture,
+  type DemandRow, type StockStatus, type DraftOrder, type MenuConflict, type ShelfPicture,
   type PerDiem, type PrepScheduleSlot, type PrepSlotKey,
 } from '@/lib/commissaryUnits';
 import { generateId } from '@/lib/utils';
@@ -46,6 +46,7 @@ import { useRetreatStore } from '@/store/retreatStore';
 import type { FoodProgram, FoodRequest, FoodRequestLine, FoodRequestSettings } from '@/lib/foodRequestTypes';
 import {
   requestDemandByItemDate, mergeDemandInto, requestDemandInWindow, pendingByItem, type RequestDemandEntry,
+  setAsideByItem, promisesByItem,
 } from '@/lib/foodRequests';
 
 /** Line actuals collected in the receiving screen. */
@@ -284,6 +285,11 @@ interface CommissaryState {
   filteredItems: () => InventoryItem[];
   filteredRecipes: () => Recipe[];
   stockCounts: () => Record<StockStatus, number>;
+  /**
+   * Every item's shelf from one projection: on shelf, promised to programs, left after promises,
+   * run-out and a status. The Inventory tiles, rows and Low-stock filter all read this.
+   */
+  shelfPictures: () => Map<string, ShelfPicture>;
   /** How many items still need setup after an import: no reorder level, and/or never counted. */
   setupCounts: () => { needsReorder: number; notCounted: number; either: number };
   /** Per-item, per-date menu consumption (base units) for the active session. */
@@ -1306,10 +1312,12 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   filteredItems: () => {
     const { items, inventoryFilter, inventorySearch } = get();
     const q = inventorySearch.trim().toLowerCase();
+    const pictures = inventoryFilter === 'low' ? get().shelfPictures() : null;
     return items.filter((i) => {
       if (q && !i.name.toLowerCase().includes(q)) return false;
       if (inventoryFilter === 'all') return true;
-      if (inventoryFilter === 'low') return stockStatus(i) !== 'ok';
+      // The same projected status the tiles count, or the filter's number and its rows disagree.
+      if (inventoryFilter === 'low') return (pictures?.get(i.id)?.status ?? stockStatus(i)) !== 'ok';
       // Not set up yet: no reorder level (never flags low) or never counted (e.g. a fresh import).
       if (inventoryFilter === 'needs_setup') return i.parLevelBase <= 0 || i.lastCountedAt == null;
       return i.category === inventoryFilter;
@@ -1411,6 +1419,20 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     const counts: Record<StockStatus, number> = { ok: 0, low: 0, critical: 0 };
     for (const i of get().items) counts[stockStatus(i)] += 1;
     return counts;
+  },
+
+  shelfPictures: () => {
+    const state = get();
+    const today = todayStr();
+    const consMap = state.consumptionByItemDate();
+    const incMap = state.incomingByItemDate();
+    const horizon = state.projectionHorizon();
+    const promises = promisesByItem(setAsideByItem(state.foodRequests, state.foodRequestLines, today), today);
+    const out = new Map<string, ShelfPicture>();
+    for (const item of state.items) {
+      out.set(item.id, shelfPicture(item, makeProjectionInput(item, today, consMap, incMap), horizon, promises.get(item.id) ?? null));
+    }
+    return out;
   },
 
   adjustmentsFor: (itemId) => get().adjustments.filter((a) => a.itemId === itemId),

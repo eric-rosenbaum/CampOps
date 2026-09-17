@@ -23,12 +23,13 @@ describe('resolveSpotlights', () => {
     expect(out.map((s) => s.key)).toEqual(['food_requests']);
   });
 
-  it('uses brief copy where written and the default where blank', () => {
-    const [s] = resolveSpotlights({ spotlights: [
-      { key: 'food_requests', enabled: true, you_told_us: '  Cooking club forgets pickups.  ', what_we_built: '   ' },
+  it('uses the brief description where written and the default where blank', () => {
+    const [s1] = resolveSpotlights({ spotlights: [
+      { key: 'food_requests', enabled: true, summary: '  Programs ask; the kitchen plans.  ' },
     ] }, allOn);
-    expect(s.youToldUs).toBe('Cooking club forgets pickups.');
-    expect(s.whatWeBuilt).toBe(SPOTLIGHTS.find((t) => t.key === 'food_requests')!.whatWeBuilt);
+    expect(s1.summary).toBe('Programs ask; the kitchen plans.');
+    const [s2] = resolveSpotlights({ spotlights: [{ key: 'town_trips', enabled: true, summary: '   ' }] }, allOn);
+    expect(s2.summary).toBe(SPOTLIGHTS.find((t) => t.key === 'town_trips')!.summary);
   });
 
   it('ignores unknown keys and duplicates from an older brief', () => {
@@ -56,8 +57,12 @@ describe('fillHref', () => {
 });
 
 describe('templates', () => {
-  it('every step has a check and every seedable spotlight exists', () => {
-    for (const t of SPOTLIGHTS) for (const st of t.steps) expect(st.check).toBeTruthy();
+  it('every feature links to its module, every step has a check, and every seedable feature exists', () => {
+    for (const t of SPOTLIGHTS) {
+      expect(t.href.startsWith('/')).toBe(true);
+      expect(t.summary.length).toBeGreaterThan(40);
+      for (const st of t.steps) expect(st.check).toBeTruthy();
+    }
     for (const k of SEEDABLE) expect(SPOTLIGHTS.some((t) => t.key === k)).toBe(true);
   });
 });

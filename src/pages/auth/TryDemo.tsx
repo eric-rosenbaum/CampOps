@@ -13,6 +13,7 @@ export function TryDemo() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
   const ran = useRef(false);
 
   useEffect(() => {
@@ -24,6 +25,10 @@ export function TryDemo() {
       if (!session) {
         const { data, error: sErr } = await supabase.auth.signInAnonymously();
         if (sErr || !data.session) {
+          // Anonymous sign-ins switched off on the project (staging has them off) used to end here
+          // with "try again in a moment", which no amount of trying fixes. Signing in first works,
+          // and the login page brings the visitor straight back to this link.
+          setNeedsSignIn(/anonymous/i.test(sErr?.message ?? ''));
           setError('We couldn’t start your demo session. Please try the link again in a moment.');
           return;
         }
@@ -56,7 +61,18 @@ export function TryDemo() {
           {error ? (
             <>
               <h1 className="text-[18px] font-semibold text-forest mb-2">Can’t open this demo</h1>
-              <p className="text-[13px] text-ink-soft leading-relaxed">{error}</p>
+              <p className="text-[13px] text-ink-soft leading-relaxed">
+                {needsSignIn ? 'This server doesn’t allow opening a demo without an account. Sign in first and you’ll come straight back here.' : error}
+              </p>
+              {needsSignIn && (
+                <button
+                  type="button"
+                  onClick={() => { try { sessionStorage.setItem('redirectAfterLogin', `/try/${token}`); } catch { /* the link still works after sign-in */ } navigate('/login'); }}
+                  className="mt-4 w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors"
+                >
+                  Sign in to open this demo
+                </button>
+              )}
             </>
           ) : (
             <>

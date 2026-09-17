@@ -1,10 +1,10 @@
 /**
- * The Demo Guide's building blocks: one spotlight per feature a prospect might be shown.
+ * The features a demo guide can point a prospect at.
  *
- * A demo brief (demo_briefs row) picks which spotlights appear and can rewrite the two sentences
- * that matter — "what you told us" and "what we built" — in the prospect's own words. Everything
- * else about a spotlight (its steps, where each step opens, how the guide knows a step was done)
- * lives here, so a founder writing a brief never has to know a route or a table name.
+ * A demo brief (demo_briefs row) picks which ones appear, in what order, and may rewrite a
+ * feature's short description. Everything else about a feature -- where it opens, the steps to
+ * try it, and how the guide knows a step was done -- lives here, so a founder writing a brief
+ * never has to know a route or a table name.
  *
  * Pure data: no store or Supabase imports, so it is unit-tested directly.
  */
@@ -19,9 +19,9 @@ export type SpotlightKey =
   | 'retreats';
 
 /**
- * How the guide decides a step is done. `auto` checks read real data created after the visitor
- * joined the demo, so the tick means they actually did it, not that they clicked a box. Anything
- * the data cannot show is a manual tick kept in this browser only.
+ * How the guide decides a step is done. `auto` checks read real rows this visitor created after
+ * joining the demo, so the tick means they did it. Anything the data cannot show is a manual tick
+ * kept in this browser only.
  */
 export type StepCheck =
   | { kind: 'manual' }
@@ -44,23 +44,27 @@ export interface SpotlightStep {
   /** Optional second line: what to notice once you've done it. */
   notice?: string;
   /**
-   * Where the Open button goes. `{token}`-style placeholders are filled from the guide's context
+   * Where the step's Open button goes. `{placeholder}` tokens are filled from the guide's context
    * (e.g. `{foodLink}` becomes a program's public request link); a step whose placeholder cannot
-   * be filled hides its button rather than opening a broken page.
+   * be filled shows no button rather than opening a broken page.
    */
   href?: string;
-  /** Open in a new tab — used for the public, signed-out pages so the visitor keeps the guide. */
+  /** Open in a new tab -- used for the public, signed-out pages so the visitor keeps the guide. */
   newTab?: boolean;
+  /** A sample file the step offers to download (the receipts statement CSV). */
+  download?: 'sample_statement';
   check: StepCheck;
 }
 
 export interface SpotlightTemplate {
   key: SpotlightKey;
   title: string;
-  /** Default copy; a brief may override both. */
-  youToldUs: string;
-  whatWeBuilt: string;
-  /** Every module the spotlight's steps open. A spotlight whose modules are off is not shown. */
+  /** A couple of sentences on how it works. A brief may override it. */
+  summary: string;
+  /** Where the feature's own Open button goes. */
+  href: string;
+  openLabel: string;
+  /** Every module the feature needs. A feature whose modules are off is not shown. */
   modules: ModuleKey[];
   steps: SpotlightStep[];
 }
@@ -69,15 +73,15 @@ export const SPOTLIGHTS: SpotlightTemplate[] = [
   {
     key: 'food_requests',
     title: 'Food requests from programs',
-    youToldUs:
-      'Programs like cooking club come to the kitchen for food. People forget to pick it up, take food the kitchen was planning to cook with, and the kitchen doesn’t order enough.',
-    whatWeBuilt:
-      'Programs request food ahead of time from a link, no login needed. The kitchen approves it, the food is set aside and added to the next order, and everyone gets reminded on pickup day.',
+    summary:
+      'Program leads ask the kitchen for what they need ahead of time, from their own link with no login. The kitchen approves or adjusts each request, the food is set aside and counted in the next order, and everyone gets a reminder on pickup day.',
+    href: '/commissary?tab=requests',
+    openLabel: 'Open food requests',
     modules: ['commissary'],
     steps: [
       {
         text: 'Be the counselor: open the Cooking Club’s request link and ask for food for a pickup in two days.',
-        notice: 'It’s inside the 72-hour notice window, so it’s flagged as late — but not blocked.',
+        notice: 'It’s inside the 72-hour notice window, so it’s flagged as short notice — but not blocked.',
         href: '{foodLink}', newTab: true,
         check: { kind: 'auto', id: 'food_request_from_link' },
       },
@@ -93,7 +97,7 @@ export const SPOTLIGHTS: SpotlightTemplate[] = [
         check: { kind: 'manual' },
       },
       {
-        text: 'In Pickups, mark it ready, then picked up. Watch the counselor’s status page change, and the food come off the shelf.',
+        text: 'In Pickups, mark it ready, then picked up. The counselor’s status page changes and the food comes off the shelf.',
         href: '/commissary?tab=requests&view=pickups',
         check: { kind: 'auto', id: 'food_request_picked_up' },
       },
@@ -102,14 +106,14 @@ export const SPOTLIGHTS: SpotlightTemplate[] = [
   {
     key: 'town_trips',
     title: 'Town trips',
-    youToldUs:
-      'Someone heads into town and everyone calls them with a list, so a one-hour trip takes three. Staff on days off get stranded without a ride back, and supplies get fetched at the last minute.',
-    whatWeBuilt:
-      'A shared board of every trip into town this week: open seats, who’s coming back, and one shopping list the driver checks off, so nobody has to call around.',
+    summary:
+      'Anyone heading into town posts the trip with its open seats and return time. Staff grab a seat or add what they need to one shared shopping list, and the board flags anyone who would be left without a ride back.',
+    href: '/trips',
+    openLabel: 'Open town trips',
     modules: ['trips'],
     steps: [
       {
-        text: 'Open the week board. Notice the red warning: someone has a ride to town but none back.',
+        text: 'Open the week board. Notice the red warning: someone has a ride into town but none back.',
         href: '/trips',
         check: { kind: 'manual' },
       },
@@ -133,31 +137,33 @@ export const SPOTLIGHTS: SpotlightTemplate[] = [
   },
   {
     key: 'receipts',
-    title: 'Company-card receipts',
-    youToldUs:
-      'Eight to ten people carry company cards. Receipts go into Concur with the taxes typed into comments, then everything gets matched to the Visa bill by hand in Excel before it goes into QuickBooks.',
-    whatWeBuilt:
-      'Snap a receipt and the vendor, date and taxes are read for you to confirm. Each month is matched to the card statement automatically, with GST/HST totals ready and a QuickBooks-ready export.',
+    title: 'Company card receipts',
+    summary:
+      'Card holders snap a receipt and confirm the vendor, date and taxes read from it. Each month is matched against the card statement, with GST/HST totals and a QuickBooks-ready export.',
+    href: '/receipts',
+    openLabel: 'Open receipts',
     modules: ['receipts'],
     steps: [
       {
-        text: 'Snap or upload a receipt. Confirm what was read — the uncertain fields are highlighted.',
+        text: 'Snap or upload a receipt and confirm what was read — anything uncertain is highlighted.',
         href: '/receipts',
         check: { kind: 'auto', id: 'receipt_saved' },
       },
       {
-        text: 'Open last month’s reconciliation. Resolve the missing receipt and the duplicate.',
+        text: 'Open last month’s reconciliation and resolve the missing receipt and the duplicate.',
         notice: 'The header turns green when the month agrees with the Visa statement.',
         href: '{reconcileStatement}',
         check: { kind: 'manual' },
       },
       {
-        text: 'Import a statement yourself using the sample CSV.',
+        text: 'Import a card statement yourself using the sample CSV, then check the photographed receipts it matched.',
+        notice: 'The month turns green once every charge has a confirmed receipt or a reason.',
         href: '{reconcileImport}',
+        download: 'sample_statement',
         check: { kind: 'auto', id: 'statement_imported' },
       },
       {
-        text: 'Open the tax summary, then export the month for QuickBooks.',
+        text: 'Open the tax summary. Once a month agrees, export it for QuickBooks — or download it for review anytime.',
         href: '/receipts?tab=summary',
         check: { kind: 'auto', id: 'receipts_exported' },
       },
@@ -166,9 +172,10 @@ export const SPOTLIGHTS: SpotlightTemplate[] = [
   {
     key: 'kitchen_ordering',
     title: 'Kitchen ordering',
-    youToldUs: 'The kitchen runs out of things, or orders too much and throws it away.',
-    whatWeBuilt:
-      'Orders come from the menu and what’s on the shelf, rounded to real case sizes, with the math shown line by line.',
+    summary:
+      'Orders are built from the menu and what is on the shelf, rounded to real case sizes, with the math shown line by line.',
+    href: '/commissary?tab=ordering',
+    openLabel: 'Open ordering',
     modules: ['commissary'],
     steps: [
       { text: 'Open Ordering and expand “Show the math” on the next order.', href: '/commissary?tab=ordering', check: { kind: 'manual' } },
@@ -178,9 +185,10 @@ export const SPOTLIGHTS: SpotlightTemplate[] = [
   {
     key: 'campground',
     title: 'Campground work',
-    youToldUs: 'Maintenance requests get lost between texts, radios and whiteboards.',
-    whatWeBuilt:
-      'Every request lands with the right crew, from a QR sticker or the app, and the person who asked can see when it’s fixed.',
+    summary:
+      'Every maintenance request lands with the right crew, from a QR sticker or the app, and the person who asked can see when it is fixed.',
+    href: '/campground',
+    openLabel: 'Open the campground board',
     modules: ['issues'],
     steps: [
       { text: 'Open the Campground board and look at each crew’s lane.', href: '/campground', check: { kind: 'manual' } },
@@ -189,9 +197,10 @@ export const SPOTLIGHTS: SpotlightTemplate[] = [
   {
     key: 'retreats',
     title: 'Retreat rentals',
-    youToldUs: 'Off-season groups mean dozens of emails about rooms, headcounts, menus and invoices.',
-    whatWeBuilt:
-      'Each group gets a portal for rooming, headcount, documents and payments, and their requests turn into the crew’s work orders.',
+    summary:
+      'Each visiting group gets a portal for rooming, headcount, documents and payments, and their requests become the crew’s work orders.',
+    href: '/retreats',
+    openLabel: 'Open retreats',
     modules: ['retreats'],
     steps: [
       { text: 'Open a retreat and look at its guest portal.', href: '/retreats', check: { kind: 'manual' } },
@@ -202,17 +211,21 @@ export const SPOTLIGHTS: SpotlightTemplate[] = [
 export const SPOTLIGHT_BY_KEY: Record<SpotlightKey, SpotlightTemplate> =
   Object.fromEntries(SPOTLIGHTS.map((s) => [s.key, s])) as Record<SpotlightKey, SpotlightTemplate>;
 
-/** What a brief stores per spotlight. */
+/** Features that have sample data a founder can (re)seed into a demo camp. */
+export const SEEDABLE: SpotlightKey[] = ['food_requests', 'town_trips', 'receipts'];
+
+/** What a brief stores per feature. */
 export interface BriefSpotlight {
   key: SpotlightKey;
   enabled: boolean;
-  you_told_us?: string | null;
-  what_we_built?: string | null;
+  /** Optional rewrite of the template's summary. */
+  summary?: string | null;
 }
 
 export interface DemoBrief {
   campId: string;
   prospectName: string | null;
+  /** Optional heading; the guide uses the camp's name when blank. */
   headline: string | null;
   intro: string | null;
   spotlights: BriefSpotlight[];
@@ -220,43 +233,29 @@ export interface DemoBrief {
   founderEmail: string | null;
 }
 
-export interface ResolvedSpotlight extends SpotlightTemplate {
-  youToldUs: string;
-  whatWeBuilt: string;
-}
-
 /**
- * The spotlights a visitor actually sees, in the brief's order: enabled in the brief, known to
- * this build, and every module they open switched on for the camp. Brief copy wins over the
- * default where it was written.
+ * The features a visitor actually sees, in the brief's order: enabled in the brief, known to this
+ * build, and every module they need switched on for the camp. Brief copy wins where written.
  */
 export function resolveSpotlights(
   brief: Pick<DemoBrief, 'spotlights'> | null,
   moduleEnabled: (key: ModuleKey) => boolean,
-): ResolvedSpotlight[] {
-  const entries: BriefSpotlight[] = brief?.spotlights?.length
-    ? brief.spotlights
-    : [];
-  const out: ResolvedSpotlight[] = [];
+): SpotlightTemplate[] {
+  const out: SpotlightTemplate[] = [];
   const seen = new Set<string>();
-  for (const e of entries) {
+  for (const e of brief?.spotlights ?? []) {
     if (!e.enabled || seen.has(e.key)) continue;
     const t = SPOTLIGHT_BY_KEY[e.key];
-    if (!t) continue;
-    if (!t.modules.every(moduleEnabled)) continue;
+    if (!t || !t.modules.every(moduleEnabled)) continue;
     seen.add(e.key);
-    out.push({
-      ...t,
-      youToldUs: e.you_told_us?.trim() || t.youToldUs,
-      whatWeBuilt: e.what_we_built?.trim() || t.whatWeBuilt,
-    });
+    out.push({ ...t, summary: e.summary?.trim() || t.summary });
   }
   return out;
 }
 
 /**
- * Fills `{placeholder}` tokens in a step link. Returns null when any token is missing, so the
- * step shows no button instead of a link to a page that cannot load.
+ * Fills `{placeholder}` tokens in a step link. Returns null when any token is missing, so the step
+ * shows no button instead of a link to a page that cannot load.
  */
 export function fillHref(href: string | undefined, ctx: Record<string, string | null | undefined>): string | null {
   if (!href) return null;
@@ -269,10 +268,7 @@ export function fillHref(href: string | undefined, ctx: Record<string, string | 
   return missing ? null : filled;
 }
 
-/** The brief a new demo starts with: the three spotlights built for this prospect, default copy. */
+/** The brief a new demo starts with: the chosen features, default copy. */
 export function defaultBriefSpotlights(keys: SpotlightKey[]): BriefSpotlight[] {
-  return keys.map((key) => ({ key, enabled: true, you_told_us: null, what_we_built: null }));
+  return keys.map((key) => ({ key, enabled: true, summary: null }));
 }
-
-/** Spotlights that have sample data a founder can (re)seed into a demo camp. */
-export const SEEDABLE: SpotlightKey[] = ['food_requests', 'town_trips', 'receipts'];

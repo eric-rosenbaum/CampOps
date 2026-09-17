@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 // modules.ts exports a hook that reads the camp store; the store pulls in the Supabase client,
 // which needs a browser. The pure functions under test never touch it.
 vi.mock('@/store/campStore', () => ({ useCampStore: () => null }));
-import { readSwitch, platformAllows, campWants, moduleEnabled, moduleForPath, MODULES } from '@/lib/modules';
+import { readSwitch, platformAllows, campWants, moduleEnabled, moduleForPath, firstEnabledPath, MODULES } from '@/lib/modules';
 
 const camp = (platformModules: Record<string, boolean>, modules: Record<string, boolean> = {}) =>
   ({ platformModules, modules });
@@ -43,5 +43,21 @@ describe('module switches', () => {
     expect(moduleForPath('/trips')).toBe('trips');
     expect(moduleForPath('/receipts/reconcile')).toBe('receipts');
     expect(MODULES.filter((m) => !m.defaultOn).map((m) => m.key).sort()).toEqual(['receipts', 'trips']);
+  });
+});
+
+describe('dashboard and my tasks are switches too', () => {
+  it('are on unless switched off', () => {
+    expect(moduleEnabled(camp({}), 'dashboard')).toBe(true);
+    expect(moduleEnabled(camp({ dashboard: false }), 'dashboard')).toBe(false);
+    expect(moduleEnabled(camp({}, { tasks: false }), 'tasks')).toBe(false);
+  });
+
+  it('a camp without a dashboard lands on the first page it does have', () => {
+    const c = camp({ dashboard: false, tasks: false, issues: false, safety: false, assets: false, building: false, pool: false, retreats: false, commissary: true });
+    expect(firstEnabledPath((k) => moduleEnabled(c, k))).toBe('/commissary');
+    const nothing = camp(Object.fromEntries(MODULES.map((m) => [m.key, false])));
+    expect(firstEnabledPath((k) => moduleEnabled(nothing, k))).toBe('/settings');
+    expect(moduleForPath('/my-tasks')).toBe('tasks');
   });
 });

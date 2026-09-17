@@ -614,7 +614,6 @@ function SpinUpTrialModal({ onClose }: { onClose: () => void }) {
   const seeds = camps.filter((c) => c.isSeed);
   const [name, setName] = useState('');
   const [source, setSource] = useState(seeds[0]?.id ?? camps[0]?.id ?? '');
-  const [prospect, setProspect] = useState('');
   const [spotlights, setSpotlights] = useState<SpotlightKey[]>(['food_requests', 'town_trips', 'receipts']);
   const [seedData, setSeedData] = useState(true);
   // A prospect who described three problems should find three things in the sidebar, not eight
@@ -647,7 +646,7 @@ function SpinUpTrialModal({ onClose }: { onClose: () => void }) {
       if (spotlights.length > 0) {
         setBusy('Writing the demo guide…');
         await saveDemoBrief({
-          campId, prospectName: prospect.trim() || null, headline: null, intro: null,
+          campId, prospectName: null, headline: null, intro: null,
           spotlights: defaultBriefSpotlights(spotlights), founderName: null, founderEmail: founderEmail || null,
         });
       }
@@ -679,9 +678,8 @@ function SpinUpTrialModal({ onClose }: { onClose: () => void }) {
               {(seeds.length ? seeds : camps).map((c) => <option key={c.id} value={c.id}>{c.name}{c.isSeed ? ' (seed)' : ''}</option>)}
             </select>
           </Field>
-          <Field label="Who it’s for (first name)"><input value={prospect} onChange={(e) => setProspect(e.target.value)} className={INPUT} placeholder="e.g. Teddy" /></Field>
           <div>
-            <label className="block text-[12px] font-semibold uppercase tracking-wide text-ink-faint mb-1">Demo guide spotlights</label>
+            <label className="block text-[12px] font-semibold uppercase tracking-wide text-ink-faint mb-1">Features to show in the demo guide</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               {SPOTLIGHTS.map((t) => (
                 <label key={t.key} className="flex items-center gap-2 text-[13px] text-ink">
@@ -696,7 +694,7 @@ function SpinUpTrialModal({ onClose }: { onClose: () => void }) {
             </label>
             <label className="flex items-center gap-2 text-[13px] text-ink mt-1">
               <input type="checkbox" checked={focusOnly} disabled={spotlights.length === 0} onChange={(e) => setFocusOnly(e.target.checked)} />
-              Show only the modules these spotlights use
+              Show only the modules these features use (Dashboard and My Tasks off too)
             </label>
           </div>
           {err && <p className="text-[12px] text-red">{err}</p>}

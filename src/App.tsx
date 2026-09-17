@@ -103,12 +103,31 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { loadLocations, subscribeToLocations } from '@/lib/locationsDb';
 import { useLocationStore } from '@/store/locationStore';
 import { useCampStore as useCamp } from '@/store/campStore';
-import { useModules, type ModuleKey } from '@/lib/modules';
+import { useModules, firstEnabledPath, type ModuleKey } from '@/lib/modules';
+import { useDemoBrief } from '@/lib/useDemoBrief';
 
 /** The old Issues route. Kept forever: stickers and bookmarks outlive a rename. */
 function LegacyIssuesRedirect() {
   const location = useLocation();
   return <Navigate to={`/campground${location.search}${location.hash}`} replace />;
+}
+
+/**
+ * /home is where every sign-in, demo link and "back to the dashboard" lands, so a camp with the
+ * dashboard switched off is forwarded rather than redirected in a loop: to its demo guide if it
+ * has one, otherwise to the first page it does have.
+ */
+function HomeEntry() {
+  const { currentCamp } = useCamp();
+  const modules = useModules();
+  const isDemoCamp = currentCamp?.accountType === 'trial' || currentCamp?.accountType === 'demo';
+  const brief = useDemoBrief(currentCamp?.id, isDemoCamp);
+  if (!currentCamp) return null;
+  if (modules.enabled('dashboard')) {
+    return <Gate of={['issues', 'tasks']} label="Building your dashboard"><HomeRouter /></Gate>;
+  }
+  if (brief === undefined) return null;
+  return <Navigate to={brief ? '/demo-guide' : firstEnabledPath(modules.enabled)} replace />;
 }
 
 function HomeRouter() {
@@ -662,8 +681,8 @@ export default function App() {
                 {/* Each module waits for its own data before rendering. Gating here rather
                     than inside every page keeps it to one list and out of the pages' hook
                     order. See <Gate> for why an empty state is the wrong thing to show. */}
-                <Route path="/home" element={<Gate of={['issues', 'tasks']} label="Building your dashboard"><HomeRouter /></Gate>} />
-                <Route path="/my-tasks" element={<Gate of={['tasks']} label="Loading your tasks"><MyTasks /></Gate>} />
+                <Route path="/home" element={<HomeEntry />} />
+                <Route path="/my-tasks" element={<ModuleRoute of="tasks"><Gate of={['tasks']} label="Loading your tasks"><MyTasks /></Gate></ModuleRoute>} />
                 <Route path="/demo-guide" element={<DemoGuide />} />
                 <Route
                   path="/campground"

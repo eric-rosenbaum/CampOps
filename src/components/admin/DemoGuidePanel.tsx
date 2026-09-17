@@ -13,7 +13,7 @@ function allSpotlights(stored: BriefSpotlight[]): BriefSpotlight[] {
   const seen = new Set(stored.map((s) => s.key));
   return [
     ...stored.filter((s) => SPOTLIGHT_BY_KEY[s.key]),
-    ...SPOTLIGHTS.filter((t) => !seen.has(t.key)).map((t) => ({ key: t.key, enabled: false, you_told_us: null, what_we_built: null })),
+    ...SPOTLIGHTS.filter((t) => !seen.has(t.key)).map((t) => ({ key: t.key, enabled: false, summary: null })),
   ];
 }
 
@@ -82,12 +82,10 @@ export function DemoGuidePanel({ campId, onOpenGuide }: { campId: string; onOpen
   return (
     <div className="max-w-4xl space-y-4" data-testid="demo-guide-panel">
       <p className="text-[11px] text-ink-faint">
-        The page this demo opens on. Write it to the prospect: what they told you, in their words. Leave a field blank to use the default copy.
+        The page this demo opens on: the camp’s name, the features below with a short checklist each, and your contact details. Leave a field blank to use the default.
       </p>
       <div className="grid sm:grid-cols-2 gap-3">
-        <div><label className={LABEL}>Prospect name</label><input className={INPUT} value={brief.prospectName ?? ''} onChange={(e) => set({ prospectName: e.target.value })} placeholder="e.g. Teddy" /></div>
-        <div><label className={LABEL}>Headline</label><input className={INPUT} value={brief.headline ?? ''} onChange={(e) => set({ headline: e.target.value })} placeholder="Built for Teddy, after our conversation" /></div>
-        <div className="sm:col-span-2"><label className={LABEL}>Intro</label><textarea rows={3} className={INPUT} value={brief.intro ?? ''} onChange={(e) => set({ intro: e.target.value })} placeholder="Thanks for walking us through how the kitchen and the ops team work…" /></div>
+        <div className="sm:col-span-2"><label className={LABEL}>Heading</label><input className={INPUT} value={brief.headline ?? ''} onChange={(e) => set({ headline: e.target.value })} placeholder="Uses the camp’s name, e.g. Camp Ramah Canada Demo" /></div>
         <div><label className={LABEL}>Your name</label><input className={INPUT} value={brief.founderName ?? ''} onChange={(e) => set({ founderName: e.target.value })} placeholder="Eric Rosenbaum" /></div>
         <div><label className={LABEL}>Your email</label><input type="email" className={INPUT} value={brief.founderEmail ?? ''} onChange={(e) => set({ founderEmail: e.target.value })} placeholder="eric@campcommand.app" /></div>
       </div>
@@ -111,9 +109,9 @@ export function DemoGuidePanel({ campId, onOpenGuide }: { campId: string; onOpen
                 )}
               </div>
               {s.enabled && (
-                <div className="grid sm:grid-cols-2 gap-2 mt-2">
-                  <div><label className={LABEL}>What you told us</label><textarea rows={3} className={INPUT} value={s.you_told_us ?? ''} onChange={(e) => setSpot(i, { you_told_us: e.target.value })} placeholder={t.youToldUs} /></div>
-                  <div><label className={LABEL}>What we built</label><textarea rows={3} className={INPUT} value={s.what_we_built ?? ''} onChange={(e) => setSpot(i, { what_we_built: e.target.value })} placeholder={t.whatWeBuilt} /></div>
+                <div className="mt-2">
+                  <label className={LABEL}>How it works</label>
+                  <textarea rows={3} className={INPUT} value={s.summary ?? ''} onChange={(e) => setSpot(i, { summary: e.target.value })} placeholder={t.summary} />
                 </div>
               )}
             </div>

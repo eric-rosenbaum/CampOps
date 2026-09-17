@@ -65,8 +65,8 @@ interface NavItem {
 const demoGuideItem: NavItem = { path: '/demo-guide', label: 'Demo guide', icon: Sparkles, end: true };
 
 const todayItems: NavItem[] = [
-  { path: '/home', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { path: '/my-tasks', label: 'My Tasks', icon: CheckSquare, end: false },
+  { path: '/home', label: 'Dashboard', icon: LayoutDashboard, end: true, module: 'dashboard' },
+  { path: '/my-tasks', label: 'My Tasks', icon: CheckSquare, end: false, module: 'tasks' },
 ];
 
 const facilityItems: NavItem[] = [
@@ -173,7 +173,12 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
   const isDemoCamp = currentCamp?.accountType === 'trial' || currentCamp?.accountType === 'demo';
   const demoBrief = useDemoBrief(currentCamp?.id, isDemoCamp);
   const navSections = [
-    { section: 'Today', items: demoBrief ? [demoGuideItem, ...todayItems] : todayItems },
+    // Today's pages follow the camp's switches but not the viewer rule: a viewer still has a
+    // dashboard.
+    { section: 'Today', items: [
+      ...(demoBrief ? [demoGuideItem] : []),
+      ...todayItems.filter((i) => !i.module || modules.enabled(i.module)),
+    ] },
     { section: 'Facilities', items: visible(facilityItems) },
     { section: 'Commissary', items: visible(commissaryItems) },
     { section: 'Aquatics', items: visible(aquaticsItems) },

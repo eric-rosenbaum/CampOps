@@ -24,6 +24,7 @@ import { useCampStore } from '@/store/campStore';
 import type { Camp } from '@/store/campStore';
 
 export type ModuleKey =
+  | 'dashboard' | 'tasks'
   | 'issues' | 'pool' | 'safety' | 'assets' | 'building' | 'commissary' | 'retreats'
   | 'trips' | 'receipts';
 
@@ -49,6 +50,12 @@ export interface ModuleDef {
 }
 
 export const MODULES: ModuleDef[] = [
+  // The two "Today" pages can be switched off like any module. A focused demo, or a camp that
+  // only uses one module, should not open on a dashboard of things it doesn't have.
+  { key: 'dashboard', label: 'Dashboard', desc: 'The operations overview a camp lands on',
+    paths: ['/home'], defaultOn: true },
+  { key: 'tasks', label: 'My Tasks', desc: 'Each person’s own assigned work',
+    paths: ['/my-tasks'], defaultOn: true },
   { key: 'issues', label: 'Campground', desc: 'Work orders, routines, housekeeping and repairs',
     paths: ['/campground', '/issues', '/hub'], defaultOn: true },
   { key: 'safety', label: 'Compliance', desc: 'Permit, safety plan, inspections, staff certifications',
@@ -81,7 +88,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> =
  * it ran, and nothing stops an old seed or a restored backup reintroducing them.
  */
 const ALIASES: Record<ModuleKey, string[]> = {
-  issues: [], pool: [], assets: [], retreats: [], trips: [], receipts: [],
+  issues: [], pool: [], assets: [], retreats: [], trips: [], receipts: [], dashboard: [], tasks: [],
   safety: ['compliance'],
   building: ['building_systems'],
   commissary: ['kitchen'],
@@ -159,4 +166,15 @@ export function useModules(): ModuleAccess {
     wanted: (key: ModuleKey) => campWants(currentCamp, key),
     allowedModules: MODULES.filter((m) => platformAllows(currentCamp, m.key)),
   }), [currentCamp]);
+}
+
+/**
+ * Where to send someone whose camp has no dashboard: the first page, in sidebar order, that the
+ * camp does have. Camp Info always exists, so this never returns nothing.
+ */
+export function firstEnabledPath(enabled: (key: ModuleKey) => boolean): string {
+  for (const m of MODULES) {
+    if (m.key !== 'dashboard' && enabled(m.key)) return m.paths[0];
+  }
+  return '/settings';
 }

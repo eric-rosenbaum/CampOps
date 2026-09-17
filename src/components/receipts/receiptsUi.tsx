@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- the Receipts UI kit: class strings and
    small hooks live beside the atoms that use them, so every view imports one module. */
-import { useEffect, useMemo, useRef } from 'react';
-import { FileText, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { FileText, LockOpen, X } from 'lucide-react';
 import { useReceiptsStore } from '@/store/receiptsStore';
 import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
@@ -126,7 +126,7 @@ export function ReceiptsToastHost() {
   const showToast = useReceiptsStore((s) => s.showToast);
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => useReceiptsStore.getState().toast?.id === toast.id && showToast(null), toast.actionLabel ? 8000 : 6000);
+    const t = setTimeout(() => useReceiptsStore.getState().toast?.id === toast.id && showToast(null), toast.durationMs ?? (toast.actionLabel ? 8000 : 6000));
     return () => clearTimeout(t);
   }, [toast, showToast]);
   if (!toast) return null;
@@ -200,14 +200,14 @@ export function Thumb({ receipt, url, size = 44, onClick }: {
   );
 }
 
-export function Callout({ tone = 'amber', children, className = '' }: { tone?: 'amber' | 'red' | 'green' | 'blue'; children: React.ReactNode; className?: string }) {
+export function Callout({ tone = 'amber', children, className = '', 'data-testid': testId }: { tone?: 'amber' | 'red' | 'green' | 'blue'; children: React.ReactNode; className?: string; 'data-testid'?: string }) {
   const cls = {
     amber: 'bg-amber-bg text-amber-text border-amber/30',
     red: 'bg-red-bg text-red-text border-red/30',
     green: 'bg-green-muted-bg text-green-muted-text border-green-muted-text/20',
     blue: 'bg-blue-bg text-blue-text border-blue/20',
   }[tone];
-  return <div className={`rounded-card border px-3.5 py-2.5 text-[13px] leading-snug ${cls} ${className}`}>{children}</div>;
+  return <div data-testid={testId} className={`rounded-card border px-3.5 py-2.5 text-[13px] leading-snug ${cls} ${className}`}>{children}</div>;
 }
 
 export function EmptyState({ title, children }: { title: string; children?: React.ReactNode }) {
@@ -259,4 +259,59 @@ export function downloadText(filename: string, text: string, withBom: boolean) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/**
+ * "Unlock to correct": finance says why, and the reason is kept with the receipt or statement,
+ * beside who unlocked it and when. The month then shows as needing to be exported again.
+ */
+export function UnlockDialog({ what, onUnlock, onCancel }: {
+  what: 'receipt' | 'statement'; onUnlock: (reason: string) => Promise<string | null>; onCancel: () => void;
+}) {
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEscape(onCancel);
+  async function go() {
+    if (!reason.trim()) { setError('Say what needs correcting.'); return; }
+    setBusy(true); setError(null);
+    const err = await onUnlock(reason.trim());
+    setBusy(false);
+    if (err) setError(err);
+  }
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={`Unlock this ${what} to correct it`}>
+      <div className="w-full rounded-t-modal bg-paper-card p-4 sm:max-w-md sm:rounded-modal sm:p-5" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+        <h3 className="flex items-center gap-2 font-display text-[16px] font-bold text-forest"><LockOpen className="h-4 w-4" /> Unlock this {what} to correct it?</h3>
+        <p className="mt-2 text-[13px] leading-snug text-ink-soft">
+          It is already in QuickBooks. Unlocking lets you change it here; the month is then marked as needing to be exported again, and
+          whatever you correct has to be corrected in QuickBooks too. Your name, the time and the reason are kept.
+        </p>
+        <label className={`${labelClass} mt-3`} htmlFor="unlock-reason">What needs correcting</label>
+        <input id="unlock-reason" autoFocus className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)}
+               placeholder={what === 'receipt' ? 'e.g. Coded to Waterfront, should be Maintenance' : 'e.g. Fuel charge booked to the wrong code'}
+               onKeyDown={(e) => { if (e.key === 'Enter') void go(); }} />
+        {error && <p className="mt-2 text-[12.5px] font-semibold text-red">{error}</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={onCancel} className="rounded-btn px-3 py-2 text-[13px] font-semibold text-ink-soft hover:bg-cream">Cancel</button>
+          <button type="button" onClick={() => void go()} disabled={busy}
+                  className="rounded-btn bg-forest px-3.5 py-2 text-[13px] font-bold text-white hover:bg-forest/90 disabled:opacity-50">
+            {busy ? 'Unlocking…' : 'Unlock to correct'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** "Maintenance" with the code beside it, quieter: names first, since KIT and PRG mean nothing to a reviewer. */
+export function CodeName({ code }: { code: { code: string; name: string } | null | undefined }) {
+  if (!code) return <span className="text-ink-faint">Not coded</span>;
+  return <span>{code.name} <span className="text-[11px] text-ink-faint">{code.code}</span></span>;
+}
+
+/** A note as a sentence: ends with a full stop, so the text after it does not run on. */
+export function sentence(text: string | null | undefined): string {
+  const t = (text ?? '').trim();
+  return !t ? '' : /[.!?…]$/.test(t) ? t : `${t}.`;
 }

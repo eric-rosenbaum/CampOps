@@ -20,6 +20,7 @@ export interface ReceiptsToast {
   tone?: 'default' | 'error';
   actionLabel?: string;
   onAction?: () => void;
+  durationMs?: number;
 }
 
 interface ReceiptsState {
@@ -32,8 +33,8 @@ interface ReceiptsState {
   exports: ExpenseExport[];
   timeZone: string;
   /**
-   * Receipts removed on screen whose removal has not been committed yet: the Undo window. Reloads
-   * during that window keep them hidden, or a realtime echo would put a "deleted" receipt back.
+   * Receipts removed on screen whose removal the server has not confirmed yet. A reload in that
+   * moment keeps them hidden, or a load that started before the removal would put it back.
    */
   pendingRemovals: Record<string, true>;
   toast: ReceiptsToast | null;

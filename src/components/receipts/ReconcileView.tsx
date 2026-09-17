@@ -1,26 +1,26 @@
 import { useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle, ArrowRightLeft, BellRing, CalendarClock, Check, CheckCircle2, ChevronLeft, ChevronRight, Copy,
-  Link2, Pencil, Undo2, Upload, X,
+  Link2, Lock, LockOpen, Mail, Pencil, Undo2, Upload, X,
 } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useReceiptsStore } from '@/store/receiptsStore';
 import { useCampStore } from '@/store/campStore';
 import {
-  dbDeleteStatement, dbPatchReceipts, dbRemindHolder, dbResolveLines, dbSetReceiptAside, dbSetStatementTotal,
-  refreshReceipts, type LineChange,
+  dbAskHolder, dbDeleteStatement, dbPatchReceipts, dbRemindHolder, dbResolveLines, dbSetReceiptAside, dbSetStatementTotal,
+  dbUnlockStatement, refreshReceipts, type LineChange,
 } from '@/lib/receiptsDb';
 import {
-  autoMatch, daysBetween, duplicatePartner, findDuplicates, formatCents, monthBounds, monthKey, monthLabel, parseMoney,
-  rankAttachCandidates, reconcileSummary, shiftMonth, toCents, vendorSimilarity, type MatchSuggestion,
+  autoMatch, blockerText, daysBetween, duplicatePartner, findDuplicates, formatCents, monthBounds, monthKey, monthLabel, noReceiptText,
+  parseMoney, rankAttachCandidates, reconcileSummary, shiftMonth, toCents, vendorSimilarity, type MatchSuggestion,
 } from '@/lib/receipts';
 import { todayStr } from '@/lib/utils';
-import type { ExpenseCard, Receipt, StatementLine } from '@/lib/receiptTypes';
+import type { BudgetCode, ExpenseCard, NoReceiptKind, Receipt, StatementLine } from '@/lib/receiptTypes';
 import { StatementImport } from './StatementImport';
 import {
-  Callout, ConfirmDialog, EmptyState, Figure, SectionTitle, StatusChip, Thumb, cardWithHolder, fmtDay, fmtInstantDay,
-  inputClass, money, selectClass, useEscape, useSignedUrls,
+  Callout, ConfirmDialog, EmptyState, Figure, SectionTitle, StatusChip, Thumb, UnlockDialog, cardWithHolder, fmtDay, fmtInstantDay,
+  inputClass, labelClass, money, selectClass, sentence, useEscape, useSignedUrls,
 } from './receiptsUi';
 
 /**
@@ -38,6 +38,7 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
 }) {
   const campId = useCampStore((s) => s.currentCamp?.id ?? null);
   const cards = useReceiptsStore((s) => s.cards);
+  const codes = useReceiptsStore((s) => s.codes);
   const statements = useReceiptsStore((s) => s.statements);
   const allLines = useReceiptsStore((s) => s.lines);
   const receipts = useReceiptsStore((s) => s.receipts);
@@ -67,6 +68,8 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
 
   const statement = statements.find((s) => s.cardId === cardId && s.periodMonth.startsWith(month)) ?? null;
   const lines = useMemo(() => (statement ? allLines.filter((l) => l.statementId === statement.id) : []), [allLines, statement]);
+  // An exported month is in QuickBooks: nothing on it changes until finance unlocks it to correct it.
+  const locked = !!statement?.exportId && !statement.reexportNeededAt;
   const matchedAnywhere = useMemo(() => new Set(allLines.map((l) => l.receiptId).filter(Boolean) as string[]), [allLines]);
   const receiptById = useMemo(() => new Map(receipts.map((r) => [r.id, r])), [receipts]);
   const receiptOf = (id: string | null) => (id ? receiptById.get(id) ?? null : null);
@@ -109,7 +112,7 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
   const toCheck = matched.filter((l) => summary?.amountDiffersLineIds.includes(l.id)
     || summary?.matchedNeedsReviewIds.includes(l.receiptId ?? ''));
 
-  const duplicates = useMemo(() => findDuplicates(receipts), [receipts]);
+  const duplicates = useMemo(() => findDuplicates(receipts, cards), [receipts, cards]);
 
   const signed = useSignedUrls(useMemo(() => [...candidates, ...undatedReceipts, ...orphanReceipts, ...receipts.filter((r) => lines.some((l) => l.receiptId === r.id))],
     [candidates, undatedReceipts, orphanReceipts, receipts, lines]));
@@ -119,7 +122,10 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
   const [replacing, setReplacing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [attachFor, setAttachFor] = useState<StatementLine | null>(null);
-  const [noteFor, setNoteFor] = useState<{ line: StatementLine; state: 'no_receipt_ok' | 'personal' } | null>(null);
+  const [noteFor, setNoteFor] = useState<{ line: StatementLine; state: 'personal' } | null>(null);
+  const [noReceiptFor, setNoReceiptFor] = useState<{ line: StatementLine; kind: NoReceiptKind } | null>(null);
+  const [asked, setAsked] = useState<Record<string, { email: string; text: string }>>({});
+  const [unlocking, setUnlocking] = useState(false);
   const [asideFor, setAsideFor] = useState<Receipt | null>(null);
   const [moveFor, setMoveFor] = useState<Receipt | null>(null);
   const [dupFor, setDupFor] = useState<Receipt | null>(null);
@@ -138,6 +144,15 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
     setBusy(false);
     if (res.error) setError(res.error);
     refresh();
+  }
+
+  async function ask(r: Receipt) {
+    setBusy(true); setError(null);
+    const res = await dbAskHolder(r.id);
+    setBusy(false);
+    if (res.error) { setError(res.error); return; }
+    setAsked((a) => ({ ...a, [r.id]: { email: res.toEmail ?? '', text: res.bodyText ?? '' } }));
+    upsertLocal({ ...r, holderAskedAt: new Date().toISOString() });
   }
 
   async function remind(line: StatementLine) {
@@ -228,9 +243,25 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
             {statement.fileName ? ` from ${statement.fileName}` : ''}, {fmtInstantDay(statement.createdAt)}.
             {statement.exportedAt && <> Exported {fmtInstantDay(statement.exportedAt)}.</>}
           </span>
-          <Button size="sm" variant="ghost" onClick={() => setReplacing(true)} data-testid="replace-statement">Replace statement…</Button>
-          <button className="text-[12.5px] font-semibold text-red hover:underline" onClick={() => setConfirmDelete(true)}>Delete</button>
+          {locked ? (
+            <span className="flex items-center gap-2" data-testid="statement-locked">
+              <Lock className="h-3.5 w-3.5" /> Locked
+              <Button size="sm" variant="ghost" onClick={() => setUnlocking(true)} data-testid="unlock-statement">Unlock to correct</Button>
+            </span>
+          ) : (
+            <>
+              <Button size="sm" variant="ghost" onClick={() => setReplacing(true)} data-testid="replace-statement">Replace statement…</Button>
+              <button className="text-[12.5px] font-semibold text-red hover:underline" onClick={() => setConfirmDelete(true)}>Delete</button>
+            </>
+          )}
         </div>
+      )}
+      {card && statement && !replacing && statement.reexportNeededAt && (
+        <Callout tone="amber" className="mt-2 flex flex-wrap items-center gap-2" data-testid="reexport-needed">
+          <LockOpen className="h-4 w-4 flex-none" />
+          <span className="min-w-0 flex-1"><b>Unlocked to correct, {fmtInstantDay(statement.reexportNeededAt)}.</b> {sentence(statement.reexportReason)} Correct it in QuickBooks too, then export this month again.</span>
+          <Link to={`/receipts?tab=export&card=${card.id}&month=${month}`} className="font-bold underline">Export again →</Link>
+        </Callout>
       )}
 
       {card && (!statement || replacing) && (
@@ -256,9 +287,13 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
               <div className="relative min-w-0">
                 {editingTotal == null ? (
                   <>
-                    <Figure label="Statement total" value={summary.statementTotalCents != null ? formatCents(summary.statementTotalCents) : '—'} hint="from the bill" />
-                    <button className="absolute right-1.5 top-1.5 rounded-btn p-1.5 text-ink-soft hover:bg-cream hover:text-forest" aria-label="Edit the statement total" data-testid="edit-total"
-                            onClick={() => setEditingTotal(summary.statementTotalCents != null ? (summary.statementTotalCents / 100).toFixed(2) : '')}>
+                    {statement.totalSource === 'sum_of_lines' ? (
+                      <Figure label="Statement total" value="Not typed" hint={`sum of lines ${formatCents(summary.netCents)} — not checked against the bill`} tone="amber" />
+                    ) : (
+                      <Figure label="Statement total" value={summary.statementTotalCents != null ? formatCents(summary.statementTotalCents) : '—'} hint="typed from the bill" />
+                    )}
+                    <button className="absolute right-1.5 top-1.5 rounded-btn p-1.5 text-ink-soft hover:bg-cream hover:text-forest disabled:opacity-40" aria-label="Edit the statement total" data-testid="edit-total" disabled={locked}
+                            onClick={() => setEditingTotal(statement.totalSource === 'typed' && summary.statementTotalCents != null ? (summary.statementTotalCents / 100).toFixed(2) : '')}>
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                   </>
@@ -269,7 +304,7 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
                            onChange={(e) => setEditingTotal(e.target.value)}
                            onKeyDown={(e) => { if (e.key === 'Enter') void saveTotal(); if (e.key === 'Escape') { e.stopPropagation(); setEditingTotal(null); } }} />
                     <div className="mt-1.5 flex gap-3 text-[12px]">
-                      <button className="font-bold text-forest hover:underline" disabled={busy} onClick={() => void saveTotal()}>Save</button>
+                      <button className="font-bold text-forest hover:underline" disabled={busy || locked} onClick={() => void saveTotal()}>Save</button>
                       <button className="text-ink-soft hover:underline" onClick={() => setEditingTotal(null)}>Cancel</button>
                     </div>
                   </div>
@@ -286,17 +321,21 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 border-t border-green-muted-text/20 bg-green-muted-bg px-4 py-3 text-green-muted-text" data-testid="month-agrees">
                 <CheckCircle2 className="h-5 w-5 flex-none" />
                 <p className="text-[14px] font-bold">This month agrees with the Visa bill</p>
-                <p className="w-full text-[12px] sm:ml-auto sm:w-auto">Every charge explained, every receipt on the card accounted for.</p>
+                <p className="w-full text-[12px] sm:ml-auto sm:w-auto">
+                  Every charge explained, every receipt on the card accounted for{statement.totalSource === 'sum_of_lines' ? ' (the bill’s total was not typed, so the lines were not checked against it)' : ''}.
+                  {' '}<Link to={`/receipts?tab=export&card=${card?.id ?? ''}&month=${month}`} className="font-bold underline" data-testid="export-this-month">{statement.exportId && !statement.reexportNeededAt ? 'See the export' : 'Export this month'} →</Link>
+                </p>
               </div>
             ) : (
               <div className="border-t border-amber/30 bg-amber-bg px-4 py-3 text-amber-text" data-testid="month-disagrees">
                 <p className="flex items-center gap-2 text-[13.5px] font-bold"><AlertTriangle className="h-4 w-4" /> Not agreeing yet</p>
                 <ul className="mt-1 list-disc pl-6 text-[13px]" data-testid="blockers">
                   {summary.blockers.map((b) => {
-                    // A suggestion is not a match until accepted, so it still counts; saying so
-                    // stops "6 receipts have no charge" reading as a contradiction of the one listed.
+                    // A suggestion is not a match until accepted, so it still counts. The banner said
+                    // "9 receipts on this card have no charge" above a section headed "Receipts with no
+                    // charge 0", because all nine were waiting as suggestions; it now says so.
                     const suggested = b.code === 'unexplained' ? suggestions.length : b.code === 'no_charge' ? summary.noCharge.filter((r) => suggestedReceipt.has(r.id)).length : 0;
-                    return <li key={b.code} data-blocker={b.code}>{b.message}{suggested ? ` ${suggested} of them ${suggested === 1 ? 'has' : 'have'} a suggested match below.` : ''}</li>;
+                    return <li key={b.code} data-blocker={b.code}>{blockerText(b, suggested)}</li>;
                   })}
                 </ul>
               </div>
@@ -308,14 +347,14 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
           {suggestions.length > 0 && (
             <>
               <SectionTitle title="Suggested matches" count={suggestions.length}>
-                <Button size="sm" disabled={busy} onClick={() => resolve(suggestions.map((s) => ({ lineId: s.lineId, matchState: 'matched', receiptId: s.receiptId })))}>
+                <Button size="sm" disabled={busy || locked} onClick={() => resolve(suggestions.map((s) => ({ lineId: s.lineId, matchState: 'matched', receiptId: s.receiptId })))}>
                   <Check className="h-4 w-4" /> Accept all {suggestions.length}
                 </Button>
               </SectionTitle>
               <ul className="space-y-2" data-testid="suggestions">
                 {suggestions.map((s) => (
                   <SuggestionRow key={s.lineId} s={s} line={lines.find((l) => l.id === s.lineId)!} receipt={receiptOf(s.receiptId)!}
-                                 url={signed[receiptOf(s.receiptId)?.filePath ?? '']} busy={busy} onOpen={onOpen}
+                                 url={signed[receiptOf(s.receiptId)?.filePath ?? '']} busy={busy || locked} onOpen={onOpen}
                                  onAccept={() => resolve([{ lineId: s.lineId, matchState: 'matched', receiptId: s.receiptId }])}
                                  onReject={() => setRejected((r) => new Set(r).add(`${s.lineId}:${s.receiptId}`))} />
                 ))}
@@ -333,11 +372,12 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
                 <li key={l.id} className="rounded-card border border-border bg-white p-3" data-line={l.id}>
                   <LineHead line={l} />
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => setAttachFor(l)}><Link2 className="h-3.5 w-3.5" /> Attach receipt</Button>
-                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => pickUpload(l)}><Upload className="h-3.5 w-3.5" /> Upload the receipt</Button>
-                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => remind(l)}><BellRing className="h-3.5 w-3.5" /> Email {holderFirst} a reminder</Button>
-                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => setNoteFor({ line: l, state: 'no_receipt_ok' })}>No receipt needed</Button>
-                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => setNoteFor({ line: l, state: 'personal' })}>Personal</Button>
+                    <Button size="sm" variant="ghost" disabled={busy || locked} onClick={() => setAttachFor(l)}><Link2 className="h-3.5 w-3.5" /> Attach receipt</Button>
+                    <Button size="sm" variant="ghost" disabled={busy || locked} onClick={() => pickUpload(l)}><Upload className="h-3.5 w-3.5" /> Upload the receipt</Button>
+                    <Button size="sm" variant="ghost" disabled={busy || locked} onClick={() => remind(l)}><BellRing className="h-3.5 w-3.5" /> Email {holderFirst} a reminder</Button>
+                    <Button size="sm" variant="ghost" disabled={busy || locked} onClick={() => setNoReceiptFor({ line: l, kind: 'lost' })}>Receipt lost</Button>
+                    <Button size="sm" variant="ghost" disabled={busy || locked} onClick={() => setNoReceiptFor({ line: l, kind: 'not_expected' })}>No receipt expected</Button>
+                    <Button size="sm" variant="ghost" disabled={busy || locked} onClick={() => setNoteFor({ line: l, state: 'personal' })}>Personal</Button>
                   </div>
                   {reminded[l.id] ? (
                     <div className="mt-2 rounded-btn bg-paper-raised px-2.5 py-2 text-[12.5px] text-ink-soft" data-testid="reminded">
@@ -392,11 +432,11 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
                         <span className="text-right text-[14px] font-bold tabular-nums">{money(r.total, r.currency)}</span>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5 border-t border-border/70 pt-2">
-                        <Button size="sm" variant="ghost" disabled={busy} onClick={() => (partner ? compareWith(r, partner.otherId, partner.isCopy) : setDupFor(r))}>
+                        <Button size="sm" variant="ghost" disabled={busy || locked} onClick={() => (partner ? compareWith(r, partner.otherId, partner.isCopy) : setDupFor(r))}>
                           <Copy className="h-3.5 w-3.5" /> It’s a duplicate
                         </Button>
-                        <Button size="sm" variant="ghost" disabled={busy} onClick={() => setMoveFor(r)}><ArrowRightLeft className="h-3.5 w-3.5" /> Wrong card</Button>
-                        {!carried && <Button size="sm" variant="ghost" disabled={busy} onClick={() => setAsideFor(r)}><CalendarClock className="h-3.5 w-3.5" /> Posts next month</Button>}
+                        <Button size="sm" variant="ghost" disabled={busy || locked} onClick={() => setMoveFor(r)}><ArrowRightLeft className="h-3.5 w-3.5" /> Wrong card</Button>
+                        {!carried && <Button size="sm" variant="ghost" disabled={busy || locked} onClick={() => setAsideFor(r)}><CalendarClock className="h-3.5 w-3.5" /> Posts next month</Button>}
                       </div>
                     </li>
                   );
@@ -436,14 +476,25 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
               <p className="mb-2 text-[12.5px] text-ink-soft">On {card?.label}, snapped around this month, but with no date, so they cannot be matched yet.</p>
               <ul className="space-y-2" data-testid="undated">
                 {undatedReceipts.map((r) => (
-                  <li key={r.id} className="flex items-center gap-3 rounded-card border border-border bg-white p-2.5">
+                  <li key={r.id} className="flex flex-wrap items-center gap-3 rounded-card border border-border bg-white p-2.5" data-undated={r.id}>
                     <Thumb receipt={r} url={r.filePath ? signed[r.filePath] : undefined} size={44} onClick={() => onOpen(r.id)} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13.5px] font-bold">{r.vendor ?? 'Not read yet'}</p>
                       <p className="truncate text-[12px] text-ink-soft">Snapped {fmtInstantDay(r.createdAt)} · {whoLine(r)}</p>
                     </div>
                     <span className="text-[14px] font-bold tabular-nums">{money(r.total, r.currency)}</span>
-                    <Button size="sm" onClick={() => onOpen(r.id)}>Add date</Button>
+                    <div className="flex w-full flex-wrap justify-end gap-1.5 sm:w-auto">
+                      <Button size="sm" variant="ghost" disabled={busy} onClick={() => ask(r)} data-testid="ask-holder"><Mail className="h-3.5 w-3.5" /> Ask {holderFirst} about it</Button>
+                      <Button size="sm" onClick={() => onOpen(r.id)}>Add date</Button>
+                    </div>
+                    {asked[r.id] ? (
+                      <div className="w-full rounded-btn bg-paper-raised px-2.5 py-2 text-[12.5px] text-ink-soft" data-testid="asked">
+                        <p><b className="font-semibold text-ink">Emailed {asked[r.id].email}.</b></p>
+                        <p className="mt-0.5">If texts were on, it would say: “{asked[r.id].text}”</p>
+                      </div>
+                    ) : r.holderAskedAt ? (
+                      <p className="w-full text-[12px] text-ink-soft" data-testid="asked">Asked {card?.holderName ?? 'the holder'} on {fmtInstantDay(r.holderAskedAt)}.</p>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -461,7 +512,7 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
                       <p className="truncate text-[13px]"><b>{r.vendor}</b> · {fmtDay(r.purchaseDate)} · {money(r.total, r.currency)}</p>
                       <p className="truncate text-[12px] text-ink-soft">Expected on the {monthLabel(shiftMonth(month, 1))} statement{r.deferredNote ? ` · ${r.deferredNote}` : ''}</p>
                     </div>
-                    <button className="rounded-btn p-1.5 text-ink-soft hover:bg-cream hover:text-forest" aria-label="Bring it back to this month" disabled={busy}
+                    <button className="rounded-btn p-1.5 text-ink-soft hover:bg-cream hover:text-forest" aria-label="Bring it back to this month" disabled={busy || locked}
                             onClick={() => patchReceipt(r, { deferredMonth: null, deferredNote: null }, () => dbSetReceiptAside(r.id, null, null))}>
                       <Undo2 className="h-4 w-4" />
                     </button>
@@ -486,11 +537,15 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
                         <p className="truncate text-[12px] text-ink-soft">
                           {l.matchState === 'matched' && r ? (
                             <button className="hover:underline" onClick={() => onOpen(r.id)}>Receipt: {r.vendor} · {money(r.total, r.currency)}{toCents(r.total) !== toCents(l.amount) ? ' (amount differs)' : ''}{r.status === 'needs_review' ? ' · needs review' : ''}</button>
-                          ) : l.matchState === 'personal' ? `Personal${l.note ? ` · ${l.note}` : ''}` : `No receipt needed${l.note ? ` · ${l.note}` : ''}`}
+                          ) : l.matchState === 'personal' ? `Personal${l.note ? ` · ${l.note}` : ''}` : `${noReceiptText(l.noReceiptKind, l.note)} · ${codes.find((c) => c.id === (l.budgetCodeId ?? card?.defaultBudgetCodeId))?.name ?? 'Not coded'}`}
                         </p>
+                        {l.remindedAt && (
+                          // Kept once the charge is explained: the reminder is part of its history.
+                          <p className="truncate text-[11.5px] text-ink-faint" data-testid="reminded-history">Reminder emailed to {card?.holderName ?? 'the holder'} on {fmtInstantDay(l.remindedAt)}</p>
+                        )}
                       </div>
                       <span className="text-[13px] font-semibold tabular-nums">{money(l.amount)}</span>
-                      <button className="rounded-btn p-1.5 text-ink-soft hover:bg-cream hover:text-forest" aria-label="Undo" disabled={busy}
+                      <button className="rounded-btn p-1.5 text-ink-soft hover:bg-cream hover:text-forest disabled:opacity-40" aria-label="Undo" disabled={busy || locked}
                               onClick={() => resolve([{ lineId: l.id, matchState: 'unmatched', receiptId: null }])}>
                         <Undo2 className="h-4 w-4" />
                       </button>
@@ -518,15 +573,34 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
       )}
 
       {attachFor && card && (
-        <AttachPicker line={attachFor} card={card} cards={cards} receipts={receipts} exclude={matchedAnywhere} signed={signed}
+        <AttachPicker line={attachFor} card={card} cards={cards} receipts={receipts} exclude={matchedAnywhere} signed={signed} codes={codes}
                       onClose={() => setAttachFor(null)}
                       onUpload={() => { const l = attachFor; setAttachFor(null); pickUpload(l); }}
                       onPick={(r) => { setAttachFor(null); void resolve([{ lineId: attachFor.id, matchState: 'matched', receiptId: r.id }]); }} />
       )}
+      {noReceiptFor && card && (
+        <NoReceiptDialog line={noReceiptFor.line} initialKind={noReceiptFor.kind} card={card} codes={codes} holderFirst={holderFirst}
+                         reminded={!!noReceiptFor.line.remindedAt || !!reminded[noReceiptFor.line.id]}
+                         onClose={() => setNoReceiptFor(null)}
+                         onSave={(kind, note, codeId) => {
+                           const n = noReceiptFor; setNoReceiptFor(null);
+                           void resolve([{ lineId: n.line.id, matchState: 'no_receipt_ok', note, noReceiptKind: kind, budgetCodeId: codeId }]);
+                         }} />
+      )}
+      {unlocking && statement && (
+        <UnlockDialog what="statement" onCancel={() => setUnlocking(false)}
+                      onUnlock={async (reason) => {
+                        const res = await dbUnlockStatement(statement.id, reason);
+                        if (res.error) return res.error;
+                        setUnlocking(false);
+                        refresh();
+                        return null;
+                      }} />
+      )}
       {noteFor && (
-        <NoteDialog title={noteFor.state === 'personal' ? 'Mark as personal' : 'No receipt needed'}
+        <NoteDialog title="Mark as personal"
                     subtitle={`${noteFor.line.description} · ${fmtDay(noteFor.line.postedDate)} · ${money(noteFor.line.amount)}`}
-                    hint={noteFor.state === 'personal' ? 'A personal charge on the company card. It is left out of the QuickBooks export and totalled separately. Note how it will be repaid.' : 'Say why, for whoever audits this later (e.g. "Parking meter, no receipt"). It goes to QuickBooks under the card’s default account.'}
+                    hint="A personal charge on the company card. It is left out of the QuickBooks export and totalled separately. Note how it will be repaid."
                     onClose={() => setNoteFor(null)}
                     onSave={(note) => { const n = noteFor; setNoteFor(null); void resolve([{ lineId: n.line.id, matchState: n.state, note }]); }} />
       )}
@@ -633,14 +707,16 @@ function DialogShell({ label, title, subtitle, onClose, children, footer, wide }
   );
 }
 
-function AttachPicker({ line, card, cards, receipts, exclude, signed, onPick, onUpload, onClose }: {
-  line: StatementLine; card: ExpenseCard; cards: ExpenseCard[]; receipts: Receipt[]; exclude: Set<string>; signed: Record<string, string>;
+function AttachPicker({ line, card, cards, codes, receipts, exclude, signed, onPick, onUpload, onClose }: {
+  line: StatementLine; card: ExpenseCard; cards: ExpenseCard[]; codes: BudgetCode[]; receipts: Receipt[]; exclude: Set<string>; signed: Record<string, string>;
   onPick: (r: Receipt) => void; onUpload: () => void; onClose: () => void;
 }) {
   const [q, setQ] = useState('');
-  const rows = useMemo(() => rankAttachCandidates(line, receipts, { cardId: card.id, excludeIds: exclude, query: q }),
-    [line, receipts, card.id, exclude, q]);
+  const rows = useMemo(() => rankAttachCandidates(line, receipts, {
+    cardId: card.id, excludeIds: exclude, query: q, cardLabel: (id) => cardWithHolder(cards, id),
+  }), [line, receipts, card.id, exclude, q, cards]);
   const byId = useMemo(() => new Map(receipts.map((r) => [r.id, r])), [receipts]);
+  const firstWeak = rows.findIndex((c) => c.strength === 'weak');
   return (
     <DialogShell label="Attach a receipt" title="Attach a receipt" subtitle={`${line.description} · ${fmtDay(line.postedDate)} · ${money(line.amount)}`} onClose={onClose} wide
                  footer={(
@@ -651,30 +727,35 @@ function AttachPicker({ line, card, cards, receipts, exclude, signed, onPick, on
                  )}>
       <div className="border-b border-border px-4 py-2">
         <input autoFocus className={inputClass} placeholder="Search vendor, purpose, who snapped it, amount" value={q} onChange={(e) => setQ(e.target.value)} />
-        <p className="mt-1 text-[11.5px] text-ink-soft">{q ? 'Searching every open receipt, on any card and any date.' : 'Best first: a vendor like the charge, then the amount, then the date.'}</p>
+        <p className="mt-1 text-[11.5px] text-ink-soft">{q ? 'Searching every open receipt, on any card and any date.' : 'Best first: the amount closest to the charge, then a matching name, then the date. Each says why it is here.'}</p>
       </div>
       <ul className="min-h-0 flex-1 divide-y divide-border overflow-y-auto" data-testid="attach-results">
         {rows.length === 0 && (
           <li className="px-4 py-6 text-center text-[13px] text-ink-soft">
-            {q ? `No open receipt matches “${q}”.` : 'No open receipts within six weeks of this charge.'} Upload it below, or mark the charge as needing no receipt.
+            {q ? `No open receipt matches “${q}”.` : 'No open receipts within six weeks of this charge.'} Upload it below, or say the receipt was lost.
           </li>
         )}
-        {rows.map(({ receipt, diffCents, dateDiff, otherCard, similarity }) => {
+        {rows.map(({ receipt, reasons, strength }, i) => {
           const r = byId.get(receipt.id)!;
+          const code = codes.find((c) => c.id === r.budgetCodeId);
           return (
-            <li key={r.id}>
+            <li key={r.id} data-strength={strength}>
+              {i === firstWeak && (
+                <p className="bg-paper-raised px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider text-ink-soft" data-testid="attach-weak-divider">
+                  {firstWeak === 0 ? 'Nothing close: these are open receipts nearby, with a different amount and name' : 'Less likely: a different amount and name'}
+                </p>
+              )}
               <button className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-cream" onClick={() => onPick(r)} data-attach={r.id}>
                 <Thumb receipt={r} url={r.filePath ? signed[r.filePath] : undefined} size={40} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13.5px] font-semibold">
                     {r.vendor ?? 'Not read yet'}
-                    {similarity >= 0.6 && <span className="ml-1.5 rounded-tag bg-green-muted-bg px-1 py-0.5 text-[10.5px] font-bold text-green-muted-text">name matches</span>}
+                    <span className="font-normal text-ink-soft"> · {r.purchaseDate ? fmtDay(r.purchaseDate) : 'no date'}{code ? ` · ${code.name}` : ''}</span>
                   </span>
-                  <span className="block truncate text-[12px] text-ink-soft">
-                    {r.purchaseDate ? fmtDay(r.purchaseDate) : 'No date'}
-                    {dateDiff != null && dateDiff !== 0 ? ` (${Math.abs(dateDiff)} day${Math.abs(dateDiff) === 1 ? '' : 's'} ${dateDiff > 0 ? 'before' : 'after'})` : ''}
-                    {diffCents !== 0 ? ` · differs by ${formatCents(Math.abs(diffCents))}` : ' · same amount'}
-                    {otherCard ? ` · on ${cardWithHolder(cards, r.cardId)}` : ''}
+                  <span className="mt-0.5 flex flex-wrap gap-1" data-testid="attach-reasons">
+                    {reasons.map((why) => (
+                      <span key={why} className={`rounded-tag px-1.5 py-0.5 text-[11px] font-semibold ${/^Same amount|^Name matches|^Same day/.test(why) ? 'bg-green-muted-bg text-green-muted-text' : 'bg-cream-dark text-ink-soft'}`}>{why}</span>
+                    ))}
                   </span>
                 </span>
                 <span className="text-[14px] font-bold tabular-nums">{money(r.total, r.currency)}</span>
@@ -683,6 +764,63 @@ function AttachPicker({ line, card, cards, receipts, exclude, signed, onPick, on
           );
         })}
       </ul>
+    </DialogShell>
+  );
+}
+
+/**
+ * A charge with no receipt, said properly. "Receipt lost" needs a note, because that note is the
+ * missing-receipt record an auditor or the CRA asks for; "No receipt expected" (a bank fee, a
+ * parking meter) does not. Either is booked to a budget code, the card's default until changed:
+ * the one-button version sent van fuel to Waterfront Equipment because that was the card's default.
+ */
+function NoReceiptDialog({ line, initialKind, card, codes, holderFirst, reminded, onSave, onClose }: {
+  line: StatementLine; initialKind: NoReceiptKind; card: ExpenseCard; codes: BudgetCode[]; holderFirst: string; reminded: boolean;
+  onSave: (kind: NoReceiptKind, note: string | null, codeId: string | null) => void; onClose: () => void;
+}) {
+  const [kind, setKind] = useState<NoReceiptKind>(initialKind);
+  const [note, setNote] = useState(line.note ?? '');
+  const [codeId, setCodeId] = useState(line.budgetCodeId ?? card.defaultBudgetCodeId ?? '');
+  const [tried, setTried] = useState(false);
+  const needsNote = kind === 'lost' && !note.trim();
+  const save = () => { setTried(true); if (!needsNote) onSave(kind, note.trim() || null, codeId || null); };
+  const active = codes.filter((c) => c.active || c.id === codeId);
+  return (
+    <DialogShell label="No receipt for this charge" title="No receipt for this charge" subtitle={`${line.description} · ${fmtDay(line.postedDate)} · ${money(line.amount)}`} onClose={onClose}
+                 footer={(
+                   <div className="flex justify-end gap-2">
+                     <Button variant="ghost" onClick={onClose}>Cancel</Button>
+                     <Button onClick={save} data-testid="no-receipt-save">Save</Button>
+                   </div>
+                 )}>
+      <div className="space-y-3 overflow-y-auto px-4 py-3">
+        <div className="space-y-2" role="radiogroup" aria-label="Why there is no receipt">
+          {([
+            ['lost', 'Receipt lost', `There was a receipt and it is gone. Say what was bought and why there is no receipt${reminded ? '' : ` (you can email ${holderFirst} first)`}: the note is the missing-receipt record an auditor asks for. No tax is claimed on it.`],
+            ['not_expected', 'No receipt expected', 'Nothing was ever printed: a bank or card fee, interest, a parking meter.'],
+          ] as const).map(([value, label, hint]) => (
+            <label key={value} className={`flex cursor-pointer items-start gap-2 rounded-btn border px-3 py-2 text-[13px] ${kind === value ? 'border-sage bg-white' : 'border-border'}`}>
+              <input type="radio" name="no-receipt-kind" className="mt-0.5" checked={kind === value} onChange={() => setKind(value)} data-kind={value} />
+              <span><b className="font-semibold">{label}</b><span className="block text-[12px] text-ink-soft">{hint}</span></span>
+            </label>
+          ))}
+        </div>
+        <div>
+          <label className={labelClass} htmlFor="no-receipt-note">{kind === 'lost' ? 'What was it, and what happened to the receipt? (required)' : 'Note (optional)'}</label>
+          <input id="no-receipt-note" autoFocus className={`${inputClass} ${tried && needsNote ? '!border-red ring-2 ring-red/20' : ''}`} value={note}
+                 onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); }}
+                 placeholder={kind === 'lost' ? 'e.g. Van fuel for the canoe trip; pump printed no slip' : 'e.g. Monthly card fee'} />
+          {tried && needsNote && <p className="mt-1 text-[12px] font-semibold text-red">A lost receipt needs a note.</p>}
+        </div>
+        <div>
+          <label className={labelClass} htmlFor="no-receipt-code">Budget code</label>
+          <select id="no-receipt-code" className={inputClass} value={codeId} onChange={(e) => setCodeId(e.target.value)}>
+            <option value="">Not coded</option>
+            {active.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code}){c.id === card.defaultBudgetCodeId ? ' · card default' : ''}</option>)}
+          </select>
+          <p className="mt-1 text-[12px] text-ink-soft">Goes to QuickBooks under {codes.find((c) => c.id === codeId)?.qbAccount ?? codes.find((c) => c.id === codeId)?.name ?? 'Uncategorised Expense'}.</p>
+        </div>
+      </div>
     </DialogShell>
   );
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, LockOpen } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useReceiptsStore } from '@/store/receiptsStore';
 import { useCampStore } from '@/store/campStore';
@@ -11,7 +11,7 @@ import {
   monthLabel, reconcileSummary, toCents, toStatementCsv, type StatementExport, type StatementExportFormat,
 } from '@/lib/receipts';
 import type { CardStatement, DateFormat, ExpenseCard } from '@/lib/receiptTypes';
-import { Callout, EmptyState, SectionTitle, downloadText, fmtInstantDay, labelClass, selectClass } from './receiptsUi';
+import { Callout, EmptyState, SectionTitle, downloadText, fmtInstantDay, labelClass, selectClass, sentence } from './receiptsUi';
 
 type QboFormat = Exclude<StatementExportFormat, 'detailed'>;
 
@@ -44,12 +44,41 @@ export function ExportView() {
   const timeZone = useReceiptsStore((s) => s.timeZone);
   const apply = useReceiptsStore((s) => s.apply);
 
+  const matchedAnywhere = useMemo(() => new Set(lines.map((l) => l.receiptId).filter(Boolean) as string[]), [lines]);
   const months = useMemo(() => [...new Set(statements.map((s) => s.periodMonth.slice(0, 7)))].sort().reverse(), [statements]);
-  const [month, setMonth] = useState<string>(() => months[0] ?? '');
+
+  // Which card-months agree right now. The export opened on the latest month and its first card,
+  // which was a month that did not agree, beside another card whose month did.
+  const agreeing = useMemo(() => statements.filter((st) => reconcileSummary({
+    statement: st, cardId: st.cardId, month: st.periodMonth.slice(0, 7), lines: lines.filter((l) => l.statementId === st.id),
+    matchedReceiptIds: matchedAnywhere, receipts, timeZone,
+  }).agrees).sort((a, b) => b.periodMonth.localeCompare(a.periodMonth) || a.cardId.localeCompare(b.cardId)), [statements, lines, matchedAnywhere, receipts, timeZone]);
+
+  // /receipts?tab=export&card=<id>&month=YYYY-MM opens one card-month (the Summary's and Reconcile's links).
+  const [params, setParams] = useSearchParams();
+  const linkMonth = params.get('month');
+  const linkCard = params.get('card');
+  const firstAgreeing = agreeing.find((st) => !st.exportId || st.reexportNeededAt) ?? agreeing[0] ?? null;
+  const [monthChoice, setMonth] = useState<string | null>(null);
+  const month = monthChoice
+    ?? (linkMonth && months.includes(linkMonth) ? linkMonth : null)
+    ?? firstAgreeing?.periodMonth.slice(0, 7) ?? months[0] ?? '';
   const inMonth = useMemo(() => statements.filter((s) => s.periodMonth.startsWith(month)), [statements, month]);
   const cardsInMonth = useMemo(() => cards.filter((c) => inMonth.some((s) => s.cardId === c.id)), [cards, inMonth]);
-  const [cardChoice, setCardChoice] = useState<string>(() => cardsInMonth[0]?.id ?? '');
-  const chosenCard = cardChoice === 'all' ? 'all' : cardsInMonth.some((c) => c.id === cardChoice) ? cardChoice : cardsInMonth[0]?.id ?? '';
+  const [cardChoice, setCardChoice] = useState<string | null>(null);
+  const preferredCard = (linkCard && cardsInMonth.some((c) => c.id === linkCard) ? linkCard : null)
+    ?? agreeing.find((st) => st.periodMonth.startsWith(month) && (!st.exportId || st.reexportNeededAt))?.cardId
+    ?? agreeing.find((st) => st.periodMonth.startsWith(month))?.cardId
+    ?? cardsInMonth[0]?.id ?? '';
+  const chosenCard = cardChoice === 'all' ? 'all' : cardChoice && cardsInMonth.some((c) => c.id === cardChoice) ? cardChoice : preferredCard;
+  const choose = (next: { month?: string; card?: string }) => {
+    if (next.month) { setMonth(next.month); setCardChoice(null); }
+    if (next.card) setCardChoice(next.card);
+    // The link's card and month stop applying once someone picks another.
+    if (params.has('card') || params.has('month')) {
+      const p = new URLSearchParams(params); p.delete('card'); p.delete('month'); setParams(p, { replace: true });
+    }
+  };
   const [format, setFormat] = useState<QboFormat>('qbo_bills');
   const [dateFormat, setDateFormat] = useState<DateFormat>('DD/MM/YYYY');
   const [reexport, setReexport] = useState<Record<string, boolean>>({});
@@ -57,7 +86,6 @@ export function ExportView() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
-  const matchedAnywhere = useMemo(() => new Set(lines.map((l) => l.receiptId).filter(Boolean) as string[]), [lines]);
   const appOrigin = typeof window !== 'undefined' ? window.location.origin : undefined;
 
   const panels = useMemo(() => {
@@ -66,7 +94,10 @@ export function ExportView() {
       const statement = inMonth.find((s) => s.cardId === card.id)!;
       const stLines = lines.filter((l) => l.statementId === statement.id);
       const summary = reconcileSummary({ statement, cardId: card.id, month, lines: stLines, matchedReceiptIds: matchedAnywhere, receipts, timeZone });
-      const ex = buildStatementExport({ card, month, statement, lines: stLines, receipts, codes, province: taxSettings?.province });
+      const ex = buildStatementExport({
+        card, month, statement, lines: stLines, receipts, codes, province: taxSettings?.province,
+        taxRules: taxSettings?.taxRules, nonrecoverableTax: taxSettings?.nonrecoverableTax, qboTaxCodes: taxSettings?.qboTaxCodes,
+      });
       return { card, statement, summary, ex };
     });
   }, [chosenCard, cardsInMonth, inMonth, lines, month, matchedAnywhere, receipts, timeZone, codes, taxSettings]);
@@ -86,7 +117,7 @@ export function ExportView() {
 
   const blockedReason = (p: (typeof panels)[number]): string | null => {
     if (!p.summary.agrees) return 'The month does not agree yet';
-    if (p.statement.exportId && !reexport[p.statement.id]) return 'Already exported';
+    if (p.statement.exportId && !p.statement.reexportNeededAt && !reexport[p.statement.id]) return 'Already exported';
     if (format !== 'qbo_bills' && p.ex.bankRowCount > QBO_MAX_LINES) return `More than ${QBO_MAX_LINES} lines`;
     if (format === 'qbo_bills' && p.ex.billCount > QBO_MAX_BILLS) return `More than ${QBO_MAX_BILLS} bills`;
     return null;
@@ -103,6 +134,7 @@ export function ExportView() {
       // month in the books that the next export includes again.
       // A receipt exported by the older receipt-based export was never part of this statement's file.
       const includeExported = !!p.statement.exportId || p.ex.rows.some((r) => r.receiptStatus === 'exported');
+      // (An unlocked month is expected to go again; the server records it as a re-export.)
       const res = await dbExportStatement({ statementId: p.statement.id, format, fileName: file.name, dateFormat, includeExported });
       if (res.error) { setError(`${p.card.label}: ${res.error}`); break; }
       downloadText(file.name, file.csv, false);
@@ -131,14 +163,18 @@ export function ExportView() {
           <div className="grid grid-cols-2 gap-3">
             <div className="min-w-0">
               <label className={labelClass} htmlFor="export-month">Statement month</label>
-              <select id="export-month" className={`${selectClass} w-full`} value={month} onChange={(e) => setMonth(e.target.value)}>
-                {months.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
+              <select id="export-month" className={`${selectClass} w-full`} value={month} onChange={(e) => choose({ month: e.target.value })}>
+                {months.map((m) => <option key={m} value={m}>{monthLabel(m)}{agreeing.some((st) => st.periodMonth.startsWith(m)) ? '' : ' · nothing agrees yet'}</option>)}
               </select>
             </div>
             <div className="min-w-0">
               <label className={labelClass} htmlFor="export-card">Card</label>
-              <select id="export-card" className={`${selectClass} w-full`} value={chosenCard} onChange={(e) => setCardChoice(e.target.value)}>
-                {cardsInMonth.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+              <select id="export-card" className={`${selectClass} w-full`} value={chosenCard} onChange={(e) => choose({ card: e.target.value })}>
+                {cardsInMonth.map((c) => {
+                  const st = inMonth.find((x) => x.cardId === c.id);
+                  const ok = agreeing.some((x) => x.id === st?.id);
+                  return <option key={c.id} value={c.id}>{c.label}{st?.reexportNeededAt ? ' · re-export' : st?.exportId ? ' · exported' : ok ? ' · agrees' : ' · does not agree yet'}</option>;
+                })}
                 {cardsInMonth.length > 1 && <option value="all">All {cardsInMonth.length} cards, one file each</option>}
               </select>
             </div>
@@ -179,6 +215,9 @@ export function ExportView() {
         const rowCount = bills ? p.ex.billCount : p.ex.bankRowCount;
         const preview = parseCsv(fileFor(p.ex, p.card, format).csv);
         const statementCents = p.ex.statementTotalCents;
+        const fileCents = rowsCents + p.ex.personalCents + (bills ? p.ex.creditsCents : 0);
+        const addsUp = statementCents != null && statementCents === fileCents;
+        const typed = p.statement.totalSource === 'typed';
         return (
           <section key={p.card.id} className="mt-5" data-testid="export-card" data-card={p.card.id}>
             <SectionTitle title={`${p.card.label}${p.card.holderName ? ` · ${p.card.holderName}` : ''} · ${monthLabel(month)}`} count={rowCount} />
@@ -189,11 +228,25 @@ export function ExportView() {
                 <span><b className="text-[15px]">{formatCents(rowsCents)}</b> in {rowCount} {bills ? 'bill' : 'row'}{rowCount === 1 ? '' : 's'}</span>
                 {p.ex.personalCount > 0 && <span className="text-ink-soft">+ {formatCents(p.ex.personalCents)} personal ({p.ex.personalCount}, not exported)</span>}
                 {bills && p.ex.creditCount > 0 && <span className="text-ink-soft">− {formatCents(-p.ex.creditsCents)} credits ({p.ex.creditCount}, not in bills)</span>}
-                <span className="text-ink-soft">= {formatCents(rowsCents + p.ex.personalCents + (bills ? p.ex.creditsCents : 0))}</span>
-                <span className={statementCents != null && statementCents === rowsCents + p.ex.personalCents + (bills ? p.ex.creditsCents : 0) ? 'font-semibold text-green-muted-text' : 'font-semibold text-red'}>
-                  {statementCents == null ? 'no statement total' : statementCents === rowsCents + p.ex.personalCents + (bills ? p.ex.creditsCents : 0) ? `the statement total ✓` : `but the statement says ${formatCents(statementCents)}`}
+                <span className="text-ink-soft">= {formatCents(fileCents)}</span>
+                {/* A tick only on a month that is ready: "the statement total ✓" beside "Not ready for
+                    QuickBooks" read as a contradiction. */}
+                <span className={!addsUp ? 'font-semibold text-red' : p.summary.agrees && typed ? 'font-semibold text-green-muted-text' : 'text-ink-soft'} data-testid="export-adds-up">
+                  {statementCents == null ? 'no statement total'
+                    : !addsUp ? `but the statement says ${formatCents(statementCents)}`
+                      : !typed ? 'the sum of the lines (the bill’s total was not typed, so not checked)'
+                        : p.summary.agrees ? 'the statement total ✓' : 'the statement total'}
                 </span>
               </div>
+              {bills && p.ex.taxCents !== 0 && (
+                <p className="mt-1 text-[12px] text-ink-soft" data-testid="export-tax-treatment">
+                  Tax on these receipts {formatCents(p.ex.taxCents)}, of which you get back {formatCents(p.ex.recoverableCents)} (estimate, from this month’s totals).{' '}
+                  {p.ex.nonrecoverableTax === 'expense'
+                    ? `Each line’s tax is only the part you get back; the other ${formatCents(p.ex.taxCents - p.ex.recoverableCents)} is added to the line amounts, so QuickBooks books it as expense.`
+                    : 'Every dollar of tax is written as tax.'}{' '}
+                  <Link to="/receipts?tab=settings" className="underline">Change in Settings</Link>
+                </p>
+              )}
               {bills && p.ex.creditCount > 0 && (
                 <p className="mt-1 text-[12px] text-ink-soft">QuickBooks’ bill import has no credits: record {p.ex.creditCount === 1 ? 'the payment or refund' : `the ${p.ex.creditCount} payments and refunds`} on the card account in QuickBooks yourself.</p>
               )}
@@ -210,7 +263,13 @@ export function ExportView() {
             ) : (
               <p className="mt-2 flex items-center gap-1.5 text-[13px] font-semibold text-green-muted-text"><CheckCircle2 className="h-4 w-4" /> The month agrees with the bill.</p>
             )}
-            {p.statement.exportId && (
+            {p.statement.reexportNeededAt && (
+              <Callout tone="amber" className="mt-2 flex items-start gap-2" data-testid="export-reexport-needed">
+                <LockOpen className="mt-0.5 h-4 w-4 flex-none" />
+                <span>Unlocked to correct on {fmtInstantDay(p.statement.reexportNeededAt)}: {sentence(p.statement.reexportReason)} Exporting again replaces the earlier file; correct or delete the earlier bills in QuickBooks first, so nothing is in the books twice.</span>
+              </Callout>
+            )}
+            {p.statement.exportId && !p.statement.reexportNeededAt && (
               <label className="mt-2 flex items-center gap-2 text-[13px]">
                 <input type="checkbox" checked={!!reexport[p.statement.id]} onChange={(e) => setReexport((x) => ({ ...x, [p.statement.id]: e.target.checked }))} />
                 Exported {fmtInstantDay((p.statement as CardStatement).exportedAt)}. Export it again (only if the first file never went into QuickBooks).

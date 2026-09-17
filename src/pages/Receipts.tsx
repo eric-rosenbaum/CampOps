@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Camera, Loader2, Upload, X } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -13,7 +13,6 @@ import { ExportView } from '@/components/receipts/ExportView';
 import { SettingsView } from '@/components/receipts/SettingsView';
 import { useReceiptCapture } from '@/components/receipts/useReceiptCapture';
 import { ReceiptsToastHost, useReceiptsRole } from '@/components/receipts/receiptsUi';
-import { flushPendingRemovals } from '@/components/receipts/removeWithUndo';
 
 type Tab = 'receipts' | 'reconcile' | 'summary' | 'export' | 'settings';
 
@@ -32,9 +31,10 @@ const FINANCE_TABS: { id: Tab; label: string }[] = [
  * button, because on a phone at a till that is the whole job. Finance gets the tabs.
  *
  * Deep links a guide or an email can point at:
- *   /receipts?tab=summary|export|settings
- *   /receipts?receipt=<id>                       opens one receipt
- *   /receipts/reconcile?card=<id>&month=YYYY-MM  one card-month
+ *   /receipts?tab=summary|settings
+ *   /receipts?tab=export&card=<id>&month=YYYY-MM  the export for one card-month
+ *   /receipts?receipt=<id>                        opens one receipt
+ *   /receipts/reconcile?card=<id>&month=YYYY-MM   one card-month
  */
 export function Receipts() {
   const { isFinance, myCards } = useReceiptsRole();
@@ -71,9 +71,6 @@ export function Receipts() {
 
   const capture = items.find((i) => i.key === openCapture) ?? null;
 
-  // Leaving Receipts sends any removal still inside its Undo window rather than dropping it.
-  useEffect(() => () => flushPendingRemovals(), []);
-
   function onFiles(list: FileList | null, single: boolean) {
     const files = Array.from(list ?? []);
     if (!files.length) return;
@@ -91,13 +88,20 @@ export function Receipts() {
     : myCards.length ? `Snap receipts for ${myCards.map((c) => c.label).join(', ')}` : 'Snap a receipt right after you pay';
 
   const snapButton = (
+    <Button onClick={() => fileRef.current?.click()} className="px-3 sm:px-4" data-testid="snap-button">
+      <Camera className="h-4 w-4" /> <span className="hidden min-[380px]:inline">Snap receipt</span><span className="min-[380px]:hidden">Snap</span>
+    </Button>
+  );
+  // The receipt inputs sit at the END of the page, labelled. They were inside the top bar, so they
+  // were the first file inputs in the document, and a CSV meant for the statement import on
+  // Reconcile went to the receipt reader instead ("That file is not a photo or a PDF").
+  const receiptInputs = (
     <>
-      <Button onClick={() => fileRef.current?.click()} className="px-3 sm:px-4" data-testid="snap-button">
-        <Camera className="h-4 w-4" /> <span className="hidden min-[380px]:inline">Snap receipt</span><span className="min-[380px]:hidden">Snap</span>
-      </Button>
       <input ref={fileRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" data-testid="snap-input"
+             aria-label="Receipt photo or PDF" name="receipt-photo"
              onChange={(e) => { onFiles(e.target.files, true); e.target.value = ''; }} />
       <input ref={batchRef} type="file" accept="image/*,application/pdf" multiple className="hidden" data-testid="batch-input"
+             aria-label="Several receipt photos or PDFs" name="receipt-photos"
              onChange={(e) => { onFiles(e.target.files, false); e.target.value = ''; }} />
     </>
   );
@@ -131,7 +135,7 @@ export function Receipts() {
             <div className="flex items-center gap-2">
               {inFlight.length > 0 && <Loader2 className="h-4 w-4 animate-spin text-sage" />}
               <p className="flex-1 text-[13px] font-semibold text-forest">
-                {inFlight.length > 0 ? `Reading ${items.length - inFlight.length + 1} of ${items.length}…` : `${doneBatch.length} read — check them below`}
+                {inFlight.length > 0 ? `Reading ${items.length - inFlight.length + 1} of ${items.length}…` : doneBatch.length ? `${doneBatch.length} read — check them below` : `${failed.length} ${failed.length === 1 ? 'file' : 'files'} not read`}
               </p>
               {inFlight.length === 0 && <button className="text-[12.5px] underline text-ink-soft" onClick={() => items.forEach((i) => dismiss(i.key))}>Done</button>}
             </div>
@@ -186,6 +190,7 @@ export function Receipts() {
       )}
       {compare && <DuplicateCompare originalId={compare.a} duplicateId={compare.b} onClose={() => setCompare(null)} />}
       <ReceiptsToastHost />
+      {receiptInputs}
     </div>
   );
 }

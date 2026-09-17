@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useCampStore } from '@/store/campStore';
-import { AlertTriangle, Copy, ExternalLink, Loader2, Plus, Sparkles, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Copy, ExternalLink, FileWarning, Loader2, Lock, LockOpen, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useReceiptsStore } from '@/store/receiptsStore';
-import { dbUpdateReceipt } from '@/lib/receiptsDb';
+import { dbUnlockReceipt, dbUpdateReceipt, refreshReceipts } from '@/lib/receiptsDb';
 import { LOW_CONFIDENCE, duplicatePartner, findDuplicates, fromCents, mathCheck, parseMoney, toCents, formatCents } from '@/lib/receipts';
 import { TAX_LABELS, TAX_TYPES, type AiField, type Receipt, type TaxType } from '@/lib/receiptTypes';
 import {
-  Callout, ConfirmDialog, StatusChip, cardWithHolder, fieldClass, fmtDay, fmtInstantDay, inputClass, labelClass, money, useEscape, useReceiptsRole, useSignedUrls,
+  Callout, ConfirmDialog, StatusChip, UnlockDialog, cardWithHolder, fieldClass, fmtDay, fmtInstantDay, inputClass, labelClass, money, useEscape, useReceiptsRole, useSignedUrls,
 } from './receiptsUi';
 import { removeReceiptWithUndo } from './removeWithUndo';
 import type { CaptureItem } from './useReceiptCapture';
@@ -109,7 +109,10 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
   const imageUrl = capture?.previewUrl ?? fileUrl;
   const isPdf = capture?.isPdf || receipt?.fileType === 'application/pdf';
 
-  const reading = !receipt || receipt.status === 'processing' || (capture && capture.stage !== 'done' && capture.stage !== 'failed');
+  // A file refused before any receipt existed (a CSV, a too-big PDF) is a failure, not a read in
+  // progress: the spinner used to keep counting beside "That file is not a photo or a PDF".
+  const refused = capture?.stage === 'failed' && !receipt;
+  const reading = !refused && (!receipt || receipt.status === 'processing' || (capture && capture.stage !== 'done' && capture.stage !== 'failed'));
   // Seeded from the receipt until the first edit, then the person's own copy: re-seeding on every
   // realtime echo would throw away what they have typed so far.
   const [edited, setForm] = useState<FormState | null>(null);
@@ -129,12 +132,16 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
     return () => clearInterval(t);
   }, [reading, capture?.startedAt]);
 
-  useEscape(onClose, !zoom && !confirmDelete);
+  const [unlocking, setUnlocking] = useState(false);
+  useEscape(onClose, !zoom && !confirmDelete && !unlocking);
   useEscape(() => setZoom(false), zoom);
 
   const ai = receipt?.aiResult ?? null;
-  const locked = receipt?.status === 'exported' && !isFinance;
-  const canDelete = receipt && (isFinance || (receipt.submittedBy === userId && receipt.status !== 'exported'));
+  // Exported means it is in QuickBooks: read-only for everyone until finance unlocks it to correct
+  // it. It used to be editable and deletable by finance with no warning at all.
+  const exported = receipt?.status === 'exported';
+  const locked = exported && (!isFinance || !receipt?.unlockedAt);
+  const canDelete = receipt && !locked && (isFinance || (receipt.submittedBy === userId && receipt.status !== 'exported'));
 
   /** Amber when the reader was unsure of it, or could not find it, and nobody has touched it. */
   const amber = (field: AiField): string | null => {
@@ -177,7 +184,7 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
   // Worked out live, on every card: the flag stored at snap time only knew the receipts of that
   // moment, and only on the same card.
   const partner = useMemo(() => (receipt && receipt.purchaseDate && receipt.total != null
-    ? duplicatePartner(findDuplicates(receipts), receipt.id) : null), [receipts, receipt]);
+    ? duplicatePartner(findDuplicates(receipts, cards), receipt.id) : null), [receipts, receipt, cards]);
   const duplicateOf = partner ? receipts.find((r) => r.id === partner.otherId) ?? null
     : receipt?.possibleDuplicateOf && !receipt.duplicateDismissed ? receipts.find((r) => r.id === receipt.possibleDuplicateOf) ?? null : null;
   const printedLast4 = ai?.cardLast4 ?? null;
@@ -242,7 +249,7 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
              style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
           <div className="min-w-0 flex-1">
             <h2 className="truncate font-display text-[17px] font-bold text-forest">
-              {reading ? 'Reading your receipt' : receipt?.status === 'ready' || receipt?.status === 'exported' ? 'Receipt' : 'Check the receipt'}
+              {refused ? 'Not a receipt' : reading ? 'Reading your receipt' : receipt?.status === 'ready' || receipt?.status === 'exported' ? 'Receipt' : 'Check the receipt'}
             </h2>
             {receipt && !reading && (
               <p className="truncate text-[12px] text-ink-soft">
@@ -280,7 +287,14 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
 
           {/* The form */}
           <div className="min-w-0 flex-1 sm:overflow-y-auto">
-            {reading ? (
+            {refused ? (
+              <div className="flex flex-col items-center px-6 py-10 text-center" data-testid="capture-refused">
+                <FileWarning className="h-8 w-8 text-red" />
+                <p className="mt-3 font-display text-[16px] font-bold text-forest">This file was not read</p>
+                <p className="mt-1 max-w-sm text-[13px] text-ink-soft">{capture?.error}</p>
+                <Button className="mt-4" variant="ghost" onClick={onClose}>Close</Button>
+              </div>
+            ) : reading ? (
               <div className="flex flex-col items-center px-6 py-10 text-center">
                 <Loader2 className="h-8 w-8 animate-spin text-sage" />
                 <p className="mt-3 font-display text-[16px] font-bold text-forest">{READ_STAGE_TEXT[capture?.stage ?? 'reading'] ?? 'Reading the receipt…'}</p>
@@ -292,7 +306,23 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
               </div>
             ) : form ? (
               <div className="space-y-4 px-4 py-4 sm:px-6">
-                {locked && <Callout tone="blue">Exported to the books on {fmtInstantDay(receipt!.exportedAt)}. Ask finance to change it.</Callout>}
+                {locked && !isFinance && <Callout tone="blue">Exported to the books on {fmtInstantDay(receipt!.exportedAt)}. Ask finance to change it.</Callout>}
+                {locked && isFinance && (
+                  <Callout tone="blue" className="flex flex-wrap items-center gap-2">
+                    <Lock className="h-4 w-4 flex-none" />
+                    <span className="min-w-0 flex-1" data-testid="receipt-locked">Exported to QuickBooks on {fmtInstantDay(receipt!.exportedAt)}, so it is locked: the app and the books stay the same.</span>
+                    <button className="font-bold underline" onClick={() => setUnlocking(true)} data-testid="unlock-receipt">Unlock to correct</button>
+                  </Callout>
+                )}
+                {exported && !locked && receipt?.unlockedAt && (
+                  <Callout tone="amber" className="flex items-start gap-2">
+                    <LockOpen className="mt-0.5 h-4 w-4 flex-none" />
+                    <span data-testid="receipt-unlocked">
+                      <b>Unlocked to correct</b> by {receipt.unlockedByName ?? 'finance'} on {fmtInstantDay(receipt.unlockedAt)}: “{receipt.unlockReason}”.
+                      Correct it here and in QuickBooks, then export {receipt.purchaseDate ? 'the month' : 'its month'} again. It locks again when you do.
+                    </span>
+                  </Callout>
+                )}
                 {ai && !ai.readable && receipt?.status === 'needs_review' && !(form.vendor.trim() && form.total.trim()) && (
                   // Only until the details are in: it stayed on screen after the receipt was typed
                   // in and saved, still saying it could not be read.
@@ -427,7 +457,7 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
                       <label className={labelClass} htmlFor="rc-code">Budget code</label>
                       <select id="rc-code" className={inputClass} value={form.codeId} onChange={(e) => set('codeId', e.target.value)}>
                         <option value="">Not coded yet</option>
-                        {activeCodes.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
+                        {activeCodes.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
                       </select>
                     </div>
                     <div>
@@ -454,7 +484,7 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
                             <select aria-label="Split budget code" className={`${fieldClass} min-w-0 flex-1`} value={sp.codeId}
                                     onChange={(e) => set('splits', form.splits.map((x, j) => (j === i ? { ...x, codeId: e.target.value } : x)))}>
                               <option value="">Budget code…</option>
-                              {activeCodes.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
+                              {activeCodes.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
                             </select>
                             <div className="relative w-[112px] flex-none">
                               <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] text-ink-soft">$</span>
@@ -490,7 +520,7 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
         </div>
 
         {/* Footer */}
-        {!reading && form && (
+        {!reading && !refused && form && (
           <div className="flex flex-none flex-wrap items-center gap-2 border-t border-border bg-paper-raised px-4 py-3 sm:px-6"
                style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
             {canDelete && !locked && (
@@ -517,9 +547,20 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
         )}
       </div>
 
+      {unlocking && receipt && (
+        <UnlockDialog what="receipt" onCancel={() => setUnlocking(false)}
+                      onUnlock={async (reason) => {
+                        const res = await dbUnlockReceipt(receipt.id, reason);
+                        if (res.error) return res.error;
+                        upsertLocal({ ...receipt, unlockedAt: new Date().toISOString(), unlockReason: reason, unlockedByName: 'you' });
+                        if (campId) void refreshReceipts(campId, useReceiptsStore.getState().apply);
+                        setUnlocking(false);
+                        return null;
+                      }} />
+      )}
       {confirmDelete && receipt && (
         <ConfirmDialog title="Delete this receipt?" confirmLabel="Delete receipt" danger onCancel={() => setConfirmDelete(false)} onConfirm={remove}>
-          {receipt.vendor ?? 'This receipt'}{receipt.total != null ? `, ${money(receipt.total, receipt.currency)},` : ''} and its photo are deleted. You can undo this for a few seconds.
+          {receipt.vendor ?? 'This receipt'}{receipt.total != null ? `, ${money(receipt.total, receipt.currency)},` : ''} and its photo are deleted.{receipt.status === 'exported' ? ' It is in a QuickBooks export: delete it there too, and export the month again.' : ''} Undo puts it back.
         </ConfirmDialog>
       )}
       {zoom && imageUrl && (

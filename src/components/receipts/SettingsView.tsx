@@ -6,7 +6,7 @@ import { useCampStore } from '@/store/campStore';
 import {
   dbDeleteCard, dbDeleteCode, dbSaveTaxSettings, dbUpsertCard, dbUpsertCode, refreshReceipts,
 } from '@/lib/receiptsDb';
-import { CLAIM_BASES, HST_RATE_PCT, PROVINCES, detectClaimBasis, taxPreset } from '@/lib/receipts';
+import { CLAIM_BASES, HST_RATE_PCT, PROVINCES, QBO_TAX_CODES, defaultNonrecoverableTax, detectClaimBasis, taxPreset } from '@/lib/receipts';
 import { TAX_LABELS, TAX_TYPES, type BudgetCode, type ClaimBasis, type ExpenseCard, type TaxRule, type TaxSettings } from '@/lib/receiptTypes';
 import { Callout, SectionTitle, fieldClass, inputClass, labelClass, useEscape } from './receiptsUi';
 
@@ -74,7 +74,7 @@ function CardsSection() {
               <p className="text-[12.5px] text-ink-soft">
                 {c.holderName ?? members.find((m) => m.id === c.holderMemberId)?.fullName ?? 'No holder'}
                 {c.holderEmail ? ` · ${c.holderEmail}` : ''}
-                {c.defaultBudgetCodeId ? ` · defaults to ${codes.find((x) => x.id === c.defaultBudgetCodeId)?.code ?? '—'}` : ''}
+                {c.defaultBudgetCodeId ? ` · defaults to ${codes.find((x) => x.id === c.defaultBudgetCodeId)?.name ?? '—'}` : ''}
               </p>
             </div>
             <Button size="sm" variant="ghost" onClick={() => setEditing(c)}>Edit</Button>
@@ -233,7 +233,7 @@ function TaxSection() {
   const campState = useCampStore((s) => s.currentCamp?.state ?? null);
   const saved = useReceiptsStore((s) => s.taxSettings);
   const refresh = useRefresh();
-  const fallback: TaxSettings = { campId, currency: 'CAD', province: campState && PROVINCES.includes(campState as typeof PROVINCES[number]) ? campState : null, taxRules: [], claimBasis: null, confirmedAt: null };
+  const fallback: TaxSettings = { campId, currency: 'CAD', province: campState && PROVINCES.includes(campState as typeof PROVINCES[number]) ? campState : null, taxRules: [], claimBasis: null, confirmedAt: null, qboTaxCodes: {}, nonrecoverableTax: null };
   // What is saved, until the person starts editing; then their draft. Derived rather than copied
   // into state by an effect, so settings arriving late are shown without clobbering an edit.
   const [editDraft, setEditDraft] = useState<TaxSettings | null>(null);
@@ -349,6 +349,8 @@ function TaxSection() {
           HST is split into its federal and provincial parts using the rate printed on each receipt (Ontario 13%, Nova Scotia 14%, New Brunswick, Newfoundland and Labrador and PEI 15%).
           Rebate rates from the CRA’s guide RC4034 and Revenu Québec.
         </p>
+        <QuickBooksTaxSettings draft={draft} change={change} />
+
         <label className="mt-4 flex items-start gap-2 text-[13px]">
           <input type="checkbox" className="mt-0.5" checked={confirmed} onChange={(e) => setEditConfirmed(e.target.checked)} />
           <span>We’ve checked these match how our camp claims sales tax back{saved?.confirmedAt && confirmed ? ` (on ${new Date(saved.confirmedAt).toLocaleDateString('en-CA')})` : ''}.</span>
@@ -370,6 +372,79 @@ function PctInput({ label, value, onChange }: { label: string; value: number; on
       <input aria-label={label} inputMode="decimal" className={`${fieldClass} w-full pr-7 text-right tabular-nums`} value={text ?? String(value)}
              onChange={(e) => { setText(e.target.value); onChange(e.target.value); }} onBlur={() => setText(null)} />
       <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[12px] text-ink-soft">%</span>
+    </div>
+  );
+}
+
+/**
+ * How the QuickBooks bills file writes tax: which of QuickBooks' tax codes, and what happens to the
+ * tax the camp does not get back.
+ *
+ * A charity on the public service bodies' rebate recovers roughly half of GST and 82% of Ontario's
+ * part of HST. Importing bills with the full HST as tax let QuickBooks count all of it as claimable,
+ * while this app said only part of it was. "Book it as expense" writes only the recoverable part as
+ * the line's tax (QuickBooks' bills import takes a Line Tax Amount as given) and adds the rest to the
+ * line, the way QuickBooks' own "non-tracking" tax rates keep an unclaimable share in the expense.
+ */
+function QuickBooksTaxSettings({ draft, change }: { draft: TaxSettings; change: (patch: Partial<TaxSettings>) => void }) {
+  const effective = draft.nonrecoverableTax ?? defaultNonrecoverableTax(draft.taxRules);
+  const partial = defaultNonrecoverableTax(draft.taxRules) === 'expense';
+  const [showCodes, setShowCodes] = useState(() => Object.keys(draft.qboTaxCodes ?? {}).length > 0);
+  return (
+    <div className="mt-5 border-t border-border pt-4" data-testid="qbo-tax-settings">
+      <p className={labelClass}>Tax the camp does not get back, in the QuickBooks bills file</p>
+      <div className="space-y-2">
+        {([
+          ['expense', 'Book it as part of the expense (recommended when you recover less than all of it)',
+            'Each bill line’s tax is only the part you get back; the rest is added to the line’s amount, so it lands in the expense account. For a $75.00 Ontario purchase with $9.75 HST, a charity on the rebate imports $77.95 of expense and $6.80 of tax: still $84.75 in all.'],
+          ['claim_all', 'Write all of the tax as tax',
+            'Each bill line carries the full GST/HST. Right for a registrant claiming input tax credits on everything; for anyone else, QuickBooks will treat tax as claimable that is not.'],
+        ] as const).map(([value, label, hint]) => (
+          <label key={value} className={`flex items-start gap-2 rounded-btn border px-3 py-2 text-[13px] ${effective === value ? 'border-sage bg-paper-raised' : 'border-border'}`}>
+            <input type="radio" name="nonrecoverable-tax" className="mt-0.5" checked={effective === value} data-treatment={value}
+                   onChange={() => change({ nonrecoverableTax: value })} />
+            <span><b className="font-semibold">{label}</b><span className="block text-[12px] text-ink-soft">{hint}</span></span>
+          </label>
+        ))}
+      </div>
+      {!draft.nonrecoverableTax && (
+        <p className="mt-1.5 text-[12px] text-ink-soft">Not chosen yet, so the export uses {partial ? '“part of the expense”, because your rules recover less than all of the tax' : '“all of the tax as tax”, because your rules recover all of it'}.</p>
+      )}
+
+      <div className="mt-4 flex flex-wrap items-baseline gap-x-3">
+        <p className={labelClass}>QuickBooks tax codes</p>
+        <button type="button" className="text-[12.5px] font-semibold text-forest underline" onClick={() => setShowCodes((v) => !v)}>
+          {showCodes ? 'Hide' : 'Renamed your tax codes in QuickBooks? Set their names'}
+        </button>
+      </div>
+      <p className="text-[12px] text-ink-soft">
+        The bills file uses the names QuickBooks Online Canada gives its tax codes (HST ON, GST, GST/PST BC, Zero-rated, Exempt, Out of scope).
+        QuickBooks asks you to confirm each one when you import; set a different name here only if your company’s code is called something else.
+      </p>
+      {showCodes && (
+        <div className="mt-2 overflow-x-auto rounded-card border border-border bg-white">
+          <table className="w-full min-w-[520px] text-[13px]">
+            <thead>
+              <tr className="border-b border-border bg-paper-raised text-left text-[10.5px] font-bold uppercase tracking-wider text-ink-soft">
+                <th className="px-3 py-2">QuickBooks default</th><th className="px-3 py-2">Used for</th><th className="px-3 py-2">Your code’s name</th>
+              </tr>
+            </thead>
+            <tbody>
+              {QBO_TAX_CODES.map((c) => (
+                <tr key={c.name} className="border-b border-border/60 last:border-0">
+                  <td className="whitespace-nowrap px-3 py-1.5 font-semibold">{c.name}</td>
+                  <td className="px-3 py-1.5 text-[12px] text-ink-soft">{c.use}</td>
+                  <td className="px-2 py-1.5">
+                    <input aria-label={`Your name for ${c.name}`} className={`${fieldClass} w-full py-1.5`} placeholder={c.name}
+                           value={draft.qboTaxCodes?.[c.name] ?? ''}
+                           onChange={(e) => change({ qboTaxCodes: { ...(draft.qboTaxCodes ?? {}), [c.name]: e.target.value } })} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

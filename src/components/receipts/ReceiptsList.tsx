@@ -7,7 +7,7 @@ import { dbPatchReceipts } from '@/lib/receiptsDb';
 import { findDuplicates, monthKey, monthLabel, taxCents, formatCents } from '@/lib/receipts';
 import { TAX_TYPES, type Receipt } from '@/lib/receiptTypes';
 import {
-  Callout, EmptyState, StatusChip, Thumb, cardLabel, fmtDay, money, selectClass, useReceiptsRole, useSignedUrls,
+  Callout, CodeName, EmptyState, StatusChip, Thumb, cardLabel, fmtDay, money, selectClass, useReceiptsRole, useSignedUrls,
 } from './receiptsUi';
 
 type StatusFilter = 'all' | 'needs_review' | 'ready' | 'exported' | 'duplicates';
@@ -44,7 +44,7 @@ export function ReceiptsList({ onOpen, onCompare }: { onOpen: (id: string) => vo
     () => [...new Set(receipts.map((r) => (r.purchaseDate ? monthKey(r.purchaseDate) : null)).filter(Boolean) as string[])].sort().reverse(),
     [receipts],
   );
-  const duplicates = useMemo(() => findDuplicates(receipts), [receipts]);
+  const duplicates = useMemo(() => findDuplicates(receipts, cards), [receipts, cards]);
   const dupOf = useMemo(() => new Map(duplicates.map((d) => [d.duplicateId, d.originalId])), [duplicates]);
   const crossCard = useMemo(() => new Set(duplicates.filter((d) => d.crossCard).map((d) => d.duplicateId)), [duplicates]);
 
@@ -133,7 +133,7 @@ export function ReceiptsList({ onOpen, onCompare }: { onOpen: (id: string) => vo
           <span className="text-[13px] font-semibold">{selected.size} selected</span>
           <select aria-label="Budget code for selected" className="min-w-0 rounded-btn border-0 bg-white px-2 py-1.5 text-[13px] text-forest" value={bulkCode} onChange={(e) => setBulkCode(e.target.value)}>
             <option value="">Set budget code…</option>
-            {codes.filter((c) => c.active).map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
+            {codes.filter((c) => c.active).map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
             <option value="none">Clear the code</option>
           </select>
           <button className="rounded-btn bg-white/15 px-3 py-1.5 text-[13px] font-bold hover:bg-white/25 disabled:opacity-50" disabled={!bulkCode || busy} onClick={applyBulkCode}>
@@ -195,7 +195,7 @@ export function ReceiptsList({ onOpen, onCompare }: { onOpen: (id: string) => vo
                         {r.purpose && <span className="block truncate text-[12px] text-ink-soft">{r.purpose}</span>}
                       </td>
                       <td className="whitespace-nowrap px-2 py-2 text-ink-soft">{cardLabel(cards, r.cardId)}</td>
-                      <td className="px-2 py-2">{code ? <span title={code.qbAccount ?? ''}>{code.code}</span> : <span className="text-ink-faint">—</span>}{r.splits.length > 0 && <span className="ml-1 text-[11px] text-ink-soft">+ split</span>}</td>
+                      <td className="px-2 py-2">{code ? <span title={code.qbAccount ?? ''}><CodeName code={code} /></span> : <span className="text-ink-faint">—</span>}{r.splits.length > 0 && <span className="ml-1 text-[11px] text-ink-soft">+ split</span>}</td>
                       <td className="whitespace-nowrap px-2 py-2 text-[12px] tabular-nums text-ink-soft">{taxSummary(r)}</td>
                       <td className="whitespace-nowrap px-2 py-2 text-right font-bold tabular-nums">{money(r.total, r.currency)}{r.currency === 'USD' && <span className="ml-1 text-[10px] font-semibold text-ink-soft">USD</span>}</td>
                       <td className="px-3 py-2"><StatusChip status={r.status} /></td>
@@ -220,7 +220,7 @@ export function ReceiptsList({ onOpen, onCompare }: { onOpen: (id: string) => vo
                   <Thumb receipt={r} url={r.filePath ? signed[r.filePath] : undefined} size={52} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[14px] font-bold text-ink">{r.vendor ?? 'Not read yet'}</p>
-                    <p className="truncate text-[12px] text-ink-soft">{fmtDay(r.purchaseDate)} · {cardLabel(cards, r.cardId)}{code ? ` · ${code.code}` : ''}</p>
+                    <p className="truncate text-[12px] text-ink-soft">{fmtDay(r.purchaseDate)} · {cardLabel(cards, r.cardId)}{code ? ` · ${code.name}` : ''}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       <StatusChip status={r.status} />
                       {dup && (

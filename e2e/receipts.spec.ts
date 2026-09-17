@@ -27,6 +27,9 @@ function env(): Record<string, string> {
     .filter((l) => /^[A-Z0-9_]+=/.test(l)).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()]));
 }
 
+let teddyClient: Awaited<ReturnType<typeof clientAs>> | null = null;
+async function teddyApi() { teddyClient ??= await clientAs('admin'); return teddyClient; }
+
 async function clientAs(role: 'holder' | 'holder2' | 'admin') {
   const e = env();
   const c = createClient(e.VITE_SUPABASE_URL, e.VITE_SUPABASE_ANON_KEY, { auth: { persistSession: false } });
@@ -129,7 +132,7 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   await dialog.locator('#rc-date').fill('2026-08-14');
   await expect(dialog.locator('[data-amber="date"]')).toHaveCount(0);
   if ((await vendor.inputValue()) !== 'Trillium Craft Supply') await vendor.fill('Trillium Craft Supply');
-  await dialog.locator('#rc-code').selectOption({ label: 'PRG · Programs' });
+  await dialog.locator('#rc-code').selectOption({ label: 'Programs (PRG)' });
   await dialog.locator('#rc-purpose').fill('Paint for craft week');
   await shot(hana.page, 'holder-corrected');
   await dialog.getByRole('button', { name: 'Save receipt' }).click();
@@ -221,14 +224,22 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   await expect(fuel.getByTestId('reminded')).toContainText('Reminder emailed to qa-holder@example.com');
   await expect(fuel.getByTestId('reminded')).toContainText('If texts were on, it would say: “Receipt needed: $62.00');
   await shot(p, 'finance-reminded');
-  await fuel.getByRole('button', { name: 'No receipt needed' }).click();
-  const note = p.getByRole('dialog', { name: 'No receipt needed' });
-  await note.getByPlaceholder('Note (optional)').fill('Pump receipt lost + camp truck fuel');
-  await note.getByRole('button', { name: 'Save' }).click();
+  await fuel.getByRole('button', { name: 'Receipt lost' }).click();
+  const note = p.getByRole('dialog', { name: 'No receipt for this charge' });
+  // A lost receipt needs its note: an auditor asks for it.
+  await note.getByTestId('no-receipt-save').click();
+  await expect(note.getByText('A lost receipt needs a note.')).toBeVisible();
+  await expect(note.locator('#no-receipt-code')).toHaveValue('bc000000-0000-4000-8000-000000000002');
+  await note.locator('#no-receipt-note').fill('Pump receipt lost + camp truck fuel');
+  await shot(p, 'finance-receipt-lost');
+  await note.getByTestId('no-receipt-save').click();
   await expect(p.getByTestId('missing')).toHaveCount(0);
+  // The reminder stays in the charge's history once it is explained.
+  await expect(p.getByTestId('matched').getByTestId('reminded-history')).toContainText('Reminder emailed to Hana Holder');
 
-  // The emailed copy of the Blue Heron invoice was snapped twice. Removing a copy asks first and
-  // can be undone.
+  // The emailed copy of the Blue Heron invoice was snapped twice. Two steps: "It's a duplicate",
+  // then "Remove this copy", which says what it will do. It is saved at once and Undo restores it.
+  const countCopy = () => JSON.parse(sql(`select count(*)::int as n from receipts where id = 'ae000000-0000-4000-8000-000000000005'`).replace(/^[^[]*/, ''))[0].n;
   const orphan = p.getByTestId('orphans').locator('li').filter({ hasText: 'Blue Heron Marine Ltd.' });
   await expect(orphan.getByRole('button', { name: 'Wrong card' })).toBeVisible();
   await expect(orphan.getByRole('button', { name: 'Posts next month' })).toBeVisible();
@@ -236,25 +247,27 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   await orphan.getByRole('button', { name: 'It’s a duplicate' }).click();
   const compare = p.getByRole('dialog', { name: 'Compare receipts' });
   await expect(compare.locator('[data-compare="original"]')).toContainText('Matched to the');
+  await expect(compare.locator('[data-compare="duplicate"]')).toContainText('Keeps the other one');
   await shot(p, 'finance-compare-duplicate');
   await compare.locator('[data-compare="duplicate"]').getByRole('button', { name: 'Remove this copy' }).click();
-  const confirm = p.getByRole('dialog', { name: 'Remove this copy?' });
-  await expect(confirm).toContainText('Blue Heron Marine Ltd.');
-  await shot(p, 'finance-confirm-remove');
-  await confirm.getByRole('button', { name: 'Remove copy' }).click();
   await expect(compare).toHaveCount(0);
   const toast = p.getByTestId('receipts-toast');
   await expect(toast).toContainText('Removed the copy');
   await expect(p.getByTestId('month-agrees')).toBeVisible();
+  // Saved already, not when the toast runs out.
+  expect(countCopy()).toBe(0);
   await shot(p, 'finance-removed-with-undo');
   await toast.getByRole('button', { name: 'Undo' }).click();
   await expect(p.getByTestId('orphans').locator('li').filter({ hasText: 'Blue Heron Marine Ltd.' })).toBeVisible();
   await expect(p.getByTestId('month-disagrees')).toBeVisible();
-  // For real this time, and wait for the removal to be sent once the Undo window closes.
+  expect(countCopy()).toBe(1);
+  // For real this time, then straight off to another page: the removal does not depend on staying.
   await p.getByTestId('orphans').locator('li').filter({ hasText: 'Blue Heron Marine Ltd.' }).getByRole('button', { name: 'It’s a duplicate' }).click();
   await compare.locator('[data-compare="duplicate"]').getByRole('button', { name: 'Remove this copy' }).click();
-  await p.getByRole('dialog', { name: 'Remove this copy?' }).getByRole('button', { name: 'Remove copy' }).click();
-  await expect.poll(() => JSON.parse(sql(`select count(*)::int as n from receipts where id = 'ae000000-0000-4000-8000-000000000005'`).replace(/^[^[]*/, ''))[0].n, { timeout: 20_000 }).toBe(0);
+  await expect(toast).toContainText('Removed the copy');
+  await p.goto('/receipts?tab=summary');
+  await p.goto(`/receipts/reconcile?card=${CARD_HANA}&month=2026-08`);
+  expect(countCopy()).toBe(0);
 
   await expect(p.getByTestId('month-agrees')).toBeVisible();
   await expect(p.getByTestId('month-agrees')).toContainText('This month agrees');
@@ -270,9 +283,15 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   await expect(p.getByTestId('summary')).toBeVisible();
   await expect(p.getByTestId('summary').getByText('Recoverable (estimate)')).toBeVisible();
   await expect(p.getByTestId('hst-split')).toContainText('federal part');
+  // The summary ties out to the bill: receipts + the lost-receipt fuel charge + the payment.
+  const tie = p.getByTestId('tie-out');
+  await expect(tie).toContainText('Visa ··4821 · August 2026');
+  await expect(tie.locator('[data-ties="yes"]')).toHaveCount(1);
+  await expect(p.getByTestId('rebate-method')).toContainText('rounded once');
   await shot(p, 'finance-summary');
+  await tie.getByTestId('summary-export-link').first().click();
+  await expect(p).toHaveURL(new RegExp(`tab=export&card=${CARD_HANA}&month=2026-08`));
 
-  await p.locator('[data-tab="export"]').click();
   const exp = p.getByTestId('export');
   await expect(exp.getByTestId('export-preview')).toBeVisible();
   await expect(exp.getByRole('radio', { name: /bills import/ })).toBeChecked();
@@ -280,6 +299,8 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   // payment that a bill import cannot carry, is the $126.29 statement.
   await expect(exp.getByTestId('export-reconciles')).toContainText('$626.29 in 6 bills');
   await expect(exp.getByTestId('export-reconciles')).toContainText('the statement total ✓');
+  // An Ontario charity: only the tax it gets back is written as tax.
+  await expect(exp.getByTestId('export-tax-treatment')).toContainText('added to the line amounts');
   await shot(p, 'finance-export-preview');
 
   // Downloading for review marks nothing.
@@ -297,17 +318,53 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   ]);
   expect(download.suggestedFilename()).toBe('quickbooks-bills-visa-4821-2026-08.csv');
   const file = fs.readFileSync((await download.path())!, 'utf8');
-  // Golden file replaced 2026-09-16, deliberately: the export now follows the statement. It is one
-  // bill per August charge on Hana's card at its POSTED date (not Omar's receipt, which is on a card
-  // with no statement), with the fuel charge that needed no receipt under the card's default
-  // account and its note intact ("+" included), each line's account and HST in their own columns,
-  // and the $500 payment left out because QuickBooks' bill import has no credits.
-  expect(file).toBe(fs.readFileSync(path.join(root, 'e2e/fixtures/receipts-aug-2026-qbo-bills.golden.csv'), 'utf8'));
+  // Golden file replaced 2026-09-17, deliberately, after a charity finance director's review:
+  //  * tax codes are QuickBooks Online Canada's own names (HST ON, Zero-rated, Out of scope), not
+  //    "HST 13%" and "No tax";
+  //  * the camp is an Ontario charity on the rebate, so each line's tax is the part it gets back and
+  //    the rest is in the line amount. The rebate is worked out on the month's HST parts ($23.93
+  //    federal at 50%, $38.30 provincial at 82%: $43.38) and shared out, so Northwind's $75.00 +
+  //    $9.75 is written $77.96 + $6.79 (on its own it would round to $6.80), and the four tax
+  //    amounts add up to exactly $43.38;
+  //  * the fuel charge is "Receipt lost: …", once, coded Out of scope with no tax claimed.
+  // Still one bill per August charge at its POSTED date, the $500 payment left out (bills have no
+  // credits), and line amounts + tax amounts = $626.29.
+  const goldenPath = path.join(root, 'e2e/fixtures/receipts-aug-2026-qbo-bills.golden.csv');
+  // WRITE_GOLDEN=1 rewrites it from this run: only deliberately, and read line by line before committing.
+  if (process.env.WRITE_GOLDEN) fs.writeFileSync(goldenPath, file);
+  expect(file).toBe(fs.readFileSync(goldenPath, 'utf8'));
   await expect(exp.getByText(/marked exported/)).toBeVisible();
   // Nothing is exported twice without asking.
   await expect(exp.getByTestId('export-qbo')).toBeDisabled();
   await expect(exp.getByText(/Export it again/)).toBeVisible();
   await shot(p, 'finance-exported');
+
+  // Exported means locked, for finance too, until it is unlocked on the record.
+  await p.goto(`/receipts?receipt=${saved.data!.id}`);
+  const locked = p.getByRole('dialog', { name: 'Check the receipt' });
+  await expect(locked.getByTestId('receipt-locked')).toBeVisible();
+  await expect(locked.locator('#rc-purpose')).toBeDisabled();
+  await expect(locked.getByRole('button', { name: /Delete/ })).toHaveCount(0);
+  const lockedEdit = await teddyApi().then((api) => api.from('receipts').update({ purpose: 'sneaky' }).eq('id', saved.data!.id));
+  expect(lockedEdit.error?.message).toMatch(/exported to QuickBooks/);
+  await shot(p, 'finance-receipt-locked');
+  await locked.getByTestId('unlock-receipt').click();
+  const unlock = p.getByRole('dialog', { name: 'Unlock this receipt to correct it' });
+  await unlock.locator('#unlock-reason').fill('Paint belongs to Arts, not Programs');
+  await shot(p, 'finance-unlock-reason');
+  await unlock.getByRole('button', { name: 'Unlock to correct' }).click();
+  await expect(locked.getByTestId('receipt-unlocked')).toContainText('Paint belongs to Arts, not Programs');
+  await locked.locator('#rc-purpose').fill('Paint for craft week (Arts)');
+  await locked.getByRole('button', { name: 'Save receipt' }).click();
+  await expect(locked).toHaveCount(0);
+  await p.goto(`/receipts?tab=export&card=${CARD_HANA}&month=2026-08`);
+  await expect(exp.getByTestId('export-reexport-needed')).toContainText('Paint belongs to Arts, not Programs');
+  await shot(p, 'finance-export-again');
+  const [again] = await Promise.all([p.waitForEvent('download'), exp.getByTestId('export-qbo').click()]);
+  expect(fs.readFileSync((await again.path())!, 'utf8')).toContain('Paint for craft week (Arts)');
+  await expect(exp.getByTestId('export-reexport-needed')).toHaveCount(0);
+  const relocked = JSON.parse(sql(`select unlocked_at, (select count(*)::int from receipt_unlocks where receipt_id = '${saved.data!.id}' and relocked_at is not null) as audit from receipts where id = '${saved.data!.id}'`).replace(/^[^[]*/, ''));
+  expect(relocked[0]).toMatchObject({ unlocked_at: null, audit: 1 });
 
   await p.locator('[data-tab="settings"]').click();
   await expect(p.getByText('Check these match how your camp claims sales tax back.')).toBeVisible();
@@ -362,6 +419,14 @@ test('J4b: typing a receipt in by hand, and every other way a month is made to a
   await dialog.getByRole('button', { name: 'Save receipt' }).click();
   await expect(dialog).toHaveCount(0);
 
+  // ── Hana: a card statement dropped on the receipt reader is refused, and nothing spins ───
+  await hana.page.locator('[data-testid="snap-input"]').setInputFiles(fixture('statements/qa-august-2026-rbc-style.csv'));
+  const refused = hana.page.getByTestId('capture-refused');
+  await expect(refused).toContainText('A card statement is imported on Reconcile');
+  await expect(hana.page.getByText('Reading the receipt…')).toHaveCount(0);
+  await shot(hana.page, 'csv-refused');
+  await hana.page.getByRole('dialog', { name: 'Check the receipt' }).getByRole('button', { name: 'Close' }).last().click();
+
   // ── Hana: the slip names a card that is not the one chosen ───────────────────────────────
   await hana.page.unroute('**/functions/v1/read-receipt');
   await hana.page.route('**/functions/v1/read-receipt', async (route) => {
@@ -383,6 +448,10 @@ test('J4b: typing a receipt in by hand, and every other way a month is made to a
   await p.goto(`/receipts/reconcile?card=${CARD_HANA}&month=2026-08`);
   await p.getByTestId('statement-file').setInputFiles(fixture('statements/qa-august-2026-rbc-style.csv'));
   const mapper = p.getByTestId('statement-mapper');
+  // The bill's total is asked for, not assumed: the lines' own sum was imported as if typed.
+  await expect(mapper.getByRole('button', { name: /Import 7 lines/ })).toBeDisabled();
+  await expect(mapper.getByTestId('total-needed')).toBeVisible();
+  await expect(mapper.getByText(/7 lines and a header row/)).toBeVisible();
   await mapper.locator('#st-total').fill('126.29');
   await mapper.getByRole('button', { name: /Import 7 lines/ }).click();
   // Four: this journey has no Trillium receipt, so that charge stays unexplained with the fuel.
@@ -393,6 +462,8 @@ test('J4b: typing a receipt in by hand, and every other way a month is made to a
   await expect(blockers.locator('[data-blocker="undated"]')).toBeVisible();
   await expect(blockers.locator('[data-blocker="no_charge"]')).toContainText('2 receipts');
   await expect(p.getByTestId('undated').locator('li')).toHaveCount(1);
+  await p.getByTestId('undated').getByTestId('ask-holder').click();
+  await expect(p.getByTestId('undated').getByTestId('asked')).toContainText('If texts were on, it would say: “Receipt question: Trillium Craft Supply');
   await shot(p, 'blockers-undated-and-orphans');
 
   // Posts next month, with a note.

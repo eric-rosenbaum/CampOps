@@ -180,6 +180,10 @@ test('J5: a founder spins up a demo, a prospect opens the link and follows the g
   await page.getByTestId('statement-file').setInputFiles(csvPath!);
   const mapper = page.getByTestId('statement-mapper');
   await expect(mapper).toBeVisible();
+  // The import asks for the bill's total (a blank one used to be imported as if typed). The sample
+  // statement's total is its lines' sum, as the bill would say.
+  const billTotal = csv.trim().split('\r\n').slice(1).reduce((cents, row) => cents + Math.round(Number(row.split(',').at(-2)) * 100), 0) / 100;
+  await mapper.locator('#st-total').fill(billTotal.toFixed(2));
   await mapper.getByRole('button', { name: /Import \d+ lines/ }).click();
   await expect(page.getByTestId('suggestions')).toBeVisible({ timeout: 30_000 });
   await shot(page, 'sample-statement-imported');

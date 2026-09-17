@@ -3,7 +3,8 @@ import {
   canTransition, requestDemandByItemDate, setAsideByItem, pendingByItem, requestDemandInWindow,
   zonedWallTimeToInstant, noticeHours, isLate, pickupReminderAt, formatClock, formatPickup, formatNotice,
   inboxOrder, pickupDays, checkDraft, draftToPayload, matchItems, lineChangeSummary, lineDemandBase, todayInZone,
-  pullListHtml,
+  pullListHtml, parseAmount, formatNoticeRule, shortNoticeLabel, formatLineQty, kitchenLineView, askedSummary,
+  hoursOverdue, overdueLabel, isBeforePickupDay, promisesByItem,
 } from '@/lib/foodRequests';
 import type { FoodRequest, FoodRequestLine, FoodRequestDraft } from '@/lib/foodRequestTypes';
 
@@ -48,13 +49,13 @@ describe('state machine', () => {
 });
 
 describe('requestDemandByItemDate', () => {
-  it('counts approved, ready and picked up; not submitted, declined, missed or cancelled', () => {
+  it('counts approved and ready; not picked up (stock already took it), submitted, declined, missed or cancelled', () => {
     const statuses = ['submitted', 'approved', 'declined', 'ready', 'picked_up', 'missed', 'cancelled'] as const;
     const requests = statuses.map((status, i) => req({ status, pickupDate: `2026-07-1${i}` }));
     const lines = requests.map((r) => line(r.id, { qtyRequestedBase: 100 }));
     const demand = requestDemandByItemDate(requests, lines);
     expect([...demand.get('flour')!.entries()].sort()).toEqual([
-      ['2026-07-11', 100], ['2026-07-13', 100], ['2026-07-14', 100],
+      ['2026-07-11', 100], ['2026-07-13', 100],
     ]);
   });
 
@@ -113,10 +114,11 @@ describe('pending and in-window request demand', () => {
 
   it('the ordering window is after today through its end, like the order math "used by"', () => {
     const today = req({ pickupDate: '2026-07-15' });
-    const inside = req({ pickupDate: '2026-07-20', status: 'picked_up' });
+    const inside = req({ pickupDate: '2026-07-20', status: 'ready' });
+    const handedOver = req({ pickupDate: '2026-07-21', status: 'picked_up' }); // already out of stock, not in the order
     const end = req({ pickupDate: '2026-07-29' });
     const beyond = req({ pickupDate: '2026-07-30' });
-    const all = [today, inside, end, beyond];
+    const all = [today, inside, handedOver, end, beyond];
     const w = requestDemandInWindow(all, all.map((r) => line(r.id, { qtyRequestedBase: 10 })), '2026-07-15', '2026-07-29', programs);
     expect(w.get('flour')!.totalBase).toBe(20);
   });
@@ -229,7 +231,12 @@ describe('the request form', () => {
 
   it('asks for what is missing in plain words', () => {
     const c = checkDraft(draft({ requesterEmail: 'nope', pickupTime: '', lines: [{ label: 'Eggs', qty: '', unitLabel: '' }] }), opts);
-    expect(c.errors).toEqual(['Add an email address so the kitchen can reply.', 'Pick a pickup day and time.', 'How much Eggs?']);
+    // In the order the fields sit on the form, each tied to its field, and never a question.
+    expect(c.errors).toEqual(['Add how much (e.g. 3 boxes).', 'Pick a pickup time.', 'That email address doesn’t look right.']);
+    expect(c.fieldErrors.map((e) => e.field)).toEqual(['qty-0', 'pickup', 'email']);
+    const picked = checkDraft(draft({ lines: [{ itemId: 'eggs', label: 'Large eggs', qty: '', unitLabel: 'dozen' }] }), opts);
+    expect(picked.errors).toEqual(['Add how much (in dozen).']);
+    expect(checkDraft(draft({ requesterName: '', requesterEmail: '' }), opts).errors).toEqual(['Add your name.', 'Add an email address so the kitchen can reply.']);
     expect(checkDraft(draft({ pickupDate: '2026-07-15', pickupTime: '13:00' }), opts).errors).toContain('That pickup time has already passed.');
   });
 
@@ -249,7 +256,80 @@ describe('the request form', () => {
   });
 });
 
+describe('amounts already in the words', () => {
+  it('reads "like 3 boxes", "3 boxes of", "2 dozen eggs" and "x2", and leaves plain words alone', () => {
+    expect(parseAmount('graham crackers, like 3 boxes')).toEqual({ rest: 'graham crackers', qty: '3', unit: 'boxes' });
+    expect(parseAmount('mini chocolate chips (2 bags)')).toEqual({ rest: 'mini chocolate chips', qty: '2', unit: 'bags' });
+    expect(parseAmount('3 boxes of graham crackers')).toEqual({ rest: 'graham crackers', qty: '3', unit: 'boxes' });
+    expect(parseAmount('2 dozen eggs')).toEqual({ rest: 'eggs', qty: '2', unit: 'dozen' });
+    expect(parseAmount('3 graham crackers')).toEqual({ rest: 'graham crackers', qty: '3', unit: '' });
+    expect(parseAmount('flour 5lb')).toEqual({ rest: 'flour', qty: '5', unit: 'lb' });
+    expect(parseAmount('marshmallows x2')).toEqual({ rest: 'marshmallows', qty: '2', unit: '' });
+    expect(parseAmount('Big marshmallows')).toBeNull();
+    expect(parseAmount('Trail mix (bags)')).toBeNull();
+  });
+});
+
+describe('one vocabulary for notice, quantities and lateness', () => {
+  it('writes the rule and the chip one way', () => {
+    expect(formatNoticeRule(72)).toBe('3 days’ notice (72 h)');
+    expect(formatNoticeRule(24)).toBe('1 day’s notice (24 h)');
+    expect(formatNoticeRule(36)).toBe('36 hours’ notice');
+    expect(shortNoticeLabel(44.4)).toBe('Short notice · 44h');
+  });
+
+  it('pluralizes kitchen units and leaves typed plurals alone', () => {
+    expect(formatLineQty(2, 'box')).toBe('2 boxes');
+    expect(formatLineQty(1, 'box')).toBe('1 box');
+    expect(formatLineQty(2, 'lb')).toBe('2 lb');
+    expect(formatLineQty(2, 'bags')).toBe('2 bags');
+  });
+
+  it('shows the kitchen item first and the counselor’s words second', () => {
+    const l = line('r', { label: 'mini chocolate chips', unitLabel: 'bags', qtyRequested: 2, itemId: 'chips', qtyApproved: 1.5, approvedUnitLabel: 'lb', lineState: 'changed' });
+    expect(askedSummary(l)).toBe('2 bags of mini chocolate chips');
+    expect(kitchenLineView(l, 'Semi-sweet chocolate chips')).toEqual({ name: 'Semi-sweet chocolate chips', qty: '1.5 lb', asked: '2 bags of mini chocolate chips', linked: true });
+    const same = line('r', { label: 'Flour' });
+    expect(kitchenLineView(same, 'Flour').asked).toBeNull();
+    // Same item, trimmed amount: just the amount they asked for, not the name again.
+    expect(kitchenLineView(line('r', { label: 'Flour', qtyApproved: 3, approvedUnitLabel: 'lb', lineState: 'changed' }), 'Flour').asked).toBe('5 lb');
+    expect(formatLineQty(2, 'dozen')).toBe('2 dozen');
+    expect(kitchenLineView(line('r', { itemId: null, label: 'Trail mix', unitLabel: 'bags', qtyRequested: 6 }), undefined)).toEqual({ name: 'Trail mix', qty: '6 bags', asked: null, linked: false });
+  });
+
+  it('knows when a pickup is late, and when handing over would be early', () => {
+    const r = req({ status: 'ready', pickupDate: '2026-07-15', pickupTime: '12:00' });
+    // 21:00 UTC is 14:00 in Vancouver: two hours after a noon pickup.
+    expect(hoursOverdue(r, new Date('2026-07-15T21:00:00Z'), 'America/Vancouver')).toBeCloseTo(2);
+    expect(hoursOverdue(req({ ...r, status: 'picked_up' }), new Date('2026-07-15T21:00:00Z'), 'America/Vancouver')).toBeNull();
+    expect(hoursOverdue(r, new Date('2026-07-15T18:00:00Z'), 'America/Vancouver')).toBeNull();
+    expect(overdueLabel(2.4)).toBe('Not picked up yet · 2h late');
+    expect(overdueLabel(0.4)).toBe('Not picked up yet · 24 min late');
+    expect(isBeforePickupDay(req({ pickupDate: '2026-07-18' }), '2026-07-15')).toBe(true);
+    expect(isBeforePickupDay(req({ pickupDate: '2026-07-15' }), '2026-07-15')).toBe(false);
+  });
+
+  it('splits promises into today’s and later, with the last pickup day', () => {
+    const a = req({ pickupDate: '2026-07-15' });
+    const b = req({ pickupDate: '2026-07-18', status: 'ready' });
+    const aside = setAsideByItem([a, b], [line(a.id, { qtyRequestedBase: 100 }), line(b.id, { qtyRequestedBase: 50 })], '2026-07-15');
+    expect(promisesByItem(aside, '2026-07-15').get('flour')).toEqual({ totalBase: 150, todayBase: 100, lastDate: '2026-07-18' });
+  });
+});
+
 describe('pull list', () => {
+  it('pulls by the kitchen item name, with the counselor’s words underneath', () => {
+    const r = req({ status: 'approved' });
+    const html = pullListHtml({
+      campName: 'Camp', dayLabel: 'Thu', requests: [r], programs, pickupLocation: null,
+      itemNames: new Map([['chips', 'Semi-sweet chocolate chips']]),
+      lines: [line(r.id, { itemId: 'chips', label: 'mini chocolate chips', unitLabel: 'bags', qtyRequested: 2, qtyApproved: 1, approvedUnitLabel: 'lb', lineState: 'changed' })],
+    });
+    expect(html).toContain('Semi-sweet chocolate chips');
+    expect(html).toContain('asked: 2 bags of mini chocolate chips');
+    expect(html).toContain('1 lb');
+  });
+
   it('lists what to pull per request and strikes what is not available', () => {
     const r = req({ status: 'approved', kitchenNote: 'Only 3 lb' });
     const html = pullListHtml({

@@ -5,7 +5,8 @@ import { Button } from '@/components/shared/Button';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import type { FoodProgram, FoodRequest, FoodRequestLine } from '@/lib/foodRequestTypes';
 import type { InventoryItem } from '@/lib/types';
-import { formatLineQty, formatNumber, formatPickup, matchItems } from '@/lib/foodRequests';
+import { askedSummary, formatLineQty, formatNumber, formatPickup, kitchenLineView, matchItems } from '@/lib/foodRequests';
+import { formatInStockUnit, pluralizeUnit } from '@/lib/commissaryUnits';
 import type { DecisionLineInput } from '@/lib/foodRequestsDb';
 import { useFoodRequestActions } from './useFoodRequestActions';
 import { LateChip } from './foodUi';
@@ -30,7 +31,13 @@ export function DecisionModal({ request, lines, program, mode, onClose }: {
   onClose: () => void;
 }) {
   const items = useCommissaryStore((s) => s.items);
+  const shelfPictures = useCommissaryStore((s) => s.shelfPictures);
+  const foodRequests = useCommissaryStore((s) => s.foodRequests);
+  const foodRequestLines = useCommissaryStore((s) => s.foodRequestLines);
   const itemsById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  // The same shelf picture the Inventory tab shows, so "left after this" matches what it will say.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- recomputed when the data it reads changes
+  const pictures = useMemo(() => shelfPictures(), [shelfPictures, items, foodRequests, foodRequestLines]);
   const actions = useFoodRequestActions();
   const [note, setNote] = useState(request.kitchenNote ?? '');
   const [drafts, setDrafts] = useState<Record<string, LineDraft>>(() => Object.fromEntries(
@@ -43,6 +50,14 @@ export function DecisionModal({ request, lines, program, mode, onClose }: {
       && (itemsById.get(d.itemId)?.stockUnit ?? '') !== (l.unitLabel ?? ''));
   });
   const invalid = mode === 'approve' && lines.some((l) => !drafts[l.id].unavailable && !(Number(drafts[l.id].qty) > 0));
+  // Base units each item would give out if approved as drafted, across every line of this request.
+  const drawByItem = new Map<string, number>();
+  for (const l of lines) {
+    const d = drafts[l.id];
+    const item = d.itemId ? itemsById.get(d.itemId) : undefined;
+    if (!item || d.unavailable || !(Number(d.qty) > 0)) continue;
+    drawByItem.set(item.id, (drawByItem.get(item.id) ?? 0) + Number(d.qty) * item.stockUnitInBase);
+  }
   const unlinked = lines.filter((l) => !drafts[l.id].itemId && !drafts[l.id].unavailable).length;
 
   async function submit(decision: 'approve' | 'decline') {
@@ -99,8 +114,11 @@ export function DecisionModal({ request, lines, program, mode, onClose }: {
                 <div key={l.id} data-testid="decision-line" className={`rounded-card border px-3 py-2.5 ${d.unavailable ? 'border-border bg-cream-dark/60' : 'border-border bg-white'}`}>
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                     <p className={`text-[14px] font-semibold ${d.unavailable ? 'text-ink-faint' : 'text-forest'}`}>{l.label}</p>
-                    <p className="text-[12px] text-ink-soft">asked {formatLineQty(l.qtyRequested, l.unitLabel)}</p>
+                    {!(item && item.name !== l.label) && <p className="text-[12px] text-ink-soft">asked {formatLineQty(l.qtyRequested, l.unitLabel)}</p>}
                   </div>
+                  {item && item.name !== l.label && (
+                    <p className="text-[12px] text-ink-soft" data-testid="asked-for">Asked for: {askedSummary(l)}</p>
+                  )}
                   {l.note && <p className="text-[12px] text-ink-soft">“{l.note}”</p>}
 
                   {!d.unavailable && (
@@ -110,21 +128,47 @@ export function DecisionModal({ request, lines, program, mode, onClose }: {
                           label={l.label}
                           items={items}
                           selected={item}
-                          onPick={(it) => setD({ itemId: it?.id ?? null })}
+                          onPick={(it) => setD(it
+                            // A number never crosses units: "2 bags" linked to an item counted in lb
+                            // leaves the amount blank for the kitchen to fill in, in lb.
+                            ? { itemId: it.id, qty: (it.stockUnit ?? '') === (l.unitLabel ?? '') ? formatNumber(l.qtyRequested) : '' }
+                            : { itemId: null, qty: formatNumber(l.qtyRequested) })}
                         />
                       )}
                       <div className="flex items-center gap-1.5">
                         <input
                           aria-label={`Approved quantity for ${l.label}`}
+                          aria-invalid={!(Number(d.qty) > 0)}
                           inputMode="decimal"
+                          placeholder={item ? pluralizeUnit(item.stockUnit, 2) : 'Qty'}
                           value={d.qty}
                           onChange={(e) => setD({ qty: e.target.value.replace(/[^0-9.]/g, '').slice(0, 9) })}
-                          className="w-20 rounded-btn border border-border bg-white px-2.5 py-1.5 font-mono text-[13px] focus:border-sage focus:outline-none"
+                          className={`w-20 rounded-btn border bg-white px-2.5 py-1.5 font-mono text-[13px] focus:border-sage focus:outline-none ${Number(d.qty) > 0 ? 'border-border' : 'border-amber'}`}
                         />
                         <span className="text-[12px] text-ink-soft">{item ? item.stockUnit : l.unitLabel ?? ''}</span>
                       </div>
                     </div>
                   )}
+                  {!d.unavailable && item && !(Number(d.qty) > 0) && (
+                    <p role="alert" className="mt-1.5 text-[11.5px] font-semibold text-amber-text">
+                      Enter how much {item.name} to give, in {pluralizeUnit(item.stockUnit, 2)}. They asked for {formatLineQty(l.qtyRequested, l.unitLabel)}.
+                    </p>
+                  )}
+                  {!d.unavailable && item && (() => {
+                    const pic = pictures.get(item.id);
+                    if (!pic || item.lastCountedAt == null) return <p className="mt-1.5 text-[11.5px] text-ink-faint">{item.name} has not been counted, so there is no shelf figure yet.</p>;
+                    const draw = drawByItem.get(item.id) ?? 0;
+                    const left = pic.leftAfter - draw;
+                    const tone = left < 0 ? 'text-red-text font-semibold' : item.parLevelBase > 0 && left < item.parLevelBase ? 'text-amber-text font-semibold' : 'text-ink';
+                    return (
+                      <p data-testid="stock-context" className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11.5px] text-ink-soft">
+                        <span>On shelf <span className="font-mono text-ink">{formatInStockUnit(item, pic.onShelf)}</span></span>
+                        <span>{pic.promised > 0 ? <>Already promised <span className="font-mono text-ink">{formatInStockUnit(item, pic.promised)}</span></> : 'Nothing promised yet'}</span>
+                        <span>Left after this <span className={`font-mono ${tone}`}>{left < 0 ? `short ${formatInStockUnit(item, -left)}` : formatInStockUnit(item, left)}</span>
+                          {left >= 0 && item.parLevelBase > 0 && left < item.parLevelBase ? ' (below min on hand)' : ''}</span>
+                      </p>
+                    );
+                  })()}
                   {!d.unavailable && !d.itemId && (
                     <p className="mt-1.5 flex items-center gap-1 text-[11.5px] text-amber-text">
                       <AlertTriangle className="h-3 w-3" /> Not linked to an item, so ordering won&rsquo;t count it.
@@ -142,6 +186,20 @@ export function DecisionModal({ request, lines, program, mode, onClose }: {
                 {unlinked} line{unlinked === 1 ? ' is' : 's are'} in the requester&rsquo;s own words. Link {unlinked === 1 ? 'it' : 'them'} to an item to set the food aside and order for it.
               </p>
             )}
+          </div>
+        )}
+
+        {mode === 'decline' && (
+          <div className="overflow-hidden rounded-card border border-border" data-testid="decline-lines">
+            {lines.map((l) => {
+              const v = kitchenLineView(l, l.itemId ? itemsById.get(l.itemId)?.name : undefined);
+              return (
+                <div key={l.id} className="flex items-baseline justify-between gap-3 border-b border-border px-3 py-2 last:border-0">
+                  <span className="min-w-0 text-[13px] text-forest">{v.name}{v.asked && <span className="block text-[11px] text-ink-soft">asked: {v.asked}</span>}</span>
+                  <span className="flex-shrink-0 font-mono text-[12px] text-ink-soft">{formatLineQty(l.qtyRequested, l.unitLabel)}</span>
+                </div>
+              );
+            })}
           </div>
         )}
 

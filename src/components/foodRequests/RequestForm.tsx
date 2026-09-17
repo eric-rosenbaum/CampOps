@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Clock, Link2, Loader2, X } from 'lucide-react';
 import type { FoodFormItem, FoodRequestDraft, FoodRequestDraftLine } from '@/lib/foodRequestTypes';
-import { checkDraft, formatClock, formatDay, formatNotice, matchItems, todayInZone } from '@/lib/foodRequests';
+import { checkDraft, formatClock, formatDay, formatNotice, formatNoticeRule, matchItems, parseAmount, todayInZone, type DraftField } from '@/lib/foodRequests';
 
 /**
  * The one request form, used by the no-login program link and by signed-in staff.
@@ -17,6 +17,24 @@ const fieldBase =
   'rounded-btn border border-border bg-white px-3 py-2.5 text-[16px] sm:text-[14px] text-ink ' +
   'focus:border-sage focus:outline-none';
 const field = `w-full ${fieldBase}`;
+/** Added to a field with an error; the border colour class it replaces is dropped by `withError`. */
+const errorRing = 'border-red ring-1 ring-red/40';
+const withError = (cls: string, bad: boolean) => (bad ? `${cls.replace('border-border', '')} ${errorRing}` : cls);
+
+/** The element each error belongs to, so the first one can be scrolled to and focused. */
+function fieldElementId(f: DraftField, draftHasDate: boolean): string {
+  if (f === 'lines') return 'fr-item-0';
+  if (f === 'pickup') return draftHasDate ? 'fr-time' : 'fr-date';
+  if (f === 'name') return 'fr-name';
+  if (f === 'email') return 'fr-email';
+  return `fr-qty-${f.slice(4)}`;
+}
+
+/** "boxes" and "box" are the same unit for deciding whether a typed amount fits a picked item. */
+const sameUnit = (a: string, b: string) => {
+  const norm = (u: string) => u.trim().toLowerCase().replace(/(es|s)$/, '');
+  return norm(a) === norm(b);
+};
 const labelCls = 'block text-[13px] font-semibold text-forest mb-1.5';
 
 const blankLine = (): FoodRequestDraftLine => ({ itemId: null, label: '', qty: '', unitLabel: '' });
@@ -91,12 +109,23 @@ export function RequestForm({
     e.preventDefault();
     setTouched(true);
     setServerError(null);
-    if (check.errors.length) return;
+    if (check.fieldErrors.length) {
+      // Take the person to the first problem, in form order, instead of a list at the bottom.
+      const el = document.getElementById(fieldElementId(check.fieldErrors[0].field, !!draft.pickupDate));
+      if (el) {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        el.focus({ preventScroll: true });
+      }
+      return;
+    }
     setSending(true);
     const err = await onSubmit(draft);
     setSending(false);
     if (err) setServerError(err);
   }
+
+  const errorFor = (f: DraftField) => (touched ? check.fieldErrors.find((e) => e.field === f)?.message ?? null : null);
+  const pickupError = errorFor('pickup');
 
   const pickupWords = draft.pickupDate && draft.pickupTime
     ? `${formatDay(draft.pickupDate)} ${formatClock(draft.pickupTime)}`
@@ -107,7 +136,7 @@ export function RequestForm({
       <div className="flex items-start gap-2.5 rounded-card border border-border bg-white px-3.5 py-3">
         <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-sage" />
         <p className="text-[14px] leading-snug text-ink">
-          The kitchen asks for <strong>{formatHoursPlain(cutoffHours)}&rsquo; notice</strong>.
+          The kitchen asks for <strong>{formatNoticeRule(cutoffHours)}</strong>.
           {pickupLocation && <> Pickups are at <strong>{pickupLocation}</strong>.</>}
         </p>
       </div>
@@ -136,6 +165,8 @@ export function RequestForm({
               line={line}
               items={items}
               canRemove={draft.lines.length > 1 && (!!line.label || !!line.itemId)}
+              qtyError={errorFor(`qty-${i}`)}
+              itemError={i === 0 ? errorFor('lines') : null}
               onChange={(patch) => setLine(i, patch)}
               onRemove={() => removeLine(i)}
             />
@@ -147,14 +178,17 @@ export function RequestForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={labelCls} htmlFor="fr-date">Pickup day</label>
-          <input id="fr-date" type="date" className={field} min={minDate} value={draft.pickupDate}
+          <input id="fr-date" type="date" className={withError(field, !!pickupError && (!draft.pickupDate || !!draft.pickupTime))} min={minDate} value={draft.pickupDate}
+            aria-invalid={!!pickupError} aria-describedby={pickupError ? 'fr-pickup-error' : undefined}
             onChange={(e) => set('pickupDate', e.target.value)} />
         </div>
         <div>
           <label className={labelCls} htmlFor="fr-time">Time</label>
-          <input id="fr-time" type="time" className={field} step={900} value={draft.pickupTime}
+          <input id="fr-time" type="time" className={withError(field, !!pickupError && (!draft.pickupTime || !!draft.pickupDate))} step={900} value={draft.pickupTime}
+            aria-invalid={!!pickupError} aria-describedby={pickupError ? 'fr-pickup-error' : undefined}
             onChange={(e) => set('pickupTime', e.target.value)} />
         </div>
+        {pickupError && <FieldError id="fr-pickup-error" className="col-span-2">{pickupError}</FieldError>}
       </div>
 
       {check.late && check.hours != null && pickupWords && (
@@ -163,7 +197,7 @@ export function RequestForm({
           <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-text" />
           <p className="text-[14px] leading-snug text-amber-text">
             <strong>Short notice.</strong> {pickupWords} is {formatNotice(check.hours)} away, and the kitchen asks
-            for {formatHoursPlain(cutoffHours)}, so they may not be able to fill all of it. You can still send it.
+            for {formatNoticeRule(cutoffHours)}, so they may not be able to fill all of it. You can still send it.
           </p>
         </div>
       )}
@@ -184,10 +218,18 @@ export function RequestForm({
       {askContact && (
         <fieldset className="space-y-3">
           <legend className={labelCls}>Who&rsquo;s asking?</legend>
-          <input aria-label="Your name" className={field} autoComplete="name" placeholder="Your name"
-            value={draft.requesterName} maxLength={120} onChange={(e) => set('requesterName', e.target.value)} />
-          <input aria-label="Email" className={field} type="email" autoComplete="email" inputMode="email" placeholder="Email"
-            value={draft.requesterEmail} maxLength={200} onChange={(e) => set('requesterEmail', e.target.value)} />
+          <div>
+            <input id="fr-name" aria-label="Your name" className={withError(field, !!errorFor('name'))} autoComplete="name" placeholder="Your name"
+              aria-invalid={!!errorFor('name')} aria-describedby={errorFor('name') ? 'fr-name-error' : undefined}
+              value={draft.requesterName} maxLength={120} onChange={(e) => set('requesterName', e.target.value)} />
+            {errorFor('name') && <FieldError id="fr-name-error">{errorFor('name')}</FieldError>}
+          </div>
+          <div>
+            <input id="fr-email" aria-label="Email" className={withError(field, !!errorFor('email'))} type="email" autoComplete="email" inputMode="email" placeholder="Email"
+              aria-invalid={!!errorFor('email')} aria-describedby={errorFor('email') ? 'fr-email-error' : undefined}
+              value={draft.requesterEmail} maxLength={200} onChange={(e) => set('requesterEmail', e.target.value)} />
+            {errorFor('email') && <FieldError id="fr-email-error">{errorFor('email')}</FieldError>}
+          </div>
           <input aria-label="Mobile phone (optional)" className={field} type="tel" autoComplete="tel" inputMode="tel"
             placeholder="Mobile phone (optional)" value={draft.requesterPhone} maxLength={40}
             onChange={(e) => { set('requesterPhone', e.target.value); if (!e.target.value.trim()) set('notifyBy', 'email'); }} />
@@ -198,6 +240,7 @@ export function RequestForm({
                 const disabled = k === 'text' && !draft.requesterPhone.trim();
                 return (
                   <button key={k} type="button" disabled={disabled} aria-pressed={draft.notifyBy === k}
+                    title={disabled ? 'Add a mobile number to get texts' : undefined}
                     onClick={() => set('notifyBy', k)}
                     className={`rounded-btn border px-3 py-2.5 text-[14px] font-semibold transition-colors disabled:opacity-40 ${
                       draft.notifyBy === k ? 'border-forest bg-forest text-paper' : 'border-border bg-white text-forest'
@@ -207,6 +250,9 @@ export function RequestForm({
                 );
               })}
             </div>
+            {!draft.requesterPhone.trim() && (
+              <p className="mt-1.5 text-[12px] text-ink-soft">To choose text, add a mobile number above.</p>
+            )}
             {draft.notifyBy === 'text' && (
               <p className="mt-1.5 text-[12px] text-ink-soft">Texts are not switched on yet, so you&rsquo;ll get the same updates by email.</p>
             )}
@@ -214,11 +260,14 @@ export function RequestForm({
         </fieldset>
       )}
 
-      {((touched && check.errors.length > 0) || serverError) && (
-        <div role="alert" className="rounded-card border border-red/30 bg-red-bg px-3.5 py-3 text-[14px] text-red-text">
-          {serverError ?? check.errors.map((e) => <p key={e}>{e}</p>)}
-        </div>
-      )}
+      {serverError ? (
+        <div role="alert" className="rounded-card border border-red/30 bg-red-bg px-3.5 py-3 text-[14px] text-red-text">{serverError}</div>
+      ) : touched && check.fieldErrors.length > 0 ? (
+        // The messages sit beside their fields; this only says there is something to fix above.
+        <p role="alert" data-testid="form-error-summary" className="text-center text-[14px] font-semibold text-red-text">
+          {check.fieldErrors.length === 1 ? 'One thing to fix above.' : `${check.fieldErrors.length} things to fix above.`}
+        </p>
+      ) : null}
 
       <button type="submit" disabled={sending}
         className="flex w-full items-center justify-center gap-2 rounded-btn bg-forest px-4 py-3.5 text-[16px] font-bold text-paper transition-colors hover:bg-forest-mid disabled:opacity-60">
@@ -229,16 +278,21 @@ export function RequestForm({
   );
 }
 
-function formatHoursPlain(h: number): string {
-  if (h % 24 === 0 && h >= 48) return `${h / 24} days`;
-  return `${h} hours`;
+function FieldError({ id, children, className = '' }: { id: string; children: React.ReactNode; className?: string }) {
+  return (
+    <p id={id} data-testid="field-error" className={`mt-1.5 flex items-start gap-1.5 text-[13px] font-semibold text-red-text ${className}`}>
+      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />{children}
+    </p>
+  );
 }
 
-function LineRow({ index, line, items, canRemove, onChange, onRemove }: {
+function LineRow({ index, line, items, canRemove, onChange, onRemove, qtyError, itemError }: {
   index: number;
   line: FoodRequestDraftLine;
   items: FoodFormItem[];
   canRemove: boolean;
+  qtyError: string | null;
+  itemError: string | null;
   onChange: (patch: Partial<FoodRequestDraftLine>) => void;
   onRemove: () => void;
 }) {
@@ -259,8 +313,20 @@ function LineRow({ index, line, items, canRemove, onChange, onRemove }: {
   }, []);
 
   function pick(item: FoodFormItem) {
-    onChange({ itemId: item.id, label: item.name, unitLabel: item.unit });
+    // "2 dozen eggs" → Large eggs, 2: an amount typed into the words carries over when its unit
+    // fits the item (or has none). It never carries across units.
+    const amount = !line.qty.trim() ? parseAmount(line.label) : null;
+    const qty = amount && (!amount.unit || sameUnit(amount.unit, item.unit)) ? amount.qty : line.qty;
+    onChange({ itemId: item.id, label: item.name, unitLabel: item.unit, qty });
     setOpen(false);
+  }
+
+  /** "graham crackers, like 3 boxes" typed as one line becomes words, 3 and boxes. */
+  function takeAmountFromWords() {
+    if (line.itemId || line.qty.trim()) return;
+    const amount = parseAmount(line.label);
+    if (!amount) return;
+    onChange({ label: amount.rest, qty: amount.qty, unitLabel: line.unitLabel.trim() ? line.unitLabel : amount.unit });
   }
 
   return (
@@ -268,16 +334,19 @@ function LineRow({ index, line, items, canRemove, onChange, onRemove }: {
       <div className="flex items-center gap-2">
         <div className="relative min-w-0 flex-1">
           <input
+            id={`fr-item-${index}`}
+            aria-invalid={!!itemError}
             aria-label={`Item ${index + 1}`}
             role="combobox"
             aria-expanded={showList}
             aria-controls={listId}
             aria-autocomplete="list"
-            className={`${field} ${line.itemId ? 'pr-8' : ''}`}
+            className={`${withError(field, !!itemError)} ${line.itemId ? 'pr-8' : ''}`}
             placeholder={index === 0 ? 'e.g. flour, eggs, marshmallows' : 'Another item'}
             value={line.label}
             maxLength={120}
             onFocus={() => setOpen(true)}
+            onBlur={takeAmountFromWords}
             onChange={(e) => {
               // Editing a picked item's name makes it the person's own words again.
               onChange({ label: e.target.value, itemId: null, unitLabel: line.itemId ? '' : line.unitLabel });
@@ -327,10 +396,14 @@ function LineRow({ index, line, items, canRemove, onChange, onRemove }: {
         </ul>
       )}
 
+      {itemError && <FieldError id={`fr-item-${index}-error`}>{itemError}</FieldError>}
+
       {(line.label.trim() || line.itemId) && (
         <div className="mt-2 flex items-center gap-2">
-          <input aria-label={`How much ${line.label || `item ${index + 1}`}`} className={`${fieldBase} w-24 flex-none`} inputMode="decimal"
-            placeholder="Qty" value={line.qty}
+          <input id={`fr-qty-${index}`} aria-label={`How much ${line.label || `item ${index + 1}`}`}
+            aria-invalid={!!qtyError} aria-describedby={qtyError ? `fr-qty-${index}-error` : undefined}
+            className={`${withError(fieldBase, !!qtyError)} w-24 flex-none`} inputMode="decimal"
+            placeholder="How much" value={line.qty}
             onChange={(e) => onChange({ qty: e.target.value.replace(/[^0-9.]/g, '').slice(0, 9) })} />
           {line.itemId ? (
             <span className="text-[14px] text-ink-soft">{line.unitLabel}</span>
@@ -341,6 +414,7 @@ function LineRow({ index, line, items, canRemove, onChange, onRemove }: {
           )}
         </div>
       )}
+      {qtyError && <FieldError id={`fr-qty-${index}-error`}>{qtyError}</FieldError>}
     </div>
   );
 }

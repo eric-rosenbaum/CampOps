@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { CalendarDays, Trash2, AlertTriangle, Check } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { CalendarDays, Trash2, AlertTriangle, Check, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
@@ -32,6 +33,16 @@ export function SettingsTab() {
   const canManage = can('manageCommissary');
 
   const [confirmText, setConfirmText] = useState('');
+  // /commissary?tab=settings&section=programs (the Requests tab's "Programs & links") lands on the
+  // programs, not on Sessions with the delete-everything box one scroll below.
+  const [searchParams] = useSearchParams();
+  const section = searchParams.get('section');
+  const programsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (section !== 'programs' || !programsRef.current) return;
+    programsRef.current.scrollIntoView({ block: 'start' });
+    programsRef.current.focus({ preventScroll: true });
+  }, [section]);
   const [wiping, setWiping] = useState(false);
   const [wiped, setWiped] = useState(false);
 
@@ -45,7 +56,7 @@ export function SettingsTab() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 pt-4 pb-24 sm:pt-6">
       <div className="max-w-2xl space-y-8">
         {/* ── Sessions ─────────────────────────────────────────────────────── */}
         <section>
@@ -97,13 +108,19 @@ export function SettingsTab() {
           </div>
         </section>
 
-        <FoodProgramsSettings />
+        <div ref={programsRef} tabIndex={-1} id="food-programs" className="scroll-mt-4 rounded-card outline-none">
+          <FoodProgramsSettings />
+        </div>
 
         {/* ── Danger zone ──────────────────────────────────────────────────── */}
         {canManage && (
-          <section>
-            <h2 className="text-[15px] font-semibold text-red mb-3">Danger zone</h2>
-            <div className="rounded-card border-2 border-red/30 bg-red-bg/40 px-4 py-4">
+          // Last on the page and closed by default: it sat open directly under the program links,
+          // one scroll from where a kitchen manager copies a link.
+          <details className="group border-t border-border pt-6" data-testid="danger-zone">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[13px] font-semibold text-ink-soft hover:text-red [&::-webkit-details-marker]:hidden">
+              <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" /> Danger zone
+            </summary>
+            <div className="mt-3 rounded-card border-2 border-red/30 bg-red-bg/40 px-4 py-4">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-red flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
@@ -139,7 +156,7 @@ export function SettingsTab() {
                 </div>
               </div>
             </div>
-          </section>
+          </details>
         )}
       </div>
     </div>

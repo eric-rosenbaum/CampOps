@@ -6,11 +6,13 @@ import { useAuth } from '@/lib/auth';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import type { FoodProgram, FoodRequest, FoodRequestLine, FoodRequestMessage } from '@/lib/foodRequestTypes';
 import {
-  FOOD_STATUS_LABELS, canTransition, formatClock, formatLineQty, formatNotice, formatPickup, isPastDue, lineChangeSummary,
+  FOOD_STATUS_LABELS, canTransition, formatClock, formatNotice, formatNoticeRule, formatPickup, hoursOverdue, kitchenLineView,
+  lineChangeSummary, overdueLabel,
 } from '@/lib/foodRequests';
 import { loadFoodRequestMessages } from '@/lib/foodRequestsDb';
 import { FoodStatusChip, LateChip, ProgramDot, foodStatusUrl } from './foodUi';
 import { useFoodRequestActions } from './useFoodRequestActions';
+import { useCampClock } from './useCampClock';
 
 const RULE_LABELS: Record<string, string> = {
   request_received: 'Request received',
@@ -38,7 +40,8 @@ export function RequestDetailModal({ request, lines, program, onClose, onDecide 
 }) {
   const { can } = useAuth();
   const canManage = can('manageCommissary');
-  const actions = useFoodRequestActions();
+  const { timeZone, now } = useCampClock();
+  const actions = useFoodRequestActions(timeZone);
   const [messages, setMessages] = useState<FoodRequestMessage[] | null>(null);
   const [copied, setCopied] = useState(false);
   const items = useCommissaryStore((s) => s.items);
@@ -53,8 +56,8 @@ export function RequestDetailModal({ request, lines, program, onClose, onDecide 
     return () => { live = false; clearTimeout(t); };
   }, [request.id, request.status, request.updatedAt]);
 
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const pastDue = isPastDue(request, new Date(), timeZone);
+  const overdue = hoursOverdue(request, now, timeZone);
+  const pastDue = overdue != null;
 
   async function copyStatusLink() {
     try {
@@ -68,9 +71,9 @@ export function RequestDetailModal({ request, lines, program, onClose, onDecide 
     ['Sent', request.createdAt, request.source === 'link' ? 'from the program link' : 'in the app'],
     [request.status === 'declined' ? 'Declined' : 'Approved', request.decidedAt, request.decidedByName],
     ['Ready', request.readyAt, null],
-    ['Picked up', request.pickedUpAt, request.pickedUpByName],
+    ['Picked up', request.pickedUpAt, [request.pickedUpByName, 'taken off the shelf count'].filter(Boolean).join(' · ')],
     ['Marked missed', request.missedAt, null],
-    ['Cancelled', request.cancelledAt, request.cancelledBy === 'kitchen' ? 'by the kitchen' : request.cancelledBy ? 'by the requester' : null],
+    ['Cancelled', request.cancelledAt, request.cancelledBy === 'kitchen' ? 'by the kitchen' : request.cancelledBy ? `by ${request.requesterName}, who asked` : null],
   ];
 
   return (
@@ -82,7 +85,7 @@ export function RequestDetailModal({ request, lines, program, onClose, onDecide 
         <div className="flex flex-wrap items-center justify-end gap-2">
           {canTransition(request.status, 'cancelled') && (
             <Button variant="ghost" size="sm" disabled={busy} className="mr-auto text-red-text"
-              onClick={async () => { if (confirm('Cancel this request? The requester can see it was cancelled.')) await actions.cancel(request); }}>
+              onClick={() => actions.cancel(request)}>
               Cancel request
             </Button>
           )}
@@ -94,23 +97,27 @@ export function RequestDetailModal({ request, lines, program, onClose, onDecide 
             </>
           )}
           {canTransition(request.status, 'missed') && pastDue && (
-            <Button variant="ghost" size="sm" disabled={busy} onClick={() => actions.missed(request)}>Missed</Button>
+            <Button variant="danger" size="sm" disabled={busy} onClick={() => actions.missed(request)}>Missed</Button>
           )}
           {request.status === 'approved' && <Button size="sm" disabled={busy} onClick={() => actions.ready(request)}>Mark ready</Button>}
           {request.status === 'ready' && <Button size="sm" disabled={busy} onClick={() => actions.pickedUp(request)}>Picked up</Button>}
         </div>
       ) : undefined}
     >
+      {actions.dialog}
       <div className="space-y-5">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <ProgramDot color={program?.color ?? null} />
             <FoodStatusChip status={request.status} label={FOOD_STATUS_LABELS[request.status]} />
             {request.isLate && <LateChip hours={request.noticeHours} />}
+            {overdue != null && (
+              <span className="inline-flex items-center whitespace-nowrap rounded-pill border border-red/30 bg-red-bg px-2 py-0.5 text-[11px] font-bold text-red-text">{overdueLabel(overdue)}</span>
+            )}
           </div>
           <p className="mt-1.5 text-[15px] font-semibold text-ink">{formatPickup(request.pickupDate, request.pickupTime)}</p>
           <p className="text-[12.5px] text-ink-soft">
-            {formatNotice(request.noticeHours)}&rsquo; notice when sent (cutoff {Math.round(request.cutoffHours)}h)
+            {formatNotice(request.noticeHours)}&rsquo; notice when sent (you ask for {formatNoticeRule(request.cutoffHours)})
             {request.headcount ? ` · ${request.headcount} people` : ''}{request.purpose ? ` · ${request.purpose}` : ''}
           </p>
           <p className="mt-1 text-[12.5px] text-ink-soft">
@@ -129,19 +136,17 @@ export function RequestDetailModal({ request, lines, program, onClose, onDecide 
           <div className="overflow-hidden rounded-card border border-border">
             {lines.map((l) => {
               const change = lineChangeSummary(l);
+              const v = kitchenLineView(l, l.itemId ? items.find((i) => i.id === l.itemId)?.name : undefined);
               return (
                 <div key={l.id} className="flex items-start justify-between gap-3 border-b border-border px-3 py-2 last:border-0">
                   <div className="min-w-0">
-                    <p className={`text-[13px] ${l.lineState === 'unavailable' ? 'text-ink-faint' : 'text-forest'}`}>{l.label}</p>
+                    <p className={`text-[13px] ${l.lineState === 'unavailable' ? 'text-ink-faint' : 'text-forest'}`}>{v.name}</p>
                     <p className="text-[11.5px] text-ink-soft">
-                      {!l.itemId ? 'Own words — not linked to an item'
-                        : (() => { const name = items.find((i) => i.id === l.itemId)?.name; return name && name !== l.label ? `Linked to ${name}` : 'On the inventory list'; })()}{l.note ? ` · “${l.note}”` : ''}
+                      {!v.linked ? 'Not on your kitchen list, in their own words' : v.asked ? `asked: ${v.asked}` : 'On the kitchen list'}{l.note ? ` · “${l.note}”` : ''}
                     </p>
                   </div>
                   <div className="flex-shrink-0 text-right">
-                    <p className="font-mono text-[12.5px] text-ink">
-                      {l.lineState === 'unavailable' ? 'not available' : formatLineQty(l.qtyApproved ?? l.qtyRequested, l.qtyApproved != null ? l.approvedUnitLabel : l.unitLabel)}
-                    </p>
+                    <p className="font-mono text-[12.5px] text-ink">{v.qty}</p>
                     {change && l.lineState === 'changed' && <p className="text-[11px] text-amber-text">{change}</p>}
                   </div>
                 </div>

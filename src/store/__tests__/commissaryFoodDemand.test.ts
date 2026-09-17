@@ -83,13 +83,48 @@ describe.each(['session', 'retreats'] as const)('program requests as kitchen dem
     expect(useCommissaryStore.getState().reconciledDraftOrders(windowEnd)[0].lines[0].itemId).toBe('flour');
   });
 
-  it('picked up still counts (nothing wrote it to stock); missed, declined and cancelled do not', () => {
+  it('picked up is no longer demand (the pickup wrote it to stock); missed, declined and cancelled never were', () => {
     for (const status of ['picked_up', 'missed', 'declined', 'cancelled'] as const) {
       const r = request(status);
       useCommissaryStore.setState({ foodRequests: [r], foodRequestLines: [flourLine(r.id, 5)] });
-      const got = useCommissaryStore.getState().consumptionByItemDate().get('flour')?.get(inTwoDays);
-      if (status === 'picked_up') expect(got).toBeCloseTo(5 * 453.592);
-      else expect(got).toBeUndefined();
+      expect(useCommissaryStore.getState().consumptionByItemDate().get('flour')?.get(inTwoDays)).toBeUndefined();
     }
+    // What the book looks like after the pickup RPC: 5 lb less on hand, and nothing projected twice.
+    const r = request('picked_up');
+    useCommissaryStore.setState({ items: [{ ...flour, onHandBase: 5 * 453.592 }], foodRequests: [r], foodRequestLines: [flourLine(r.id, 5)] });
+    const pic = useCommissaryStore.getState().shelfPictures().get('flour')!;
+    expect(pic.onShelf).toBeCloseTo(5 * 453.592);
+    expect(pic.promised).toBe(0);
+  });
+
+  it('the shelf picture: on shelf, promised, left after promises, and a status the tiles and rows share', () => {
+    // 10 lb on hand, 8 lb minimum. 5 lb promised to the club in two days leaves 5 lb: below the min.
+    const r = request('approved');
+    useCommissaryStore.setState({ foodRequests: [r], foodRequestLines: [flourLine(r.id, 5)] });
+    const s = useCommissaryStore.getState();
+    const pic = s.shelfPictures().get('flour')!;
+    expect(pic.onShelf).toBeCloseTo(10 * 453.592);
+    expect(pic.promised).toBeCloseTo(5 * 453.592);
+    expect(pic.leftAfter).toBeCloseTo(5 * 453.592);
+    expect(pic.runOut).toBeNull();
+    expect(pic.status).toBe('low');
+    // The Low stock filter shows exactly what the tile counts.
+    useCommissaryStore.setState({ inventoryFilter: 'low' });
+    expect(useCommissaryStore.getState().filteredItems().map((i) => i.id)).toEqual(['flour']);
+
+    // Promised for pickup TODAY is still on the shelf, and still comes out of what is left.
+    const t = { ...request('ready', today), id: 'today' };
+    useCommissaryStore.setState({ foodRequests: [t], foodRequestLines: [flourLine(t.id, 2)], inventoryFilter: 'all' });
+    const now = useCommissaryStore.getState().shelfPictures().get('flour')!;
+    expect(now.onShelf).toBeCloseTo(10 * 453.592);
+    expect(now.leftAfter).toBeCloseTo(8 * 453.592);
+    expect(now.status).toBe('ok');
+
+    // Promising more than is on hand runs out on the pickup day, and is critical.
+    const big = request('approved');
+    useCommissaryStore.setState({ foodRequests: [big], foodRequestLines: [flourLine(big.id, 12)] });
+    const out = useCommissaryStore.getState().shelfPictures().get('flour')!;
+    expect(out.runOut).toBe(inTwoDays);
+    expect(out.status).toBe('critical');
   });
 });

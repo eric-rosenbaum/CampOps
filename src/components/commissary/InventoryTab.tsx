@@ -11,12 +11,14 @@ import { useAuth } from '@/lib/auth';
 import {
   CATEGORY_LABELS, STORAGE_LABELS, formatQty, fromBase,
   onHandInStockUnit, parInStockUnit, countSheetToPrintHtml,
-  makeProjectionInput, projectedOnHandBase, runOutDate, daysOfCover,
-  type PrintCountGroup,
+  type PrintCountGroup, type StockStatus,
   todayStr,
 } from '@/lib/commissaryUnits';
 import { OnHandValue, ParValue, CategoryIcon } from './commissaryUi';
 import { setAsideByItem, formatDay, formatClock } from '@/lib/foodRequests';
+
+// Width-only grid: the row and the header must share it exactly.
+const ROW_GRID = 'grid grid-cols-[2fr_1fr_1.2fr_1.3fr_0.9fr_150px] min-w-[880px] lg:min-w-0 gap-3';
 
 const STORAGE_ORDER = ['walk_in_refrigerator', 'walk_in_freezer', 'reach_in_refrigerator', 'dry_storage', 'other'];
 
@@ -31,10 +33,10 @@ const FILTERS = [
 
 export function InventoryTab() {
   const {
-    items, filteredItems, stockCounts, setupCounts, openModal, setActiveTab,
+    items, filteredItems, setupCounts, openModal, setActiveTab,
     inventoryFilter, setInventoryFilter, inventorySearch, setInventorySearch,
     activeWeek, weekShortfalls, unlinkedEntryCount, activeSession,
-    storageMap, consumptionByItemDate, incomingByItemDate, projectionHorizon,
+    storageMap, shelfPictures,
     foodRequests, foodRequestLines, foodPrograms,
   } = useCommissaryStore();
   const { tempLogs } = useSafetyStore();
@@ -68,14 +70,17 @@ export function InventoryTab() {
     w.document.write(html); w.document.close(); w.focus(); w.print();
   }
 
-  // Food promised to programs from today on. Already inside "Projected now" and "Runs out" (it
-  // is demand); shown on the row so the cook does not use the flour the cooking club is getting.
+  // Food promised to programs from today on. Already inside "Left after promises" and the run-out
+  // (it is demand); named on the row so the cook does not use the flour the cooking club is getting.
   const setAside = useMemo(
     () => setAsideByItem(foodRequests, foodRequestLines, todayStr(), foodPrograms),
     [foodRequests, foodRequestLines, foodPrograms],
   );
 
-  const counts = stockCounts();
+  // One projection feeds the tiles, the rows and the Low stock filter (see shelfPicture).
+  const pictures = shelfPictures();
+  const counts: Record<StockStatus, number> = { ok: 0, low: 0, critical: 0 };
+  for (const p of pictures.values()) counts[p.status] += 1;
   const setup = setupCounts();
   const rows = filteredItems();
   const session = activeSession();
@@ -89,24 +94,15 @@ export function InventoryTab() {
   );
   const unlinked = session ? unlinkedEntryCount(activeWeek) : 0;
 
-  // Reconciled projection: what each item will actually have, and when it runs out.
-  const consMap = consumptionByItemDate();
-  const incMap = incomingByItemDate();
-  const today = todayStr();
-  const horizon = projectionHorizon();
-  const projById = new Map(items.map((it) => {
-    const inp = makeProjectionInput(it, today, consMap, incMap);
-    return [it.id, { now: projectedOnHandBase(inp, today), runOut: runOutDate(inp, horizon), cover: daysOfCover(inp, horizon) }];
-  }));
-
-  // Soonest to run out first. The reason anyone opens this screen. No run-out sorts last.
+  // Soonest to run out first, then the worst left-after-promises. The reason anyone opens this screen.
+  const severity: Record<StockStatus, number> = { critical: 0, low: 1, ok: 2 };
   const sorted = [...rows].sort((a, b) => {
-    const ra = projById.get(a.id)?.runOut ?? null;
-    const rb = projById.get(b.id)?.runOut ?? null;
+    const pa = pictures.get(a.id), pb = pictures.get(b.id);
+    const ra = pa?.runOut ?? null, rb = pb?.runOut ?? null;
     if (ra && rb) return ra.localeCompare(rb) || a.name.localeCompare(b.name);
     if (ra) return -1;
     if (rb) return 1;
-    return a.name.localeCompare(b.name);
+    return severity[pa?.status ?? 'ok'] - severity[pb?.status ?? 'ok'] || a.name.localeCompare(b.name);
   });
 
   if (items.length === 0) {
@@ -156,9 +152,9 @@ export function InventoryTab() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
         <StatCard label="Total items" value={items.length} hint="Across all categories" />
-        <StatCard label="Critically low" value={counts.critical} hint="Under half the reorder level" variant={counts.critical > 0 ? 'red' : 'default'} />
-        <StatCard label="Low stock" value={counts.low} hint="At or below reorder level" variant={counts.low > 0 ? 'amber' : 'default'} />
-        <StatCard label="Fully stocked" value={counts.ok} hint="Above reorder level" />
+        <StatCard label="Critically low" value={counts.critical} hint="Runs out in 3 days, or under half the min left after promises" variant={counts.critical > 0 ? 'red' : 'default'} />
+        <StatCard label="Low stock" value={counts.low} hint="Below the min after promises, or runs out this week" variant={counts.low > 0 ? 'amber' : 'default'} />
+        <StatCard label="Fully stocked" value={counts.ok} hint="At or above the min after promises" />
       </div>
 
       {atRisk.length > 0 && (
@@ -225,20 +221,29 @@ export function InventoryTab() {
         <SearchInput value={inventorySearch} onChange={setInventorySearch} placeholder="Search inventory…" />
       </div>
 
-      <div className="bg-white rounded-card border border-border overflow-x-auto">
-        <div className="grid grid-cols-[2.2fr_1fr_1fr_1.2fr_1fr_150px] min-w-[760px] sm:min-w-0 gap-3 px-4 py-2.5 bg-cream-dark/50 border-b border-border">
-          {['Item', 'On hand (counted)', 'Projected now', 'Runs out', 'Min on hand', ''].map((h) => (
-            <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>
+      <div className="bg-white rounded-card border border-border overflow-x-auto" data-testid="inventory-table">
+        <div className={`${ROW_GRID} px-4 py-2.5 bg-cream-dark/50 border-b border-border`}>
+          {[
+            ['Item', null],
+            ['On shelf', 'What should be on the shelf right now: the last count, less what the menu has used since, plus deliveries'],
+            ['Promised to programs', 'Approved program requests from today on, still to be picked up'],
+            ['Left after promises', 'What is left once the promised pickups have gone, menu use included'],
+            ['Min on hand', null],
+            ['', null],
+          ].map(([h, tip]) => (
+            <span key={h ?? 'actions'} title={tip ?? undefined} className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>
           ))}
         </div>
 
         {sorted.map((item) => {
-          const p = projById.get(item.id) ?? { now: item.onHandBase, runOut: null, cover: null };
-          const projNow = Math.max(0, p.now);
-          const soon = p.cover != null && p.cover <= 3;
-          const near = p.cover != null && p.cover <= 7;
+          const p = pictures.get(item.id);
+          const qty = (base: number) => formatQty(fromBase(base, item.stockUnitInBase), item.stockUnit);
+          const counted = item.lastCountedAt != null;
+          const aside = setAside.get(item.id);
+          const tone = !p ? 'text-ink' : p.status === 'critical' ? 'text-red' : p.status === 'low' ? 'text-amber-text' : 'text-green-muted-text';
           return (
-            <div key={item.id} className="grid grid-cols-[2.2fr_1fr_1fr_1.2fr_1fr_150px] min-w-[760px] sm:min-w-0 gap-3 px-4 py-3 border-b border-border last:border-0 items-center hover:bg-cream-dark/30">
+            <div key={item.id} data-testid="inventory-row" data-item={item.name} data-status={p?.status}
+              className={`${ROW_GRID} px-4 py-3 border-b border-border last:border-0 items-center hover:bg-cream-dark/30`}>
               <div className="flex items-center gap-2.5 min-w-0">
                 <CategoryIcon category={item.category} className="w-4 h-4 text-ink-faint flex-shrink-0" />
                 <div className="min-w-0">
@@ -246,40 +251,46 @@ export function InventoryTab() {
                   <p className="text-[11px] text-ink-faint truncate">
                     {CATEGORY_LABELS[item.category]} · {STORAGE_LABELS[item.storageLocation]}
                   </p>
-                  {(() => {
-                    const aside = setAside.get(item.id);
-                    if (!aside) return null;
-                    const qty = (base: number) => formatQty(fromBase(base, item.stockUnitInBase), item.stockUnit);
-                    const first = aside.entries[0];
-                    const more = aside.entries.length - 1;
-                    return (
-                      <button type="button" data-testid="set-aside"
-                        onClick={() => setActiveTab('requests')}
-                        title={aside.entries.map((e) => `${qty(e.base)} · ${e.who} · ${formatDay(e.pickupDate)} ${formatClock(e.pickupTime)}${e.status === 'ready' ? ' (ready)' : ''}`).join('\n')}
-                        className="mt-1 inline-flex max-w-full items-center gap-1 rounded-tag border border-amber/40 bg-amber-bg px-1.5 py-0.5 text-[11px] text-amber-text hover:border-amber">
-                        <span className="font-semibold whitespace-nowrap">Set aside {qty(aside.totalBase)}</span>
-                        <span className="truncate">· {first.who} {formatDay(first.pickupDate, { weekday: true }).split(',')[0]}{more > 0 ? ` +${more}` : ''}</span>
-                      </button>
-                    );
-                  })()}
                 </div>
               </div>
-              <OnHandValue item={item} />
-              <span className={`font-mono text-[13px] ${p.now <= 0 ? 'text-red font-medium' : 'text-ink'}`}>
-                {formatQty(fromBase(projNow, item.stockUnitInBase), item.stockUnit)}
-              </span>
-              <span className="text-[12px]">
-                {item.lastCountedAt == null ? (
-                  <span className="text-forest/25">-</span>
-                ) : p.runOut ? (
-                  <span className={soon ? 'text-red font-medium' : near ? 'text-amber-text' : 'text-ink-soft'}>
-                    {new Date(`${p.runOut}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                    {p.cover != null && <span className="text-ink-faint"> · {p.cover}d</span>}
-                  </span>
-                ) : (
-                  <span className="text-green-muted-text">Covered</span>
+              <div className="min-w-0" data-testid="on-shelf">
+                {!counted ? <OnHandValue item={item} /> : (
+                  <>
+                    <span className="font-mono text-[13px] text-ink">{qty(p?.onShelf ?? item.onHandBase)}</span>
+                    {p && Math.abs(p.onShelf - item.onHandBase) > item.stockUnitInBase * 0.01 && (
+                      <span className="block text-[10.5px] text-ink-faint">counted {qty(item.onHandBase)}</span>
+                    )}
+                  </>
                 )}
-              </span>
+              </div>
+              <div className="min-w-0">
+                {aside ? (
+                  <button type="button" data-testid="set-aside"
+                    onClick={() => setActiveTab('requests')}
+                    title={aside.entries.map((e) => `${qty(e.base)} · ${e.who} · ${formatDay(e.pickupDate)} ${formatClock(e.pickupTime)}${e.status === 'ready' ? ' (ready)' : ''}`).join('\n')}
+                    className="inline-flex max-w-full flex-col items-start rounded-tag border border-amber/40 bg-amber-bg px-1.5 py-0.5 text-left text-[11px] text-amber-text hover:border-amber">
+                    <span className="font-mono text-[12px] font-semibold whitespace-nowrap">{qty(aside.totalBase)}</span>
+                    <span className="max-w-full truncate">
+                      {aside.entries[0].who} {formatDay(aside.entries[0].pickupDate).split(',')[0]}
+                      {aside.entries.length > 1 ? ` +${aside.entries.length - 1}` : ''}
+                    </span>
+                  </button>
+                ) : <span className="text-forest/25">-</span>}
+              </div>
+              <div className="min-w-0 text-[12px]" data-testid="left-after">
+                {!counted && !aside ? (
+                  <span className="text-forest/25">-</span>
+                ) : p ? (
+                  <>
+                    <span className={`font-mono text-[13px] font-medium ${tone}`}>{qty(Math.max(0, p.leftAfter))}</span>
+                    <span className={`block text-[11px] ${p.runOut ? tone : p.status === 'ok' ? 'text-ink-faint' : tone}`}>
+                      {p.runOut
+                        ? <>Runs out {new Date(`${p.runOut}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}{p.cover != null && <span className="text-ink-faint"> · {p.cover}d</span>}</>
+                        : p.status === 'ok' ? 'Covered' : 'Below min on hand'}
+                    </span>
+                  </>
+                ) : null}
+              </div>
               <ParValue item={item} />
               <div className="flex gap-1.5 justify-end">
                 {canManage && (

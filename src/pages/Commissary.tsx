@@ -32,6 +32,8 @@ import { CoursesModal } from '@/components/commissary/CoursesModal';
 import { SubstitutionModal } from '@/components/commissary/SubstitutionModal';
 import { SettingsTab } from '@/components/commissary/SettingsTab';
 import { RequestsTab } from '@/components/foodRequests/RequestsTab';
+import { useCampClock } from '@/components/foodRequests/useCampClock';
+import { isPastDue, REQUESTS_VIEWS, type RequestsView } from '@/lib/foodRequests';
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
@@ -60,12 +62,19 @@ export function Commissary() {
   const canManage = can('manageCommissary');
   const foodRequests = useCommissaryStore((s) => s.foodRequests);
   const waitingRequests = foodRequests.filter((r) => r.status === 'submitted').length;
+  // Pickups nobody came for count too: they need a Missed tap as much as a new request needs a decision.
+  const { timeZone, now } = useCampClock();
+  const overdueRequests = foodRequests.filter((r) => isPastDue(r, now, timeZone)).length;
+  const requestsBadge = waitingRequests + overdueRequests;
 
   // Deep links: /commissary?tab=requests&request=<id>. The emails to the kitchen and the demo
   // guide both land here, so the URL has to choose the tab rather than whatever was open last.
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const openRequestId = searchParams.get('request');
+  // ?view=pickups|inbox|history picks the Requests view (the demo guide's hand-over step uses it).
+  const viewParam = searchParams.get('view');
+  const requestsView = REQUESTS_VIEWS.includes(viewParam as RequestsView) ? (viewParam as RequestsView) : null;
   useEffect(() => {
     if (tabParam && TABS.some((t) => t.id === tabParam)) setActiveTab(tabParam as CommissaryTab);
   }, [tabParam, setActiveTab]);
@@ -84,6 +93,18 @@ export function Commissary() {
     next.set('tab', 'requests');
     if (id) next.set('request', id); else next.delete('request');
     setSearchParams(next, { replace: true });
+  }
+  function chooseRequestsView(v: RequestsView) {
+    // Keeps a shared link honest, without adding history entries for each view.
+    if (!searchParams.has('view')) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('view', v);
+    setSearchParams(next, { replace: true });
+  }
+  function openPrograms() {
+    // Straight to the Programs section, not the top of a long Settings page.
+    setActiveTab('settings');
+    setSearchParams({ tab: 'settings', section: 'programs' }, { replace: true });
   }
   function chooseTab(id: CommissaryTab) {
     setActiveTab(id);
@@ -154,9 +175,11 @@ export function Commissary() {
               }`}
             >
               {tab.label}
-              {tab.id === 'requests' && waitingRequests > 0 && (
-                <span data-testid="requests-badge" className="ml-1.5 inline-grid min-w-[18px] place-items-center rounded-pill bg-red px-1 text-[10.5px] font-bold leading-[18px] text-paper">
-                  {waitingRequests}
+              {tab.id === 'requests' && requestsBadge > 0 && (
+                <span data-testid="requests-badge"
+                  title={[waitingRequests ? `${waitingRequests} waiting for a decision` : '', overdueRequests ? `${overdueRequests} not picked up on time` : ''].filter(Boolean).join(' · ')}
+                  className="ml-1.5 inline-grid min-w-[18px] place-items-center rounded-pill bg-red px-1 text-[10.5px] font-bold leading-[18px] text-paper">
+                  {requestsBadge}
                 </span>
               )}
             </button>
@@ -184,7 +207,7 @@ export function Commissary() {
         {activeTab === 'recipes' && <RecipesTab />}
         {activeTab === 'allergy' && !retreatsMode && <AllergyTab />}
         {activeTab === 'ordering' && <OrderingTab />}
-        {activeTab === 'requests' && <RequestsTab openRequestId={openRequestId} onOpenRequest={openRequest} />}
+        {activeTab === 'requests' && <RequestsTab openRequestId={openRequestId} onOpenRequest={openRequest} view={requestsView} onViewChange={chooseRequestsView} onOpenPrograms={openPrograms} />}
         {activeTab === 'settings' && <SettingsTab />}
       </div>
 

@@ -15,7 +15,7 @@ import {
   dbReplaceItemVendors, dbUpsertItemVendor, dbUpdateOrderLinePack, dbUpdateOrderVendor, dbSetItemCounted,
   dbSetItemPrice, dbWipeCommissary,
   dbAddRecipe, dbUpdateRecipe, dbUpdateRecipeScale, dbDeleteRecipe, dbReplaceRecipeChildren,
-  dbAddMenuEntry, dbDeleteMenuEntry, dbAddMenuEntries, dbDeleteMenuWeek,
+  dbAddMenuEntry, dbUpdateMenuEntry, dbDeleteMenuEntry, dbAddMenuEntries, dbDeleteMenuWeek,
   dbAddRetreatMenuEntry, dbUpdateRetreatMenuEntry, dbDeleteRetreatMenuEntry,
   dbCreateOrder, dbUpdateOrderStatus, dbDeleteOrder, dbReceiveOrder,
   dbUpdateOrderLineQty, dbUpdateOrderTotals, dbAddOrderLine, dbDeleteOrderLine,
@@ -37,12 +37,17 @@ import {
   scaledIngredientLabel, formatInStockUnit, tidy, mealHeadCount, peopleDays, perDiem,
   menuForecastCost, dateForCell, dateStrForCell, toDateStr, todayStr,
   ITEM_FLAGS, MEAL_PERIOD_LABELS, PREP_SLOT_ORDER,
-  addDaysStr, makeProjectionInput, coverageNeedBase, projectedOnHandBase, WEEKDAYS, nextWeekdayOnOrAfter,
-  type DemandRow, type StockStatus, type DraftOrder, type MenuConflict,
+  addDaysStr, WEEKDAYS, nextWeekdayOnOrAfter, shelfBreakdown, orderLineMath,
+  type DemandRow, type StockStatus, type DraftOrder, type MenuConflict, type ShelfBreakdown, type ShelfInput, type OrderLineMath,
   type PerDiem, type PrepScheduleSlot, type PrepSlotKey,
 } from '@/lib/commissaryUnits';
 import { generateId } from '@/lib/utils';
 import { useRetreatStore } from '@/store/retreatStore';
+import type { FoodProgram, FoodRequest, FoodRequestLine, FoodRequestSettings } from '@/lib/foodRequestTypes';
+import {
+  requestDemandByItemDate, mergeDemandInto, requestDemandInWindow, pendingByItem, type RequestDemandEntry,
+  promisedByItemDate,
+} from '@/lib/foodRequests';
 
 /** Line actuals collected in the receiving screen. */
 export interface ReceivingLineInput {
@@ -52,7 +57,7 @@ export interface ReceivingLineInput {
   receivedNote: string | null;
 }
 
-export type CommissaryTab = 'inventory' | 'menu' | 'recipes' | 'production' | 'allergy' | 'ordering' | 'waste' | 'cost' | 'settings';
+export type CommissaryTab = 'inventory' | 'menu' | 'recipes' | 'production' | 'allergy' | 'ordering' | 'requests' | 'waste' | 'cost' | 'settings';
 
 /** The module plans either camp sessions (default) or retreats (all combined). */
 export type CommissaryMode = 'session' | 'retreats';
@@ -67,7 +72,7 @@ export type CommissaryModal =
   | { kind: 'csvImport' }
   | { kind: 'adjust'; itemId: string }
   | { kind: 'recipe'; editId?: string }
-  | { kind: 'menuEntry'; weekNumber: number; dayIndex: number; mealPeriod: MealPeriod }
+  | { kind: 'menuEntry'; weekNumber: number; dayIndex: number; mealPeriod: MealPeriod; editId?: string }
   | { kind: 'retreatMenuEntry'; retreatId: string; dayDate: string; mealPeriod: MealPeriod; editId?: string }
   | { kind: 'session'; editId?: string }
   | { kind: 'vendor'; editId?: string }
@@ -124,6 +129,22 @@ interface CommissaryState {
   camperSessions: CamperSession[];
   /** Aggregate counts. Populated for every member, including those denied names. */
   restrictionSummary: RestrictionSummaryRow[];
+
+  // Food requests (programs asking the kitchen). Loaded with the menu domain; written by RPC only.
+  foodPrograms: FoodProgram[];
+  foodRequests: FoodRequest[];
+  foodRequestLines: FoodRequestLine[];
+  foodRequestSettings: FoodRequestSettings | null;
+  setFoodPrograms: (rows: FoodProgram[]) => void;
+  setFoodRequests: (rows: FoodRequest[]) => void;
+  setFoodRequestLines: (rows: FoodRequestLine[]) => void;
+  setFoodRequestSettings: (row: FoodRequestSettings | null) => void;
+  /**
+   * Show a transition the moment its RPC returns. The realtime reload that follows replaces the
+   * row with the server's copy; without this the card sat in its old column for a third of a
+   * second after every tap, which reads as the tap not having worked.
+   */
+  patchFoodRequest: (id: string, patch: Partial<FoodRequest>) => void;
 
   /** Whether the module is planning camp sessions or retreats (combined). */
   mode: CommissaryMode;
@@ -204,6 +225,7 @@ interface CommissaryState {
   deleteRecipe: (id: string) => void;
 
   addMenuEntry: (m: MenuEntry) => void;
+  updateMenuEntry: (m: MenuEntry) => void;
   deleteMenuEntry: (id: string) => void;
   copyWeek: (fromWeek: number, toWeek: number) => void;
   clearWeek: (week: number) => void;
@@ -264,10 +286,24 @@ interface CommissaryState {
   filteredItems: () => InventoryItem[];
   filteredRecipes: () => Recipe[];
   stockCounts: () => Record<StockStatus, number>;
+  /**
+   * Every item's shelf, term by term (see shelfBreakdown): on shelf, promised to programs, planned
+   * menu use through `shelfThrough()`, left, run-out and a status. The Inventory tiles, rows, the
+   * Low-stock filter and the approve dialog all read this.
+   */
+  shelfPictures: () => Map<string, ShelfBreakdown>;
+  /** The day the shelf's "left" counts menu use through: the next delivery, or a week out. */
+  shelfThrough: () => string;
+  /** The inputs shelfBreakdown and orderLineMath read, for one item. */
+  shelfInput: (itemId: string) => ShelfInput;
+  /** shelfInput for many items, with the maps built once. */
+  shelfInputs: () => (itemId: string) => ShelfInput;
   /** How many items still need setup after an import: no reorder level, and/or never counted. */
   setupCounts: () => { needsReorder: number; notCounted: number; either: number };
-  /** Per-item, per-date menu consumption (base units) for the active session. */
+  /** Per-item, per-date menu consumption PLUS approved program requests (base units). */
   consumptionByItemDate: () => Map<string, Map<string, number>>;
+  /** Per-item, per-date planned menu use only (base units), for the active session or all retreats. */
+  menuUseByItemDate: () => Map<string, Map<string, number>>;
   /** Per-item, per-date future deliveries (base units) from sent orders with an ETA. */
   incomingByItemDate: () => Map<string, Map<string, number>>;
   /** Date the reconciled projection looks out to. */
@@ -289,10 +325,15 @@ interface CommissaryState {
   /** Reconciled order suggestions: cover the window above the floor, net of projection + in-transit. */
   reconciledDraftOrders: (windowEndDate: string) => DraftOrder[];
   /** The per-item math behind the order, every term, for the "show the math" worksheet. */
-  orderMath: (windowEndDate: string) => {
-    item: InventoryItem; onHandNow: number; draw: number; inTransit: number;
-    floor: number; projectedAtEnd: number; need: number; orderQty: number;
-  }[];
+  orderMath: (windowEndDate: string) => (OrderLineMath & {
+    item: InventoryItem; orderQty: number;
+    /** Which program requests make up `promised`. */
+    requests: RequestDemandEntry[];
+    /** Requests still waiting for a decision: not in `draw`, shown so they are not a surprise. */
+    pending: RequestDemandEntry[];
+  })[];
+  /** Waiting-for-a-decision request lines in an ordering window, by item. Not demand yet. */
+  pendingRequestsInWindow: (windowEndDate: string) => Map<string, { totalBase: number; entries: RequestDemandEntry[] }>;
   /** Items below the critical threshold, regardless of what's on the menu. */
   criticalItems: () => InventoryItem[];
   /** Draft orders (to reorder level) covering only the critically-low items. */
@@ -461,6 +502,18 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   setRetreatMenuTarget: (id) => set({ retreatMenuTarget: id }),
   setRetreatCoverage: (start, end) => set({ retreatCoverageStart: start, retreatCoverageEnd: end }),
   setRetreatMenuEntries: (rows) => set({ retreatMenuEntries: rows }),
+
+  foodPrograms: [],
+  foodRequests: [],
+  foodRequestLines: [],
+  foodRequestSettings: null,
+  setFoodPrograms: (rows) => set({ foodPrograms: rows }),
+  setFoodRequests: (rows) => set({ foodRequests: rows }),
+  setFoodRequestLines: (rows) => set({ foodRequestLines: rows }),
+  setFoodRequestSettings: (row) => set({ foodRequestSettings: row }),
+  patchFoodRequest: (id, patch) => set((s) => ({
+    foodRequests: s.foodRequests.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+  })),
   addRetreatMenuEntry: (m) => { set((s) => ({ retreatMenuEntries: [...s.retreatMenuEntries, m] })); dbAddRetreatMenuEntry(m); },
   updateRetreatMenuEntry: (m) => { set((s) => ({ retreatMenuEntries: s.retreatMenuEntries.map((x) => x.id === m.id ? m : x) })); dbUpdateRetreatMenuEntry(m); },
   deleteRetreatMenuEntry: (id) => { set((s) => ({ retreatMenuEntries: s.retreatMenuEntries.filter((x) => x.id !== id) })); dbDeleteRetreatMenuEntry(id); },
@@ -641,6 +694,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   },
 
   addMenuEntry: (m) => { set((s) => ({ menuEntries: [...s.menuEntries, m] })); dbAddMenuEntry(m); },
+  updateMenuEntry: (m) => { set((s) => ({ menuEntries: s.menuEntries.map((x) => (x.id === m.id ? m : x)) })); dbUpdateMenuEntry(m); },
   deleteMenuEntry: (id) => { set((s) => ({ menuEntries: s.menuEntries.filter((m) => m.id !== id) })); dbDeleteMenuEntry(id); },
 
   copyWeek: (fromWeek, toWeek) => {
@@ -1212,6 +1266,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       campers: [], restrictions: [], camperSessions: [], restrictionSummary: [],
       expenses: [], templates: [], templateEntries: [], dietCounts: [], mealEvents: [],
       countSessions: [], storageMap: [], courses: [], substitutions: [], files: [],
+      foodPrograms: [], foodRequests: [], foodRequestLines: [], foodRequestSettings: null,
       activeSessionId: null, modal: null,
     });
     return true;
@@ -1267,10 +1322,12 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   filteredItems: () => {
     const { items, inventoryFilter, inventorySearch } = get();
     const q = inventorySearch.trim().toLowerCase();
+    const pictures = inventoryFilter === 'low' ? get().shelfPictures() : null;
     return items.filter((i) => {
       if (q && !i.name.toLowerCase().includes(q)) return false;
       if (inventoryFilter === 'all') return true;
-      if (inventoryFilter === 'low') return stockStatus(i) !== 'ok';
+      // The same projected status the tiles count, or the filter's number and its rows disagree.
+      if (inventoryFilter === 'low') return (pictures?.get(i.id)?.status ?? stockStatus(i)) !== 'ok';
       // Not set up yet: no reorder level (never flags low) or never counted (e.g. a fresh import).
       if (inventoryFilter === 'needs_setup') return i.parLevelBase <= 0 || i.lastCountedAt == null;
       return i.category === inventoryFilter;
@@ -1280,6 +1337,15 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   // ── Reconciled projection maps (built once; the UI passes them to the pure engine) ──
   // Per-item, per-date menu consumption (base units) across the active session.
   consumptionByItemDate: () => {
+    const state = get();
+    const map = new Map<string, Map<string, number>>();
+    mergeDemandInto(map, state.menuUseByItemDate());
+    // Program requests are demand in BOTH modes.
+    mergeDemandInto(map, requestDemandByItemDate(state.foodRequests, state.foodRequestLines));
+    return map;
+  },
+
+  menuUseByItemDate: () => {
     const state = get();
     const map = new Map<string, Map<string, number>>();
     const recipesById = state.recipesById();
@@ -1326,7 +1392,9 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
         if (l.orderId !== o.id || !l.itemId) continue;
         let byDate = map.get(l.itemId);
         if (!byDate) { byDate = new Map(); map.set(l.itemId, byDate); }
-        byDate.set(o.expectedDelivery, (byDate.get(o.expectedDelivery) ?? 0) + l.orderQty * l.purchaseUnitInBase);
+        // A delivery that was due before today and is still not received is expected today, not never.
+        const due = o.expectedDelivery < todayStr() ? todayStr() : o.expectedDelivery;
+        byDate.set(due, (byDate.get(due) ?? 0) + l.orderQty * l.purchaseUnitInBase);
       }
     }
     return map;
@@ -1367,6 +1435,43 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     const counts: Record<StockStatus, number> = { ok: 0, low: 0, critical: 0 };
     for (const i of get().items) counts[stockStatus(i)] += 1;
     return counts;
+  },
+
+  shelfPictures: () => {
+    const state = get();
+    const horizon = state.projectionHorizon();
+    const through = state.shelfThrough();
+    const inputs = state.shelfInputs();
+    const out = new Map<string, ShelfBreakdown>();
+    for (const item of state.items) out.set(item.id, shelfBreakdown(item, inputs(item.id), through, horizon));
+    return out;
+  },
+
+  shelfThrough: () => {
+    const state = get();
+    const today = todayStr();
+    // Session kitchens plan to the next delivery; retreats have no delivery day, so a week.
+    if (state.mode === 'session' && state.activeSession()) {
+      const next = state.orderingWindow().nextDelivery;
+      if (next >= today) return next;
+    }
+    return addDaysStr(today, 7);
+  },
+
+  shelfInput: (itemId) => get().shelfInputs()(itemId),
+
+  shelfInputs: () => {
+    const state = get();
+    const today = todayStr();
+    const menu = state.menuUseByItemDate();
+    const incoming = state.incomingByItemDate();
+    const promised = promisedByItemDate(state.foodRequests, state.foodRequestLines, today);
+    return (itemId: string) => ({
+      today,
+      menuByDate: menu.get(itemId) ?? new Map(),
+      promisedByDate: promised.get(itemId) ?? new Map(),
+      incomingByDate: incoming.get(itemId) ?? new Map(),
+    });
   },
 
   adjustmentsFor: (itemId) => get().adjustments.filter((a) => a.itemId === itemId),
@@ -1474,14 +1579,12 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   // projected draw and any in-transit stock, capped by shelf life. Grouped per vendor.
   reconciledDraftOrders: (windowEndDate) => {
     const state = get();
-    const consMap = state.consumptionByItemDate();
-    const incMap = state.incomingByItemDate();
-    const today = todayStr();
     const vendorsById = new Map(state.vendors.map((v) => [v.id, v]));
     const byVendor = new Map<string, DraftOrder>();
+    const inputs = state.shelfInputs();
     for (const item of state.items) {
-      const inp = makeProjectionInput(item, today, consMap, incMap);
-      const need = coverageNeedBase(inp, windowEndDate, item.parLevelBase, item.shelfLifeDays);
+      const m = orderLineMath(item, inputs(item.id), windowEndDate);
+      const need = m.need;
       if (need <= 0) continue;
       const qty = Math.ceil(need / item.purchaseUnitInBase);
       if (qty <= 0) continue;
@@ -1496,7 +1599,8 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       order.lines.push({
         itemId: item.id, itemName: item.name, stockUnit: item.stockUnit,
         purchaseUnit: item.purchaseUnit, purchaseUnitInBase: item.purchaseUnitInBase,
-        onHandBase: item.onHandBase, neededBase: need, orderQty: qty,
+        // The on-shelf figure the Inventory tab shows, not the raw count.
+        onHandBase: m.onShelf, neededBase: need, orderQty: qty,
         unitPrice: item.unitPrice, lineTotal,
       });
       order.subtotal = tidy(order.subtotal + lineTotal);
@@ -1510,34 +1614,35 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
 
   orderMath: (windowEndDate) => {
     const state = get();
-    const consMap = state.consumptionByItemDate();
-    const incMap = state.incomingByItemDate();
     const today = todayStr();
-    const inWindow = (m: Map<string, number> | undefined) => {
-      let sum = 0;
-      if (m) for (const [d, b] of m) if (d > today && d <= windowEndDate) sum += b;
-      return sum;
-    };
+    const reqInWindow = requestDemandInWindow(state.foodRequests, state.foodRequestLines, today, windowEndDate, state.foodPrograms);
+    const pending = state.pendingRequestsInWindow(windowEndDate);
+    const inputs = state.shelfInputs();
     const rows = [];
     for (const item of state.items) {
-      const inp = makeProjectionInput(item, today, consMap, incMap);
-      const need = coverageNeedBase(inp, windowEndDate, item.parLevelBase, item.shelfLifeDays);
-      if (need <= 0) continue;
+      const m = orderLineMath(item, inputs(item.id), windowEndDate);
+      if (m.need <= 0) continue;
       rows.push({
+        ...m,
         item,
-        onHandNow: projectedOnHandBase(inp, today),
-        draw: inWindow(consMap.get(item.id)),
-        inTransit: inWindow(incMap.get(item.id)),
-        floor: item.parLevelBase,
-        projectedAtEnd: projectedOnHandBase(inp, windowEndDate),
-        need,
-        orderQty: Math.ceil(need / item.purchaseUnitInBase),
+        requests: reqInWindow.get(item.id)?.entries ?? [],
+        pending: pending.get(item.id)?.entries ?? [],
+        orderQty: Math.ceil(m.need / item.purchaseUnitInBase),
       });
     }
     return rows.sort((a, b) => a.item.name.localeCompare(b.item.name));
   },
 
-  criticalItems: () => get().items.filter((i) => stockStatus(i) === 'critical'),
+  pendingRequestsInWindow: (windowEndDate) => {
+    const state = get();
+    return pendingByItem(state.foodRequests, state.foodRequestLines, todayStr(), windowEndDate, state.foodPrograms);
+  },
+
+  // The same status the Inventory tiles count; reading the raw count here disagreed with them.
+  criticalItems: () => {
+    const pictures = get().shelfPictures();
+    return get().items.filter((i) => (pictures.get(i.id)?.status ?? stockStatus(i)) === 'critical');
+  },
 
   criticalDraftOrders: () => {
     const state = get();

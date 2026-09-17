@@ -825,11 +825,15 @@ export interface InventoryItem {
   allergens: string[];
   /** Dietary tags (vegetarian/vegan/kosher/halal), accommodations, kept apart from allergens. */
   dietary: string[];
+  /** Meat / dairy / pareve, as the kitchen set it. null = derived from category and flags (kosherTypeOf). */
+  kosherType: KosherType | null;
   notes: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }
+
+export type KosherType = 'meat' | 'dairy' | 'pareve';
 
 /**
  * One vendor's pack for an item, how that vendor sells it, in the item's base unit.

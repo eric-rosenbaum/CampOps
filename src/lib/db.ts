@@ -27,6 +27,7 @@ import type {
   CountSession, StorageMap, MenuCourse, MenuSubstitution, CommissaryFile,
 } from './types';
 import { todayStr } from '@/lib/utils';
+import { queryFoodRequestData, FOOD_REQUEST_TABLES, type FoodRequestData } from './foodRequestsDb';
 
 // ─── Camp ID ──────────────────────────────────────────────────────────────────
 // Set by campStore when a camp is selected, used by all write functions.
@@ -1664,6 +1665,7 @@ function rowToInventoryItem(r: Record<string, unknown>): InventoryItem {
     vendorId: (r.vendor_id as string) ?? null,
     allergens: (r.allergens as string[]) ?? [],
     dietary: (r.dietary as string[]) ?? [],
+    kosherType: (r.kosher_type as InventoryItem['kosherType']) ?? null,
     notes: (r.notes as string) ?? null,
     sortOrder: Number(r.sort_order ?? 0),
     createdAt: r.created_at as string,
@@ -1816,7 +1818,8 @@ function rowToRetreatMenuEntry(r: Record<string, unknown>): RetreatMenuEntry {
   };
 }
 
-export interface CommissaryMenuData {
+// Food requests ride the menu domain: they are kitchen demand, and this channel already feeds it.
+export interface CommissaryMenuData extends FoodRequestData {
   sessions: CommissarySession[];
   menuEntries: MenuEntry[];
   retreatMenuEntries: RetreatMenuEntry[];
@@ -1864,7 +1867,7 @@ async function loadCatalogData(campId: string): Promise<CommissaryCatalogData> {
 }
 
 async function loadMenuData(campId: string): Promise<CommissaryMenuData> {
-  const [sRes, mRes, rmRes, tRes, teRes, dcRes, meRes, coRes, subRes] = await Promise.all([
+  const [sRes, mRes, rmRes, tRes, teRes, dcRes, meRes, coRes, subRes, food] = await Promise.all([
     supabase.from('commissary_sessions').select('*').eq('camp_id', campId).order('start_date', { ascending: true }),
     supabase.from('menu_entries').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('retreat_menu_entries').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
@@ -1874,9 +1877,11 @@ async function loadMenuData(campId: string): Promise<CommissaryMenuData> {
     supabase.from('commissary_meal_events').select('*').eq('camp_id', campId).order('date', { ascending: true }),
     supabase.from('commissary_menu_courses').select('*').eq('camp_id', campId).order('sort_order', { ascending: true }),
     supabase.from('menu_substitutions').select('*').eq('camp_id', campId),
+    queryFoodRequestData(campId),
   ]);
-  assertLoaded('commissary menu', sRes, mRes, rmRes, tRes, teRes, dcRes, meRes, coRes, subRes);
+  assertLoaded('commissary menu', sRes, mRes, rmRes, tRes, teRes, dcRes, meRes, coRes, subRes, ...food.results);
   return {
+    ...food.build(),
     sessions: (sRes.data ?? []).map((r) => rowToSession(r as Record<string, unknown>)),
     menuEntries: (mRes.data ?? []).map((r) => rowToMenuEntry(r as Record<string, unknown>)),
     retreatMenuEntries: (rmRes.data ?? []).map((r) => rowToRetreatMenuEntry(r as Record<string, unknown>)),
@@ -1969,7 +1974,7 @@ function inventoryItemToRow(i: InventoryItem) {
     purchase_unit: i.purchaseUnit, purchase_unit_in_base: i.purchaseUnitInBase,
     unit_price: i.unitPrice, on_hand_base: i.onHandBase, par_level_base: i.parLevelBase,
     last_counted_at: i.lastCountedAt, shelf_life_days: i.shelfLifeDays,
-    vendor_id: i.vendorId, allergens: i.allergens, dietary: i.dietary, notes: i.notes,
+    vendor_id: i.vendorId, allergens: i.allergens, dietary: i.dietary, kosher_type: i.kosherType, notes: i.notes,
     sort_order: i.sortOrder, created_at: i.createdAt, updated_at: i.updatedAt,
   };
 }
@@ -2168,6 +2173,15 @@ export async function dbAddMenuEntry(m: MenuEntry) {
   if (error) console.error('dbAddMenuEntry error:', error.message);
 }
 
+/** A dish swapped or re-coursed in place, keeping its spot in the cell. */
+export async function dbUpdateMenuEntry(m: MenuEntry) {
+  const { error } = await supabase.from('menu_entries').update({
+    recipe_id: m.recipeId, item_id: m.itemId, item_qty_base: m.itemQtyBase, course: m.course,
+    label: m.label, sort_order: m.sortOrder, updated_at: m.updatedAt,
+  }).eq('id', m.id);
+  if (error) console.error('dbUpdateMenuEntry error:', error.message);
+}
+
 export async function dbDeleteMenuEntry(id: string) {
   const { error } = await supabase.from('menu_entries').delete().eq('id', id);
   if (error) console.error('dbDeleteMenuEntry error:', error.message);
@@ -2269,7 +2283,8 @@ export function subscribeToCommissaryMenu(campId: string, onUpdate: (d: Commissa
   return makeCommissaryChannel(
     `commissary-menu-${++commissaryChannelCount}`, campId,
     ['commissary_sessions', 'menu_entries', 'retreat_menu_entries', 'menu_templates', 'menu_template_entries',
-     'commissary_diet_counts', 'commissary_meal_events', 'commissary_menu_courses', 'menu_substitutions'],
+     'commissary_diet_counts', 'commissary_meal_events', 'commissary_menu_courses', 'menu_substitutions',
+     ...FOOD_REQUEST_TABLES],
     loadMenuData, onUpdate,
   );
 }

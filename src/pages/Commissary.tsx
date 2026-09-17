@@ -31,6 +31,11 @@ import { CountModal } from '@/components/commissary/CountModal';
 import { CoursesModal } from '@/components/commissary/CoursesModal';
 import { SubstitutionModal } from '@/components/commissary/SubstitutionModal';
 import { SettingsTab } from '@/components/commissary/SettingsTab';
+import { RequestsTab } from '@/components/foodRequests/RequestsTab';
+import { useCampClock } from '@/components/foodRequests/useCampClock';
+import { isPastDue, REQUESTS_VIEWS, type RequestsView } from '@/lib/foodRequests';
+import { useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 // Production guide, Cost and Waste tabs are archived. Their components, store selectors,
 // and DB loaders remain in place and unreachable, re-add the entries here (and the renders
@@ -42,6 +47,9 @@ const TABS: { id: CommissaryTab; label: string }[] = [
   { id: 'menu', label: 'Menu builder' },
   { id: 'allergy', label: 'Allergy program' },
   { id: 'ordering', label: 'Ordering' },
+  // Program food requests. Visible in both modes: a cooking club needs flour whether the kitchen
+  // is planning sessions or retreats.
+  { id: 'requests', label: 'Requests' },
   { id: 'settings', label: 'Settings' },
 ];
 
@@ -52,6 +60,57 @@ export function Commissary() {
   } = useCommissaryStore();
   const { can, canViewCamperHealth } = useAuth();
   const canManage = can('manageCommissary');
+  const foodRequests = useCommissaryStore((s) => s.foodRequests);
+  const waitingRequests = foodRequests.filter((r) => r.status === 'submitted').length;
+  // Pickups nobody came for count too: they need a Missed tap as much as a new request needs a decision.
+  const { timeZone, now } = useCampClock();
+  const overdueRequests = foodRequests.filter((r) => isPastDue(r, now, timeZone)).length;
+  const requestsBadge = waitingRequests + overdueRequests;
+
+  // Deep links: /commissary?tab=requests&request=<id>. The emails to the kitchen and the demo
+  // guide both land here, so the URL has to choose the tab rather than whatever was open last.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const openRequestId = searchParams.get('request');
+  // ?view=pickups|inbox|history picks the Requests view (the demo guide's hand-over step uses it).
+  const viewParam = searchParams.get('view');
+  const requestsView = REQUESTS_VIEWS.includes(viewParam as RequestsView) ? (viewParam as RequestsView) : null;
+  useEffect(() => {
+    if (tabParam && TABS.some((t) => t.id === tabParam)) setActiveTab(tabParam as CommissaryTab);
+  }, [tabParam, setActiveTab]);
+  // A deep link to a tab past a phone's width must not open on a tab you cannot see. Keyed on the
+  // tab, not every render, so a realtime reload never yanks a bar someone is scrolling.
+  const tabBarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = tabBarRef.current?.querySelector<HTMLElement>(`[data-tab="${activeTab}"]`);
+    const bar = tabBarRef.current;
+    if (el && bar && (el.offsetLeft + el.offsetWidth > bar.scrollLeft + bar.clientWidth || el.offsetLeft < bar.scrollLeft)) {
+      bar.scrollLeft = el.offsetLeft - 16;
+    }
+  }, [activeTab]);
+  function openRequest(id: string | null) {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', 'requests');
+    if (id) next.set('request', id); else next.delete('request');
+    setSearchParams(next, { replace: true });
+  }
+  function chooseRequestsView(v: RequestsView) {
+    // Keeps a shared link honest, without adding history entries for each view.
+    if (!searchParams.has('view')) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('view', v);
+    setSearchParams(next, { replace: true });
+  }
+  function openPrograms() {
+    // Straight to the Programs section, not the top of a long Settings page.
+    setActiveTab('settings');
+    setSearchParams({ tab: 'settings', section: 'programs' }, { replace: true });
+  }
+  function chooseTab(id: CommissaryTab) {
+    setActiveTab(id);
+    // A tab picked by hand wins over the link that opened the page, including on refresh.
+    if (searchParams.has('tab') || searchParams.has('request')) setSearchParams({}, { replace: true });
+  }
 
   const session = activeSession();
   const total = portions();
@@ -77,8 +136,11 @@ export function Commissary() {
     if (activeTab === 'inventory') {
       return (
         <div className="flex gap-2">
-          <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'vendor' })}>Vendors</Button>
-          <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'csvImport' })}>Import CSV</Button>
+          {/* On a phone these three squeezed the page title down to "K…"; the desk-work two wait for a wider screen. */}
+          <span className="hidden sm:contents">
+            <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'vendor' })}>Vendors</Button>
+            <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'csvImport' })}>Import CSV</Button>
+          </span>
           <Button size="sm" onClick={() => openModal({ kind: 'item' })}>+ Add item</Button>
         </div>
       );
@@ -90,9 +152,9 @@ export function Commissary() {
       // Adding campers requires health access, not just manageCommissary. The DB
       // would reject the write anyway, so don't offer a button that cannot work.
       if (!canViewCamperHealth) return undefined;
-      return <Button size="sm" onClick={() => openModal({ kind: 'camper' })}>+ Add camper</Button>;
+      return <Button size="sm" onClick={() => openModal({ kind: 'camper' })}>+ Add person</Button>;
     }
-    if (activeTab === 'ordering' || activeTab === 'settings') return undefined;
+    if (activeTab === 'ordering' || activeTab === 'settings' || activeTab === 'requests') return undefined;
     // Menu tab: session mode offers "+ New session"; retreats mode manages menus per retreat inside the builder.
     if (retreatsMode) return undefined;
     return <Button size="sm" onClick={() => openModal({ kind: 'session' })}>+ New session</Button>;
@@ -100,14 +162,16 @@ export function Commissary() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <Topbar title="Commissary" subtitle={subtitle} actions={topAction()} />
+      {/* The sidebar says Kitchen Manager; the page said Commissary, so it looked like a different place. */}
+      <Topbar title="Kitchen Manager" subtitle={subtitle} actions={topAction()} />
 
-      <div className="bg-paper-raised border-b border-border px-4 sm:px-7 flex-shrink-0 flex items-center justify-between gap-3 overflow-x-auto overflow-y-hidden no-scrollbar">
+      <div ref={tabBarRef} className="relative bg-paper-raised border-b border-border px-4 sm:px-7 flex-shrink-0 flex items-center justify-between gap-3 overflow-x-auto overflow-y-hidden no-scrollbar">
         <div className="flex">
           {visibleTabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              data-tab={tab.id}
+              onClick={() => chooseTab(tab.id)}
               className={`-mb-px whitespace-nowrap border-b-[3px] px-4 pb-2.5 pt-3 text-[13px] font-semibold transition-colors ${
                 activeTab === tab.id
                   ? 'border-red text-forest'
@@ -115,6 +179,14 @@ export function Commissary() {
               }`}
             >
               {tab.label}
+              {tab.id === 'requests' && requestsBadge > 0 && (
+                <span data-testid="requests-badge"
+                  title={`Needs you: ${[waitingRequests ? `${waitingRequests} waiting for a decision` : '', overdueRequests ? `${overdueRequests} late pickup${overdueRequests === 1 ? '' : 's'} to mark` : ''].filter(Boolean).join(', ')}`}
+                  aria-label={`${requestsBadge} need you`}
+                  className="ml-1.5 inline-grid min-w-[18px] place-items-center rounded-pill bg-red px-1 text-[10.5px] font-bold leading-[18px] text-paper">
+                  {requestsBadge}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -140,6 +212,7 @@ export function Commissary() {
         {activeTab === 'recipes' && <RecipesTab />}
         {activeTab === 'allergy' && !retreatsMode && <AllergyTab />}
         {activeTab === 'ordering' && <OrderingTab />}
+        {activeTab === 'requests' && <RequestsTab openRequestId={openRequestId} onOpenRequest={openRequest} view={requestsView} onViewChange={chooseRequestsView} onOpenPrograms={openPrograms} />}
         {activeTab === 'settings' && <SettingsTab />}
       </div>
 
@@ -148,7 +221,7 @@ export function Commissary() {
       {modal?.kind === 'adjust' && <AdjustStockModal itemId={modal.itemId} />}
       {modal?.kind === 'recipe' && <AddEditRecipeModal editId={modal.editId} />}
       {modal?.kind === 'menuEntry' && (
-        <MenuEntryModal weekNumber={modal.weekNumber} dayIndex={modal.dayIndex} mealPeriod={modal.mealPeriod} />
+        <MenuEntryModal weekNumber={modal.weekNumber} dayIndex={modal.dayIndex} mealPeriod={modal.mealPeriod} editId={modal.editId} />
       )}
       {modal?.kind === 'retreatMenuEntry' && (
         <RetreatMenuEntryModal retreatId={modal.retreatId} dayDate={modal.dayDate} mealPeriod={modal.mealPeriod} editId={modal.editId} />

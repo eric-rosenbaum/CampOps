@@ -6,13 +6,33 @@ import { AlertBanner } from '@/components/shared/AlertBanner';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
 import {
-  formatCurrency, formatQty, formatInStockUnit, ORDER_STATUS_LABELS, tidy, fromBase, pluralizeUnit,
+  formatCurrency, formatQty, formatInStockUnit, ORDER_STATUS_LABELS, tidy, formatPackQty, shortDay,
   orderToCsv, orderToPrintHtml, type ExportOrderLine, type DraftOrder,
   todayStr,
 } from '@/lib/commissaryUnits';
 import { AlertTriangle } from 'lucide-react';
 import { InlineNumberEdit } from './commissaryUi';
 import type { PurchaseOrder } from '@/lib/types';
+import { formatDay, type RequestDemandEntry } from '@/lib/foodRequests';
+
+/** What program requests put into an order line, keyed by item. */
+type RequestNotes = Map<string, { requests: RequestDemandEntry[]; pending: RequestDemandEntry[] }>;
+
+/**
+ * "3 lb for Cooking Club (Fri)", merged per program and day, so a kitchen can see on the order
+ * itself that requests are in it, without opening Show the math.
+ */
+function requestPhrase(entries: RequestDemandEntry[], fmt: (base: number) => string): string {
+  const merged = new Map<string, { who: string; day: string; base: number }>();
+  for (const e of entries) {
+    const key = `${e.who}|${e.pickupDate}`;
+    const cur = merged.get(key);
+    if (cur) cur.base += e.base;
+    // "Canoe Trips (Fri Sep 18)": the weekday alone was ambiguous across a two-week window.
+    else merged.set(key, { who: e.who, day: formatDay(e.pickupDate).replace(',', ''), base: e.base });
+  }
+  return [...merged.values()].map((m) => `${fmt(m.base)} for ${m.who} (${m.day})`).join(', ');
+}
 
 const STATUS_STYLES: Record<string, string> = {
   draft: 'bg-cream-dark text-ink border-border',
@@ -237,8 +257,9 @@ function OrderCard({ order }: { order: PurchaseOrder }) {
 
 // A LIVE reconciled order for one vendor. Always current (recomputed from projection);
 // editable inline; only persisted when Sent. Nothing here can go stale.
-function LiveOrderCard({ draft }: { draft: DraftOrder }) {
-  const { beginSend, vendors } = useCommissaryStore();
+function LiveOrderCard({ draft, requestNotes }: { draft: DraftOrder; requestNotes: RequestNotes }) {
+  const { beginSend, vendors, items } = useCommissaryStore();
+  const itemsById = new Map(items.map((i) => [i.id, i]));
   const { can } = useAuth();
   const canManage = can('manageCommissary');
   const [overrides, setOverrides] = useState<Record<string, number>>({});
@@ -279,18 +300,34 @@ function LiveOrderCard({ draft }: { draft: DraftOrder }) {
       </div>
 
       <div className="grid grid-cols-[2fr_1fr_1fr_1fr] min-w-[640px] sm:min-w-0 gap-3 px-4 py-2 bg-cream-dark/40 border-b border-border">
-        {['Item', 'On hand', 'Order', 'Total'].map((h) => <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>)}
+        {['Item', 'On shelf', 'Order', 'Total'].map((h) => (
+          <span key={h} title={h === 'On shelf' ? 'The same figure as Inventory: the last count, less the menu cooked since' : undefined}
+            className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>
+        ))}
       </div>
       {draft.lines.map((l) => {
         const q = qtyOf(l);
+        const item = itemsById.get(l.itemId);
+        // On shelf reads in the unit the shelf is counted in ("12 lb"), not as a fraction of a pack.
+        const fmt = (base: number) => (item ? formatInStockUnit(item, base) : formatQty(base / l.purchaseUnitInBase, l.purchaseUnit));
+        const notes = requestNotes.get(l.itemId);
+        const packSuffix = /^\d/.test(l.purchaseUnit.trim()) ? `× ${l.purchaseUnit}` : l.purchaseUnit;
         return (
-          <div key={l.itemId} className="grid grid-cols-[2fr_1fr_1fr_1fr] min-w-[640px] sm:min-w-0 gap-3 px-4 py-2 border-b border-border last:border-0 items-center">
-            <span className="text-[13px] text-forest truncate">{l.itemName}</span>
-            <span className="font-mono text-[12px] text-ink-soft">{formatQty(l.onHandBase / l.purchaseUnitInBase, l.purchaseUnit)}</span>
+          <div key={l.itemId} data-testid="live-order-line" className="grid grid-cols-[2fr_1fr_1fr_1fr] min-w-[640px] sm:min-w-0 gap-3 px-4 py-2 border-b border-border last:border-0 items-center">
+            <div className="min-w-0">
+              <span className="block text-[13px] text-forest truncate">{l.itemName}</span>
+              {notes && notes.requests.length > 0 && (
+                <span data-testid="order-line-requests" className="block text-[11px] text-ink-soft">Includes {requestPhrase(notes.requests, fmt)}</span>
+              )}
+              {notes && notes.pending.length > 0 && (
+                <span className="block text-[11px] text-amber-text">Not counted yet, waiting for a decision: {requestPhrase(notes.pending, fmt)}</span>
+              )}
+            </div>
+            <span className="font-mono text-[12px] text-ink-soft" data-testid="order-on-shelf">{fmt(l.onHandBase)}</span>
             {canManage ? (
-              <InlineNumberEdit value={q} min={0} suffix={l.purchaseUnit} widthClass="w-16"
+              <InlineNumberEdit value={q} min={0} suffix={packSuffix} widthClass="w-16"
                 onSave={(n) => setOverrides((o) => ({ ...o, [l.itemId]: n }))} />
-            ) : <span className="font-mono text-[12px] text-forest">{q} {l.purchaseUnit}</span>}
+            ) : <span className="font-mono text-[12px] text-forest">{formatPackQty(q, l.purchaseUnit)}</span>}
             <span className="font-mono text-[12px] text-forest">
               {l.unitPrice == null ? <span className="text-forest/25" title="No price set">-</span> : formatCurrency(tidy((l.unitPrice ?? 0) * q))}
             </span>
@@ -315,7 +352,7 @@ function LiveOrderCard({ draft }: { draft: DraftOrder }) {
 export function OrderingTab() {
   const {
     orders, reconciledDraftOrders, orderingWindow, orderMath,
-    createBlankOrder, activeSession, setActiveTab, items, vendors, criticalItems,
+    createBlankOrder, activeSession, setActiveTab, items, vendors, criticalItems, shelfPictures,
     mode, retreatCoverageStart, retreatCoverageEnd, setRetreatCoverage,
   } = useCommissaryStore();
   const { can, currentUser } = useAuth();
@@ -328,11 +365,17 @@ export function OrderingTab() {
   // Coverage window comes from the session's order cadence · no manual "generate" needed.
   const win = orderingWindow();
   const windowEnd = win.windowEnd;
-  const fmtDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  const fmtDay = shortDay;
   const windowLabel = fmtDay(windowEnd);
   const drafts = reconciledDraftOrders(windowEnd);
+  // Which order lines program requests are in. Computed with the same math the worksheet shows.
+  const mathRows = orderMath(windowEnd);
+  const requestNotes: RequestNotes = new Map(mathRows
+    .filter((r) => r.requests.length > 0 || r.pending.length > 0)
+    .map((r) => [r.item.id, { requests: r.requests, pending: r.pending }]));
   // Cheap filter over the subscribed items list; recomputes on each render by design.
   const critical = criticalItems();
+  const pictures = critical.length ? shelfPictures() : null;
 
   const open = orders.filter((o) => o.status === 'draft' || o.status === 'sent');
   const history = orders.filter((o) => o.status === 'received' || o.status === 'cancelled');
@@ -377,13 +420,13 @@ export function OrderingTab() {
             <AlertTriangle className="w-4 h-4 text-red flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-body font-medium text-red/90">
-                {critical.length} item{critical.length === 1 ? ' is' : 's are'} critically low, under half the reorder level.
+                {critical.length} item{critical.length === 1 ? ' is' : 's are'} critically low, the same {critical.length === 1 ? 'item' : 'items'} Inventory counts: running out within 3 days, or under half the minimum left.
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {critical.map((i) => (
                   <span key={i.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-tag text-[11px] bg-white/70 border border-red/20 text-red">
                     {i.name}
-                    <span className="font-mono opacity-70">{formatInStockUnit(i, i.onHandBase)}</span>
+                    <span className="font-mono opacity-70">{formatInStockUnit(i, pictures?.get(i.id)?.onShelf ?? i.onHandBase)} on shelf</span>
                   </span>
                 ))}
               </div>
@@ -439,14 +482,14 @@ export function OrderingTab() {
 
       {!retreatsMode && !session && (
         <p className="text-[12px] text-ink-faint mb-4">
-          No active session, so there's no menu to forecast against. Suggestions here are driven purely by
-          each item's minimum on hand. Pick a session on the Menu tab to order against the menu too.
+          No active session, so there's no menu to forecast against. Suggestions come from each item's minimum
+          on hand and from approved program requests. Pick a session on the Menu tab to order against the menu too.
         </p>
       )}
       {retreatsMode && (
         <p className="text-[12px] text-ink-faint mb-4">
-          Ordering across all retreats combined. The forecast sums every group's menu in the coverage window
-          above, netted against on-hand stock, in-transit deliveries, and each item's minimum.
+          Ordering across all retreats combined. The forecast sums every group's menu and approved program requests
+          in the coverage window above, netted against on-hand stock, in-transit deliveries, and each item's minimum.
         </p>
       )}
 
@@ -454,10 +497,10 @@ export function OrderingTab() {
         <div className="mb-6">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint mb-2">To order, live, always current</p>
           <div className="space-y-3">
-            {drafts.map((d) => <LiveOrderCard key={d.vendorId ?? '__unassigned'} draft={d} />)}
+            {drafts.map((d) => <LiveOrderCard key={d.vendorId ?? '__unassigned'} draft={d} requestNotes={requestNotes} />)}
           </div>
           <p className="text-[11px] text-ink-faint mt-2">
-            These recompute continuously from your counts and menu, tweak a quantity if you want, then Review &amp; send.
+            These recompute continuously from your counts, menu and approved program requests. Tweak a quantity if you want, then Review &amp; send.
             Nothing is saved as an order until you send it.
           </p>
 
@@ -468,33 +511,44 @@ export function OrderingTab() {
             Show the math, how each quantity is calculated
           </button>
           {showMath && (() => {
-            const rows = orderMath(windowEnd);
+            const rows = mathRows;
             return (
-              <div className="mt-2 bg-white rounded-card border border-border overflow-x-auto">
-                <div className="grid grid-cols-[1.6fr_1fr_1.1fr_0.8fr_1fr_1fr] min-w-[760px] sm:min-w-0 gap-2 px-4 py-2 bg-cream-dark/40 border-b border-border">
-                  {['Item', 'On hand now', `Used by ${windowLabel}`, 'Floor', 'In transit', '→ Order'].map((h) => (
+              <div className="mt-2 bg-white rounded-card border border-border overflow-x-auto" data-testid="order-math">
+                <div className="grid grid-cols-[1.6fr_1fr_1.1fr_1fr_0.8fr_1fr_1fr] min-w-[860px] sm:min-w-0 gap-2 px-4 py-2 bg-cream-dark/40 border-b border-border">
+                  {['Item', 'On shelf', `Menu use to ${windowLabel}`, 'Promised to programs', 'In transit', 'Min on hand', '→ Order'].map((h) => (
                     <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>
                   ))}
                 </div>
                 {rows.map((r) => {
-                  const su = r.item.stockUnit, sib = r.item.stockUnitInBase;
-                  const f = (base: number) => formatQty(fromBase(base, sib), su);
-                  const packs = `${tidy(r.orderQty).toLocaleString()} ${pluralizeUnit(r.item.purchaseUnit, r.orderQty)}`;
+                  const f = (base: number) => formatInStockUnit(r.item, base);
+                  const packs = formatPackQty(r.orderQty, r.item.purchaseUnit);
+                  // "6 lb for Cooking Club (Fri Sep 18)", merged per program and day.
+                  const forWhom = (entries: typeof r.requests) => requestPhrase(entries, f);
                   return (
-                    <div key={r.item.id} className="px-4 py-2 border-b border-border last:border-0">
-                      <div className="grid grid-cols-[1.6fr_1fr_1.1fr_0.8fr_1fr_1fr] min-w-[760px] sm:min-w-0 gap-2 items-center">
+                    <div key={r.item.id} className="px-4 py-2 border-b border-border last:border-0" data-testid="order-math-row" data-item={r.item.name}>
+                      <div className="grid grid-cols-[1.6fr_1fr_1.1fr_1fr_0.8fr_1fr_1fr] min-w-[860px] sm:min-w-0 gap-2 items-center">
                         <span className="text-[13px] text-forest truncate">{r.item.name}</span>
-                        <span className="font-mono text-[12px] text-ink">{f(r.onHandNow)}</span>
-                        <span className="font-mono text-[12px] text-ink">{f(r.draw)}</span>
-                        <span className="font-mono text-[12px] text-ink">{f(r.floor)}</span>
+                        <span className="font-mono text-[12px] text-ink" data-testid="math-on-shelf">{f(r.onShelf)}</span>
+                        <span className="font-mono text-[12px] text-ink">{r.menuUse > 0 ? f(r.menuUse) : '-'}</span>
+                        <span className="font-mono text-[12px] text-ink" title={forWhom(r.requests) || undefined}>
+                          {r.promised > 0 ? f(r.promised) : '-'}
+                          {r.pending.length > 0 && <span className="block font-sans text-[10.5px] text-amber-text">+{r.pending.length} waiting</span>}
+                        </span>
                         <span className="font-mono text-[12px] text-ink">{r.inTransit > 0 ? f(r.inTransit) : '-'}</span>
+                        <span className="font-mono text-[12px] text-ink">{f(r.floor)}</span>
                         <span className="font-mono text-[12px] font-medium text-forest">{packs}</span>
                       </div>
                       <p className="text-[11px] text-ink-faint mt-0.5 leading-relaxed">
-                        {f(r.onHandNow)} on hand − {f(r.draw)} used by {windowLabel}
-                        {r.inTransit > 0 && ` + ${f(r.inTransit)} in transit`} = {f(r.projectedAtEnd)} projected,
-                        {' '}below your {f(r.floor)} floor → order {f(r.need)} → rounds up to {packs}.
+                        {f(r.onShelf)} on shelf − {f(r.menuUse)} menu use through {windowLabel}
+                        {r.promised > 0 && ` − ${f(r.promised)} promised (${forWhom(r.requests)})`}
+                        {r.inTransit > 0 && ` + ${f(r.inTransit)} in transit`} = {r.projectedAtEnd < 0 ? `short ${f(-r.projectedAtEnd)}` : f(r.projectedAtEnd)} by {windowLabel},
+                        {' '}below your {f(r.floor)} minimum on hand → order {f(r.need)} → rounds up to {packs}.
                       </p>
+                      {r.pending.length > 0 && (
+                        <p className="text-[11px] text-amber-text mt-0.5 leading-relaxed">
+                          Waiting for a decision, not counted yet: {forWhom(r.pending)}.
+                        </p>
+                      )}
                     </div>
                   );
                 })}

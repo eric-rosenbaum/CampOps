@@ -18,9 +18,33 @@ npm run lint             # eslint. Baseline: 30 problems / 15 errors. Any increa
 npm run build            # tsc -b && vite build
 npm run test:campground  # SQL suite: campground + rentals (36 assertions)
 npm run test:compliance  # SQL suite: the compliance engine
+npm run test:unit        # Vitest: pure logic in src/**/__tests__ (node, TZ America/Vancouver)
+npm run test:sql         # every supabase/tests/*_test.sql against STAGING, no password needed
+npm run test:e2e         # Playwright journeys against staging, laptop + phone widths
 ```
 
-The SQL suites need a database URL:
+**Staging without a database password.** A checkout linked to staging (`supabase link
+--project-ref mvxnpofopbmljzpgnycg`) can run SQL through the Management API:
+
+```bash
+scripts/staging-sql.sh -c "select …"          # or a .sql file; refuses unless linked to staging
+scripts/apply-staging-migration.sh supabase/migrations/<version>_<name>.sql
+                                               # one transaction, ledger version = file version
+python3 scripts/check-function-drift.py <migration files>   # trap 7, automated
+bash scripts/run-sql-tests.sh food_requests    # one suite by name
+```
+
+`supabase/.temp/` is tracked in git and the main checkout is linked to **production**; in a
+worktree, `git update-index --skip-worktree supabase/.temp/*` before relinking, and never commit
+it. SQL suites should `set local role authenticated` with JWT claims so table RLS is exercised —
+setting claims alone runs as postgres and tests only function gates.
+
+**Playwright** uses the staging camp "Prospect QA" and `@example.com` logins created by
+`e2e/setup-qa-camp.sh` (password in the gitignored `.env.e2e`). Journey screenshots land in
+`e2e-screens/` (Playwright wipes `test-results/` every run) — read them, don't just generate them.
+`E2E_PORT` lets parallel worktrees each run their own dev server.
+
+The older runner still works with a database URL:
 
 ```bash
 STAGING_DB_URL='postgresql://postgres.<ref>:<pw>@aws-0-us-east-1.pooler.supabase.com:5432/postgres' \
@@ -174,6 +198,14 @@ script, use the native value setter plus an `input` event.
 
 **12. `text-decoration` is inherited and a child cannot remove it.** Strike the word, not the
 line.
+
+**13. Revoking EXECUTE from `anon` does not close a function.** Supabase grants every new
+function to PUBLIC (`=X/postgres` in `proacl`) as well as to anon/authenticated. Write
+`revoke execute on function … from public, anon, authenticated` and then grant exactly what is
+needed. The outbox was an open email relay for this reason until 2026-09-16.
+
+**14. Module switches read absent as ON.** A module added for particular camps must declare
+`defaultOn: false` in `src/lib/modules.ts`, or it appears in every camp's sidebar on deploy.
 
 ## 7. Working habits this project expects
 

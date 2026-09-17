@@ -48,6 +48,7 @@ begin
   delete from camp_assets       where camp_id = camp;
   delete from scheduled_messages where camp_id = camp;
   delete from service_vendors   where camp_id = camp;
+  delete from camp_work_defaults where camp_id = camp;
   delete from work_checklist_templates where camp_id = camp;
 
   insert into camps (id, name, slug, status, timezone)
@@ -97,8 +98,12 @@ begin
   insert into work_checklist_templates (camp_id, name, trade, items) values
     (camp, 'Program space reset', 'housekeeping', '[{"text":"Stack chairs"},{"text":"Wipe tables"}]'::jsonb)
   returning id into tmpl_prog;
-  -- approve_space_request() looks the program template up BY NAME, so the fixture has to use
-  -- the real name rather than a test-prefixed one.
+  -- Since 2026-09-13 nothing looks a checklist up by name: the camp chooses, per job, in
+  -- camp_work_defaults. The fixture makes the same choices a camp would, or the set-up work order
+  -- correctly gets no steps and T16 fails for the wrong reason.
+  insert into camp_work_defaults (camp_id, purpose, template_id) values
+    (camp, 'space_setup', tmpl_prog), (camp, 'space_reset', tmpl_prog), (camp, 'room_turnover', tmpl_turn)
+  on conflict (camp_id, purpose) do update set template_id = excluded.template_id;
 
   insert into work_routing (camp_id, trade, default_assignee_id)
   values (camp, 'housekeeping', u_house)

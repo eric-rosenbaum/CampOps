@@ -4,7 +4,9 @@ import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { generateId } from '@/lib/utils';
-import type { InventoryCategory, StorageLocation, CommissaryVendor, ItemVendorPack, CatalogProduct } from '@/lib/types';
+import type { InventoryCategory, StorageLocation, CommissaryVendor, ItemVendorPack, CatalogProduct, KosherType } from '@/lib/types';
+import { KOSHER_LABELS, KOSHER_TYPES, derivedKosherType } from '@/lib/kosher';
+import { useCampStore } from '@/store/campStore';
 import {
   ALLERGENS, ALLERGEN_LABELS, DIET_FLAGS, DIET_FLAG_LABELS, CATEGORY_LABELS, STORAGE_LABELS,
   STOCK_UNIT_OPTIONS, STOCK_UNIT_GROUPS, resolveStockUnit, BASE_UNIT, toBase, tidy,
@@ -103,6 +105,9 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
   // Allergens now also hold the diet flags (contains meat / animal products); item.dietary retired.
   const [allergens, setAllergens] = useState<string[]>(existing?.allergens ?? []);
   const [notes, setNotes] = useState(existing?.notes ?? '');
+  // '' = work it out from the category and flags (shown as "Automatic: Meat").
+  const [kosher, setKosher] = useState<KosherType | ''>(existing?.kosherType ?? '');
+  const kosherKitchen = Boolean(useCampStore((s) => s.currentCamp?.dietaryDefaults?.kosher));
 
   // "Add from catalog"autofill name/category/unit/pack/allergens from the shared catalog.
   const [catalogQuery, setCatalogQuery] = useState('');
@@ -222,6 +227,7 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
       vendorId: def?.vendorId ?? null,
       allergens,
       dietary: [],
+      kosherType: kosher || null,
       notes: notes.trim() || null,
     };
 
@@ -419,6 +425,18 @@ export function AddEditItemModal({ editId }: { editId?: string }) {
               </button>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label className={labelClass} htmlFor="item-kosher">Kosher</label>
+          <select id="item-kosher" value={kosher} onChange={(e) => setKosher(e.target.value as KosherType | '')} className={inputClass}>
+            <option value="">Automatic: {KOSHER_LABELS[derivedKosherType({ name, category, allergens })]}</option>
+            {KOSHER_TYPES.map((k) => <option key={k} value={k}>{KOSHER_LABELS[k]}</option>)}
+          </select>
+          <p className="text-[11px] text-ink-faint mt-1">
+            Automatic reads the category and flags: proteins are meat, dairy is dairy (eggs and fish are pareve).
+            {kosherKitchen ? ' The menu builder uses this to keep meat and dairy apart.' : ' Used when the kitchen serves fully kosher.'}
+          </p>
         </div>
 
         <div>

@@ -3,8 +3,10 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Wrench,
   Waves, ShieldCheck, Truck, Building2, UtensilsCrossed, Settings, LogOut, CalendarRange, Lock,
-  ClipboardCheck,
+  ClipboardCheck, ShoppingBasket, Car, ReceiptText,
 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+import { useDemoBrief } from '@/lib/useDemoBrief';
 import { SidebarContours } from '@/components/shared/SidebarContours';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
 import { useAuth } from '@/lib/auth';
@@ -60,9 +62,11 @@ interface NavItem {
   module?: ModuleKey;
 }
 
+const demoGuideItem: NavItem = { path: '/demo-guide', label: 'Demo guide', icon: Sparkles, end: true };
+
 const todayItems: NavItem[] = [
-  { path: '/home', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { path: '/my-tasks', label: 'My Tasks', icon: CheckSquare, end: false },
+  { path: '/home', label: 'Dashboard', icon: LayoutDashboard, end: true, module: 'dashboard' },
+  { path: '/my-tasks', label: 'My Tasks', icon: CheckSquare, end: false, module: 'tasks' },
 ];
 
 const facilityItems: NavItem[] = [
@@ -85,6 +89,10 @@ const facilityItems: NavItem[] = [
 
 const commissaryItems: NavItem[] = [
   { path: '/commissary', label: 'Kitchen Manager', icon: UtensilsCrossed, end: false, module: 'commissary' },
+  // For the people who ASK the kitchen (program leads), who should not have to find a form inside
+  // the kitchen's own inventory screens. Named for what it does: as "Food requests" the kitchen
+  // opened it looking for the inbox of requests to approve, which lives in Kitchen Manager.
+  { path: '/food-requests', label: 'Ask the kitchen', icon: ShoppingBasket, end: false, module: 'commissary' },
 ];
 
 const aquaticsItems: NavItem[] = [
@@ -93,6 +101,16 @@ const aquaticsItems: NavItem[] = [
 
 const retreatItems: NavItem[] = [
   { path: '/retreats', label: 'Retreat Manager', icon: CalendarRange, end: false, module: 'retreats' },
+];
+
+// Town Trips is sold to particular camps (defaultOn: false), so for most camps this section is
+// filtered to nothing and disappears.
+const logisticsItems: NavItem[] = [
+  { path: '/trips', label: 'Town Trips', icon: Car, end: false, module: 'trips' },
+];
+
+const financeItems: NavItem[] = [
+  { path: '/receipts', label: 'Receipts', icon: ReceiptText, end: false, module: 'receipts' },
 ];
 
 const settingsItems: NavItem[] = [
@@ -150,12 +168,23 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
     canAccessModule() ? items.filter((i) => !i.module || modules.enabled(i.module)) : []
   );
 
+  // A demo camp's first nav item is the guide written for the prospect, so the page they landed
+  // on is one click away from anywhere they wander.
+  const isDemoCamp = currentCamp?.accountType === 'trial' || currentCamp?.accountType === 'demo';
+  const demoBrief = useDemoBrief(currentCamp?.id, isDemoCamp);
   const navSections = [
-    { section: 'Today', items: todayItems },
+    // Today's pages follow the camp's switches but not the viewer rule: a viewer still has a
+    // dashboard.
+    { section: 'Today', items: [
+      ...(demoBrief ? [demoGuideItem] : []),
+      ...todayItems.filter((i) => !i.module || modules.enabled(i.module)),
+    ] },
     { section: 'Facilities', items: visible(facilityItems) },
     { section: 'Commissary', items: visible(commissaryItems) },
     { section: 'Aquatics', items: visible(aquaticsItems) },
     { section: 'Retreats', items: visible(retreatItems) },
+    { section: 'Logistics', items: visible(logisticsItems) },
+    { section: 'Finance', items: visible(financeItems) },
   ].filter((s) => s.items.length > 0);
 
   return (
@@ -168,8 +197,12 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
           aria-hidden="true"
         />
       )}
+      {/* No `relative` here. It was added beside `fixed` on 2026-08-22 and, because Tailwind emits
+          `relative` after `fixed`, it won: below `lg` the off-canvas drawer stayed in the flex row
+          and every page on a phone was pushed 228px right into a sliver of the screen. `fixed` and
+          `lg:sticky` are both positioned, which is all the contours layer inside needs. */}
       <aside
-        className={`relative h-screen bg-forest flex flex-col flex-shrink-0 overflow-hidden
+        className={`h-screen bg-forest flex flex-col flex-shrink-0 overflow-hidden
           fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out
           w-sidebar min-w-sidebar
           ${open ? 'translate-x-0' : '-translate-x-full'}

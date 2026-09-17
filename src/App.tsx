@@ -8,6 +8,9 @@ import { useCampStore } from '@/store/campStore';
 
 // Public
 import { PublicReportForm } from '@/pages/report/PublicReportForm';
+import { PublicFoodRequest } from '@/pages/food/PublicFoodRequest';
+import { PublicFoodStatus } from '@/pages/food/PublicFoodStatus';
+import { FoodRequests } from '@/pages/FoodRequests';
 
 // Auth pages
 import { Login } from '@/pages/auth/Login';
@@ -39,6 +42,8 @@ import { BuildingSystems } from '@/pages/BuildingSystems';
 import { Compliance } from '@/pages/Compliance';
 import { Commissary } from '@/pages/Commissary';
 import { Retreats } from '@/pages/Retreats';
+import { Receipts } from '@/pages/Receipts';
+import { ReceiptsDataLoader } from '@/components/receipts/ReceiptsDataLoader';
 import { InquiryForm } from '@/pages/portal/InquiryForm';
 import { RetreatPortal } from '@/pages/portal/RetreatPortal';
 import { StaffIntake } from '@/pages/StaffIntake';
@@ -47,9 +52,12 @@ import { PrivacyPolicy } from '@/pages/legal/PrivacyPolicy';
 import { SecurityOverview } from '@/pages/legal/SecurityOverview';
 import { Dpa } from '@/pages/legal/Dpa';
 import { LandingPage } from '@/pages/landing/LandingPage';
+import { Trips } from '@/pages/Trips';
+import { TripsDataLoader } from '@/components/trips/TripsDataLoader';
 
 // My Tasks
 import { MyTasks } from '@/pages/MyTasks';
+import { DemoGuide } from '@/pages/demo/DemoGuide';
 
 // Settings
 import { Team } from '@/pages/settings/Team';
@@ -95,12 +103,31 @@ import { useRetreatStore } from '@/store/retreatStore';
 import { loadLocations, subscribeToLocations } from '@/lib/locationsDb';
 import { useLocationStore } from '@/store/locationStore';
 import { useCampStore as useCamp } from '@/store/campStore';
-import { useModules, type ModuleKey } from '@/lib/modules';
+import { useModules, firstEnabledPath, type ModuleKey } from '@/lib/modules';
+import { useDemoBrief } from '@/lib/useDemoBrief';
 
 /** The old Issues route. Kept forever: stickers and bookmarks outlive a rename. */
 function LegacyIssuesRedirect() {
   const location = useLocation();
   return <Navigate to={`/campground${location.search}${location.hash}`} replace />;
+}
+
+/**
+ * /home is where every sign-in, demo link and "back to the dashboard" lands, so a camp with the
+ * dashboard switched off is forwarded rather than redirected in a loop: to its demo guide if it
+ * has one, otherwise to the first page it does have.
+ */
+function HomeEntry() {
+  const { currentCamp } = useCamp();
+  const modules = useModules();
+  const isDemoCamp = currentCamp?.accountType === 'trial' || currentCamp?.accountType === 'demo';
+  const brief = useDemoBrief(currentCamp?.id, isDemoCamp);
+  if (!currentCamp) return null;
+  if (modules.enabled('dashboard')) {
+    return <Gate of={['issues', 'tasks']} label="Building your dashboard"><HomeRouter /></Gate>;
+  }
+  if (brief === undefined) return null;
+  return <Navigate to={brief ? '/demo-guide' : firstEnabledPath(modules.enabled)} replace />;
 }
 
 function HomeRouter() {
@@ -187,6 +214,7 @@ function CampDataLoader() {
     setCountSessions, setStorageMap, setTemplates, setTemplateEntries,
     setDietCounts, setMealEvents, setExpenses,
     setCourses, setSubstitutions, setFiles,
+    setFoodPrograms, setFoodRequests, setFoodRequestLines, setFoodRequestSettings,
   } = useCommissaryStore();
   const {
     setRetreats, setSpaces, setHousing, setHousingVersions, setGuests: setRetreatGuests, setDocuments: setRetreatDocs,
@@ -295,6 +323,10 @@ function CampDataLoader() {
       setMealEvents(d.mealEvents);
       setCourses(d.courses);
       setSubstitutions(d.substitutions);
+      setFoodPrograms(d.foodPrograms);
+      setFoodRequests(d.foodRequests);
+      setFoodRequestLines(d.foodRequestLines);
+      setFoodRequestSettings(d.foodRequestSettings);
     };
     const applyCommOrders = (d: NonNullable<Awaited<ReturnType<typeof loadCommissaryOrders>>>) => {
       setOrders(d.orders);
@@ -600,6 +632,9 @@ export default function App() {
           {/* Public, handles auth inline */}
           <Route path="/join" element={<JoinCamp />} />
           <Route path="/report/:camp" element={<PublicReportForm />} />
+          {/* A program's no-login link to the kitchen, and the requester's status page. */}
+          <Route path="/food/:token" element={<PublicFoodRequest />} />
+          <Route path="/food/status/:token" element={<PublicFoodStatus />} />
           {/* One sticker, two audiences. /l/:token renders the location hub for a signed-in
               member of that camp and the public report form for everyone else — a camp cannot
               manage two sticker types per door. Deliberately OUTSIDE ProtectedRoute: the whole
@@ -641,12 +676,14 @@ export default function App() {
 
             {/* Authenticated + camp required */}
             <Route element={<CampRoute />}>
-              <Route element={<><CampDataLoader /><Layout /></>}>
+              {/* The opt-in loaders come after CampDataLoader: their loads must land after its hydration reset. */}
+              <Route element={<><CampDataLoader /><TripsDataLoader /><ReceiptsDataLoader /><Layout /></>}>
                 {/* Each module waits for its own data before rendering. Gating here rather
                     than inside every page keeps it to one list and out of the pages' hook
                     order. See <Gate> for why an empty state is the wrong thing to show. */}
-                <Route path="/home" element={<Gate of={['issues', 'tasks']} label="Building your dashboard"><HomeRouter /></Gate>} />
-                <Route path="/my-tasks" element={<Gate of={['tasks']} label="Loading your tasks"><MyTasks /></Gate>} />
+                <Route path="/home" element={<HomeEntry />} />
+                <Route path="/my-tasks" element={<ModuleRoute of="tasks"><Gate of={['tasks']} label="Loading your tasks"><MyTasks /></Gate></ModuleRoute>} />
+                <Route path="/demo-guide" element={<DemoGuide />} />
                 <Route
                   path="/campground"
                   element={(
@@ -683,7 +720,13 @@ export default function App() {
                 <Route path="/assets" element={<ModuleRoute of="assets"><Gate of={['assets', 'locations']} label="Opening assets & vehicles"><AssetVehicles /></Gate></ModuleRoute>} />
                 <Route path="/building" element={<ModuleRoute of="building"><Gate of={['building', 'locations']} label="Opening building systems"><BuildingSystems /></Gate></ModuleRoute>} />
                 <Route path="/commissary" element={<ModuleRoute of="commissary"><Gate of={COMMISSARY_DOMAINS} label="Opening the kitchen manager"><Commissary /></Gate></ModuleRoute>} />
+                <Route path="/food-requests" element={<ModuleRoute of="commissary"><Gate of={['commissary-inventory', 'commissary-menu']} label="Opening food requests"><FoodRequests /></Gate></ModuleRoute>} />
                 <Route path="/retreats" element={<ModuleRoute of="retreats"><Gate of={['retreats', 'locations']} label="Opening the retreat manager"><Retreats /></Gate></ModuleRoute>} />
+                {/* Opt-in: only camps sold Town Trips. ModuleRoute redirects before the Gate renders, so a
+                    camp without it never waits on a `trips` load that TripsDataLoader skipped. */}
+                <Route path="/trips" element={<ModuleRoute of="trips"><Gate of={['trips']} label="Opening town trips"><Trips /></Gate></ModuleRoute>} />
+                <Route path="/receipts" element={<ModuleRoute of="receipts"><Gate of={['receipts']} label="Opening receipts"><Receipts /></Gate></ModuleRoute>} />
+                <Route path="/receipts/reconcile" element={<ModuleRoute of="receipts"><Gate of={['receipts']} label="Opening receipts"><Receipts /></Gate></ModuleRoute>} />
                 <Route path="/settings" element={<CampSettings />} />
                 <Route path="/settings/team" element={<Team />} />
                 {/* Staff is a Camp Info tab now; this path deep-links straight to it. */}

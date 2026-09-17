@@ -211,12 +211,17 @@ export function tidy(n: number, places = 2): number {
 
 // Short symbol units (lb, oz, ea, tsp…) never pluralize; word units follow basic
 // English rules so a cook never sees "4 boxs" or "2 loafs".
-const NO_PLURAL = new Set(['oz', 'lb', 'fl oz', 'tsp', 'tbsp', 'each', 'ea']);
+// "dozen" is a count word: "2 dozen eggs", never "2 dozens".
+const NO_PLURAL = new Set(['oz', 'lb', 'fl oz', 'tsp', 'tbsp', 'each', 'ea', 'dozen']);
 const IRREGULAR_PLURALS: Record<string, string> = { loaf: 'loaves', leaf: 'leaves', half: 'halves' };
 
 /** Pluralize a stock/purchase unit for display: box→boxes, loaf→loaves, berry→berries. */
 export function pluralizeUnit(unit: string, n: number): string {
-  if (n === 1 || NO_PLURAL.has(unit)) return unit;
+  // "Dozen" typed with a capital is still dozen: it used to come out "Dozens".
+  if (n === 1 || NO_PLURAL.has(unit.trim().toLowerCase())) return unit;
+  // "case of 12" is counted in cases: "2 cases of 12", never "2 case of 12s".
+  const of = /^(.+?) (of .+)$/.exec(unit);
+  if (of) return `${pluralizeUnit(of[1], n)} ${of[2]}`;
   if (IRREGULAR_PLURALS[unit]) return IRREGULAR_PLURALS[unit];
   if (/(s|x|z|ch|sh)$/i.test(unit)) return `${unit}es`;          // box→boxes, dish→dishes
   if (/[^aeiou]y$/i.test(unit)) return `${unit.slice(0, -1)}ies`; // berry→berries
@@ -229,8 +234,27 @@ export function formatQty(qty: number, unit: string): string {
   return `${n.toLocaleString()} ${pluralizeUnit(unit, n)}`;
 }
 
-export function formatInStockUnit(item: InventoryItem, base: number): string {
-  return formatQty(fromBase(base, item.stockUnitInBase), item.stockUnit);
+// Units a kitchen only ever counts whole: nobody has 319.6 apples.
+const WHOLE_ONLY_UNITS = new Set(['each', 'ea', 'head', 'piece', 'pc', 'count', 'unit']);
+
+/**
+ * A shelf quantity at the precision a cook reads it: whole for things counted whole, whole when a
+ * pack count is within a tenth of whole ("15.99 bags" is 16 bags), one decimal otherwise
+ * ("0.48 lb" is 0.5 lb). The demo showed "12.07 dozen" eggs and "15.99 bags".
+ */
+export function roundForDisplay(n: number, dimension: UnitDimension, unit: string): number {
+  if (!Number.isFinite(n)) return 0;
+  const whole = Math.round(n);
+  if (dimension === 'count' && WHOLE_ONLY_UNITS.has(unit.trim().toLowerCase())) return whole;
+  if (Math.abs(n - whole) < (dimension === 'count' ? 0.1 : 0.05)) return whole;
+  if (Math.abs(n) < 0.1) return Math.round(n * 100) / 100;
+  return Math.round(n * 10) / 10;
+}
+
+/** "12 dozen", "0.5 lb", "60 heads": a base quantity in the item's stock unit, rounded for reading. */
+export function formatInStockUnit(item: Pick<InventoryItem, 'stockUnitInBase' | 'stockUnit' | 'dimension'>, base: number): string {
+  const n = roundForDisplay(fromBase(base, item.stockUnitInBase), item.dimension, item.stockUnit);
+  return `${n.toLocaleString()} ${pluralizeUnit(item.stockUnit, n)}`;
 }
 
 export function onHandInStockUnit(item: InventoryItem): number {
@@ -1074,88 +1098,208 @@ export function nextWeekdayOnOrAfter(weekday: string | null, fromDateStr: string
   return addDaysStr(fromDateStr, delta);
 }
 
-// ─── Reconciled projection: what we'll actually have, day by day ─────────────
-// On-hand is the perpetual "book" value (counts, deliveries, adjustments). Projected
-// on-hand = book − theoretical menu consumption since the last count + future (in-transit)
-// deliveries. The weekly count overwrites the book and resets the drift. This unifies the
-// old menu-vs-par toggle: par is now a floor, menu is the forecast draw, one calculation.
+// ─── The shelf: one set of numbers every tab explains the same way ──────────────
+//
+// Found in a kitchen manager's review of the demo, where the Inventory row said "On shelf 154 ·
+// promised 7 · left 94" for flour counted at 150 and the numbers jumped when anything happened:
+//
+//   * The count's DAY was read as `lastCountedAt.slice(0, 10)`, the UTC date. A count taken at
+//     9:56pm in Toronto is "tomorrow" in UTC, so the menu use since the count started tomorrow,
+//     and "on shelf" added today's promised pickups back on top of an unreduced count: 150 + 4 = 154.
+//     Marking that pickup Missed took the 4 back off, which read as food vanishing (39 → 35).
+//   * "Left after promises" silently subtracted the MENU as well, through the last promised pickup
+//     day. Approving 5 lb for a pickup next week stretched that window by a week of meals
+//     (89.4 → 20.4); picking up the only chips promise collapsed it to today (0 → 8.5 left).
+//
+// Now there are named terms, each on screen, and the window is a stated date that does not move
+// when a request is approved or handed over:
+//
+//   counted       the book: last count, plus deliveries received and adjustments (pickups write one)
+//   usedSinceCount planned menu use on the days after the count day, up to yesterday
+//   onShelf       counted − usedSinceCount
+//   promised      every approved/ready program request not yet picked up (past-due ones included:
+//                 the food is still set aside until someone taps Picked up or Missed)
+//   menuUse       planned menu use from today through `through` (the next delivery)
+//   incoming      sent orders due from today through `through`
+//   left          onShelf − promised − menuUse + incoming
+//
+// Ordering uses the same onShelf and the same terms over its own window (orderLineMath).
 
-export interface ProjectionInput {
-  onHandBase: number;
-  /** Deplete consumption from here forward. The last count date, or today if never counted. */
-  anchorDate: string;
+export type BaseByDate = Map<string, number>;
+
+export interface ShelfInput {
   today: string;
-  /** This item's consumption per date (base units), from the menu. */
-  consumptionByDate: Map<string, number>;
-  /** This item's future (sent, not-yet-received) deliveries per date (base units). */
-  incomingByDate: Map<string, number>;
+  /** Planned menu use per date (base units). Never written to the book. */
+  menuByDate: BaseByDate;
+  /** Promised pickups per date (base). The caller files past-due pickups under today. */
+  promisedByDate: BaseByDate;
+  /** Sent, not-yet-received deliveries per expected date (base). */
+  incomingByDate: BaseByDate;
 }
 
-/** Projected on-hand (base units) at `targetDate`. */
-export function projectedOnHandBase(inp: ProjectionInput, targetDate: string): number {
-  let level = inp.onHandBase;
-  // Menu consumption is never written to the book, so subtract all of it from the anchor
-  // (last count) through the target, that's the theoretical drawdown.
-  for (const [d, base] of inp.consumptionByDate) {
-    if (d >= inp.anchorDate && d <= targetDate) level -= base;
-  }
-  // The book already holds deliveries received up to now; only FUTURE ones are new stock.
-  for (const [d, base] of inp.incomingByDate) {
-    if (d > inp.today && d <= targetDate) level += base;
-  }
-  return tidy(level, 4);
+/** The camp-local calendar day a count was taken on. Never the UTC date of the instant. */
+export function countedDay(lastCountedAt: string | null): string | null {
+  if (!lastCountedAt) return null;
+  // A bare YYYY-MM-DD is already a calendar day.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(lastCountedAt)) return lastCountedAt;
+  const d = new Date(lastCountedAt);
+  return Number.isNaN(d.getTime()) ? null : toDateStr(d);
 }
 
-/** First date (today…horizon) the item is projected to hit zero, or null if it never does. */
-export function runOutDate(inp: ProjectionInput, horizonDate: string): string | null {
-  for (const d of datesInRange(inp.today, horizonDate)) {
-    if (projectedOnHandBase(inp, d) <= 0) return d;
-  }
-  return null;
+function sumBetween(m: BaseByDate, from: string, to: string): number {
+  let sum = 0;
+  for (const [d, base] of m) if (d >= from && d <= to) sum += base;
+  return sum;
 }
 
-/** Days of cover from today until the item runs out, or null if it doesn't within the horizon. */
-export function daysOfCover(inp: ProjectionInput, horizonDate: string): number | null {
-  const out = runOutDate(inp, horizonDate);
-  return out == null ? null : Math.max(0, daysBetween(inp.today, out));
+function sumAll(m: BaseByDate): number {
+  let sum = 0;
+  for (const base of m.values()) sum += base;
+  return sum;
+}
+
+export interface ShelfNow {
+  counted: number;
+  countedOn: string | null;
+  usedSinceCount: number;
+  onShelf: number;
+}
+
+/** What should physically be on the shelf this morning. */
+export function shelfNow(item: Pick<InventoryItem, 'onHandBase' | 'lastCountedAt'>, menuByDate: BaseByDate, today: string): ShelfNow {
+  const countedOn = countedDay(item.lastCountedAt);
+  // Meals on the count day itself are taken to be in the count (counts are taken after service).
+  const usedSinceCount = countedOn && countedOn < today
+    ? tidy(sumBetween(menuByDate, addDaysStr(countedOn, 1), addDaysStr(today, -1)), 4)
+    : 0;
+  return {
+    counted: item.onHandBase,
+    countedOn,
+    usedSinceCount,
+    onShelf: tidy(Math.max(0, item.onHandBase - usedSinceCount), 4),
+  };
+}
+
+export interface ShelfBreakdown extends ShelfNow {
+  promised: number;
+  /** Last day the menu use and deliveries are counted through. */
+  through: string;
+  menuUse: number;
+  incoming: number;
+  /** onShelf − promised − menuUse + incoming. Negative means short. */
+  left: number;
+  /** First day (today … horizon) the shelf is projected to be empty, or null. */
+  runOut: string | null;
+  cover: number | null;
+  status: StockStatus;
+}
+
+export function shelfBreakdown(
+  item: InventoryItem,
+  inp: ShelfInput,
+  through: string,
+  horizon: string,
+): ShelfBreakdown {
+  const now = shelfNow(item, inp.menuByDate, inp.today);
+  const promised = tidy(sumAll(inp.promisedByDate), 4);
+  const menuUse = tidy(sumBetween(inp.menuByDate, inp.today, through), 4);
+  const incoming = tidy(sumBetween(inp.incomingByDate, inp.today, through), 4);
+  const left = tidy(now.onShelf - promised - menuUse + incoming, 4);
+
+  let runOut: string | null = null;
+  let level = now.onShelf;
+  // Anything promised for a day before today (past due) is filed under today by the caller.
+  for (const d of datesInRange(inp.today, horizon)) {
+    level += (inp.incomingByDate.get(d) ?? 0) - (inp.menuByDate.get(d) ?? 0) - (inp.promisedByDate.get(d) ?? 0);
+    if (tidy(level, 4) <= 0) {
+      runOut = d;
+      break;
+    }
+  }
+  const cover = runOut == null ? null : Math.max(0, daysBetween(inp.today, runOut));
+
+  let status: StockStatus;
+  if (item.lastCountedAt == null && promised <= 0) {
+    // Never counted and nothing promised: nothing worth projecting, keep the count rule.
+    status = stockStatus(item);
+  } else {
+    const par = item.parLevelBase;
+    if (left <= 0 || (cover != null && cover <= 3) || (par > 0 && left < par * CRITICAL_FRACTION)) status = 'critical';
+    else if ((par > 0 && left < par) || (cover != null && cover <= 7)) status = 'low';
+    else status = 'ok';
+  }
+  return { ...now, promised, through, menuUse, incoming, left, runOut, cover, status };
+}
+
+/** "Fri Sep 18" from a camp-local YYYY-MM-DD. */
+export function shortDay(dateStr: string): string {
+  return parseDateStr(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+/** "counted 150 lb on Wed Sep 16", or null for an item never counted. */
+export function countedPhrase(item: Pick<InventoryItem, 'stockUnitInBase' | 'stockUnit' | 'dimension'>, s: ShelfNow): string | null {
+  if (!s.countedOn) return null;
+  return `counted ${formatInStockUnit(item, s.counted)} on ${shortDay(s.countedOn)}`;
 }
 
 /**
- * Base-unit quantity to order so the item ends the coverage window at or above its floor,
- * accounting for menu draw and in-transit stock. Perishables are capped so you don't buy
- * more than roughly a shelf-life's worth.
+ * The shelf as one sentence, every term named, so a number on screen can always be checked:
+ * "150 lb on shelf − 7 lb promised − 15 lb menu through Fri Sep 18 = 128 lb left".
  */
-export function coverageNeedBase(
-  inp: ProjectionInput,
-  windowEndDate: string,
-  floorBase: number,
-  shelfLifeDays: number | null,
-): number {
-  const availableAtEnd = projectedOnHandBase(inp, windowEndDate);
-  let need = Math.max(0, floorBase - availableAtEnd);
-  if (need > 0 && shelfLifeDays != null) {
-    const capEnd = addDaysStr(inp.today, shelfLifeDays);
-    let shelfCons = 0;
-    for (const [d, base] of inp.consumptionByDate) if (d >= inp.today && d <= capEnd) shelfCons += base;
-    need = Math.min(need, shelfCons + floorBase);   // at most a shelf-window of draw, plus the floor
-  }
-  return tidy(need, 4);
+export function shelfEquation(item: Pick<InventoryItem, 'stockUnitInBase' | 'stockUnit' | 'dimension'>, s: ShelfBreakdown, extraPromised = 0): string {
+  const f = (b: number) => formatInStockUnit(item, b);
+  const left = s.left - extraPromised;
+  const parts = [`${f(s.onShelf)} on shelf`];
+  if (s.promised + extraPromised > 0) parts.push(`− ${f(s.promised + extraPromised)} promised to programs`);
+  parts.push(`− ${f(s.menuUse)} planned menu use through ${shortDay(s.through)}`);
+  if (s.incoming > 0) parts.push(`+ ${f(s.incoming)} arriving by then`);
+  return `${parts.join(' ')} = ${left < 0 ? `short ${f(-left)}` : `${f(left)} left`}`;
 }
 
-/** Assemble a ProjectionInput for one item from the camp-wide consumption/incoming maps. */
-export function makeProjectionInput(
+export interface OrderLineMath extends ShelfNow {
+  /** Planned menu use today … windowEnd. */
+  menuUse: number;
+  /** Promised pickups up to windowEnd (past due included). */
+  promised: number;
+  inTransit: number;
+  floor: number;
+  projectedAtEnd: number;
+  need: number;
+}
+
+/**
+ * How much to order so the item ends the window at or above its minimum on hand. The same
+ * on-shelf figure and the same terms as the Inventory row; perishables are capped at roughly a
+ * shelf-life of use plus the minimum.
+ */
+export function orderLineMath(
   item: InventoryItem,
-  today: string,
-  consMap: Map<string, Map<string, number>>,
-  incMap: Map<string, Map<string, number>>,
-): ProjectionInput {
-  return {
-    onHandBase: item.onHandBase,
-    anchorDate: item.lastCountedAt ? item.lastCountedAt.slice(0, 10) : today,
-    today,
-    consumptionByDate: consMap.get(item.id) ?? new Map(),
-    incomingByDate: incMap.get(item.id) ?? new Map(),
-  };
+  inp: ShelfInput,
+  windowEnd: string,
+): OrderLineMath {
+  const now = shelfNow(item, inp.menuByDate, inp.today);
+  const menuUse = tidy(sumBetween(inp.menuByDate, inp.today, windowEnd), 4);
+  const promised = tidy(sumBetween(inp.promisedByDate, '0000-01-01', windowEnd), 4);
+  const inTransit = tidy(sumBetween(inp.incomingByDate, inp.today, windowEnd), 4);
+  const floor = item.parLevelBase;
+  const projectedAtEnd = tidy(now.onShelf - menuUse - promised + inTransit, 4);
+  let need = Math.max(0, floor - projectedAtEnd);
+  if (need > 0 && item.shelfLifeDays != null) {
+    const capEnd = addDaysStr(inp.today, item.shelfLifeDays);
+    const shelfUse = sumBetween(inp.menuByDate, inp.today, capEnd) + sumBetween(inp.promisedByDate, '0000-01-01', capEnd);
+    need = Math.min(need, shelfUse + floor);
+  }
+  return { ...now, menuUse, promised, inTransit, floor, projectedAtEnd, need: tidy(need, 4) };
+}
+
+/**
+ * "2 × 50 lb bags", "3 cases": a count of packs. A pack whose name starts with a number read as
+ * "1 50 lb bag" when the two numbers were simply put side by side.
+ */
+export function formatPackQty(qty: number, packUnit: string): string {
+  const n = tidy(qty);
+  const unit = pluralizeUnit(packUnit, n);
+  return /^\d/.test(packUnit.trim()) ? `${n.toLocaleString()} × ${unit}` : `${n.toLocaleString()} ${unit}`;
 }
 
 /** Sum of effective day counts across [startDate, endDate]. The per-diem denominator. */
@@ -1306,33 +1450,8 @@ export interface PrintCountGroup { location: string; items: { name: string; unit
 // to our fields. Handles quoted cells, escaped quotes, and \r\n, enough for real
 // exports from Sysco/US Foods/Excel. Not a full RFC parser; it doesn't need to be.
 
-export function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = '';
-  let inQuotes = false;
-  const s = text.replace(/^\uFEFF/, ""); // strip BOM
-  for (let i = 0; i < s.length; i++) {
-    const c = s[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (s[i + 1] === '"') { cell += '"'; i++; } else inQuotes = false;
-      } else cell += c;
-    } else if (c === '"') {
-      inQuotes = true;
-    } else if (c === ',') {
-      row.push(cell); cell = '';
-    } else if (c === '\n' || c === '\r') {
-      if (c === '\r' && s[i + 1] === '\n') i++;
-      row.push(cell); cell = '';
-      // Skip fully-blank lines rather than emitting an empty row.
-      if (row.some((x) => x.trim() !== '')) rows.push(row);
-      row = [];
-    } else cell += c;
-  }
-  if (cell !== '' || row.length) { row.push(cell); if (row.some((x) => x.trim() !== '')) rows.push(row); }
-  return rows;
-}
+// Moved to lib/csv.ts so Receipts can use it without importing a Commissary module.
+export { parseCsv } from './csv';
 
 /** The fields a CSV column can be mapped to. `skip` = ignore the column. */
 export const CSV_FIELDS = [

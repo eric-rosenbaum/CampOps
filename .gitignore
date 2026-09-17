@@ -36,3 +36,7 @@ supabase/.temp/
 test-results/
 playwright-report/
 e2e-screens/
+
+# Xcode per-user UI state: which files were open, where the cursor was. It is not code, it
+# changes on every build, and it has been landing in commits about the app itself.
+xcuserdata/

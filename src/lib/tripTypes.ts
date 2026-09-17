@@ -6,7 +6,12 @@
  * "YYYY-MM-DD", never instants — see the calendar-day note in lib/utils.
  */
 
-export type TripKind = 'town_run' | 'day_off' | 'supply_run' | 'other';
+export type TripKind = 'town_run' | 'day_off' | 'supply_run' | 'pickup' | 'other';
+/**
+ * Which way the car carries people. A round trip sells seats out, back, or both; an into-town-only
+ * ride (`outbound`) sells only seats there; a pickup sells only seats back to camp.
+ */
+export type TripDirection = 'round_trip' | 'outbound' | 'pickup';
 export type TripStatus = 'planned' | 'out' | 'back' | 'cancelled';
 /** Which way a rider is in the car. A `both` rider uses a seat on each leg. */
 export type SeatLeg = 'both' | 'there' | 'back';
@@ -18,6 +23,7 @@ export interface Trip {
   id: string;
   campId: string;
   kind: TripKind;
+  direction: TripDirection;
   title: string;
   destination: string;
   departDate: string;
@@ -66,6 +72,8 @@ export interface TripErrand {
   estCost: number | null;
   neededBy: string | null;
   forActivity: string | null;
+  /** Other people who said "I need that too" instead of adding a duplicate. */
+  alsoNeededBy: { userId: string; name: string }[];
   status: ErrandStatus;
   driverNote: string | null;
   doneAt: string | null;
@@ -102,6 +110,7 @@ export interface TripsData {
 /** What create_trip / update_trip take. Snake-cased at the db layer. */
 export interface TripDraft {
   kind: TripKind;
+  direction: TripDirection;
   title: string;
   destination: string;
   departDate: string;

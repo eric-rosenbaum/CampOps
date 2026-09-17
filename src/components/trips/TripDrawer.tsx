@@ -1,19 +1,22 @@
 import { useMemo, useState } from 'react';
 import {
   X, CalendarDays, Car, UserRound, StickyNote, Check, Ban, Undo2, Plus, AlertTriangle, ShoppingBasket,
-  Pencil, LogOut, Flag, Bell, Clock, ListChecks,
+  Pencil, LogOut, Flag, Bell, Clock, ListChecks, ArrowRightLeft, Route,
 } from 'lucide-react';
 import type { Trip, TripSeat, TripErrand, SeatLeg } from '@/lib/tripTypes';
 import {
   seatUsage, claimOutcome, waitlistPosition, strandedRiders, returnOptions, canManageTrip, errandListOpen,
-  leavingSoonSendAt, dayLabel, clock, tripTimeLabel, minutesUntil, shortDow, LEG_LABELS, type LocalNow,
+  leavingSoonNote, dayLabel, clock, tripTimeLabel, minutesUntil, shortDow, LEG_LABELS, legsFor, naturalLeg,
+  seatClash, freeSeats, routeLabel, errandPeople, DIRECTION_LABELS, type LocalNow,
 } from '@/lib/trips';
 import {
   dbClaimSeat, dbReleaseSeat, dbCancelTrip, dbSetTripStatus, dbSetErrandStatus, dbAttachErrands, dbDetachErrand,
+  dbSwitchSeat, dbRequestRideBack, type ReleaseResult,
 } from '@/lib/tripsDb';
 import type { CampRole } from '@/store/campStore';
+import { useTripsStore } from '@/store/tripsStore';
 import { KindTag, SeatDots, Initials } from './tripUi';
-import { KIND_STYLE, inputClass } from './tripStyle';
+import { kindStyle, inputClass } from './tripStyle';
 
 type Notify = (text: string, tone?: 'ok' | 'warn' | 'error') => void;
 
@@ -29,14 +32,30 @@ interface Props {
   onEdit: (trip: Trip) => void;
   onAddErrand: (tripId: string) => void;
   onOpenTrip: (id: string) => void;
-  onAskForRide: () => void;
+  /** Open the "no ride back" sheet for a day. */
+  onStranded: (date: string) => void;
   notify: Notify;
 }
 
-const LEGS: SeatLeg[] = ['both', 'there', 'back'];
+/** "Priya Program moved up from the waitlist." — or nothing, when nobody was waiting. */
+function promotedLine(r: Pick<ReleaseResult, 'promoted_names'> | null | undefined): string {
+  const names = r?.promoted_names ?? [];
+  if (names.length === 0) return '';
+  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  return ` ${list} moved up from the waitlist.`;
+}
 
-export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onClose, onEdit, onAddErrand, onOpenTrip, onAskForRide, notify }: Props) {
-  const [leg, setLeg] = useState<SeatLeg>('both');
+/** Where the person now stands on a trip's waitlist, read from the store the RPC just refreshed. */
+function positionNow(tripId: string, seatId: string): number | null {
+  const st = useTripsStore.getState();
+  const t = st.trips.find((x) => x.id === tripId);
+  return t ? waitlistPosition(seatUsage(t, st.seats), seatId) : null;
+}
+
+export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onClose, onEdit, onAddErrand, onOpenTrip, onStranded, notify }: Props) {
+  // The leg picker starts on what the trip actually does: an into-town-only ride is "there".
+  const [leg, setLeg] = useState<SeatLeg>(naturalLeg(trip.direction));
+  const [alsoBack, setAlsoBack] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
@@ -44,7 +63,9 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState<Record<string, string>>({});
 
-  const k = KIND_STYLE[trip.kind];
+  const k = kindStyle(trip.kind);
+  const legs = legsFor(trip.direction);
+  const route = routeLabel(trip);
   const usage = useMemo(() => seatUsage(trip, seats), [trip, seats]);
   const canWrite = role !== 'viewer';
   const manage = canManageTrip(trip, userId, role);
@@ -69,10 +90,18 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
     [errands, trip.id],
   );
   const openUnattached = useMemo(
-    () => errands.filter((e) => e.status === 'open' && (!e.tripId || !trips.some((t) => t.id === e.tripId && (t.status === 'planned' || t.status === 'out')))),
+    () => errands.filter((e) => e.status === 'open' && (!e.tripId || !trips.some((t) => t.id === e.tripId && (t.status === 'planned' || t.status === 'out'))))
+      .sort((a, b) => (a.neededBy ?? '9999').localeCompare(b.neededBy ?? '9999') || (a.store ?? '').localeCompare(b.store ?? '')),
     [errands, trips],
   );
-  const reminder = leavingSoonSendAt(trip.departDate, trip.departTime);
+  const reminder = leavingSoonNote(trip.departDate, trip.departTime);
+  // Riding in only: the soonest trip that could bring them home, offered in the same tap.
+  const wayBack = useMemo(
+    () => (leg === 'there' ? returnOptions(trip, trips, seats)[0] ?? null : null),
+    [leg, trip, trips, seats],
+  );
+  const clash = useMemo(() => (mySeat || iDrive ? null : seatClash(trip, leg, userId, trips, seats)), [mySeat, iDrive, trip, leg, userId, trips, seats]);
+  const clashTrip = clash?.trip ?? null;
 
   async function run<T>(key: string, fn: () => Promise<{ ok: boolean; error: string | null; data: T | null }>, onOk?: (d: T | null) => void) {
     setBusy(key);
@@ -85,19 +114,62 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
     }
   }
 
-  const grab = (tripId: string, which: SeatLeg) => run(`claim-${tripId}-${which}`, () => dbClaimSeat(tripId, which), (d) => {
-    if (!d) return;
-    if (d.already) notify(d.status === 'waitlist' ? 'You’re already on the waitlist.' : 'You already have a seat.', 'warn');
-    else if (d.status === 'confirmed') notify(`You’re in — ${LEG_LABELS[d.leg].toLowerCase()}.`);
-    else notify('That seat just went. You’re on the waitlist and will be moved up automatically.', 'warn');
-  });
+  /** The toast after a claim, which says what actually happened, not what we expected. */
+  function claimToast(tripId: string, d: { seat_id: string; status: string; leg: SeatLeg; already: boolean }, expected: 'confirmed' | 'waitlist', extra = '') {
+    const legText = d.leg === 'both' ? 'there & back' : d.leg === 'there' ? 'into town' : 'back to camp';
+    if (d.already) { notify(d.status === 'waitlist' ? 'You’re already on the waitlist.' : 'You already have a seat.', 'warn'); return; }
+    if (d.status === 'confirmed') { notify(`You’re in — ${legText}.${extra}`); return; }
+    const pos = positionNow(tripId, d.seat_id);
+    const where = pos ? `You’re #${pos} on the waitlist` : 'You’re on the waitlist';
+    notify(expected === 'confirmed'
+      ? `Someone took that seat a moment ago. ${where} and move up automatically if a seat frees.${extra}`
+      : `That way is full. ${where} and move up automatically if someone leaves.${extra}`, 'warn');
+  }
+
+  const grab = (tripId: string, which: SeatLeg) => {
+    const t = trips.find((x) => x.id === tripId) ?? trip;
+    const expected = claimOutcome(seatUsage(t, seats), which);
+    return run(`claim-${tripId}-${which}`, () => dbClaimSeat(tripId, which), (d) => { if (d) claimToast(tripId, d, expected); });
+  };
+
+  /** Into town, and — if ticked — home on the soonest trip with a seat back, in one press. */
+  async function grabHere() {
+    const expected = claimOutcome(usage, leg);
+    const back = leg === 'there' && alsoBack ? wayBack : null;
+    setBusy(`claim-${trip.id}-${leg}`);
+    try {
+      const r = await dbClaimSeat(trip.id, leg);
+      if (!r.ok || !r.data) { notify(r.error ?? 'That did not save.', 'error'); return; }
+      let extra = '';
+      if (back && !r.data.already) {
+        const b = await dbClaimSeat(back.id, 'back');
+        const when = `${back.departDate === trip.departDate ? '' : `${shortDow(back.departDate)} `}${clock(back.departTime)} ${back.title}`;
+        if (!b.ok || !b.data) extra = ` But the ride back on ${when} didn’t save: ${b.error ?? 'try again'}`;
+        else if (b.data.status === 'confirmed') extra = ` Riding back on ${when}.`;
+        else extra = ` On the waitlist to ride back on ${when}.`;
+      }
+      claimToast(trip.id, r.data, expected, extra);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const switchHere = () => {
+    if (!clash) return;
+    const expected = claimOutcome(usage, leg);
+    return run('switch', () => dbSwitchSeat(clash.seat.id, trip.id, leg), (d) => {
+      if (!d) return;
+      claimToast(trip.id, d, expected, ` You left the ${clock(clash.trip.departTime)} ${clash.trip.title}.${promotedLine(d)}`);
+    });
+  };
 
   const riderGroups: { title: string; rows: TripSeat[]; waitlist?: boolean }[] = [
     { title: 'There & back', rows: usage.confirmed.filter((s) => s.leg === 'both') },
-    { title: 'There only', rows: usage.confirmed.filter((s) => s.leg === 'there') },
-    { title: 'Back only', rows: usage.confirmed.filter((s) => s.leg === 'back') },
+    { title: trip.direction === 'outbound' ? 'Into town' : 'There only', rows: usage.confirmed.filter((s) => s.leg === 'there') },
+    { title: trip.direction === 'pickup' ? 'Back to camp' : 'Back only', rows: usage.confirmed.filter((s) => s.leg === 'back') },
     { title: 'Waitlist', rows: usage.waitlist, waitlist: true },
   ];
+  const free = freeSeats(trip, usage);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-ink/40" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -125,9 +197,15 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
             <h2 className={`font-display text-[22px] font-bold leading-tight text-forest ${trip.status === 'cancelled' ? 'line-through decoration-ink-faint' : ''}`}>
               {trip.title}
             </h2>
-            {trip.destination && <p className="text-[14px] text-ink-soft">→ {trip.destination}</p>}
+            {route && <p className="text-[14px] text-ink-soft" data-testid="drawer-route">{route}</p>}
             <ul className="mt-3 space-y-1.5 text-[13px] text-ink">
               <li className="flex items-center gap-2"><CalendarDays className="h-4 w-4 flex-none text-ink-faint" />{dayLabel(trip.departDate)} · {tripTimeLabel(trip)}</li>
+              <li className="flex items-center gap-2" data-testid="drawer-direction">
+                <Route className="h-4 w-4 flex-none text-ink-faint" />
+                {DIRECTION_LABELS[trip.direction]}
+                {trip.direction === 'outbound' && <span className="text-ink-soft">— riders need another way back</span>}
+                {trip.direction === 'pickup' && <span className="text-ink-soft">— leaves camp {clock(trip.departTime)}{trip.returnTime ? `, back ${clock(trip.returnTime)}` : ''}</span>}
+              </li>
               <li className="flex items-center gap-2">
                 <UserRound className="h-4 w-4 flex-none text-ink-faint" />
                 {trip.driverName ? <span>Driver: <b className="font-semibold">{trip.driverName}</b>{iDrive && ' (you)'}</span> : <span className="italic text-ink-soft">No driver yet</span>}
@@ -160,7 +238,7 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
                     <button
                       type="button"
                       disabled={busy !== null}
-                      onClick={() => run('leave', () => dbReleaseSeat(mySeat.id), () => notify(mySeat.status === 'waitlist' ? 'You left the waitlist.' : 'Seat released.'))}
+                      onClick={() => run('leave', () => dbReleaseSeat(mySeat.id), (d) => notify(`${mySeat.status === 'waitlist' ? 'You left the waitlist.' : 'Seat released.'}${promotedLine(d)}`))}
                       className="min-h-11 rounded-btn border border-border bg-white px-3.5 text-[13px] font-bold text-forest hover:border-red hover:text-red-text disabled:opacity-50"
                     >
                       {mySeat.status === 'waitlist' ? 'Leave waitlist' : 'Leave seat'}
@@ -172,10 +250,18 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
                         <AlertTriangle className="h-4 w-4" /> You have no ride back yet
                       </p>
                       {myReturnOptions.length === 0 ? (
-                        <p className="mt-1 text-[12.5px] text-red-text">
-                          No trip that day or the next has a seat back.{' '}
-                          <button type="button" onClick={onAskForRide} className="font-bold underline">Ask for a ride back</button>
-                        </p>
+                        <div className="mt-1">
+                          <p className="text-[12.5px] text-red-text">No trip that day or the next has a seat back.</p>
+                          <button
+                            type="button"
+                            disabled={busy !== null}
+                            data-testid="find-me-a-ride-back"
+                            onClick={() => run('ask-back', () => dbRequestRideBack(mySeat.id), () => notify('Asked for a ride back. Drivers see it on the board and under Ride requests.'))}
+                            className="mt-2 min-h-11 w-full rounded-btn bg-forest px-3 text-[13px] font-bold text-paper hover:bg-forest-mid disabled:opacity-50"
+                          >
+                            Find me a ride back
+                          </button>
+                        </div>
                       ) : (
                         <ul className="mt-2 space-y-1.5">
                           {myReturnOptions.slice(0, 3).map((t) => (
@@ -202,39 +288,82 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
                 <p className="text-[13.5px] text-ink-soft">This trip has already left.</p>
               ) : (
                 <div>
-                  <div role="radiogroup" aria-label="Which way" className="grid grid-cols-3 gap-1 rounded-btn bg-cream p-1">
-                    {LEGS.map((l) => {
-                      const outcome = claimOutcome(usage, l);
-                      return (
-                        <button
-                          key={l}
-                          type="button"
-                          role="radio"
-                          aria-checked={leg === l}
-                          onClick={() => setLeg(l)}
-                          className={`min-h-11 rounded-[4px] px-1 text-[12.5px] font-bold transition-colors
-                            ${leg === l ? 'bg-white text-forest shadow-sm' : 'text-ink-soft hover:text-forest'}`}
-                        >
-                          {LEG_LABELS[l]}
-                          <span className={`block text-[10.5px] font-semibold ${outcome === 'confirmed' ? 'text-green-muted-text' : 'text-amber-text'}`}>
-                            {outcome === 'confirmed' ? 'seat free' : 'waitlist'}
-                          </span>
+                  {legs.length > 1 ? (
+                    <div role="radiogroup" aria-label="Which way" className="grid grid-cols-3 gap-1 rounded-btn bg-cream p-1">
+                      {legs.map((l) => {
+                        const outcome = claimOutcome(usage, l);
+                        return (
+                          <button
+                            key={l}
+                            type="button"
+                            role="radio"
+                            aria-checked={leg === l}
+                            onClick={() => setLeg(l)}
+                            className={`min-h-11 rounded-[4px] px-1 text-[12.5px] font-bold transition-colors
+                              ${leg === l ? 'bg-white text-forest shadow-sm' : 'text-ink-soft hover:text-forest'}`}
+                          >
+                            {LEG_LABELS[l]}
+                            <span className={`block text-[10.5px] font-semibold ${outcome === 'confirmed' ? 'text-green-muted-text' : 'text-amber-text'}`}>
+                              {outcome === 'confirmed' ? 'seat free' : 'waitlist'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-[13.5px] text-ink" data-testid="one-way-note">
+                      {trip.direction === 'outbound'
+                        ? <><b className="font-bold text-forest">Into town only.</b> This car doesn’t bring riders back.</>
+                        : <><b className="font-bold text-forest">Pickup from town.</b> A seat back to camp{trip.destination ? ` from ${trip.destination}` : ''}.</>}
+                    </p>
+                  )}
+
+                  {clash && clashTrip ? (
+                    <div className="mt-2.5 rounded-card border border-amber/40 bg-amber-bg p-3" data-testid="seat-clash">
+                      <p className="text-[13px] font-semibold text-amber-text">
+                        You already have {clash.seat.status === 'waitlist' ? 'a waitlist place' : 'a seat'} on the{' '}
+                        <button type="button" onClick={() => onOpenTrip(clashTrip.id)} className="underline decoration-dotted">
+                          {clashTrip.departDate === trip.departDate ? '' : `${shortDow(clashTrip.departDate)} `}{tripTimeLabel(clashTrip)} {clashTrip.title}
                         </button>
-                      );
-                    })}
-                  </div>
-                  <button
-                    type="button"
-                    disabled={busy !== null}
-                    onClick={() => grab(trip.id, leg)}
-                    data-testid="grab-seat"
-                    className={`mt-2.5 flex min-h-12 w-full items-center justify-center gap-2 rounded-btn text-[15px] font-bold transition-colors disabled:opacity-60
-                      ${claimOutcome(usage, leg) === 'confirmed' ? 'bg-forest text-paper hover:bg-forest-mid' : 'bg-amber-bg text-amber-text border border-amber/40 hover:bg-amber/20'}`}
-                  >
-                    {busy?.startsWith('claim') ? 'Saving…' : claimOutcome(usage, leg) === 'confirmed' ? 'Grab a seat' : 'Join the waitlist'}
-                  </button>
-                  {leg === 'there' && (
-                    <p className="mt-2 text-[12px] text-amber-text">There only means you’ll need another ride back — you’ll be flagged until you have one.</p>
+                        , which overlaps this one.
+                      </p>
+                      <p className="mt-0.5 text-[12px] text-amber-text">One person holds one car at a time, so a seat isn’t kept from someone who needs it.</p>
+                      <button
+                        type="button"
+                        disabled={busy !== null}
+                        onClick={switchHere}
+                        data-testid="switch-seat"
+                        className="mt-2.5 flex min-h-12 w-full items-center justify-center gap-2 rounded-btn bg-forest text-[14.5px] font-bold text-paper hover:bg-forest-mid disabled:opacity-60"
+                      >
+                        <ArrowRightLeft className="h-4 w-4" />
+                        {busy === 'switch' ? 'Switching…' : claimOutcome(usage, leg) === 'confirmed' ? 'Switch to this trip' : 'Switch to this trip’s waitlist'}
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        disabled={busy !== null}
+                        onClick={() => void grabHere()}
+                        data-testid="grab-seat"
+                        className={`mt-2.5 flex min-h-12 w-full items-center justify-center gap-2 rounded-btn text-[15px] font-bold transition-colors disabled:opacity-60
+                          ${claimOutcome(usage, leg) === 'confirmed' ? 'bg-forest text-paper hover:bg-forest-mid' : 'bg-amber-bg text-amber-text border border-amber/40 hover:bg-amber/20'}`}
+                      >
+                        {busy?.startsWith('claim') ? 'Saving…' : claimOutcome(usage, leg) === 'confirmed' ? 'Grab a seat' : 'Join the waitlist'}
+                      </button>
+                      {leg === 'there' && (wayBack ? (
+                        <label className="mt-2 flex min-h-11 cursor-pointer items-start gap-2.5 rounded-card border border-border bg-paper-raised px-3 py-2" data-testid="also-ride-back">
+                          <input type="checkbox" checked={alsoBack} onChange={(e) => setAlsoBack(e.target.checked)} className="mt-0.5 h-5 w-5 flex-none accent-[#1D3A2E]" />
+                          <span className="text-[13px] text-ink">
+                            Also ride back on the{' '}
+                            <b className="font-semibold">{wayBack.departDate === trip.departDate ? '' : `${shortDow(wayBack.departDate)} `}{clock(wayBack.departTime)} {wayBack.title}</b>
+                            <span className="block text-[11.5px] text-ink-soft">{seatUsage(wayBack, seats).freeBack} seat{seatUsage(wayBack, seats).freeBack === 1 ? '' : 's'} back left</span>
+                          </span>
+                        </label>
+                      ) : (
+                        <p className="mt-2 text-[12px] text-amber-text">Nothing is coming back that day with a free seat yet. You’ll be flagged as needing a ride back until you have one.</p>
+                      ))}
+                    </>
                   )}
                 </div>
               )}
@@ -245,9 +374,9 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
           <section className="px-5 py-4">
             <div className="mb-2 flex items-center gap-2">
               <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-soft">Riders</h3>
-              <SeatDots usage={usage} color={k.color} size={11} showWaitlist={false} />
+              <SeatDots usage={usage} color={k.color} size={11} showWaitlist={false} direction={trip.direction} />
               <span className="ml-auto text-[12px] font-semibold text-ink-soft">
-                {usage.seats === 0 ? 'Driver only' : `${usage.freeBoth} of ${usage.seats} free both ways`}
+                {usage.seats === 0 ? 'Driver only' : `${free} of ${usage.seats} free${trip.direction === 'round_trip' ? ' both ways' : ''}`}
               </span>
             </div>
             {usage.confirmed.length + usage.waitlist.length === 0 ? (
@@ -266,15 +395,21 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
                             {s.riderName}{s.riderUserId === userId && <span className="text-ink-soft"> (you)</span>}
                           </span>
                           {stranded.has(s.id) && (
-                            <span className="inline-flex flex-none items-center gap-1 rounded-pill bg-red-bg px-2 py-0.5 text-[10.5px] font-bold text-red-text">
+                            <button
+                              type="button"
+                              onClick={() => onStranded(trip.departDate)}
+                              data-testid="rider-no-ride-back"
+                              title="See ways back"
+                              className="inline-flex min-h-8 flex-none items-center gap-1 rounded-pill bg-red-bg px-2 py-0.5 text-[10.5px] font-bold text-red-text hover:bg-red hover:text-paper"
+                            >
                               <AlertTriangle className="h-3 w-3" /> No ride back
-                            </span>
+                            </button>
                           )}
                           {manage && planned && s.riderUserId !== userId && (
                             <button
                               type="button"
                               disabled={busy !== null}
-                              onClick={() => run(`rm-${s.id}`, () => dbReleaseSeat(s.id), () => notify(`${s.riderName} removed.`))}
+                              onClick={() => run(`rm-${s.id}`, () => dbReleaseSeat(s.id), (d) => notify(`${s.riderName} ${g.waitlist ? 'taken off the waitlist' : 'removed'}.${promotedLine(d)}`))}
                               aria-label={`Remove ${s.riderName}`}
                               className="grid h-9 w-9 flex-none place-items-center rounded-btn text-ink-faint hover:bg-red-bg hover:text-red-text disabled:opacity-50"
                             >
@@ -291,7 +426,7 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
             {planned && usage.confirmed.length > 0 && (
               <p className="mt-2 flex items-center gap-1.5 text-[11.5px] text-ink-soft">
                 <Bell className="h-3.5 w-3.5" />
-                Riders get a “leaving soon” reminder {reminder.date === trip.departDate ? '' : 'the evening before '}at {clock(reminder.time)}.
+                Riders get {reminder}.
               </p>
             )}
           </section>
@@ -333,7 +468,7 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
                             {e.quantity && <span className="font-normal text-ink-soft"> · {e.quantity}</span>}
                           </p>
                           <p className="text-[12px] text-ink-soft">
-                            {[e.store, `for ${e.requesterName}${mineErrand ? ' (you)' : ''}`, e.forActivity, e.neededBy ? `needed ${shortDow(e.neededBy)}` : null].filter(Boolean).join(' · ')}
+                            {[e.store, `for ${errandPeople(e)}${mineErrand ? ' (you)' : ''}`, e.forActivity, e.neededBy ? `needed ${shortDow(e.neededBy)}` : null].filter(Boolean).join(' · ')}
                           </p>
                           {e.driverNote && <p className="mt-0.5 text-[12px] italic text-ink-soft">“{e.driverNote}”</p>}
                           {e.status === 'unavailable' && <p className="text-[12px] font-bold text-red-text">Couldn’t get it</p>}
@@ -405,7 +540,9 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
               <div className="mt-3 rounded-card border border-border bg-white">
                 <button
                   type="button"
-                  onClick={() => { setAttachOpen((v) => !v); setPicked(openUnattached.map((e) => e.id)); }}
+                  // Nothing pre-ticked: ticking every errand in camp loaded a hardware-store run with
+                  // pharmacy and dollar-store errands the driver never meant to take.
+                  onClick={() => { setAttachOpen((v) => !v); setPicked([]); }}
                   data-testid="attach-errands"
                   className="flex min-h-12 w-full items-center gap-2 px-3 text-left text-[14px] font-bold text-forest"
                 >
@@ -415,6 +552,17 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
                 </button>
                 {attachOpen && (
                   <div className="border-t border-border px-3 pb-3">
+                    <div className="flex items-center justify-between py-1.5">
+                      <span className="text-[12px] text-ink-soft">{picked.length} of {openUnattached.length} chosen</span>
+                      <button
+                        type="button"
+                        data-testid="attach-select-all"
+                        onClick={() => setPicked(picked.length === openUnattached.length ? [] : openUnattached.map((e) => e.id))}
+                        className="min-h-9 rounded-btn px-2 text-[12.5px] font-bold text-forest hover:bg-cream"
+                      >
+                        {picked.length === openUnattached.length ? 'Clear' : 'Select all'}
+                      </button>
+                    </div>
                     <ul className="max-h-72 divide-y divide-border overflow-y-auto">
                       {openUnattached.map((e) => (
                         <li key={e.id}>
@@ -427,7 +575,7 @@ export function TripDrawer({ trip, trips, seats, errands, userId, role, now, onC
                             />
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-[13.5px] font-semibold text-ink">{e.item}{e.quantity ? ` · ${e.quantity}` : ''}</span>
-                              <span className="block truncate text-[12px] text-ink-soft">{[e.store ?? 'Any store', e.requesterName, e.neededBy ? `needed ${shortDow(e.neededBy)}` : null].filter(Boolean).join(' · ')}</span>
+                              <span className="block truncate text-[12px] text-ink-soft">{[e.store ?? 'Any store', errandPeople(e), e.neededBy ? `needed ${shortDow(e.neededBy)}` : null].filter(Boolean).join(' · ')}</span>
                             </span>
                           </label>
                         </li>

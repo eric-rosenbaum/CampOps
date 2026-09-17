@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
-import type { Trip, TripDraft, TripKind } from '@/lib/tripTypes';
+import type { Trip, TripDraft, TripKind, TripDirection } from '@/lib/tripTypes';
 import {
-  KIND_PRESETS, applyPreset, addMinutesLocal, fromMinutes, toMinutes, daysBetween, leavingSoonSendAt, clock, dayLabel, type LocalNow,
+  KIND_PRESETS, applyPreset, addMinutesLocal, fromMinutes, toMinutes, daysBetween, leavingSoonNote, clock, dayLabel,
+  DIRECTION_LABELS, DIRECTION_HINTS, type LocalNow,
 } from '@/lib/trips';
 import { dbCreateTrip, dbUpdateTrip } from '@/lib/tripsDb';
 import type { CampAsset } from '@/lib/types';
 import type { MemberWithProfile } from '@/store/campStore';
 import { Sheet } from './tripUi';
-import { KIND_STYLE, inputClass, fieldClass, labelClass } from './tripStyle';
+import { kindStyle, inputClass, fieldClass, labelClass } from './tripStyle';
 
 interface Props {
   campId: string;
@@ -25,7 +26,8 @@ interface Props {
   notify: (text: string, tone?: 'ok' | 'warn' | 'error') => void;
 }
 
-const KINDS: TripKind[] = ['town_run', 'day_off', 'supply_run', 'other'];
+const KINDS: TripKind[] = ['town_run', 'day_off', 'supply_run', 'pickup', 'other'];
+const DIRECTIONS: TripDirection[] = ['round_trip', 'outbound', 'pickup'];
 
 /** The next whole hour, at least 45 minutes away, so a trip planned now is not already leaving. */
 function defaultDepart(now: LocalNow, date: string): string {
@@ -40,6 +42,7 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
   const startPreset = applyPreset(editing?.kind ?? 'town_run', startDate, startTime);
 
   const [kind, setKind] = useState<TripKind>(editing?.kind ?? 'town_run');
+  const [direction, setDirection] = useState<TripDirection>(editing?.direction ?? startPreset.direction);
   const [title, setTitle] = useState(editing?.title ?? '');
   const [destination, setDestination] = useState(editing?.destination ?? '');
   const [departDate, setDepartDate] = useState(startDate);
@@ -54,8 +57,8 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Once somebody has typed a return time or a list-close time, a preset must not overwrite it.
-  const [touched, setTouched] = useState<{ ret: boolean; close: boolean; seats: boolean; title: boolean }>(
-    { ret: !!editing, close: !!editing, seats: !!editing, title: !!editing },
+  const [touched, setTouched] = useState<{ ret: boolean; close: boolean; seats: boolean; title: boolean; direction: boolean }>(
+    { ret: !!editing, close: !!editing, seats: !!editing, title: !!editing, direction: !!editing },
   );
 
   const drivers = useMemo(
@@ -70,6 +73,7 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
     if (!touched.ret) { setReturnDate(p.returnDate); setReturnTime(p.returnTime); }
     if (!touched.seats) setSeats(p.passengerSeats);
     if (!touched.close) setCloseTime(p.errandsCloseTime ?? '');
+    if (!touched.direction) setDirection(p.direction);
   }
 
   // Moving the departure carries the return and the list-close time with it, keeping the gaps,
@@ -99,7 +103,7 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
     }
     const driver = drivers.find((m) => m.userId === driverId) ?? null;
     const draft: TripDraft = {
-      kind, title: t, destination: destination.trim(), departDate, departTime,
+      kind, direction, title: t, destination: destination.trim(), departDate, departTime,
       returnDate: returnTime ? (returnDate || departDate) : null, returnTime: returnTime || null,
       driverUserId: driver?.userId ?? null, driverName: driver?.fullName ?? null,
       vehicleAssetId: vehicles ? (vehicleId || null) : (editing?.vehicleAssetId ?? null),
@@ -113,7 +117,8 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
     onSaved(editing ? editing.id : (r.data as string));
   }
 
-  const reminder = departTime ? leavingSoonSendAt(departDate, departTime) : null;
+  const reminder = departDate && departTime ? leavingSoonNote(departDate, departTime) : null;
+  const pickup = direction === 'pickup';
 
   return (
     <Sheet
@@ -138,9 +143,9 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
       )}
     >
       <div className="space-y-4">
-        <div role="radiogroup" aria-label="Kind of trip" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div role="radiogroup" aria-label="Kind of trip" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {KINDS.map((kk) => {
-            const s = KIND_STYLE[kk];
+            const s = kindStyle(kk);
             const I = s.icon;
             const on = kind === kk;
             return (
@@ -162,6 +167,25 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
           })}
         </div>
 
+        <div>
+          <span className={labelClass}>Which way</span>
+          <div role="radiogroup" aria-label="Which way" className="grid grid-cols-1 gap-1 rounded-btn bg-cream p-1 sm:grid-cols-3">
+            {DIRECTIONS.map((d) => (
+              <button
+                key={d}
+                type="button"
+                role="radio"
+                aria-checked={direction === d}
+                onClick={() => { setDirection(d); setTouched((t) => ({ ...t, direction: true })); }}
+                className={`min-h-11 rounded-[4px] px-2 py-1.5 text-left text-[13px] font-bold sm:text-center ${direction === d ? 'bg-white text-forest shadow-sm' : 'text-ink-soft hover:text-forest'}`}
+              >
+                {DIRECTION_LABELS[d]}
+                <span className="block text-[11px] font-normal leading-tight text-ink-soft">{DIRECTION_HINTS[d]}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className={labelClass}>Name</span>
@@ -174,14 +198,14 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
             />
           </label>
           <label className="block">
-            <span className={labelClass}>Going to</span>
+            <span className={labelClass}>{pickup ? 'Picking up from' : 'Going to'}</span>
             <input value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Walmart, the bank, town" className={inputClass} name="destination" />
           </label>
         </div>
 
         <fieldset className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className={labelClass}>Leaves</span>
+            <span className={labelClass}>{pickup ? 'Leaves camp' : 'Leaves'}</span>
             <input type="date" value={departDate} onChange={(e) => moveDeparture(e.target.value, departTime)} className={inputClass} name="departDate" required />
           </label>
           <label className="block">
@@ -189,7 +213,7 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
             <input type="time" value={departTime} onChange={(e) => moveDeparture(departDate, e.target.value)} className={inputClass} name="departTime" required />
           </label>
           <label className="block">
-            <span className={labelClass}>Back</span>
+            <span className={labelClass}>{direction === 'outbound' ? 'Car back (no riders)' : pickup ? 'Back at camp' : 'Back'}</span>
             <input type="date" value={returnDate} onChange={(e) => { setReturnDate(e.target.value); setTouched((t) => ({ ...t, ret: true })); }} className={inputClass} name="returnDate" />
           </label>
           <label className="block">
@@ -250,9 +274,8 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
         </label>
 
         {reminder && (
-          <p className="rounded-card bg-cream px-3 py-2 text-[12px] text-ink-soft">
-            Riders and the driver get a “leaving soon” email {reminder.date === departDate ? 'at' : 'the evening before, at'} {clock(reminder.time)}
-            {reminder.date === departDate && reminder.time !== addMinutesLocal(departDate, departTime, -60).time ? ' (no messages go out before 8am)' : ''}.
+          <p className="rounded-card bg-cream px-3 py-2 text-[12px] text-ink-soft" data-testid="plan-reminder-note">
+            Riders and the driver get {reminder}.
           </p>
         )}
       </div>

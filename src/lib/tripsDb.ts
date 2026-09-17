@@ -17,7 +17,7 @@ import { todayStr } from './utils';
 import { addDays, hhmm } from './trips';
 import type {
   Trip, TripSeat, TripErrand, RideRequest, TripsData, TripDraft, ErrandDraft, RideRequestDraft,
-  SeatLeg, SeatStatus, TripStatus, ErrandStatus,
+  SeatLeg, SeatStatus, TripStatus, ErrandStatus, TripDirection,
 } from './tripTypes';
 
 type Row = Record<string, unknown>;
@@ -30,6 +30,9 @@ export const TRIPS_DOMAIN = 'trips';
 export function rowToTrip(r: Row): Trip {
   return {
     id: r.id as string, campId: r.camp_id as string, kind: r.kind as Trip['kind'],
+    // A row from before trips had a direction (a stale realtime payload) reads the way the
+    // migration backfilled them: no return means into town only.
+    direction: (r.direction as TripDirection | undefined) ?? (r.return_time ? 'round_trip' : 'outbound'),
     title: r.title as string, destination: (r.destination as string) ?? '',
     departDate: r.depart_date as string, departTime: hhmm(r.depart_time as string) ?? '00:00',
     returnDate: s(r.return_date), returnTime: hhmm(s(r.return_time)),
@@ -57,7 +60,11 @@ export function rowToErrand(r: Row): TripErrand {
     requestedBy: s(r.requested_by), requesterName: (r.requester_name as string) ?? 'Someone',
     item: r.item as string, quantity: s(r.quantity), store: s(r.store),
     estCost: r.est_cost == null ? null : Number(r.est_cost), neededBy: s(r.needed_by),
-    forActivity: s(r.for_activity), status: r.status as ErrandStatus, driverNote: s(r.driver_note),
+    forActivity: s(r.for_activity),
+    alsoNeededBy: Array.isArray(r.also_needed_by)
+      ? (r.also_needed_by as Row[]).map((x) => ({ userId: String(x.user_id ?? ''), name: String(x.name ?? 'Someone') }))
+      : [],
+    status: r.status as ErrandStatus, driverNote: s(r.driver_note),
     doneAt: s(r.done_at), createdAt: r.created_at as string, updatedAt: r.updated_at as string,
   };
 }
@@ -153,6 +160,10 @@ export interface RpcResult<T = null> {
   data: T | null;
   /** Said to a person, not a developer. */
   error: string | null;
+  /** The database's short code ('overlapping_seat'), for screens that answer it with an action. */
+  code?: string | null;
+  /** The raise's DETAIL, e.g. the clashing trip as JSON. */
+  detail?: string | null;
 }
 
 /**
@@ -178,7 +189,17 @@ const FRIENDLY: Record<string, string> = {
   driver_not_a_member: 'The driver has to be a member of this camp.',
   vehicle_not_found: 'That vehicle is not in this camp’s assets.',
   trips_return_after_departure: 'The return has to be after the departure.',
+  leg_not_offered: 'This trip doesn’t go that way. Pick a leg it drives, or another trip.',
+  overlapping_seat: 'You already have a seat on another trip at that time. Switch to this one, or leave that seat first.',
+  riders_on_other_leg: 'Riders are booked on a leg this trip would no longer drive. Move them first.',
+  not_a_one_way_seat: 'That rider already has a way back.',
+  returns_before_ride_out: 'That trip leaves before they ride in, so it can’t bring them back.',
+  same_trip: 'That’s the trip you’re already on.',
+  errand_not_open: 'That errand has already been picked up or removed.',
+  seat_not_found: 'That seat no longer exists.',
 };
+
+const CODE_RE = new RegExp(Object.keys(FRIENDLY).join('|'));
 
 function friendly(message: string): string {
   const key = Object.keys(FRIENDLY).find((k) => message.includes(k));
@@ -190,7 +211,10 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<RpcRes
   if (error) {
     // Logged, not console.error'd: a refused action is an answer, not a crash.
     campLog(`[Trips] ${fn} refused: ${error.message}`);
-    return { ok: false, data: null, error: friendly(error.message) };
+    return {
+      ok: false, data: null, error: friendly(error.message),
+      code: CODE_RE.exec(error.message)?.[0] ?? null, detail: (error as { details?: string }).details ?? null,
+    };
   }
   // Awaited: the person who pressed the button should see the database's answer (seat or
   // waitlist) when the button stops spinning, not a beat later.
@@ -201,7 +225,7 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<RpcRes
 function tripPayload(d: Partial<TripDraft>): Row {
   const out: Row = {};
   const map: [keyof TripDraft, string][] = [
-    ['kind', 'kind'], ['title', 'title'], ['destination', 'destination'], ['departDate', 'depart_date'],
+    ['kind', 'kind'], ['direction', 'direction'], ['title', 'title'], ['destination', 'destination'], ['departDate', 'depart_date'],
     ['departTime', 'depart_time'], ['returnDate', 'return_date'], ['returnTime', 'return_time'],
     ['driverUserId', 'driver_user_id'], ['driverName', 'driver_name'], ['vehicleAssetId', 'vehicle_asset_id'],
     ['passengerSeats', 'passenger_seats'], ['errandsCloseTime', 'errands_close_time'], ['notes', 'notes'],
@@ -226,11 +250,29 @@ export const dbCancelTrip = (tripId: string, reason: string | null) =>
 
 export interface ClaimResult { seat_id: string; status: 'confirmed' | 'waitlist'; leg: SeatLeg; already: boolean }
 
-export const dbClaimSeat = (tripId: string, leg: SeatLeg, riderUserId: string | null = null) =>
+/** `leg` null: whatever the trip drives (there & back, into town, or back to camp). */
+export const dbClaimSeat = (tripId: string, leg: SeatLeg | null, riderUserId: string | null = null) =>
   rpc<ClaimResult>('claim_trip_seat', { p_trip_id: tripId, p_leg: leg, p_rider_user_id: riderUserId });
 
+export interface ReleaseResult { promoted: number; promoted_names: string[] }
+
 export const dbReleaseSeat = (seatId: string) =>
-  rpc<{ promoted: number }>('release_trip_seat', { p_seat_id: seatId });
+  rpc<ReleaseResult>('release_trip_seat', { p_seat_id: seatId });
+
+/** Leave one seat and take another in one transaction; if the new one is refused, nothing changes. */
+export const dbSwitchSeat = (seatId: string, tripId: string, leg: SeatLeg | null) =>
+  rpc<ClaimResult & { released_trip_id: string; promoted_names: string[] }>('switch_trip_seat', { p_seat_id: seatId, p_trip_id: tripId, p_leg: leg });
+
+/** Put a there-only rider on a later trip's way back. */
+export const dbOfferRideBack = (seatId: string, tripId: string) =>
+  rpc<ClaimResult>('offer_ride_back', { p_seat_id: seatId, p_trip_id: tripId });
+
+/** Ask for a ride back on a there-only rider's behalf (idempotent). */
+export const dbRequestRideBack = (seatId: string) =>
+  rpc<string>('request_ride_back', { p_seat_id: seatId });
+
+export const dbAlsoNeedErrand = (errandId: string) =>
+  rpc<null>('also_need_errand', { p_errand_id: errandId });
 
 export const dbAddErrand = (campId: string, d: ErrandDraft) =>
   rpc<string>('add_errand', {
@@ -263,4 +305,4 @@ export const dbCancelRideRequest = (requestId: string) =>
   rpc<null>('cancel_ride_request', { p_request_id: requestId });
 
 export const dbMatchRideRequest = (requestId: string, tripId: string) =>
-  rpc<ClaimResult>('match_ride_request', { p_request_id: requestId, p_trip_id: tripId });
+  rpc<ClaimResult & { remaining_leg?: SeatLeg }>('match_ride_request', { p_request_id: requestId, p_trip_id: tripId });

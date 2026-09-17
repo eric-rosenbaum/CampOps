@@ -1,8 +1,8 @@
 import { ShoppingBasket, AlertTriangle, Check, Clock } from 'lucide-react';
 import type { Trip, SeatStatus } from '@/lib/tripTypes';
-import { tripTimeLabel, type SeatUsage } from '@/lib/trips';
+import { tripTimeLabel, seatSummary, routeLabel, type SeatUsage } from '@/lib/trips';
 import { SeatDots, Initials } from './tripUi';
-import { KIND_STYLE } from './tripStyle';
+import { kindStyle } from './tripStyle';
 
 interface Props {
   trip: Trip;
@@ -24,12 +24,12 @@ interface Props {
  * where, who drives, how full, how many errands are riding along.
  */
 export function TripCard({ trip, usage, errandCount, mine, iDrive, strandedCount, departed, onOpen, variant = 'column' }: Props) {
-  const k = KIND_STYLE[trip.kind];
+  const k = kindStyle(trip.kind);
   const Icon = k.icon;
   const cancelled = trip.status === 'cancelled';
   const finished = trip.status === 'back' || (trip.status === 'planned' && departed);
-  const full = usage.freeBoth === 0 && usage.seats > 0;
   const row = variant === 'row';
+  const route = routeLabel(trip);
 
   // "Full" is not the whole story when seats are counted per leg: a car full on the way out can
   // still bring somebody home, and that is exactly the seat a stranded rider is looking for.
@@ -39,11 +39,11 @@ export function TripCard({ trip, usage, errandCount, mine, iDrive, strandedCount
   else if (trip.status === 'out') seatsLine = 'On the road';
   else if (trip.status === 'back') seatsLine = 'Back';
   else if (departed) seatsLine = 'Left';
-  else if (usage.seats === 0) seatsLine = 'Driver only';
-  else if (!full) seatsLine = `${usage.freeBoth} seat${usage.freeBoth === 1 ? '' : 's'} left`;
-  else if (usage.freeBack > 0) { seatsLine = `Full · ${usage.freeBack} back only`; seatsTone = 'text-amber-text'; }
-  else if (usage.freeThere > 0) { seatsLine = `Full · ${usage.freeThere} there only`; seatsTone = 'text-amber-text'; }
-  else { seatsLine = 'Full'; seatsTone = 'text-red-text'; }
+  else {
+    const sum = seatSummary(trip, usage);
+    seatsLine = sum.text;
+    seatsTone = sum.tone === 'partial' ? 'text-amber-text' : sum.tone === 'full' ? 'text-red-text' : 'text-ink-soft';
+  }
 
   const badge = !cancelled && (mine || iDrive) ? (
     <span
@@ -62,7 +62,7 @@ export function TripCard({ trip, usage, errandCount, mine, iDrive, strandedCount
       data-testid="trip-card"
       data-trip-id={trip.id}
       data-status={trip.status}
-      aria-label={`${trip.title}${trip.destination ? ` to ${trip.destination}` : ''}, ${tripTimeLabel(trip)}, ${seatsLine}`}
+      aria-label={`${trip.title}${route ? `, ${route}` : ''}, ${tripTimeLabel(trip)}, ${seatsLine}`}
       className={`group relative block w-full overflow-hidden rounded-card border text-left transition-all
         ${cancelled || finished ? 'border-border bg-paper-raised' : 'border-border bg-white hover:-translate-y-px hover:border-sage hover:shadow-md'}`}
       style={{ borderLeftWidth: 4, borderLeftColor: cancelled ? '#C9BFA9' : k.color }}
@@ -80,16 +80,19 @@ export function TripCard({ trip, usage, errandCount, mine, iDrive, strandedCount
                        ${row ? 'text-[15.5px]' : 'text-[13px]'}`}>
           {trip.title}
         </p>
-        {trip.destination && (
-          <p className={`truncate text-ink-soft ${row ? 'text-[13px]' : 'text-[11.5px]'}`}>→ {trip.destination}</p>
+        {(route || trip.direction === 'outbound') && (
+          <p className={`truncate text-ink-soft ${row ? 'text-[13px]' : 'text-[11.5px]'}`} data-testid="trip-route">
+            {route}
+            {trip.direction === 'outbound' && <span className="font-semibold text-ink-soft">{route ? ' · ' : ''}one way</span>}
+          </p>
         )}
 
         {!cancelled && (
           <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${row ? 'mt-2.5' : 'mt-1.5'}`}>
-            <SeatDots usage={usage} color={k.color} size={row ? 13 : 9} />
+            <SeatDots usage={usage} color={k.color} size={row ? 13 : 9} direction={trip.direction} />
           </div>
         )}
-        <p className={`mt-1 text-[11px] font-semibold ${seatsTone}`}>{seatsLine}</p>
+        <p className={`mt-1 text-[11px] font-semibold ${seatsTone}`} data-testid="seats-line">{seatsLine}</p>
 
         {(errandCount > 0 || trip.driverName || strandedCount > 0 || (!row && badge)) && (
           <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${row ? 'mt-2.5 border-t border-border pt-2' : 'mt-1.5'}`}>

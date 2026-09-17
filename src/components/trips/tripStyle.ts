@@ -1,6 +1,6 @@
 /** Non-component helpers for the Town Trips screens (kept out of .tsx for fast refresh). */
 import { useEffect, useMemo, useState } from 'react';
-import { Car, Sun, Package, MapPin } from 'lucide-react';
+import { Car, Sun, Package, MapPin, House } from 'lucide-react';
 import type { TripKind, SeatLeg } from '@/lib/tripTypes';
 import { campNow, type LocalNow } from '@/lib/trips';
 import { useTripsStore } from '@/store/tripsStore';
@@ -23,8 +23,17 @@ export const KIND_STYLE: Record<TripKind, KindStyle> = {
   town_run: { label: 'Town run', icon: Car, color: '#3F5D45', wash: '#E6ECE2', ink: '#2F4A35' },
   day_off: { label: 'Day-off shuttle', icon: Sun, color: '#185fa5', wash: '#e6f1fb', ink: '#0c447c' },
   supply_run: { label: 'Supply run', icon: Package, color: '#B87A12', wash: '#FBF1DC', ink: '#8A5A0C' },
-  other: { label: 'Other', icon: MapPin, color: '#6b3fa0', wash: '#f0ebfc', ink: '#3d1f6b' },
+  pickup: { label: 'Pickup from town', icon: House, color: '#0F766E', wash: '#E0F2EF', ink: '#115E59' },
+  other: { label: 'Appointment or other', icon: MapPin, color: '#6b3fa0', wash: '#f0ebfc', ink: '#3d1f6b' },
 };
+
+/**
+ * The style for a kind, falling back to "other" for a value this build does not know: a newer
+ * migration adding a kind must not white-screen a board still running the older screens.
+ */
+export function kindStyle(kind: string): KindStyle {
+  return (KIND_STYLE as Record<string, KindStyle>)[kind] ?? KIND_STYLE.other;
+}
 
 export const LEG_SHORT: Record<SeatLeg, string> = { both: 'There & back', there: 'There only', back: 'Back only' };
 

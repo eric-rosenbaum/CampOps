@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { Users, X, Car } from 'lucide-react';
 import type { Trip, TripSeat, RideRequest, SeatLeg } from '@/lib/tripTypes';
 import {
-  seatUsage, claimOutcome, canManageTrip, dayLabel, clock, tripTimeLabel, compareTrips, LEG_LABELS, toMinutes, type LocalNow,
+  seatUsage, claimOutcome, canManageTrip, dayLabel, clock, tripTimeLabel, compareTrips, LEG_LABELS, toMinutes, coveredLeg,
+  DIRECTION_LABELS, type LocalNow,
 } from '@/lib/trips';
 import { dbRequestRide, dbCancelRideRequest, dbMatchRideRequest } from '@/lib/tripsDb';
 import type { CampRole } from '@/store/campStore';
-import { KIND_STYLE, inputClass, labelClass } from './tripStyle';
+import { kindStyle, inputClass, labelClass } from './tripStyle';
 
 interface Props {
   campId: string;
@@ -22,9 +23,10 @@ interface Props {
 
 const LEGS: SeatLeg[] = ['both', 'there', 'back'];
 
-/** Does a trip fall inside somebody's window? No window means any time that day. */
+/** Does a trip fall inside somebody's window, going their way? No window means any time that day. */
 function fitsWindow(t: Trip, r: RideRequest): boolean {
   if (t.departDate !== r.wantedDate || t.status !== 'planned') return false;
+  if (!coveredLeg(t, r)) return false;
   const m = toMinutes(t.departTime);
   if (r.earliestTime && m < toMinutes(r.earliestTime) - 60) return false;
   if (r.latestTime && m > toMinutes(r.latestTime) + 60) return false;
@@ -76,9 +78,11 @@ export function RideRequestsTab({ campId, trips, seats, requests, now, userId, r
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-5 sm:px-7 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+    // grid-cols-[minmax(0,1fr)] on a phone: an implicit grid column sizes to its widest nowrap
+    // content, and one truncated trip name pushed the form and both lists 18px past the screen.
+    <div className="mx-auto grid w-full min-w-0 max-w-5xl grid-cols-[minmax(0,1fr)] gap-6 px-4 py-5 sm:px-7 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]" data-testid="rides-pane">
       {canWrite && (
-        <section className="h-fit rounded-card border border-border bg-white p-4" data-testid="ride-request-form">
+        <section className="h-fit min-w-0 rounded-card border border-border bg-white p-4" data-testid="ride-request-form">
           <h2 className="font-display text-[18px] font-bold text-forest">I need a ride</h2>
           <p className="mb-3 text-[12.5px] text-ink-soft">For a day off or an appointment. Drivers see it on the board before they plan.</p>
           <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
@@ -99,7 +103,7 @@ export function RideRequestsTab({ campId, trips, seats, requests, now, userId, r
             <div role="radiogroup" aria-label="Which way" className="grid grid-cols-3 gap-1 rounded-btn bg-cream p-1">
               {LEGS.map((l) => (
                 <button key={l} type="button" role="radio" aria-checked={leg === l} onClick={() => setLeg(l)}
-                  className={`min-h-11 rounded-[4px] text-[12.5px] font-bold ${leg === l ? 'bg-white text-forest shadow-sm' : 'text-ink-soft'}`}>
+                  className={`min-h-11 min-w-0 rounded-[4px] px-1 text-[12.5px] font-bold ${leg === l ? 'bg-white text-forest shadow-sm' : 'text-ink-soft'}`}>
                   {LEG_LABELS[l]}
                 </button>
               ))}
@@ -114,7 +118,7 @@ export function RideRequestsTab({ campId, trips, seats, requests, now, userId, r
         </section>
       )}
 
-      <section className={canWrite ? '' : 'lg:col-span-2'}>
+      <section className={`min-w-0 ${canWrite ? '' : 'lg:col-span-2'}`}>
         <h2 className="mb-2 flex items-baseline gap-2 font-display text-[18px] font-bold text-forest">
           Open requests <span className="font-sans text-[13px] font-semibold text-ink-soft">{open.length}</span>
         </h2>
@@ -126,8 +130,8 @@ export function RideRequestsTab({ campId, trips, seats, requests, now, userId, r
               const mine = r.requestedBy === userId;
               const candidates = trips.filter((t) => fitsWindow(t, r)).sort(compareTrips);
               return (
-                <li key={r.id} className="rounded-card border border-border bg-white p-3.5" data-testid="ride-request">
-                  <div className="flex items-start gap-3">
+                <li key={r.id} className="min-w-0 rounded-card border border-border bg-white p-3.5" data-testid="ride-request">
+                  <div className="flex min-w-0 items-start gap-3">
                     <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-blue-bg text-blue-text"><Users className="h-5 w-5" /></span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[14.5px] font-semibold text-ink">{r.requesterName}{mine ? ' (you)' : ''}</p>
@@ -154,22 +158,30 @@ export function RideRequestsTab({ campId, trips, seats, requests, now, userId, r
                         <ul className="space-y-1.5">
                           {candidates.map((t) => {
                             const allowed = mine || canManageTrip(t, userId, role);
-                            const outcome = claimOutcome(seatUsage(t, seats), r.leg);
-                            const s = KIND_STYLE[t.kind];
+                            const covered = coveredLeg(t, r) ?? r.leg;
+                            const partial = covered !== r.leg;
+                            const outcome = claimOutcome(seatUsage(t, seats), covered);
+                            const s = kindStyle(t.kind);
+                            const who = mine ? 'You’re' : `${r.requesterName} is`;
+                            const okText = (outcome === 'confirmed' ? `${who} on ${t.title}` : `${who} on the waitlist for ${t.title}`)
+                              + (partial ? ` (${covered === 'there' ? 'into town' : 'back to camp'}). The request stays open for the ${covered === 'there' ? 'way back' : 'way in'}.` : '.');
                             return (
-                              <li key={t.id} className="flex items-center gap-2">
+                              <li key={t.id} className="flex min-w-0 items-center gap-2">
                                 <button type="button" onClick={() => onOpenTrip(t.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                                   <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: s.color }} />
-                                  <span className="truncate text-[13px] text-ink"><b className="font-semibold">{tripTimeLabel(t)}</b> · {t.title}</span>
+                                  <span className="min-w-0">
+                                    <span className="block truncate text-[13px] text-ink"><b className="font-semibold">{tripTimeLabel(t)}</b> · {t.title}</span>
+                                    {partial && <span className="block truncate text-[11.5px] text-ink-soft">{DIRECTION_LABELS[t.direction]} · covers {LEG_LABELS[covered].toLowerCase()}</span>}
+                                  </span>
                                 </button>
                                 {allowed ? (
                                   <button type="button" disabled={busy !== null}
-                                    onClick={() => act(`match-${r.id}`, () => dbMatchRideRequest(r.id, t.id), outcome === 'confirmed' ? `${r.requesterName} is on ${t.title}.` : `${r.requesterName} is on the waitlist for ${t.title}.`)}
-                                    className={`min-h-11 flex-none rounded-btn px-3 text-[12.5px] font-bold sm:min-h-9 ${outcome === 'confirmed' ? 'bg-forest text-paper hover:bg-forest-mid' : 'border border-amber/40 bg-amber-bg text-amber-text'}`}>
+                                    onClick={() => act(`match-${r.id}`, () => dbMatchRideRequest(r.id, t.id), okText)}
+                                    className={`min-h-11 flex-none whitespace-nowrap rounded-btn px-3 text-[12.5px] font-bold sm:min-h-9 ${outcome === 'confirmed' ? 'bg-forest text-paper hover:bg-forest-mid' : 'border border-amber/40 bg-amber-bg text-amber-text'}`}>
                                     {outcome === 'confirmed' ? (mine ? 'Take a seat' : 'Give a seat') : 'Waitlist'}
                                   </button>
                                 ) : (
-                                  <span className="text-[11.5px] text-ink-faint">driver can match</span>
+                                  <span className="flex-none text-[11.5px] text-ink-faint">driver can match</span>
                                 )}
                               </li>
                             );
@@ -191,10 +203,10 @@ export function RideRequestsTab({ campId, trips, seats, requests, now, userId, r
               {matched.map((r) => {
                 const t = r.matchedTripId ? tripById.get(r.matchedTripId) : undefined;
                 return (
-                  <li key={r.id} className="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px]">
+                  <li key={r.id} className="flex min-w-0 items-center gap-2.5 px-3.5 py-2.5 text-[13px]">
                     <Car className="h-4 w-4 flex-none text-green-muted-text" />
                     <span className="min-w-0 flex-1 truncate">{r.requesterName} · {dayLabel(r.wantedDate)}</span>
-                    {t && <button type="button" onClick={() => onOpenTrip(t.id)} className="flex-none truncate font-semibold text-forest underline decoration-dotted">{clock(t.departTime)} {t.title}</button>}
+                    {t && <button type="button" onClick={() => onOpenTrip(t.id)} className="min-w-0 max-w-[55%] truncate font-semibold text-forest underline decoration-dotted">{clock(t.departTime)} {t.title}</button>}
                   </li>
                 );
               })}

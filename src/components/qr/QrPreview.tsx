@@ -17,7 +17,7 @@
  * drawing of it in another, for a dev-server nicety. */
 import { useMemo } from 'react';
 import { encodeQr, qrToSvgPath } from '@/lib/qr';
-import { APP_ENV, MARKETING_HOSTS } from '@/lib/env';
+import { APP_ENV, STICKER_HOST } from '@/lib/env';
 
 export type LabelLayout = 'avery5163' | 'large4up';
 
@@ -82,7 +82,7 @@ export const perSheet = (layout: LabelLayout) => LAYOUTS[layout].cols * LAYOUTS[
  * scans back into staging instead of quietly pointing forty stickers at the live site.
  */
 export function stickerOrigin(): string {
-  if (APP_ENV === 'production' || typeof window === 'undefined') return `https://${MARKETING_HOSTS[0]}`;
+  if (APP_ENV === 'production' || typeof window === 'undefined') return `https://${STICKER_HOST}`;
   return window.location.origin;
 }
 

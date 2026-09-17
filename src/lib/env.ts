@@ -26,6 +26,23 @@ export const APP_HOST: string =
 export const MARKETING_ORIGIN = `https://${MARKETING_HOSTS[0]}`;
 
 /**
+ * The host printed on a QR sticker.
+ *
+ * Not simply `MARKETING_HOSTS[0]`, and the reason is Apple. A sticker only opens the iOS app if
+ * the host it encodes is one the app is associated with, and association requires Apple to fetch
+ * `/.well-known/apple-app-site-association` from that exact host with a 200 — it does not follow
+ * redirects. The apex answers 307 to `www`, so every sticker printed with the apex on it opened
+ * Safari even on a phone with the app installed.
+ *
+ * `www` serves the file directly, so that is what new stickers carry. If the apex is ever made
+ * to serve `/.well-known/*` without redirecting, this can go back to the shorter host.
+ */
+export const STICKER_HOST: string =
+  (import.meta.env.VITE_STICKER_HOST as string | undefined)
+  ?? MARKETING_HOSTS.find((h) => h.startsWith('www.'))
+  ?? MARKETING_HOSTS[0];
+
+/**
  * Explicit wins; otherwise inferred from the host.
  *
  * The inference fails safe. Only a host we recognise as production is treated as production, so

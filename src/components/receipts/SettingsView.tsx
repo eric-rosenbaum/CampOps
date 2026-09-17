@@ -6,9 +6,9 @@ import { useCampStore } from '@/store/campStore';
 import {
   dbDeleteCard, dbDeleteCode, dbSaveTaxSettings, dbUpsertCard, dbUpsertCode, refreshReceipts,
 } from '@/lib/receiptsDb';
-import { PROVINCES, sampleTaxRules } from '@/lib/receipts';
-import { TAX_LABELS, TAX_TYPES, type BudgetCode, type ExpenseCard, type TaxRule, type TaxSettings } from '@/lib/receiptTypes';
-import { Callout, SectionTitle, fieldClass, inputClass, labelClass } from './receiptsUi';
+import { CLAIM_BASES, HST_RATE_PCT, PROVINCES, detectClaimBasis, taxPreset } from '@/lib/receipts';
+import { TAX_LABELS, TAX_TYPES, type BudgetCode, type ClaimBasis, type ExpenseCard, type TaxRule, type TaxSettings } from '@/lib/receiptTypes';
+import { Callout, SectionTitle, fieldClass, inputClass, labelClass, useEscape } from './receiptsUi';
 
 export function SettingsView() {
   return (
@@ -83,6 +83,7 @@ function CardsSection() {
         ))}
       </ul>
 
+      {editing && <EscapeCloses onClose={() => { setEditing(null); setError(null); }} />}
       {editing && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4" role="dialog" aria-label="Card">
           <div className="w-full rounded-t-modal bg-paper-card p-4 sm:max-w-md sm:rounded-modal sm:p-5">
@@ -137,6 +138,11 @@ function CardsSection() {
       )}
     </section>
   );
+}
+
+function EscapeCloses({ onClose }: { onClose: () => void }) {
+  useEscape(onClose);
+  return null;
 }
 
 // ─── Budget codes ───────────────────────────────────────────────────────────
@@ -216,12 +222,18 @@ function CodesSection() {
 
 // ─── Tax rules ──────────────────────────────────────────────────────────────
 
+/**
+ * How the camp gets sales tax back. A preset is chosen, never assumed: the three that cover nearly
+ * every camp, filled in for its province, plus hand-typed rules. The sample used to be a flat
+ * "HST 50%", which is wrong for an Ontario charity twice over (the provincial part of HST comes
+ * back at 82%, not 50%) and wrong for a GST/HST registrant (100%).
+ */
 function TaxSection() {
   const campId = useCampStore((s) => s.currentCamp?.id ?? '');
   const campState = useCampStore((s) => s.currentCamp?.state ?? null);
   const saved = useReceiptsStore((s) => s.taxSettings);
   const refresh = useRefresh();
-  const fallback: TaxSettings = { campId, currency: 'CAD', province: campState && PROVINCES.includes(campState as typeof PROVINCES[number]) ? campState : null, taxRules: [], confirmedAt: null };
+  const fallback: TaxSettings = { campId, currency: 'CAD', province: campState && PROVINCES.includes(campState as typeof PROVINCES[number]) ? campState : null, taxRules: [], claimBasis: null, confirmedAt: null };
   // What is saved, until the person starts editing; then their draft. Derived rather than copied
   // into state by an effect, so settings arriving late are shown without clobbering an edit.
   const [editDraft, setEditDraft] = useState<TaxSettings | null>(null);
@@ -231,32 +243,42 @@ function TaxSection() {
   const dirty = editDraft !== null || editConfirmed !== null;
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const setConfirmed = (v: boolean) => setEditConfirmed(v);
+  const basis: ClaimBasis | null = draft.taxRules.length ? detectClaimBasis(draft.taxRules, draft.province) : draft.claimBasis;
 
   const change = (patch: Partial<TaxSettings>) => { setEditDraft({ ...draft, ...patch }); setStatus(null); };
   const setRule = (i: number, patch: Partial<TaxRule>) => change({ taxRules: draft.taxRules.map((r, j) => (j === i ? { ...r, ...patch } : r)) });
+  const choose = (b: Exclude<ClaimBasis, 'custom'>) => { change({ claimBasis: b, taxRules: taxPreset(b, draft.province) }); setEditConfirmed(false); };
 
   async function save() {
     setError(null);
-    const res = await dbSaveTaxSettings(draft, confirmed);
+    const res = await dbSaveTaxSettings({ ...draft, claimBasis: basis }, confirmed);
     if (res.error) { setError(res.error); return; }
     setEditDraft(null); setEditConfirmed(null);
     setStatus('Saved.');
     refresh();
   }
 
+  const num = (v: string) => Math.min(100, Math.max(0, Number(v.replace(',', '.')) || 0));
+  const hstRate = HST_RATE_PCT[(draft.province ?? '').toUpperCase()];
+
   return (
     <section>
       <SectionTitle title="Sales tax rules" />
       <Callout tone="amber" className="mb-3">
-        <b>Confirm these with your finance director.</b> How much GST, HST, PST or QST a camp gets back depends on whether it is a registered charity or
-        public service body, what was bought, and the province. The Summary uses these numbers for an <i>estimate</i> only.
+        <b>Check these match how your camp claims sales tax back.</b> Registered camps claim input tax credits; charities and qualifying non-profits
+        claim the public service bodies’ rebate; some claim nothing. The Summary uses these numbers for an <i>estimate</i> only.
       </Callout>
-      <div className="rounded-card border border-border bg-white p-4">
+      <div className="rounded-card border border-border bg-white p-4" data-testid="tax-settings">
         <div className="grid grid-cols-2 gap-3 sm:max-w-md">
           <div>
             <label className={labelClass} htmlFor="tax-province">Province</label>
-            <select id="tax-province" className={inputClass} value={draft.province ?? ''} onChange={(e) => change({ province: e.target.value || null })}>
+            <select id="tax-province" className={inputClass} value={draft.province ?? ''}
+                    onChange={(e) => {
+                      const province = e.target.value || null;
+                      // A preset follows the province; hand-typed rules are left alone.
+                      const b = basis && basis !== 'custom' ? basis : null;
+                      change({ province, ...(b ? { taxRules: taxPreset(b, province) } : {}) });
+                    }}>
               <option value="">Choose…</option>
               {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
@@ -270,40 +292,64 @@ function TaxSection() {
           </div>
         </div>
 
-        <p className={`${labelClass} mt-4`}>Recoverable share by tax</p>
-        {draft.taxRules.length === 0 && <p className="text-[13px] text-ink-soft">No rules yet, so the recoverable estimate is $0.</p>}
+        <p className={`${labelClass} mt-4`}>How the camp claims tax back</p>
         <div className="space-y-2">
-          {draft.taxRules.map((r, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <select aria-label="Tax" className={`${fieldClass} w-32 flex-none`} value={r.type} onChange={(e) => setRule(i, { type: e.target.value as TaxRule['type'] })}>
-                {TAX_TYPES.map((t) => <option key={t} value={t}>{TAX_LABELS[t]}</option>)}
-              </select>
-              <div className="relative w-28 flex-none">
-                <input aria-label={`${r.type} recoverable percent`} inputMode="decimal" className={`${fieldClass} w-full pr-7 text-right`} value={String(r.recoverablePct)}
-                       onChange={(e) => setRule(i, { recoverablePct: Number(e.target.value.replace(',', '.')) || 0 })} />
-                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[12px] text-ink-soft">%</span>
-              </div>
-              <span className="text-[12.5px] text-ink-soft">recoverable</span>
-              <button className="ml-auto rounded-btn p-1.5 text-ink-soft hover:bg-red-bg hover:text-red" aria-label="Remove rule" onClick={() => change({ taxRules: draft.taxRules.filter((_, j) => j !== i) })}>
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
+          {CLAIM_BASES.map((b) => (
+            <label key={b.value} className={`flex items-start gap-2 rounded-btn border px-3 py-2 text-[13px] ${basis === b.value ? 'border-sage bg-paper-raised' : 'border-border'}`}>
+              <input type="radio" name="claim-basis" className="mt-0.5" checked={basis === b.value} onChange={() => choose(b.value)} data-basis={b.value} />
+              <span><b className="font-semibold">{b.label}</b><span className="block text-[12px] text-ink-soft">{b.hint}</span></span>
+            </label>
           ))}
+          <label className={`flex items-start gap-2 rounded-btn border px-3 py-2 text-[13px] ${basis === 'custom' ? 'border-sage bg-paper-raised' : 'border-border'}`}>
+            <input type="radio" name="claim-basis" className="mt-0.5" checked={basis === 'custom'} onChange={() => change({ claimBasis: 'custom' })} />
+            <span><b className="font-semibold">Custom</b><span className="block text-[12px] text-ink-soft">Type the percentages below. Changing any number makes the rules custom.</span></span>
+          </label>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
+
+        <p className={`${labelClass} mt-4`}>Recoverable share by tax</p>
+        {draft.taxRules.length === 0 && <p className="text-[13px] text-ink-soft">No rules yet, so the recoverable estimate is $0. Choose one of the options above.</p>}
+        <div className="space-y-2">
+          {draft.taxRules.map((r, i) => {
+            const split = r.type === 'HST' && r.federalPct != null && r.provincialPct != null;
+            return (
+              <div key={i} className="flex flex-wrap items-center gap-2">
+                <select aria-label="Tax" className={`${fieldClass} w-28 flex-none`} value={r.type}
+                        onChange={(e) => setRule(i, { type: e.target.value as TaxRule['type'], ...(e.target.value !== 'HST' ? { federalPct: null, provincialPct: null } : {}) })}>
+                  {TAX_TYPES.map((t) => <option key={t} value={t}>{TAX_LABELS[t]}</option>)}
+                </select>
+                {split ? (
+                  <>
+                    <PctInput label="HST federal part recoverable percent" value={r.federalPct!} onChange={(v) => setRule(i, { federalPct: num(v) })} />
+                    <span className="text-[12.5px] text-ink-soft">of the federal 5%,</span>
+                    <PctInput label="HST provincial part recoverable percent" value={r.provincialPct!} onChange={(v) => setRule(i, { provincialPct: num(v) })} />
+                    <span className="text-[12.5px] text-ink-soft">of the provincial {hstRate ? `${hstRate - 5}%` : 'part'}</span>
+                  </>
+                ) : (
+                  <>
+                    <PctInput label={`${r.type} recoverable percent`} value={r.recoverablePct} onChange={(v) => setRule(i, { recoverablePct: num(v) })} />
+                    <span className="text-[12.5px] text-ink-soft">recoverable</span>
+                    {r.type === 'HST' && (
+                      <button className="text-[12px] font-semibold text-forest underline" onClick={() => setRule(i, { federalPct: r.recoverablePct, provincialPct: r.recoverablePct })}>Split federal / provincial</button>
+                    )}
+                  </>
+                )}
+                <button className="ml-auto rounded-btn p-1.5 text-ink-soft hover:bg-red-bg hover:text-red" aria-label="Remove rule" onClick={() => change({ taxRules: draft.taxRules.filter((_, j) => j !== i) })}>
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-3">
           <Button size="sm" variant="ghost" onClick={() => change({ taxRules: [...draft.taxRules, { type: 'GST', recoverablePct: 0 }] })}><Plus className="h-3.5 w-3.5" /> Add a tax</Button>
-          {draft.province && (
-            <Button size="sm" variant="ghost" onClick={() => { change({ taxRules: sampleTaxRules(draft.province) }); setConfirmed(false); }}>
-              Fill in a sample for {draft.province}
-            </Button>
-          )}
         </div>
-        {!confirmed && draft.taxRules.length > 0 && (
-          <p className="mt-2 text-[12.5px] text-amber-text">Sample percentages are placeholders, not advice.</p>
-        )}
+        <p className="mt-3 text-[12px] text-ink-soft">
+          HST is split into its federal and provincial parts using the rate printed on each receipt (Ontario 13%, Nova Scotia 14%, New Brunswick, Newfoundland and Labrador and PEI 15%).
+          Rebate rates from the CRA’s guide RC4034 and Revenu Québec.
+        </p>
         <label className="mt-4 flex items-start gap-2 text-[13px]">
-          <input type="checkbox" className="mt-0.5" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
-          <span>Our finance director has confirmed these percentages{saved?.confirmedAt && confirmed ? ` (on ${new Date(saved.confirmedAt).toLocaleDateString('en-CA')})` : ''}.</span>
+          <input type="checkbox" className="mt-0.5" checked={confirmed} onChange={(e) => setEditConfirmed(e.target.checked)} />
+          <span>We’ve checked these match how our camp claims sales tax back{saved?.confirmedAt && confirmed ? ` (on ${new Date(saved.confirmedAt).toLocaleDateString('en-CA')})` : ''}.</span>
         </label>
         {error && <Callout tone="red" className="mt-3">{error}</Callout>}
         <div className="mt-4 flex items-center justify-end gap-3">
@@ -312,5 +358,16 @@ function TaxSection() {
         </div>
       </div>
     </section>
+  );
+}
+
+function PctInput({ label, value, onChange }: { label: string; value: number; onChange: (v: string) => void }) {
+  const [text, setText] = useState<string | null>(null);
+  return (
+    <div className="relative w-24 flex-none">
+      <input aria-label={label} inputMode="decimal" className={`${fieldClass} w-full pr-7 text-right tabular-nums`} value={text ?? String(value)}
+             onChange={(e) => { setText(e.target.value); onChange(e.target.value); }} onBlur={() => setText(null)} />
+      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[12px] text-ink-soft">%</span>
+    </div>
   );
 }

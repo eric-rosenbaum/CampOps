@@ -74,6 +74,9 @@ export interface Receipt {
   reviewedAt: string | null;
   possibleDuplicateOf: string | null;
   duplicateDismissed: boolean;
+  /** Finance set it aside from this month (YYYY-MM-01): "posts next month". */
+  deferredMonth: string | null;
+  deferredNote: string | null;
   exportId: string | null;
   exportedAt: string | null;
   createdAt: string;
@@ -104,14 +107,25 @@ export interface BudgetCode {
 
 export interface TaxRule {
   type: TaxType;
+  /** The share recovered, for any tax without a federal/provincial split. */
   recoverablePct: number;
+  /**
+   * HST only: the federal part (5 points of it) and the provincial part are recovered at different
+   * rates under the public service bodies' rebate, e.g. 50% and 82% for an Ontario charity.
+   */
+  federalPct?: number | null;
+  provincialPct?: number | null;
 }
+
+/** How the camp gets sales tax back. `custom` is anything typed by hand. */
+export type ClaimBasis = 'itc' | 'psb' | 'none' | 'custom';
 
 export interface TaxSettings {
   campId: string;
   currency: ReceiptCurrency;
   province: string | null;
   taxRules: TaxRule[];
+  claimBasis: ClaimBasis | null;
   confirmedAt: string | null;
 }
 
@@ -123,6 +137,8 @@ export interface CardStatement {
   periodMonth: string;
   statementTotal: number | null;
   fileName: string | null;
+  exportId: string | null;
+  exportedAt: string | null;
   createdAt: string;
 }
 
@@ -142,7 +158,13 @@ export interface StatementLine {
   remindedAt: string | null;
 }
 
-export type ExportFormat = 'qbo_3col' | 'qbo_4col' | 'detailed';
+/**
+ * `qbo_bank_*` and `qbo_bills` are QuickBooks Online imports; `detailed` is the review spreadsheet.
+ * `qbo_3col` / `qbo_4col` are the receipt-based exports from before exports followed the
+ * statement; they only appear in the history now.
+ */
+export type ExportFormat = 'qbo_bank_3col' | 'qbo_bank_4col' | 'qbo_bills' | 'detailed' | 'qbo_3col' | 'qbo_4col';
+export type DateFormat = 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD';
 
 export interface ExpenseExport {
   id: string;
@@ -156,5 +178,8 @@ export interface ExpenseExport {
   rowCount: number;
   total: number;
   createdByName: string | null;
+  statementId: string | null;
+  personalTotal: number | null;
+  dateFormat: string | null;
   createdAt: string;
 }

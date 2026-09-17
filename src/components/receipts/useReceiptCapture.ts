@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useCampStore } from '@/store/campStore';
 import { useReceiptsStore } from '@/store/receiptsStore';
 import {
-  dbDeleteReceipt, dbInsertReceipt, dbUpdateReceipt, readReceiptWithAi, uploadReceiptFile,
+  dbDeleteReceipt, dbInsertReceipt, dbResolveLines, dbUpdateReceipt, readReceiptWithAi, refreshReceipts, uploadReceiptFile,
 } from '@/lib/receiptsDb';
 import { prepareReceiptFile, ReceiptFileError } from '@/lib/receiptImage';
 import { findDuplicates } from '@/lib/receipts';
@@ -24,13 +24,22 @@ export interface CaptureItem {
   /** Why there is no receipt at all (the upload failed). */
   error: string | null;
   startedAt: number;
+  /** Uploaded from a statement charge: the receipt goes on that card and is matched to that charge. */
+  forLineId: string | null;
+}
+
+export interface CaptureOptions {
+  cardId?: string;
+  lineId?: string;
 }
 
 /** Prefill a receipt from what the AI read. Values only: the status stays needs_review. */
-export function applyAiResult(r: Receipt, ai: ReceiptAiResult, cards: ExpenseCard[]): Receipt {
+export function applyAiResult(r: Receipt, ai: ReceiptAiResult, cards: ExpenseCard[], keepCard = false): Receipt {
   // A card number printed on the slip is better evidence than "the snapper's own card": finance
   // snapping a holder's receipt, or a holder who borrowed a colleague's card.
-  const printed = ai.cardLast4 ? cards.find((c) => c.active && c.last4 === ai.cardLast4) : null;
+  // Not when finance uploaded it from a particular charge: then the charge says which card, and
+  // the review form flags a different number printed on the slip instead of silently moving it.
+  const printed = ai.cardLast4 && !keepCard ? cards.find((c) => c.active && c.last4 === ai.cardLast4) : null;
   return {
     ...r,
     vendor: ai.vendor,
@@ -66,7 +75,7 @@ export function useReceiptCapture() {
     setItems((xs) => xs.map((x) => (x.key === key ? { ...x, ...p } : x)));
   }, []);
 
-  const processOne = useCallback(async (key: string, original: File) => {
+  const processOne = useCallback(async (key: string, original: File, opts: CaptureOptions = {}) => {
     if (!campId) return;
     const store = useReceiptsStore.getState();
     let prepared;
@@ -79,7 +88,8 @@ export function useReceiptCapture() {
 
     const id = crypto.randomUUID();
     const path = `${campId}/${id}.${prepared.ext}`;
-    const myCard = myCards[0] ?? null;
+    const store0 = useReceiptsStore.getState();
+    const myCard = (opts.cardId ? store0.cards.find((c) => c.id === opts.cardId) : null) ?? myCards[0] ?? null;
     const now = new Date().toISOString();
     const receipt: Receipt = {
       id, campId, cardId: myCard?.id ?? null, submittedBy: userId, submitterName: userName || null,
@@ -87,7 +97,7 @@ export function useReceiptCapture() {
       vendor: null, purchaseDate: null, subtotal: null, taxes: [], tip: null, total: null, currency: 'CAD',
       budgetCodeId: myCard?.defaultBudgetCodeId ?? null, splits: [], purpose: null, status: 'processing',
       aiResult: null, aiMinConfidence: null, reviewedBy: null, reviewedAt: null,
-      possibleDuplicateOf: null, duplicateDismissed: false, exportId: null, exportedAt: null,
+      possibleDuplicateOf: null, duplicateDismissed: false, deferredMonth: null, deferredNote: null, exportId: null, exportedAt: null,
       createdAt: now, updatedAt: now,
     };
     patch(key, { stage: 'uploading', receiptId: id });
@@ -108,7 +118,7 @@ export function useReceiptCapture() {
     const { result, error } = await readReceiptWithAi(campId, path);
     const current = useReceiptsStore.getState().receipts.find((r) => r.id === id) ?? receipt;
     let next: Receipt = result?.readable
-      ? applyAiResult(current, result, useReceiptsStore.getState().cards)
+      ? applyAiResult(current, result, useReceiptsStore.getState().cards, !!opts.cardId)
       : { ...current, status: 'needs_review', aiResult: result ?? { readable: false, error: error ?? undefined } as ReceiptAiResult };
     if (next.purchaseDate && next.total != null) {
       const dup = findDuplicates(useReceiptsStore.getState().receipts.filter((r) => r.id !== id).concat(next))
@@ -117,20 +127,26 @@ export function useReceiptCapture() {
     }
     useReceiptsStore.getState().upsertReceiptLocal(next);
     const upd = await dbUpdateReceipt(next);
-    patch(key, { stage: 'done', aiError: result?.readable ? null : (error ?? 'This could not be read.'), error: upd.error });
+    let matchError: string | null = null;
+    if (opts.lineId && !upd.error) {
+      const res = await dbResolveLines([{ lineId: opts.lineId, matchState: 'matched', receiptId: id }]);
+      matchError = res.error;
+      void refreshReceipts(campId, useReceiptsStore.getState().apply);
+    }
+    patch(key, { stage: 'done', aiError: result?.readable ? null : (error ?? 'This could not be read.'), error: upd.error ?? matchError });
   }, [campId, myCards, patch, userId, userName]);
 
   /** Files are read one after another: twenty at once would hit the quota and the rate limit together. */
-  const addFiles = useCallback((files: File[]) => {
+  const addFiles = useCallback((files: File[], opts: CaptureOptions = {}) => {
     const fresh: CaptureItem[] = files.map((f) => ({
       key: crypto.randomUUID(), fileName: f.name,
       previewUrl: f.type.startsWith('image/') && !/hei[cf]/i.test(f.type) ? URL.createObjectURL(f) : null,
       isPdf: f.type === 'application/pdf' || /\.pdf$/i.test(f.name),
-      receiptId: null, stage: 'preparing', aiError: null, error: null, startedAt: Date.now(),
+      receiptId: null, stage: 'preparing', aiError: null, error: null, startedAt: Date.now(), forLineId: opts.lineId ?? null,
     }));
     setItems((xs) => [...xs, ...fresh]);
     fresh.forEach((item, i) => {
-      queue.current = queue.current.then(() => processOne(item.key, files[i]));
+      queue.current = queue.current.then(() => processOne(item.key, files[i], opts));
     });
     return fresh.map((f) => f.key);
   }, [processOne]);

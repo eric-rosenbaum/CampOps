@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- the Receipts UI kit: class strings and
    small hooks live beside the atoms that use them, so every view imports one module. */
-import { useEffect, useMemo } from 'react';
-import { FileText } from 'lucide-react';
+import { useEffect, useMemo, useRef } from 'react';
+import { FileText, X } from 'lucide-react';
 import { useReceiptsStore } from '@/store/receiptsStore';
 import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
@@ -71,9 +71,88 @@ export function useReceiptsRole() {
   return { isFinance: role === 'admin', role, userId: currentUser.id, userName: currentUser.name, memberId: currentMember?.id ?? null, myCards };
 }
 
+/**
+ * Escape closes the dialog that registered last. Every Receipts dialog uses this; before, only the
+ * review form listened, so Escape on "Attach a receipt" or the note dialog did nothing.
+ */
+const escapeStack: { current: () => void }[] = [];
+export function useEscape(onEscape: () => void, active = true) {
+  const ref = useRef(onEscape);
+  useEffect(() => { ref.current = onEscape; });
+  useEffect(() => {
+    if (!active) return;
+    const entry = { get current() { return ref.current; } };
+    escapeStack.push(entry);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || escapeStack[escapeStack.length - 1] !== entry) return;
+      e.preventDefault();
+      entry.current();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      const i = escapeStack.indexOf(entry);
+      if (i >= 0) escapeStack.splice(i, 1);
+    };
+  }, [active]);
+}
+
+/** A small confirm box, for the actions that remove or replace something. */
+export function ConfirmDialog({ title, children, confirmLabel, danger, busy, onConfirm, onCancel }: {
+  title: string; children?: React.ReactNode; confirmLabel: string; danger?: boolean; busy?: boolean;
+  onConfirm: () => void; onCancel: () => void;
+}) {
+  useEscape(onCancel);
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="w-full rounded-t-modal bg-paper-card p-4 sm:max-w-md sm:rounded-modal sm:p-5" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+        <h3 className="font-display text-[16px] font-bold text-forest">{title}</h3>
+        {children && <div className="mt-2 text-[13px] leading-snug text-ink-soft">{children}</div>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={onCancel} className="rounded-btn px-3 py-2 text-[13px] font-semibold text-ink-soft hover:bg-cream">Cancel</button>
+          <button type="button" onClick={onConfirm} disabled={busy} autoFocus
+                  className={`rounded-btn px-3.5 py-2 text-[13px] font-bold text-white disabled:opacity-50 ${danger ? 'bg-red hover:bg-red/90' : 'bg-forest hover:bg-forest/90'}`}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The one toast Receipts shows: "Removed … Undo", and failures of things done in the background. */
+export function ReceiptsToastHost() {
+  const toast = useReceiptsStore((s) => s.toast);
+  const showToast = useReceiptsStore((s) => s.showToast);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => useReceiptsStore.getState().toast?.id === toast.id && showToast(null), toast.actionLabel ? 8000 : 6000);
+    return () => clearTimeout(t);
+  }, [toast, showToast]);
+  if (!toast) return null;
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-20 z-[80] flex justify-center px-4 sm:bottom-6" role="status" aria-live="polite">
+      <div className={`pointer-events-auto flex max-w-lg items-center gap-3 rounded-card px-4 py-2.5 text-[13.5px] shadow-xl ${toast.tone === 'error' ? 'bg-red-text text-white' : 'bg-forest text-cream'}`} data-testid="receipts-toast">
+        <span className="min-w-0 flex-1">{toast.text}</span>
+        {toast.actionLabel && (
+          <button className="rounded-btn bg-white/15 px-2.5 py-1 text-[13px] font-bold hover:bg-white/25" onClick={() => toast.onAction?.()}>{toast.actionLabel}</button>
+        )}
+        <button aria-label="Dismiss" className="rounded-btn p-1 opacity-80 hover:opacity-100" onClick={() => showToast(null)}><X className="h-4 w-4" /></button>
+      </div>
+    </div>
+  );
+}
+
 export function cardLabel(cards: ExpenseCard[], id: string | null): string {
   if (!id) return 'No card';
   return cards.find((c) => c.id === id)?.label ?? 'Unknown card';
+}
+
+/** "Visa ··4821 · Maya Torres" */
+export function cardWithHolder(cards: ExpenseCard[], id: string | null): string {
+  const c = cards.find((x) => x.id === id);
+  if (!c) return cardLabel(cards, id);
+  return c.holderName ? `${c.label} · ${c.holderName}` : c.label;
 }
 
 /**

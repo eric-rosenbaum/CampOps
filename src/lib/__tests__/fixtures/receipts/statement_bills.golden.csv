@@ -1,0 +1,8 @@
+Bill no.,Supplier,Bill Date,Due Date,Memo,Account,Line Description,Line Amount,Line Tax Code,Line Tax Amount,Currency
+4821-20260804-01,Northwind Hardware,04/08/2026,04/08/2026,Visa 4821 charge posted 2026-08-04: NORTHWIND HARDWARE #214,Repairs & Maintenance,Dock hinges + screws,75.00,HST 13%,9.75,CAD
+4821-20260807-02,"Cafe Birchbark, Bakery",07/08/2026,07/08/2026,Visa 4821 charge posted 2026-08-07: SQ *BIRCHBARK BAKERY,Program Food,cmd,23.40,No tax,0.00,CAD
+4821-20260809-03,The Loon's Nest Grill,09/08/2026,09/08/2026,Visa 4821 charge posted 2026-08-09: THE LOONS NEST GRILL,Travel,"Staff dinner, canoe trip",142.00,HST 13%,18.46,CAD
+4821-20260809-03,The Loon's Nest Grill,09/08/2026,09/08/2026,Visa 4821 charge posted 2026-08-09: THE LOONS NEST GRILL,Travel,Tip,25.00,No tax,0.00,CAD
+4821-20260811-04,Loons Landing Craft Supply,11/08/2026,11/08/2026,Visa 4821 charge posted 2026-08-11: LOONS LANDING CRAFT,Program Supplies,Craft week,714.28,GST/PST,85.72,CAD
+4821-20260811-04,Loons Landing Craft Supply,11/08/2026,11/08/2026,Visa 4821 charge posted 2026-08-11: LOONS LANDING CRAFT,Program Supplies:Arts,Craft week,308.84,GST/PST,37.06,CAD
+4821-20260822-05,MAPLE RIDGE GAS BAR,22/08/2026,22/08/2026,Visa 4821 charge posted 2026-08-22: MAPLE RIDGE GAS BAR,Repairs & Maintenance,Pump receipt lost + truck fuel - No receipt,64.37,No tax,0.00,CAD

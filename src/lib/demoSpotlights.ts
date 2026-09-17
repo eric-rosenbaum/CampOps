@@ -130,7 +130,7 @@ export const SPOTLIGHTS: SpotlightTemplate[] = [
       },
       {
         text: 'Plan your own trip and attach the open errands to it.',
-        href: '/trips',
+        href: '/trips?plan=1',
         check: { kind: 'auto', id: 'trip_planned' },
       },
     ],

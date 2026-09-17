@@ -136,8 +136,11 @@ export function Commissary() {
     if (activeTab === 'inventory') {
       return (
         <div className="flex gap-2">
-          <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'vendor' })}>Vendors</Button>
-          <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'csvImport' })}>Import CSV</Button>
+          {/* On a phone these three squeezed the page title down to "K…"; the desk-work two wait for a wider screen. */}
+          <span className="hidden sm:contents">
+            <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'vendor' })}>Vendors</Button>
+            <Button size="sm" variant="ghost" onClick={() => openModal({ kind: 'csvImport' })}>Import CSV</Button>
+          </span>
           <Button size="sm" onClick={() => openModal({ kind: 'item' })}>+ Add item</Button>
         </div>
       );

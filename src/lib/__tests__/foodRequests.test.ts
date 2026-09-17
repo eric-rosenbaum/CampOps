@@ -266,7 +266,7 @@ describe('the request form', () => {
     }));
     expect(p.purpose).toBe('Campfire · about 15 people');
     expect(p.headcount).toBe(15);
-    expect(p.lines).toEqual([{ label: 'Marshmallows', qty: 2, unit_label: 'bags', note: '“enough for 2”' }]);
+    expect(p.lines).toEqual([{ label: 'Marshmallows', qty: 2, unit_label: 'bags', note: 'enough for 2' }]);
     expect(checkDraft(draft({ lines: [{ label: 'Eggs', qty: '', qtyWords: 'a few', unitLabel: '' }] }), opts).errors[0])
       .toBe('Add a number for how much too; the kitchen still gets “a few”.');
   });

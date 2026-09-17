@@ -220,8 +220,8 @@ export function DecisionModal({ request, lines, program, mode, onClose, actions 
                     );
                   })()}
                   {!d.unavailable && !d.itemId && (
-                    <p className="mt-1.5 flex items-center gap-1 text-[11.5px] text-amber-text">
-                      <AlertTriangle className="h-3 w-3 flex-shrink-0" /> Not on your kitchen list. Approved as is, it goes on the pull list as something to buy or source, and ordering won&rsquo;t count it.
+                    <p className="mt-1.5 flex items-start gap-1 text-[11.5px] text-amber-text">
+                      <AlertTriangle className="mt-[2px] h-3 w-3 flex-shrink-0" /> Not on your kitchen list. Approved as is, it goes on the pull list as something to buy or source, and ordering won&rsquo;t count it.
                     </p>
                   )}
                   <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-[12.5px] text-ink-soft">

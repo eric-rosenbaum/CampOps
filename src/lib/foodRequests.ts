@@ -537,7 +537,7 @@ export function draftToPayload(draft: FoodRequestDraft): Record<string, unknown>
       .filter((l) => l.label.trim() || l.itemId)
       .map((l) => {
         // Their words for the amount travel as the line's note, so the kitchen reads "enough for 2".
-        const note = [l.qtyWords ? `“${l.qtyWords}”` : '', l.note?.trim() ?? ''].filter(Boolean).join(' · ') || null;
+        const note = [l.qtyWords ?? '', l.note?.trim() ?? ''].filter(Boolean).join(' · ') || null;
         return l.itemId
           ? { item_id: l.itemId, qty: Number(l.qty), note }
           : { label: l.label.trim(), qty: Number(l.qty), unit_label: l.unitLabel.trim() || null, note };

@@ -156,7 +156,7 @@ export const SPOTLIGHTS: SpotlightTemplate[] = [
         check: { kind: 'manual' },
       },
       {
-        text: 'Import a card statement yourself using the sample CSV, then check the photographed receipts it matched.',
+        text: 'Import a card statement yourself using the sample CSV, accept the suggested matches, then confirm the photographed receipts.',
         notice: 'The month turns green once every charge has a confirmed receipt or a reason.',
         href: '{reconcileImport}',
         download: 'sample_statement',

@@ -140,6 +140,10 @@ function FeatureCard({ number, feature: f, ctx, isDone, onToggle }: {
         {f.steps.map((st, i) => {
           const done = isDone(st, i);
           const href = fillHref(st.href, ctx as Record<string, string | null | undefined>);
+          // A step the data can't see ("look at Inventory") ticks when its Open button is used.
+          // Reviewers opened every such screen and came back to empty circles, and read that as
+          // having done something wrong.
+          const openStep = () => { if (st.check.kind === 'manual' && !done) onToggle(i); };
           return (
             <li key={i} className="flex items-start gap-3 px-4 sm:px-6 py-3">
               <button
@@ -158,12 +162,12 @@ function FeatureCard({ number, feature: f, ctx, isDone, onToggle }: {
               </div>
               {href && (
                 st.newTab ? (
-                  <a href={href} target="_blank" rel="noreferrer"
+                  <a href={href} target="_blank" rel="noreferrer" onClick={openStep}
                     className="inline-flex items-center gap-1 text-[12.5px] font-bold text-forest bg-white border border-border hover:border-sage rounded-btn px-3 py-1.5 flex-shrink-0">
                     Open <ArrowUpRight className="w-3.5 h-3.5" />
                   </a>
                 ) : (
-                  <button type="button" onClick={() => navigate(href)}
+                  <button type="button" onClick={() => { openStep(); navigate(href); }}
                     className="inline-flex items-center gap-1 text-[12.5px] font-bold text-forest bg-white border border-border hover:border-sage rounded-btn px-3 py-1.5 flex-shrink-0">
                     Open <ArrowUpRight className="w-3.5 h-3.5" />
                   </button>

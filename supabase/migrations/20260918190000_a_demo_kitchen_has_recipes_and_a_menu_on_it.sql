@@ -8,7 +8,8 @@
 --     except the sample pantry this seed family owns, whose stock is set to kitchen scale);
 --   * fifteen recipes with ingredients linked to those items, allergens that roll up, and prep
 --     steps -- some timed the day before (thaw the chicken, chill the cookie dough);
---   * a four-week rotation on the menu builder: breakfast, lunch, dinner and snacks, by course.
+--   * a four-week rotation on the menu builder: breakfast, lunch, dinner and snacks, by course;
+--   * a few campers with allergies and dietary needs, so the allergy flags have something to show.
 --     Meat and dairy meals are kept apart, so the menu reads correctly at a kosher camp and
 --     unremarkably everywhere else.
 --
@@ -84,7 +85,9 @@ begin
     ('Romaine lettuce',            'produce',   'walk_in_refrigerator', 'count',  'each', 'head',  1,       'case of 24',  24,      36.00, 60, 35, '{}'),
     ('Cucumbers',                  'produce',   'walk_in_refrigerator', 'count',  'each', 'each',  1,       'case of 24',  24,      28.00, 140, 50, '{}'),
     ('Flour tortillas',            'dry_goods', 'dry_storage',          'count',  'each', 'pack',  12,      'case of 12',  144,     44.00, 150, 50, '{gluten}'),
-    ('Black beans',                'pantry',    'dry_storage',          'volume', 'ml',   'can',   3000,    'case of 6',   18000,   30.00, 18, 6,  '{}')
+    ('Black beans',                'pantry',    'dry_storage',          'volume', 'ml',   'can',   3000,    'case of 6',   18000,   30.00, 18, 6,  '{}'),
+    ('Dairy-free chocolate chips', 'dry_goods', 'dry_storage',          'weight', 'g',    'lb',    453.592, '10 lb case',  4535.92, 68.00, 20, 6,  '{soy}'),
+    ('Vegetable oil',              'pantry',    'dry_storage',          'volume', 'ml',   'gal',   3785.41, 'case of 3',   11356.2, 41.00, 9,  3,  '{}')
   ) as t(name, category, storage, dimension, base_unit, stock_unit, stock_in_base, purchase_unit, purchase_in_base, price, on_hand, par, allergens)
   loop
     if not exists (select 1 from inventory_items where camp_id = p_camp and lower(name) = lower(r.name)) then
@@ -135,8 +138,8 @@ begin
     (9,  'Beef tacos',                   'dinner',    50, '25 min', '30 min', 'Meat meal. Serve with salsa and lettuce.'),
     (10, 'Roast chicken & carrots',      'dinner',    50, '20 min', '75 min', 'Friday dinner. Meat meal.'),
     (11, 'Garden salad',                 'dinner',    50, '25 min', null,     'Dressing on the side.'),
-    (12, 'Chocolate chip cookies',       'snack',     50, '20 min', '12 min', 'Dairy.'),
-    (13, 'Campfire s''mores',            'snack',     50, '10 min', null,     'For the evening program.'),
+    (12, 'Chocolate chip cookies',       'snack',     50, '20 min', '12 min', 'Pareve — oil and dairy-free chips, so they can follow a meat dinner.'),
+    (13, 'Campfire s''mores',            'snack',     50, '10 min', null,     'Pareve, with dairy-free chocolate. For the evening program.'),
     (14, 'Challah',                      'dinner',    50, '30 min', '35 min', 'Friday dinner. Dough rises in the afternoon.'),
     (15, 'Fresh fruit',                  'breakfast', 50, '10 min', null,     'Sliced and set out on the line.')
   ) as t(k, name, meal, yield, prep, cook, notes)
@@ -162,8 +165,8 @@ begin
     (9, 'Ground beef', 4536), (9, 'Flour tortillas', 100), (9, 'Romaine lettuce', 4),
     (10, 'Chicken thighs', 9072), (10, 'Carrots', 2268),
     (11, 'Romaine lettuce', 6), (11, 'Cucumbers', 8), (11, 'Carrots', 907),
-    (12, 'All-purpose flour', 1361), (12, 'Unsalted butter', 907), (12, 'Granulated sugar', 907), (12, 'Large eggs', 6), (12, 'Semi-sweet chocolate chips', 1361),
-    (13, 'Graham crackers', 2041), (13, 'Mini marshmallows', 1417), (13, 'Semi-sweet chocolate chips', 907),
+    (12, 'All-purpose flour', 1361), (12, 'Vegetable oil', 710), (12, 'Granulated sugar', 907), (12, 'Large eggs', 6), (12, 'Dairy-free chocolate chips', 1361),
+    (13, 'Graham crackers', 2041), (13, 'Mini marshmallows', 1417), (13, 'Dairy-free chocolate chips', 907),
     (14, 'All-purpose flour', 2268), (14, 'Large eggs', 6), (14, 'Granulated sugar', 227),
     (15, 'Apples', 25)
   ) as t(k, item, qty)
@@ -252,6 +255,44 @@ begin
       end if;
     end loop;
   end loop;
+
+  -- ── The allergy program ──────────────────────────────────────────────────────────────────
+  -- A handful of campers with real restrictions, so the menu builder's allergy flags and the
+  -- allergy program have something to show. Fictional names; health-gated tables as always.
+  delete from camper_restrictions where camp_id = p_camp and camper_id in (select demo_seed_uuid(p_camp, 'camper:' || k) from generate_series(1, 20) k);
+  delete from camper_sessions where camp_id = p_camp and camper_id in (select demo_seed_uuid(p_camp, 'camper:' || k) from generate_series(1, 20) k);
+  delete from campers where camp_id = p_camp and id in (select demo_seed_uuid(p_camp, 'camper:' || k) from generate_series(1, 20) k);
+
+  --  k   name               cabin          restriction  kind        severity        notes
+  for r in select * from (values
+    (1,  'Noa Friedman',     'Cabin 3',     'peanut',    'allergen', 'anaphylactic', 'EpiPen in the health centre and on trips.'),
+    (2,  'Eli Kaplan',       'Cabin 7',     'peanut',    'allergen', 'anaphylactic', null),
+    (3,  'Maya Levin',       'Cabin 2',     'tree_nut',  'allergen', 'confirmed',    null),
+    (4,  'Ari Goldberg',     'Cabin 5',     'tree_nut',  'allergen', 'confirmed',    null),
+    (5,  'Talia Stern',      'Cabin 1',     'gluten',    'allergen', 'confirmed',    'Celiac — separate prep and toaster.'),
+    (6,  'Jonah Weiss',      'Cabin 6',     'gluten',    'allergen', 'confirmed',    'Celiac.'),
+    (7,  'Leah Cohen',       'Cabin 4',     'dairy',     'allergen', 'intolerance',  null),
+    (8,  'Sam Rosen',        'Cabin 8',     'dairy',     'allergen', 'intolerance',  null),
+    (9,  'Dana Shapiro',     'Cabin 2',     'egg',       'allergen', 'confirmed',    null),
+    (10, 'Ben Adler',        'Cabin 7',     'sesame',    'allergen', 'anaphylactic', null),
+    (11, 'Rina Katz',        'Cabin 3',     'vegetarian','dietary',  null,           null),
+    (12, 'Micah Bloom',      'Cabin 5',     'vegetarian','dietary',  null,           null),
+    (13, 'Shira Hoffman',    'Cabin 1',     'vegan',     'dietary',  null,           null),
+    (14, 'Gabe Lerner',      'Staff',       'dairy',     'allergen', 'intolerance',  'Kitchen staff.')
+  ) as t(k, name, cabin, restriction, kind, severity, notes)
+  loop
+    insert into campers (id, camp_id, session_id, name, cabin)
+    values (demo_seed_uuid(p_camp, 'camper:' || r.k), p_camp, v_session, r.name, r.cabin);
+    insert into camper_sessions (id, camp_id, camper_id, session_id)
+    values (demo_seed_uuid(p_camp, 'camper_session:' || r.k), p_camp, demo_seed_uuid(p_camp, 'camper:' || r.k), v_session);
+    insert into camper_restrictions (id, camp_id, camper_id, restriction, kind, severity, notes)
+    values (demo_seed_uuid(p_camp, 'restriction:' || r.k), p_camp, demo_seed_uuid(p_camp, 'camper:' || r.k), r.restriction, r.kind, r.severity, r.notes);
+  end loop;
+
+  insert into commissary_diet_counts (id, camp_id, session_id, restriction, count)
+  values (demo_seed_uuid(p_camp, 'diet:vegetarian'), p_camp, v_session, 'vegetarian', 18),
+         (demo_seed_uuid(p_camp, 'diet:vegan'), p_camp, v_session, 'vegan', 4)
+  on conflict (session_id, restriction) do update set count = excluded.count;
 
   return v_n;
 end;

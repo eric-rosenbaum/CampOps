@@ -239,13 +239,19 @@ test('J3: plan a town run, fill it, waitlist, promotion, a ride back and an erra
   await clearNoise(A.page);
   await A.page.getByRole('button', { name: 'Close trip' }).click();
 
-  const rideBack = E.page.getByTestId('no-ride-back').getByRole('button', { name: 'Ride back', exact: true });
+  // E's own car comes back at 3pm with a seat free: that is offered first (Marcus Webb's case),
+  // then the pickup.
+  const ways = E.page.getByTestId('no-ride-back').getByTestId('my-way-back');
+  await expect(ways.first()).toHaveAttribute('data-trip-id', tripId);
+  await expect(ways.first()).toContainText('Add the ride back on this town run (3pm)');
+  const rideBack = E.page.getByTestId('no-ride-back').locator(`[data-testid="my-way-back"][data-trip-id="${pickupId}"] button`).first();
   await expect(rideBack).toBeVisible(REALTIME);
   await shot(E.page, 'a ride back is offered to E');
   await clearNoise(E.page);
   await clearNoise(E.page);
   await rideBack.click();
-  await expect(E.page.getByTestId('trips-toast')).toContainText(/You’re in — back to camp/);
+  await expect(E.page.getByTestId('trips-toast')).toContainText('You’re riding back — In on the 1pm · back on the 4:30pm Pick-up from town');
+  await expect(E.page.getByTestId('my-journey')).toHaveText('In on the 1pm · back on the 4:30pm Pick-up from town', REALTIME);
   await expect(E.page.getByTestId('no-ride-back')).toHaveCount(0, REALTIME);
   await expect(aDay.getByTestId('stranded-chip')).toHaveCount(0, REALTIME);
   await expectDots(A.page, pickupId, 0, 1, 0);
@@ -426,7 +432,7 @@ test('J3b: one-way trips, a clash, and a stranded rider offered a way home', asy
   await alsoBack.locator('input[type="checkbox"]').uncheck();
   await clearNoise(E.page);
   await eDrawer.getByTestId('grab-seat').click();
-  await expect(E.page.getByTestId('trips-toast')).toContainText('You’re in — into town.');
+  await expect(E.page.getByTestId('trips-toast')).toContainText('You’re in — In on the 5pm · no ride back yet.');
   await expect(eDrawer.getByTestId('no-ride-back')).toBeVisible();
 
   // ── B takes the evening ride with the pickup ticked: both seats in one press ─
@@ -438,7 +444,11 @@ test('J3b: one-way trips, a clash, and a stranded rider offered a way home', asy
   await expect(bDrawer.getByTestId('also-ride-back').locator('input[type="checkbox"]')).toBeChecked();
   await clearNoise(B.page);
   await bDrawer.getByTestId('grab-seat').click();
-  await expect(B.page.getByTestId('trips-toast')).toContainText('Riding back on 9:30pm Late pickup from town.');
+  // The toast, the seat line and the rider list say the same whole journey.
+  await expect(B.page.getByTestId('trips-toast')).toContainText('You’re in — In on the 5pm · back on the 9:30pm Late pickup from town.');
+  await expect(bDrawer.getByTestId('my-journey')).toHaveText('In on the 5pm · back on the 9:30pm Late pickup from town', REALTIME);
+  await expect(bDrawer.getByTestId('rider-row').filter({ hasText: 'Priya Program' }).getByTestId('rider-journey'))
+    .toHaveText('In on the 5pm · back on the 9:30pm Late pickup from town');
   await expectDots(A.page, eveningId, 2, 0, 0);
   await expectDots(A.page, pickupId, 0, 1, 0);
   await expect(card(A.page, eveningId).getByTestId('seats-line')).toHaveText('1 seat left');
@@ -490,6 +500,12 @@ test('J3c: the demo week reads right, and nothing runs off a phone', async ({ br
   stagingSql(`do $$ begin
     if (select slug from camps where id = '${QA_CAMP_ID}') is distinct from 'prospect-qa' then raise exception 'not the QA camp'; end if;
     perform seed_demo_trips_internal('${QA_CAMP_ID}');
+    -- Made deterministic for this test: the town run (trip 1) was due back at 12:05am today, so it
+    -- is always overdue; the supply run (trip 3) is cancelled.
+    update trips set depart_time = '00:00', return_time = '00:05', errands_close_time = null
+     where id = demo_seed_uuid('${QA_CAMP_ID}', 'trip:1');
+    update trips set status = 'cancelled', cancelled_reason = 'Truck in the shop'
+     where id = demo_seed_uuid('${QA_CAMP_ID}', 'trip:3');
   end $$;`);
   const snap = stepper('J3c-demo-week', info.project.name);
   const phone = info.project.name === 'phone';
@@ -505,6 +521,46 @@ test('J3c: the demo week reads right, and nothing runs off a phone', async ({ br
   await shot(A.page, 'demo board');
   if (phone) await expectNoHorizontalOverflow(A.page, 'board-pane', 'board');
 
+  // Marcus Webb rides in on tomorrow's day-off shuttle, which comes back at 5:30pm with seats free:
+  // he is flagged, and the ride back on that same shuttle is what's offered.
+  const day1 = addDays(today, 1);
+  await A.page.goto(`/trips?week=${weekStartOf(day1)}`);
+  const d1 = visible(A.page, `[data-testid="board-day"][data-date="${day1}"]`).first();
+  await clearNoise(A.page);
+  await d1.getByTestId('stranded-chip').click();
+  const marcus = A.page.getByTestId('stranded-sheet').getByTestId('stranded-rider').filter({ hasText: 'Marcus Webb' });
+  await expect(marcus.getByTestId('way-back-option').first()).toHaveText('Add the ride back on this shuttle (5:30pm)');
+  await expect(marcus).not.toContainText('Nothing with a free seat');
+  await shot(A.page, 'Marcus is offered the ride back on his own shuttle');
+  if (phone) await expectNoHorizontalOverflow(A.page, 'stranded-sheet', 'stranded sheet (Marcus)');
+  await marcus.getByTestId('offer-ride-back').first().click();
+  await expect(A.page.getByTestId('trips-toast')).toContainText('Marcus Webb is riding back on the same Day-off shuttle into town at 5:30pm.');
+  await expect(A.page.getByTestId('stranded-sheet').getByTestId('stranded-empty')).toBeVisible(REALTIME);
+  await A.page.getByTestId('stranded-sheet').getByRole('button', { name: 'Close' }).click();
+
+  // Cancelled trips are off the board behind a count.
+  const day2 = addDays(today, 2);
+  await A.page.goto(`/trips?week=${weekStartOf(day2)}`);
+  const d2 = visible(A.page, `[data-testid="board-day"][data-date="${day2}"]`).first();
+  await expect(d2.getByTestId('trip-card').filter({ hasText: 'Supply run' })).toHaveCount(0);
+  await clearNoise(A.page);
+  await A.page.getByTestId('toggle-cancelled').click();
+  await expect(d2.getByTestId('trip-card').filter({ hasText: 'Supply run' })).toHaveAttribute('data-status', 'cancelled');
+  await A.page.getByTestId('toggle-cancelled').click();
+  await expect(d2.getByTestId('trip-card').filter({ hasText: 'Supply run' })).toHaveCount(0);
+
+  // The town run was due back hours ago: "Should be back", and the admin can mark it back.
+  await A.page.goto(`/trips?week=${weekStartOf(today)}`);
+  const run = visible(A.page, `[data-testid="board-day"][data-date="${today}"]`).first().getByTestId('trip-card').filter({ hasText: 'Town run' });
+  await expect(run.getByTestId('seats-line')).toHaveText('Should be back');
+  await clearNoise(A.page);
+  await run.click();
+  await expect(A.page.getByTestId('trip-drawer').getByTestId('should-be-back')).toContainText('was due at 12:05am');
+  await expect(A.page.getByTestId('trip-drawer').getByTestId('mark-back')).toBeVisible();
+  await shot(A.page, 'a trip past its return time asks to be marked back');
+  await A.page.getByRole('button', { name: 'Close trip' }).click();
+
+  if (weekStartOf(day3) !== weekStartOf(today)) await A.page.goto(`/trips?week=${weekStartOf(day3)}`);
   const day = visible(A.page, `[data-testid="board-day"][data-date="${day3}"]`).first();
   const evening = day.getByTestId('trip-card').filter({ hasText: 'Evening ride into town' });
   const pickup = day.getByTestId('trip-card').filter({ hasText: 'Late pickup from town' });
@@ -519,6 +575,16 @@ test('J3c: the demo week reads right, and nothing runs off a phone', async ({ br
   await expect(drawer.getByRole('radio', { name: /There & back/ })).toHaveCount(0);
   await expect(drawer.getByTestId('one-way-note')).toBeVisible();
   await expect(drawer.getByText(/leaving soon” reminder at 4pm, an hour before/)).toBeVisible();
+  // The pickup has one seat back left and Ruby asked for it: not pre-ticked, and says why.
+  const alsoBack = drawer.getByTestId('also-ride-back');
+  await expect(alsoBack.locator('input[type="checkbox"]')).not.toBeChecked();
+  await expect(alsoBack.getByTestId('also-ride-back-waiting')).toContainText('Ruby Walsh asked for this ride back.');
+  // Removing a rider asks first.
+  await clearNoise(A.page);
+  await drawer.getByRole('button', { name: 'Remove Ines Moreau' }).click();
+  await expect(drawer.getByTestId('confirm-remove-rider')).toBeVisible();
+  await drawer.getByTestId('confirm-remove-rider').getByRole('button', { name: 'Keep' }).click();
+  await expect(drawer.getByTestId('rider-row')).toHaveCount(3);
   await shot(A.page, 'demo evening ride drawer');
   if (phone) await expectNoHorizontalOverflow(A.page, 'trip-drawer', 'drawer');
   // Ruby's "No ride back" badge in the rider list opens the sheet too.
@@ -531,6 +597,17 @@ test('J3c: the demo week reads right, and nothing runs off a phone', async ({ br
   await sheet.getByRole('button', { name: 'Close' }).click();
   await A.page.getByRole('button', { name: 'Close trip' }).click();
 
+  // The pickup reads as a pickup, and its drawer fits a phone.
+  await clearNoise(A.page);
+  await pickup.click();
+  const pDrawer = A.page.getByTestId('trip-drawer');
+  await expect(pDrawer.getByTestId('drawer-direction')).toHaveText('Pickup from town · Picks up in Town centre at 9:30pm, back at camp around 10:15pm');
+  await expect(pDrawer).not.toContainText('leaves camp');
+  await expect(pDrawer.getByText(/pickup reminder at 7:30pm — an hour before would be 8:30pm/)).toBeVisible();
+  await shot(A.page, 'demo pickup drawer');
+  if (phone) await expectNoHorizontalOverflow(A.page, 'trip-drawer', 'pickup drawer');
+  await A.page.getByRole('button', { name: 'Close trip' }).click();
+
   // Shopping list: the duplicate hint, then the tab itself.
   await A.page.goto('/trips?tab=shopping');
   await expect(A.page.getByTestId('shopping-pane')).toBeVisible({ timeout: 30_000 });
@@ -541,16 +618,28 @@ test('J3c: the demo week reads right, and nothing runs off a phone', async ({ br
   const errandSheet = A.page.getByTestId('errand-sheet');
   await errandSheet.locator('input[name="item"]').fill('aa battery');
   await expect(errandSheet.getByTestId('duplicate-errand')).toContainText('Noor Haddad asked');
+  // It is on the town run that was due back hours ago: joining offers to move it.
+  await expect(errandSheet.getByTestId('duplicate-trip')).toContainText('which already left');
+  await expect(errandSheet.getByTestId('also-need-move')).toHaveValue('list');
+  await errandSheet.getByTestId('also-need-quantity').fill('12');
   await expect(errandSheet.getByTestId('save-errand')).toHaveText('Add anyway');
   // Only trips that haven't left, in departure order.
   const options = await errandSheet.locator('select[name="trip"] option').allTextContents();
   const labels = options.slice(1);
   expect(labels.length).toBeGreaterThan(0);
+  // A pickup is named the way it goes, never "→ Town centre".
+  for (const l of labels.filter((x) => x.includes('Late pickup'))) expect(l).toContain('Late pickup from town · Town centre → camp');
   await shot(A.page, 'duplicate errand hint');
   if (phone) await expectNoHorizontalOverflow(A.page, 'errand-sheet', 'errand sheet');
   await errandSheet.getByTestId('also-need-it').click();
-  await expect(A.page.getByTestId('trips-toast')).toContainText('Added you to Noor Haddad’s AA batteries');
-  await expect(A.page.getByTestId('shopping-row').filter({ hasText: 'AA batteries' }).first()).toContainText('Noor Haddad, Teddy Admin', REALTIME);
+  await expect(A.page.getByTestId('trips-toast')).toContainText('Added you (12) to Noor Haddad’s AA batteries');
+  await expect(A.page.getByTestId('trips-toast')).toContainText('Put back on the shopping list');
+  const aa = A.page.getByTestId('shopping-row').filter({ hasText: 'AA batteries' }).first();
+  await expect(aa).toContainText('Noor Haddad 24, Teddy Admin 12', REALTIME);
+  await expect(aa).toContainText('24 + 12');
+  await expect(aa).toHaveAttribute('data-pile', 'needs');
+  // The departed pile says when the car was due, and the badge counts what needs a trip.
+  await expect(A.page.getByTestId('shopping-row').filter({ hasText: 'Poster board' }).getByTestId('departed-note')).toContainText('was due back at 12:05am');
 
   // Ride requests.
   await A.page.goto('/trips?tab=rides');
@@ -558,13 +647,46 @@ test('J3c: the demo week reads right, and nothing runs off a phone', async ({ br
   await shot(A.page, 'demo ride requests');
   if (phone) await expectNoHorizontalOverflow(A.page, 'rides-pane', 'ride requests');
 
-  // The planner.
-  await A.page.goto('/trips');
-  await clearNoise(A.page);
-  await A.page.getByTestId('plan-trip-button').click();
-  await expect(A.page.getByTestId('plan-trip')).toBeVisible();
+  // The planner, from the guide's deep link, in a camp where everyone who opened a demo link is a
+  // "Demo guest". The member list is rewritten on the wire (profiles without names, two more
+  // guests), so no shared QA row is touched.
+  const me = JSON.parse(execFileSync('scripts/staging-sql.sh', ['-c', "select id from auth.users where email = 'qa-admin@example.com'"],
+    { env: { ...process.env, OUT: 'json' }, encoding: 'utf8' }).replace(/^[^[]*/, ''))[0].id as string;
+  await A.page.route((url) => url.pathname.endsWith('/rest/v1/profiles') && url.search.includes('full_name'), async (route) => {
+    const res = await route.fetch();
+    const rows = (await res.json()) as unknown;
+    if (!Array.isArray(rows)) { await route.fulfill({ response: res }); return; }
+    await route.fulfill({ response: res, json: rows.map((r) => ({ ...r, full_name: null })) });
+  });
+  await A.page.route((url) => url.pathname.endsWith('/rest/v1/camp_members') && url.search.includes('order=created_at'), async (route) => {
+    const res = await route.fetch();
+    const rows = (await res.json()) as Record<string, unknown>[];
+    if (!Array.isArray(rows) || rows.length === 0) { await route.fulfill({ response: res }); return; }
+    const guest = (id: string) => ({ ...rows[0], id, user_id: id, role: 'admin', display_name: 'Demo guest', is_active: true });
+    await route.fulfill({
+      response: res,
+      json: [...rows.map((r) => (r.user_id === me ? { ...r, display_name: 'Demo guest' } : r)),
+        guest('00000000-0000-4000-8000-00000000d001'), guest('00000000-0000-4000-8000-00000000d002')],
+    });
+  });
+  await A.page.goto('/trips?plan=1');
+  const planner = A.page.getByTestId('plan-trip');
+  await expect(planner).toBeVisible({ timeout: 30_000 });
+  const driverLabels = await planner.locator('select[name="driver"] option').allTextContents();
+  expect(driverLabels.filter((l) => /demo guest/i.test(l))).toEqual(['Demo guest (you)']);
+  // Never a time already gone.
+  const [pd, pt] = [await planner.locator('input[name="departDate"]').inputValue(), await planner.locator('input[name="departTime"]').inputValue()];
+  const nowMin = await A.page.evaluate(() => {
+    const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+    return Number(p.find((x) => x.type === 'hour')!.value) * 60 + Number(p.find((x) => x.type === 'minute')!.value);
+  });
+  const [h, mi] = pt.split(':').map(Number);
+  expect(pd > today || (pd === today && h * 60 + mi > nowMin)).toBe(true);
   await shot(A.page, 'plan a trip sheet');
   if (phone) await expectNoHorizontalOverflow(A.page, 'plan-trip', 'planner');
+  await planner.getByRole('button', { name: 'Cancel' }).click();
+  await expect(A.page).not.toHaveURL(/plan=1/);
+  await A.page.unrouteAll({ behavior: 'ignoreErrors' });
 
   expect(A.errors.filter((e) => !ignorable(e))).toEqual([]);
   await A.context.close();

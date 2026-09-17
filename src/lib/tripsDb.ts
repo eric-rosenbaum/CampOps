@@ -62,7 +62,7 @@ export function rowToErrand(r: Row): TripErrand {
     estCost: r.est_cost == null ? null : Number(r.est_cost), neededBy: s(r.needed_by),
     forActivity: s(r.for_activity),
     alsoNeededBy: Array.isArray(r.also_needed_by)
-      ? (r.also_needed_by as Row[]).map((x) => ({ userId: String(x.user_id ?? ''), name: String(x.name ?? 'Someone') }))
+      ? (r.also_needed_by as Row[]).map((x) => ({ userId: String(x.user_id ?? ''), name: String(x.name ?? 'Someone'), quantity: x.quantity == null ? null : String(x.quantity) }))
       : [],
     status: r.status as ErrandStatus, driverNote: s(r.driver_note),
     doneAt: s(r.done_at), createdAt: r.created_at as string, updatedAt: r.updated_at as string,
@@ -197,6 +197,9 @@ const FRIENDLY: Record<string, string> = {
   same_trip: 'That’s the trip you’re already on.',
   errand_not_open: 'That errand has already been picked up or removed.',
   seat_not_found: 'That seat no longer exists.',
+  no_seat_back: 'That car is full on the way back now. Try another trip back, or ask for a ride.',
+  seat_on_waitlist: 'That seat is still on the waitlist, so a ride back can’t be added to it yet.',
+  errand_not_found: 'That errand no longer exists.',
 };
 
 const CODE_RE = new RegExp(Object.keys(FRIENDLY).join('|'));
@@ -248,7 +251,13 @@ export const dbSetTripStatus = (tripId: string, status: Exclude<TripStatus, 'can
 export const dbCancelTrip = (tripId: string, reason: string | null) =>
   rpc<null>('cancel_trip', { p_trip_id: tripId, p_reason: reason });
 
-export interface ClaimResult { seat_id: string; status: 'confirmed' | 'waitlist'; leg: SeatLeg; already: boolean }
+export interface ClaimResult {
+  seat_id: string; status: 'confirmed' | 'waitlist'; leg: SeatLeg; already: boolean;
+  /** Set when this claim took the last seat back that these people were waiting on. */
+  last_seat_wanted_by?: string[];
+  /** offer_ride_back on the rider's own car: the there-only seat became there-and-back. */
+  same_trip?: boolean;
+}
 
 /** `leg` null: whatever the trip drives (there & back, into town, or back to camp). */
 export const dbClaimSeat = (tripId: string, leg: SeatLeg | null, riderUserId: string | null = null) =>
@@ -271,8 +280,9 @@ export const dbOfferRideBack = (seatId: string, tripId: string) =>
 export const dbRequestRideBack = (seatId: string) =>
   rpc<string>('request_ride_back', { p_seat_id: seatId });
 
-export const dbAlsoNeedErrand = (errandId: string) =>
-  rpc<null>('also_need_errand', { p_errand_id: errandId });
+/** "I need it too", with the joiner's own amount (kept per person). */
+export const dbAlsoNeedErrand = (errandId: string, quantity: string | null = null) =>
+  rpc<null>('also_need_errand', { p_errand_id: errandId, p_quantity: quantity });
 
 export const dbAddErrand = (campId: string, d: ErrandDraft) =>
   rpc<string>('add_errand', {

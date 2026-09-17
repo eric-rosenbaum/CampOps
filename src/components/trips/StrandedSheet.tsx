@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { AlertTriangle, Check, Users } from 'lucide-react';
 import type { Trip, TripSeat, RideRequest } from '@/lib/tripTypes';
 import {
-  strandedRiders, strandedHelp, seatUsage, dayLabel, shortDow, clock, routeLabel, compareTrips, type StrandedHelp,
+  strandedRiders, strandedHelp, seatUsage, dayLabel, shortDow, clock, routeLabel, compareTrips, wayBackLabel, backLegAt, type StrandedHelp,
 } from '@/lib/trips';
 import { dbOfferRideBack, dbRequestRideBack } from '@/lib/tripsDb';
 import type { CampRole } from '@/store/campStore';
@@ -43,7 +43,10 @@ export function StrandedSheet({ date, trips, seats, requests, userId, role, onOp
     setBusy(null);
     if (!r.ok || !r.data) { notify(r.error ?? 'That did not save.', 'error'); return; }
     const who = h.isMe ? 'You’re' : `${h.rider.seat.riderName} is`;
-    const when = `${t.departDate === h.rider.trip.departDate ? '' : `${shortDow(t.departDate)} `}${clock(t.departTime)} ${t.title}`;
+    const back = backLegAt(t);
+    const when = t.id === h.rider.trip.id
+      ? `the same ${t.title} at ${clock(back.time)}`
+      : `${back.date === h.rider.trip.departDate ? '' : `${shortDow(back.date)} `}${clock(back.time)} ${t.title}`;
     if (r.data.already) notify(`${who} already on ${when}.`, 'warn');
     else if (r.data.status === 'confirmed') notify(`${who} riding back on ${when}.`);
     else notify(`${who} on the waitlist to ride back on ${when}. Moved up automatically if a seat frees.`, 'warn');
@@ -99,7 +102,7 @@ export function StrandedSheet({ date, trips, seats, requests, userId, role, onOp
                       onClick={() => (primary ? offer(h, primary) : ask(h))}
                       className="mt-3 flex min-h-12 w-full items-center justify-center rounded-btn bg-forest px-3 text-[14px] font-bold text-paper hover:bg-forest-mid disabled:opacity-60"
                     >
-                      {primary ? `Find me a ride back · ${clock(primary.departTime)} ${primary.title}` : h.openRequest ? 'Asked — waiting for a driver' : 'Find me a ride back'}
+                      {primary ? (primary.id === trip.id ? wayBackLabel(trip, primary) : `Find me a ride back · ${wayBackLabel(trip, primary).replace(/^Back on the /, '')}`) : h.openRequest ? 'Asked — waiting for a driver' : 'Find me a ride back'}
                     </button>
                   )}
 
@@ -116,10 +119,10 @@ export function StrandedSheet({ date, trips, seats, requests, userId, role, onOp
                             <li key={t.id} className="flex items-center gap-2">
                               <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: kindStyle(t.kind).color }} />
                               <button type="button" onClick={() => onOpenTrip(t.id)} className="min-w-0 flex-1 text-left">
-                                <span className="block text-[13px] font-semibold leading-snug text-ink">
-                                  {t.departDate === trip.departDate ? '' : `${shortDow(t.departDate)} `}{clock(t.departTime)} · {t.title}
+                                <span className="block text-[13px] font-semibold leading-snug text-ink" data-testid="way-back-option">
+                                  {wayBackLabel(trip, t)}
                                 </span>
-                                <span className="block truncate text-[11.5px] text-ink-soft">{routeLabel(t) || 'Back to camp'} · {free} seat{free === 1 ? '' : 's'} back</span>
+                                <span className="block truncate text-[11.5px] text-ink-soft">{t.id === trip.id ? 'The car they rode in' : routeLabel(t) || 'Back to camp'} · {free} seat{free === 1 ? '' : 's'} back</span>
                               </button>
                               {allowed ? (
                                 <button
@@ -129,7 +132,7 @@ export function StrandedSheet({ date, trips, seats, requests, userId, role, onOp
                                   onClick={() => offer(h, t)}
                                   className="min-h-11 flex-none rounded-btn bg-forest px-3 text-[12.5px] font-bold text-paper hover:bg-forest-mid disabled:opacity-60"
                                 >
-                                  {h.isMe ? 'Ride back' : 'Give a seat back'}
+                                  {h.isMe ? 'Ride back' : t.id === trip.id ? 'Add ride back' : 'Give a seat back'}
                                 </button>
                               ) : (
                                 <span className="max-w-[7rem] flex-none text-right text-[11px] leading-tight text-ink-faint">its driver can add them</span>

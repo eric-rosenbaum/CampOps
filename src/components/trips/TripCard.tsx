@@ -14,6 +14,8 @@ interface Props {
   strandedCount: number;
   /** Departure time has passed (camp clock), whatever the driver has or hasn't marked. */
   departed: boolean;
+  /** Past its return time and nobody has marked it back. */
+  overdue?: boolean;
   onOpen: () => void;
   /** Column: the 7-day grid. Row: the phone stack and the leaving-next strip. */
   variant?: 'column' | 'row';
@@ -23,7 +25,7 @@ interface Props {
  * One car on the board. Everything needed to decide "is this my ride" without opening it: when,
  * where, who drives, how full, how many errands are riding along.
  */
-export function TripCard({ trip, usage, errandCount, mine, iDrive, strandedCount, departed, onOpen, variant = 'column' }: Props) {
+export function TripCard({ trip, usage, errandCount, mine, iDrive, strandedCount, departed, overdue = false, onOpen, variant = 'column' }: Props) {
   const k = kindStyle(trip.kind);
   const Icon = k.icon;
   const cancelled = trip.status === 'cancelled';
@@ -36,6 +38,8 @@ export function TripCard({ trip, usage, errandCount, mine, iDrive, strandedCount
   let seatsLine: string;
   let seatsTone = 'text-ink-soft';
   if (cancelled) seatsLine = 'Cancelled';
+  // Hours after it was due, "Left" and "On the road" read as a car still out there.
+  else if (overdue) { seatsLine = 'Should be back'; seatsTone = 'text-amber-text'; }
   else if (trip.status === 'out') seatsLine = 'On the road';
   else if (trip.status === 'back') seatsLine = 'Back';
   else if (departed) seatsLine = 'Left';

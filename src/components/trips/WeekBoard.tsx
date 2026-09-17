@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Plus, Users, AlertTriangle, ListChecks, Chev
 import type { Trip, SeatStatus } from '@/lib/tripTypes';
 import {
   phoneDayOrder, weekRangeLabel, shortDow, monthDay, minutesUntil, countdownLabel, clock,
-  errandListOpen, seatSummary, routeLabel, type BoardDay, type SeatUsage, type LocalNow,
+  errandListOpen, seatSummary, routeLabel, overdueBack, type BoardDay, type SeatUsage, type LocalNow,
 } from '@/lib/trips';
 import { TripCard } from './TripCard';
 import { SeatDots } from './tripUi';
@@ -30,6 +30,9 @@ interface Props {
   onPlan: (date: string) => void;
   /** The "N no ride back" chip: who, and what can be done. */
   onStranded: (date: string) => void;
+  /** Cancelled trips are hidden unless this is on. */
+  showCancelled: boolean;
+  onToggleCancelled: () => void;
 }
 
 function DayChips({ day, onStranded, compact = false }: { day: BoardDay; onStranded: (date: string) => void; compact?: boolean }) {
@@ -146,9 +149,10 @@ function EmptyDay({ day, canWrite, onPlan }: { day: BoardDay; canWrite: boolean;
   );
 }
 
-export function WeekBoard({ days, weekStart, isCurrentWeek, leaving, now, lookups, canWrite, onWeek, onOpenTrip, onPlan, onStranded }: Props) {
+export function WeekBoard({ days, weekStart, isCurrentWeek, leaving, now, lookups, canWrite, onWeek, onOpenTrip, onPlan, onStranded, showCancelled, onToggleCancelled }: Props) {
   const [showPast, setShowPast] = useState(false);
   const weekTrips = days.reduce((n, d) => n + d.trips.filter((t) => t.status !== 'cancelled').length, 0);
+  const weekCancelled = days.reduce((n, d) => n + d.cancelled.length, 0);
   const phoneDays = phoneDayOrder(days);
   const past = isCurrentWeek ? phoneDays.filter((d) => d.isPast) : [];
   const ahead = isCurrentWeek ? phoneDays.filter((d) => !d.isPast) : phoneDays;
@@ -164,6 +168,7 @@ export function WeekBoard({ days, weekStart, isCurrentWeek, leaving, now, lookup
       iDrive={lookups.iDrive(t)}
       strandedCount={lookups.strandedOn(t.id)}
       departed={minutesUntil(now, t.departDate, t.departTime) <= 0}
+      overdue={overdueBack(t, now)}
       onOpen={() => onOpenTrip(t.id)}
     />
   );
@@ -219,6 +224,17 @@ export function WeekBoard({ days, weekStart, isCurrentWeek, leaving, now, lookup
           </button>
         )}
         <span className="text-[12px] text-ink-soft">{weekTrips} trip{weekTrips === 1 ? '' : 's'}</span>
+        {weekCancelled > 0 && (
+          <button
+            type="button"
+            onClick={onToggleCancelled}
+            aria-pressed={showCancelled}
+            data-testid="toggle-cancelled"
+            className="min-h-9 rounded-pill border border-border bg-white px-2.5 text-[12px] font-semibold text-ink-soft hover:border-sage hover:text-forest"
+          >
+            {showCancelled ? 'Hide cancelled' : `${weekCancelled} cancelled`}
+          </button>
+        )}
         {/* The seat-dot legend, on phones too: half dots mean nothing until somebody says so. */}
         <span className="flex w-full items-center gap-3 text-[11px] text-ink-soft md:ml-auto md:w-auto" data-testid="dot-legend">
           <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-forest-light" /> taken</span>

@@ -166,6 +166,36 @@ export function routeLabel(trip: Pick<Trip, 'direction' | 'destination'>): strin
   return d ? `→ ${d}` : '';
 }
 
+/**
+ * Where and when the way back leaves town. A pickup's departure IS the pickup in town; a round
+ * trip heads home at its return time. Every "back on the 5:30pm" label and the matching of ride
+ * requests to a way back read this, because the departure time of a 9:30am shuttle is not when
+ * anyone rides home on it.
+ */
+export function backLegAt(trip: Pick<Trip, 'direction' | 'departDate' | 'departTime' | 'returnDate' | 'returnTime'>): { date: string; time: string } {
+  if (trip.direction === 'pickup') return { date: trip.departDate, time: trip.departTime };
+  return { date: trip.returnDate ?? trip.departDate, time: trip.returnTime ?? trip.departTime };
+}
+
+/**
+ * The line under a trip that says what it does and when, in words that fit its direction. A
+ * pickup "leaves camp 9:30pm" read as a car leaving camp at the moment it is meant to be in town.
+ */
+export function directionLine(trip: Pick<Trip, 'direction' | 'destination' | 'departTime' | 'returnTime'>): string {
+  if (trip.direction === 'pickup') {
+    const where = trip.destination.trim() || 'town';
+    return `Picks up in ${where} at ${clock(trip.departTime)}${trip.returnTime ? `, back at camp around ${clock(trip.returnTime)}` : ''}`;
+  }
+  if (trip.direction === 'outbound') return 'Riders need another way back';
+  return trip.returnTime ? `Heads back at ${clock(trip.returnTime)}` : 'Takes people there and brings them back';
+}
+
+/** "Sat 9:30pm Late pickup from town · Town centre → camp": a trip named the way it actually goes. */
+export function tripOptionLabel(trip: Trip): string {
+  const route = routeLabel(trip);
+  return `${dayLabel(trip.departDate)} ${clock(trip.departTime)} · ${trip.title}${route ? (trip.direction === 'pickup' ? ` · ${route}` : ` ${route}`) : ''}`;
+}
+
 export interface SeatUsage {
   seats: number;
   thereUsed: number;
@@ -367,11 +397,19 @@ export function strandedByDate(trips: Trip[], seats: TripSeat[]): Map<string, St
 }
 
 /**
- * Trips that could bring a there-only rider home: live, not the trip out, leaving that day
- * (no earlier) or the next, with a free seat on the way back.
+ * Trips that could bring a there-only rider home, the car they rode in first.
+ *
+ * The rider's own car counts when it is a round trip, still going (planned or already out), with a
+ * free seat on its way back. It used to be skipped: Marcus rode in on the 9:30am shuttle, which
+ * comes back at 5:30pm with two seats free, and was told nothing was coming back that day, because
+ * this looked only at OTHER trips (and the database would not add a way back to a car he already
+ * sat in). Other trips: planned, not into-town-only, leaving that day (no earlier) or the next,
+ * with a free seat back.
  */
 export function returnOptions(trip: Trip, trips: Trip[], seats: TripSeat[]): Trip[] {
-  return trips
+  const own = trip.direction === 'round_trip' && (trip.status === 'planned' || trip.status === 'out')
+    && seatUsage(trip, seats).freeBack > 0 ? [trip] : [];
+  const others = trips
     .filter((t) => t.id !== trip.id && t.status === 'planned' && t.direction !== 'outbound')
     .filter((t) => {
       const gap = daysBetween(trip.departDate, t.departDate);
@@ -379,7 +417,120 @@ export function returnOptions(trip: Trip, trips: Trip[], seats: TripSeat[]): Tri
       return gap > 0 || toMinutes(t.departTime) >= toMinutes(trip.departTime);
     })
     .filter((t) => seatUsage(t, seats).freeBack > 0)
-    .sort(compareTrips);
+    .sort((a, b) => {
+      const x = backLegAt(a); const y = backLegAt(b);
+      return x.date.localeCompare(y.date) || x.time.localeCompare(y.time) || compareTrips(a, b);
+    });
+  return [...own, ...others];
+}
+
+/** "Add the ride back on this shuttle (5:30pm)" or "Back on the Sat 9:30pm Late pickup from town". */
+export function wayBackLabel(rideIn: Trip, option: Trip): string {
+  const at = backLegAt(option);
+  if (option.id === rideIn.id) return `Add the ride back on this ${KIND_NOUN[option.kind]} (${clock(at.time)})`;
+  return `Back on the ${at.date === rideIn.departDate ? '' : `${shortDow(at.date)} `}${clock(at.time)} ${option.title}`;
+}
+
+const KIND_NOUN: Record<TripKind, string> = {
+  town_run: 'town run', day_off: 'shuttle', supply_run: 'supply run', pickup: 'pickup', other: 'trip',
+};
+
+// ─── The last seat back ──────────────────────────────────────────────────────
+
+/**
+ * People (never the viewer) waiting on the way back this trip offers: open back-only ride requests
+ * for that day whose time window takes in the ride back, and stranded there-only riders who rode in
+ * no later than it -- the car's own there-only riders included. Mirrors
+ * trips_back_seat_wanted_by_internal. Used when taking a seat back would take the last one.
+ */
+export interface WaitingForSeatBack {
+  name: string;
+  /** Asked for this ride (an open request), or has no way back at all (stranded). */
+  reason: 'asked' | 'stranded';
+}
+
+export function backSeatWantedBy(trip: Trip, trips: Trip[], seats: TripSeat[], requests: RideRequest[], viewerId: string): WaitingForSeatBack[] {
+  if (trip.direction === 'outbound') return [];
+  const at = backLegAt(trip);
+  const found: (WaitingForSeatBack & { at: string })[] = [];
+  for (const r of requests) {
+    if (r.status !== 'open' || r.leg !== 'back' || r.requestedBy === viewerId || r.wantedDate !== at.date) continue;
+    if (r.earliestTime && r.earliestTime > at.time) continue;
+    if (r.latestTime && r.latestTime < at.time) continue;
+    found.push({ name: r.requesterName.trim(), reason: 'asked', at: r.createdAt });
+  }
+  for (const s of strandedRiders(trips, seats)) {
+    if (viewerId && s.seat.riderUserId === viewerId) continue;
+    const gap = daysBetween(s.trip.departDate, trip.departDate);
+    if (gap < 0 || gap > 1 || (gap === 0 && toMinutes(trip.departTime) < toMinutes(s.trip.departTime))) continue;
+    found.push({ name: s.seat.riderName.trim(), reason: 'stranded', at: s.seat.queuedAt });
+  }
+  // One line per person; "asked" wins, because it is the stronger claim to the seat.
+  const byKey = new Map<string, WaitingForSeatBack & { at: string }>();
+  for (const f of found.sort((a, b) => a.at.localeCompare(b.at))) {
+    const key = f.name.toLowerCase();
+    const prev = byKey.get(key);
+    if (!prev) byKey.set(key, f);
+    else if (f.reason === 'asked') prev.reason = 'asked';
+  }
+  return [...byKey.values()].map(({ name, reason }) => ({ name, reason }));
+}
+
+/** Would taking `leg` on this trip take its last free seat back? */
+export function takesLastSeatBack(leg: SeatLeg, usage: Pick<SeatUsage, 'freeBack'>): boolean {
+  return usesBack(leg) && usage.freeBack === 1;
+}
+
+/** "Ruby Walsh asked for this ride back." / "Ruby Walsh has no other way back." — one sentence each. */
+export function waitingLines(people: WaitingForSeatBack[]): string[] {
+  return people.map((p) => (p.reason === 'asked' ? `${p.name} asked for this ride back.` : `${p.name} has no ride back yet.`));
+}
+
+// ─── A rider's whole journey ─────────────────────────────────────────────────
+
+/** The other half of a one-way seat: the same person's seat back for a ride in, or in for a ride back. */
+export function linkedSeat(seat: TripSeat, trips: Trip[], seats: TripSeat[]): { seat: TripSeat; trip: Trip } | null {
+  if (seat.leg === 'both') return null;
+  const byId = new Map(trips.map((t) => [t.id, t]));
+  const mine = byId.get(seat.tripId);
+  if (!mine) return null;
+  const key = riderKey(seat);
+  const live = seats
+    .filter((o) => o.id !== seat.id && o.tripId !== seat.tripId && (o.status === 'confirmed' || o.status === 'waitlist') && riderKey(o) === key)
+    .map((o) => ({ seat: o, trip: byId.get(o.tripId) }))
+    .filter((x): x is { seat: TripSeat; trip: Trip } => !!x.trip && x.trip.status !== 'cancelled');
+  const within = (out: Trip, back: Trip) => {
+    const gap = daysBetween(out.departDate, back.departDate);
+    return gap >= 0 && gap <= 1 && (gap > 0 || toMinutes(back.departTime) >= toMinutes(out.departTime));
+  };
+  const hits = seat.leg === 'there'
+    ? live.filter((x) => x.seat.leg !== 'there' && within(mine, x.trip))
+    : live.filter((x) => x.seat.leg !== 'back' && within(x.trip, mine));
+  hits.sort((a, b) => (a.seat.status === b.seat.status ? 0 : a.seat.status === 'confirmed' ? -1 : 1) || compareTrips(a.trip, b.trip));
+  return hits[0] ?? null;
+}
+
+/**
+ * The whole journey for one seat, in one phrase, so the drawer, the rider list and the toast agree:
+ * "In on the 5pm · back on the 9:30pm Late pickup from town". A card that said "There only" while
+ * the toast said "Riding back on 9:30pm Late pickup" contradicted itself.
+ */
+export function journeyLabel(seat: TripSeat, trips: Trip[], seats: TripSeat[]): string {
+  const mine = trips.find((t) => t.id === seat.tripId);
+  if (!mine) return LEG_LABELS[seat.leg];
+  if (seat.leg === 'both') return mine.direction === 'round_trip' && mine.returnTime ? `There & back · home at ${clock(mine.returnTime)}` : 'There & back';
+  const other = linkedSeat(seat, trips, seats);
+  const day = (t: Trip) => (t.departDate === mine.departDate ? '' : `${shortDow(t.departDate)} `);
+  const wait = (s: TripSeat) => (s.status === 'waitlist' ? ' (waitlist)' : '');
+  if (seat.leg === 'there') {
+    const inPart = `In on the ${clock(mine.departTime)}`;
+    if (!other) return `${inPart} · no ride back yet`;
+    const at = backLegAt(other.trip);
+    return `${inPart} · back on the ${day(other.trip)}${clock(at.time)} ${other.trip.title}${wait(other.seat)}`;
+  }
+  const back = backLegAt(mine);
+  if (!other) return mine.direction === 'pickup' ? `Picked up at ${clock(back.time)}` : `Back only · leaves town ${clock(back.time)}`;
+  return `In on the ${day(other.trip)}${clock(other.trip.departTime)} ${other.trip.title}${wait(other.seat)} · back on the ${clock(back.time)}`;
 }
 
 export interface StrandedHelp {
@@ -436,6 +587,8 @@ export interface BoardDay {
   isToday: boolean;
   isPast: boolean;
   trips: Trip[];
+  /** Cancelled trips that left the day, counted so the board can offer to show them. */
+  cancelled: Trip[];
   /** Open ride requests for the day. */
   rideDemand: RideRequest[];
   stranded: StrandedRider[];
@@ -446,18 +599,20 @@ export function weekDates(weekStart: string): string[] {
 }
 
 /**
- * The seven columns of the board. Cancelled trips stay on it (struck through) so somebody who
- * was counting on one sees that it is off rather than that it vanished.
+ * The seven columns of the board. Cancelled trips are off it unless asked for: struck-through
+ * cards crowded the live ones and read as trips. Each day keeps its cancelled trips aside so the
+ * board can say "2 cancelled" and show them, and a rider who was counting on one can still see it.
  */
 export function layoutWeek(
-  weekStart: string, today: string, trips: Trip[], seats: TripSeat[], requests: RideRequest[],
+  weekStart: string, today: string, trips: Trip[], seats: TripSeat[], requests: RideRequest[], showCancelled = false,
 ): BoardDay[] {
   const stranded = strandedByDate(trips, seats);
   return weekDates(weekStart).map((date) => ({
     date,
     isToday: date === today,
     isPast: date < today,
-    trips: trips.filter((t) => t.departDate === date).sort(compareTrips),
+    trips: trips.filter((t) => t.departDate === date && (showCancelled || t.status !== 'cancelled')).sort(compareTrips),
+    cancelled: trips.filter((t) => t.departDate === date && t.status === 'cancelled').sort(compareTrips),
     rideDemand: requests.filter((r) => r.status === 'open' && r.wantedDate === date),
     stranded: stranded.get(date) ?? [],
   }));
@@ -511,7 +666,8 @@ export function errandListOpen(trip: Trip, now: LocalNow): boolean {
  * nothing is sent between 8pm and 8am, so an early departure is reminded the evening before and a
  * late one at 7pm.
  */
-export function leavingSoonNote(date: string, time: string): string {
+export function leavingSoonNote(date: string, time: string, direction: TripDirection = 'round_trip'): string {
+  if (direction === 'pickup') return pickupReminderNote(date, time);
   const at = leavingSoonSendAt(date, time);
   const hourBefore = addMinutesLocal(date, time, -60);
   if (at.date === hourBefore.date && at.time === hourBefore.time) return `a “leaving soon” reminder at ${clock(at.time)}, an hour before`;
@@ -532,6 +688,29 @@ export function leavingSoonSendAt(date: string, time: string): { date: string; t
   }
   if (hour >= 20) return { date: at.date, time: '19:00' };
   return at;
+}
+
+/**
+ * When a pickup's reminder goes out, camp-local. Mirrors trip_pickup_reminder_at_internal: an hour
+ * before the pickup, except the outbox sends only 08:00–19:59 -- so a pickup whose hour-before is
+ * 8pm or later is reminded at 7:30pm, when its riders are in town and can still plan, and one
+ * before 8am the evening before at 7:30pm. The departure-style 7pm "leaving soon" read as the car
+ * leaving camp while its riders were already in town.
+ */
+export function pickupReminderAt(date: string, time: string): { date: string; time: string } {
+  const at = addMinutesLocal(date, time, -60);
+  const hour = Math.floor(toMinutes(at.time) / 60);
+  if (hour >= 20) return { date: at.date, time: '19:30' };
+  if (hour < 8) return toMinutes(time) >= 8 * 60 ? { date, time: '08:00' } : { date: addDays(date, -1), time: '19:30' };
+  return at;
+}
+
+export function pickupReminderNote(date: string, time: string): string {
+  const at = pickupReminderAt(date, time);
+  const hourBefore = addMinutesLocal(date, time, -60);
+  if (at.date === hourBefore.date && at.time === hourBefore.time) return `a pickup reminder at ${clock(at.time)}, an hour before`;
+  const when = at.date === date ? `at ${clock(at.time)}` : `the evening before at ${clock(at.time)}`;
+  return `a pickup reminder ${when} — an hour before would be ${clock(hourBefore.time)}, and no messages go out 8pm–8am`;
 }
 
 // ─── Kinds and presets ───────────────────────────────────────────────────────
@@ -555,6 +734,19 @@ export const KIND_PRESETS: Record<TripKind, KindPreset> = {
   pickup: { kind: 'pickup', label: 'Pickup from town', hint: 'Brings people back to camp · 4 seats', durationMin: 45, seats: 4, closeBeforeMin: null, direction: 'pickup' },
   other: { kind: 'other', label: 'Appointment or other', hint: 'Doctor, airport, bus station', durationMin: 90, seats: 3, closeBeforeMin: null, direction: 'round_trip' },
 };
+
+/**
+ * Where a new trip starts. Today: the next whole hour at least 45 minutes away. Too late for that
+ * (the car would leave after 9pm): tomorrow at 1pm. Planning at 10pm used to default to today
+ * 1pm -- a trip already nine hours in the past.
+ */
+export function defaultDeparture(now: LocalNow, date: string | null): { date: string; time: string } {
+  const day = date && date >= now.date ? date : now.date;
+  if (day !== now.date) return { date: day, time: '13:00' };
+  const next = Math.ceil((now.minutes + 45) / 60) * 60;
+  if (next > 21 * 60) return { date: addDays(now.date, 1), time: '13:00' };
+  return { date: day, time: fromMinutes(Math.max(next, 8 * 60)) };
+}
 
 export function applyPreset(kind: TripKind, departDate: string, departTime: string) {
   const p = KIND_PRESETS[kind];
@@ -603,6 +795,24 @@ export interface ShoppingList {
   needsTripCount: number;
   onTripCount: number;
   onDepartedCount: number;
+  /**
+   * Errands nobody is going for any more: on no trip, or open on a trip that is due back. The tab
+   * badge and the header count this; counting only the unassigned pile left "4 need a trip" while
+   * two more sat on a car that had come home hours ago.
+   */
+  attentionCount: number;
+}
+
+/** When the car is due back at camp, or null for an into-town-only car with no return. */
+export function dueBackAt(trip: Pick<Trip, 'departDate' | 'returnDate' | 'returnTime'>): { date: string; time: string } | null {
+  return trip.returnTime ? { date: trip.returnDate ?? trip.departDate, time: trip.returnTime } : null;
+}
+
+/** Still marked planned or out, but its return time has passed: it should be back. */
+export function overdueBack(trip: Trip, now: LocalNow): boolean {
+  if (trip.status !== 'planned' && trip.status !== 'out') return false;
+  const due = dueBackAt(trip);
+  return !!due && minutesUntil(now, due.date, due.time) <= 0;
 }
 
 /** Whether the car has gone: marked out or back, or past its departure time whatever was marked. */
@@ -629,9 +839,14 @@ export function shoppingList(errands: TripErrand[], trips: Trip[], now: LocalNow
     else if (hasDeparted(t, now)) onDeparted.push(e);
     else onTrip.push(e);
   }
+  const dueBack = onDeparted.filter((e) => {
+    const t = byId.get(e.tripId!)!;
+    return t.status === 'back' || overdueBack(t, now);
+  }).length;
   return {
     needsTrip: groupByStore(needsTrip), onTrip: groupByStore(onTrip), onDeparted: groupByStore(onDeparted),
     needsTripCount: needsTrip.length, onTripCount: onTrip.length, onDepartedCount: onDeparted.length,
+    attentionCount: needsTrip.length + dueBack,
   };
 }
 
@@ -650,10 +865,23 @@ export function findDuplicateErrand(errands: TripErrand[], item: string): TripEr
   return errands.find((e) => e.status === 'open' && normItem(e.item) === key) ?? null;
 }
 
-/** Everybody waiting on an errand: who asked, then who needs it too. */
-export function errandPeople(e: TripErrand): string {
-  const others = e.alsoNeededBy.map((x) => x.name);
-  return [e.requesterName, ...others].join(', ');
+/**
+ * Everybody waiting on an errand: who asked, then who needs it too -- with each person's amount
+ * once anyone who joined gave one ("Noor Haddad 24, Demo guest 12"), because "I need it too"
+ * used to drop the amount the second person typed.
+ */
+export function errandPeople(e: Pick<TripErrand, 'requesterName' | 'quantity' | 'alsoNeededBy'>): string {
+  const amounts = e.alsoNeededBy.some((x) => x.quantity);
+  if (!amounts) return [e.requesterName, ...e.alsoNeededBy.map((x) => x.name)].join(', ');
+  const one = (name: string, q: string | null | undefined) => (q ? `${name} ${q}` : name);
+  return [one(e.requesterName, e.quantity), ...e.alsoNeededBy.map((x) => one(x.name, x.quantity))].join(', ');
+}
+
+/** "24 + 12" when people who joined gave their own amounts; otherwise the one amount. */
+export function errandQuantity(e: Pick<TripErrand, 'quantity' | 'alsoNeededBy'>): string | null {
+  const extra = e.alsoNeededBy.map((x) => x.quantity).filter((q): q is string => !!q);
+  if (extra.length === 0) return e.quantity;
+  return [e.quantity ?? '?', ...extra].join(' + ');
 }
 
 export type NeededByState = 'overdue' | 'soon' | 'later' | null;
@@ -688,6 +916,32 @@ export function errandTargets(trips: Trip[], now: LocalNow, managedTripIds: Set<
 export function canManageTrip(trip: Trip, userId: string, role: 'admin' | 'staff' | 'viewer'): boolean {
   if (role === 'viewer') return false;
   return role === 'admin' || trip.createdBy === userId || trip.driverUserId === userId;
+}
+
+// ─── People to pick from ─────────────────────────────────────────────────────
+
+export const DEMO_GUEST_NAME = 'Demo guest';
+
+/**
+ * Drivers to offer. Everyone who opens a demo link is a member named "Demo guest", so the list
+ * offered "Demo guest" three times and nobody could tell which one was them. The viewer's own
+ * row is "Demo guest (you)"; other anonymous guests are left out, except one already driving the
+ * trip being edited, shown as "Another demo guest" so saving doesn't silently drop them.
+ */
+export function driverOptions<M extends { userId: string; fullName: string; isActive: boolean; role: string }>(
+  members: M[], viewerId: string, keepUserId: string | null = null,
+): { userId: string; label: string }[] {
+  const isGuest = (m: M) => m.fullName.trim().toLowerCase() === DEMO_GUEST_NAME.toLowerCase();
+  const seen = new Set<string>();
+  return members
+    .filter((m) => m.isActive && m.role !== 'viewer')
+    .filter((m) => !isGuest(m) || m.userId === viewerId || m.userId === keepUserId)
+    .filter((m) => (seen.has(m.userId) ? false : (seen.add(m.userId), true)))
+    .map((m) => ({
+      userId: m.userId,
+      label: m.userId === viewerId ? `${m.fullName} (you)` : isGuest(m) ? 'Another demo guest' : m.fullName,
+    }))
+    .sort((a, b) => (a.userId === viewerId ? -1 : b.userId === viewerId ? 1 : a.label.localeCompare(b.label)));
 }
 
 // ─── Labels ──────────────────────────────────────────────────────────────────

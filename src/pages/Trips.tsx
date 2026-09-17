@@ -36,6 +36,7 @@ const TABS: { id: Tab; label: string }[] = [
  *   /trips?week=2026-09-14            that week (any date in it works)
  *   /trips?trip=<id>                  that trip open, on its own week
  *   /trips?tab=shopping | tab=rides   the other two tabs
+ *   /trips?plan=1                     the planner open (plan=2026-09-19 starts it on that day)
  */
 export function Trips() {
   const [params, setParams] = useSearchParams();
@@ -54,7 +55,11 @@ export function Trips() {
   const now = useCampClock();
   const canWrite = role !== 'viewer';
 
-  const [planning, setPlanning] = useState<{ date: string | null; editing: Trip | null } | null>(null);
+  const [planningState, setPlanning] = useState<{ date: string | null; editing: Trip | null } | null>(null);
+  const [showCancelled, setShowCancelled] = useState(false);
+  // ?plan=1 (or ?plan=2026-09-19) opens the planner, for the demo guide's "plan a trip" step.
+  const planParam = params.get('plan');
+  const planning = planningState ?? (planParam && canWrite ? { date: isDateStr(planParam) ? planParam : null, editing: null } : null);
   const [errandFor, setErrandFor] = useState<{ tripId: string | null } | null>(null);
   const [strandedDate, setStrandedDate] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
@@ -117,7 +122,7 @@ export function Trips() {
     };
   }, [usageByTrip, errandCountByTrip, mySeatByTrip, strandedCountByTrip, currentUser.id]);
 
-  const days = useMemo(() => layoutWeek(weekStart, now.date, trips, seats, rideRequests), [weekStart, now.date, trips, seats, rideRequests]);
+  const days = useMemo(() => layoutWeek(weekStart, now.date, trips, seats, rideRequests, showCancelled), [weekStart, now.date, trips, seats, rideRequests, showCancelled]);
   const leaving = useMemo(() => leavingNext(trips, now), [trips, now]);
   const list = useMemo(() => shoppingList(errands, trips, now), [errands, trips, now]);
   const openRequests = useMemo(() => rideRequests.filter((r) => r.status === 'open' && r.wantedDate >= now.date).length, [rideRequests, now.date]);
@@ -133,7 +138,7 @@ export function Trips() {
   const weekTripCount = days.reduce((n, d) => n + d.trips.filter((t) => t.status !== 'cancelled').length, 0);
   // Short enough for a phone header next to two buttons: "this week" is implied by the board
   // below, and "need a trip" is what the Shopping list badge counts.
-  const subtitle = `${weekTripCount} trip${weekTripCount === 1 ? '' : 's'}${weekStart === thisWeek ? '' : ` · ${weekRangeLabel(weekStart)}`} · ${list.needsTripCount} errand${list.needsTripCount === 1 ? '' : 's'} need${list.needsTripCount === 1 ? 's' : ''} a trip`;
+  const subtitle = `${weekTripCount} trip${weekTripCount === 1 ? '' : 's'}${weekStart === thisWeek ? '' : ` · ${weekRangeLabel(weekStart)}`} · ${list.attentionCount} errand${list.attentionCount === 1 ? '' : 's'} need${list.attentionCount === 1 ? 's' : ''} a trip`;
 
   if (!currentCamp) return null;
 
@@ -169,7 +174,7 @@ export function Trips() {
       <div className="flex-shrink-0 overflow-x-auto border-b border-border bg-paper-raised px-4 no-scrollbar sm:px-7">
         <div className="flex" role="tablist">
           {TABS.map((t) => {
-            const badge = t.id === 'shopping' ? list.needsTripCount : t.id === 'rides' ? openRequests : 0;
+            const badge = t.id === 'shopping' ? list.attentionCount : t.id === 'rides' ? openRequests : 0;
             return (
               <button
                 key={t.id}
@@ -205,6 +210,8 @@ export function Trips() {
             onOpenTrip={openTripById}
             onPlan={(date) => setPlanning({ date, editing: null })}
             onStranded={setStrandedDate}
+            showCancelled={showCancelled}
+            onToggleCancelled={() => setShowCancelled((v) => !v)}
           />
         )}
         {tab === 'shopping' && (
@@ -228,6 +235,7 @@ export function Trips() {
           trips={trips}
           seats={seats}
           errands={errands}
+          requests={rideRequests}
           userId={currentUser.id}
           role={role}
           now={now}
@@ -248,7 +256,7 @@ export function Trips() {
           editing={planning.editing}
           members={members}
           vehicles={vehicles}
-          onClose={() => setPlanning(null)}
+          onClose={() => { setPlanning(null); if (planParam) update((p) => p.delete('plan')); }}
           onSaved={(id) => {
             setPlanning(null);
             const t = useTripsStore.getState().trips.find((x) => x.id === id);
@@ -256,6 +264,7 @@ export function Trips() {
               p.set('trip', id);
               if (t) { const w = weekStartOf(t.departDate); if (w === thisWeek) p.delete('week'); else p.set('week', w); }
               p.delete('tab');
+              p.delete('plan');
             });
           }}
           notify={notify}

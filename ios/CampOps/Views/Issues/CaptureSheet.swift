@@ -29,6 +29,7 @@ struct CaptureSheet: View {
     @State private var draft: WorkOrderDraft?
     @State private var errorMessage: String?
     @State private var showForm = false
+    @State private var pulse = false
 
     var body: some View {
         NavigationStack {
@@ -69,11 +70,18 @@ struct CaptureSheet: View {
                         }
                     }
                     .buttonStyle(.campPrimary())
-                    .disabled(isReading || (photo == nil && dictation.transcript.isEmpty))
+                    .disabled(isReading || dictation.isRecording || !hasSomethingToRead)
 
-                    Button("Just type it") { showForm = true }
-                        .buttonStyle(.campSecondary)
-                        .frame(maxWidth: .infinity)
+                    // The way in to the ordinary form, and deliberately a peer of the AI path
+                    // rather than a footnote: typing it is what most people will do most days.
+                    Button {
+                        dictation.stop()
+                        showForm = true
+                    } label: {
+                        Label("Just type it", systemImage: "square.and.pencil")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.campSecondary)
                 }
                 .padding(Spacing.lg)
             }
@@ -116,6 +124,10 @@ struct CaptureSheet: View {
         }
     }
 
+    private var hasSomethingToRead: Bool {
+        photo != nil || dictation.hasSomethingToSend
+    }
+
     private var photoBlock: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             SectionEyebrow(text: "Photo")
@@ -153,35 +165,74 @@ struct CaptureSheet: View {
     private var dictationBlock: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             SectionEyebrow(text: "Say what's wrong")
-            Button {
-                if dictation.isRecording { dictation.stop() } else { dictation.start() }
-            } label: {
-                Label(
-                    dictation.isRecording ? "Stop" : "Hold the mic and talk",
-                    systemImage: dictation.isRecording ? "stop.circle.fill" : "mic.fill"
-                )
-                .frame(maxWidth: .infinity)
+
+            if dictation.isRecording {
+                Button {
+                    Task { await dictation.finish() }
+                } label: {
+                    HStack(spacing: Spacing.sm) {
+                        Circle()
+                            .fill(Color.priorityUrgent)
+                            .frame(width: 10, height: 10)
+                            .opacity(pulse ? 0.25 : 1)
+                            .animation(.easeInOut(duration: 0.6).repeatForever(), value: pulse)
+                        Text("Stop recording").font(.campBodySemibold)
+                        Spacer()
+                        Text(timeLabel).font(.campMeta).monospacedDigit()
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.campChip(filled: true))
+                .onAppear { pulse = true }
+                .onDisappear { pulse = false }
+
+                Text("Listening — say what is wrong, then tap Stop.")
+                    .font(.campMeta)
+                    .foregroundStyle(Color.forest.opacity(0.55))
+            } else {
+                Button {
+                    dictation.start()
+                } label: {
+                    Label(dictation.hasSomethingToSend ? "Record again" : "Record what's wrong",
+                          systemImage: "mic.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.campChip(filled: false))
             }
-            .buttonStyle(.campChip(filled: dictation.isRecording))
 
             if !dictation.transcript.isEmpty {
-                Text(dictation.transcript)
-                    .font(.campBody)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .cardSurface()
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Text(dictation.transcript).font(.campBody)
+                    if !dictation.isRecording {
+                        Button("Clear") { dictation.clear() }
+                            .font(.campLabel)
+                            .buttonStyle(.plain)
+                            .underline()
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .cardSurface()
             }
+
             if let issue = dictation.problem {
                 Text(issue).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
             }
         }
     }
 
+    private var timeLabel: String {
+        let seconds = Int(dictation.elapsed)
+        return String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
     private func read() {
         errorMessage = nil
         isReading = true
-        dictation.stop()
         Task {
             defer { isReading = false }
+            // The last words arrive after the mic stops, so wait for them rather than sending
+            // an empty transcript and being told nothing could be read.
+            await dictation.finish()
             let context = DraftContext(
                 locationId: locationId, locationName: locationName,
                 assetId: assetId, assetName: assetName,
@@ -212,23 +263,51 @@ final class Dictation: ObservableObject {
     @Published private(set) var transcript = ""
     @Published private(set) var isRecording = false
     @Published private(set) var problem: String?
+    /// Seconds recorded, so the button can show something moving. A mic that looks identical
+    /// whether or not it is listening is a mic nobody trusts.
+    @Published private(set) var elapsed: TimeInterval = 0
 
     private let recognizer = SFSpeechRecognizer(locale: Locale.current)
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private let engine = AVAudioEngine()
+    private var timer: Timer?
+    /// Resumed when the recogniser delivers its last result after the audio stops.
+    private var finalResult: CheckedContinuation<Void, Never>?
+
+    var hasSomethingToSend: Bool { !transcript.trimmingCharacters(in: .whitespaces).isEmpty }
 
     func start() {
         problem = nil
-        SFSpeechRecognizer.requestAuthorization { status in
+
+        // The simulator has no audio input path, and asking for one is not a graceful failure:
+        // `AVAudioEngine.inputNode` waits on an audio server that never answers and then calls
+        // abort(), which took the whole app down twice while this was being built. There is
+        // nothing to record here and nothing to be gained by trying.
+        #if targetEnvironment(simulator)
+        problem = "Dictation needs a real device. On a phone this records what you say; here, type it."
+        return
+        #else
+        // Permission first, and the microphone's own permission at that. Speech authorization
+        // alone is not enough: the engine is what touches the hardware.
+        AVAudioApplication.requestRecordPermission { granted in
             Task { @MainActor in
-                guard status == .authorized else {
-                    self.problem = "Dictation needs permission in Settings. You can still type it."
+                guard granted else {
+                    self.problem = "The microphone is off for CampCommand. Turn it on in Settings, or type it."
                     return
                 }
-                self.begin()
+                SFSpeechRecognizer.requestAuthorization { status in
+                    Task { @MainActor in
+                        guard status == .authorized else {
+                            self.problem = "Dictation needs permission in Settings. You can still type it."
+                            return
+                        }
+                        self.begin()
+                    }
+                }
             }
         }
+        #endif
     }
 
     private func begin() {
@@ -241,6 +320,19 @@ final class Dictation: ObservableObject {
             try session.setCategory(.record, mode: .measurement, options: .duckOthers)
             try session.setActive(true, options: .notifyOthersOnDeactivation)
 
+            // Ask whether there is a microphone to open BEFORE touching `engine.inputNode`.
+            //
+            // Reaching for the input node when the audio server has no input route does not
+            // throw -- it times out inside CoreAudio and calls abort(), taking the app with it.
+            // That is not a simulator curiosity: a phone with no route (mid-call, some CarPlay
+            // and accessory states) does the same, and the crash lands on somebody standing in
+            // front of a broken pump trying to describe it.
+            guard session.isInputAvailable, !(session.availableInputs ?? []).isEmpty else {
+                problem = "No microphone is available right now. You can still type it."
+                try? session.setActive(false, options: .notifyOthersOnDeactivation)
+                return
+            }
+
             let request = SFSpeechAudioBufferRecognitionRequest()
             request.shouldReportPartialResults = true
             // Keeps the audio on the phone when the phone can manage it, which is both the
@@ -249,34 +341,98 @@ final class Dictation: ObservableObject {
             self.request = request
 
             let input = engine.inputNode
-            input.installTap(onBus: 0, bufferSize: 1024, format: input.outputFormat(forBus: 0)) { buffer, _ in
+            let format = input.outputFormat(forBus: 0)
+            // A zero-channel or zero-rate format is the other way this fails: the tap installs
+            // and then the engine throws on start, or delivers nothing at all.
+            guard format.channelCount > 0, format.sampleRate > 0 else {
+                problem = "The microphone isn't ready. You can still type it."
+                teardown()
+                return
+            }
+            input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
                 request.append(buffer)
             }
             engine.prepare()
             try engine.start()
+            transcript = ""
+            elapsed = 0
             isRecording = true
+            timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+                guard let self else { return }
+                Task { @MainActor in self.tick() }
+            }
 
             task = recognizer.recognitionTask(with: request) { [weak self] result, error in
                 Task { @MainActor in
-                    if let result { self?.transcript = result.bestTranscription.formattedString }
-                    if error != nil || (result?.isFinal ?? false) { self?.stop() }
+                    guard let self else { return }
+                    if let result { self.transcript = result.bestTranscription.formattedString }
+                    // The last words arrive AFTER the audio ends. Whoever is waiting on the
+                    // finished transcript is released here, not when the mic stopped.
+                    if error != nil || (result?.isFinal ?? false) {
+                        self.releaseWaiter()
+                        self.teardown()
+                    }
                 }
             }
         } catch {
             problem = "Couldn't start the microphone. You can still type it."
-            stop()
+            teardown()
         }
     }
 
+    /// Stops recording and waits for the recogniser's last words.
+    ///
+    /// Without the wait, tapping Stop and then Read sent an empty transcript: speech recognition
+    /// delivers its final result asynchronously after the audio ends, so the words were still in
+    /// flight. The person had spoken a whole sentence and the app said it could not read it.
+    func finish() async {
+        guard isRecording else { return }
+        stopAudio()
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            finalResult = continuation
+            // A recogniser that never delivers must not hold the button hostage; whatever has
+            // been transcribed so far is better than a spinner that does not end.
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2))
+                self.releaseWaiter()
+            }
+        }
+    }
+
+    /// Stop without waiting, for cancelling out of the sheet.
     func stop() {
-        guard isRecording || engine.isRunning else { return }
+        stopAudio()
+        releaseWaiter()
+        teardown()
+    }
+
+    func clear() {
+        transcript = ""
+        elapsed = 0
+    }
+
+    private func tick() { elapsed += 0.2 }
+
+    private func stopAudio() {
+        guard engine.isRunning || isRecording else { return }
         engine.stop()
         engine.inputNode.removeTap(onBus: 0)
         request?.endAudio()
+        isRecording = false
+        timer?.invalidate(); timer = nil
+    }
+
+    private func releaseWaiter() {
+        finalResult?.resume()
+        finalResult = nil
+    }
+
+    private func teardown() {
         task?.cancel()
         request = nil
         task = nil
         isRecording = false
+        timer?.invalidate(); timer = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }

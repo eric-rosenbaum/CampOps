@@ -13,7 +13,6 @@ struct IssueListView: View {
     @EnvironmentObject private var campground: CampgroundStore
     @ObservedObject private var push = PushService.shared
 
-    @State private var isLogging = false
     @State private var isCapturing = false
     @State private var openIssue: Issue?
 
@@ -40,9 +39,10 @@ struct IssueListView: View {
                             .accessibilityLabel("Scan a sticker")
                     }
                     if authManager.can.createIssue {
-                        Button { isCapturing = true } label: { Image(systemName: "camera.viewfinder") }
-                            .accessibilityLabel("Photo or voice")
-                        Button { isLogging = true } label: { Image(systemName: "plus") }
+                        // One way in. The capture sheet holds the photo, the recording and
+                        // "Just type it", so the plain form is a tap inside rather than a
+                        // second button arguing with this one.
+                        Button { isCapturing = true } label: { Image(systemName: "plus") }
                             .accessibilityLabel("Log work")
                     }
                 }
@@ -50,7 +50,6 @@ struct IssueListView: View {
             .navigationDestination(item: $openIssue) { issue in
                 IssueDetailView(issue: issue)
             }
-            .sheet(isPresented: $isLogging) { LogIssueView() }
             .sheet(isPresented: $isCapturing) { CaptureSheet() }
             // A tapped notification names a work order: open it, then clear the request.
             .task(id: push.pendingWorkOrderId) {

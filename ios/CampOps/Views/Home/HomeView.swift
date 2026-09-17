@@ -13,7 +13,6 @@ struct HomeView: View {
     @EnvironmentObject private var issueVM: IssueListViewModel
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var isLogging = false
     @State private var isCapturing = false
     @State private var openIssue: Issue?
 
@@ -73,7 +72,6 @@ struct HomeView: View {
             .navigationDestination(item: $openIssue) { issue in
                 IssueDetailView(issue: issue)
             }
-            .sheet(isPresented: $isLogging) { LogIssueView() }
             .sheet(isPresented: $isCapturing) { CaptureSheet() }
         }
     }
@@ -96,6 +94,12 @@ struct HomeView: View {
         }
     }
 
+    /// Two doors, not three.
+    ///
+    /// Scan, and log. "Log" opens the capture sheet, which offers a photo, a recording, and
+    /// "Just type it" -- so the ordinary form is one tap in rather than a third button competing
+    /// with the other two. Most people will type most days; they should not have to choose
+    /// between three things to do it.
     private var quickActions: some View {
         HStack(spacing: Spacing.sm) {
             if let onScan {
@@ -110,7 +114,7 @@ struct HomeView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Spacing.lg)
                 }
-                .buttonStyle(.campPrimary())
+                .buttonStyle(.campSecondary)
             }
             if authManager.can.createIssue {
                 Button {
@@ -118,26 +122,13 @@ struct HomeView: View {
                     isCapturing = true
                 } label: {
                     VStack(spacing: Spacing.xs) {
-                        Image(systemName: "camera.viewfinder").font(.system(size: 22))
-                        Text("Capture").font(.campLabel)
+                        Image(systemName: "plus.circle.fill").font(.system(size: 22))
+                        Text("Log something").font(.campLabel)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Spacing.lg)
                 }
-                .buttonStyle(.campSecondary)
-
-                Button {
-                    Haptics.tap()
-                    isLogging = true
-                } label: {
-                    VStack(spacing: Spacing.xs) {
-                        Image(systemName: "square.and.pencil").font(.system(size: 22))
-                        Text("Log").font(.campLabel)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Spacing.lg)
-                }
-                .buttonStyle(.campSecondary)
+                .buttonStyle(.campPrimary())
             }
         }
     }

@@ -6,12 +6,21 @@
  * receipt's numbers add up exactly, so a wrong read is the reader's fault and not the fixture's.
  *
  *   node scripts/render-receipt-fixtures.mjs
+ *   node scripts/render-receipt-fixtures.mjs --demo
+ *
+ * --demo renders the six photos the demo seed uses into public/demo/receipts/, printing card
+ * ····1156 instead of ····4821 (and the crumpled one's Mastercard ····7390). The seed puts those
+ * receipts on the demo's Visa ··1156, and the review form now checks the number printed on a
+ * slip against the card chosen, so the demo photos used to contradict their own card. The test
+ * fixtures are left as they are: expected.json and the AI evaluation read them.
  */
 import { chromium } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 
-const OUT = path.resolve('test-fixtures/receipts');
+const DEMO = process.argv.includes('--demo');
+const DEMO_FILES = ['01-thermal-faded.jpg', '02-on-hst.jpg', '05-ab-gst.jpg', '06-restaurant-tip.jpg', '09-crumpled.jpg', '12-stained-date.jpg'];
+const OUT = path.resolve(DEMO ? 'public/demo/receipts' : 'test-fixtures/receipts');
 fs.mkdirSync(OUT, { recursive: true });
 
 const money = (n) => n.toFixed(2);
@@ -288,7 +297,11 @@ function invoiceHtml() {
 const browser = await chromium.launch();
 const page = await browser.newPage({ deviceScaleFactor: 2 });
 const expected = {};
-for (const f of FIXTURES) {
+for (const fixture of FIXTURES) {
+  if (DEMO && !DEMO_FILES.includes(fixture.file)) continue;
+  const f = DEMO && fixture.html
+    ? { ...fixture, html: fixture.html.replace(/MC \*{4}7390/g, 'VISA ****1156').replace(/4821|7390/g, '1156') }
+    : fixture;
   expected[f.file] = { ...f.expected, note: f.note };
   if (f.pdf) {
     await page.setContent(invoiceHtml());
@@ -327,6 +340,6 @@ for (const f of FIXTURES) {
   });
   fs.writeFileSync(path.join(OUT, f.file), Buffer.from(dataUrl.split(',')[1], 'base64'));
 }
-fs.writeFileSync(path.join(OUT, 'expected.json'), JSON.stringify(expected, null, 2) + '\n');
+if (!DEMO) fs.writeFileSync(path.join(OUT, 'expected.json'), JSON.stringify(expected, null, 2) + '\n');
 await browser.close();
-console.log(`rendered ${FIXTURES.length} fixtures into ${OUT}`);
+console.log(`rendered ${Object.keys(expected).length} ${DEMO ? 'demo photos' : 'fixtures'} into ${OUT}`);

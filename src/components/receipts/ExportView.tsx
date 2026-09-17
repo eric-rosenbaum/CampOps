@@ -195,7 +195,7 @@ export function ExportView() {
                 </span>
               </div>
               {bills && p.ex.creditCount > 0 && (
-                <p className="mt-1 text-[12px] text-ink-soft">QuickBooks’ bill import has no credits: record the {p.ex.creditCount} payment{p.ex.creditCount === 1 ? '' : 's'} and refund{p.ex.creditCount === 1 ? '' : 's'} on the card account in QuickBooks.</p>
+                <p className="mt-1 text-[12px] text-ink-soft">QuickBooks’ bill import has no credits: record {p.ex.creditCount === 1 ? 'the payment or refund' : `the ${p.ex.creditCount} payments and refunds`} on the card account in QuickBooks yourself.</p>
               )}
             </div>
 
@@ -226,7 +226,7 @@ export function ExportView() {
                 <tbody>
                   {preview.slice(1, 201).map((r, i) => (
                     <tr key={i} className="border-t border-border/60">
-                      {r.map((c, j) => <td key={j} className={`whitespace-nowrap px-2.5 py-1.5 ${/^-?\d+\.\d{2}$/.test(c) ? 'text-right tabular-nums' : ''}`}>{c}</td>)}
+                      {r.map((c, j) => <td key={j} title={c.length > 36 ? c : undefined} className={`max-w-[15rem] truncate whitespace-nowrap px-2.5 py-1.5 ${/^-?\d+\.\d{2}$/.test(c) ? 'text-right tabular-nums' : ''}`}>{c}</td>)}
                     </tr>
                   ))}
                   {preview.length <= 1 && <tr><td className="px-3 py-4 text-center text-ink-soft">No rows.</td></tr>}
@@ -248,7 +248,7 @@ export function ExportView() {
           <Download className="h-4 w-4" /> {busy ? 'Exporting…' : 'Export for QuickBooks'}
         </Button>
       </div>
-      <p className="mt-1.5 text-right text-[11.5px] text-ink-soft">{REVIEW_FORMAT.carries} Export for QuickBooks marks the month and its receipts exported.</p>
+      <p className="mt-1.5 text-[11.5px] text-ink-soft sm:text-right">{REVIEW_FORMAT.carries} Export for QuickBooks marks the month and its receipts exported.</p>
 
       {exports.length > 0 && (
         <>

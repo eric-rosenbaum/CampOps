@@ -94,7 +94,7 @@ test('J5: a founder spins up a demo, a prospect opens the link and follows the g
   await food.getByRole('button', { name: /Open/ }).first().click();
   await page.waitForURL(/\/commissary\?tab=requests/);
   await expect(page.getByText(/S.mores for tomorrow night.s campfire/)).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(/Late · \d+h notice/).first()).toBeVisible();
+  await expect(page.getByText(/Short notice · \d+h/).first()).toBeVisible();
   await shot(page, 'kitchen-inbox-seeded');
 
   // The counselor link, as the prospect would open it in a new tab.

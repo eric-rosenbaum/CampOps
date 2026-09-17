@@ -208,6 +208,22 @@ extension View {
                 .padding(.bottom, Spacing.xs)
         }
     }
+
+    /// Puts the borrowed-camp banner at the bottom of a tab's content, above the tab bar.
+    ///
+    /// It started at the top of the TabView, which put it squarely over each screen's toolbar:
+    /// the scan, capture and log buttons sat behind it, clipped and untappable, so a founder
+    /// could look at a camp and not log anything in it. A navigation bar inside a tab does not
+    /// yield to an inset applied outside it.
+    ///
+    /// Bottom, in the same band as the sync pill, is out of every screen's way and still on
+    /// screen at all times, which is the whole job: nobody should edit a customer's camp without
+    /// the fact that it is theirs being visible.
+    func impersonationBar(_ isImpersonating: Bool) -> some View {
+        safeAreaInset(edge: .bottom, spacing: 0) {
+            if isImpersonating { ImpersonationBanner() }
+        }
+    }
 }
 
 /// A small inline marker for a single row whose change has not left the phone yet.
@@ -225,5 +241,32 @@ struct PendingSyncMark: View {
                 .font(.campMicro)
         }
         .foregroundStyle(Color.forest.opacity(0.45))
+    }
+}
+
+/// "You are in somebody else's camp." Present on every tab while a founder has one open.
+///
+/// Not dismissible, and deliberately in the same band as the sync pill rather than over the
+/// navigation bar, where it used to cover the buttons for logging work.
+struct ImpersonationBanner: View {
+    @EnvironmentObject private var authManager: AuthManager
+
+    var body: some View {
+        HStack(spacing: Spacing.sm) {
+            Image(systemName: "eye.fill").font(.system(size: 11))
+            Text("Viewing **\(authManager.currentCamp?.name ?? "this camp")** as CampCommand admin")
+                .font(.campMeta)
+                .lineLimit(2)
+            Spacer()
+            Button("Exit") { authManager.exitImpersonation() }
+                .font(.campLabel)
+                .buttonStyle(.plain)
+                .underline()
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.sm)
+        .frame(maxWidth: .infinity)
+        .background(Color.forestFill)
+        .foregroundStyle(Color.ccCream)
     }
 }

@@ -28,17 +28,28 @@ struct WorkOrderDraft: Sendable {
 }
 
 enum DraftError: LocalizedError {
+    /// The model looked and could not tell. Carries its own sentence, which says why.
     case unreadable(String)
+    /// The server refused, and said why: not a member, out of budget, nothing to read.
+    case refused(String)
     case offline
+    /// Nothing was captured to send.
+    case nothingToRead
     case failed
 
     var errorDescription: String? {
         switch self {
         case let .unreadable(message): return message
+        case let .refused(message): return message
         case .offline:
-            return "No signal, so nothing was read. The photo is attached -- type what is wrong and it will send when you are back in range."
+            return "No signal, so nothing was read. What you captured is kept -- type what is wrong and it will send when you are back in range."
+        case .nothingToRead:
+            return "There is nothing to read yet. Take a photo, or record what is wrong."
         case .failed:
-            return "Could not read that photo. Try again, or just type it."
+            // Deliberately does not say "photo": this is also what a voice-only capture hits,
+            // and being told a photo failed when you recorded your voice is its own small
+            // mystery on top of whatever actually went wrong.
+            return "That could not be read. Try again, or just type it."
         }
     }
 }
@@ -58,7 +69,7 @@ final class DraftWorkOrderService {
 
     @MainActor
     func draft(image: UIImage?, transcript: String?, context: DraftContext) async throws -> WorkOrderDraft {
-        guard image != nil || !(transcript ?? "").isEmpty else { throw DraftError.failed }
+        guard image != nil || !(transcript ?? "").isEmpty else { throw DraftError.nothingToRead }
 
         // The camp travels at the body root, where the function looks for it first. It checks
         // membership and spends an hourly budget before it calls the model, and both need to
@@ -82,8 +93,24 @@ final class DraftWorkOrderService {
         do {
             response = try await SupabaseService.shared.client.functions.invoke(
                 "draft-work-order",
-                options: FunctionInvokeOptions(body: data)
+                options: FunctionInvokeOptions(
+                    headers: ["Content-Type": "application/json"],
+                    body: data
+                )
             )
+        } catch let error as FunctionsError {
+            // The server's own sentence, not a shrug.
+            //
+            // `functions.invoke` turns every non-2xx into an opaque `httpError`, so a refusal
+            // that says exactly what is wrong -- "You do not have access to this camp", "That is
+            // 20 AI drafts this hour" -- was arriving as "could not read that photo". The reply
+            // body is right there; read it.
+            if case let .httpError(_, data) = error,
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let message = json["error"] as? String, !message.isEmpty {
+                throw DraftError.refused(message)
+            }
+            throw SyncEngine.shared.isOnline ? DraftError.failed : DraftError.offline
         } catch {
             throw SyncEngine.shared.isOnline ? DraftError.failed : DraftError.offline
         }

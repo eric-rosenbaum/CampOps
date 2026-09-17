@@ -106,40 +106,40 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             HomeView(onScan: { isScannerOpen = true })
                 .syncStatusBar()
+                    .impersonationBar(authManager.isImpersonating)
                 .tabItem { Label("Home", systemImage: "house") }
                 .tag(Tab.home)
             if authManager.canAccessModule("issues") {
                 IssueListView(onScan: { isScannerOpen = true })
                     .syncStatusBar()
+                    .impersonationBar(authManager.isImpersonating)
                     .tabItem { Label("Work", systemImage: "wrench.adjustable") }
                     .tag(Tab.work)
             }
             if authManager.canAccessModule("pool") {
                 PoolView()
                     .syncStatusBar()
+                    .impersonationBar(authManager.isImpersonating)
                     .tabItem { Label("Pool", systemImage: "drop.fill") }
                     .tag(Tab.pool)
             }
             if authManager.canAccessModule("assets") {
                 AssetView()
                     .syncStatusBar()
+                    .impersonationBar(authManager.isImpersonating)
                     .tabItem { Label("Assets", systemImage: "car.fill") }
                     .tag(Tab.assets)
             }
             if authManager.canAccessModule("building") {
                 BuildingView()
                     .syncStatusBar()
+                    .impersonationBar(authManager.isImpersonating)
                     .tabItem { Label("Building", systemImage: "building.2.fill") }
                     .tag(Tab.building)
             }
         }
         // On iPhone extra tabs collapse into "More"; on iPad the same set becomes a sidebar.
         .tabViewStyle(.sidebarAdaptable)
-        // The borrowed-camp banner sits above everything, on every tab, and cannot be
-        // dismissed. It is the only thing standing between a founder and a customer's data.
-        .safeAreaInset(edge: .top) {
-            if authManager.isImpersonating { ImpersonationBanner() }
-        }
     }
 
     /// Where a scanned sticker lands.
@@ -188,30 +188,6 @@ struct ContentView: View {
         async let b = buildingVM.refresh()
         async let m = authManager.reloadMemberAndGroup()
         _ = await (l, i, g, p, a, b, m)
-    }
-}
-
-/// "You are in somebody else's camp." Fixed to the top of every tab while impersonating.
-private struct ImpersonationBanner: View {
-    @EnvironmentObject private var authManager: AuthManager
-
-    var body: some View {
-        HStack(spacing: Spacing.sm) {
-            Image(systemName: "eye.fill").font(.system(size: 11))
-            Text("Viewing **\(authManager.currentCamp?.name ?? "this camp")** as CampCommand admin")
-                .font(.campMeta)
-                .lineLimit(2)
-            Spacer()
-            Button("Exit") { authManager.exitImpersonation() }
-                .font(.campLabel)
-                .buttonStyle(.plain)
-                .underline()
-        }
-        .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, Spacing.sm)
-        .frame(maxWidth: .infinity)
-        .background(Color.forestFill)
-        .foregroundStyle(Color.ccCream)
     }
 }
 

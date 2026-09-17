@@ -118,7 +118,7 @@ export function RequestDetailModal({ request, lines, program, onClose, onDecide,
           </div>
           <p className="mt-1.5 text-[15px] font-semibold text-ink">{formatPickup(request.pickupDate, request.pickupTime)}</p>
           <p className="text-[12.5px] text-ink-soft">
-            {formatNotice(request.noticeHours)}&rsquo; notice when sent (you ask for {formatNoticeRule(request.cutoffHours)})
+            {formatNotice(request.noticeHours)} of notice when sent (you ask for {formatNoticeRule(request.cutoffHours)})
             {request.headcount ? ` · ${request.headcount} people` : ''}{request.purpose ? ` · ${request.purpose}` : ''}
           </p>
           <p className="mt-1 text-[12.5px] text-ink-soft">

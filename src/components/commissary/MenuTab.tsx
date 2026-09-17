@@ -1,9 +1,12 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Link2Off, X, Printer, CalendarClock, Sandwich, Package, Replace, LayoutGrid, Utensils } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { FilterPill } from '@/components/shared/FilterPill';
+import { useMemo } from 'react';
 import { useCommissaryStore } from '@/store/commissaryStore';
+import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import type { MealPeriod } from '@/lib/types';
+import { KOSHER_LETTER, kosherFlagsForDay, kosherTypeOf, recipeKosher, type DishKosherInfo } from '@/lib/kosher';
 import {
   MEAL_PERIODS, MEAL_PERIOD_LABELS, dateForCell, dateStrForCell, dayLabelsForWeek,
   restrictionLabel, sessionMealBase, menuWeekToPrintHtml, type PrintMenuCell,
@@ -14,7 +17,17 @@ function fmtDate(d: Date): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function MenuCell({ week, dayIndex, meal }: { week: number; dayIndex: number; meal: MealPeriod }) {
+/** Kosher view of the week, per chip: its type, and anything wrong with where it sits. */
+type KosherView = Map<string, { info: DishKosherInfo; flags: string[] }> | null;
+
+const KOSHER_CHIP: Record<DishKosherInfo['type'], string> = {
+  meat: 'bg-[#8A3D1E] text-paper',
+  dairy: 'bg-[#185fa5] text-paper',
+  pareve: 'bg-cream-dark text-ink-soft border border-border',
+  mixed: 'bg-red text-paper',
+};
+
+function MenuCell({ week, dayIndex, meal, kosher }: { week: number; dayIndex: number; meal: MealPeriod; kosher: KosherView }) {
   const {
     entriesForCell, entryAllergens, conflictsForEntry, deleteMenuEntry, openModal,
     coursesSorted, substitutionsForCell,
@@ -46,10 +59,15 @@ function MenuCell({ week, dayIndex, meal }: { week: number; dayIndex: number; me
         const conflicted = conflicts.length > 0;
         // Green tint when every conflicting restriction has a replacement plated.
         const allCovered = conflicted && conflicts.every((c) => hasGeneralSub || coveredSlugs.has(c.allergen));
+        const k = kosher?.get(e.id) ?? null;
+        const kosherFlagged = !!k && k.flags.length > 0;
         return (
           <div
             key={e.id}
-            className={`group relative rounded-tag px-2 py-1 text-[11px] leading-tight border ${
+            data-testid="menu-chip"
+            data-kosher={k?.info.type}
+            data-kosher-flag={kosherFlagged || undefined}
+            className={`group relative rounded-tag px-2 py-1 text-[11px] leading-tight border ${kosherFlagged ? 'ring-2 ring-red/60 ' : ''}${
               unlinked
                 ? 'bg-white border-dashed border-border text-ink-soft'
                 : allCovered
@@ -60,29 +78,44 @@ function MenuCell({ week, dayIndex, meal }: { week: number; dayIndex: number; me
                       ? 'bg-amber-bg border-amber/25 text-amber-text'
                       : 'bg-cream-dark border-border text-ink'
             }`}
-            title={
+            title={[
+              e.label ?? '',
               unlinked
                 ? 'Free text, excluded from ordering demand and allergen totals'
                 : conflicted
-                  ? `Conflicts with campers: ${conflicts.map((c) => `${restrictionLabel(c.allergen)} (${c.camperCount}${c.anaphylacticCount > 0 ? `, ${c.anaphylacticCount} anaphylactic` : ''})`).join('; ')}${allCovered ? 'replacement plated' : ''}`
+                  ? `Conflicts with campers: ${conflicts.map((c) => `${restrictionLabel(c.allergen)} (${c.camperCount}${c.anaphylacticCount > 0 ? `, ${c.anaphylacticCount} anaphylactic` : ''})`).join('; ')}${allCovered ? ', replacement plated' : ''}`
                   : allergens.length
                     ? `Contains ${allergens.map((a) => restrictionLabel(a)).join(', ')}, no camper affected`
-                    : 'No major allergens'
-            }
+                    : 'No major allergens',
+              k ? `Kosher: ${k.info.type === 'mixed' ? 'meat and dairy' : k.info.type}` : '',
+              ...(k?.flags ?? []),
+              canManage ? 'Click to change or replace this dish.' : '',
+            ].filter(Boolean).join('\n')}
           >
             {e.course && <span className="block text-[8px] font-bold uppercase tracking-wider opacity-50 leading-none mb-0.5">{e.course}</span>}
-            <span className="flex items-center gap-1">
-              {unlinked && <Link2Off className="w-2.5 h-2.5 flex-shrink-0 opacity-50" />}
-              {isItem && <Package className="w-2.5 h-2.5 flex-shrink-0 opacity-50" />}
-              <span className="truncate">{e.label ?? '-'}</span>
+            <button type="button" disabled={!canManage}
+              onClick={() => openModal({ kind: 'menuEntry', weekNumber: week, dayIndex, mealPeriod: meal, editId: e.id })}
+              className="flex w-full items-start gap-1 text-left disabled:cursor-default"
+              aria-label={canManage ? `Edit ${e.label ?? 'dish'}` : undefined}>
+              {unlinked && <Link2Off className="w-2.5 h-2.5 mt-[1px] flex-shrink-0 opacity-50" />}
+              {isItem && <Package className="w-2.5 h-2.5 mt-[1px] flex-shrink-0 opacity-50" />}
+              {/* The whole name, wrapped: "Buttermilk panca…" at 1280 hid which pancakes. */}
+              <span className="min-w-0 flex-1 break-words">{e.label ?? '-'}</span>
+              {k && (
+                <span data-testid="kosher-marker" aria-label={`Kosher: ${k.info.type}`}
+                  className={`flex-shrink-0 rounded-[3px] px-[3px] text-[8.5px] font-bold leading-[13px] ${KOSHER_CHIP[k.info.type]}`}>
+                  {KOSHER_LETTER[k.info.type]}
+                </span>
+              )}
+              {kosherFlagged && <span className="font-bold flex-shrink-0 text-red" data-testid="kosher-flag">!</span>}
               {anaphylactic && !allCovered && <span className="font-bold flex-shrink-0">!</span>}
               {allCovered && <span className="flex-shrink-0" title="Replacement plated">✓</span>}
-            </span>
+            </button>
             {canManage && (
               <button
                 onClick={() => deleteMenuEntry(e.id)}
                 className="absolute -top-1 -right-1 hidden group-hover:flex w-4 h-4 rounded-full bg-forest text-cream items-center justify-center"
-                aria-label="Remove"
+                aria-label={`Remove ${e.label ?? 'dish'}`}
               >
                 <X className="w-2.5 h-2.5" />
               </button>
@@ -109,20 +142,21 @@ function MenuCell({ week, dayIndex, meal }: { week: number; dayIndex: number; me
       ))}
 
       {canManage && (
-        <div className="flex items-center gap-2">
+        // Each control keeps its "+" with its word: a narrow column used to wrap "+" onto its own line.
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0">
           <button
             onClick={() => openModal({ kind: 'menuEntry', weekNumber: week, dayIndex, mealPeriod: meal })}
-            className="text-[11px] text-forest/30 hover:text-ink text-left px-1 py-0.5 transition-colors"
+            className="whitespace-nowrap text-[11px] text-forest/40 hover:text-ink text-left px-1 py-0.5 transition-colors"
           >
             + add
           </button>
           {entries.length > 0 && (
             <button
               onClick={() => openModal({ kind: 'substitution', weekNumber: week, dayIndex, mealPeriod: meal })}
-              className="text-[10px] text-forest/25 hover:text-ink-soft text-left px-1 py-0.5 transition-colors"
-              title="Add a replacement meal for allergy-affected campers"
+              className="whitespace-nowrap text-[10.5px] text-forest/40 hover:text-ink-soft text-left px-1 py-0.5 transition-colors"
+              title="Plate a different dish for campers who can't eat this meal: an allergy, vegetarian or vegan swap"
             >
-              + replacement
+              + allergy swap
             </button>
           )}
         </div>
@@ -146,8 +180,42 @@ export function MenuTab() {
     openModal, copyWeek, clearWeek, unlinkedEntryCount, entriesForWeek,
     menuView, setMenuView, eventsForSession, templates, mealCount,
   } = useCommissaryStore();
-  const { can } = useAuth();
+  const { can, role } = useAuth();
   const canManage = can('manageCommissary');
+  const currentCamp = useCampStore((s) => s.currentCamp);
+  const updateCamp = useCampStore((s) => s.updateCamp);
+  const kosherOn = Boolean(currentCamp?.dietaryDefaults?.kosher);
+  const menuEntries = useCommissaryStore((s) => s.menuEntries);
+  const items = useCommissaryStore((s) => s.items);
+  const ingredients = useCommissaryStore((s) => s.ingredients);
+  const activeSessionId = useCommissaryStore((s) => s.activeSessionId);
+
+  // Meat / dairy / pareve per chip for the week on screen, and what breaks the rules.
+  const kosher: KosherView = useMemo(() => {
+    if (!kosherOn) return null;
+    const itemsById = new Map(items.map((i) => [i.id, i]));
+    const week = menuEntries.filter((m) => m.sessionId === activeSessionId && m.weekNumber === activeWeek);
+    const info = new Map<string, DishKosherInfo>();
+    for (const e of week) {
+      if (e.recipeId) info.set(e.id, recipeKosher(ingredients.filter((g) => g.recipeId === e.recipeId), itemsById));
+      else if (e.itemId && itemsById.get(e.itemId)) {
+        const it = itemsById.get(e.itemId)!;
+        const t = kosherTypeOf(it);
+        info.set(e.id, { type: t, meat: t === 'meat' ? [it.name] : [], dairy: t === 'dairy' ? [it.name] : [] });
+      }
+    }
+    const out = new Map<string, { info: DishKosherInfo; flags: string[] }>();
+    for (let d = 0; d < 7; d++) {
+      const day = week.filter((e) => e.dayIndex === d);
+      const flags = kosherFlagsForDay(day, (id) => info.get(id) ?? null);
+      for (const e of day) {
+        const i = info.get(e.id);
+        if (i) out.set(e.id, { info: i, flags: flags.get(e.id) ?? [] });
+      }
+    }
+    return out;
+  }, [kosherOn, items, menuEntries, ingredients, activeSessionId, activeWeek]);
+  const kosherIssues = kosher ? [...kosher.values()].filter((v) => v.flags.length > 0).length : 0;
 
   if (menuView === 'templates') {
     return (
@@ -332,7 +400,18 @@ export function MenuTab() {
           <span className="text-[11px] text-ink-faint ml-1">of {weeks}</span>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          {/* Where a kitchen manager looks: on the menu itself, not inside the Dietary dialog. */}
+          <button type="button" data-testid="kosher-toggle" aria-pressed={kosherOn}
+            disabled={role !== 'admin' || !currentCamp}
+            onClick={() => currentCamp && updateCamp(currentCamp.id, { dietaryDefaults: { ...currentCamp.dietaryDefaults, kosher: !kosherOn } })}
+            title={role !== 'admin'
+              ? `Kosher kitchen is ${kosherOn ? 'on' : 'off'}. An admin can change it.`
+              : kosherOn ? 'Turn off meat / dairy / pareve markers and checks' : 'Mark each dish meat, dairy or pareve and flag meat and dairy served together'}
+            className={`inline-flex items-center gap-1.5 rounded-btn border px-2.5 py-1 text-[12px] font-semibold transition-colors disabled:cursor-default ${
+              kosherOn ? 'border-forest bg-forest text-paper' : 'border-border bg-white text-ink-soft hover:border-forest/30'}`}>
+            Kosher kitchen: {kosherOn ? 'on' : 'off'}
+          </button>
           <Button size="sm" variant="ghost" disabled={!hasEntries} onClick={handlePrintMenu}>
             <Printer className="w-3.5 h-3.5" /> Print
           </Button>
@@ -349,9 +428,12 @@ export function MenuTab() {
                   Apply template
                 </Button>
               )}
-              <Button size="sm" variant="ghost" disabled={activeWeek <= 1} onClick={() => copyWeek(activeWeek - 1, activeWeek)}>
-                Copy week {activeWeek - 1}
-              </Button>
+              {/* Week 1 has nothing before it; the button used to read "Copy week 0". */}
+              {activeWeek > 1 && (
+                <Button size="sm" variant="ghost" onClick={() => copyWeek(activeWeek - 1, activeWeek)}>
+                  Copy week {activeWeek - 1}
+                </Button>
+              )}
               <Button size="sm" variant="ghost" disabled={!hasEntries}
                       onClick={() => { if (confirm(`Clear every meal from week ${activeWeek}?`)) clearWeek(activeWeek); }}>
                 Clear week
@@ -410,12 +492,23 @@ export function MenuTab() {
                 <p className="text-[11px] font-semibold text-forest">{MEAL_PERIOD_LABELS[meal]}</p>
               </div>
               {dayLabels.map((_, dayIndex) => (
-                <MenuCell key={`${meal}-${dayIndex}`} week={activeWeek} dayIndex={dayIndex} meal={meal} />
+                <MenuCell key={`${meal}-${dayIndex}`} week={activeWeek} dayIndex={dayIndex} meal={meal} kosher={kosher} />
               ))}
             </div>
           ))}
         </div>
       </div>
+
+      {kosher && (
+        <p className="text-[11px] text-ink-soft mt-3 leading-relaxed" data-testid="kosher-legend">
+          <span className={`rounded-[3px] px-[3px] text-[9px] font-bold ${KOSHER_CHIP.meat}`}>M</span> meat
+          {' · '}<span className={`rounded-[3px] px-[3px] text-[9px] font-bold ${KOSHER_CHIP.dairy}`}>D</span> dairy
+          {' · '}<span className={`rounded-[3px] px-[3px] text-[9px] font-bold ${KOSHER_CHIP.pareve}`}>P</span> pareve, from each recipe&rsquo;s
+          ingredients (set an item&rsquo;s type in Inventory › Edit). A red ring flags meat and dairy in the same meal, a dish that is
+          both, or a dairy snack after a meat meal that day.
+          {kosherIssues > 0 && <strong className="text-red-text"> {kosherIssues} dish{kosherIssues === 1 ? '' : 'es'} flagged this week; hover for why.</strong>}
+        </p>
+      )}
 
       <p className="text-[11px] text-ink-faint mt-3 leading-relaxed">
         Amber chips conflict with a camper's allergy or dietary restriction; red chips conflict

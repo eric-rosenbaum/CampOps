@@ -15,7 +15,7 @@ import {
   dbReplaceItemVendors, dbUpsertItemVendor, dbUpdateOrderLinePack, dbUpdateOrderVendor, dbSetItemCounted,
   dbSetItemPrice, dbWipeCommissary,
   dbAddRecipe, dbUpdateRecipe, dbUpdateRecipeScale, dbDeleteRecipe, dbReplaceRecipeChildren,
-  dbAddMenuEntry, dbDeleteMenuEntry, dbAddMenuEntries, dbDeleteMenuWeek,
+  dbAddMenuEntry, dbUpdateMenuEntry, dbDeleteMenuEntry, dbAddMenuEntries, dbDeleteMenuWeek,
   dbAddRetreatMenuEntry, dbUpdateRetreatMenuEntry, dbDeleteRetreatMenuEntry,
   dbCreateOrder, dbUpdateOrderStatus, dbDeleteOrder, dbReceiveOrder,
   dbUpdateOrderLineQty, dbUpdateOrderTotals, dbAddOrderLine, dbDeleteOrderLine,
@@ -72,7 +72,7 @@ export type CommissaryModal =
   | { kind: 'csvImport' }
   | { kind: 'adjust'; itemId: string }
   | { kind: 'recipe'; editId?: string }
-  | { kind: 'menuEntry'; weekNumber: number; dayIndex: number; mealPeriod: MealPeriod }
+  | { kind: 'menuEntry'; weekNumber: number; dayIndex: number; mealPeriod: MealPeriod; editId?: string }
   | { kind: 'retreatMenuEntry'; retreatId: string; dayDate: string; mealPeriod: MealPeriod; editId?: string }
   | { kind: 'session'; editId?: string }
   | { kind: 'vendor'; editId?: string }
@@ -225,6 +225,7 @@ interface CommissaryState {
   deleteRecipe: (id: string) => void;
 
   addMenuEntry: (m: MenuEntry) => void;
+  updateMenuEntry: (m: MenuEntry) => void;
   deleteMenuEntry: (id: string) => void;
   copyWeek: (fromWeek: number, toWeek: number) => void;
   clearWeek: (week: number) => void;
@@ -693,6 +694,7 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   },
 
   addMenuEntry: (m) => { set((s) => ({ menuEntries: [...s.menuEntries, m] })); dbAddMenuEntry(m); },
+  updateMenuEntry: (m) => { set((s) => ({ menuEntries: s.menuEntries.map((x) => (x.id === m.id ? m : x)) })); dbUpdateMenuEntry(m); },
   deleteMenuEntry: (id) => { set((s) => ({ menuEntries: s.menuEntries.filter((m) => m.id !== id) })); dbDeleteMenuEntry(id); },
 
   copyWeek: (fromWeek, toWeek) => {

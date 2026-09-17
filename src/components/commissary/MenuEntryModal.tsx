@@ -14,26 +14,30 @@ interface Props {
   weekNumber: number;
   dayIndex: number;
   mealPeriod: MealPeriod;
+  /** Open an existing dish to swap or re-course it. Clicking a chip used to do nothing. */
+  editId?: string;
 }
 
 type EntryType = 'recipe' | 'item' | 'free';
 
-export function MenuEntryModal({ weekNumber, dayIndex, mealPeriod }: Props) {
+export function MenuEntryModal({ weekNumber, dayIndex, mealPeriod, editId }: Props) {
   const {
-    recipes, items, itemsById, activeSession, entriesForCell, addMenuEntry, closeModal,
-    coursesSorted, openModal,
+    recipes, items, itemsById, activeSession, entriesForCell, addMenuEntry, updateMenuEntry, deleteMenuEntry, closeModal,
+    coursesSorted, openModal, menuEntries,
   } = useCommissaryStore();
   const session = activeSession();
   const byId = itemsById();
   const courses = coursesSorted();
+  const existing = editId ? menuEntries.find((m) => m.id === editId) ?? null : null;
 
-  const [entryType, setEntryType] = useState<EntryType>('recipe');
-  const [recipeId, setRecipeId] = useState('');
-  const [itemId, setItemId] = useState('');
-  const [itemQty, setItemQty] = useState('1');
-  const [itemUnit, setItemUnit] = useState('');
-  const [customLabel, setCustomLabel] = useState('');
-  const [course, setCourse] = useState('');
+  const [entryType, setEntryType] = useState<EntryType>(existing ? (existing.recipeId ? 'recipe' : existing.itemId ? 'item' : 'free') : 'recipe');
+  const [recipeId, setRecipeId] = useState(existing?.recipeId ?? '');
+  const [itemId, setItemId] = useState(existing?.itemId ?? '');
+  // An existing single item's portion is shown in its base unit, which is how it is stored.
+  const [itemQty, setItemQty] = useState(existing?.itemQtyBase != null ? String(existing.itemQtyBase) : '1');
+  const [itemUnit, setItemUnit] = useState(existing?.itemId ? (byId.get(existing.itemId)?.baseUnit ?? '') : '');
+  const [customLabel, setCustomLabel] = useState(existing && !existing.recipeId && !existing.itemId ? existing.label ?? '' : '');
+  const [course, setCourse] = useState(existing?.course ?? '');
 
   if (!session) return null;
 
@@ -70,12 +74,12 @@ export function MenuEntryModal({ weekNumber, dayIndex, mealPeriod }: Props) {
     if (!session) return;
     const now = new Date().toISOString();
     const base: Omit<MenuEntry, 'recipeId' | 'itemId' | 'itemQtyBase' | 'label'> = {
-      id: generateId(),
+      id: existing?.id ?? generateId(),
       sessionId: session.id,
       weekNumber, dayIndex, mealPeriod,
       course: course || null,
-      sortOrder: entriesForCell(weekNumber, dayIndex, mealPeriod).length,
-      createdAt: now, updatedAt: now,
+      sortOrder: existing?.sortOrder ?? entriesForCell(weekNumber, dayIndex, mealPeriod).length,
+      createdAt: existing?.createdAt ?? now, updatedAt: now,
     };
 
     let entry: MenuEntry;
@@ -91,7 +95,7 @@ export function MenuEntryModal({ weekNumber, dayIndex, mealPeriod }: Props) {
       if (!label) return;
       entry = { ...base, recipeId: null, itemId: null, itemQtyBase: null, label };
     }
-    addMenuEntry(entry);
+    if (existing) updateMenuEntry(entry); else addMenuEntry(entry);
     closeModal();
   }
 
@@ -107,7 +111,7 @@ export function MenuEntryModal({ weekNumber, dayIndex, mealPeriod }: Props) {
   ];
 
   return (
-    <Modal title={`Add to ${MEAL_PERIOD_LABELS[mealPeriod].toLowerCase()}`} onClose={closeModal} width="480px">
+    <Modal title={existing ? `Edit ${existing.label ?? 'dish'}` : `Add to ${MEAL_PERIOD_LABELS[mealPeriod].toLowerCase()}`} onClose={closeModal} width="min(480px, calc(100vw - 24px))">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="rounded-card border border-border bg-cream-dark/30 px-4 py-2.5">
           <p className="text-[12px] text-ink-soft">
@@ -215,7 +219,10 @@ export function MenuEntryModal({ weekNumber, dayIndex, mealPeriod }: Props) {
         </div>
 
         <div className="flex gap-2 pt-1">
-          <Button type="submit" className="flex-1 justify-center" disabled={!canSubmit}>Add to menu</Button>
+          <Button type="submit" className="flex-1 justify-center" disabled={!canSubmit}>{existing ? 'Save' : 'Add to menu'}</Button>
+          {existing && (
+            <Button type="button" variant="ghost" className="text-red-text" onClick={() => { deleteMenuEntry(existing.id); closeModal(); }}>Remove</Button>
+          )}
           <Button type="button" variant="ghost" onClick={closeModal}>Cancel</Button>
         </div>
       </form>

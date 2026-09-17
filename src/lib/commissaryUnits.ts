@@ -217,7 +217,8 @@ const IRREGULAR_PLURALS: Record<string, string> = { loaf: 'loaves', leaf: 'leave
 
 /** Pluralize a stock/purchase unit for display: box→boxes, loaf→loaves, berry→berries. */
 export function pluralizeUnit(unit: string, n: number): string {
-  if (n === 1 || NO_PLURAL.has(unit)) return unit;
+  // "Dozen" typed with a capital is still dozen: it used to come out "Dozens".
+  if (n === 1 || NO_PLURAL.has(unit.trim().toLowerCase())) return unit;
   // "case of 12" is counted in cases: "2 cases of 12", never "2 case of 12s".
   const of = /^(.+?) (of .+)$/.exec(unit);
   if (of) return `${pluralizeUnit(of[1], n)} ${of[2]}`;

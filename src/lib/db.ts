@@ -2173,6 +2173,15 @@ export async function dbAddMenuEntry(m: MenuEntry) {
   if (error) console.error('dbAddMenuEntry error:', error.message);
 }
 
+/** A dish swapped or re-coursed in place, keeping its spot in the cell. */
+export async function dbUpdateMenuEntry(m: MenuEntry) {
+  const { error } = await supabase.from('menu_entries').update({
+    recipe_id: m.recipeId, item_id: m.itemId, item_qty_base: m.itemQtyBase, course: m.course,
+    label: m.label, sort_order: m.sortOrder, updated_at: m.updatedAt,
+  }).eq('id', m.id);
+  if (error) console.error('dbUpdateMenuEntry error:', error.message);
+}
+
 export async function dbDeleteMenuEntry(id: string) {
   const { error } = await supabase.from('menu_entries').delete().eq('id', id);
   if (error) console.error('dbDeleteMenuEntry error:', error.message);

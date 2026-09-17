@@ -218,7 +218,7 @@ export function Commissary() {
       {modal?.kind === 'adjust' && <AdjustStockModal itemId={modal.itemId} />}
       {modal?.kind === 'recipe' && <AddEditRecipeModal editId={modal.editId} />}
       {modal?.kind === 'menuEntry' && (
-        <MenuEntryModal weekNumber={modal.weekNumber} dayIndex={modal.dayIndex} mealPeriod={modal.mealPeriod} />
+        <MenuEntryModal weekNumber={modal.weekNumber} dayIndex={modal.dayIndex} mealPeriod={modal.mealPeriod} editId={modal.editId} />
       )}
       {modal?.kind === 'retreatMenuEntry' && (
         <RetreatMenuEntryModal retreatId={modal.retreatId} dayDate={modal.dayDate} mealPeriod={modal.mealPeriod} editId={modal.editId} />

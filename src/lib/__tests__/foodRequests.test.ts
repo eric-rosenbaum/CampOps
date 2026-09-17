@@ -4,7 +4,7 @@ import {
   zonedWallTimeToInstant, noticeHours, isLate, pickupReminderAt, formatClock, formatPickup, formatNotice,
   inboxOrder, pickupDays, checkDraft, draftToPayload, matchItems, lineChangeSummary, lineDemandBase, todayInZone,
   pullListHtml, parseAmount, formatNoticeRule, shortNoticeLabel, formatLineQty, kitchenLineView, askedSummary,
-  hoursOverdue, overdueLabel, isBeforePickupDay, promisedByItemDate,
+  hoursOverdue, overdueLabel, isBeforePickupDay, promisedByItemDate, readAmountText,
 } from '@/lib/foodRequests';
 import type { FoodRequest, FoodRequestLine, FoodRequestDraft } from '@/lib/foodRequestTypes';
 
@@ -178,7 +178,11 @@ describe('formatting', () => {
     expect(formatPickup('2026-07-16', '14:00')).toBe('Thu, Jul 16, 2pm');
     expect(formatNotice(26.4)).toBe('26 hours');
     expect(formatNotice(1.2)).toBe('1 hour');
-    expect(formatNotice(80)).toBe('3 days');
+    expect(formatNotice(80)).toBe('3 days (80 h)');
+    // The same hours as the chip (rounded), and days that never overstate the notice.
+    expect(formatNotice(43.6)).toBe('44 hours');
+    expect(shortNoticeLabel(43.6)).toBe('Short notice · 44h');
+    expect(formatNotice(59.4)).toBe('2 days (59 h)');
   });
 
   it('describes what the kitchen changed', () => {
@@ -248,6 +252,23 @@ describe('the request form', () => {
       { item_id: 'flour', qty: 5, note: null },
       { label: 'Big marshmallows', qty: 3, unit_label: 'bags', note: null },
     ]);
+  });
+
+  it('keeps the words around a typed amount instead of silently dropping them', () => {
+    expect(readAmountText('2')).toEqual({ value: '2', words: null });
+    expect(readAmountText('1.5')).toEqual({ value: '1.5', words: null });
+    expect(readAmountText('enough for 2')).toEqual({ value: '2', words: 'enough for 2' });
+    expect(readAmountText('about 15')).toEqual({ value: '15', words: 'about 15' });
+    expect(readAmountText('a few')).toEqual({ value: '', words: 'a few' });
+    const p = draftToPayload(draft({
+      headcount: '15', headcountWords: 'about 15', purpose: 'Campfire',
+      lines: [{ itemId: null, label: 'Marshmallows', qty: '2', qtyWords: 'enough for 2', unitLabel: 'bags' }],
+    }));
+    expect(p.purpose).toBe('Campfire · about 15 people');
+    expect(p.headcount).toBe(15);
+    expect(p.lines).toEqual([{ label: 'Marshmallows', qty: 2, unit_label: 'bags', note: '“enough for 2”' }]);
+    expect(checkDraft(draft({ lines: [{ label: 'Eggs', qty: '', qtyWords: 'a few', unitLabel: '' }] }), opts).errors[0])
+      .toBe('Add a number for how much too; the kitchen still gets “a few”.');
   });
 
   it('matches items by prefix, then word start, then anywhere', () => {

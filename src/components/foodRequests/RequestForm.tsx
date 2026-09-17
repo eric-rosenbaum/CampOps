@@ -1,7 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Clock, Link2, Loader2, X } from 'lucide-react';
+import { AlertTriangle, Check, Clock, Loader2, X } from 'lucide-react';
 import type { FoodFormItem, FoodRequestDraft, FoodRequestDraftLine } from '@/lib/foodRequestTypes';
-import { checkDraft, formatClock, formatDay, formatNotice, formatNoticeRule, matchItems, parseAmount, todayInZone, type DraftField } from '@/lib/foodRequests';
+import { checkDraft, formatClock, formatDay, formatNotice, formatNoticeRule, matchItems, parseAmount, readAmountText, todayInZone, type DraftField } from '@/lib/foodRequests';
+import { pluralizeUnit } from '@/lib/commissaryUnits';
 
 /**
  * The one request form, used by the no-login program link and by signed-in staff.
@@ -39,6 +40,24 @@ const labelCls = 'block text-[13px] font-semibold text-forest mb-1.5';
 
 const blankLine = (): FoodRequestDraftLine => ({ itemId: null, label: '', qty: '', unitLabel: '' });
 
+/**
+ * Name, email, phone and how to reach them, remembered on this device: a counselor sends several
+ * requests a week and typed all four every time. localStorage can be blocked (private mode), so
+ * every read and write is guarded and the form works without it.
+ */
+const CONTACT_KEY = 'campcommand-food-contact';
+type SavedContact = { name: string; email: string; phone: string; notifyBy: 'email' | 'text' };
+function readSavedContact(): SavedContact | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(CONTACT_KEY) ?? 'null') as Partial<SavedContact> | null;
+    if (!v || typeof v !== 'object') return null;
+    return { name: String(v.name ?? ''), email: String(v.email ?? ''), phone: String(v.phone ?? ''), notifyBy: v.notifyBy === 'text' ? 'text' : 'email' };
+  } catch { return null; }
+}
+function saveContact(c: SavedContact) {
+  try { localStorage.setItem(CONTACT_KEY, JSON.stringify(c)); } catch { /* storage blocked */ }
+}
+
 export interface RequestFormProps {
   items: FoodFormItem[];
   timeZone: string;
@@ -59,19 +78,28 @@ export function RequestForm({
   items, timeZone, cutoffHours, pickupLocation, programs, initialContact, askContact,
   submitLabel = 'Send to the kitchen', onSubmit,
 }: RequestFormProps) {
-  const [draft, setDraft] = useState<FoodRequestDraft>(() => ({
+  const [draft, setDraft] = useState<FoodRequestDraft>(() => {
+    const saved = askContact && !initialContact ? readSavedContact() : null;
+    return {
     programId: null,
-    requesterName: initialContact?.name ?? '',
-    requesterEmail: initialContact?.email ?? '',
-    requesterPhone: '',
-    notifyBy: 'email',
+    requesterName: initialContact?.name ?? saved?.name ?? '',
+    requesterEmail: initialContact?.email ?? saved?.email ?? '',
+    requesterPhone: saved?.phone ?? '',
+    notifyBy: saved?.phone ? saved.notifyBy : 'email',
     pickupDate: '',
     pickupTime: '',
     purpose: '',
     headcount: '',
     lines: [blankLine()],
-  }));
-  const [touched, setTouched] = useState(false);
+    };
+  });
+  const [remembered] = useState(() => askContact && !initialContact && !!readSavedContact());
+  const [headcountText, setHeadcountText] = useState('');
+  // Errors show for a field once it has been left, or once a send was tried with it wrong. They
+  // used to appear on every row the moment Send was tapped, including rows added afterwards.
+  const [left, setLeft] = useState<Set<string>>(() => new Set());
+  const [failedOnSend, setFailedOnSend] = useState<Set<string>>(() => new Set());
+  const markLeft = (f: string) => setLeft((prev) => (prev.has(f) ? prev : new Set([...prev, f])));
   const [sending, setSending] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   // Re-evaluated on each render so the notice counts down while someone dawdles on the form.
@@ -107,7 +135,7 @@ export function RequestForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setTouched(true);
+    setFailedOnSend(new Set(check.fieldErrors.map((x) => x.field)));
     setServerError(null);
     if (check.fieldErrors.length) {
       // Take the person to the first problem, in form order, instead of a list at the bottom.
@@ -119,12 +147,18 @@ export function RequestForm({
       return;
     }
     setSending(true);
+    if (askContact && !initialContact) {
+      saveContact({ name: draft.requesterName.trim(), email: draft.requesterEmail.trim(), phone: draft.requesterPhone.trim(), notifyBy: draft.notifyBy });
+    }
     const err = await onSubmit(draft);
     setSending(false);
     if (err) setServerError(err);
   }
 
-  const errorFor = (f: DraftField) => (touched ? check.fieldErrors.find((e) => e.field === f)?.message ?? null : null);
+  const errorFor = (f: DraftField) => (left.has(f) || failedOnSend.has(f) ? check.fieldErrors.find((e) => e.field === f)?.message ?? null : null);
+  const shownErrors = check.fieldErrors.filter((e) => left.has(e.field) || failedOnSend.has(e.field));
+  // Items already picked on another line are not suggested again (Graham crackers showed twice).
+  const pickedIds = draft.lines.map((l) => l.itemId).filter((x): x is string => !!x);
   const pickupError = errorFor('pickup');
 
   const pickupWords = draft.pickupDate && draft.pickupTime
@@ -167,6 +201,8 @@ export function RequestForm({
               canRemove={draft.lines.length > 1 && (!!line.label || !!line.itemId)}
               qtyError={errorFor(`qty-${i}`)}
               itemError={i === 0 ? errorFor('lines') : null}
+              excludeIds={pickedIds.filter((id) => id !== line.itemId)}
+              onLeaveQty={() => markLeft(`qty-${i}`)}
               onChange={(patch) => setLine(i, patch)}
               onRemove={() => removeLine(i)}
             />
@@ -180,12 +216,14 @@ export function RequestForm({
           <label className={labelCls} htmlFor="fr-date">Pickup day</label>
           <input id="fr-date" type="date" className={withError(field, !!pickupError && (!draft.pickupDate || !!draft.pickupTime))} min={minDate} value={draft.pickupDate}
             aria-invalid={!!pickupError} aria-describedby={pickupError ? 'fr-pickup-error' : undefined}
+            onBlur={() => { if (draft.pickupTime) markLeft('pickup'); }}
             onChange={(e) => set('pickupDate', e.target.value)} />
         </div>
         <div>
           <label className={labelCls} htmlFor="fr-time">Time</label>
           <input id="fr-time" type="time" className={withError(field, !!pickupError && (!draft.pickupTime || !!draft.pickupDate))} step={900} value={draft.pickupTime}
             aria-invalid={!!pickupError} aria-describedby={pickupError ? 'fr-pickup-error' : undefined}
+            onBlur={() => markLeft('pickup')}
             onChange={(e) => set('pickupTime', e.target.value)} />
         </div>
         {pickupError && <FieldError id="fr-pickup-error" className="col-span-2">{pickupError}</FieldError>}
@@ -202,31 +240,45 @@ export function RequestForm({
         </div>
       )}
 
-      <div className="grid grid-cols-[1fr_7rem] gap-3">
+      <div className="grid grid-cols-[1fr_7.5rem] gap-3">
         <div>
           <label className={labelCls} htmlFor="fr-purpose">What&rsquo;s it for?</label>
-          <input id="fr-purpose" className={field} value={draft.purpose} maxLength={500}
-            placeholder="Pancake night" onChange={(e) => set('purpose', e.target.value)} />
+          <input id="fr-purpose" className={`${field} placeholder:text-ink-faint`} value={draft.purpose} maxLength={400}
+            placeholder="e.g. pancake night" onChange={(e) => set('purpose', e.target.value)} />
         </div>
         <div>
-          <label className={labelCls} htmlFor="fr-headcount">People</label>
-          <input id="fr-headcount" className={field} inputMode="numeric" value={draft.headcount}
-            placeholder="14" onChange={(e) => set('headcount', e.target.value.replace(/[^0-9]/g, '').slice(0, 5))} />
+          <label className={labelCls} htmlFor="fr-headcount">How many people</label>
+          <input id="fr-headcount" className={`${field} placeholder:text-ink-faint`} inputMode="numeric" value={headcountText}
+            placeholder="e.g. 14" maxLength={40}
+            onChange={(e) => {
+              const { value, words } = readAmountText(e.target.value);
+              setHeadcountText(e.target.value);
+              setDraft((d) => ({ ...d, headcount: value.replace(/\..*$/, '').slice(0, 5), headcountWords: words ?? undefined }));
+            }} />
         </div>
+        {draft.headcountWords && (
+          <p className="col-span-2 -mt-1.5 text-[12.5px] text-ink-soft" data-testid="headcount-words">
+            {draft.headcount ? <>The kitchen plans for <strong>{draft.headcount}</strong> and sees your words, &ldquo;{draft.headcountWords}&rdquo;.</>
+              : <>The kitchen will see &ldquo;{draft.headcountWords}&rdquo;. A number helps them plan.</>}
+          </p>
+        )}
       </div>
 
       {askContact && (
         <fieldset className="space-y-3">
           <legend className={labelCls}>Who&rsquo;s asking?</legend>
+          {remembered && <p className="-mt-1 text-[12.5px] text-ink-soft" data-testid="contact-remembered">Filled in from your last request on this phone.</p>}
           <div>
             <input id="fr-name" aria-label="Your name" className={withError(field, !!errorFor('name'))} autoComplete="name" placeholder="Your name"
               aria-invalid={!!errorFor('name')} aria-describedby={errorFor('name') ? 'fr-name-error' : undefined}
+              onBlur={() => markLeft('name')}
               value={draft.requesterName} maxLength={120} onChange={(e) => set('requesterName', e.target.value)} />
             {errorFor('name') && <FieldError id="fr-name-error">{errorFor('name')}</FieldError>}
           </div>
           <div>
             <input id="fr-email" aria-label="Email" className={withError(field, !!errorFor('email'))} type="email" autoComplete="email" inputMode="email" placeholder="Email"
               aria-invalid={!!errorFor('email')} aria-describedby={errorFor('email') ? 'fr-email-error' : undefined}
+              onBlur={() => markLeft('email')}
               value={draft.requesterEmail} maxLength={200} onChange={(e) => set('requesterEmail', e.target.value)} />
             {errorFor('email') && <FieldError id="fr-email-error">{errorFor('email')}</FieldError>}
           </div>
@@ -254,7 +306,7 @@ export function RequestForm({
               <p className="mt-1.5 text-[12px] text-ink-soft">To choose text, add a mobile number above.</p>
             )}
             {draft.notifyBy === 'text' && (
-              <p className="mt-1.5 text-[12px] text-ink-soft">Texts are not switched on yet, so you&rsquo;ll get the same updates by email.</p>
+              <p className="mt-1.5 text-[12px] text-ink-soft" data-testid="text-not-on">Texts aren&rsquo;t switched on yet, so you&rsquo;ll get the same updates by email. The kitchen sees your number and that you prefer texts.</p>
             )}
           </div>
         </fieldset>
@@ -262,10 +314,10 @@ export function RequestForm({
 
       {serverError ? (
         <div role="alert" className="rounded-card border border-red/30 bg-red-bg px-3.5 py-3 text-[14px] text-red-text">{serverError}</div>
-      ) : touched && check.fieldErrors.length > 0 ? (
+      ) : failedOnSend.size > 0 && shownErrors.length > 0 ? (
         // The messages sit beside their fields; this only says there is something to fix above.
         <p role="alert" data-testid="form-error-summary" className="text-center text-[14px] font-semibold text-red-text">
-          {check.fieldErrors.length === 1 ? 'One thing to fix above.' : `${check.fieldErrors.length} things to fix above.`}
+          {shownErrors.length === 1 ? 'One thing to fix above.' : `${shownErrors.length} things to fix above.`}
         </p>
       ) : null}
 
@@ -286,21 +338,32 @@ function FieldError({ id, children, className = '' }: { id: string; children: Re
   );
 }
 
-function LineRow({ index, line, items, canRemove, onChange, onRemove, qtyError, itemError }: {
+function LineRow({ index, line, items, canRemove, onChange, onRemove, qtyError, itemError, excludeIds, onLeaveQty }: {
   index: number;
   line: FoodRequestDraftLine;
   items: FoodFormItem[];
   canRemove: boolean;
   qtyError: string | null;
   itemError: string | null;
+  excludeIds: string[];
+  onLeaveQty: () => void;
   onChange: (patch: Partial<FoodRequestDraftLine>) => void;
   onRemove: () => void;
 }) {
+  // The box shows what was typed; the draft carries the number and, when there were words, the words.
+  const [qtyText, setQtyText] = useState(line.qtyWords ?? line.qty);
+  const shownQty = line.qtyWords != null || qtyText !== '' ? qtyText : line.qty;
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const listId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
-  const matches = useMemo(() => (line.itemId ? [] : matchItems(items, line.label, 6)), [items, line.label, line.itemId]);
+  const matches = useMemo(() => {
+    if (line.itemId) return [];
+    const seen = new Set<string>();
+    return matchItems(items.filter((i) => !excludeIds.includes(i.id)), line.label, 12)
+      .filter((m) => { const k = m.name.trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+      .slice(0, 6);
+  }, [items, line.label, line.itemId, excludeIds]);
   const showList = open && matches.length > 0;
 
   useEffect(() => {
@@ -318,6 +381,7 @@ function LineRow({ index, line, items, canRemove, onChange, onRemove, qtyError, 
     const amount = !line.qty.trim() ? parseAmount(line.label) : null;
     const qty = amount && (!amount.unit || sameUnit(amount.unit, item.unit)) ? amount.qty : line.qty;
     onChange({ itemId: item.id, label: item.name, unitLabel: item.unit, qty });
+    if (qty !== line.qty) setQtyText(qty);
     setOpen(false);
   }
 
@@ -327,6 +391,7 @@ function LineRow({ index, line, items, canRemove, onChange, onRemove, qtyError, 
     const amount = parseAmount(line.label);
     if (!amount) return;
     onChange({ label: amount.rest, qty: amount.qty, unitLabel: line.unitLabel.trim() ? line.unitLabel : amount.unit });
+    setQtyText(amount.qty);
   }
 
   return (
@@ -343,6 +408,7 @@ function LineRow({ index, line, items, canRemove, onChange, onRemove, qtyError, 
             aria-autocomplete="list"
             className={`${withError(field, !!itemError)} ${line.itemId ? 'pr-8' : ''}`}
             placeholder={index === 0 ? 'e.g. flour, eggs, marshmallows' : 'Another item'}
+            autoComplete="off" autoCorrect="off"
             value={line.label}
             maxLength={120}
             onFocus={() => setOpen(true)}
@@ -362,7 +428,7 @@ function LineRow({ index, line, items, canRemove, onChange, onRemove, qtyError, 
             }}
           />
           {line.itemId && (
-            <Link2 className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-sage" aria-label="On the kitchen's list" />
+            <Check className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-sage" aria-hidden="true" />
           )}
         </div>
         {canRemove && (
@@ -397,22 +463,38 @@ function LineRow({ index, line, items, canRemove, onChange, onRemove, qtyError, 
       )}
 
       {itemError && <FieldError id={`fr-item-${index}-error`}>{itemError}</FieldError>}
+      {/* The icon alone meant nothing to a counselor; say what it means. */}
+      {line.itemId ? (
+        <p className="mt-1 text-[12px] text-green-muted-text" data-testid="on-kitchen-list">On the kitchen&rsquo;s list</p>
+      ) : line.label.trim() && !showList ? (
+        <p className="mt-1 text-[12px] text-ink-soft">In your words. The kitchen will match it to what they have.</p>
+      ) : null}
 
       {(line.label.trim() || line.itemId) && (
         <div className="mt-2 flex items-center gap-2">
           <input id={`fr-qty-${index}`} aria-label={`How much ${line.label || `item ${index + 1}`}`}
-            aria-invalid={!!qtyError} aria-describedby={qtyError ? `fr-qty-${index}-error` : undefined}
-            className={`${withError(fieldBase, !!qtyError)} w-24 flex-none`} inputMode="decimal"
-            placeholder="How much" value={line.qty}
-            onChange={(e) => onChange({ qty: e.target.value.replace(/[^0-9.]/g, '').slice(0, 9) })} />
+            aria-invalid={!!qtyError} aria-describedby={qtyError ? `fr-qty-${index}-error` : line.qtyWords ? `fr-qty-${index}-words` : undefined}
+            className={`${withError(fieldBase, !!qtyError)} ${line.qtyWords ? 'w-44' : 'w-28'} flex-none placeholder:text-ink-faint`} inputMode="decimal"
+            placeholder="Amount" value={shownQty} maxLength={80}
+            onBlur={onLeaveQty}
+            onChange={(e) => {
+              const { value, words } = readAmountText(e.target.value);
+              setQtyText(e.target.value);
+              onChange({ qty: value.slice(0, 9), qtyWords: words ?? undefined });
+            }} />
           {line.itemId ? (
-            <span className="text-[14px] text-ink-soft">{line.unitLabel}</span>
+            <span className="text-[14px] text-ink-soft">{pluralizeUnit(line.unitLabel, Number(line.qty) || 2)}</span>
           ) : (
             <input aria-label={`Unit for ${line.label || `item ${index + 1}`}`} className={`${fieldBase} min-w-0 flex-1`}
               placeholder="bags, lb, dozen…" value={line.unitLabel} maxLength={30}
               onChange={(e) => onChange({ unitLabel: e.target.value })} />
           )}
         </div>
+      )}
+      {line.qtyWords && !qtyError && (
+        <p id={`fr-qty-${index}-words`} className="mt-1.5 text-[12.5px] text-ink-soft" data-testid="qty-words">
+          The kitchen gets {line.qty ? <><strong>{line.qty}</strong> and </> : ''}your words, &ldquo;{line.qtyWords}&rdquo;.
+        </p>
       )}
       {qtyError && <FieldError id={`fr-qty-${index}-error`}>{qtyError}</FieldError>}
     </div>

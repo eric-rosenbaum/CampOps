@@ -8,18 +8,27 @@
  *   node scripts/render-receipt-fixtures.mjs
  *   node scripts/render-receipt-fixtures.mjs --demo
  *
- * --demo renders the six photos the demo seed uses into public/demo/receipts/, printing card
- * ····1156 instead of ····4821 (and the crumpled one's Mastercard ····7390). The seed puts those
- * receipts on the demo's Visa ··1156, and the review form now checks the number printed on a
- * slip against the card chosen, so the demo photos used to contradict their own card. The test
- * fixtures are left as they are: expected.json and the AI evaluation read them.
+ * --demo renders a photo for EVERY receipt the demo seed creates (scripts/demo-receipts.mjs, the
+ * list the seed migration is generated from) into public/demo/receipts/demo-NN.jpg: the vendor, the
+ * items, the taxes, the total and the card number printed on the slip all match the seeded row.
+ * A finance reviewer opened "ready" demo receipts and found no photo behind them, and the six
+ * photos there were printed a card and amounts some rows did not have.
+ *
+ * The seed dates receipts in LAST month, whichever month that is, and a static photo cannot know
+ * it. The photos print August 2026 (September for the one bought "this month"), and
+ * public/demo/receipts/manifest.json records where each printed date is, in what format, at what
+ * angle, so src/lib/demoReceiptPhotos.ts can redraw the date to match the row before uploading.
+ *
+ * The test fixtures are left as they are: expected.json and the AI evaluation read them.
  */
 import { chromium } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 
 const DEMO = process.argv.includes('--demo');
-const DEMO_FILES = ['01-thermal-faded.jpg', '02-on-hst.jpg', '05-ab-gst.jpg', '06-restaurant-tip.jpg', '09-crumpled.jpg', '12-stained-date.jpg'];
+import { DEMO_CARDS, DEMO_RECEIPTS, demoReceiptMoney, demoPhotoFile } from './demo-receipts.mjs';
+/** The month the demo photos print. The uploader redraws the date for any other. */
+const DEMO_LAST_MONTH = [2026, 8];
 const OUT = path.resolve(DEMO ? 'public/demo/receipts' : 'test-fixtures/receipts');
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -294,14 +303,136 @@ function invoiceHtml() {
   </div></body></html>`;
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const pad = (x) => String(x).padStart(2, '0');
+/** A calendar date as a till prints it. Mirrored by formatPrintedDate() in src/lib/demoReceiptPhotos.ts. */
+function printedDate(y, m, d, fmt) {
+  if (fmt === 'YYYY-MM-DD') return `${y}-${pad(m)}-${pad(d)}`;
+  if (fmt === 'MM/DD/YYYY') return `${pad(m)}/${pad(d)}/${y}`;
+  if (fmt === 'DD/MM/YYYY') return `${pad(d)}/${pad(m)}/${y}`;
+  if (fmt === 'DD/MM/YY') return `${pad(d)}/${pad(m)}/${String(y).slice(2)}`;
+  if (fmt === 'Mon D YYYY') return `${MONTHS[m - 1]} ${d} ${y}`;
+  throw new Error(`unknown date format ${fmt}`);
+}
+
+const STYLES = {
+  desk: { angle: -1.5, css: `.scene { background: linear-gradient(135deg, #6f7f8c, #4b5963); } .receipt { box-shadow: 6px 12px 22px rgba(0,0,0,.45); }` },
+  wood: { angle: -2, css: `.scene { background: linear-gradient(135deg, #7b5a3c, #5e4330); } .receipt { box-shadow: 8px 12px 24px rgba(0,0,0,.45); }` },
+  faded: { angle: 0.8, css: `.scene { background: #d8d4c8; } .receipt { color: #8f8b82; background: #f4f1e8; filter: contrast(0.85) blur(0.3px);
+            background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.35) 0 3px, transparent 3px 9px); }` },
+  grey: { angle: 1.5, css: `.scene { background: radial-gradient(circle at 30% 30%, #a9b7c0, #6d7c86); } .receipt { box-shadow: 4px 10px 18px rgba(0,0,0,.4); }` },
+  kraft: { angle: -1, css: `.scene { background: linear-gradient(160deg, #caa57a, #9c7a55); } .receipt { box-shadow: 6px 12px 20px rgba(0,0,0,.4); }` },
+  green: { angle: 2.2, css: `.scene { background: #8f9a7b; } .receipt { box-shadow: 6px 10px 20px rgba(0,0,0,.4); }` },
+  restaurant: { angle: -1.2, css: `.scene { background: #3b2f2a; } .receipt { box-shadow: 6px 12px 22px rgba(0,0,0,.6); }
+            .hand { font-family: "Bradley Hand", "Segoe Script", "Comic Sans MS", cursive; font-size: 24px; color: #1f3b8a; }` },
+  stained: { angle: -1, css: `.scene { background: linear-gradient(160deg, #caa57a, #9c7a55); } .receipt { position: relative; box-shadow: 6px 12px 20px rgba(0,0,0,.4); }
+            .stain { position: absolute; left: -6px; top: 100px; width: 336px; height: 50px; border-radius: 40% 60% 45% 55% / 55% 45% 60% 40%;
+                     background: radial-gradient(ellipse at 45% 50%, #4a2c14 0%, #5a3719 60%, #6e4524 85%, rgba(110,69,36,.9) 100%);
+                     box-shadow: 0 0 0 3px rgba(120,80,40,.35), 14px 4px 0 -6px rgba(90,55,25,.8); }` },
+  crumpled: { angle: -3, css: `.scene { background: #5f6b62; }
+          .wrap { position: relative; transform: perspective(900px) rotateX(8deg) skewY(1deg); filter: blur(0.5px); box-shadow: 10px 16px 26px rgba(0,0,0,.55); }
+          .wrap::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+            background:
+              linear-gradient(112deg, transparent 18%, rgba(0,0,0,.18) 19%, rgba(255,255,255,.35) 21%, transparent 24%),
+              linear-gradient(64deg, transparent 47%, rgba(0,0,0,.2) 48%, rgba(255,255,255,.3) 50%, transparent 53%),
+              linear-gradient(170deg, transparent 70%, rgba(0,0,0,.16) 71%, rgba(255,255,255,.28) 73%, transparent 76%),
+              radial-gradient(circle at 80% 15%, rgba(0,0,0,.18), transparent 40%); }`, wrap: true },
+};
+
+function demoHtml(r) {
+  const m = demoReceiptMoney(r);
+  const last4 = DEMO_CARDS[r.card];
+  const [y0, m0] = DEMO_LAST_MONTH;
+  const [y, mo] = r.nextMonthDay != null ? (m0 === 12 ? [y0 + 1, 1] : [y0, m0 + 1]) : [y0, m0];
+  const day = r.nextMonthDay ?? r.day ?? r.hiddenDay;
+  const date = printedDate(y, mo, day, r.dateFormat);
+  const dt = `<span class="dt">${date}</span>`;
+  const time = `${pad(8 + (r.k * 7) % 10)}:${pad((r.k * 23) % 60)}`;
+  const taxRows = m.taxes.map((t) => [`${t.type} ${t.rate_pct}%`, t.amount]);
+  if (r.style === 'restaurant') {
+    return `
+    <div class="receipt" style="width:340px">
+      <div class="c b big">${r.vendor.toUpperCase()}</div>
+      ${r.address.map((a) => `<div class="c">${a}</div>`).join('')}
+      <div class="rule"></div>
+      <div class="row"><span>${dt} 19:48</span><span>Table ${r.k + 5}</span></div>
+      <div class="row"><span>Server: Jess</span><span>Guests: 9</span></div>
+      <div class="rule"></div>
+      ${r.items.map((i) => `<div class="row"><span>${i[0]}</span><span>${money(i[1])}</span></div>`).join('')}
+      <div class="rule"></div>
+      <div class="row"><span>Subtotal</span><span>${money(m.subtotal)}</span></div>
+      ${taxRows.map((t) => `<div class="row"><span>${t[0]}</span><span>${money(t[1])}</span></div>`).join('')}
+      <div class="row b"><span>Amount</span><span>${money(m.subtotal + m.taxes.reduce((s, t) => s + t.amount, 0))}</span></div>
+      <div class="rule"></div>
+      ${m.tip != null ? `<div class="row" style="align-items:flex-end"><span>Tip:</span><span class="hand">${money(m.tip)}</span></div>
+      <div class="row" style="align-items:flex-end"><span>Total:</span><span class="hand">${money(m.total)}</span></div>` : `<div class="row b"><span>Total</span><span>${money(m.total)}</span></div>`}
+      <div class="rule"></div>
+      <div class="c">VISA ************${last4}</div>
+      <div class="c">APPROVED 00${8800 + r.k}</div>
+      <div class="c">CUSTOMER COPY</div>
+    </div>`;
+  }
+  return thermal({
+    name: r.vendor.toUpperCase(), address: r.address,
+    meta: [[`Date ${dt}`, time], [`Sale #${40000 + r.k * 37}`, `Clerk ${pad(r.k % 7 + 1)}`]],
+    items: r.items.map((i) => [i[0] + (i[2] ? ' Z' : ''), i[1]]),
+    totals: [['SUBTOTAL', m.subtotal], ...taxRows, ...(m.taxes.length ? [] : [['TAX', 0]]), ['TOTAL', m.total, 'huge'], [`VISA ****${last4}`, m.total]],
+    footer: [...(r.items.some((i) => i[2]) ? ['Z = ZERO-RATED GROCERY'] : []), 'GST/HST REG 80011 4455 RT0001', 'THANK YOU'],
+    extra: r.style === 'stained' ? '<div class="stain"></div>' : '',
+  });
+}
+
+async function renderDemo(page) {
+  const manifest = {};
+  for (const r of DEMO_RECEIPTS) {
+    if (r.copyOf) continue;
+    const style = STYLES[r.style];
+    const file = demoPhotoFile(r);
+    const inner = `<div class="tilt" style="transform: rotate(${style.angle}deg); display:inline-block">${style.wrap ? `<div class="wrap">${demoHtml(r)}</div>` : demoHtml(r)}</div>`;
+    await page.setContent(`<!doctype html><html><head><style>${BASE_CSS}${style.css}</style></head><body><div class="scene">${inner}</div></body></html>`);
+    const scene = page.locator('.scene');
+    const sb = await scene.boundingBox();
+    const db = await page.locator('.dt').boundingBox();
+    const font = await page.locator('.dt').evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { size: parseFloat(cs.fontSize), weight: cs.fontWeight };
+    });
+    const png = await scene.screenshot();
+    await page.setContent(`<!doctype html><html><body style="margin:0"><canvas id="c"></canvas><img id="i" style="display:none" src="data:image/png;base64,${png.toString('base64')}"></body></html>`);
+    const dataUrl = await page.evaluate(async () => {
+      const img = document.getElementById('i'); await img.decode();
+      const c = document.getElementById('c'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      return c.toDataURL('image/jpeg', 0.82);
+    });
+    fs.writeFileSync(path.join(OUT, file), Buffer.from(dataUrl.split(',')[1], 'base64'));
+    const [y0, m0] = DEMO_LAST_MONTH;
+    const [y, mo] = r.nextMonthDay != null ? (m0 === 12 ? [y0 + 1, 1] : [y0, m0 + 1]) : [y0, m0];
+    const dpr = 2;
+    manifest[file] = {
+      // null: the date cannot be read on this photo (the coffee stain), so it is never redrawn.
+      printedDate: r.day == null && r.nextMonthDay == null ? null : `${y}-${pad(mo)}-${pad(r.nextMonthDay ?? r.day)}`,
+      format: r.dateFormat,
+      box: { x: Math.round((db.x - sb.x) * dpr), y: Math.round((db.y - sb.y) * dpr), w: Math.round(db.width * dpr), h: Math.round(db.height * dpr) },
+      angle: style.angle, fontPx: Math.round(font.size * dpr), bold: Number(font.weight) >= 600,
+      faded: r.style === 'faded', blur: r.style === 'faded' || r.style === 'crumpled',
+    };
+  }
+  fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+  return Object.keys(manifest).length;
+}
+
 const browser = await chromium.launch();
 const page = await browser.newPage({ deviceScaleFactor: 2 });
+if (DEMO) {
+  const n = await renderDemo(page);
+  await browser.close();
+  console.log(`rendered ${n} demo photos and manifest.json into ${OUT}`);
+  process.exit(0);
+}
 const expected = {};
 for (const fixture of FIXTURES) {
-  if (DEMO && !DEMO_FILES.includes(fixture.file)) continue;
-  const f = DEMO && fixture.html
-    ? { ...fixture, html: fixture.html.replace(/MC \*{4}7390/g, 'VISA ****1156').replace(/4821|7390/g, '1156') }
-    : fixture;
+  const f = fixture;
   expected[f.file] = { ...f.expected, note: f.note };
   if (f.pdf) {
     await page.setContent(invoiceHtml());
@@ -340,6 +471,6 @@ for (const fixture of FIXTURES) {
   });
   fs.writeFileSync(path.join(OUT, f.file), Buffer.from(dataUrl.split(',')[1], 'base64'));
 }
-if (!DEMO) fs.writeFileSync(path.join(OUT, 'expected.json'), JSON.stringify(expected, null, 2) + '\n');
+fs.writeFileSync(path.join(OUT, 'expected.json'), JSON.stringify(expected, null, 2) + '\n');
 await browser.close();
-console.log(`rendered ${Object.keys(expected).length} ${DEMO ? 'demo photos' : 'fixtures'} into ${OUT}`);
+console.log(`rendered ${Object.keys(expected).length} fixtures into ${OUT}`);

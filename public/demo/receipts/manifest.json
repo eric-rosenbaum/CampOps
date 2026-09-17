@@ -1,0 +1,377 @@
+{
+  "demo-01.jpg": {
+    "printedDate": "2026-08-02",
+    "format": "YYYY-MM-DD",
+    "box": {
+      "x": 245,
+      "y": 341,
+      "w": 181,
+      "h": 39
+    },
+    "angle": -1.5,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-02.jpg": {
+    "printedDate": "2026-08-05",
+    "format": "MM/DD/YYYY",
+    "box": {
+      "x": 243,
+      "y": 341,
+      "w": 181,
+      "h": 40
+    },
+    "angle": -2,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-03.jpg": {
+    "printedDate": "2026-08-09",
+    "format": "YYYY-MM-DD",
+    "box": {
+      "x": 252,
+      "y": 389,
+      "w": 180,
+      "h": 37
+    },
+    "angle": 0.8,
+    "fontPx": 30,
+    "bold": false,
+    "faded": true,
+    "blur": true
+  },
+  "demo-04.jpg": {
+    "printedDate": "2026-08-12",
+    "format": "DD/MM/YYYY",
+    "box": {
+      "x": 254,
+      "y": 335,
+      "w": 181,
+      "h": 39
+    },
+    "angle": 1.5,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-05.jpg": {
+    "printedDate": "2026-08-15",
+    "format": "YYYY-MM-DD",
+    "box": {
+      "x": 245,
+      "y": 341,
+      "w": 181,
+      "h": 39
+    },
+    "angle": -1.5,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-07.jpg": {
+    "printedDate": "2026-08-19",
+    "format": "DD/MM/YY",
+    "box": {
+      "x": 247,
+      "y": 341,
+      "w": 145,
+      "h": 37
+    },
+    "angle": -1,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-08.jpg": {
+    "printedDate": "2026-08-23",
+    "format": "MM/DD/YYYY",
+    "box": {
+      "x": 245,
+      "y": 341,
+      "w": 181,
+      "h": 40
+    },
+    "angle": -2,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-09.jpg": {
+    "printedDate": "2026-08-27",
+    "format": "MM/DD/YYYY",
+    "box": {
+      "x": 155,
+      "y": 302,
+      "w": 181,
+      "h": 38
+    },
+    "angle": -1.2,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-10.jpg": {
+    "printedDate": "2026-08-03",
+    "format": "MM/DD/YYYY",
+    "box": {
+      "x": 243,
+      "y": 341,
+      "w": 181,
+      "h": 40
+    },
+    "angle": -2,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-11.jpg": {
+    "printedDate": "2026-08-07",
+    "format": "Mon D YYYY",
+    "box": {
+      "x": 254,
+      "y": 335,
+      "w": 181,
+      "h": 39
+    },
+    "angle": 1.5,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-12.jpg": {
+    "printedDate": "2026-08-11",
+    "format": "MM/DD/YYYY",
+    "box": {
+      "x": 243,
+      "y": 341,
+      "w": 181,
+      "h": 40
+    },
+    "angle": -2,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-13.jpg": {
+    "printedDate": "2026-08-16",
+    "format": "YYYY-MM-DD",
+    "box": {
+      "x": 246,
+      "y": 392,
+      "w": 181,
+      "h": 39
+    },
+    "angle": -1.5,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-14.jpg": {
+    "printedDate": "2026-08-21",
+    "format": "YYYY-MM-DD",
+    "box": {
+      "x": 252,
+      "y": 389,
+      "w": 180,
+      "h": 37
+    },
+    "angle": 0.8,
+    "fontPx": 30,
+    "bold": false,
+    "faded": true,
+    "blur": true
+  },
+  "demo-15.jpg": {
+    "printedDate": "2026-08-26",
+    "format": "MM/DD/YYYY",
+    "box": {
+      "x": 243,
+      "y": 341,
+      "w": 181,
+      "h": 40
+    },
+    "angle": -2,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-16.jpg": {
+    "printedDate": "2026-08-04",
+    "format": "DD/MM/YY",
+    "box": {
+      "x": 247,
+      "y": 341,
+      "w": 145,
+      "h": 37
+    },
+    "angle": -1,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-17.jpg": {
+    "printedDate": "2026-08-08",
+    "format": "Mon D YYYY",
+    "box": {
+      "x": 254,
+      "y": 335,
+      "w": 181,
+      "h": 39
+    },
+    "angle": 1.5,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-18.jpg": {
+    "printedDate": "2026-08-13",
+    "format": "DD/MM/YY",
+    "box": {
+      "x": 247,
+      "y": 341,
+      "w": 145,
+      "h": 37
+    },
+    "angle": -1,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-19.jpg": {
+    "printedDate": "2026-08-18",
+    "format": "DD/MM/YYYY",
+    "box": {
+      "x": 247,
+      "y": 392,
+      "w": 181,
+      "h": 39
+    },
+    "angle": -1.5,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-20.jpg": {
+    "printedDate": "2026-08-25",
+    "format": "YYYY-MM-DD",
+    "box": {
+      "x": 251,
+      "y": 389,
+      "w": 180,
+      "h": 37
+    },
+    "angle": 0.8,
+    "fontPx": 30,
+    "bold": false,
+    "faded": true,
+    "blur": true
+  },
+  "demo-31.jpg": {
+    "printedDate": "2026-08-03",
+    "format": "MM/DD/YYYY",
+    "box": {
+      "x": 243,
+      "y": 341,
+      "w": 181,
+      "h": 40
+    },
+    "angle": -2,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-32.jpg": {
+    "printedDate": null,
+    "format": "DD/MM/YY",
+    "box": {
+      "x": 247,
+      "y": 341,
+      "w": 145,
+      "h": 37
+    },
+    "angle": -1,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-33.jpg": {
+    "printedDate": "2026-08-08",
+    "format": "MM/DD/YYYY",
+    "box": {
+      "x": 154,
+      "y": 302,
+      "w": 181,
+      "h": 38
+    },
+    "angle": -1.2,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  },
+  "demo-34.jpg": {
+    "printedDate": "2026-08-14",
+    "format": "YYYY-MM-DD",
+    "box": {
+      "x": 252,
+      "y": 389,
+      "w": 180,
+      "h": 37
+    },
+    "angle": 0.8,
+    "fontPx": 30,
+    "bold": false,
+    "faded": true,
+    "blur": true
+  },
+  "demo-35.jpg": {
+    "printedDate": "2026-09-02",
+    "format": "MM/DD/YYYY",
+    "box": {
+      "x": 244,
+      "y": 396,
+      "w": 179,
+      "h": 39
+    },
+    "angle": -3,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": true
+  },
+  "demo-36.jpg": {
+    "printedDate": "2026-08-19",
+    "format": "Mon D YYYY",
+    "box": {
+      "x": 256,
+      "y": 333,
+      "w": 199,
+      "h": 42
+    },
+    "angle": 2.2,
+    "fontPx": 30,
+    "bold": false,
+    "faded": false,
+    "blur": false
+  }
+}

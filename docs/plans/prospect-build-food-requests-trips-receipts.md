@@ -218,8 +218,10 @@ Immediate rows are queued inside the transition RPCs.
 - **Demand:** in `consumptionByItemDate()`, **before the mode branch**, add requests with status
   `approved | ready` that have a linked `item_id`: `qty_approved_base ?? qty_requested_base` on
   `pickup_date`. `submitted` requests do **not** count toward demand; they show as "pending" in
-  `orderMath` instead. `picked_up` counts (the food left the kitchen and nothing wrote it to
-  stock, fact 7). `missed`, `declined` and `cancelled` don't count.
+  `orderMath` instead. ~~`picked_up` counts~~ — changed after the usability review: marking a
+  request picked up writes a `used` adjustment per linked item (migration
+  `food_picked_up_comes_off_the_shelf`), so `picked_up` is **not** demand. `missed`, `declined` and
+  `cancelled` don't count.
 - Put the logic in pure `src/lib/foodRequests.ts`: `requestDemandByItemDate(requests, lines)`,
   `setAsideByItem(requests, lines, today)`, `noticeHours(...)`, `isLate(...)`. The store only
   calls it.

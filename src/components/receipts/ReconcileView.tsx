@@ -222,7 +222,7 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
 
       {card && statement && !replacing && (
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card border border-border bg-paper-raised px-3 py-2 text-[12.5px] text-ink-soft" data-testid="statement-imported">
-          <span className="min-w-0 flex-1">
+          <span className="w-full min-w-0 sm:w-auto sm:flex-1">
             <b className="font-semibold text-ink">Statement already imported</b> for {card.label} · {monthLabel(month)}: {charges.length} charge{charges.length === 1 ? '' : 's'}
             {credits.length ? `, ${credits.length} credit${credits.length === 1 ? '' : 's'}` : ''}
             {statement.fileName ? ` from ${statement.fileName}` : ''}, {fmtInstantDay(statement.createdAt)}.
@@ -291,7 +291,14 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
             ) : (
               <div className="border-t border-amber/30 bg-amber-bg px-4 py-3 text-amber-text" data-testid="month-disagrees">
                 <p className="flex items-center gap-2 text-[13.5px] font-bold"><AlertTriangle className="h-4 w-4" /> Not agreeing yet</p>
-                <ul className="mt-1 list-disc pl-6 text-[13px]" data-testid="blockers">{summary.blockers.map((b) => <li key={b.code} data-blocker={b.code}>{b.message}</li>)}</ul>
+                <ul className="mt-1 list-disc pl-6 text-[13px]" data-testid="blockers">
+                  {summary.blockers.map((b) => {
+                    // A suggestion is not a match until accepted, so it still counts; saying so
+                    // stops "6 receipts have no charge" reading as a contradiction of the one listed.
+                    const suggested = b.code === 'unexplained' ? suggestions.length : b.code === 'no_charge' ? summary.noCharge.filter((r) => suggestedReceipt.has(r.id)).length : 0;
+                    return <li key={b.code} data-blocker={b.code}>{b.message}{suggested ? ` ${suggested} of them ${suggested === 1 ? 'has' : 'have'} a suggested match below.` : ''}</li>;
+                  })}
+                </ul>
               </div>
             )}
           </div>
@@ -369,7 +376,7 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
                         <div className="min-w-0 flex-1">
                           <button className="block max-w-full text-left" onClick={() => onOpen(r.id)}>
                             <span className="block truncate text-[13.5px] font-bold text-ink">{r.vendor ?? 'Not read yet'}</span>
-                            <span className="block truncate text-[12px] text-ink-soft">{fmtDay(r.purchaseDate)} · {whoLine(r)}</span>
+                            <span className="block text-[12px] text-ink-soft sm:truncate">{fmtDay(r.purchaseDate)} · {whoLine(r)}</span>
                           </button>
                           <div className="mt-1 flex flex-wrap gap-1.5">
                             {r.status !== 'ready' && r.status !== 'exported' && <StatusChip status={r.status} />}

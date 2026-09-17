@@ -125,8 +125,8 @@ export function DuplicateCompare({ originalId, duplicateId, onClose }: { origina
         return (
           <ConfirmDialog title="Remove this copy?" confirmLabel="Remove copy" danger onCancel={() => setConfirmRemove(null)} onConfirm={() => remove(confirmRemove)}>
             <p>
-              The {cardWithHolder(cards, confirmRemove.cardId)} copy of <b>{confirmRemove.vendor}</b>, {money(confirmRemove.total, confirmRemove.currency)}, and its photo are removed.
-              The one kept is on {cardWithHolder(cards, keep.cardId)}.
+              The copy of <b>{confirmRemove.vendor}</b>, {money(confirmRemove.total, confirmRemove.currency)}, snapped by {confirmRemove.submitterName ?? 'someone'}{confirmRemove.filePath ? ', and its photo are' : ' is'} removed.
+              {keep.cardId !== confirmRemove.cardId && <> The one kept is on {cardWithHolder(cards, keep.cardId)}.</>}
             </p>
             {m && <p className="mt-1.5 font-semibold text-ink">Its match to the {fmtDay(m.postedDate)} charge moves to the copy you keep.</p>}
             <p className="mt-1.5">You can undo this for a few seconds.</p>

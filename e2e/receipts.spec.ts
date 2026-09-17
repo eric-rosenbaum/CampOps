@@ -12,9 +12,10 @@ import { asUser, qaPassword, stepper, watchConsole, QA_USERS } from './support/q
  *   leaves the hidden date amber → she types the date → saves.
  *   Omar (another holder) cannot see Hana's receipts, in the app or through a signed URL.
  *   Teddy (finance) imports August's Visa CSV → checks the guessed columns → accepts the suggested
- *   matches → reminds Hana about a charge with no receipt, then marks it as needing none →
- *   deletes the receipt that was snapped twice → the month agrees → exports for QuickBooks, and
- *   the downloaded file is byte-for-byte the golden file.
+ *   matches → searches for the fuel receipt, reminds Hana by email, then marks the charge as
+ *   needing none → removes the copy snapped twice (asked first, undone once, then for real) → the
+ *   month agrees → downloads for review (nothing marked) → exports the QuickBooks bills file, and
+ *   the download is byte-for-byte the golden file.
  */
 
 const CARD_HANA = 'ec000000-0000-4000-8000-000000004821';
@@ -119,6 +120,8 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   await expect(dialog.locator('#rc-subtotal')).toHaveValue('77.46');
   await expect(dialog.getByLabel('HST amount')).toHaveValue('10.07');
   await expect(dialog.locator('#rc-card')).toHaveValue(CARD_HANA);
+  // The slip prints ····4821 and the card chosen is ··4821: said, so a mismatch would stand out.
+  await expect(dialog.getByTestId('card-matches-slip')).toContainText('4821');
   // The coffee stain hides the date: the reader must not guess it, and the form must say so.
   await expect(dialog.locator('[data-amber="date"]')).toBeVisible();
   await shot(hana.page, 'holder-prefilled-date-amber');
@@ -178,37 +181,80 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   // The location column is description too; Teddy decides he does not want it in the text.
   await mapper.locator('select[data-column="5"]').selectOption('skip');
   await expect(mapper.getByText(/Preview · 7 lines/)).toBeVisible();
+  // A typo in the bill's total is caught at once, not discovered later as a month that won't agree.
+  await mapper.locator('#st-total').fill('162.29');
+  await expect(mapper.getByTestId('total-mismatch')).toContainText('$162.29');
+  await expect(mapper.getByRole('button', { name: /Import 7 lines/ })).toBeDisabled();
+  await shot(p, 'finance-total-typo');
   await mapper.locator('#st-total').fill('126.29');
+  await expect(mapper.getByTestId('total-mismatch')).toHaveCount(0);
   await shot(p, 'finance-mapper');
   await mapper.getByRole('button', { name: /Import 7 lines/ }).click();
 
   const suggestions = p.getByTestId('suggestions');
   await expect(suggestions).toBeVisible();
   await expect(p.getByTestId('month-disagrees')).toBeVisible();
+  // Importing again is visible, not hidden in a menu, and says what it would replace.
+  await expect(p.getByTestId('statement-imported')).toContainText('6 charges');
   await shot(p, 'finance-suggestions');
   await p.getByRole('button', { name: /Accept all 5/ }).click();
   await expect(suggestions).toHaveCount(0);
   await expect(p.getByTestId('matched').locator('li')).toHaveCount(5);
+  // Every charge but one is matched, yet the month does not agree: the fuel charge, and a receipt
+  // on the card with no charge. Both are listed, not just the first.
+  const blockers = p.getByTestId('blockers');
+  await expect(blockers.locator('[data-blocker="unexplained"]')).toBeVisible();
+  await expect(blockers.locator('[data-blocker="no_charge"]')).toBeVisible();
 
-  // The fuel charge has no receipt: remind Hana, then accept it has none.
+  // The fuel charge has no receipt. Searching every receipt for it finds nothing, so Teddy
+  // reminds Hana (by email), then accepts it has none.
   const fuel = p.getByTestId('missing').locator('li').filter({ hasText: 'MUSKOKA FUEL' });
-  await fuel.getByRole('button', { name: /Remind/ }).click();
-  await expect(fuel.getByTestId('reminded')).toContainText('Receipt needed: $62.00');
+  await fuel.getByRole('button', { name: 'Attach receipt' }).click();
+  const attach = p.getByRole('dialog', { name: 'Attach a receipt' });
+  await attach.getByPlaceholder(/Search vendor/).fill('fuel');
+  await expect(attach.getByTestId('attach-results')).toContainText('No open receipt matches');
+  await expect(attach.getByRole('button', { name: 'Upload the receipt' })).toBeVisible();
+  await shot(p, 'finance-attach-search');
+  await p.keyboard.press('Escape');
+  await expect(attach).toHaveCount(0);
+  await fuel.getByRole('button', { name: /Email Hana a reminder/ }).click();
+  await expect(fuel.getByTestId('reminded')).toContainText('Reminder emailed to qa-holder@example.com');
+  await expect(fuel.getByTestId('reminded')).toContainText('If texts were on, it would say: “Receipt needed: $62.00');
   await shot(p, 'finance-reminded');
   await fuel.getByRole('button', { name: 'No receipt needed' }).click();
   const note = p.getByRole('dialog', { name: 'No receipt needed' });
-  await note.getByPlaceholder('Note (optional)').fill('Pump receipt lost, camp truck fuel');
+  await note.getByPlaceholder('Note (optional)').fill('Pump receipt lost + camp truck fuel');
   await note.getByRole('button', { name: 'Save' }).click();
   await expect(p.getByTestId('missing')).toHaveCount(0);
 
-  // The emailed copy of the Blue Heron invoice was snapped twice.
+  // The emailed copy of the Blue Heron invoice was snapped twice. Removing a copy asks first and
+  // can be undone.
   const orphan = p.getByTestId('orphans').locator('li').filter({ hasText: 'Blue Heron Marine Ltd.' });
-  await orphan.getByRole('button', { name: 'Possible duplicate' }).click();
+  await expect(orphan.getByRole('button', { name: 'Wrong card' })).toBeVisible();
+  await expect(orphan.getByRole('button', { name: 'Posts next month' })).toBeVisible();
+  await shot(p, 'finance-orphan-actions');
+  await orphan.getByRole('button', { name: 'It’s a duplicate' }).click();
   const compare = p.getByRole('dialog', { name: 'Compare receipts' });
-  await expect(compare.locator('[data-compare="original"]')).toContainText('Matched to a statement charge');
+  await expect(compare.locator('[data-compare="original"]')).toContainText('Matched to the');
   await shot(p, 'finance-compare-duplicate');
-  await compare.locator('[data-compare="duplicate"]').getByRole('button', { name: 'Delete this copy' }).click();
+  await compare.locator('[data-compare="duplicate"]').getByRole('button', { name: 'Remove this copy' }).click();
+  const confirm = p.getByRole('dialog', { name: 'Remove this copy?' });
+  await expect(confirm).toContainText('Blue Heron Marine Ltd.');
+  await shot(p, 'finance-confirm-remove');
+  await confirm.getByRole('button', { name: 'Remove copy' }).click();
   await expect(compare).toHaveCount(0);
+  const toast = p.getByTestId('receipts-toast');
+  await expect(toast).toContainText('Removed the copy');
+  await expect(p.getByTestId('month-agrees')).toBeVisible();
+  await shot(p, 'finance-removed-with-undo');
+  await toast.getByRole('button', { name: 'Undo' }).click();
+  await expect(p.getByTestId('orphans').locator('li').filter({ hasText: 'Blue Heron Marine Ltd.' })).toBeVisible();
+  await expect(p.getByTestId('month-disagrees')).toBeVisible();
+  // For real this time, and wait for the removal to be sent once the Undo window closes.
+  await p.getByTestId('orphans').locator('li').filter({ hasText: 'Blue Heron Marine Ltd.' }).getByRole('button', { name: 'It’s a duplicate' }).click();
+  await compare.locator('[data-compare="duplicate"]').getByRole('button', { name: 'Remove this copy' }).click();
+  await p.getByRole('dialog', { name: 'Remove this copy?' }).getByRole('button', { name: 'Remove copy' }).click();
+  await expect.poll(() => JSON.parse(sql(`select count(*)::int as n from receipts where id = 'ae000000-0000-4000-8000-000000000005'`).replace(/^[^[]*/, ''))[0].n, { timeout: 20_000 }).toBe(0);
 
   await expect(p.getByTestId('month-agrees')).toBeVisible();
   await expect(p.getByTestId('month-agrees')).toContainText('This month agrees');
@@ -223,27 +269,49 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   await p.locator('[data-tab="summary"]').click();
   await expect(p.getByTestId('summary')).toBeVisible();
   await expect(p.getByTestId('summary').getByText('Recoverable (estimate)')).toBeVisible();
+  await expect(p.getByTestId('hst-split')).toContainText('federal part');
   await shot(p, 'finance-summary');
 
   await p.locator('[data-tab="export"]').click();
   const exp = p.getByTestId('export');
   await expect(exp.getByTestId('export-preview')).toBeVisible();
-  await expect(exp.getByRole('radio', { name: /3 columns/ })).toBeChecked();
+  await expect(exp.getByRole('radio', { name: /bills import/ })).toBeChecked();
+  // The file adds up to the bill before anything downloads: $626.29 of charges, less the $500
+  // payment that a bill import cannot carry, is the $126.29 statement.
+  await expect(exp.getByTestId('export-reconciles')).toContainText('$626.29 in 6 bills');
+  await expect(exp.getByTestId('export-reconciles')).toContainText('the statement total ✓');
   await shot(p, 'finance-export-preview');
+
+  // Downloading for review marks nothing.
+  const [review] = await Promise.all([p.waitForEvent('download'), exp.getByTestId('download-review').click()]);
+  expect(review.suggestedFilename()).toBe('receipts-review-visa-4821-2026-08.csv');
+  const reviewText = fs.readFileSync((await review.path())!, 'utf8');
+  expect(reviewText).toContain('Pump receipt lost + camp truck fuel');
+  expect(reviewText).toContain('PAYMENT - THANK YOU');
+  const stillReady = JSON.parse(sql(`select count(*)::int as n from receipts where camp_id = '${campId}' and status = 'exported'`).replace(/^[^[]*/, ''));
+  expect(stillReady[0].n).toBe(0);
+
   const [download] = await Promise.all([
     p.waitForEvent('download'),
-    exp.getByRole('button', { name: /Download and mark exported/ }).click(),
+    exp.getByTestId('export-qbo').click(),
   ]);
-  expect(download.suggestedFilename()).toBe('quickbooks-3col-2026-08.csv');
+  expect(download.suggestedFilename()).toBe('quickbooks-bills-visa-4821-2026-08.csv');
   const file = fs.readFileSync((await download.path())!, 'utf8');
-  expect(file).toBe(fs.readFileSync(path.join(root, 'e2e/fixtures/receipts-aug-2026-qbo-3col.golden.csv'), 'utf8'));
-  await expect(exp.getByText(/They are marked exported/)).toBeVisible();
+  // Golden file replaced 2026-09-16, deliberately: the export now follows the statement. It is one
+  // bill per August charge on Hana's card at its POSTED date (not Omar's receipt, which is on a card
+  // with no statement), with the fuel charge that needed no receipt under the card's default
+  // account and its note intact ("+" included), each line's account and HST in their own columns,
+  // and the $500 payment left out because QuickBooks' bill import has no credits.
+  expect(file).toBe(fs.readFileSync(path.join(root, 'e2e/fixtures/receipts-aug-2026-qbo-bills.golden.csv'), 'utf8'));
+  await expect(exp.getByText(/marked exported/)).toBeVisible();
   // Nothing is exported twice without asking.
-  await expect(exp.getByText(/that have not already been exported/)).toBeVisible();
+  await expect(exp.getByTestId('export-qbo')).toBeDisabled();
+  await expect(exp.getByText(/Export it again/)).toBeVisible();
   await shot(p, 'finance-exported');
 
   await p.locator('[data-tab="settings"]').click();
-  await expect(p.getByText('Confirm these with your finance director.')).toBeVisible();
+  await expect(p.getByText('Check these match how your camp claims sales tax back.')).toBeVisible();
+  await expect(p.locator('[data-basis="psb"]')).toBeChecked();
   await shot(p, 'finance-settings');
 
   // Hana's receipt is now locked to her.
@@ -254,5 +322,122 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   expect(teddyErrors.filter((e) => !ignorable(e))).toEqual([]);
   expect(teddyHttp()).toEqual([]);
   await hana.context.close();
+  await teddy.context.close();
+});
+
+/**
+ * J4b — the paths J4 does not walk: the reader switched off, a card number that disagrees, and the
+ * other ways a receipt with no charge is resolved (posts next month, wrong card), an undated
+ * receipt, a typo in the statement total fixed in place, and a replacement that says what it replaces.
+ */
+test('J4b: typing a receipt in by hand, and every other way a month is made to agree', async ({ browser }, info) => {
+  test.setTimeout(300_000);
+  const rawShot = stepper('j4b-receipts-edges', info.project.name);
+  const shot = async (page: Page, label: string) => { await page.waitForTimeout(400); return rawShot(page, label); };
+  execFileSync('scripts/staging-sql.sh', ['e2e/receipts-reset.sql'], { encoding: 'utf8' });
+
+  // ── Hana: the reader is out of credit ────────────────────────────────────────────────────
+  const hana = await asUser(browser, 'holder', contextOptions(info));
+  await dismissForeignWriteBanner(hana.page);
+  await hana.page.goto('/receipts');
+  await expect(hana.page.getByRole('heading', { name: 'Receipts' })).toBeVisible();
+  await hana.page.route('**/functions/v1/read-receipt', (route) => route.fulfill({
+    status: 503, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' },
+    body: JSON.stringify({ readable: false, error: 'Receipt reading is unavailable right now. Enter the details by hand.' }),
+  }));
+  await hana.page.locator('[data-testid="snap-input"]').setInputFiles(fixture('02-on-hst.jpg'));
+  const dialog = hana.page.getByRole('dialog', { name: 'Check the receipt' });
+  await expect(dialog.getByText('Not read automatically.')).toBeVisible({ timeout: 60_000 });
+  await expect(dialog.getByText(/Automatic reading is switched off right now/)).toBeVisible();
+  await dialog.locator('#rc-vendor').fill('Lakeside Hardware');
+  await dialog.locator('#rc-date').fill('2026-08-27');
+  await dialog.locator('#rc-subtotal').fill('100');
+  await dialog.getByRole('button', { name: 'Add a tax line' }).click();
+  await dialog.getByLabel('Rate percent').fill('13');
+  // The arithmetic a calculator would do: the tax from the rate, the total from the parts.
+  await expect(dialog.getByLabel('HST amount')).toHaveValue('13.00');
+  await expect(dialog.locator('#rc-total')).toHaveValue('113.00');
+  await expect(dialog.getByText('Not read automatically.')).toHaveCount(0);
+  await shot(hana.page, 'hand-entry-calculated');
+  await dialog.getByRole('button', { name: 'Save receipt' }).click();
+  await expect(dialog).toHaveCount(0);
+
+  // ── Hana: the slip names a card that is not the one chosen ───────────────────────────────
+  await hana.page.unroute('**/functions/v1/read-receipt');
+  await hana.page.route('**/functions/v1/read-receipt', async (route) => {
+    const body = JSON.parse(fs.readFileSync(path.join(root, 'e2e/fixtures/read-receipt-12-stained-date.json'), 'utf8'));
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ ...body, cardLast4: '9999' }) });
+  });
+  await hana.page.locator('[data-testid="snap-input"]').setInputFiles(fixture('12-stained-date.jpg'));
+  await expect(dialog.locator('#rc-vendor')).toBeVisible({ timeout: 60_000 });
+  await expect(dialog.getByTestId('card-mismatch')).toContainText('Receipt shows ····9999; saving to ····4821');
+  await shot(hana.page, 'card-mismatch');
+  // Escape closes it, leaving the undated receipt waiting for review.
+  await hana.page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await hana.context.close();
+
+  // ── Teddy: August on Hana's card ─────────────────────────────────────────────────────────
+  const teddy = await asUser(browser, 'admin', contextOptions(info));
+  const p = teddy.page;
+  await p.goto(`/receipts/reconcile?card=${CARD_HANA}&month=2026-08`);
+  await p.getByTestId('statement-file').setInputFiles(fixture('statements/qa-august-2026-rbc-style.csv'));
+  const mapper = p.getByTestId('statement-mapper');
+  await mapper.locator('#st-total').fill('126.29');
+  await mapper.getByRole('button', { name: /Import 7 lines/ }).click();
+  // Four: this journey has no Trillium receipt, so that charge stays unexplained with the fuel.
+  await p.getByRole('button', { name: /Accept all 4/ }).click();
+  await expect(p.getByTestId('suggestions')).toHaveCount(0);
+
+  const blockers = p.getByTestId('blockers');
+  await expect(blockers.locator('[data-blocker="undated"]')).toBeVisible();
+  await expect(blockers.locator('[data-blocker="no_charge"]')).toContainText('2 receipts');
+  await expect(p.getByTestId('undated').locator('li')).toHaveCount(1);
+  await shot(p, 'blockers-undated-and-orphans');
+
+  // Posts next month, with a note.
+  const lakeside = p.getByTestId('orphans').locator('li').filter({ hasText: 'Lakeside Hardware' });
+  await lakeside.getByRole('button', { name: 'Posts next month' }).click();
+  const aside = p.getByRole('dialog', { name: 'Posts next month' });
+  await aside.getByPlaceholder(/Note/).fill('Bought on the 27th, posts in September');
+  await aside.getByRole('button', { name: 'Set aside' }).click();
+  await expect(p.getByTestId('set-aside')).toContainText('Lakeside Hardware');
+
+  // Wrong card: the copy goes to Omar's card.
+  const copy = p.getByTestId('orphans').locator('li').filter({ hasText: 'Blue Heron Marine Ltd.' });
+  await copy.getByRole('button', { name: 'Wrong card' }).click();
+  const move = p.getByRole('dialog', { name: 'Move to another card' });
+  await expect(move).toContainText('Visa ··7390');
+  await shot(p, 'wrong-card');
+  await move.getByRole('button', { name: 'Move receipt' }).click();
+  await expect(p.getByTestId('orphans')).toHaveCount(0);
+
+  // A typo in the total, fixed without importing again.
+  await p.getByTestId('edit-total').click();
+  await p.getByLabel('Statement total').fill('126.30');
+  await p.getByLabel('Statement total').press('Enter');
+  await expect(blockers.locator('[data-blocker="total_mismatch"]')).toBeVisible();
+  await p.getByTestId('edit-total').click();
+  await p.getByLabel('Statement total').fill('126.29');
+  await p.getByLabel('Statement total').press('Enter');
+  await expect(blockers.locator('[data-blocker="total_mismatch"]')).toHaveCount(0);
+  await shot(p, 'resolved-except-undated-and-fuel');
+
+  // Replacing says what it replaces.
+  await p.getByTestId('replace-statement').click();
+  await expect(p.getByTestId('statement-import')).toContainText('already imported, with 6 charges');
+  await p.getByTestId('statement-file').setInputFiles(fixture('statements/qa-august-2026-rbc-style.csv'));
+  await expect(p.getByTestId('replace-warning')).toContainText('This replaces 6 charges with 6');
+  await shot(p, 'replace-warning');
+  await p.getByRole('button', { name: 'Start over' }).click();
+  await expect(p.getByTestId('statement-imported')).toBeVisible();
+
+  // Tax presets.
+  await p.locator('[data-tab="settings"]').click();
+  await p.locator('[data-basis="itc"]').check();
+  await expect(p.getByLabel('HST provincial part recoverable percent')).toHaveValue('100');
+  await p.locator('[data-basis="psb"]').check();
+  await expect(p.getByLabel('HST provincial part recoverable percent')).toHaveValue('82');
+  await shot(p, 'tax-presets');
   await teddy.context.close();
 });

@@ -3,7 +3,7 @@
 --
 --   Hana Holder  · Visa ··4821 · five receipts (one of them snapped twice) waiting for a statement
 --   Omar Holder  · Visa ··7390 · one receipt, which Hana must never be able to see
---   Tax rules: Ontario HST, sample percentages, not confirmed
+--   Tax rules: the Ontario charity rebate preset (HST 50% federal / 82% provincial), not confirmed
 do $$
 declare
   v_camp uuid := (select id from camps where slug = 'prospect-qa' and deleted_at is null);
@@ -37,8 +37,9 @@ begin
     ('ec000000-0000-4000-8000-000000004821', v_camp, 'Visa ··4821', m_hana, 'Hana Holder', '4821', 'bc000000-0000-4000-8000-000000000002'),
     ('ec000000-0000-4000-8000-000000007390', v_camp, 'Visa ··7390', m_omar, 'Omar Holder', '7390', 'bc000000-0000-4000-8000-000000000001');
 
-  insert into expense_tax_settings (camp_id, currency, province, tax_rules)
-  values (v_camp, 'CAD', 'ON', '[{"type":"HST","recoverable_pct":50},{"type":"GST","recoverable_pct":50}]');
+  -- The public service bodies' rebate for an Ontario charity, as the Settings preset writes it.
+  insert into expense_tax_settings (camp_id, currency, province, claim_basis, tax_rules)
+  values (v_camp, 'CAD', 'ON', 'psb', '[{"type":"HST","recoverable_pct":69.69,"federal_pct":50,"provincial_pct":82},{"type":"GST","recoverable_pct":50}]');
 
   insert into receipts (id, camp_id, card_id, submitted_by, submitter_name, vendor, purchase_date, subtotal, taxes, total,
                         budget_code_id, purpose, status, reviewed_by, reviewed_at, file_path, file_name, file_type, created_at) values

@@ -312,11 +312,12 @@ function TaxSection() {
           {draft.taxRules.map((r, i) => {
             const split = r.type === 'HST' && r.federalPct != null && r.provincialPct != null;
             return (
-              <div key={i} className="flex flex-wrap items-center gap-2">
+              <div key={i} className="flex items-start gap-2">
                 <select aria-label="Tax" className={`${fieldClass} w-28 flex-none`} value={r.type}
                         onChange={(e) => setRule(i, { type: e.target.value as TaxRule['type'], ...(e.target.value !== 'HST' ? { federalPct: null, provincialPct: null } : {}) })}>
                   {TAX_TYPES.map((t) => <option key={t} value={t}>{TAX_LABELS[t]}</option>)}
                 </select>
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
                 {split ? (
                   <>
                     <PctInput label="HST federal part recoverable percent" value={r.federalPct!} onChange={(v) => setRule(i, { federalPct: num(v) })} />
@@ -333,7 +334,8 @@ function TaxSection() {
                     )}
                   </>
                 )}
-                <button className="ml-auto rounded-btn p-1.5 text-ink-soft hover:bg-red-bg hover:text-red" aria-label="Remove rule" onClick={() => change({ taxRules: draft.taxRules.filter((_, j) => j !== i) })}>
+                </div>
+                <button className="mt-1 flex-none rounded-btn p-1.5 text-ink-soft hover:bg-red-bg hover:text-red" aria-label="Remove rule" onClick={() => change({ taxRules: draft.taxRules.filter((_, j) => j !== i) })}>
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>

@@ -1084,7 +1084,7 @@ export const EXPORT_FORMATS: { value: ExportFormat; label: string; carries: stri
   {
     value: 'qbo_bills', label: 'QuickBooks bills import — with GST/HST',
     carries: 'One bill per charge: supplier, account, amount before tax, tax code and tax amount on each line.',
-    lacks: 'Imports as bills: pay them from the card account in QuickBooks so the card balance matches. Refunds and payments are not included (bills have no credits) and are listed below.',
+    lacks: 'Imports as bills: pay them from the card account in QuickBooks so the card balance matches. Payments and refunds are not included (bills have no credits); they are counted separately.',
   },
   {
     value: 'qbo_bank_3col', label: 'QuickBooks bank upload — 3 columns',

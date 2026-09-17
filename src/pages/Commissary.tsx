@@ -149,7 +149,7 @@ export function Commissary() {
       // Adding campers requires health access, not just manageCommissary. The DB
       // would reject the write anyway, so don't offer a button that cannot work.
       if (!canViewCamperHealth) return undefined;
-      return <Button size="sm" onClick={() => openModal({ kind: 'camper' })}>+ Add camper</Button>;
+      return <Button size="sm" onClick={() => openModal({ kind: 'camper' })}>+ Add person</Button>;
     }
     if (activeTab === 'ordering' || activeTab === 'settings' || activeTab === 'requests') return undefined;
     // Menu tab: session mode offers "+ New session"; retreats mode manages menus per retreat inside the builder.
@@ -159,7 +159,8 @@ export function Commissary() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <Topbar title="Commissary" subtitle={subtitle} actions={topAction()} />
+      {/* The sidebar says Kitchen Manager; the page said Commissary, so it looked like a different place. */}
+      <Topbar title="Kitchen Manager" subtitle={subtitle} actions={topAction()} />
 
       <div ref={tabBarRef} className="relative bg-paper-raised border-b border-border px-4 sm:px-7 flex-shrink-0 flex items-center justify-between gap-3 overflow-x-auto overflow-y-hidden no-scrollbar">
         <div className="flex">
@@ -177,7 +178,8 @@ export function Commissary() {
               {tab.label}
               {tab.id === 'requests' && requestsBadge > 0 && (
                 <span data-testid="requests-badge"
-                  title={[waitingRequests ? `${waitingRequests} waiting for a decision` : '', overdueRequests ? `${overdueRequests} not picked up on time` : ''].filter(Boolean).join(' · ')}
+                  title={`Needs you: ${[waitingRequests ? `${waitingRequests} waiting for a decision` : '', overdueRequests ? `${overdueRequests} late pickup${overdueRequests === 1 ? '' : 's'} to mark` : ''].filter(Boolean).join(', ')}`}
+                  aria-label={`${requestsBadge} need you`}
                   className="ml-1.5 inline-grid min-w-[18px] place-items-center rounded-pill bg-red px-1 text-[10.5px] font-bold leading-[18px] text-paper">
                   {requestsBadge}
                 </span>

@@ -37,8 +37,8 @@ import {
   scaledIngredientLabel, formatInStockUnit, tidy, mealHeadCount, peopleDays, perDiem,
   menuForecastCost, dateForCell, dateStrForCell, toDateStr, todayStr,
   ITEM_FLAGS, MEAL_PERIOD_LABELS, PREP_SLOT_ORDER,
-  addDaysStr, makeProjectionInput, coverageNeedBase, projectedOnHandBase, WEEKDAYS, nextWeekdayOnOrAfter, shelfPicture,
-  type DemandRow, type StockStatus, type DraftOrder, type MenuConflict, type ShelfPicture,
+  addDaysStr, WEEKDAYS, nextWeekdayOnOrAfter, shelfBreakdown, orderLineMath,
+  type DemandRow, type StockStatus, type DraftOrder, type MenuConflict, type ShelfBreakdown, type ShelfInput, type OrderLineMath,
   type PerDiem, type PrepScheduleSlot, type PrepSlotKey,
 } from '@/lib/commissaryUnits';
 import { generateId } from '@/lib/utils';
@@ -46,7 +46,7 @@ import { useRetreatStore } from '@/store/retreatStore';
 import type { FoodProgram, FoodRequest, FoodRequestLine, FoodRequestSettings } from '@/lib/foodRequestTypes';
 import {
   requestDemandByItemDate, mergeDemandInto, requestDemandInWindow, pendingByItem, type RequestDemandEntry,
-  setAsideByItem, promisesByItem,
+  promisedByItemDate,
 } from '@/lib/foodRequests';
 
 /** Line actuals collected in the receiving screen. */
@@ -286,14 +286,23 @@ interface CommissaryState {
   filteredRecipes: () => Recipe[];
   stockCounts: () => Record<StockStatus, number>;
   /**
-   * Every item's shelf from one projection: on shelf, promised to programs, left after promises,
-   * run-out and a status. The Inventory tiles, rows and Low-stock filter all read this.
+   * Every item's shelf, term by term (see shelfBreakdown): on shelf, promised to programs, planned
+   * menu use through `shelfThrough()`, left, run-out and a status. The Inventory tiles, rows, the
+   * Low-stock filter and the approve dialog all read this.
    */
-  shelfPictures: () => Map<string, ShelfPicture>;
+  shelfPictures: () => Map<string, ShelfBreakdown>;
+  /** The day the shelf's "left" counts menu use through: the next delivery, or a week out. */
+  shelfThrough: () => string;
+  /** The inputs shelfBreakdown and orderLineMath read, for one item. */
+  shelfInput: (itemId: string) => ShelfInput;
+  /** shelfInput for many items, with the maps built once. */
+  shelfInputs: () => (itemId: string) => ShelfInput;
   /** How many items still need setup after an import: no reorder level, and/or never counted. */
   setupCounts: () => { needsReorder: number; notCounted: number; either: number };
-  /** Per-item, per-date menu consumption (base units) for the active session. */
+  /** Per-item, per-date menu consumption PLUS approved program requests (base units). */
   consumptionByItemDate: () => Map<string, Map<string, number>>;
+  /** Per-item, per-date planned menu use only (base units), for the active session or all retreats. */
+  menuUseByItemDate: () => Map<string, Map<string, number>>;
   /** Per-item, per-date future deliveries (base units) from sent orders with an ETA. */
   incomingByItemDate: () => Map<string, Map<string, number>>;
   /** Date the reconciled projection looks out to. */
@@ -315,14 +324,13 @@ interface CommissaryState {
   /** Reconciled order suggestions: cover the window above the floor, net of projection + in-transit. */
   reconciledDraftOrders: (windowEndDate: string) => DraftOrder[];
   /** The per-item math behind the order, every term, for the "show the math" worksheet. */
-  orderMath: (windowEndDate: string) => {
-    item: InventoryItem; onHandNow: number; draw: number; inTransit: number;
-    floor: number; projectedAtEnd: number; need: number; orderQty: number;
-    /** The part of `draw` that is program requests, and which ones. */
-    requestBase: number; requests: RequestDemandEntry[];
+  orderMath: (windowEndDate: string) => (OrderLineMath & {
+    item: InventoryItem; orderQty: number;
+    /** Which program requests make up `promised`. */
+    requests: RequestDemandEntry[];
     /** Requests still waiting for a decision: not in `draw`, shown so they are not a surprise. */
     pending: RequestDemandEntry[];
-  }[];
+  })[];
   /** Waiting-for-a-decision request lines in an ordering window, by item. Not demand yet. */
   pendingRequestsInWindow: (windowEndDate: string) => Map<string, { totalBase: number; entries: RequestDemandEntry[] }>;
   /** Items below the critical threshold, regardless of what's on the menu. */
@@ -1329,6 +1337,15 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   consumptionByItemDate: () => {
     const state = get();
     const map = new Map<string, Map<string, number>>();
+    mergeDemandInto(map, state.menuUseByItemDate());
+    // Program requests are demand in BOTH modes.
+    mergeDemandInto(map, requestDemandByItemDate(state.foodRequests, state.foodRequestLines));
+    return map;
+  },
+
+  menuUseByItemDate: () => {
+    const state = get();
+    const map = new Map<string, Map<string, number>>();
     const recipesById = state.recipesById();
     const ingByRecipe = state.ingredientsByRecipe();
     const add = (itemId: string, dateStr: string, base: number) => {
@@ -1336,11 +1353,6 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       if (!byDate) { byDate = new Map(); map.set(itemId, byDate); }
       byDate.set(dateStr, (byDate.get(dateStr) ?? 0) + base);
     };
-
-    // Program requests are demand in BOTH modes, so they go in before the mode branch: the
-    // retreats branch returns early, and anything added after it vanished the moment the kitchen
-    // switched to Retreats.
-    mergeDemandInto(map, requestDemandByItemDate(state.foodRequests, state.foodRequestLines));
 
     if (state.mode === 'retreats') {
       // All retreats combined: each entry draws on its absolute date, scaled by its own
@@ -1378,7 +1390,9 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
         if (l.orderId !== o.id || !l.itemId) continue;
         let byDate = map.get(l.itemId);
         if (!byDate) { byDate = new Map(); map.set(l.itemId, byDate); }
-        byDate.set(o.expectedDelivery, (byDate.get(o.expectedDelivery) ?? 0) + l.orderQty * l.purchaseUnitInBase);
+        // A delivery that was due before today and is still not received is expected today, not never.
+        const due = o.expectedDelivery < todayStr() ? todayStr() : o.expectedDelivery;
+        byDate.set(due, (byDate.get(due) ?? 0) + l.orderQty * l.purchaseUnitInBase);
       }
     }
     return map;
@@ -1423,16 +1437,39 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
 
   shelfPictures: () => {
     const state = get();
-    const today = todayStr();
-    const consMap = state.consumptionByItemDate();
-    const incMap = state.incomingByItemDate();
     const horizon = state.projectionHorizon();
-    const promises = promisesByItem(setAsideByItem(state.foodRequests, state.foodRequestLines, today), today);
-    const out = new Map<string, ShelfPicture>();
-    for (const item of state.items) {
-      out.set(item.id, shelfPicture(item, makeProjectionInput(item, today, consMap, incMap), horizon, promises.get(item.id) ?? null));
-    }
+    const through = state.shelfThrough();
+    const inputs = state.shelfInputs();
+    const out = new Map<string, ShelfBreakdown>();
+    for (const item of state.items) out.set(item.id, shelfBreakdown(item, inputs(item.id), through, horizon));
     return out;
+  },
+
+  shelfThrough: () => {
+    const state = get();
+    const today = todayStr();
+    // Session kitchens plan to the next delivery; retreats have no delivery day, so a week.
+    if (state.mode === 'session' && state.activeSession()) {
+      const next = state.orderingWindow().nextDelivery;
+      if (next >= today) return next;
+    }
+    return addDaysStr(today, 7);
+  },
+
+  shelfInput: (itemId) => get().shelfInputs()(itemId),
+
+  shelfInputs: () => {
+    const state = get();
+    const today = todayStr();
+    const menu = state.menuUseByItemDate();
+    const incoming = state.incomingByItemDate();
+    const promised = promisedByItemDate(state.foodRequests, state.foodRequestLines, today);
+    return (itemId: string) => ({
+      today,
+      menuByDate: menu.get(itemId) ?? new Map(),
+      promisedByDate: promised.get(itemId) ?? new Map(),
+      incomingByDate: incoming.get(itemId) ?? new Map(),
+    });
   },
 
   adjustmentsFor: (itemId) => get().adjustments.filter((a) => a.itemId === itemId),
@@ -1540,14 +1577,12 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
   // projected draw and any in-transit stock, capped by shelf life. Grouped per vendor.
   reconciledDraftOrders: (windowEndDate) => {
     const state = get();
-    const consMap = state.consumptionByItemDate();
-    const incMap = state.incomingByItemDate();
-    const today = todayStr();
     const vendorsById = new Map(state.vendors.map((v) => [v.id, v]));
     const byVendor = new Map<string, DraftOrder>();
+    const inputs = state.shelfInputs();
     for (const item of state.items) {
-      const inp = makeProjectionInput(item, today, consMap, incMap);
-      const need = coverageNeedBase(inp, windowEndDate, item.parLevelBase, item.shelfLifeDays);
+      const m = orderLineMath(item, inputs(item.id), windowEndDate);
+      const need = m.need;
       if (need <= 0) continue;
       const qty = Math.ceil(need / item.purchaseUnitInBase);
       if (qty <= 0) continue;
@@ -1562,7 +1597,8 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
       order.lines.push({
         itemId: item.id, itemName: item.name, stockUnit: item.stockUnit,
         purchaseUnit: item.purchaseUnit, purchaseUnitInBase: item.purchaseUnitInBase,
-        onHandBase: item.onHandBase, neededBase: need, orderQty: qty,
+        // The on-shelf figure the Inventory tab shows, not the raw count.
+        onHandBase: m.onShelf, neededBase: need, orderQty: qty,
         unitPrice: item.unitPrice, lineTotal,
       });
       order.subtotal = tidy(order.subtotal + lineTotal);
@@ -1576,33 +1612,20 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
 
   orderMath: (windowEndDate) => {
     const state = get();
-    const consMap = state.consumptionByItemDate();
-    const incMap = state.incomingByItemDate();
     const today = todayStr();
-    const inWindow = (m: Map<string, number> | undefined) => {
-      let sum = 0;
-      if (m) for (const [d, b] of m) if (d > today && d <= windowEndDate) sum += b;
-      return sum;
-    };
     const reqInWindow = requestDemandInWindow(state.foodRequests, state.foodRequestLines, today, windowEndDate, state.foodPrograms);
     const pending = state.pendingRequestsInWindow(windowEndDate);
+    const inputs = state.shelfInputs();
     const rows = [];
     for (const item of state.items) {
-      const inp = makeProjectionInput(item, today, consMap, incMap);
-      const need = coverageNeedBase(inp, windowEndDate, item.parLevelBase, item.shelfLifeDays);
-      if (need <= 0) continue;
+      const m = orderLineMath(item, inputs(item.id), windowEndDate);
+      if (m.need <= 0) continue;
       rows.push({
-        requestBase: reqInWindow.get(item.id)?.totalBase ?? 0,
+        ...m,
+        item,
         requests: reqInWindow.get(item.id)?.entries ?? [],
         pending: pending.get(item.id)?.entries ?? [],
-        item,
-        onHandNow: projectedOnHandBase(inp, today),
-        draw: inWindow(consMap.get(item.id)),
-        inTransit: inWindow(incMap.get(item.id)),
-        floor: item.parLevelBase,
-        projectedAtEnd: projectedOnHandBase(inp, windowEndDate),
-        need,
-        orderQty: Math.ceil(need / item.purchaseUnitInBase),
+        orderQty: Math.ceil(m.need / item.purchaseUnitInBase),
       });
     }
     return rows.sort((a, b) => a.item.name.localeCompare(b.item.name));
@@ -1613,7 +1636,11 @@ export const useCommissaryStore = create<CommissaryState>((set, get) => ({
     return pendingByItem(state.foodRequests, state.foodRequestLines, todayStr(), windowEndDate, state.foodPrograms);
   },
 
-  criticalItems: () => get().items.filter((i) => stockStatus(i) === 'critical'),
+  // The same status the Inventory tiles count; reading the raw count here disagreed with them.
+  criticalItems: () => {
+    const pictures = get().shelfPictures();
+    return get().items.filter((i) => (pictures.get(i.id)?.status ?? stockStatus(i)) === 'critical');
+  },
 
   criticalDraftOrders: () => {
     const state = get();

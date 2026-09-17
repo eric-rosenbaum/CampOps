@@ -147,35 +147,30 @@ function summarize(
   return out;
 }
 
-/** What is set aside on the shelf: approved or ready requests picked up today or later. */
+/**
+ * What is set aside on the shelf: every approved or ready request not yet picked up. A pickup whose
+ * day has gone is still here until someone taps Picked up or Missed; it used to drop out of the
+ * shelf picture at midnight while the food was still sitting in the walk-in with a name on it.
+ */
 export function setAsideByItem(
   requests: FoodRequest[],
   lines: FoodRequestLine[],
-  today: string,
   programs: Pick<FoodProgram, 'id' | 'name'>[] = [],
 ): Map<string, RequestDemandSummary> {
-  return summarize(requests, lines, programs,
-    (r) => (r.status === 'approved' || r.status === 'ready') && r.pickupDate >= today,
-    lineDemandBase);
+  return summarize(requests, lines, programs, (r) => DEMAND_STATUSES.has(r.status), lineDemandBase);
 }
 
 /**
- * What each item has promised away, for the shelf picture: the total from today on, the part due
- * today (still physically on the shelf), and the last pickup day.
+ * Promised food per item and day, for the shelf math. Past-due pickups are filed under today:
+ * the food is still set aside, and it comes off the shelf the moment it is handed over.
  */
-export function promisesByItem(setAside: Map<string, RequestDemandSummary>, today: string):
-  Map<string, { totalBase: number; todayBase: number; lastDate: string | null }> {
-  const out = new Map<string, { totalBase: number; todayBase: number; lastDate: string | null }>();
-  for (const [itemId, s] of setAside) {
-    let todayBase = 0;
-    let lastDate: string | null = null;
-    for (const e of s.entries) {
-      if (e.pickupDate === today) todayBase += e.base;
-      if (!lastDate || e.pickupDate > lastDate) lastDate = e.pickupDate;
-    }
-    out.set(itemId, { totalBase: s.totalBase, todayBase, lastDate });
-  }
-  return out;
+export function promisedByItemDate(
+  requests: FoodRequest[],
+  lines: FoodRequestLine[],
+  today: string,
+): Map<string, Map<string, number>> {
+  const clamped = requests.map((r) => (r.pickupDate < today ? { ...r, pickupDate: today } : r));
+  return requestDemandByItemDate(clamped, lines);
 }
 
 /** Requests still waiting for a decision, by item: not demand yet, shown so nobody is surprised. */
@@ -192,18 +187,18 @@ export function pendingByItem(
 }
 
 /**
- * Request demand inside an ordering window, by item. The window matches orderMath's "used by":
- * after today, through the window end. Today's pickups are already inside "on hand now".
+ * Request demand inside an ordering window, by item: everything promised and not yet picked up,
+ * through the window end (today's and past-due pickups included, as in orderLineMath).
  */
 export function requestDemandInWindow(
   requests: FoodRequest[],
   lines: FoodRequestLine[],
-  today: string,
+  _today: string,
   windowEnd: string,
   programs: Pick<FoodProgram, 'id' | 'name'>[] = [],
 ): Map<string, RequestDemandSummary> {
   return summarize(requests, lines, programs,
-    (r) => DEMAND_STATUSES.has(r.status) && r.pickupDate > today && r.pickupDate <= windowEnd,
+    (r) => DEMAND_STATUSES.has(r.status) && r.pickupDate <= windowEnd,
     lineDemandBase);
 }
 

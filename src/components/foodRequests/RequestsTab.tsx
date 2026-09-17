@@ -132,9 +132,11 @@ export function RequestsTab({ openRequestId, onOpenRequest, view: viewParam, onV
     <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
       <div className="mx-auto max-w-4xl">
         <div className="mb-4 flex items-center gap-x-1 border-b border-border sm:gap-x-2">
-          <ViewTab label="Inbox" active={view === 'inbox'} onClick={() => setView('inbox')} count={inbox.length} />
+          <ViewTab label="Inbox" active={view === 'inbox'} onClick={() => setView('inbox')} count={inbox.length}
+            countLabel={`${inbox.length} waiting for a decision`} />
           <ViewTab label="Pickups" active={view === 'pickups'} onClick={() => setView('pickups')} count={pickupCount}
-            alert={overdueById.size} alertLabel={`${overdueById.size} not picked up on time`} />
+            countLabel={`${pickupCount} approved or ready, still to hand over`}
+            alert={overdueById.size} alertLabel={`${overdueById.size} late: the pickup time has passed and nobody has marked it picked up`} />
           <ViewTab label="History" active={view === 'history'} onClick={() => setView('history')} />
           <span className="flex-1" />
           {canManage && (
@@ -217,13 +219,14 @@ export function RequestsTab({ openRequestId, onOpenRequest, view: viewParam, onV
                       return card(r, (
                         <>
                           {overdue && (
-                            <span className="mr-auto text-[12px] text-red-text">Did nobody come? Mark it missed so the kitchen can use the food.</span>
+                            <span className="mr-auto text-[12px] text-red-text">Did nobody come? Mark it not picked up and the food goes back on the shelf.</span>
                           )}
+                          {/* Secondary: it was a red button, louder than the Picked up beside it. */}
                           {overdue && (
-                            <Button size="sm" variant="danger" disabled={busy(r)} onClick={() => actions.missed(r)}>Missed</Button>
+                            <Button size="sm" variant="ghost" disabled={busy(r)} onClick={() => actions.missed(r)}>Not picked up…</Button>
                           )}
-                          {r.status === 'approved' && <Button size="sm" variant={overdue ? 'ghost' : 'primary'} disabled={busy(r)} onClick={() => actions.ready(r)}>Mark ready</Button>}
-                          {r.status === 'ready' && <Button size="sm" variant={overdue ? 'ghost' : 'primary'} disabled={busy(r)} onClick={() => actions.pickedUp(r)}>Picked up</Button>}
+                          {r.status === 'approved' && <Button size="sm" disabled={busy(r)} onClick={() => actions.ready(r)}>Mark ready</Button>}
+                          {r.status === 'ready' && <Button size="sm" disabled={busy(r)} onClick={() => actions.pickedUp(r)}>Picked up</Button>}
                         </>
                       ));
                     })}
@@ -254,31 +257,33 @@ export function RequestsTab({ openRequestId, onOpenRequest, view: viewParam, onV
 
       {open && !decision && (
         <RequestDetailModal request={open} lines={linesByRequest.get(open.id) ?? []} program={open.programId ? programById.get(open.programId) : undefined}
-          onClose={() => onOpenRequest(null)}
+          onClose={() => onOpenRequest(null)} actions={actions}
           onDecide={(mode) => setDecision({ id: open.id, mode })} />
       )}
       {deciding && decision && (
         <DecisionModal request={deciding} lines={linesByRequest.get(deciding.id) ?? []} mode={decision.mode}
           program={deciding.programId ? programById.get(deciding.programId) : undefined}
-          onClose={() => setDecision(null)} />
+          onClose={() => setDecision(null)} actions={actions} />
       )}
       {actions.dialog}
+      {actions.toast}
     </div>
   );
 }
 
-function ViewTab({ label, active, onClick, count, alert = 0, alertLabel }: {
-  label: string; active: boolean; onClick: () => void; count?: number; alert?: number; alertLabel?: string;
+function ViewTab({ label, active, onClick, count, countLabel, alert = 0, alertLabel }: {
+  label: string; active: boolean; onClick: () => void; count?: number; countLabel?: string; alert?: number; alertLabel?: string;
 }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={active}
       className={`-mb-px inline-flex items-center gap-1.5 whitespace-nowrap border-b-[3px] px-3 pb-2.5 pt-3 text-[13px] font-semibold transition-colors ${
         active ? 'border-red text-forest' : 'border-transparent text-ink-soft hover:text-forest'}`}>
       {label}
-      {count !== undefined && <span className="text-[11px] font-medium tabular-nums opacity-75">{count}</span>}
+      {count !== undefined && <span className="text-[11px] font-medium tabular-nums opacity-75" title={countLabel} aria-label={countLabel}>{count}</span>}
+      {/* Two numbers side by side read as a contradiction ("5" and "2"); the red one says what it is. */}
       {alert > 0 && (
         <span data-testid="overdue-badge" title={alertLabel} aria-label={alertLabel}
-          className="inline-grid min-w-[18px] place-items-center rounded-pill bg-red px-1 text-[10.5px] font-bold leading-[18px] text-paper">{alert}</span>
+          className="inline-flex items-center rounded-pill bg-red px-1.5 text-[10.5px] font-bold leading-[18px] text-paper">{alert} late</span>
       )}
     </button>
   );

@@ -6,7 +6,7 @@ import { AlertBanner } from '@/components/shared/AlertBanner';
 import { useCommissaryStore } from '@/store/commissaryStore';
 import { useAuth } from '@/lib/auth';
 import {
-  formatCurrency, formatQty, formatInStockUnit, ORDER_STATUS_LABELS, tidy, fromBase, formatPackQty,
+  formatCurrency, formatQty, formatInStockUnit, ORDER_STATUS_LABELS, tidy, formatPackQty, shortDay,
   orderToCsv, orderToPrintHtml, type ExportOrderLine, type DraftOrder,
   todayStr,
 } from '@/lib/commissaryUnits';
@@ -28,7 +28,8 @@ function requestPhrase(entries: RequestDemandEntry[], fmt: (base: number) => str
     const key = `${e.who}|${e.pickupDate}`;
     const cur = merged.get(key);
     if (cur) cur.base += e.base;
-    else merged.set(key, { who: e.who, day: formatDay(e.pickupDate).split(',')[0], base: e.base });
+    // "Canoe Trips (Fri Sep 18)": the weekday alone was ambiguous across a two-week window.
+    else merged.set(key, { who: e.who, day: formatDay(e.pickupDate).replace(',', ''), base: e.base });
   }
   return [...merged.values()].map((m) => `${fmt(m.base)} for ${m.who} (${m.day})`).join(', ');
 }
@@ -299,12 +300,15 @@ function LiveOrderCard({ draft, requestNotes }: { draft: DraftOrder; requestNote
       </div>
 
       <div className="grid grid-cols-[2fr_1fr_1fr_1fr] min-w-[640px] sm:min-w-0 gap-3 px-4 py-2 bg-cream-dark/40 border-b border-border">
-        {['Item', 'On hand', 'Order', 'Total'].map((h) => <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>)}
+        {['Item', 'On shelf', 'Order', 'Total'].map((h) => (
+          <span key={h} title={h === 'On shelf' ? 'The same figure as Inventory: the last count, less the menu cooked since' : undefined}
+            className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>
+        ))}
       </div>
       {draft.lines.map((l) => {
         const q = qtyOf(l);
         const item = itemsById.get(l.itemId);
-        // On hand reads in the unit the shelf is counted in ("12 lb"), not as a fraction of a pack.
+        // On shelf reads in the unit the shelf is counted in ("12 lb"), not as a fraction of a pack.
         const fmt = (base: number) => (item ? formatInStockUnit(item, base) : formatQty(base / l.purchaseUnitInBase, l.purchaseUnit));
         const notes = requestNotes.get(l.itemId);
         const packSuffix = /^\d/.test(l.purchaseUnit.trim()) ? `× ${l.purchaseUnit}` : l.purchaseUnit;
@@ -319,7 +323,7 @@ function LiveOrderCard({ draft, requestNotes }: { draft: DraftOrder; requestNote
                 <span className="block text-[11px] text-amber-text">Not counted yet, waiting for a decision: {requestPhrase(notes.pending, fmt)}</span>
               )}
             </div>
-            <span className="font-mono text-[12px] text-ink-soft">{fmt(l.onHandBase)}</span>
+            <span className="font-mono text-[12px] text-ink-soft" data-testid="order-on-shelf">{fmt(l.onHandBase)}</span>
             {canManage ? (
               <InlineNumberEdit value={q} min={0} suffix={packSuffix} widthClass="w-16"
                 onSave={(n) => setOverrides((o) => ({ ...o, [l.itemId]: n }))} />
@@ -348,7 +352,7 @@ function LiveOrderCard({ draft, requestNotes }: { draft: DraftOrder; requestNote
 export function OrderingTab() {
   const {
     orders, reconciledDraftOrders, orderingWindow, orderMath,
-    createBlankOrder, activeSession, setActiveTab, items, vendors, criticalItems,
+    createBlankOrder, activeSession, setActiveTab, items, vendors, criticalItems, shelfPictures,
     mode, retreatCoverageStart, retreatCoverageEnd, setRetreatCoverage,
   } = useCommissaryStore();
   const { can, currentUser } = useAuth();
@@ -361,7 +365,7 @@ export function OrderingTab() {
   // Coverage window comes from the session's order cadence · no manual "generate" needed.
   const win = orderingWindow();
   const windowEnd = win.windowEnd;
-  const fmtDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  const fmtDay = shortDay;
   const windowLabel = fmtDay(windowEnd);
   const drafts = reconciledDraftOrders(windowEnd);
   // Which order lines program requests are in. Computed with the same math the worksheet shows.
@@ -371,6 +375,7 @@ export function OrderingTab() {
     .map((r) => [r.item.id, { requests: r.requests, pending: r.pending }]));
   // Cheap filter over the subscribed items list; recomputes on each render by design.
   const critical = criticalItems();
+  const pictures = critical.length ? shelfPictures() : null;
 
   const open = orders.filter((o) => o.status === 'draft' || o.status === 'sent');
   const history = orders.filter((o) => o.status === 'received' || o.status === 'cancelled');
@@ -415,13 +420,13 @@ export function OrderingTab() {
             <AlertTriangle className="w-4 h-4 text-red flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-body font-medium text-red/90">
-                {critical.length} item{critical.length === 1 ? ' is' : 's are'} critically low, under half the reorder level.
+                {critical.length} item{critical.length === 1 ? ' is' : 's are'} critically low, the same {critical.length === 1 ? 'item' : 'items'} Inventory counts: running out within 3 days, or under half the minimum left.
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {critical.map((i) => (
                   <span key={i.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-tag text-[11px] bg-white/70 border border-red/20 text-red">
                     {i.name}
-                    <span className="font-mono opacity-70">{formatInStockUnit(i, i.onHandBase)}</span>
+                    <span className="font-mono opacity-70">{formatInStockUnit(i, pictures?.get(i.id)?.onShelf ?? i.onHandBase)} on shelf</span>
                   </span>
                 ))}
               </div>
@@ -510,34 +515,33 @@ export function OrderingTab() {
             return (
               <div className="mt-2 bg-white rounded-card border border-border overflow-x-auto" data-testid="order-math">
                 <div className="grid grid-cols-[1.6fr_1fr_1.1fr_1fr_0.8fr_1fr_1fr] min-w-[860px] sm:min-w-0 gap-2 px-4 py-2 bg-cream-dark/40 border-b border-border">
-                  {['Item', 'On hand now', `Used by ${windowLabel}`, 'Program requests', 'Min on hand', 'In transit', '→ Order'].map((h) => (
+                  {['Item', 'On shelf', `Menu use to ${windowLabel}`, 'Promised to programs', 'In transit', 'Min on hand', '→ Order'].map((h) => (
                     <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{h}</span>
                   ))}
                 </div>
                 {rows.map((r) => {
-                  const su = r.item.stockUnit, sib = r.item.stockUnitInBase;
-                  const f = (base: number) => formatQty(fromBase(base, sib), su);
+                  const f = (base: number) => formatInStockUnit(r.item, base);
                   const packs = formatPackQty(r.orderQty, r.item.purchaseUnit);
-                  // "6 lb for Cooking Club on Jul 18", merged per program and day.
-                  const forWhom = (entries: typeof r.requests) => entries.map((e) => `${f(e.base)} for ${e.who} on ${formatDay(e.pickupDate, { weekday: false })}`).join(', ');
+                  // "6 lb for Cooking Club (Fri Sep 18)", merged per program and day.
+                  const forWhom = (entries: typeof r.requests) => requestPhrase(entries, f);
                   return (
-                    <div key={r.item.id} className="px-4 py-2 border-b border-border last:border-0">
+                    <div key={r.item.id} className="px-4 py-2 border-b border-border last:border-0" data-testid="order-math-row" data-item={r.item.name}>
                       <div className="grid grid-cols-[1.6fr_1fr_1.1fr_1fr_0.8fr_1fr_1fr] min-w-[860px] sm:min-w-0 gap-2 items-center">
                         <span className="text-[13px] text-forest truncate">{r.item.name}</span>
-                        <span className="font-mono text-[12px] text-ink">{f(r.onHandNow)}</span>
-                        <span className="font-mono text-[12px] text-ink">{f(r.draw)}</span>
+                        <span className="font-mono text-[12px] text-ink" data-testid="math-on-shelf">{f(r.onShelf)}</span>
+                        <span className="font-mono text-[12px] text-ink">{r.menuUse > 0 ? f(r.menuUse) : '-'}</span>
                         <span className="font-mono text-[12px] text-ink" title={forWhom(r.requests) || undefined}>
-                          {r.requestBase > 0 ? f(r.requestBase) : '-'}
+                          {r.promised > 0 ? f(r.promised) : '-'}
                           {r.pending.length > 0 && <span className="block font-sans text-[10.5px] text-amber-text">+{r.pending.length} waiting</span>}
                         </span>
-                        <span className="font-mono text-[12px] text-ink">{f(r.floor)}</span>
                         <span className="font-mono text-[12px] text-ink">{r.inTransit > 0 ? f(r.inTransit) : '-'}</span>
+                        <span className="font-mono text-[12px] text-ink">{f(r.floor)}</span>
                         <span className="font-mono text-[12px] font-medium text-forest">{packs}</span>
                       </div>
                       <p className="text-[11px] text-ink-faint mt-0.5 leading-relaxed">
-                        {f(r.onHandNow)} on hand − {f(r.draw)} used by {windowLabel}
-                        {r.requests.length > 0 && ` (including ${forWhom(r.requests)})`}
-                        {r.inTransit > 0 && ` + ${f(r.inTransit)} in transit`} = {f(r.projectedAtEnd)} projected,
+                        {f(r.onShelf)} on shelf − {f(r.menuUse)} menu use through {windowLabel}
+                        {r.promised > 0 && ` − ${f(r.promised)} promised (${forWhom(r.requests)})`}
+                        {r.inTransit > 0 && ` + ${f(r.inTransit)} in transit`} = {r.projectedAtEnd < 0 ? `short ${f(-r.projectedAtEnd)}` : f(r.projectedAtEnd)} by {windowLabel},
                         {' '}below your {f(r.floor)} minimum on hand → order {f(r.need)} → rounds up to {packs}.
                       </p>
                       {r.pending.length > 0 && (

@@ -4,7 +4,7 @@ import {
   zonedWallTimeToInstant, noticeHours, isLate, pickupReminderAt, formatClock, formatPickup, formatNotice,
   inboxOrder, pickupDays, checkDraft, draftToPayload, matchItems, lineChangeSummary, lineDemandBase, todayInZone,
   pullListHtml, parseAmount, formatNoticeRule, shortNoticeLabel, formatLineQty, kitchenLineView, askedSummary,
-  hoursOverdue, overdueLabel, isBeforePickupDay, promisesByItem,
+  hoursOverdue, overdueLabel, isBeforePickupDay, promisedByItemDate,
 } from '@/lib/foodRequests';
 import type { FoodRequest, FoodRequestLine, FoodRequestDraft } from '@/lib/foodRequestTypes';
 
@@ -25,7 +25,7 @@ function line(requestId: string, p: Partial<FoodRequestLine> = {}): FoodRequestL
   return {
     id: `l${seq}`, requestId, campId: 'c', itemId: 'flour', label: 'Flour', qtyRequested: 5, unitLabel: 'lb',
     unitInBase: 453.592, qtyRequestedBase: 2267.96, qtyApproved: null, approvedUnitLabel: null, qtyApprovedBase: null,
-    note: null, lineState: 'ok', sortOrder: 0, ...p,
+    note: null, lineState: 'ok', kitchenReason: null, sortOrder: 0, ...p,
   };
 }
 const programs = [{ id: 'p1', name: 'Cooking Club' }];
@@ -89,7 +89,7 @@ describe('requestDemandByItemDate', () => {
 });
 
 describe('setAsideByItem', () => {
-  it('holds approved and ready requests from today on, with who and when', () => {
+  it('holds every approved and ready request not yet picked up, past-due ones included, with who and when', () => {
     const past = req({ pickupDate: '2026-07-10' });
     const today = req({ pickupDate: '2026-07-15', pickupTime: '09:00', status: 'ready' });
     const later = req({ pickupDate: '2026-07-18', programId: null, requesterName: 'Robin' });
@@ -97,9 +97,9 @@ describe('setAsideByItem', () => {
     const pending = req({ pickupDate: '2026-07-16', status: 'submitted' });
     const all = [later, past, today, pickedUp, pending];
     const lines = all.map((r) => line(r.id, { qtyRequestedBase: 100 }));
-    const aside = setAsideByItem(all, lines, '2026-07-15', programs).get('flour')!;
-    expect(aside.totalBase).toBe(200);
-    expect(aside.entries.map((e) => [e.pickupDate, e.who])).toEqual([['2026-07-15', 'Cooking Club'], ['2026-07-18', 'Robin']]);
+    const aside = setAsideByItem(all, lines, programs).get('flour')!;
+    expect(aside.totalBase).toBe(300);
+    expect(aside.entries.map((e) => [e.pickupDate, e.who])).toEqual([['2026-07-10', 'Cooking Club'], ['2026-07-15', 'Cooking Club'], ['2026-07-18', 'Robin']]);
   });
 });
 
@@ -112,15 +112,16 @@ describe('pending and in-window request demand', () => {
     expect(p.get('flour')!.entries.map((e) => e.requestId)).toEqual([a.id]);
   });
 
-  it('the ordering window is after today through its end, like the order math "used by"', () => {
+  it('the ordering window is everything promised through its end, today and past due included', () => {
     const today = req({ pickupDate: '2026-07-15' });
     const inside = req({ pickupDate: '2026-07-20', status: 'ready' });
     const handedOver = req({ pickupDate: '2026-07-21', status: 'picked_up' }); // already out of stock, not in the order
     const end = req({ pickupDate: '2026-07-29' });
     const beyond = req({ pickupDate: '2026-07-30' });
-    const all = [today, inside, handedOver, end, beyond];
+    const pastDue = req({ pickupDate: '2026-07-12' });
+    const all = [today, inside, handedOver, end, beyond, pastDue];
     const w = requestDemandInWindow(all, all.map((r) => line(r.id, { qtyRequestedBase: 10 })), '2026-07-15', '2026-07-29', programs);
-    expect(w.get('flour')!.totalBase).toBe(20);
+    expect(w.get('flour')!.totalBase).toBe(40);
   });
 });
 
@@ -309,11 +310,12 @@ describe('one vocabulary for notice, quantities and lateness', () => {
     expect(isBeforePickupDay(req({ pickupDate: '2026-07-15' }), '2026-07-15')).toBe(false);
   });
 
-  it('splits promises into today’s and later, with the last pickup day', () => {
-    const a = req({ pickupDate: '2026-07-15' });
-    const b = req({ pickupDate: '2026-07-18', status: 'ready' });
-    const aside = setAsideByItem([a, b], [line(a.id, { qtyRequestedBase: 100 }), line(b.id, { qtyRequestedBase: 50 })], '2026-07-15');
-    expect(promisesByItem(aside, '2026-07-15').get('flour')).toEqual({ totalBase: 150, todayBase: 100, lastDate: '2026-07-18' });
+  it('files past-due promises under today for the shelf math', () => {
+    const a = req({ pickupDate: '2026-07-12' });
+    const b = req({ pickupDate: '2026-07-15' });
+    const c = req({ pickupDate: '2026-07-18', status: 'ready' });
+    const m = promisedByItemDate([a, b, c], [line(a.id, { qtyRequestedBase: 30 }), line(b.id, { qtyRequestedBase: 100 }), line(c.id, { qtyRequestedBase: 50 })], '2026-07-15');
+    expect([...m.get('flour')!.entries()].sort()).toEqual([['2026-07-15', 130], ['2026-07-18', 50]]);
   });
 });
 

@@ -22,6 +22,7 @@ declare
   v_free_line uuid; v_flour_line uuid; v_sugar_line uuid;
   f text;
   v_payload jsonb;
+  v_id2_n int; v_before numeric; v_item record;
 begin
   ---------------------------------------------------------------------------------------------
   -- Setup (as postgres)
@@ -67,7 +68,9 @@ begin
   foreach f in array array['submit_food_request(uuid,jsonb)','cancel_food_request(uuid)','decide_food_request(uuid,text,jsonb,text)',
                            'mark_food_request_ready(uuid)','mark_food_request_picked_up(uuid,text)','mark_food_request_missed(uuid)',
                            'save_food_program(uuid,uuid,text,text,text,text,text,boolean,integer)','rotate_food_program_link(uuid)',
-                           'save_food_request_settings(uuid,numeric,text[],text)','delete_food_request_data(uuid)'] loop
+                           'save_food_request_settings(uuid,numeric,text[],text)','delete_food_request_data(uuid)',
+                           'undo_food_request_missed(uuid)','reopen_food_request(uuid)',
+                           'add_kitchen_item_for_request(uuid,text,text,text,text,numeric,text)'] loop
     if has_function_privilege('anon', 'public.' || f, 'execute') then raise exception 'T1 FAIL: anon can call %', f; end if;
     if not has_function_privilege('authenticated', 'public.' || f, 'execute') then raise exception 'T1 FAIL: authenticated cannot call %', f; end if;
   end loop;
@@ -562,6 +565,133 @@ begin
   end if;
 
   ---------------------------------------------------------------------------------------------
+  -- T15b: Missed returns the food. A kitchen reviewer saw mozzarella drop 39 → 35 lb after tapping
+  --       Missed; the database must write nothing to stock, and the tap must be undoable.
+  ---------------------------------------------------------------------------------------------
+  select count(*) into v_id2_n from inventory_adjustments where camp_id = v_camp;
+  select on_hand_base into v_before from inventory_items where id = v_flour;
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', u_staff, 'role','authenticated')::text, true);
+  -- v_id3 is the approved-then-missed request from T15: put it back, make it ready, miss it again.
+  if undo_food_request_missed(v_id3) <> 'approved' then raise exception 'T15b FAIL: undo did not return to approved'; end if;
+  perform mark_food_request_ready(v_id3);
+  perform mark_food_request_missed(v_id3);
+  if undo_food_request_missed(v_id3) <> 'ready' then raise exception 'T15b FAIL: undo of a ready pickup did not return to ready'; end if;
+  begin perform undo_food_request_missed(v_id3); raise exception 'T15b FAIL: undid a request that was not missed';
+  exception when others then if sqlerrm like 'T15b FAIL%' then raise; end if; end;
+  perform mark_food_request_missed(v_id3);
+  reset role;
+  if (select on_hand_base from inventory_items where id = v_flour) <> v_before then
+    raise exception 'T15b FAIL: missing a pickup changed flour on hand';
+  end if;
+  if (select count(*) from inventory_adjustments where camp_id = v_camp) <> v_id2_n then
+    raise exception 'T15b FAIL: missing a pickup wrote a stock adjustment';
+  end if;
+  if (select missed_at from food_requests where id = v_id3) is null then raise exception 'T15b FAIL: missed_at not set'; end if;
+  -- An outsider cannot undo it.
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', u_out, 'role','authenticated')::text, true);
+  begin perform undo_food_request_missed(v_id3); raise exception 'T15b FAIL: another camp undid a missed pickup';
+  exception when others then if sqlerrm like 'T15b FAIL%' then raise; end if; end;
+  reset role;
+
+  ---------------------------------------------------------------------------------------------
+  -- T15c: a decision can go back to the inbox while its email is unsent, and not after.
+  --       A line marked not available carries the kitchen's reason to the status page.
+  ---------------------------------------------------------------------------------------------
+  perform set_config('request.jwt.claims', json_build_object('role','anon')::text, true);
+  set local role anon;
+  v_res := submit_food_request_public(v_token, jsonb_set(v_payload, '{pickup_date}', to_jsonb(v_d + 8)));
+  v_status_token := v_res->>'status_token';
+  reset role;
+  select id into v_id3 from food_requests where status_token = v_status_token;
+  select id into v_sugar_line from food_request_lines where request_id = v_id3 and item_id = v_sugar;
+  select id into v_free_line from food_request_lines where request_id = v_id3 and item_id is null;
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', u_staff, 'role','authenticated')::text, true);
+  perform decide_food_request(v_id3, 'approve',
+    jsonb_build_array(jsonb_build_object('id', v_sugar_line, 'unavailable', true, 'reason', '  Out until Monday, use honey  ')), 'x');
+  reset role;
+  if (select kitchen_reason from food_request_lines where id = v_sugar_line) <> 'Out until Monday, use honey' then
+    raise exception 'T15c FAIL: reason not saved';
+  end if;
+  if (select body_html from scheduled_messages where subject_id = v_id3 and rule_key = 'request_decided') not like '%Out until Monday, use honey%' then
+    raise exception 'T15c FAIL: decision email does not give the reason';
+  end if;
+  v_res := get_food_request_status(v_status_token);
+  select l into v_msg from jsonb_array_elements(v_res->'lines') l where l->>'line_state' = 'unavailable';
+  if (v_msg.l->>'kitchen_reason') <> 'Out until Monday, use honey' then raise exception 'T15c FAIL: status page reason %', v_res->'lines'; end if;
+  if (select count(*) from jsonb_array_elements(v_res->'lines') l where (l->>'on_kitchen_list')::boolean is false) <> 1 then
+    raise exception 'T15c FAIL: the typed-in line is not marked off the kitchen list %', v_res->'lines';
+  end if;
+  if v_res->>'notify_by' <> 'text' or (v_res->>'has_phone')::boolean is not true or v_res ? 'requester_phone' or v_res->>'timezone' <> 'America/Vancouver' then
+    raise exception 'T15c FAIL: status page contact preference %', v_res;
+  end if;
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', u_staff, 'role','authenticated')::text, true);
+  perform reopen_food_request(v_id3);
+  reset role;
+  select * into v_req from food_requests where id = v_id3;
+  if v_req.status <> 'submitted' or v_req.decided_at is not null or v_req.kitchen_note is not null then
+    raise exception 'T15c FAIL: reopen left %/%/%', v_req.status, v_req.decided_at, v_req.kitchen_note;
+  end if;
+  if exists (select 1 from food_request_lines where request_id = v_id3 and (line_state <> 'ok' or qty_approved is not null or kitchen_reason is not null)) then
+    raise exception 'T15c FAIL: reopen left line decisions behind';
+  end if;
+  if exists (select 1 from scheduled_messages where subject_id = v_id3 and (rule_key in ('request_decided','pickup_reminder') or rule_key like 'missed_pickup%')) then
+    raise exception 'T15c FAIL: reopen left the unsent decision messages';
+  end if;
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', u_staff, 'role','authenticated')::text, true);
+  perform decide_food_request(v_id3, 'decline', '[]', 'Closed');
+  reset role;
+  if (select subject from scheduled_messages where subject_id = v_id3 and rule_key = 'request_decided') not like 'Declined%' then
+    raise exception 'T15c FAIL: deciding again did not queue a fresh decision email';
+  end if;
+  update scheduled_messages set state = 'sent', sent_at = now() where subject_id = v_id3 and rule_key = 'request_decided';
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', u_staff, 'role','authenticated')::text, true);
+  begin perform reopen_food_request(v_id3); raise exception 'T15c FAIL: reopened after the email went out';
+  exception when others then if sqlerrm like 'T15c FAIL%' then raise; end if; end;
+  perform set_config('request.jwt.claims', json_build_object('sub', u_viewer, 'role','authenticated')::text, true);
+  begin perform reopen_food_request(v_id); raise exception 'T15c FAIL: a viewer reopened a request';
+  exception when others then if sqlerrm like 'T15c FAIL%' then raise; end if; end;
+  reset role;
+
+  ---------------------------------------------------------------------------------------------
+  -- T15d: a typed-in item joins the kitchen's list once, and can then be linked on approval.
+  ---------------------------------------------------------------------------------------------
+  perform set_config('request.jwt.claims', json_build_object('role','anon')::text, true);
+  set local role anon;
+  begin perform add_kitchen_item_for_request(v_camp, 'Sprinkles', 'count', 'each', 'jar', 1); raise exception 'T15d FAIL: anon added an item';
+  exception when others then if sqlerrm like 'T15d FAIL%' then raise; end if; end;
+  v_res := submit_food_request_public(v_token, jsonb_set(v_payload, '{pickup_date}', to_jsonb(v_d + 9)));
+  reset role;
+  select id into v_id3 from food_requests where status_token = v_res->>'status_token';
+  select id into v_free_line from food_request_lines where request_id = v_id3 and item_id is null;
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', u_staff, 'role','authenticated')::text, true);
+  v_id2 := add_kitchen_item_for_request(v_camp, '  Big marshmallows ', 'count', 'each', 'bag', 1, 'snacks');
+  if add_kitchen_item_for_request(v_camp, 'big MARSHMALLOWS', 'count', 'each', 'bag', 1) <> v_id2 then
+    raise exception 'T15d FAIL: the same name made a second item';
+  end if;
+  begin perform add_kitchen_item_for_request(v_camp, 'Mystery', 'count', 'each', '', 1); raise exception 'T15d FAIL: an item with no unit';
+  exception when others then if sqlerrm like 'T15d FAIL%' then raise; end if; end;
+  perform decide_food_request(v_id3, 'approve', jsonb_build_array(jsonb_build_object('id', v_free_line, 'item_id', v_id2, 'qty', 3)), null);
+  perform set_config('request.jwt.claims', json_build_object('sub', u_out, 'role','authenticated')::text, true);
+  begin perform add_kitchen_item_for_request(v_camp, 'Their thing', 'count', 'each', 'each', 1); raise exception 'T15d FAIL: another camp added an item';
+  exception when others then if sqlerrm like 'T15d FAIL%' then raise; end if; end;
+  reset role;
+  select * into v_item from inventory_items where id = v_id2;
+  if v_item.name <> 'Big marshmallows' or v_item.stock_unit <> 'bag' or v_item.category <> 'snacks' or v_item.on_hand_base <> 0 or v_item.last_counted_at is not null then
+    raise exception 'T15d FAIL: quick-created item %', row_to_json(v_item);
+  end if;
+  if (select item_id from food_request_lines where id = v_free_line) <> v_id2 or (select qty_approved_base from food_request_lines where id = v_free_line) <> 3 then
+    raise exception 'T15d FAIL: the line did not link to the new item';
+  end if;
+
+  ---------------------------------------------------------------------------------------------
   -- T16: the planner cancels a rule whose condition stopped being true behind its back.
   ---------------------------------------------------------------------------------------------
   perform set_config('request.jwt.claims', json_build_object('role','anon')::text, true);
@@ -628,8 +758,8 @@ begin
   if v_n <> 4 then raise exception 'T19 FAIL: % of 4 tables have replica identity full', v_n; end if;
   if exists (select 1 from clone_camp_coverage_gaps()) then raise exception 'T19 FAIL: clone coverage gaps %', (select array_agg(missing_table) from clone_camp_coverage_gaps()); end if;
 
-  raise notice 'food_requests: 19/19 passed';
+  raise notice 'food_requests: 22/22 passed';
 end $$;
 
-select 'food_requests: 19/19 passed' as result;
+select 'food_requests: 22/22 passed' as result;
 rollback;

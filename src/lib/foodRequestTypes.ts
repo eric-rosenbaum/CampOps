@@ -81,6 +81,8 @@ export interface FoodRequestLine {
   qtyApprovedBase: number | null;
   note: string | null;
   lineState: FoodLineState;
+  /** Why the kitchen marked the line not available, or what to use instead. */
+  kitchenReason: string | null;
   sortOrder: number;
 }
 

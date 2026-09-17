@@ -617,6 +617,9 @@ function SpinUpTrialModal({ onClose }: { onClose: () => void }) {
   const [prospect, setProspect] = useState('');
   const [spotlights, setSpotlights] = useState<SpotlightKey[]>(['food_requests', 'town_trips', 'receipts']);
   const [seedData, setSeedData] = useState(true);
+  // A prospect who described three problems should find three things in the sidebar, not eight
+  // modules with a pool chemistry chart and a 13% compliance score between them and the answer.
+  const [focusOnly, setFocusOnly] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
@@ -635,7 +638,7 @@ function SpinUpTrialModal({ onClose }: { onClose: () => void }) {
       const needed = new Set<ModuleKey>(spotlights.flatMap((k) => SPOTLIGHT_BY_KEY[k].modules));
       setBusy('Switching on the modules…');
       await setPlatformModules(campId, Object.fromEntries(
-        MODULES.map((m) => [m.key, m.defaultOn || needed.has(m.key)]),
+        MODULES.map((m) => [m.key, needed.has(m.key) || (!focusOnly && m.defaultOn)]),
       ));
       // The clone keeps the seed camp's own switches, and a seed that turned Kitchen Manager off
       // for itself would hand the prospect a guide pointing at a module they cannot open. The
@@ -690,6 +693,10 @@ function SpinUpTrialModal({ onClose }: { onClose: () => void }) {
             <label className="flex items-center gap-2 text-[13px] text-ink mt-2">
               <input type="checkbox" checked={seedData} onChange={(e) => setSeedData(e.target.checked)} />
               Add sample data for the spotlights that have it
+            </label>
+            <label className="flex items-center gap-2 text-[13px] text-ink mt-1">
+              <input type="checkbox" checked={focusOnly} disabled={spotlights.length === 0} onChange={(e) => setFocusOnly(e.target.checked)} />
+              Show only the modules these spotlights use
             </label>
           </div>
           {err && <p className="text-[12px] text-red">{err}</p>}

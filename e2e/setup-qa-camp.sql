@@ -48,7 +48,9 @@ begin
   -- walks the same join-and-land path a prospect does.
   for r in select * from (values
     ('e2e00000-0000-4000-8000-000000000010'::uuid,'qa-founder@example.com','Fran Founder'),
-    ('e2e00000-0000-4000-8000-000000000011'::uuid,'qa-visitor@example.com','Vic Visitor')) t(id,email,name)
+    ('e2e00000-0000-4000-8000-000000000011'::uuid,'qa-visitor@example.com','Vic Visitor'),
+    ('e2e00000-0000-4000-8000-000000000012'::uuid,'qa-visitor2@example.com','Wren Visitor'),
+    ('e2e00000-0000-4000-8000-000000000013'::uuid,'qa-visitor3@example.com','Xan Visitor')) t(id,email,name)
   loop
     insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
       confirmation_token, recovery_token, email_change_token_new, email_change,

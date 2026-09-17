@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { ArrowUpRight, Check, Copy, Download, Mail, Sparkles } from 'lucide-react';
+import { ArrowUpRight, Check, Copy, Download, Mail, RotateCcw, Sparkles } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { Topbar } from '@/components/layout/Topbar';
 import { CampLoader } from '@/components/shared/ModuleLoading';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
 import { useModules } from '@/lib/modules';
-import { fillHref, resolveSpotlights, type AutoCheckId, type DemoBrief, type ResolvedSpotlight, type SpotlightStep } from '@/lib/demoSpotlights';
-import { buildSampleStatementCsv, loadDemoBrief, loadGuideContext, loadJoinedAt, runAutoChecks, type GuideContext } from '@/lib/demoGuideDb';
+import { SEEDABLE, fillHref, resolveSpotlights, type AutoCheckId, type SpotlightKey, type DemoBrief, type ResolvedSpotlight, type SpotlightStep } from '@/lib/demoSpotlights';
+import { buildSampleStatementCsv, resetDemoSampleData, loadDemoBrief, loadGuideContext, loadJoinedAt, runAutoChecks, type GuideContext } from '@/lib/demoGuideDb';
 
 /**
  * The page a prospect lands on when they open their demo link.
@@ -46,9 +47,9 @@ export function DemoGuide() {
     .flatMap((st) => (st.check.kind === 'auto' ? [st.check.id] : [])), [spotlights]);
 
   const refreshChecks = useCallback(async () => {
-    if (!camp || !joinedAt || autoIds.length === 0) return;
-    setAutoDone(await runAutoChecks(camp.id, joinedAt, autoIds));
-  }, [camp, joinedAt, autoIds]);
+    if (!camp || !joinedAt || !userId || autoIds.length === 0) return;
+    setAutoDone(await runAutoChecks(camp.id, joinedAt, userId, autoIds));
+  }, [camp, joinedAt, userId, autoIds]);
 
   // Ticks follow what the visitor does in other tabs (the public request link opens in one), so
   // re-check when they come back to this tab and on a slow interval while it is open.
@@ -103,6 +104,8 @@ export function DemoGuide() {
               </div>
             )}
           </section>
+
+          <SharedDemoBar seedable={spotlights.map((s) => s.key).filter((k) => SEEDABLE.includes(k))} />
 
           {spotlights.length === 0 && (
             <div className="bg-white rounded-card border border-border p-5 text-center">
@@ -231,6 +234,104 @@ function CounselorPanel({ link, qrDataUrl, programName }: { link: string; qrData
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Two things a shared demo needs that a private one does not.
+ *
+ * A name: every /try/ visitor arrives as "Demo guest", so a request approved by the prospect and
+ * one approved by their director looked like the same person did both.
+ *
+ * A way back: whoever opened the link first can finish last month's reconciliation, and the next
+ * person finds nothing left to try. Resetting rewrites the sample rows and keeps what people made.
+ */
+function SharedDemoBar({ seedable }: { seedable: SpotlightKey[] }) {
+  const camp = useCampStore((s) => s.currentCamp);
+  const member = useCampStore((s) => s.currentMember);
+  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState<'name' | 'reset' | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const shownAs = member?.displayName?.trim() || 'Demo guest';
+
+  async function saveName() {
+    const n = name.trim();
+    if (!camp || !userId || !member || n.length < 2) return;
+    setBusy('name');
+    try {
+      await Promise.all([
+        supabase.from('profiles').update({ full_name: n }).eq('id', userId),
+        supabase.from('camp_members').update({ display_name: n }).eq('id', member.id),
+      ]);
+      await useCampStore.getState().loadMyCamps();
+      await useCampStore.getState().selectCamp(camp.id);
+      setEditing(false);
+      setMsg(`Thanks, ${n.split(' ')[0]}. That’s the name others in this demo will see.`);
+    } finally { setBusy(null); }
+  }
+
+  async function reset() {
+    if (!camp) return;
+    setBusy('reset'); setMsg(null);
+    try {
+      await resetDemoSampleData(camp.id, seedable);
+      setConfirming(false);
+      setMsg('The sample data is back as it started. Anything people added is still there.');
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Could not reset the sample data.');
+    } finally { setBusy(null); }
+  }
+
+  return (
+    <section className="bg-white rounded-card border border-border px-4 sm:px-6 py-3 space-y-2" data-testid="shared-demo-bar">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+        <div className="min-w-0 flex-1 text-[13px] text-ink">
+          {editing ? (
+            <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); saveName(); }}>
+              <label htmlFor="demo-name" className="text-ink-soft">Your name</label>
+              <input id="demo-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={60}
+                className="text-[13px] bg-white border border-border rounded-btn px-2.5 py-1.5 focus:outline-none focus:border-sage min-w-0 w-44" />
+              <button type="submit" disabled={busy === 'name' || name.trim().length < 2}
+                className="text-[12.5px] font-bold text-paper bg-forest hover:bg-forest-mid rounded-btn px-3 py-1.5 disabled:opacity-50">
+                {busy === 'name' ? 'Saving…' : 'Save'}
+              </button>
+              <button type="button" onClick={() => setEditing(false)} className="text-[12.5px] text-ink-soft underline">Cancel</button>
+            </form>
+          ) : (
+            <p>
+              You appear as <span className="font-semibold">{shownAs}</span> to anyone else using this link.{' '}
+              <button type="button" onClick={() => { setName(shownAs === 'Demo guest' ? '' : shownAs); setEditing(true); }}
+                className="font-semibold text-forest underline">Use your name</button>
+            </p>
+          )}
+        </div>
+        {seedable.length > 0 && !confirming && (
+          <button type="button" onClick={() => setConfirming(true)}
+            className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-forest hover:underline self-start sm:self-auto">
+            <RotateCcw className="w-3.5 h-3.5" /> Reset the sample data
+          </button>
+        )}
+      </div>
+      {confirming && (
+        <div className="rounded-card bg-amber-bg border border-amber/30 px-3 py-2.5 text-[12.5px] text-amber-text flex flex-col sm:flex-row sm:items-center gap-2">
+          <p className="flex-1">
+            Everyone with this link shares one demo, so someone may already have tried the steps below. Resetting puts the sample
+            requests, trips and receipts back the way they started. Anything people added stays.
+          </p>
+          <div className="flex gap-2">
+            <button type="button" onClick={reset} disabled={busy === 'reset'}
+              className="text-[12.5px] font-bold text-paper bg-forest hover:bg-forest-mid rounded-btn px-3 py-1.5 disabled:opacity-50">
+              {busy === 'reset' ? 'Resetting…' : 'Reset it'}
+            </button>
+            <button type="button" onClick={() => setConfirming(false)} className="text-[12.5px] font-semibold text-amber-text underline">Keep as is</button>
+          </div>
+        </div>
+      )}
+      {msg && <p className="text-[12.5px] text-green-muted-text" role="status">{msg}</p>}
+    </section>
   );
 }
 

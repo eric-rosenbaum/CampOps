@@ -62,6 +62,9 @@ test('J5: a founder spins up a demo, a prospect opens the link and follows the g
   expect(camp.platform_modules.receipts).toBe(true);
   // Switched on for the camp too, even though the source camp had Kitchen Manager off for itself.
   expect(camp.modules.commissary).toBe(true);
+  // Focused on what the guide is about: nothing else is sold to this demo by default.
+  expect(camp.platform_modules.pool).toBe(false);
+  expect(camp.platform_modules.safety).toBe(false);
 
   // Write the intro in the prospect's words.
   const row = founder.page.locator('tr', { hasText: campName });
@@ -88,6 +91,19 @@ test('J5: a founder spins up a demo, a prospect opens the link and follows the g
   }
   await expect(page.getByTestId('guide-progress')).toHaveText('0 of 12 steps tried');
   await shot(page, 'guide-landing');
+  // The sidebar holds only what the guide points at.
+  if ((viewport?.width ?? 1280) >= 1024) {
+    await expect(page.getByRole('link', { name: 'Pool Manager' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Town Trips' })).toBeVisible();
+  }
+
+  // A shared demo: the visitor can use their own name, and put the sample data back.
+  const bar = page.getByTestId('shared-demo-bar');
+  await expect(bar).toContainText('You appear as');
+  await bar.getByRole('button', { name: 'Use your name' }).click();
+  await bar.getByLabel('Your name').fill('Teddy');
+  await bar.getByRole('button', { name: 'Save' }).click();
+  await expect(bar).toContainText('You appear as Teddy');
 
   // Spotlight 1: the kitchen inbox has the sample week in it, including a late request.
   const food = page.getByTestId('spotlight-food_requests');
@@ -179,6 +195,16 @@ test('J5: a founder spins up a demo, a prospect opens the link and follows the g
   await expect(page.getByTestId('missing').locator('li')).toHaveCount(1);
   await expect(page.getByTestId('missing')).toContainText('CEDAR PARK PARKING');
   await shot(page, 'sample-statement-imported');
+
+  // Someone else finished the reconciliation before this visitor got to it; reset puts it back.
+  await page.goto('/demo-guide');
+  const bar2 = page.getByTestId('shared-demo-bar');
+  await bar2.getByRole('button', { name: 'Reset the sample data' }).click();
+  await bar2.getByRole('button', { name: 'Reset it' }).click();
+  await expect(bar2.getByRole('status')).toContainText('back as it started', { timeout: 60_000 });
+  const [{ n }] = sql<{ n: number }>(`select count(*)::int n from card_statements where camp_id = '${camp.id}'`);
+  expect(Number(n)).toBe(3); // seeds rewrote cards A and B; the statement the visitor imported for C is theirs and stays
+  await shot(page, 'guide-after-reset');
 
   expect(errors.filter((e) => !/favicon|ResizeObserver/.test(e))).toEqual([]);
 

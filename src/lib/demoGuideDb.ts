@@ -52,11 +52,17 @@ export async function loadJoinedAt(campId: string, userId: string): Promise<stri
   return (data?.created_at as string) ?? null;
 }
 
-type CountQuery = (campId: string, since: string) => PromiseLike<{ count: number | null; error: unknown }>;
+type CountQuery = (campId: string, since: string, userId: string) => PromiseLike<{ count: number | null; error: unknown }>;
 
-const count = (table: string, apply?: (q: ReturnType<typeof base>) => ReturnType<typeof base>): CountQuery =>
-  (campId, since) => {
+/**
+ * Rows in this camp since the visitor joined, and -- where the row records who did it -- done by
+ * this visitor. A demo link is shared, so a camp-wide count ticked one director's guide for what
+ * another director had clicked.
+ */
+const count = (table: string, byColumn?: string, apply?: (q: ReturnType<typeof base>) => ReturnType<typeof base>): CountQuery =>
+  (campId, since, userId) => {
     let q = base(table).eq('camp_id', campId).gte('created_at', since);
+    if (byColumn) q = q.eq(byColumn, userId);
     if (apply) q = apply(q);
     return q;
   };
@@ -67,24 +73,26 @@ const base = (table: string) => supabase.from(table).select('id', { count: 'exac
  * visitor cannot read simply stays unticked — a guide must never error because of a tick.
  */
 const AUTO_CHECKS: Record<AutoCheckId, CountQuery> = {
-  food_request_from_link: count('food_requests', (q) => q.eq('source', 'link')),
-  food_request_decided: (campId, since) => base('food_requests').eq('camp_id', campId)
-    .gte('decided_at', since),
+  // A public-link request has no account behind it; the counselor is whoever holds the phone.
+  food_request_from_link: count('food_requests', undefined, (q) => q.eq('source', 'link')),
+  food_request_decided: (campId, since, userId) => base('food_requests').eq('camp_id', campId)
+    .gte('decided_at', since).eq('decided_by', userId),
   food_request_picked_up: (campId, since) => base('food_requests').eq('camp_id', campId)
     .gte('picked_up_at', since),
-  trip_seat_claimed: count('trip_seats'),
-  trip_errand_added: count('trip_errands'),
-  trip_planned: count('trips'),
-  receipt_saved: (campId, since) => base('receipts').eq('camp_id', campId).gte('reviewed_at', since),
-  statement_imported: count('card_statements'),
-  receipts_exported: count('expense_exports'),
+  trip_seat_claimed: count('trip_seats', 'rider_user_id'),
+  trip_errand_added: count('trip_errands', 'requested_by'),
+  trip_planned: count('trips', 'created_by'),
+  receipt_saved: (campId, since, userId) => base('receipts').eq('camp_id', campId)
+    .gte('reviewed_at', since).eq('reviewed_by', userId),
+  statement_imported: count('card_statements', 'uploaded_by'),
+  receipts_exported: count('expense_exports', 'created_by'),
 };
 
-export async function runAutoChecks(campId: string, since: string, ids: AutoCheckId[]): Promise<Set<AutoCheckId>> {
+export async function runAutoChecks(campId: string, since: string, userId: string, ids: AutoCheckId[]): Promise<Set<AutoCheckId>> {
   const done = new Set<AutoCheckId>();
   await Promise.all([...new Set(ids)].map(async (id) => {
     try {
-      const { count: n, error } = await AUTO_CHECKS[id](campId, since);
+      const { count: n, error } = await AUTO_CHECKS[id](campId, since, userId);
       if (!error && (n ?? 0) > 0) done.add(id);
     } catch { /* unticked */ }
   }));
@@ -145,6 +153,20 @@ export async function loadGuideContext(campId: string): Promise<GuideContext> {
 export async function seedDemoData(campId: string, keys: string[]): Promise<void> {
   const { data, error } = await supabase.rpc('seed_demo_data', { p_camp_id: campId, p_keys: keys });
   if (error) throw new Error(error.message);
+  await uploadSamplePhotos(data);
+}
+
+/**
+ * The visitor's own "put the sample data back" -- same seeds, allowed for any admin of a demo
+ * camp (every /try/ visitor), refused for every other camp by the RPC.
+ */
+export async function resetDemoSampleData(campId: string, keys: string[]): Promise<void> {
+  const { data, error } = await supabase.rpc('reset_demo_sample_data', { p_camp_id: campId, p_keys: keys });
+  if (error) throw new Error(error.message);
+  await uploadSamplePhotos(data);
+}
+
+async function uploadSamplePhotos(data: unknown): Promise<void> {
   // Storage can't be written from SQL, so the receipts seed returns which rows need a photo and
   // the sample image each one shows; the images ship with the app under /demo/receipts/.
   const files = ((data as { receipt_files?: { file_path: string; sample_file: string }[] } | null)?.receipt_files) ?? [];

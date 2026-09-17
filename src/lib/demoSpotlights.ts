@@ -88,13 +88,13 @@ export const SPOTLIGHTS: SpotlightTemplate[] = [
         check: { kind: 'auto', id: 'food_request_decided' },
       },
       {
-        text: 'Open Inventory and Ordering to see the approved food set aside and counted in the next order.',
-        href: '/commissary?tab=ordering',
+        text: 'Open Inventory: the approved food shows as promised to the program, and the next order already counts it.',
+        href: '/commissary?tab=inventory',
         check: { kind: 'manual' },
       },
       {
-        text: 'On pickup day, mark it ready, then picked up. Check the counselor’s status page change.',
-        href: '/commissary?tab=requests',
+        text: 'In Pickups, mark it ready, then picked up. Watch the counselor’s status page change, and the food come off the shelf.',
+        href: '/commissary?tab=requests&view=pickups',
         check: { kind: 'auto', id: 'food_request_picked_up' },
       },
     ],

@@ -15,6 +15,12 @@ import type { useFoodRequestActions } from './useFoodRequestActions';
 import { ConfirmDialog } from './ConfirmDialog';
 import { LateChip } from './foodUi';
 
+/** "jars" and "jar" are one unit; "bags" and "lb" are not. */
+function sameUnitWord(a: string | null, b: string | null): boolean {
+  const norm = (u: string | null) => (u ?? '').trim().toLowerCase().replace(/(es|s)$/, '');
+  return norm(a) === norm(b);
+}
+
 interface LineDraft {
   itemId: string | null;
   qty: string;
@@ -155,7 +161,7 @@ export function DecisionModal({ request, lines, program, mode, onClose, actions 
                           onPick={(it) => setD(it
                             // A number never crosses units: "2 bags" linked to an item counted in lb
                             // leaves the amount blank for the kitchen to fill in, in lb.
-                            ? { itemId: it.id, qty: (it.stockUnit ?? '') === (l.unitLabel ?? '') ? formatNumber(l.qtyRequested) : '' }
+                            ? { itemId: it.id, qty: sameUnitWord(it.stockUnit, l.unitLabel) ? formatNumber(l.qtyRequested) : '' }
                             : { itemId: null, qty: formatNumber(l.qtyRequested) })}
                         />
                       )}

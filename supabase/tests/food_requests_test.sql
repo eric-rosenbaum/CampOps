@@ -128,6 +128,16 @@ begin
   if v_res->>'status' <> 'submitted' or jsonb_array_length(v_res->'lines') <> 3 then raise exception 'T4 FAIL: status page %', v_res; end if;
   if v_res ? 'requester_email' or v_res ? 'requester_phone' then raise exception 'T4 FAIL: status page leaks contact details'; end if;
   if get_food_request_status('nope') is not null then raise exception 'T4 FAIL: wrong status token answered'; end if;
+  -- The status page says what it was for; the form's upcoming list names the asker by first name
+  -- and carries a ref (so the phone that sent it can list it as its own), never a status token.
+  if v_res->>'purpose' <> 'Pancake night' or (v_res->>'headcount')::int <> 14 or v_res->>'ref' is null then
+    raise exception 'T4 FAIL: status page purpose/headcount/ref %', v_res;
+  end if;
+  v_res := get_food_request_form(v_token);
+  if jsonb_array_length(v_res->'upcoming') <> 1 or v_res->'upcoming'->0->>'asked_by' <> 'Casey'
+     or v_res->'upcoming'->0->>'ref' is null or (v_res->'upcoming'->0) ? 'status_token' then
+    raise exception 'T4 FAIL: upcoming rows %', v_res->'upcoming';
+  end if;
   reset role;
 
   select * into v_req from food_requests where status_token = v_status_token;
@@ -153,7 +163,8 @@ begin
        or (rule_key in ('new_request:kitchen@example.com','new_request:chef@example.com') and recipient_kind = 'kitchen'));
   if v_n <> 3 then raise exception 'T4 FAIL: expected request_received + 2 new_request rows with body_text, got %', v_n; end if;
   select * into v_msg from scheduled_messages where subject_id = v_id and rule_key = 'new_request:kitchen@example.com';
-  if v_msg.subject not like 'LATE %' or v_msg.body_text not like 'LATE%' or length(v_msg.body_text) > 320 then
+  if v_msg.subject not like 'Short notice · %' or v_msg.body_text not like 'Short notice · %h:%' or length(v_msg.body_text) > 320
+     or v_msg.body_html not like '%short notice (you ask for 3 days’ notice (72 h))%' then
     raise exception 'T4 FAIL: late kitchen message %/%', v_msg.subject, v_msg.body_text;
   end if;
 
@@ -227,6 +238,11 @@ begin
   end if;
   if food_request_notice_hours(v_camp, '2026-11-02', '13:00', '2026-10-30 21:00:00+00') <> 72 then
     raise exception 'T7 FAIL: across DST 13:00 should be 72h';
+  end if;
+  -- One way of writing the rule, everywhere.
+  if food_request_notice_rule(72) <> '3 days’ notice (72 h)' or food_request_notice_rule(36) <> '36 hours’ notice'
+     or food_request_notice_rule(24) <> '1 day’s notice (24 h)' then
+    raise exception 'T7 FAIL: notice rule wording %', food_request_notice_rule(72);
   end if;
   -- Through the real submit: exactly the cutoff is on time, one second under is late.
   v_local := (now() + interval '72 hours') at time zone 'America/Vancouver';
@@ -329,6 +345,17 @@ begin
     perform decide_food_request(v_id, 'approve', jsonb_build_array(jsonb_build_object('id', v_free_line, 'item_id', v_foreign_item, 'qty', 1)), null);
     raise exception 'T10 FAIL: linked a line to another camp''s item';
   exception when others then if sqlerrm like 'T10 FAIL%' then raise; end if; end;
+
+  -- "3 bags" linked to an item counted in kg must not become "3 kg": the kitchen has to say how much.
+  begin
+    perform decide_food_request(v_id, 'approve', jsonb_build_array(jsonb_build_object('id', v_free_line, 'item_id', v_sugar)), null);
+    raise exception 'T10 FAIL: linked a bags line to a kg item without a quantity';
+  exception when others then
+    if sqlerrm like 'T10 FAIL%' then raise; end if;
+    if sqlerrm not like 'Enter how much Big marshmallows to approve, in kg. They asked for 3 bags.' then
+      raise exception 'T10 FAIL: unit-change refusal said %', sqlerrm;
+    end if;
+  end;
 
   v_res := decide_food_request(v_id, 'approve', jsonb_build_array(
     jsonb_build_object('id', v_flour_line, 'qty', 3),
@@ -443,10 +470,23 @@ begin
   if (select state from scheduled_messages where subject_id = v_id2 and rule_key = 'pickup_reminder') <> 'cancelled' then
     raise exception 'T12 FAIL: pickup_reminder not cancelled after pickup';
   end if;
-  -- Picking up never touches stock: the next count reconciles (double-counting rule).
-  if (select on_hand_base from inventory_items where id = v_flour) <> 10000
-     or exists (select 1 from inventory_adjustments where item_id in (v_flour, v_sugar)) then
-    raise exception 'T12 FAIL: pickup wrote to stock';
+  -- Picking up takes the food off the shelf: one 'used' adjustment per linked item, naming the
+  -- program. Flour 10000 g − 5 lb; sugar had none counted, so it floors at zero but is still logged.
+  -- The unlinked marshmallow line has no item to take from.
+  if abs((select on_hand_base from inventory_items where id = v_flour) - (10000 - 5 * 453.592)) > 0.001 then
+    raise exception 'T12 FAIL: flour on hand after pickup is %', (select on_hand_base from inventory_items where id = v_flour);
+  end if;
+  select count(*) into v_n from inventory_adjustments
+   where item_id in (v_flour, v_sugar) and reason = 'used' and adjusted_by = 'Kim Kitchen'
+     and notes like 'Food request picked up: Cooking Club, pickup %';
+  if v_n <> 2 then raise exception 'T12 FAIL: expected 2 used adjustments naming the program, got %', v_n; end if;
+  if (select delta_base from inventory_adjustments where item_id = v_sugar) <> -2000
+     or (select on_hand_base from inventory_items where id = v_sugar) <> 0 then
+    raise exception 'T12 FAIL: sugar adjustment';
+  end if;
+  -- The cancelled and the approved-but-not-picked-up requests wrote nothing.
+  if (select count(*) from inventory_adjustments where camp_id = v_camp) <> 2 then
+    raise exception 'T12 FAIL: stock written by something other than the pickup';
   end if;
 
   ---------------------------------------------------------------------------------------------

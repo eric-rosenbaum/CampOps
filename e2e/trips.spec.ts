@@ -280,6 +280,10 @@ test('J3: plan a town run, fill it, waitlist, promotion, a ride back and an erra
   await clearNoise(driverPage);
   await aDrawer.getByTestId('attach-errands').click();
   await expect(aDrawer.getByText('Craft glue')).toBeVisible();
+  // Nothing is pre-ticked: the driver picks what this run is for.
+  await expect(aDrawer.getByTestId('attach-confirm')).toHaveText('Add 0 to this trip');
+  await aDrawer.locator('label').filter({ hasText: 'Craft glue' }).locator('input[type="checkbox"]').check();
+  await expect(aDrawer.getByTestId('attach-confirm')).toHaveText('Add 1 to this trip');
   await shot(driverPage, 'driver chooses open errands to attach');
   await clearNoise(driverPage);
   await aDrawer.getByTestId('attach-confirm').click();
@@ -402,6 +406,8 @@ test('J3b: one-way trips, a clash, and a stranded rider offered a way home', asy
   const pickupId = await plan(/Pickup from town/, null, 'Late pickup from town', '21:30', '2');
   await expect(card(A.page, pickupId).getByTestId('trip-route')).toHaveText('Town centre → camp');
   await expect(card(A.page, eveningId).getByTestId('trip-route')).toContainText('one way');
+  // No preset return on a ride that brings nobody back.
+  await expect(card(A.page, eveningId)).not.toContainText('→ Sun');
   await shot(A.page, 'an into-town-only ride and a pickup on the board');
 
   // ── E: the evening ride offers only a seat into town, and the pickup alongside ─

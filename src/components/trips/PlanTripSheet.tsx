@@ -66,11 +66,27 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
     [members],
   );
 
+  /**
+   * An into-town-only ride has no return for riders, so a preset's return time is dropped: the
+   * day-off preset's eight hours put "5pm → Sun 1am" on a car that brings nobody back.
+   */
+  function applyReturn(p: ReturnType<typeof applyPreset>, dir: TripDirection) {
+    if (touched.ret) return;
+    if (dir === 'outbound') { setReturnDate(''); setReturnTime(''); }
+    else { setReturnDate(p.returnDate); setReturnTime(p.returnTime); }
+  }
+
+  function pickDirection(next: TripDirection) {
+    setDirection(next);
+    setTouched((t) => ({ ...t, direction: true }));
+    if (!editing && departDate && departTime) applyReturn(applyPreset(kind, departDate, departTime), next);
+  }
+
   function pickKind(next: TripKind) {
     setKind(next);
     if (editing) return;
     const p = applyPreset(next, departDate, departTime);
-    if (!touched.ret) { setReturnDate(p.returnDate); setReturnTime(p.returnTime); }
+    applyReturn(p, touched.direction ? direction : p.direction);
     if (!touched.seats) setSeats(p.passengerSeats);
     if (!touched.close) setCloseTime(p.errandsCloseTime ?? '');
     if (!touched.direction) setDirection(p.direction);
@@ -176,7 +192,7 @@ export function PlanTripSheet({ campId, userId, now, initialDate, editing, membe
                 type="button"
                 role="radio"
                 aria-checked={direction === d}
-                onClick={() => { setDirection(d); setTouched((t) => ({ ...t, direction: true })); }}
+                onClick={() => pickDirection(d)}
                 className={`min-h-11 rounded-[4px] px-2 py-1.5 text-left text-[13px] font-bold sm:text-center ${direction === d ? 'bg-white text-forest shadow-sm' : 'text-ink-soft hover:text-forest'}`}
               >
                 {DIRECTION_LABELS[d]}

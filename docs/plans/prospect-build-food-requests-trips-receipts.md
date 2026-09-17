@@ -332,7 +332,7 @@ RLS: select `is_camp_member`. Writes through RPCs (seat capacity has to be atomi
   overlap; the claim raises `overlapping_seat` with the other trip in DETAIL, and
   `switch_trip_seat` moves the seat atomically. Prevention was chosen because a warned-about
   waitlist place would later be promoted into a second confirmed seat that somebody else needed.
-  In on one car and home on another never clashes.
+  In on one car and home on another never clashes. Scoped to the camp (demo clones copy seats).
 - **Stranded riders are actionable:** `offer_ride_back(seat, trip)` (the rider, the ride-in's
   creator/driver, the return trip's managers, admins) and `request_ride_back(seat)` (the rider,
   the ride-in's managers, admins; idempotent). Both work for name-only riders.

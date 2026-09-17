@@ -585,6 +585,20 @@ begin
     raise exception 'T16 FAIL: failed switch gave % and left the seat %', v_err, v_msg.status;
   end if;
 
+  -- A seat in ANOTHER camp at the same time is not a clash (a demo cloned from this camp copies
+  -- its seats with the same user ids).
+  insert into camps (id, name, slug, timezone) values ('f0000000-0000-4000-8000-0000000071a3', 'Trips Clone Camp', 'trips-clone-camp-sql', v_tz);
+  insert into trips (id, camp_id, title, depart_date, depart_time, return_date, return_time, passenger_seats)
+  values ('f0000000-0000-4000-8000-0000000071a4', 'f0000000-0000-4000-8000-0000000071a3', 'Clone run', v_day + 4, '16:00', v_day + 4, '18:00', 3);
+  insert into trip_seats (camp_id, trip_id, rider_user_id, rider_name, leg, status)
+  values ('f0000000-0000-4000-8000-0000000071a3', 'f0000000-0000-4000-8000-0000000071a4', v_c, 'Priya Program', 'both', 'confirmed');
+  perform set_config('request.jwt.claims', json_build_object('sub', v_c, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  begin v_res := claim_trip_seat(v_rt, 'both', null); v_err := null; exception when others then v_err := sqlerrm; end;
+  if v_err is null then perform release_trip_seat((v_res->>'seat_id')::uuid); end if;
+  reset role;
+  if v_err is not null then raise exception 'T16 FAIL: a seat in another camp clashed (%)', v_err; end if;
+
   -- ── T17: a stranded rider is offered a way home ──────────────────────────
   -- A rider known only by name (the demo's seeded riders), into town on v_out.
   insert into trip_seats (camp_id, trip_id, rider_name, rider_email, leg, status, confirmed_at)

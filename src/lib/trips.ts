@@ -297,7 +297,8 @@ export interface SeatClash {
 /**
  * A live seat this person already holds that taking `leg` on `trip` would clash with: the same leg
  * (both going in, or both coming back) on a trip whose times overlap. Riding in on the 5pm and home
- * on the 9:30pm pickup is not a clash. Mirrors trips_seat_clash_internal, which refuses the claim;
+ * on the 9:30pm pickup is not a clash. Only this camp's trips are passed in, and the database
+ * rule is per camp too. Mirrors trips_seat_clash_internal, which refuses the claim;
  * this lets the drawer say so, and offer a switch, before anyone presses anything.
  */
 export function seatClash(trip: Trip, leg: SeatLeg, userId: string, trips: Trip[], seats: TripSeat[]): SeatClash | null {

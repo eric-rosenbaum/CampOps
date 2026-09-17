@@ -33,6 +33,7 @@ declare
   v_res jsonb; v_err text; v_n int; v_id uuid; v_id2 uuid; v_seat uuid; v_seat2 uuid;
   v_e1 uuid; v_e2 uuid; v_r1 uuid;
   v_msg record; v_key text;
+  v_out uuid; v_pick uuid; v_rt uuid; v_a uuid; v_bb uuid; v_named uuid;
 begin
   v_today := (now() at time zone v_tz)::date;
   v_day := v_today + 3;
@@ -57,16 +58,18 @@ begin
    where p.pronamespace = 'public'::regnamespace
      and p.proname in ('create_trip','update_trip','set_trip_status','cancel_trip','claim_trip_seat',
           'release_trip_seat','add_errand','attach_errands','detach_errand','set_errand_status',
-          'request_ride','cancel_ride_request','match_ride_request')
+          'request_ride','cancel_ride_request','match_ride_request','switch_trip_seat','offer_ride_back',
+          'request_ride_back','also_need_errand')
      and has_function_privilege('authenticated', p.oid, 'execute');
-  if v_n <> 13 then raise exception 'T1 FAIL: expected 13 browser RPCs for authenticated, got %', v_n; end if;
+  if v_n <> 17 then raise exception 'T1 FAIL: expected 17 browser RPCs for authenticated, got %', v_n; end if;
 
   select count(*) into v_n from pg_proc p
    where p.pronamespace = 'public'::regnamespace
      and p.proname in ('create_trip','update_trip','set_trip_status','cancel_trip','claim_trip_seat',
           'release_trip_seat','add_errand','attach_errands','detach_errand','set_errand_status',
-          'request_ride','cancel_ride_request','match_ride_request');
-  if v_n <> 13 then raise exception 'T1 FAIL: expected exactly 13 RPC overloads, got %', v_n; end if;
+          'request_ride','cancel_ride_request','match_ride_request','switch_trip_seat','offer_ride_back',
+          'request_ride_back','also_need_errand');
+  if v_n <> 17 then raise exception 'T1 FAIL: expected exactly 17 RPC overloads, got %', v_n; end if;
 
   -- ── T2: table grants ─────────────────────────────────────────────────────
   if has_table_privilege('anon', 'public.trips', 'select')
@@ -199,8 +202,10 @@ begin
   -- ── T7: seats are counted per leg ────────────────────────────────────────
   perform set_config('request.jwt.claims', json_build_object('sub', v_b, 'role', 'authenticated')::text, true);
   set local role authenticated;
+  -- The next day: the admin already holds a seat on t1's afternoon, and a day-long shuttle the
+  -- same day would clash with it (T16).
   v_t2 := create_trip(v_camp, jsonb_build_object('kind','day_off','title','Day-off shuttle','destination','Town',
-            'depart_date', v_day, 'depart_time','09:00','return_date', v_day, 'return_time','17:00','passenger_seats', 1));
+            'depart_date', v_day + 1, 'depart_time','09:00','return_date', v_day + 1, 'return_time','17:00','passenger_seats', 1));
   reset role;
   perform set_config('request.jwt.claims', json_build_object('sub', v_c, 'role', 'authenticated')::text, true);
   set local role authenticated;
@@ -483,8 +488,211 @@ begin
    where m.camp_id = v_camp and m.rule_key like 'leaving_soon@%' and m.state = 'scheduled';
   if v_n <> 0 then raise exception 'T14 FAIL: planner re-run changed % reminders', v_n; end if;
 
-  raise notice 'trips: 14/14 passed';
+  -- ── T15: a trip's direction decides which legs it sells ──────────────────
+  perform set_config('request.jwt.claims', json_build_object('sub', v_b, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  v_out := create_trip(v_camp, jsonb_build_object('kind','day_off','direction','outbound','title','Evening ride into town',
+            'destination','Town centre','depart_date', v_day + 2, 'depart_time','17:00','passenger_seats', 3));
+  v_pick := create_trip(v_camp, jsonb_build_object('kind','pickup','title','Late pickup from town',
+            'destination','Town centre','depart_date', v_day + 2, 'depart_time','21:30','return_time','22:15','passenger_seats', 1));
+  reset role;
+  select direction into v_err from trips where id = v_pick;
+  if v_err <> 'pickup' then raise exception 'T15 FAIL: a pickup kind planned as %', v_err; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', v_c, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  begin perform claim_trip_seat(v_out, 'both', null); v_err := null; exception when others then v_err := sqlerrm; end;
+  if v_err is distinct from 'leg_not_offered' then reset role; raise exception 'T15 FAIL: there & back on an into-town-only trip gave %', v_err; end if;
+  begin perform claim_trip_seat(v_out, 'back', null); v_err := null; exception when others then v_err := sqlerrm; end;
+  if v_err is distinct from 'leg_not_offered' then reset role; raise exception 'T15 FAIL: back only on an into-town-only trip gave %', v_err; end if;
+  v_res := claim_trip_seat(v_out, null, null);                                   -- no leg: what the trip does
+  if v_res->>'leg' <> 'there' or v_res->>'status' <> 'confirmed' then reset role; raise exception 'T15 FAIL: default leg on outbound %', v_res; end if;
+  begin perform claim_trip_seat(v_pick, 'there', null); v_err := null; exception when others then v_err := sqlerrm; end;
+  if v_err is distinct from 'leg_not_offered' then reset role; raise exception 'T15 FAIL: there on a pickup gave %', v_err; end if;
+  -- T16's rule, the case it must allow: in on the 5pm, home on the 9:30pm pickup.
+  v_res := claim_trip_seat(v_pick, null, null);
+  if v_res->>'leg' <> 'back' or v_res->>'status' <> 'confirmed' then reset role; raise exception 'T15 FAIL: back on the pickup %', v_res; end if;
+  reset role;
+  -- A direction change that strands the riders already in the car is refused.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_b, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  begin perform update_trip(v_out, '{"direction":"pickup"}'); v_err := null; exception when others then v_err := sqlerrm; end;
+  if v_err is distinct from 'riders_on_other_leg' then reset role; raise exception 'T15 FAIL: outbound→pickup with riders gave %', v_err; end if;
+  perform update_trip(v_out, '{"direction":"round_trip"}');                     -- widening is fine
+  perform update_trip(v_out, '{"direction":"outbound"}');
+  reset role;
+  -- Matching a there-and-back request to an into-town-only trip takes the seat there and keeps
+  -- asking for the way back.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_d, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  v_r1 := request_ride(v_camp, jsonb_build_object('wanted_date', v_day + 2, 'leg','both','note','Day off'));
+  v_res := match_ride_request(v_r1, v_out);
+  reset role;
+  if v_res->>'leg' <> 'there' or v_res->>'remaining_leg' <> 'back' then raise exception 'T15 FAIL: partial match %', v_res; end if;
+  select count(*) into v_n from ride_requests where id = v_r1 and status = 'matched' and leg = 'there';
+  if v_n <> 1 then raise exception 'T15 FAIL: matched request not narrowed to there'; end if;
+  select count(*) into v_n from ride_requests where id = (v_res->>'remaining_request_id')::uuid and status = 'open' and leg = 'back'
+     and requested_by = v_d and wanted_date = v_day + 2;
+  if v_n <> 1 then raise exception 'T15 FAIL: no open request left for the way back'; end if;
+  -- Legacy rows: a trip with no return reads as into town only.
+  if public.trips_direction_legs_internal('outbound') <> array['there'] or public.trips_natural_leg_internal('pickup') <> 'back' then
+    raise exception 'T15 FAIL: direction legs';
+  end if;
+
+  -- ── T16: one person, one car at a time ───────────────────────────────────
+  perform set_config('request.jwt.claims', json_build_object('sub', v_b, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  v_a := create_trip(v_camp, jsonb_build_object('title','Town run A','depart_date', v_day + 4, 'depart_time','13:00','return_time','15:00','passenger_seats', 3));
+  v_bb := create_trip(v_camp, jsonb_build_object('title','Town run B','depart_date', v_day + 4, 'depart_time','14:00','return_time','16:00','passenger_seats', 3));
+  v_rt := create_trip(v_camp, jsonb_build_object('title','Town run C','depart_date', v_day + 4, 'depart_time','16:30','return_time','18:00','passenger_seats', 3));
+  reset role;
+  perform set_config('request.jwt.claims', json_build_object('sub', v_c, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  v_res := claim_trip_seat(v_a, 'both', null);
+  v_seat := (v_res->>'seat_id')::uuid;
+  begin perform claim_trip_seat(v_bb, 'both', null); v_err := null; exception when others then v_err := sqlerrm; end;
+  if v_err is distinct from 'overlapping_seat' then reset role; raise exception 'T16 FAIL: overlapping both-ways seat gave %', v_err; end if;
+  begin perform claim_trip_seat(v_bb, 'back', null); v_err := null; exception when others then v_err := sqlerrm; end;
+  if v_err is distinct from 'overlapping_seat' then reset role; raise exception 'T16 FAIL: overlapping back seat gave %', v_err; end if;
+  -- The clash names the other trip.
+  begin perform claim_trip_seat(v_bb, 'there', null); v_err := null;
+  exception when others then get stacked diagnostics v_err = pg_exception_detail; end;
+  if v_err is null or (v_err::jsonb)->>'trip_id' <> v_a::text then reset role; raise exception 'T16 FAIL: clash detail %', v_err; end if;
+  -- A later trip that does not overlap is fine.
+  v_res := claim_trip_seat(v_rt, 'both', null);
+  if v_res->>'status' <> 'confirmed' then reset role; raise exception 'T16 FAIL: non-overlapping seat %', v_res; end if;
+  perform release_trip_seat((v_res->>'seat_id')::uuid);
+  -- Switching moves the seat in one step.
+  v_res := switch_trip_seat(v_seat, v_bb, null);
+  if v_res->>'status' <> 'confirmed' or v_res->>'released_trip_id' <> v_a::text then reset role; raise exception 'T16 FAIL: switch %', v_res; end if;
+  reset role;
+  select count(*) into v_n from trip_seats where rider_user_id = v_c and trip_id in (v_a, v_bb) and status <> 'cancelled';
+  select status into v_err from trip_seats where id = v_seat;
+  if v_n <> 1 or v_err <> 'cancelled' then raise exception 'T16 FAIL: after switch % live seats, old seat %', v_n, v_err; end if;
+  -- Somebody else cannot switch your seat.
+  select id into v_seat from trip_seats where rider_user_id = v_c and trip_id = v_bb and status = 'confirmed';
+  perform set_config('request.jwt.claims', json_build_object('sub', v_d, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  begin perform switch_trip_seat(v_seat, v_a, null); v_err := null; exception when others then v_err := sqlerrm; end;
+  reset role;
+  if v_err is distinct from 'not_allowed' then raise exception 'T16 FAIL: stranger switched a seat (%)', v_err; end if;
+  -- A switch whose new seat is refused rolls back and keeps the old seat.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_c, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  begin perform switch_trip_seat(v_seat, v_out, 'both'); v_err := null; exception when others then v_err := sqlerrm; end;
+  reset role;
+  select status into v_msg from trip_seats where id = v_seat;
+  if v_err is distinct from 'leg_not_offered' or v_msg.status <> 'confirmed' then
+    raise exception 'T16 FAIL: failed switch gave % and left the seat %', v_err, v_msg.status;
+  end if;
+
+  -- A seat in ANOTHER camp at the same time is not a clash (a demo cloned from this camp copies
+  -- its seats with the same user ids).
+  insert into camps (id, name, slug, timezone) values ('f0000000-0000-4000-8000-0000000071a3', 'Trips Clone Camp', 'trips-clone-camp-sql', v_tz);
+  insert into trips (id, camp_id, title, depart_date, depart_time, return_date, return_time, passenger_seats)
+  values ('f0000000-0000-4000-8000-0000000071a4', 'f0000000-0000-4000-8000-0000000071a3', 'Clone run', v_day + 4, '16:00', v_day + 4, '18:00', 3);
+  insert into trip_seats (camp_id, trip_id, rider_user_id, rider_name, leg, status)
+  values ('f0000000-0000-4000-8000-0000000071a3', 'f0000000-0000-4000-8000-0000000071a4', v_c, 'Priya Program', 'both', 'confirmed');
+  perform set_config('request.jwt.claims', json_build_object('sub', v_c, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  begin v_res := claim_trip_seat(v_rt, 'both', null); v_err := null; exception when others then v_err := sqlerrm; end;
+  if v_err is null then perform release_trip_seat((v_res->>'seat_id')::uuid); end if;
+  reset role;
+  if v_err is not null then raise exception 'T16 FAIL: a seat in another camp clashed (%)', v_err; end if;
+
+  -- ── T17: a stranded rider is offered a way home ──────────────────────────
+  -- A rider known only by name (the demo's seeded riders), into town on v_out.
+  insert into trip_seats (camp_id, trip_id, rider_name, rider_email, leg, status, confirmed_at)
+  values (v_camp, v_out, 'Ruby Walsh', 'ruby.walsh@example.com', 'there', 'confirmed', now()) returning id into v_named;
+  insert into ride_requests (camp_id, requester_name, wanted_date, leg, note)
+  values (v_camp, 'Ruby Walsh', v_day + 2, 'back', 'Need a way back') returning id into v_id;
+  -- A staff member who neither rides, drives nor planned either trip cannot.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_d, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  begin perform offer_ride_back(v_named, v_pick); v_err := null; exception when others then v_err := sqlerrm; end;
+  if v_err is distinct from 'not_allowed' then reset role; raise exception 'T17 FAIL: stranger offered a ride back (%)', v_err; end if;
+  begin perform request_ride_back(v_named); v_err := null; exception when others then v_err := sqlerrm; end;
+  if v_err is distinct from 'not_allowed' then reset role; raise exception 'T17 FAIL: stranger asked on her behalf (%)', v_err; end if;
+  reset role;
+  -- The trip's planner asks on her behalf: her existing request is reused, not duplicated.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_b, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  v_id2 := request_ride_back(v_named);
+  reset role;
+  if v_id2 <> v_id then raise exception 'T17 FAIL: request_ride_back made a second request'; end if;
+  -- The pickup (1 seat, c already on it) is full on the way back: the offer waitlists.
+  -- Make room first: the admin adds a seat.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  perform update_trip(v_pick, '{"passenger_seats":2}');
+  v_res := offer_ride_back(v_named, v_pick);
+  if v_res->>'status' <> 'confirmed' or v_res->>'leg' <> 'back' then reset role; raise exception 'T17 FAIL: offer %', v_res; end if;
+  v_res := offer_ride_back(v_named, v_pick);
+  if (v_res->>'already')::boolean is not true then reset role; raise exception 'T17 FAIL: second offer made another seat %', v_res; end if;
+  reset role;
+  select count(*) into v_n from trip_seats where trip_id = v_pick and rider_name = 'Ruby Walsh' and rider_user_id is null
+     and rider_email = 'ruby.walsh@example.com' and leg = 'back' and status = 'confirmed';
+  if v_n <> 1 then raise exception 'T17 FAIL: named rider not seated back with her email'; end if;
+  select count(*) into v_n from scheduled_messages m join trip_seats s on s.id = m.subject_id
+   where s.trip_id = v_pick and s.rider_name = 'Ruby Walsh' and m.rule_key = 'seat_confirmed' and m.to_email = 'ruby.walsh@example.com'
+     and m.body_text ~ 'Town centre → camp';
+  if v_n <> 1 then raise exception 'T17 FAIL: named rider not told, or the pickup not described as into camp'; end if;
+  select status into v_err from ride_requests where id = v_id;
+  if v_err <> 'matched' then raise exception 'T17 FAIL: her open ride-back request is %', v_err; end if;
+  -- A return that leaves before the ride out is not a way back.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_b, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  v_rt := create_trip(v_camp, jsonb_build_object('kind','pickup','title','Early pickup','depart_date', v_day + 2, 'depart_time','11:00','passenger_seats', 2));
+  v_named := (select id from trip_seats where trip_id = v_out and rider_user_id = v_c and status = 'confirmed');
+  begin perform offer_ride_back(v_named, v_rt); v_err := null; exception when others then v_err := sqlerrm; end;
+  reset role;
+  if v_err is distinct from 'returns_before_ride_out' then raise exception 'T17 FAIL: an earlier pickup offered as a way back (%)', v_err; end if;
+
+  -- ── T18: releasing a seat names who moved up ─────────────────────────────
+  perform set_config('request.jwt.claims', json_build_object('sub', v_b, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  v_rt := create_trip(v_camp, jsonb_build_object('title','One-seat run','depart_date', v_day + 6, 'depart_time','10:00','return_time','11:00','passenger_seats', 1));
+  reset role;
+  perform set_config('request.jwt.claims', json_build_object('sub', v_c, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  v_res := claim_trip_seat(v_rt, null, null);
+  v_seat := (v_res->>'seat_id')::uuid;
+  reset role;
+  perform set_config('request.jwt.claims', json_build_object('sub', v_d, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  v_res := claim_trip_seat(v_rt, null, null);
+  reset role;
+  if v_res->>'status' <> 'waitlist' then raise exception 'T18 FAIL: second rider %', v_res; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', v_b, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  v_res := release_trip_seat(v_seat);
+  reset role;
+  if (v_res->>'promoted')::int <> 1 or v_res->'promoted_names' <> '["Hana Holder"]'::jsonb then
+    raise exception 'T18 FAIL: release result %', v_res;
+  end if;
+
+  -- ── T19: "I need that too" ───────────────────────────────────────────────
+  perform set_config('request.jwt.claims', json_build_object('sub', v_c, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  v_e1 := add_errand(v_camp, jsonb_build_object('item','AA batteries','quantity','24','trip_id', v_rt));
+  perform also_need_errand(v_e1);                                               -- your own: no-op
+  reset role;
+  perform set_config('request.jwt.claims', json_build_object('sub', v_d, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  perform also_need_errand(v_e1);
+  perform also_need_errand(v_e1);                                               -- twice: once
+  reset role;
+  select jsonb_array_length(also_needed_by) into v_n from trip_errands where id = v_e1;
+  if v_n <> 1 then raise exception 'T19 FAIL: also_needed_by has % entries', v_n; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', v_b, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  perform set_errand_status(v_e1, 'bought', null);
+  reset role;
+  select count(*) into v_n from scheduled_messages where subject_type = 'trip_errand' and subject_id = v_e1
+     and rule_key like 'errand_done:bought%' and to_email in ('qa-program@example.com','qa-holder@example.com');
+  if v_n <> 2 then raise exception 'T19 FAIL: % of 2 people who needed it were told', v_n; end if;
+
+  raise notice 'trips: 19/19 passed';
 end $$;
 
-select 'trips: 14/14 passed' as result;
+select 'trips: 19/19 passed' as result;
 rollback;

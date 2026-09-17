@@ -8,6 +8,7 @@ import { PlanTripSheet } from '@/components/trips/PlanTripSheet';
 import { ErrandSheet } from '@/components/trips/ErrandSheet';
 import { ShoppingListTab } from '@/components/trips/ShoppingListTab';
 import { RideRequestsTab } from '@/components/trips/RideRequestsTab';
+import { StrandedSheet } from '@/components/trips/StrandedSheet';
 import { ToastView, type Toast } from '@/components/trips/tripUi';
 import { useCampClock } from '@/components/trips/tripStyle';
 import { useTripsStore } from '@/store/tripsStore';
@@ -55,6 +56,7 @@ export function Trips() {
 
   const [planning, setPlanning] = useState<{ date: string | null; editing: Trip | null } | null>(null);
   const [errandFor, setErrandFor] = useState<{ tripId: string | null } | null>(null);
+  const [strandedDate, setStrandedDate] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
   const notify = useCallback((text: string, tone: Toast['tone'] = 'ok') => setToast({ id: Date.now(), text, tone }), []);
   const clearToast = useCallback(() => setToast(null), []);
@@ -117,7 +119,7 @@ export function Trips() {
 
   const days = useMemo(() => layoutWeek(weekStart, now.date, trips, seats, rideRequests), [weekStart, now.date, trips, seats, rideRequests]);
   const leaving = useMemo(() => leavingNext(trips, now), [trips, now]);
-  const list = useMemo(() => shoppingList(errands, trips), [errands, trips]);
+  const list = useMemo(() => shoppingList(errands, trips, now), [errands, trips, now]);
   const openRequests = useMemo(() => rideRequests.filter((r) => r.status === 'open' && r.wantedDate >= now.date).length, [rideRequests, now.date]);
   const managedTripIds = useMemo(
     () => new Set(trips.filter((t) => canManageTrip(t, currentUser.id, role)).map((t) => t.id)),
@@ -129,7 +131,9 @@ export function Trips() {
   );
 
   const weekTripCount = days.reduce((n, d) => n + d.trips.filter((t) => t.status !== 'cancelled').length, 0);
-  const subtitle = `${weekTripCount} trip${weekTripCount === 1 ? '' : 's'} ${weekStart === thisWeek ? 'this week' : `week of ${weekRangeLabel(weekStart)}`} · ${list.needsTripCount} errand${list.needsTripCount === 1 ? '' : 's'} need${list.needsTripCount === 1 ? 's' : ''} a trip`;
+  // Short enough for a phone header next to two buttons: "this week" is implied by the board
+  // below, and "need a trip" is what the Shopping list badge counts.
+  const subtitle = `${weekTripCount} trip${weekTripCount === 1 ? '' : 's'}${weekStart === thisWeek ? '' : ` · ${weekRangeLabel(weekStart)}`} · ${list.needsTripCount} errand${list.needsTripCount === 1 ? '' : 's'} need${list.needsTripCount === 1 ? 's' : ''} a trip`;
 
   if (!currentCamp) return null;
 
@@ -144,9 +148,11 @@ export function Trips() {
             <button
               type="button"
               onClick={() => setErrandFor({ tripId: null })}
-              className="hidden min-h-9 items-center gap-1.5 rounded-btn border border-border bg-white px-3 text-[12.5px] font-bold text-forest hover:border-sage sm:inline-flex"
+              aria-label="Add errand"
+              data-testid="header-add-errand"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-btn border border-border bg-white px-2.5 text-[12.5px] font-bold text-forest hover:border-sage sm:min-h-9 sm:px-3"
             >
-              <ShoppingBasket className="h-3.5 w-3.5" /> Add errand
+              <ShoppingBasket className="h-4 w-4 sm:h-3.5 sm:w-3.5" /> <span className="hidden sm:inline">Add errand</span>
             </button>
             <button
               type="button"
@@ -154,7 +160,7 @@ export function Trips() {
               data-testid="plan-trip-button"
               className="inline-flex min-h-11 items-center gap-1.5 rounded-btn bg-forest px-3.5 text-[13px] font-bold text-paper hover:bg-forest-mid sm:min-h-9"
             >
-              <Plus className="h-4 w-4" /> Plan a trip
+              <Plus className="h-4 w-4" /> Plan<span className="hidden sm:inline"> a trip</span>
             </button>
           </div>
         ) : undefined}
@@ -198,6 +204,7 @@ export function Trips() {
             onWeek={moveWeek}
             onOpenTrip={openTripById}
             onPlan={(date) => setPlanning({ date, editing: null })}
+            onStranded={setStrandedDate}
           />
         )}
         {tab === 'shopping' && (
@@ -228,7 +235,7 @@ export function Trips() {
           onEdit={(t) => setPlanning({ date: null, editing: t })}
           onAddErrand={(tripId) => setErrandFor({ tripId })}
           onOpenTrip={openTripById}
-          onAskForRide={() => update((p) => { p.delete('trip'); p.set('tab', 'rides'); })}
+          onStranded={setStrandedDate}
           notify={notify}
         />
       )}
@@ -258,10 +265,25 @@ export function Trips() {
         <ErrandSheet
           campId={currentCamp.id}
           trips={trips}
+          errands={errands}
+          userId={currentUser.id}
           now={now}
           tripId={errandFor.tripId}
           managedTripIds={managedTripIds}
           onClose={() => setErrandFor(null)}
+          notify={notify}
+        />
+      )}
+      {strandedDate && (
+        <StrandedSheet
+          date={strandedDate}
+          trips={trips}
+          seats={seats}
+          requests={rideRequests}
+          userId={currentUser.id}
+          role={role}
+          onOpenTrip={(id) => { setStrandedDate(null); openTripById(id); }}
+          onClose={() => setStrandedDate(null)}
           notify={notify}
         />
       )}

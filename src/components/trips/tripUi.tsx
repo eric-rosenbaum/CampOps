@@ -4,16 +4,17 @@
  */
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
-import type { TripKind } from '@/lib/tripTypes';
+import type { TripKind, TripDirection } from '@/lib/tripTypes';
 import type { SeatUsage } from '@/lib/trips';
-import { KIND_STYLE } from './tripStyle';
+import { kindStyle } from './tripStyle';
 
 export function KindTag({ kind, className = '' }: { kind: TripKind; className?: string }) {
-  const k = KIND_STYLE[kind];
+  const k = kindStyle(kind);
   const I = k.icon;
   return (
+    // Sentence case: "OTHER" in capitals read as a system category, not a kind of trip.
     <span
-      className={`inline-flex items-center gap-1 rounded-tag px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] ${className}`}
+      className={`inline-flex items-center gap-1 rounded-tag px-1.5 py-0.5 text-[11.5px] font-bold ${className}`}
       style={{ background: k.wash, color: k.ink }}
     >
       <I className="h-3 w-3" />
@@ -23,13 +24,16 @@ export function KindTag({ kind, className = '' }: { kind: TripKind; className?: 
 }
 
 /**
- * One dot per passenger seat. Full: taken both ways. Left half: taken on the way there only.
- * Right half: on the way back only. Empty ring: free. Amber "+N": waiting for a seat.
+ * One dot per passenger seat. Full: taken. Left half: taken on the way there only. Right half: on
+ * the way back only. Empty ring: free. Amber "+N": waiting for a seat. A one-way trip has only one
+ * leg, so a taken seat on it is a full dot -- half dots on an into-town-only ride suggested there
+ * were seats back to be had.
  */
-export function SeatDots({ usage, color, size = 10, showWaitlist = true }: {
-  usage: SeatUsage; color: string; size?: number; showWaitlist?: boolean;
+export function SeatDots({ usage, color, size = 10, showWaitlist = true, direction = 'round_trip' }: {
+  usage: SeatUsage; color: string; size?: number; showWaitlist?: boolean; direction?: TripDirection;
 }) {
-  const label = `${usage.freeBoth} of ${usage.seats} seat${usage.seats === 1 ? '' : 's'} free`
+  const free = direction === 'outbound' ? usage.freeThere : direction === 'pickup' ? usage.freeBack : usage.freeBoth;
+  const label = `${free} of ${usage.seats} seat${usage.seats === 1 ? '' : 's'} free`
     + (usage.waitlist.length ? `, ${usage.waitlist.length} waiting` : '');
   return (
     <span
@@ -45,9 +49,10 @@ export function SeatDots({ usage, color, size = 10, showWaitlist = true }: {
     >
       {usage.slots.map((slot, i) => {
         let background = 'transparent';
-        if (slot.there && slot.back) background = color;
-        else if (slot.there) background = `linear-gradient(90deg, ${color} 50%, transparent 50%)`;
-        else if (slot.back) background = `linear-gradient(90deg, transparent 50%, ${color} 50%)`;
+        const oneWay = direction !== 'round_trip';
+        if (oneWay ? (direction === 'outbound' ? slot.there : slot.back) : slot.there && slot.back) background = color;
+        else if (!oneWay && slot.there) background = `linear-gradient(90deg, ${color} 50%, transparent 50%)`;
+        else if (!oneWay && slot.back) background = `linear-gradient(90deg, transparent 50%, ${color} 50%)`;
         return (
           <span
             key={i}
@@ -134,8 +139,9 @@ export function ToastView({ toast, onDone }: { toast: Toast | null; onDone: () =
   if (!toast) return null;
   const tone = toast.tone === 'ok' ? 'bg-forest text-paper' : toast.tone === 'warn' ? 'bg-amber-bg text-amber-text border border-amber/40' : 'bg-red text-paper';
   return (
-    // Top of the screen on a phone: at the bottom it sat over the drawer's own action buttons.
-    <div className="pointer-events-none fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-[60] flex justify-center px-4 sm:bottom-5 sm:top-auto">
+    // Above the bottom edge on a phone: at the very bottom it sat over the drawer's action buttons,
+    // and at the top it covered the page header and its buttons.
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[60] flex justify-center px-4 sm:bottom-5">
       <div role="status" data-testid="trips-toast" className={`pointer-events-auto max-w-md rounded-btn px-4 py-2.5 text-[13.5px] font-semibold shadow-lg ${tone}`}>
         {toast.text}
       </div>

@@ -3,11 +3,11 @@ import { ChevronLeft, ChevronRight, Plus, Users, AlertTriangle, ListChecks, Chev
 import type { Trip, SeatStatus } from '@/lib/tripTypes';
 import {
   phoneDayOrder, weekRangeLabel, shortDow, monthDay, minutesUntil, countdownLabel, clock,
-  errandListOpen, type BoardDay, type SeatUsage, type LocalNow,
+  errandListOpen, seatSummary, routeLabel, type BoardDay, type SeatUsage, type LocalNow,
 } from '@/lib/trips';
 import { TripCard } from './TripCard';
 import { SeatDots } from './tripUi';
-import { KIND_STYLE } from './tripStyle';
+import { kindStyle } from './tripStyle';
 
 export interface BoardLookups {
   usage: (tripId: string) => SeatUsage;
@@ -28,9 +28,11 @@ interface Props {
   onWeek: (dir: -1 | 1 | 0) => void;
   onOpenTrip: (id: string) => void;
   onPlan: (date: string) => void;
+  /** The "N no ride back" chip: who, and what can be done. */
+  onStranded: (date: string) => void;
 }
 
-function DayChips({ day, onOpenTrip, compact = false }: { day: BoardDay; onOpenTrip: (id: string) => void; compact?: boolean }) {
+function DayChips({ day, onStranded, compact = false }: { day: BoardDay; onStranded: (date: string) => void; compact?: boolean }) {
   if (day.rideDemand.length === 0 && day.stranded.length === 0) return null;
   const strandedNames = day.stranded.map((s) => s.seat.riderName).join(', ');
   return (
@@ -49,8 +51,9 @@ function DayChips({ day, onOpenTrip, compact = false }: { day: BoardDay; onOpenT
         <button
           type="button"
           data-testid="stranded-chip"
-          onClick={() => onOpenTrip(day.stranded[0].trip.id)}
+          onClick={() => onStranded(day.date)}
           title={`No ride back yet: ${strandedNames}`}
+          aria-haspopup="dialog"
           className="inline-flex items-center gap-1 rounded-pill bg-red px-2 py-0.5 text-[11px] font-bold text-paper hover:bg-red-text"
         >
           <AlertTriangle className="h-3 w-3" />
@@ -71,9 +74,12 @@ function LeavingNext({ leaving, now, lookups, onOpenTrip }: Pick<Props, 'leaving
   return (
     <section aria-label="Leaving next" className="border-b border-border bg-paper-raised px-4 py-3.5 sm:px-7">
       <p className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-ink-soft">Leaving next</p>
-      <div className="grid gap-2.5 sm:grid-cols-2">
+      {/* minmax(0,1fr): an implicit column grew to the long nowrap title and pushed the card 8px off a phone. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-2.5 sm:grid-cols-2">
         {leaving.map((t) => {
-          const k = KIND_STYLE[t.kind];
+          const k = kindStyle(t.kind);
+          const sum = seatSummary(t, lookups.usage(t.id));
+          const route = routeLabel(t);
           const Icon = k.icon;
           const mins = minutesUntil(now, t.departDate, t.departTime);
           const usage = lookups.usage(t.id);
@@ -86,7 +92,7 @@ function LeavingNext({ leaving, now, lookups, onOpenTrip }: Pick<Props, 'leaving
               type="button"
               onClick={() => onOpenTrip(t.id)}
               data-testid="leaving-next"
-              className="flex items-center gap-3 rounded-card border border-border bg-white p-3 text-left transition-colors hover:border-sage"
+              className="flex min-w-0 items-center gap-3 rounded-card border border-border bg-white p-3 text-left transition-colors hover:border-sage"
             >
               <span className="grid h-12 w-12 flex-none place-items-center rounded-card" style={{ background: k.wash }}>
                 <Icon className="h-6 w-6" style={{ color: k.color }} />
@@ -101,12 +107,12 @@ function LeavingNext({ leaving, now, lookups, onOpenTrip }: Pick<Props, 'leaving
                   </span>
                 </span>
                 <span className="mt-1 block truncate text-[13.5px] font-semibold text-ink">
-                  {t.title}{t.destination ? ` → ${t.destination}` : ''}
+                  {t.title}{route ? (t.direction === 'pickup' ? ` · ${route}` : ` ${route}`) : ''}
                 </span>
                 <span className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-ink-soft">
-                  <SeatDots usage={usage} color={k.color} size={10} />
-                  <span className={usage.freeBoth === 0 ? 'font-bold text-red-text' : 'font-semibold'}>
-                    {usage.freeBoth === 0 ? 'Full' : `${usage.freeBoth} left`}
+                  <SeatDots usage={usage} color={k.color} size={10} direction={t.direction} />
+                  <span className={sum.tone === 'full' ? 'font-bold text-red-text' : sum.tone === 'partial' ? 'font-semibold text-amber-text' : 'font-semibold'}>
+                    {sum.text}
                   </span>
                   {t.errandsCloseTime && listOpen && (
                     <span className="inline-flex items-center gap-1 font-semibold text-amber-text">
@@ -140,7 +146,7 @@ function EmptyDay({ day, canWrite, onPlan }: { day: BoardDay; canWrite: boolean;
   );
 }
 
-export function WeekBoard({ days, weekStart, isCurrentWeek, leaving, now, lookups, canWrite, onWeek, onOpenTrip, onPlan }: Props) {
+export function WeekBoard({ days, weekStart, isCurrentWeek, leaving, now, lookups, canWrite, onWeek, onOpenTrip, onPlan, onStranded }: Props) {
   const [showPast, setShowPast] = useState(false);
   const weekTrips = days.reduce((n, d) => n + d.trips.filter((t) => t.status !== 'cancelled').length, 0);
   const phoneDays = phoneDayOrder(days);
@@ -180,7 +186,7 @@ export function WeekBoard({ days, weekStart, isCurrentWeek, leaving, now, lookup
           </button>
         )}
       </div>
-      <div className="mb-2 empty:hidden"><DayChips day={day} onOpenTrip={onOpenTrip} /></div>
+      <div className="mb-2 empty:hidden"><DayChips day={day} onStranded={onStranded} /></div>
       <div className="space-y-2">
         {day.trips.length === 0 ? <EmptyDay day={day} canWrite={canWrite} onPlan={onPlan} /> : day.trips.map((t) => card(t, 'row'))}
       </div>
@@ -188,7 +194,7 @@ export function WeekBoard({ days, weekStart, isCurrentWeek, leaving, now, lookup
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col" data-testid="board-pane">
       <LeavingNext leaving={leaving} now={now} lookups={lookups} onOpenTrip={onOpenTrip} />
 
       <div className="flex flex-wrap items-center gap-2 px-4 pb-2 pt-3.5 sm:px-7">
@@ -213,10 +219,11 @@ export function WeekBoard({ days, weekStart, isCurrentWeek, leaving, now, lookup
           </button>
         )}
         <span className="text-[12px] text-ink-soft">{weekTrips} trip{weekTrips === 1 ? '' : 's'}</span>
-        <span className="ml-auto hidden items-center gap-3 text-[11px] text-ink-soft md:flex" aria-hidden="true">
-          <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-forest-light" /> there &amp; back</span>
+        {/* The seat-dot legend, on phones too: half dots mean nothing until somebody says so. */}
+        <span className="flex w-full items-center gap-3 text-[11px] text-ink-soft md:ml-auto md:w-auto" data-testid="dot-legend">
+          <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-forest-light" /> taken</span>
           <span className="inline-flex items-center gap-1">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: 'linear-gradient(90deg,#5E7A61 50%,transparent 50%)', boxShadow: 'inset 0 0 0 1.5px #5E7A61' }} /> one way
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: 'linear-gradient(90deg,#5E7A61 50%,transparent 50%)', boxShadow: 'inset 0 0 0 1.5px #5E7A61' }} /> taken one way
           </span>
           <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full" style={{ boxShadow: 'inset 0 0 0 1.5px #5E7A61' }} /> free</span>
         </span>
@@ -242,7 +249,7 @@ export function WeekBoard({ days, weekStart, isCurrentWeek, leaving, now, lookup
                   {Number(day.date.slice(8))}
                 </span>
               </div>
-              <div className="mb-1.5 px-0.5 empty:hidden"><DayChips day={day} onOpenTrip={onOpenTrip} compact /></div>
+              <div className="mb-1.5 px-0.5 empty:hidden"><DayChips day={day} onStranded={onStranded} compact /></div>
               <div className="flex flex-1 flex-col gap-1.5">
                 {day.trips.map((t) => card(t, 'column'))}
                 {day.trips.length === 0 && <EmptyDay day={day} canWrite={canWrite} onPlan={onPlan} />}

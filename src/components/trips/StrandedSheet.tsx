@@ -132,7 +132,7 @@ export function StrandedSheet({ date, trips, seats, requests, userId, role, onOp
                                   onClick={() => offer(h, t)}
                                   className="min-h-11 flex-none rounded-btn bg-forest px-3 text-[12.5px] font-bold text-paper hover:bg-forest-mid disabled:opacity-60"
                                 >
-                                  {h.isMe ? 'Ride back' : 'Give a seat back'}
+                                  {h.isMe ? 'Ride back' : t.id === trip.id ? 'Add ride back' : 'Give a seat back'}
                                 </button>
                               ) : (
                                 <span className="max-w-[7rem] flex-none text-right text-[11px] leading-tight text-ink-faint">its driver can add them</span>

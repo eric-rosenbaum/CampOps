@@ -483,7 +483,7 @@ export function TripDrawer({ trip, trips, seats, errands, requests, userId, role
                               {s.riderName}{s.riderUserId === userId && <span className="text-ink-soft"> (you)</span>}
                             </span>
                             {s.leg !== 'both' && !g.waitlist && (
-                              <span className="block truncate text-[11.5px] text-ink-soft" data-testid="rider-journey">{journeyLabel(s, trips, seats)}</span>
+                              <span className="block text-[11.5px] leading-snug text-ink-soft" data-testid="rider-journey">{journeyLabel(s, trips, seats)}</span>
                             )}
                           </span>
                           {stranded.has(s.id) && (
@@ -532,7 +532,7 @@ export function TripDrawer({ trip, trips, seats, errands, requests, userId, role
                 ))}
               </div>
             )}
-            {planned && usage.confirmed.length > 0 && (
+            {planned && !departed && usage.confirmed.length > 0 && (
               <p className="mt-2 flex items-center gap-1.5 text-[11.5px] text-ink-soft">
                 <Bell className="h-3.5 w-3.5" />
                 Riders get {reminder}.
@@ -745,7 +745,7 @@ export function TripDrawer({ trip, trips, seats, errands, requests, userId, role
                     <Pencil className="h-4 w-4" /> Edit
                   </button>
                 )}
-                {trip.status === 'planned' && (
+                {trip.status === 'planned' && !overdue && (
                   <button type="button" disabled={busy !== null} onClick={() => run('out', () => dbSetTripStatus(trip.id, 'out'), () => notify('Marked as on the road.'))}
                     className="inline-flex min-h-11 items-center gap-1.5 rounded-btn border border-border bg-white px-3 text-[13px] font-bold text-forest hover:border-sage disabled:opacity-50">
                     <LogOut className="h-4 w-4" /> Leaving now

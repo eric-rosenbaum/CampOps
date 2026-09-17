@@ -2,15 +2,29 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Debug builds register against Apple's sandbox, shipped builds against production.
+	     Driven by the build configuration (APS_ENVIRONMENT) rather than hard-coded: this was
+	     pinned to `development` in every build, which is why a TestFlight or App Store copy
+	     filed a sandbox token and the server dutifully sent its notifications to a host that
+	     has never heard of it. PushService reads this value back out of the embedded profile
+	     and records it on the device row, so `push-send` picks the matching APNs host. -->
 	<key>aps-environment</key>
-	<string>development</string>
+	<string>$(APS_ENVIRONMENT)</string>
 	<!-- Universal links. What makes a camera pointed at a cabin-door sticker open THIS app on
 	     that cabin instead of opening the web page in Safari. It only works once
 	     https://app.campcommand.app/.well-known/apple-app-site-association is live and names
 	     this app id; Apple fetches it at install time, so a build shipped before the file is up
 	     will not link until the app is reinstalled or the file is re-fetched. -->
+	<!-- Every host a sticker can carry, not just the app host.
+	     A printed sticker encodes the MARKETING host (see stickerOrigin() in QrPreview.tsx):
+	     it is shorter to read aloud, and the web bounces staff on to app.campcommand.app when
+	     they arrive. That bounce is invisible to iOS. A universal link is matched against the
+	     domain that was actually scanned, and redirects are never followed, so with only
+	     `app.` associated the camera opened Safari for every sticker ever printed. -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
+		<string>applinks:campcommand.app</string>
+		<string>applinks:www.campcommand.app</string>
 		<string>applinks:app.campcommand.app</string>
 		<string>webcredentials:app.campcommand.app</string>
 	</array>

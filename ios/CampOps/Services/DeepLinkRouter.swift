@@ -17,13 +17,16 @@ import PostgREST
 final class DeepLinkRouter: ObservableObject {
     static let shared = DeepLinkRouter()
 
-    struct ScannedTarget: Equatable {
+    struct ScannedTarget: Equatable, Identifiable {
         let campId: String
         let campName: String
         /// "location" or "asset".
         let kind: String
         let targetId: String
         let targetName: String
+
+        var id: String { targetId }
+        var isAsset: Bool { kind == "asset" }
     }
 
     /// Set when a sticker resolves; cleared by whoever acts on it. A published value rather than
@@ -55,10 +58,45 @@ final class DeepLinkRouter: ObservableObject {
         return parts[1]
     }
 
+    /// Resolves a scanned token, from memory first and the server second.
+    ///
+    /// The local pass is not an optimisation, it is the point: a sticker is on a cabin door, and
+    /// cabin doors are where the signal is worst. Every location and asset already sits in the
+    /// offline cache with its own `qr_token`, so a scan in a dead zone opens the place instantly.
+    /// The server is still asked when the code is not one this camp holds -- a sticker from
+    /// another camp, or one printed since the last sync.
+    func resolveLocally(_ token: String) -> ScannedTarget? {
+        guard let camp = AuthManager.shared.currentCamp else { return nil }
+        if let location = LocationStore.shared.locations.first(where: { $0.qrToken == token }) {
+            return ScannedTarget(campId: camp.id, campName: camp.name, kind: "location",
+                                 targetId: location.id, targetName: location.name)
+        }
+        if let asset = QrIndex.shared.assets.first(where: { $0.qrToken == token }) {
+            return ScannedTarget(campId: camp.id, campName: camp.name, kind: "asset",
+                                 targetId: asset.id, targetName: asset.name)
+        }
+        return nil
+    }
+
+    /// Entry point for the in-app scanner, which has a raw string rather than a URL.
+    func handleScanned(token: String) {
+        if let local = resolveLocally(token) {
+            pending = local
+            return
+        }
+        Task { await resolve(token) }
+    }
+
     private func resolve(_ token: String) async {
         isResolving = true
         failure = nil
         defer { isResolving = false }
+
+        if let local = resolveLocally(token) {
+            pending = local
+            return
+        }
+
         do {
             let rows: [QrTargetRow] = try await SupabaseService.shared.client
                 .rpc("get_qr_target", params: ["p_token": token])
@@ -81,6 +119,21 @@ final class DeepLinkRouter: ObservableObject {
         } catch {
             failure = "Could not open that sticker. Check your signal and try again."
         }
+    }
+
+    func clearPending() { pending = nil }
+
+    /// The assets currently in memory, for resolving a sticker with no signal.
+    ///
+    /// A tiny registry rather than a reach into `AssetViewModel`: that view model belongs to the
+    /// tab that owns it, and a scan can happen from anywhere, including before that tab has ever
+    /// been opened. Locations come from `LocationStore`, which is already a singleton.
+    @MainActor
+    final class QrIndex {
+        static let shared = QrIndex()
+        private(set) var assets: [CampAsset] = []
+        private init() {}
+        func register(assets: [CampAsset]) { self.assets = assets }
     }
 
     private struct QrTargetRow: Decodable {

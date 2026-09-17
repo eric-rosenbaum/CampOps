@@ -19,8 +19,12 @@ final class SyncService: ObservableObject {
         monitor.start(queue: monitorQueue)
     }
 
+    /// - Parameter onThreadChange: notes and steps on a work order. They used to be absent from
+    ///   this channel entirely, so a message sent from the web only appeared on a phone when
+    ///   somebody pulled to refresh -- on the one screen two people are most likely to be
+    ///   looking at together.
     func subscribeToChanges(onIssueChange: @escaping () async -> Void,
-                            onTaskChange: @escaping () async -> Void,
+                            onThreadChange: (() async -> Void)? = nil,
                             onPoolChange: (() async -> Void)? = nil,
                             onAssetChange: (() async -> Void)? = nil,
                             onBuildingChange: (() async -> Void)? = nil,
@@ -33,7 +37,9 @@ final class SyncService: ObservableObject {
         channel = ch
 
         let issueStream      = await ch.postgresChange(AnyAction.self, schema: "public", table: "issues")
-        let taskStream       = await ch.postgresChange(AnyAction.self, schema: "public", table: "checklist_tasks")
+        let commentStream    = await ch.postgresChange(AnyAction.self, schema: "public", table: "issue_comments")
+        let stepStream       = await ch.postgresChange(AnyAction.self, schema: "public", table: "issue_checklist_items")
+        let crewMemberStream = await ch.postgresChange(AnyAction.self, schema: "public", table: "staff_group_members")
         let chemStream       = await ch.postgresChange(AnyAction.self, schema: "public", table: "pool_chemical_readings")
         let equipStream      = await ch.postgresChange(AnyAction.self, schema: "public", table: "pool_equipment")
         let inspStream       = await ch.postgresChange(AnyAction.self, schema: "public", table: "pool_inspections")
@@ -55,7 +61,9 @@ final class SyncService: ObservableObject {
         await ch.subscribe()
 
         Task { for await _ in issueStream    { await onIssueChange() } }
-        Task { for await _ in taskStream     { await onTaskChange()  } }
+        Task { for await _ in commentStream  { if let f = onThreadChange     { await f() } } }
+        Task { for await _ in stepStream     { if let f = onThreadChange     { await f() } } }
+        Task { for await _ in crewMemberStream { if let f = onPermissionChange { await f() } } }
         Task { for await _ in chemStream     { if let f = onPoolChange        { await f() } } }
         Task { for await _ in equipStream    { if let f = onPoolChange        { await f() } } }
         Task { for await _ in inspStream     { if let f = onPoolChange        { await f() } } }

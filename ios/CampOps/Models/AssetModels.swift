@@ -223,11 +223,17 @@ struct CampAsset: Codable, Identifiable {
     var motorType: String?
     var hasLifejackets: Bool?
     var lifejacketCount: Int?
+    /// Where this thing lives in the locations tree, when the camp has said.
+    var locationId: String?
+    /// The code on its sticker. Held locally so a scan resolves with no signal.
+    var qrToken: String?
     let createdAt: Date
     var updatedAt: Date
 
     enum CodingKeys: String, CodingKey {
         case id, name, category, subtype, make, model, year, notes, status, capacity
+        case locationId            = "location_id"
+        case qrToken               = "qr_token"
         case serialNumber          = "serial_number"
         case licensePlate          = "license_plate"
         case registrationExpiry    = "registration_expiry"

@@ -17,6 +17,16 @@ struct StaffGroupModules: Codable {
         case pool, safety, assets
     }
 
+    /// Everything on. Crews stopped gating module access on the web in the 2026-09-10 rework
+    /// ("staff see the whole app; what a crew decides is whose work you can see"), so a crew
+    /// that arrives without a modules object grants rather than withholds.
+    static let permissive = StaffGroupModules()
+
+    private init() {
+        issuesRepairs = true; prePost = true; pool = true
+        safety = true; assets = true; buildingSystems = true
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         issuesRepairs   = (try? c.decode(Bool.self, forKey: .issuesRepairs)) ?? true
@@ -29,19 +39,59 @@ struct StaffGroupModules: Codable {
     }
 }
 
+/// A crew.
+///
+/// "Trade" and "crew" are the same thing and the UI always says Crew. `key` is what
+/// `issues.trade` holds, and the pair merged in the 2026-09-10 rework -- before that a camp had
+/// a list of crews and a separate hard-coded list of trades that could not be reconciled.
+///
+/// A person belongs to MANY crews (`staff_group_members`). The single
+/// `camp_members.staff_group_id` this app used to read is dead: nothing writes it, so anyone
+/// added to a crew after 2026-09-10 looked crew-less on the phone and silently got full access.
 struct StaffGroup: Codable, Identifiable {
     let id: String
     let campId: String
     let name: String
+    /// The slug `issues.trade` stores. A trigger rejects a key that is not this camp's.
+    let key: String
+    let sortOrder: Int
+    let isActive: Bool
     let modules: StaffGroupModules
     let issuesSeeUnassigned: Bool
-    let prepostSeeUnassigned: Bool
+    let canViewCamperHealth: Bool
 
     enum CodingKeys: String, CodingKey {
-        case id, name, modules
+        case id, name, modules, key
         case campId               = "camp_id"
+        case sortOrder            = "sort_order"
+        case isActive             = "is_active"
         case issuesSeeUnassigned  = "issues_see_unassigned"
-        case prepostSeeUnassigned = "prepost_see_unassigned"
+        case canViewCamperHealth  = "can_view_camper_health"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id                  = try c.decode(String.self, forKey: .id)
+        campId              = try c.decode(String.self, forKey: .campId)
+        name                = try c.decode(String.self, forKey: .name)
+        key                 = (try? c.decodeIfPresent(String.self, forKey: .key)) ?? ""
+        sortOrder           = (try? c.decodeIfPresent(Int.self, forKey: .sortOrder)) ?? 0
+        isActive            = (try? c.decodeIfPresent(Bool.self, forKey: .isActive)) ?? true
+        modules             = (try? c.decode(StaffGroupModules.self, forKey: .modules))
+            ?? StaffGroupModules.permissive
+        issuesSeeUnassigned = (try? c.decodeIfPresent(Bool.self, forKey: .issuesSeeUnassigned)) ?? true
+        canViewCamperHealth = (try? c.decodeIfPresent(Bool.self, forKey: .canViewCamperHealth)) ?? false
+    }
+}
+
+/// Which crews a person is on. Read from `staff_group_members`, the many-to-many table.
+struct StaffGroupMembership: Decodable {
+    let staffGroupId: String
+    let userId: String
+
+    enum CodingKeys: String, CodingKey {
+        case staffGroupId = "staff_group_id"
+        case userId       = "user_id"
     }
 }
 
@@ -102,6 +152,9 @@ struct Camp: Codable, Identifiable, Equatable {
     let campType: String?
     let state: String?
     let modules: [String: Bool]
+    /// What the platform sells this camp, as distinct from what the camp has switched on.
+    /// Module access is two levels: entitlement here, the camp's own choice in `modules`.
+    let platformModules: [String: Bool]
     let locations: [String]
     /// Suspended / trial-expired camps are blocked, exactly as on web.
     let status: CampStatus
@@ -114,6 +167,7 @@ struct Camp: Codable, Identifiable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case id, name, slug, modules, locations, status, state
+        case platformModules = "platform_modules"
         case logoUrl     = "logo_url"
         case campType    = "camp_type"
         case accountType = "account_type"
@@ -130,6 +184,7 @@ struct Camp: Codable, Identifiable, Equatable {
         campType    = try c.decodeIfPresent(String.self, forKey: .campType)
         state       = try c.decodeIfPresent(String.self, forKey: .state)
         modules     = (try? c.decode([String: Bool].self, forKey: .modules)) ?? [:]
+        platformModules = (try? c.decode([String: Bool].self, forKey: .platformModules)) ?? [:]
         locations   = (try? c.decode([String].self, forKey: .locations)) ?? []
         status      = (try? c.decode(CampStatus.self, forKey: .status)) ?? .active
         accountType = (try? c.decode(CampAccountType.self, forKey: .accountType)) ?? .customer

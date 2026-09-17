@@ -34,25 +34,90 @@ final class IssueDetailViewModel: ObservableObject {
         await SyncEngine.shared.queueIssueActivity(entry, issueId: issue.id)
     }
 
+    /// Hand the job to a person.
+    ///
+    /// Clears the crew in the same write: a job sits with a person or a crew and never both.
     func assign(to user: CampUser?, by actor: CampUser) async {
         issue.assigneeId = user?.id
+        issue.assigneeGroupId = nil
         issue.status = user != nil ? .assigned : .unassigned
         issue.updatedAt = Date()
         let action = user != nil ? "Assigned to \(user!.name)" : "Unassigned"
-        let entry = ActivityEntry(id: UUID().uuidString, userId: actor.id, userName: actor.name, action: action)
+        let entry = ActivityEntry(id: UUID().uuidString.lowercased(), userId: actor.id,
+                                  userName: actor.name, action: action)
         issue.activity.append(entry)
 
         await SyncEngine.shared.queueIssueAssignment(
             issueId: issue.id, title: issue.title,
-            assigneeId: user?.id, status: issue.status
+            assigneeId: user?.id, assigneeGroupId: nil, status: issue.status
         )
         await SyncEngine.shared.queueIssueActivity(entry, issueId: issue.id)
     }
 
+    /// Hand the job to a crew rather than a person.
+    ///
+    /// It stays `unassigned`, because nobody has taken it -- that is what keeps it on the board
+    /// for the crew to pick up.
+    func assign(toCrew crew: StaffGroup, by actor: CampUser) async {
+        issue.assigneeId = nil
+        issue.assigneeGroupId = crew.id
+        issue.status = .unassigned
+        issue.updatedAt = Date()
+        let entry = ActivityEntry(id: UUID().uuidString.lowercased(), userId: actor.id,
+                                  userName: actor.name, action: "Sent to \(crew.name)")
+        issue.activity.append(entry)
+
+        await SyncEngine.shared.queueIssueAssignment(
+            issueId: issue.id, title: issue.title,
+            assigneeId: nil, assigneeGroupId: crew.id, status: .unassigned
+        )
+        await SyncEngine.shared.queueIssueActivity(entry, issueId: issue.id)
+    }
+
+    /// The contractor the job is waiting on.
+    func setVendor(_ vendor: ServiceVendor?, by actor: CampUser) async {
+        issue.vendorId = vendor?.id
+        issue.updatedAt = Date()
+        // The wording depends on the state, exactly as on the web: naming a vendor on a job
+        // that is already waiting is a different event from calling one in.
+        let action: String
+        if let vendor {
+            action = issue.status.isStalled ? "Waiting on \(vendor.name)" : "Called in \(vendor.name)"
+        } else {
+            action = "Cleared the vendor"
+        }
+        let entry = ActivityEntry(id: UUID().uuidString.lowercased(), userId: actor.id,
+                                  userName: actor.name, action: action)
+        issue.activity.append(entry)
+        await SyncEngine.shared.queueIssueVendor(issueId: issue.id, title: issue.title,
+                                                 vendorId: vendor?.id)
+        await SyncEngine.shared.queueIssueActivity(entry, issueId: issue.id)
+    }
+
+    /// Time spent, in minutes. Optional everywhere: closing a job never requires a field.
+    func setMinutes(_ minutes: Int?) async {
+        issue.minutesSpent = minutes
+        await SyncEngine.shared.queueIssueMinutes(issueId: issue.id, title: issue.title,
+                                                  minutes: minutes)
+    }
+
+    /// Put a closed job back in the queue.
+    func reopen(by user: CampUser) async {
+        issue.status = .inProgress
+        issue.updatedAt = Date()
+        let entry = ActivityEntry(id: UUID().uuidString.lowercased(), userId: user.id,
+                                  userName: user.name, action: "Reopened this")
+        issue.activity.append(entry)
+        await SyncEngine.shared.queueIssueStatus(issueId: issue.id, title: issue.title,
+                                                 status: .inProgress)
+        await SyncEngine.shared.queueIssueActivity(entry, issueId: issue.id)
+    }
+
     /// Closing the work order. The single most important write in the app to get right offline.
-    func resolve(actualCost: Double?, by user: CampUser) async {
+    func resolve(actualCost: Double?, minutes: Int? = nil, by user: CampUser) async {
         issue.status = .resolved
         issue.actualCost = actualCost
+        if let minutes { issue.minutesSpent = minutes }
         issue.updatedAt = Date()
         let action = actualCost != nil
             ? "Resolved, actual cost $\(String(format: "%.2f", actualCost!))"
@@ -63,6 +128,10 @@ final class IssueDetailViewModel: ObservableObject {
         await SyncEngine.shared.queueIssueResolution(
             issueId: issue.id, title: issue.title, actualCost: actualCost
         )
+        if let minutes {
+            await SyncEngine.shared.queueIssueMinutes(issueId: issue.id, title: issue.title,
+                                                      minutes: minutes)
+        }
         await SyncEngine.shared.queueIssueActivity(entry, issueId: issue.id)
         Haptics.success()
     }

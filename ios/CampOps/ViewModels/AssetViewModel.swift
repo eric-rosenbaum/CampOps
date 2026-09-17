@@ -3,7 +3,11 @@ import Combine
 
 @MainActor
 final class AssetViewModel: ObservableObject {
-    @Published var assets: [CampAsset] = []
+    @Published var assets: [CampAsset] = [] {
+        // Kept in a small registry so a scanned sticker resolves offline from anywhere in the
+        // app, including before this tab has been opened.
+        didSet { DeepLinkRouter.QrIndex.shared.register(assets: assets) }
+    }
     @Published var checkouts: [AssetCheckout] = []
     @Published var serviceRecords: [AssetServiceRecord] = []
     @Published var maintenanceTasks: [AssetMaintenanceTask] = []

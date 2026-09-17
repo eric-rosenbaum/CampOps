@@ -15,6 +15,9 @@ nonisolated struct IssueComment: Codable, Identifiable, Hashable {
     /// Whether the person who reported the issue (who may be a camper's parent via the public
     /// form) is allowed to see this. Defaults false: internal by default.
     var visibleToReporter: Bool
+    /// People named with `@` in this message. Ids, not names: a mention has to survive somebody
+    /// changing how their name is spelled.
+    var mentions: [String]
     let createdAt: Date
     var editedAt: Date?
     var deletedAt: Date?
@@ -26,6 +29,7 @@ nonisolated struct IssueComment: Codable, Identifiable, Hashable {
         case authorName         = "author_name"
         case photoUrls          = "photo_urls"
         case visibleToReporter  = "visible_to_reporter"
+        case mentions
         case createdAt          = "created_at"
         case editedAt           = "edited_at"
         case deletedAt          = "deleted_at"
@@ -39,6 +43,7 @@ nonisolated struct IssueComment: Codable, Identifiable, Hashable {
         body: String,
         photoUrls: [String] = [],
         visibleToReporter: Bool = false,
+        mentions: [String] = [],
         createdAt: Date = Date(),
         editedAt: Date? = nil,
         deletedAt: Date? = nil
@@ -47,6 +52,7 @@ nonisolated struct IssueComment: Codable, Identifiable, Hashable {
         self.authorId = authorId; self.authorName = authorName
         self.body = body; self.photoUrls = photoUrls
         self.visibleToReporter = visibleToReporter
+        self.mentions = mentions
         self.createdAt = createdAt; self.editedAt = editedAt; self.deletedAt = deletedAt
     }
 
@@ -59,6 +65,7 @@ nonisolated struct IssueComment: Codable, Identifiable, Hashable {
         body              = (try? c.decode(String.self, forKey: .body)) ?? ""
         photoUrls         = (try? c.decodeIfPresent([String].self, forKey: .photoUrls)) ?? []
         visibleToReporter = (try? c.decode(Bool.self, forKey: .visibleToReporter)) ?? false
+        mentions          = (try? c.decodeIfPresent([String].self, forKey: .mentions)) ?? []
         createdAt         = (try? c.decode(Date.self, forKey: .createdAt)) ?? Date()
         editedAt          = try? c.decodeIfPresent(Date.self, forKey: .editedAt)
         deletedAt         = try? c.decodeIfPresent(Date.self, forKey: .deletedAt)
@@ -77,6 +84,8 @@ nonisolated struct IssueChecklistItem: Codable, Identifiable, Hashable {
     var text: String
     var note: String?
     var requiresPhoto: Bool
+    /// The room or area this step belongs to, on templates that group their steps.
+    var section: String?
     var isDone: Bool
     var doneBy: String?
     var doneByName: String?
@@ -88,6 +97,7 @@ nonisolated struct IssueChecklistItem: Codable, Identifiable, Hashable {
         case id, position, text, note
         case issueId        = "issue_id"
         case requiresPhoto  = "requires_photo"
+        case section
         case isDone         = "is_done"
         case doneBy         = "done_by"
         case doneByName     = "done_by_name"
@@ -103,6 +113,7 @@ nonisolated struct IssueChecklistItem: Codable, Identifiable, Hashable {
         text: String,
         note: String? = nil,
         requiresPhoto: Bool = false,
+        section: String? = nil,
         isDone: Bool = false,
         doneBy: String? = nil,
         doneByName: String? = nil,
@@ -113,6 +124,7 @@ nonisolated struct IssueChecklistItem: Codable, Identifiable, Hashable {
         self.id = id; self.issueId = issueId
         self.position = position; self.text = text; self.note = note
         self.requiresPhoto = requiresPhoto
+        self.section = section
         self.isDone = isDone; self.doneBy = doneBy; self.doneByName = doneByName
         self.doneAt = doneAt; self.photoUrl = photoUrl; self.createdAt = createdAt
     }
@@ -125,6 +137,7 @@ nonisolated struct IssueChecklistItem: Codable, Identifiable, Hashable {
         text          = (try? c.decode(String.self, forKey: .text)) ?? ""
         note          = try? c.decodeIfPresent(String.self, forKey: .note)
         requiresPhoto = (try? c.decode(Bool.self, forKey: .requiresPhoto)) ?? false
+        section       = try? c.decodeIfPresent(String.self, forKey: .section)
         isDone        = (try? c.decode(Bool.self, forKey: .isDone)) ?? false
         doneBy        = try? c.decodeIfPresent(String.self, forKey: .doneBy)
         doneByName    = try? c.decodeIfPresent(String.self, forKey: .doneByName)

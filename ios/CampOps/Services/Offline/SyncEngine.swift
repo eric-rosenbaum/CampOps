@@ -270,7 +270,12 @@ final class SyncEngine: ObservableObject {
         isSyncing = true
         defer { isSyncing = false }
 
-        // Push first, because it is the half a person is waiting on.
+        // Photos first, so the mutation that attaches one is already in the queue by the time
+        // the queue is drained. A photo taken in a dead zone otherwise waits a whole extra
+        // sync cycle to appear on the work order it belongs to.
+        if shouldPush { await PhotoQueue.shared.drain(campId: campId) }
+
+        // Push next, because it is the half a person is waiting on.
         if shouldPush, await drainQueue(campId: campId) {
             pushFailures = 0
             pushNextAttemptAt = nil

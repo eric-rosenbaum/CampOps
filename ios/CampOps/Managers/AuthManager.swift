@@ -12,7 +12,18 @@ final class AuthManager: ObservableObject {
     @Published private(set) var session: Session? = nil
     @Published private(set) var currentCamp: Camp? = nil
     @Published private(set) var currentMember: CampMember? = nil
-    @Published private(set) var currentStaffGroup: StaffGroup? = nil
+    /// Every crew in this camp, active first, in the camp's own order. This is also the list of
+    /// trades a work order may carry.
+    @Published private(set) var crews: [StaffGroup] = []
+    /// The crews this person is on. A person can be on many, and gates fold the permissive way.
+    @Published private(set) var myCrews: [StaffGroup] = []
+    /// True when the signed-in account is a CampCommand founder.
+    ///
+    /// Fetched, never inferred: there is no JWT claim for it, and inferring it from role `admin`
+    /// or an email would hand every camp administrator the keys to every other camp.
+    @Published private(set) var isPlatformAdmin = false
+    /// Set while a founder is working inside a camp they are not a member of.
+    @Published private(set) var isImpersonating = false
     @Published private(set) var userFullName: String? = nil
     @Published private(set) var members: [CampUser] = []
     /// Every camp this user belongs to, for the switcher in Profile. Excludes deleted camps.
@@ -30,8 +41,10 @@ final class AuthManager: ObservableObject {
     var hasCamp: Bool { currentCamp != nil }
     /// True when a camp is selected but suspended or trial-expired. The app shows a
     /// blocking screen instead of the tabs, matching the web app's `CampRoute`.
+    ///
+    /// A founder is exempt: the whole point of opening a suspended camp is to look at why.
     var isCampBlocked: Bool {
-        guard let camp = currentCamp else { return false }
+        guard let camp = currentCamp, !isPlatformAdmin else { return false }
         return !camp.isAccessible
     }
 
@@ -51,33 +64,53 @@ final class AuthManager: ObservableObject {
     // hand out write permissions.
     var can: Permissions { Permissions(role: currentMember?.role ?? .viewer) }
 
+    /// Whether this camp has the module at all.
+    ///
+    /// Two levels, both of which the phone used to ignore entirely: the platform sells the
+    /// module (`platform_modules`), and then the camp switches it on (`modules`). A module a
+    /// camp had turned off still appeared in the phone's tab bar.
+    ///
+    /// Absent reads as ON at both levels. That is the web's rule (`src/lib/modules.ts`) and it
+    /// has to stay: every camp provisioned before a module existed has no key for it, and
+    /// reading absent as OFF would empty their sidebars on deploy.
+    func campHasModule(_ key: String) -> Bool {
+        guard let camp = currentCamp else { return false }
+        return camp.platformModules[key] ?? true ? camp.modules[key] ?? true : false
+    }
+
+    /// Whether this person may open the module.
+    ///
+    /// Crews stopped gating module access in the 2026-09-10 rework: staff see the whole app, and
+    /// what a crew decides is whose WORK you can see. Viewers remain read-only observers of
+    /// everything, which is the one role that still turns a module off.
     func canAccessModule(_ module: String) -> Bool {
         guard let member = currentMember else { return false }
+        guard campHasModule(module) else { return false }
         if member.role == .admin { return true }
-        // Viewers get no module access at all, same rule as the web app's canAccessModule.
-        if member.role == .viewer { return false }
-        guard let group = currentStaffGroup else { return true }
-        switch module {
-        case "issues_repairs": return group.modules.issuesRepairs
-        case "pre_post":       return group.modules.prePost
-        case "pool":           return group.modules.pool
-        case "safety":         return group.modules.safety
-        case "assets":           return group.modules.assets
-        case "building_systems": return group.modules.buildingSystems
-        default:                 return true
-        }
+        return member.role != .viewer
     }
 
+    /// Whether this person sees work that is not theirs.
+    ///
+    /// Across every crew, the most permissive answer wins: someone on both Grounds (pick work
+    /// up) and Kitchen (own work only) can still pick up grounds work. A stricter crew must not
+    /// quietly take away what another one grants.
     var issuesSeeUnassigned: Bool {
         guard currentMember?.role == .staff else { return true }
-        guard let group = currentStaffGroup else { return true }
-        return group.issuesSeeUnassigned
+        if myCrews.isEmpty { return true }
+        return myCrews.contains { $0.issuesSeeUnassigned }
     }
 
-    var prepostSeeUnassigned: Bool {
-        guard currentMember?.role == .staff else { return true }
-        guard let group = currentStaffGroup else { return true }
-        return group.prepostSeeUnassigned
+    /// The crew ids this person is on, for filtering work that sits with a crew.
+    var myCrewIds: [String] { myCrews.map(\.id) }
+
+    /// Camper names and allergy severities. Unlike every other gate here this one is mirrored by
+    /// real RLS, and it FAILS CLOSED: a staff member with no crew is denied, where elsewhere no
+    /// crew means full access.
+    var canViewCamperHealth: Bool {
+        guard let role = currentMember?.role else { return false }
+        if role == .admin { return true }
+        return role == .staff && myCrews.contains { $0.canViewCamperHealth }
     }
 
     private let selectedCampKey = "campcommand.selectedCampId"
@@ -101,7 +134,10 @@ final class AuthManager: ObservableObject {
                     self.session = nil
                     self.currentCamp = nil
                     self.currentMember = nil
-                    self.currentStaffGroup = nil
+                    self.crews = []
+                    self.myCrews = []
+                    self.isPlatformAdmin = false
+                    self.isImpersonating = false
                     self.userFullName = nil
                     self.camps = []
                     self.members = []
@@ -257,7 +293,10 @@ final class AuthManager: ObservableObject {
         session = nil
         currentCamp = nil
         currentMember = nil
-        currentStaffGroup = nil
+        crews = []
+        myCrews = []
+        isPlatformAdmin = false
+        isImpersonating = false
         userFullName = nil
         camps = []
         members = []
@@ -321,10 +360,10 @@ final class AuthManager: ObservableObject {
         return raw
     }
 
-    // Refreshes the current member record and staff group without a full re-auth.
+    // Refreshes the current member record and crews without a full re-auth.
     // Called on foreground resume and on realtime camp_members/staff_groups changes.
     func reloadMemberAndGroup() async {
-        guard let userId = session?.user.id.uuidString,
+        guard let userId = session?.user.id.uuidString.lowercased(),
               let campId = currentCamp?.id else { return }
 
         guard let rows = try? await supabase
@@ -336,28 +375,51 @@ final class AuthManager: ObservableObject {
             .limit(1)
             .execute()
             .value as [CampMemberRow],
-              let row = rows.first else { return }
+              let row = rows.first else {
+            // A founder who is not a member has no row to refresh; their crews are still worth
+            // re-reading in case the camp renamed one.
+            await loadCrews(campId: campId, userId: userId)
+            return
+        }
 
         // Refresh the camp too, so a suspension or trial expiry applied while the app was
         // backgrounded takes effect on the next foreground resume rather than at next launch.
         currentCamp = row.camps
-        currentMember = CampMember(
-            id: row.id, campId: row.campId, userId: row.userId,
-            role: row.role, department: row.department,
-            displayName: row.displayName, isActive: row.isActive,
-            staffGroupId: row.staffGroupId
-        )
-        if let groupId = row.staffGroupId {
-            currentStaffGroup = try? await supabase
-                .from("staff_groups")
-                .select()
-                .eq("id", value: groupId)
-                .single()
-                .execute()
-                .value
-        } else {
-            currentStaffGroup = nil
+        if !isImpersonating {
+            currentMember = CampMember(
+                id: row.id, campId: row.campId, userId: row.userId,
+                role: row.role, department: row.department,
+                displayName: row.displayName, isActive: row.isActive,
+                staffGroupId: row.staffGroupId
+            )
         }
+        await loadCrews(campId: campId, userId: userId)
+    }
+
+    /// Loads this camp's crews, and which of them this person is on.
+    ///
+    /// Two queries rather than a join, because `staff_group_members` is the source of truth for
+    /// membership and `staff_groups` is the source of truth for the crew itself. The dead
+    /// `camp_members.staff_group_id` is deliberately not consulted.
+    private func loadCrews(campId: String, userId: String) async {
+        let all: [StaffGroup] = (try? await supabase
+            .from("staff_groups")
+            .select()
+            .eq("camp_id", value: campId)
+            .order("sort_order", ascending: true)
+            .execute()
+            .value) ?? []
+        crews = all
+
+        let mine: [StaffGroupMembership] = (try? await supabase
+            .from("staff_group_members")
+            .select("staff_group_id, user_id")
+            .eq("camp_id", value: campId)
+            .eq("user_id", value: userId)
+            .execute()
+            .value) ?? []
+        let ids = Set(mine.map(\.staffGroupId))
+        myCrews = all.filter { ids.contains($0.id) }
     }
 
     func joinWithCode(_ code: String) async {
@@ -396,6 +458,8 @@ final class AuthManager: ObservableObject {
             userFullName = profile.fullName
         }
 
+        await refreshPlatformAdmin()
+
         // Fetch camp memberships with nested camp data
         guard let allRows = try? await supabase
             .from("camp_members")
@@ -411,11 +475,22 @@ final class AuthManager: ObservableObject {
         guard !rows.isEmpty else {
             currentCamp = nil
             currentMember = nil
-            currentStaffGroup = nil
+            crews = []
+            myCrews = []
             return
         }
 
-        // Prefer previously selected camp, otherwise first
+        // Prefer previously selected camp, otherwise first.
+        //
+        // A founder is the exception, and it is not a small one: they hold admin rights in every
+        // camp on the platform, so launching straight into one is how somebody edits a
+        // customer's live data believing it is their own. They pick a camp every launch, even
+        // one they are genuinely a member of. The web does the same.
+        if isPlatformAdmin {
+            currentCamp = nil
+            currentMember = nil
+            return
+        }
         let savedId = UserDefaults.standard.string(forKey: selectedCampKey)
         let preferred = rows.first { $0.camps.id == savedId } ?? rows[0]
         await apply(row: preferred)
@@ -440,9 +515,13 @@ final class AuthManager: ObservableObject {
         await apply(row: row)
     }
 
-    // Makes `row` the active camp: member, staff group, saved selection, roster.
+    // Makes `row` the active camp: member, crews, saved selection, roster.
     private func apply(row: CampMemberRow) async {
         currentCamp = row.camps
+        // True even in a camp the founder genuinely belongs to, and the web agrees. What the
+        // banner announces is "you are here with platform rights", which is the case wherever
+        // they are -- and it is what gives them a way back to the camp list from any screen.
+        isImpersonating = isPlatformAdmin
         currentMember = CampMember(
             id: row.id,
             campId: row.campId,
@@ -453,19 +532,74 @@ final class AuthManager: ObservableObject {
             isActive: row.isActive,
             staffGroupId: row.staffGroupId
         )
-        if let groupId = row.staffGroupId {
-            currentStaffGroup = try? await supabase
-                .from("staff_groups")
-                .select()
-                .eq("id", value: groupId)
-                .single()
-                .execute()
-                .value
+        // Not remembered for a founder: which camp they had open last is not a preference, it is
+        // a loaded gun at the next launch.
+        if isPlatformAdmin {
+            UserDefaults.standard.removeObject(forKey: selectedCampKey)
         } else {
-            currentStaffGroup = nil
+            UserDefaults.standard.set(row.camps.id, forKey: selectedCampKey)
         }
-        UserDefaults.standard.set(row.camps.id, forKey: selectedCampKey)
+        await loadCrews(campId: row.camps.id,
+                        userId: session?.user.id.uuidString.lowercased() ?? "")
         await loadMembers(campId: row.camps.id)
+    }
+
+    // MARK: - Platform admin
+
+    /// Asks the server whether this account is a founder. One RPC, at camp-load time.
+    private func refreshPlatformAdmin() async {
+        isPlatformAdmin = (try? await supabase
+            .rpc("is_platform_admin")
+            .execute()
+            .value as Bool) ?? false
+    }
+
+    /// Every camp on the platform, newest first. Only a founder can read this: `is_camp_member`
+    /// short-circuits on `is_platform_admin()`, so RLS returns the whole table to them and
+    /// nothing extra to anyone else.
+    func loadAllCampsForAdmin() async -> [Camp] {
+        guard isPlatformAdmin else { return [] }
+        let rows: [Camp] = (try? await supabase
+            .from("camps")
+            .select()
+            .order("created_at", ascending: false)
+            .execute()
+            .value) ?? []
+        return rows.filter { $0.deletedAt == nil }
+    }
+
+    /// Opens a camp the founder is not a member of.
+    ///
+    /// The database already agrees: `get_camp_role()` returns `admin` for a platform admin in
+    /// every camp. So this synthesizes the membership the client needs rather than inventing
+    /// permission -- and deliberately ignores any real `camp_members` row, because a founder who
+    /// happens to be a viewer somewhere must not be downgraded while holding the master key.
+    ///
+    /// Not persisted. A borrowed camp must not still be open at next launch, which is why
+    /// `selectedCampKey` is cleared rather than written.
+    func openCampAsAdmin(_ camp: Camp) async {
+        guard isPlatformAdmin else { return }
+        currentCamp = camp
+        isImpersonating = true
+        currentMember = CampMember(
+            id: "platform-admin", campId: camp.id,
+            userId: session?.user.id.uuidString.lowercased() ?? "",
+            role: .admin, department: nil,
+            displayName: "CampCommand admin", isActive: true, staffGroupId: nil
+        )
+        UserDefaults.standard.removeObject(forKey: selectedCampKey)
+        await loadCrews(campId: camp.id, userId: session?.user.id.uuidString.lowercased() ?? "")
+        await loadMembers(campId: camp.id)
+    }
+
+    /// Puts the borrowed camp down and returns the founder to the camp list.
+    func exitImpersonation() {
+        guard isImpersonating else { return }
+        isImpersonating = false
+        currentCamp = nil
+        currentMember = nil
+        crews = []; myCrews = []; members = []
+        UserDefaults.standard.removeObject(forKey: selectedCampKey)
     }
 
     private func loadMembers(campId: String) async {

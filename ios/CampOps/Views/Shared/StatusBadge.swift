@@ -29,6 +29,9 @@ struct StatusBadge: View {
         case .unassigned: return .priorityUrgent
         case .assigned:   return .amberText
         case .inProgress: return .amberText
+        // Open, but explicitly not being worked. Muted rather than amber so a board full of
+        // "waiting on a part" doesn't read as a board full of work in progress.
+        case .waitingOnVendor, .waitingOnPart: return .forestMid
         case .resolved:   return .priorityNormal
         }
     }

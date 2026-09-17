@@ -2,14 +2,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Check, CheckCircle2, Copy, Loader2, MapPin, UtensilsCrossed } from 'lucide-react';
 import { publicCancelFoodRequest, publicGetFoodStatus, type PublicFoodStatus as Status } from '@/lib/foodRequestsDb';
-import { formatClock, formatLineQty, formatPickup, formatNotice } from '@/lib/foodRequests';
+import { formatClock, formatLineQty, formatPickup, formatNotice, formatNoticeRule } from '@/lib/foodRequests';
+import { ConfirmDialog } from '@/components/foodRequests/ConfirmDialog';
 
 /**
  * /food/status/:token — one request, as the person who asked sees it.
  *
- * It refreshes when the tab comes back into focus and every twenty seconds while open, because
- * the person reading it is usually checking whether they can walk over yet.
+ * It refreshes every 8 seconds while the page is visible, and at once when the phone comes back to
+ * it, because the person reading it is usually checking whether they can walk over yet. It used to
+ * poll every 20 seconds while saying "always current", which in a demo read as broken.
  */
+const POLL_MS = 8_000;
 export function PublicFoodStatus() {
   const { token = '' } = useParams();
   const [params] = useSearchParams();
@@ -19,6 +22,7 @@ export function PublicFoodStatus() {
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -36,7 +40,7 @@ export function PublicFoodStatus() {
     const onFocus = () => { if (document.visibilityState === 'visible') void refresh(); };
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onFocus);
-    const t = setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 20_000);
+    const t = setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, POLL_MS);
     return () => {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onFocus);
@@ -45,12 +49,12 @@ export function PublicFoodStatus() {
   }, [refresh]);
 
   async function cancel() {
-    if (!confirm('Cancel this request? The kitchen will stop preparing it.')) return;
     setCancelling(true);
     setError(null);
     const err = await publicCancelFoodRequest(token);
     setCancelling(false);
     if (err) setError(err);
+    setConfirming(false);
     await refresh();
   }
 
@@ -83,7 +87,7 @@ export function PublicFoodStatus() {
   const headline = headlineFor(data, where);
 
   return (
-    <div className="min-h-screen w-full bg-cream px-4 pb-16 pt-6 sm:px-5 sm:pt-10">
+    <div className="min-h-screen w-full bg-cream px-4 pb-28 pt-6 sm:px-5 sm:pt-10">
       <div className="mx-auto max-w-lg">
         <div className="mb-5 flex items-center gap-2.5">
           {data.camp.logo_url
@@ -98,7 +102,7 @@ export function PublicFoodStatus() {
               <CheckCircle2 className="h-4 w-4" /> Sent to the kitchen
             </p>
             <p className="mt-1 text-[14px] leading-snug text-green-muted-text">
-              We emailed you this page. It updates as the kitchen works on your request.
+              We emailed you this page, and it updates as the kitchen works on your request. It’s also listed under “Your requests on this phone” on your program’s link.
             </p>
             <button type="button" onClick={copyLink} className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-semibold text-forest underline underline-offset-2">
               {copied ? <><Check className="h-3.5 w-3.5" /> Link copied</> : <><Copy className="h-3.5 w-3.5" /> Copy link to this page</>}
@@ -108,13 +112,24 @@ export function PublicFoodStatus() {
 
         <p className="text-[13px] font-semibold text-ink-soft">{data.program_name ?? data.requester_name}</p>
         <h1 data-testid="status-headline" className="font-display text-[26px] font-bold leading-tight text-forest">{headline}</h1>
-        <p className="mt-2 flex items-start gap-1.5 text-[15px] text-ink">
-          <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-sage" />
-          <span>Pickup <strong>{when}</strong> at {where}</span>
-        </p>
+        {data.status === 'picked_up' && data.picked_up_at ? (
+          <p data-testid="picked-up-when" className="mt-2 text-[15px] text-ink">
+            Picked up <strong>{formatStamp(data.picked_up_at)}</strong> <span className="text-ink-soft">(pickup was {when})</span>
+          </p>
+        ) : (
+          <p className="mt-2 flex items-start gap-1.5 text-[15px] text-ink">
+            <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-sage" />
+            <span>Pickup <strong>{when}</strong> at {where}</span>
+          </p>
+        )}
+        {(data.purpose || data.headcount) && (
+          <p data-testid="status-purpose" className="mt-1 text-[14px] text-ink-soft">
+            {[data.purpose, data.headcount ? `${data.headcount} ${data.headcount === 1 ? 'person' : 'people'}` : null].filter(Boolean).join(' · ')}
+          </p>
+        )}
         {data.is_late && data.status === 'submitted' && (
           <p className="mt-2 text-[14px] leading-snug text-amber-text">
-            This was sent with {formatNotice(Number(data.notice_hours))} notice (the kitchen asks for {Math.round(Number(data.cutoff_hours))} hours), so they may not fill all of it.
+            Short notice: this was sent {formatNotice(Number(data.notice_hours))} ahead, and the kitchen asks for {formatNoticeRule(Number(data.cutoff_hours))}, so they may not fill all of it.
           </p>
         )}
 
@@ -170,13 +185,21 @@ export function PublicFoodStatus() {
 
         {error && <p role="alert" className="mt-4 text-[14px] text-red-text">{error}</p>}
         {data.can_cancel && (
-          <button type="button" onClick={cancel} disabled={cancelling}
+          <button type="button" onClick={() => setConfirming(true)} disabled={cancelling}
             className="mt-6 w-full rounded-btn border border-border bg-white px-4 py-3 text-[15px] font-semibold text-red-text hover:border-red disabled:opacity-60">
             {cancelling ? 'Cancelling…' : 'Cancel this request'}
           </button>
         )}
-        <p className="mt-6 text-center text-[12px] text-ink-faint">Emails can take up to 15 minutes to arrive. This page is always current.</p>
+        <p className="mt-6 text-center text-[12px] text-ink-faint">This page updates automatically while it’s open. Emails can take up to 15 minutes to arrive.</p>
       </div>
+      {confirming && (
+        <ConfirmDialog tone="danger" busy={cancelling}
+          title="Cancel this request?"
+          body={<>Pickup {when}. The kitchen is told and stops setting it aside.</>}
+          confirmLabel={cancelling ? 'Cancelling…' : 'Cancel request'}
+          onCancel={() => setConfirming(false)}
+          onConfirm={cancel} />
+      )}
     </div>
   );
 }

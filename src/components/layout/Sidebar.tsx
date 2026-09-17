@@ -90,8 +90,9 @@ const facilityItems: NavItem[] = [
 const commissaryItems: NavItem[] = [
   { path: '/commissary', label: 'Kitchen Manager', icon: UtensilsCrossed, end: false, module: 'commissary' },
   // For the people who ASK the kitchen (program leads), who should not have to find a form inside
-  // the kitchen's own inventory screens.
-  { path: '/food-requests', label: 'Food requests', icon: ShoppingBasket, end: false, module: 'commissary' },
+  // the kitchen's own inventory screens. Named for what it does: as "Food requests" the kitchen
+  // opened it looking for the inbox of requests to approve, which lives in Kitchen Manager.
+  { path: '/food-requests', label: 'Ask the kitchen', icon: ShoppingBasket, end: false, module: 'commissary' },
 ];
 
 const aquaticsItems: NavItem[] = [

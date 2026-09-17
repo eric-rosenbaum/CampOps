@@ -241,7 +241,8 @@ export interface PublicFoodForm {
   cutoff_hours: number;
   pickup_location: string | null;
   items: FoodFormItem[];
-  upcoming: { pickup_date: string; pickup_time: string; status: FoodRequest['status'] }[];
+  /** Other people's upcoming requests for this program: when, status, and a first name. No tokens. */
+  upcoming: { pickup_date: string; pickup_time: string; status: FoodRequest['status']; ref: string; asked_by: string | null }[];
 }
 
 export async function publicGetFoodForm(token: string): Promise<PublicFoodForm | null> {
@@ -256,7 +257,11 @@ export async function publicSubmitFoodRequest(token: string, payload: Record<str
 }
 
 export interface PublicFoodStatus {
+  /** The request's id: lets the form hide this phone's own rows from the "others" list. */
+  ref: string;
   camp: { name: string; logo_url: string | null };
+  purpose: string | null;
+  headcount: number | null;
   program_name: string | null;
   requester_name: string;
   pickup_date: string;

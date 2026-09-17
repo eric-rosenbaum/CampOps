@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, ShoppingBasket } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Inbox, ShoppingBasket } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { Button } from '@/components/shared/Button';
 import { RequestForm } from '@/components/foodRequests/RequestForm';
@@ -9,6 +9,8 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import { FOOD_STATUS_LABELS, draftToPayload, formatLineQty, formatPickup, lineChangeSummary } from '@/lib/foodRequests';
+import { ConfirmDialog } from '@/components/foodRequests/ConfirmDialog';
+import type { FoodRequest } from '@/lib/foodRequestTypes';
 import { dbCancelFoodRequest, dbSubmitFoodRequest, loadCampTimeZone } from '@/lib/foodRequestsDb';
 import type { FoodRequestLine } from '@/lib/foodRequestTypes';
 
@@ -27,8 +29,12 @@ export function FoodRequests() {
   const items = useCommissaryStore((s) => s.items);
   const patch = useCommissaryStore((s) => s.patchFoodRequest);
   const camp = useCampStore((s) => s.currentCamp);
-  const { currentUser, role } = useAuth();
+  const { currentUser, role, can } = useAuth();
   const canAsk = role === 'admin' || role === 'staff';
+  const canManage = can('manageCommissary');
+  const waiting = requests.filter((r) => r.status === 'submitted').length;
+  const [cancelling, setCancelling] = useState<FoodRequest | null>(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
 
   const [composing, setComposing] = useState(false);
   const [sent, setSent] = useState(false);
@@ -59,10 +65,22 @@ export function FoodRequests() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <Topbar title="Food requests" subtitle="Ask the kitchen for food for a program or activity"
+      <Topbar title="Ask the kitchen" subtitle="Request food for a program or activity"
         actions={canAsk && !composing ? <Button size="sm" onClick={() => { setComposing(true); setSent(false); }}>+ New request</Button> : undefined} />
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-7 sm:py-6">
         <div className="mx-auto max-w-2xl">
+          {canManage && (
+            // The kitchen and admins land here from the sidebar expecting the requests to approve.
+            <Link to="/commissary?tab=requests&view=inbox" data-testid="kitchen-inbox-link"
+              className="mb-5 flex items-center gap-3 rounded-card border border-sage/40 bg-green-muted-bg px-4 py-3 text-green-muted-text hover:border-sage">
+              <Inbox className="h-5 w-5 flex-shrink-0" />
+              <span className="min-w-0 flex-1 text-[13.5px]">
+                <span className="block font-semibold">Looking for incoming requests?</span>
+                Open the kitchen inbox{waiting > 0 ? ` (${waiting} new)` : ''} to approve them.
+              </span>
+              <ArrowRight className="h-4 w-4 flex-shrink-0" />
+            </Link>
+          )}
           {sent && (
             <p className="mb-4 flex items-center gap-2 rounded-card border border-sage/40 bg-green-muted-bg px-3.5 py-2.5 text-[13px] font-semibold text-green-muted-text">
               <CheckCircle2 className="h-4 w-4" /> Sent to the kitchen. You&rsquo;ll get an email when they decide.
@@ -140,11 +158,7 @@ export function FoodRequests() {
                       </Link>
                       {(r.status === 'submitted' || r.status === 'approved') && (
                         <button type="button" className="font-semibold text-red-text"
-                          onClick={async () => {
-                            if (!confirm('Cancel this request?')) return;
-                            const err = await dbCancelFoodRequest(r.id);
-                            if (err) alert(err); else patch(r.id, { status: 'cancelled', cancelledAt: new Date().toISOString() });
-                          }}>
+                          onClick={() => setCancelling(r)}>
                           Cancel
                         </button>
                       )}
@@ -156,6 +170,23 @@ export function FoodRequests() {
           )}
         </div>
       </div>
+      {cancelling && (
+        <ConfirmDialog
+          tone="danger" busy={cancelBusy}
+          title="Cancel this request?"
+          body={<>{formatPickup(cancelling.pickupDate, cancelling.pickupTime)}. The kitchen is told, and stops setting it aside.</>}
+          confirmLabel="Cancel request"
+          onCancel={() => setCancelling(null)}
+          onConfirm={async () => {
+            setCancelBusy(true);
+            const err = await dbCancelFoodRequest(cancelling.id);
+            setCancelBusy(false);
+            if (err) { alert(err); return; }
+            patch(cancelling.id, { status: 'cancelled', cancelledAt: new Date().toISOString(), cancelledBy: 'requester' });
+            setCancelling(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -60,7 +60,11 @@ final class DraftWorkOrderService {
     func draft(image: UIImage?, transcript: String?, context: DraftContext) async throws -> WorkOrderDraft {
         guard image != nil || !(transcript ?? "").isEmpty else { throw DraftError.failed }
 
-        var body: [String: Any] = ["context": context.payload]
+        // The camp travels at the body root, where the function looks for it first. It checks
+        // membership and spends an hourly budget before it calls the model, and both need to
+        // know whose camp this is -- a signed-in caller is not by itself a reason to spend.
+        guard let campId = AuthManager.shared.currentCamp?.id else { throw DraftError.failed }
+        var body: [String: Any] = ["campId": campId, "context": context.payload]
         if let image {
             let compressed = resized(image, maxWidth: 1000)
             guard let jpeg = compressed.jpegData(compressionQuality: 0.85) else {

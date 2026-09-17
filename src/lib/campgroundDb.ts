@@ -613,7 +613,13 @@ export async function draftWorkOrder(input: {
     recentTitles: string[];
   };
 }): Promise<WorkOrderDraft | null> {
-  const { data, error } = await supabase.functions.invoke('draft-work-order', { body: input });
+  // The camp travels with the request. The function used to accept any signed-in caller, which
+  // meant a vision call on somebody else's word about which camp they were in, with no rate
+  // limit behind it; it now checks membership and spends an hourly budget, and both need to
+  // know whose camp this is.
+  const { data, error } = await supabase.functions.invoke('draft-work-order', {
+    body: { ...input, campId: CID() },
+  });
   if (error) { campError('draft work order', error.message); return null; }
   return (data as WorkOrderDraft) ?? null;
 }

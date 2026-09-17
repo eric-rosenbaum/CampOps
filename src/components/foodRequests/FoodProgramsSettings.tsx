@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Copy, Pencil, QrCode as QrIcon, RefreshCw, Printer } from 'lucide-react';
+import { Check, Copy, Mail, Pencil, QrCode as QrIcon, RefreshCw, Printer } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { Modal } from '@/components/shared/Modal';
 import { QrCode } from '@/components/qr/QrPreview';
@@ -9,7 +9,18 @@ import { useCampStore } from '@/store/campStore';
 import { useAuth } from '@/lib/auth';
 import type { FoodProgram } from '@/lib/foodRequestTypes';
 import { dbRotateFoodProgramLink, dbSaveFoodProgram, dbSaveFoodRequestSettings } from '@/lib/foodRequestsDb';
-import { PROGRAM_COLORS, ProgramDot, foodRequestUrl } from './foodUi';
+import { formatNoticeRule } from '@/lib/foodRequests';
+import { PROGRAM_COLORS, ProgramDot, foodRequestUrl, nextProgramColor } from './foodUi';
+
+/** A ready-to-send email to a program's lead with their link, so the link actually reaches them. */
+function leadMailto(p: FoodProgram, campName: string): string {
+  const url = foodRequestUrl(p.requestToken);
+  const subject = `${p.name}: how to ask the kitchen for food`;
+  const body = `Hi ${p.leadName?.split(' ')[0] ?? 'there'},\n\nThis is ${p.name}'s link for asking the ${campName || 'camp'} kitchen for food. `
+    + `No account needed. Share it with your counselors, or print the QR code:\n\n${url}\n\n`
+    + `Send requests with enough notice, pick a pickup time, and you'll get an email when the kitchen approves it and when it's ready.\n\nThanks!`;
+  return `mailto:${encodeURIComponent(p.leadEmail ?? '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
 
 const input = 'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
 const label = 'block text-secondary font-medium text-ink mb-1';
@@ -40,7 +51,7 @@ export function FoodProgramsSettings() {
     <section data-testid="food-programs-settings">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-[15px] font-semibold text-forest">Food requests</h2>
+          <h2 className="text-[15px] font-semibold text-forest">Programs &amp; request links</h2>
           <p className="text-[12px] text-ink-soft">Programs ask the kitchen for food through their own link. No account needed.</p>
         </div>
         {canManage && <Button size="sm" className="flex-shrink-0 whitespace-nowrap" onClick={() => setEditing('new')}>+ Program</Button>}
@@ -69,6 +80,12 @@ export function FoodProgramsSettings() {
               <Button size="sm" variant="ghost" disabled={!p.active} onClick={() => setQrFor(p)} aria-label={`QR code for ${p.name}`}>
                 <QrIcon className="h-3.5 w-3.5" /> QR
               </Button>
+              {p.leadEmail && p.active && (
+                <a href={leadMailto(p, camp?.name ?? '')} data-testid="email-lead"
+                  className="inline-flex items-center gap-1.5 rounded-btn border border-border bg-white px-3.5 py-1.5 text-[12.5px] font-bold text-forest hover:border-sage">
+                  <Mail className="h-3.5 w-3.5" /> Email the link to {p.leadName?.split(' ')[0] ?? 'the lead'}
+                </a>
+              )}
               {canManage && (
                 <Button size="sm" variant="ghost" onClick={() => setEditing(p)} aria-label={`Edit ${p.name}`}>
                   <Pencil className="h-3.5 w-3.5" />
@@ -82,7 +99,8 @@ export function FoodProgramsSettings() {
       {camp && <KitchenRules campId={camp.id} canManage={canManage}
         cutoffHours={settings?.cutoffHours ?? 72} kitchenEmails={(settings?.kitchenEmails ?? []).join(', ')} pickupLocation={settings?.pickupLocation ?? ''} />}
 
-      {editing && camp && <ProgramModal campId={camp.id} program={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      {editing && camp && <ProgramModal campId={camp.id} program={editing === 'new' ? null : editing}
+        defaultColor={nextProgramColor(programs.map((p) => p.color))} onClose={() => setEditing(null)} />}
       {qrFor && <QrModal program={programs.find((p) => p.id === qrFor.id) ?? qrFor} campName={camp?.name ?? ''} canManage={canManage} onClose={() => setQrFor(null)} />}
     </section>
   );
@@ -125,24 +143,25 @@ function KitchenRules({ campId, canManage, cutoffHours, kitchenEmails, pickupLoc
       <p className="mb-3 text-[13px] font-semibold text-forest">Kitchen rules</p>
       <div className="grid gap-3 sm:grid-cols-[9rem_1fr]">
         <div>
-          <label className={label} htmlFor="food-cutoff">Notice (hours)</label>
+          <label className={label} htmlFor="food-cutoff">Notice needed (hours)</label>
           <input id="food-cutoff" className={input} inputMode="numeric" disabled={!canManage} value={cutoff}
             onChange={(e) => setCutoff(e.target.value.replace(/[^0-9.]/g, ''))} />
         </div>
         <div>
           <label className={label} htmlFor="food-location">Pickup location</label>
           <input id="food-location" className={input} disabled={!canManage} value={location} maxLength={200}
-            placeholder="The kitchen back door" onChange={(e) => setLocation(e.target.value)} />
+            placeholder="e.g. the kitchen back door" onChange={(e) => setLocation(e.target.value)} />
         </div>
       </div>
       <div className="mt-3">
         <label className={label} htmlFor="food-emails">Email new requests to</label>
         <input id="food-emails" className={input} disabled={!canManage} value={emails}
-          placeholder="kitchen@yourcamp.org, chef@yourcamp.org" onChange={(e) => setEmails(e.target.value)} />
+          placeholder="e.g. kitchen@yourcamp.org, chef@yourcamp.org" onChange={(e) => setEmails(e.target.value)} />
         <p className="mt-1 text-[11px] text-ink-faint">Separate addresses with commas. Left empty, the camp&rsquo;s first admin is told.</p>
       </div>
       <p className="mt-2 text-[11px] text-ink-faint">
-        A request with less notice than this is still accepted; it is marked late for you and the requester is warned before sending.
+        {Number(cutoff) > 0 ? <>Counselors are told the kitchen needs {formatNoticeRule(Number(cutoff))}. </> : null}
+        A request with less is still accepted: it shows as Short notice for you, and the requester is warned before sending.
       </p>
       {error && <p role="alert" className="mt-2 text-[12px] text-red-text">{error}</p>}
       {canManage && (
@@ -156,12 +175,12 @@ function KitchenRules({ campId, canManage, cutoffHours, kitchenEmails, pickupLoc
   );
 }
 
-function ProgramModal({ campId, program, onClose }: { campId: string; program: FoodProgram | null; onClose: () => void }) {
+function ProgramModal({ campId, program, defaultColor, onClose }: { campId: string; program: FoodProgram | null; defaultColor: string; onClose: () => void }) {
   const [name, setName] = useState(program?.name ?? '');
   const [leadName, setLeadName] = useState(program?.leadName ?? '');
   const [leadEmail, setLeadEmail] = useState(program?.leadEmail ?? '');
   const [leadPhone, setLeadPhone] = useState(program?.leadPhone ?? '');
-  const [color, setColor] = useState<string | null>(program?.color ?? PROGRAM_COLORS[0]);
+  const [color, setColor] = useState<string | null>(program ? program.color : defaultColor);
   const [active, setActive] = useState(program?.active ?? true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -186,21 +205,21 @@ function ProgramModal({ campId, program, onClose }: { campId: string; program: F
       <div className="space-y-3">
         <div>
           <label className={label} htmlFor="prog-name">Name</label>
-          <input id="prog-name" className={input} value={name} maxLength={80} placeholder="Cooking Club" autoFocus onChange={(e) => setName(e.target.value)} />
+          <input id="prog-name" className={input} value={name} maxLength={80} placeholder="e.g. Cooking Club" autoFocus onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className={label} htmlFor="prog-lead">Lead</label>
-            <input id="prog-lead" className={input} value={leadName} maxLength={120} placeholder="Robin Chen" onChange={(e) => setLeadName(e.target.value)} />
+            <input id="prog-lead" className={input} value={leadName} maxLength={120} placeholder="e.g. Robin Chen" onChange={(e) => setLeadName(e.target.value)} />
           </div>
           <div>
             <label className={label} htmlFor="prog-phone">Lead phone</label>
-            <input id="prog-phone" className={input} value={leadPhone} maxLength={40} onChange={(e) => setLeadPhone(e.target.value)} />
+            <input id="prog-phone" className={input} value={leadPhone} maxLength={40} placeholder="e.g. 416-555-0100" onChange={(e) => setLeadPhone(e.target.value)} />
           </div>
         </div>
         <div>
           <label className={label} htmlFor="prog-email">Lead email</label>
-          <input id="prog-email" className={input} type="email" value={leadEmail} maxLength={200} onChange={(e) => setLeadEmail(e.target.value)} />
+          <input id="prog-email" className={input} type="email" value={leadEmail} maxLength={200} placeholder="e.g. robin@yourcamp.org" onChange={(e) => setLeadEmail(e.target.value)} />
         </div>
         <div>
           <p className={label}>Colour</p>

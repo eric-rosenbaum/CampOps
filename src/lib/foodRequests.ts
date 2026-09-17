@@ -365,6 +365,10 @@ export function inboxOrder(requests: FoodRequest[]): FoodRequest[] {
       || (a.pickupDate + a.pickupTime).localeCompare(b.pickupDate + b.pickupTime));
 }
 
+/** The Requests tab's views, as a link can name them: ?view=inbox|pickups|history. */
+export type RequestsView = 'inbox' | 'pickups' | 'history';
+export const REQUESTS_VIEWS: RequestsView[] = ['inbox', 'pickups', 'history'];
+
 export interface PickupDay {
   /** YYYY-MM-DD, or 'past_due' for approved/ready requests whose day has gone. */
   key: string;

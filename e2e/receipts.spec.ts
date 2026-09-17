@@ -324,3 +324,120 @@ test('J4: snap a receipt, reconcile the month, export for QuickBooks', async ({ 
   await hana.context.close();
   await teddy.context.close();
 });
+
+/**
+ * J4b — the paths J4 does not walk: the reader switched off, a card number that disagrees, and the
+ * other ways a receipt with no charge is resolved (posts next month, wrong card), an undated
+ * receipt, a typo in the statement total fixed in place, and a replacement that says what it replaces.
+ */
+test('J4b: typing a receipt in by hand, and every other way a month is made to agree', async ({ browser }, info) => {
+  test.setTimeout(300_000);
+  const rawShot = stepper('j4b-receipts-edges', info.project.name);
+  const shot = async (page: Page, label: string) => { await page.waitForTimeout(400); return rawShot(page, label); };
+  execFileSync('scripts/staging-sql.sh', ['e2e/receipts-reset.sql'], { encoding: 'utf8' });
+
+  // ── Hana: the reader is out of credit ────────────────────────────────────────────────────
+  const hana = await asUser(browser, 'holder', contextOptions(info));
+  await dismissForeignWriteBanner(hana.page);
+  await hana.page.goto('/receipts');
+  await expect(hana.page.getByRole('heading', { name: 'Receipts' })).toBeVisible();
+  await hana.page.route('**/functions/v1/read-receipt', (route) => route.fulfill({
+    status: 503, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' },
+    body: JSON.stringify({ readable: false, error: 'Receipt reading is unavailable right now. Enter the details by hand.' }),
+  }));
+  await hana.page.locator('[data-testid="snap-input"]').setInputFiles(fixture('02-on-hst.jpg'));
+  const dialog = hana.page.getByRole('dialog', { name: 'Check the receipt' });
+  await expect(dialog.getByText('Not read automatically.')).toBeVisible({ timeout: 60_000 });
+  await expect(dialog.getByText(/Automatic reading is switched off right now/)).toBeVisible();
+  await dialog.locator('#rc-vendor').fill('Lakeside Hardware');
+  await dialog.locator('#rc-date').fill('2026-08-27');
+  await dialog.locator('#rc-subtotal').fill('100');
+  await dialog.getByRole('button', { name: 'Add a tax line' }).click();
+  await dialog.getByLabel('Rate percent').fill('13');
+  // The arithmetic a calculator would do: the tax from the rate, the total from the parts.
+  await expect(dialog.getByLabel('HST amount')).toHaveValue('13.00');
+  await expect(dialog.locator('#rc-total')).toHaveValue('113.00');
+  await expect(dialog.getByText('Not read automatically.')).toHaveCount(0);
+  await shot(hana.page, 'hand-entry-calculated');
+  await dialog.getByRole('button', { name: 'Save receipt' }).click();
+  await expect(dialog).toHaveCount(0);
+
+  // ── Hana: the slip names a card that is not the one chosen ───────────────────────────────
+  await hana.page.unroute('**/functions/v1/read-receipt');
+  await hana.page.route('**/functions/v1/read-receipt', async (route) => {
+    const body = JSON.parse(fs.readFileSync(path.join(root, 'e2e/fixtures/read-receipt-12-stained-date.json'), 'utf8'));
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ ...body, cardLast4: '9999' }) });
+  });
+  await hana.page.locator('[data-testid="snap-input"]').setInputFiles(fixture('12-stained-date.jpg'));
+  await expect(dialog.locator('#rc-vendor')).toBeVisible({ timeout: 60_000 });
+  await expect(dialog.getByTestId('card-mismatch')).toContainText('Receipt shows ····9999; saving to ····4821');
+  await shot(hana.page, 'card-mismatch');
+  // Escape closes it, leaving the undated receipt waiting for review.
+  await hana.page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await hana.context.close();
+
+  // ── Teddy: August on Hana's card ─────────────────────────────────────────────────────────
+  const teddy = await asUser(browser, 'admin', contextOptions(info));
+  const p = teddy.page;
+  await p.goto(`/receipts/reconcile?card=${CARD_HANA}&month=2026-08`);
+  await p.getByTestId('statement-file').setInputFiles(fixture('statements/qa-august-2026-rbc-style.csv'));
+  const mapper = p.getByTestId('statement-mapper');
+  await mapper.locator('#st-total').fill('126.29');
+  await mapper.getByRole('button', { name: /Import 7 lines/ }).click();
+  // Four: this journey has no Trillium receipt, so that charge stays unexplained with the fuel.
+  await p.getByRole('button', { name: /Accept all 4/ }).click();
+  await expect(p.getByTestId('suggestions')).toHaveCount(0);
+
+  const blockers = p.getByTestId('blockers');
+  await expect(blockers.locator('[data-blocker="undated"]')).toBeVisible();
+  await expect(blockers.locator('[data-blocker="no_charge"]')).toContainText('2 receipts');
+  await expect(p.getByTestId('undated').locator('li')).toHaveCount(1);
+  await shot(p, 'blockers-undated-and-orphans');
+
+  // Posts next month, with a note.
+  const lakeside = p.getByTestId('orphans').locator('li').filter({ hasText: 'Lakeside Hardware' });
+  await lakeside.getByRole('button', { name: 'Posts next month' }).click();
+  const aside = p.getByRole('dialog', { name: 'Posts next month' });
+  await aside.getByPlaceholder(/Note/).fill('Bought on the 27th, posts in September');
+  await aside.getByRole('button', { name: 'Set aside' }).click();
+  await expect(p.getByTestId('set-aside')).toContainText('Lakeside Hardware');
+
+  // Wrong card: the copy goes to Omar's card.
+  const copy = p.getByTestId('orphans').locator('li').filter({ hasText: 'Blue Heron Marine Ltd.' });
+  await copy.getByRole('button', { name: 'Wrong card' }).click();
+  const move = p.getByRole('dialog', { name: 'Move to another card' });
+  await expect(move).toContainText('Visa ··7390');
+  await shot(p, 'wrong-card');
+  await move.getByRole('button', { name: 'Move receipt' }).click();
+  await expect(p.getByTestId('orphans')).toHaveCount(0);
+
+  // A typo in the total, fixed without importing again.
+  await p.getByTestId('edit-total').click();
+  await p.getByLabel('Statement total').fill('126.30');
+  await p.getByLabel('Statement total').press('Enter');
+  await expect(blockers.locator('[data-blocker="total_mismatch"]')).toBeVisible();
+  await p.getByTestId('edit-total').click();
+  await p.getByLabel('Statement total').fill('126.29');
+  await p.getByLabel('Statement total').press('Enter');
+  await expect(blockers.locator('[data-blocker="total_mismatch"]')).toHaveCount(0);
+  await shot(p, 'resolved-except-undated-and-fuel');
+
+  // Replacing says what it replaces.
+  await p.getByTestId('replace-statement').click();
+  await expect(p.getByTestId('statement-import')).toContainText('already imported, with 6 charges');
+  await p.getByTestId('statement-file').setInputFiles(fixture('statements/qa-august-2026-rbc-style.csv'));
+  await expect(p.getByTestId('replace-warning')).toContainText('This replaces 6 charges with 6');
+  await shot(p, 'replace-warning');
+  await p.getByRole('button', { name: 'Start over' }).click();
+  await expect(p.getByTestId('statement-imported')).toBeVisible();
+
+  // Tax presets.
+  await p.locator('[data-tab="settings"]').click();
+  await p.locator('[data-basis="itc"]').check();
+  await expect(p.getByLabel('HST provincial part recoverable percent')).toHaveValue('100');
+  await p.locator('[data-basis="psb"]').check();
+  await expect(p.getByLabel('HST provincial part recoverable percent')).toHaveValue('82');
+  await shot(p, 'tax-presets');
+  await teddy.context.close();
+});

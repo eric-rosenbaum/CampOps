@@ -11,7 +11,7 @@ import {
   monthLabel, reconcileSummary, toCents, toStatementCsv, type StatementExport, type StatementExportFormat,
 } from '@/lib/receipts';
 import type { CardStatement, DateFormat, ExpenseCard } from '@/lib/receiptTypes';
-import { Callout, EmptyState, SectionTitle, downloadText, fmtInstantDay, labelClass, selectClass } from './receiptsUi';
+import { Callout, EmptyState, SectionTitle, downloadText, fmtInstantDay, labelClass, selectClass, sentence } from './receiptsUi';
 
 type QboFormat = Exclude<StatementExportFormat, 'detailed'>;
 
@@ -173,7 +173,7 @@ export function ExportView() {
                 {cardsInMonth.map((c) => {
                   const st = inMonth.find((x) => x.cardId === c.id);
                   const ok = agreeing.some((x) => x.id === st?.id);
-                  return <option key={c.id} value={c.id}>{c.label}{st?.reexportNeededAt ? ' · export again' : st?.exportId ? ' · exported' : ok ? ' · agrees' : ' · does not agree yet'}</option>;
+                  return <option key={c.id} value={c.id}>{c.label}{st?.reexportNeededAt ? ' · re-export' : st?.exportId ? ' · exported' : ok ? ' · agrees' : ' · does not agree yet'}</option>;
                 })}
                 {cardsInMonth.length > 1 && <option value="all">All {cardsInMonth.length} cards, one file each</option>}
               </select>
@@ -266,7 +266,7 @@ export function ExportView() {
             {p.statement.reexportNeededAt && (
               <Callout tone="amber" className="mt-2 flex items-start gap-2" data-testid="export-reexport-needed">
                 <LockOpen className="mt-0.5 h-4 w-4 flex-none" />
-                <span>Unlocked to correct on {fmtInstantDay(p.statement.reexportNeededAt)}: {p.statement.reexportReason} Exporting again replaces the earlier file; correct or delete the earlier bills in QuickBooks first, so nothing is in the books twice.</span>
+                <span>Unlocked to correct on {fmtInstantDay(p.statement.reexportNeededAt)}: {sentence(p.statement.reexportReason)} Exporting again replaces the earlier file; correct or delete the earlier bills in QuickBooks first, so nothing is in the books twice.</span>
               </Callout>
             )}
             {p.statement.exportId && !p.statement.reexportNeededAt && (

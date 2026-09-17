@@ -20,7 +20,7 @@ import type { BudgetCode, ExpenseCard, NoReceiptKind, Receipt, StatementLine } f
 import { StatementImport } from './StatementImport';
 import {
   Callout, ConfirmDialog, EmptyState, Figure, SectionTitle, StatusChip, Thumb, UnlockDialog, cardWithHolder, fmtDay, fmtInstantDay,
-  inputClass, labelClass, money, selectClass, useEscape, useSignedUrls,
+  inputClass, labelClass, money, selectClass, sentence, useEscape, useSignedUrls,
 } from './receiptsUi';
 
 /**
@@ -259,7 +259,7 @@ export function ReconcileView({ onOpen, onCompare, onUploadForLine }: {
       {card && statement && !replacing && statement.reexportNeededAt && (
         <Callout tone="amber" className="mt-2 flex flex-wrap items-center gap-2" data-testid="reexport-needed">
           <LockOpen className="h-4 w-4 flex-none" />
-          <span className="min-w-0 flex-1"><b>Unlocked to correct, {fmtInstantDay(statement.reexportNeededAt)}.</b> {statement.reexportReason} Correct it in QuickBooks too, then export this month again.</span>
+          <span className="min-w-0 flex-1"><b>Unlocked to correct, {fmtInstantDay(statement.reexportNeededAt)}.</b> {sentence(statement.reexportReason)} Correct it in QuickBooks too, then export this month again.</span>
           <Link to={`/receipts?tab=export&card=${card.id}&month=${month}`} className="font-bold underline">Export again →</Link>
         </Callout>
       )}

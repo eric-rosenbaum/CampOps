@@ -309,3 +309,9 @@ export function CodeName({ code }: { code: { code: string; name: string } | null
   if (!code) return <span className="text-ink-faint">Not coded</span>;
   return <span>{code.name} <span className="text-[11px] text-ink-faint">{code.code}</span></span>;
 }
+
+/** A note as a sentence: ends with a full stop, so the text after it does not run on. */
+export function sentence(text: string | null | undefined): string {
+  const t = (text ?? '').trim();
+  return !t ? '' : /[.!?…]$/.test(t) ? t : `${t}.`;
+}

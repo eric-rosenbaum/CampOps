@@ -135,7 +135,7 @@ export function Receipts() {
             <div className="flex items-center gap-2">
               {inFlight.length > 0 && <Loader2 className="h-4 w-4 animate-spin text-sage" />}
               <p className="flex-1 text-[13px] font-semibold text-forest">
-                {inFlight.length > 0 ? `Reading ${items.length - inFlight.length + 1} of ${items.length}…` : `${doneBatch.length} read — check them below`}
+                {inFlight.length > 0 ? `Reading ${items.length - inFlight.length + 1} of ${items.length}…` : doneBatch.length ? `${doneBatch.length} read — check them below` : `${failed.length} ${failed.length === 1 ? 'file' : 'files'} not read`}
               </p>
               {inFlight.length === 0 && <button className="text-[12.5px] underline text-ink-soft" onClick={() => items.forEach((i) => dismiss(i.key))}>Done</button>}
             </div>

@@ -104,6 +104,15 @@ function TieOutTable({ rows, cards, fig }: { rows: TieOutRow[]; cards: { id: str
   const td = 'px-3 py-2 text-right tabular-nums whitespace-nowrap';
   const th = 'px-3 py-2 text-right font-bold';
   return (
+    <>
+    {/* On a phone the table scrolls sideways and its verdict column is off screen: say it first. */}
+    <ul className="mb-2 space-y-1 text-[12.5px] sm:hidden" data-testid="tie-out-phone">
+      {rows.map((r) => (
+        <li key={r.statementId} className={r.ties ? 'font-semibold text-green-muted-text' : 'font-semibold text-amber-text'}>
+          {cards.find((c) => c.id === r.cardId)?.label ?? 'Card'} · {monthLabel(r.month)}: {r.ties ? 'ties out ✓' : `${fig(Math.abs(r.differenceCents))} ${r.differenceCents >= 0 ? 'short' : 'over'}, ${r.reasons.length} reason${r.reasons.length === 1 ? '' : 's'} in the table`}
+        </li>
+      ))}
+    </ul>
     <div className="overflow-x-auto rounded-card border border-border bg-white" data-testid="tie-out">
       <table className="w-full min-w-[760px] text-[13px]">
         <thead>
@@ -153,6 +162,7 @@ function TieOutTable({ rows, cards, fig }: { rows: TieOutRow[]; cards: { id: str
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Camera, Loader2, Upload, X } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -12,7 +12,8 @@ import { SummaryView } from '@/components/receipts/SummaryView';
 import { ExportView } from '@/components/receipts/ExportView';
 import { SettingsView } from '@/components/receipts/SettingsView';
 import { useReceiptCapture } from '@/components/receipts/useReceiptCapture';
-import { useReceiptsRole } from '@/components/receipts/receiptsUi';
+import { ReceiptsToastHost, useReceiptsRole } from '@/components/receipts/receiptsUi';
+import { flushPendingRemovals } from '@/components/receipts/removeWithUndo';
 
 type Tab = 'receipts' | 'reconcile' | 'summary' | 'export' | 'settings';
 
@@ -69,6 +70,9 @@ export function Receipts() {
   }, [params, setParams]);
 
   const capture = items.find((i) => i.key === openCapture) ?? null;
+
+  // Leaving Receipts sends any removal still inside its Undo window rather than dropping it.
+  useEffect(() => () => flushPendingRemovals(), []);
 
   function onFiles(list: FileList | null, single: boolean) {
     const files = Array.from(list ?? []);
@@ -149,7 +153,10 @@ export function Receipts() {
             </div>
           </>
         )}
-        {tab === 'reconcile' && <ReconcileView onOpen={(id) => openReceipt(id)} onCompare={(a, b) => setCompare({ a, b })} />}
+        {tab === 'reconcile' && (
+          <ReconcileView onOpen={(id) => openReceipt(id)} onCompare={(a, b) => setCompare({ a, b })}
+                         onUploadForLine={(line, card, file) => { const [key] = addFiles([file], { cardId: card.id, lineId: line.id }); setOpenCapture(key); }} />
+        )}
         {tab === 'summary' && <SummaryView />}
         {tab === 'export' && <ExportView />}
         {tab === 'settings' && <SettingsView />}
@@ -178,6 +185,7 @@ export function Receipts() {
         <ReceiptReview key={openReceiptId} receiptId={openReceiptId} onClose={() => openReceipt(null)} onCompare={(a, b) => { openReceipt(null); setCompare({ a, b }); }} />
       )}
       {compare && <DuplicateCompare originalId={compare.a} duplicateId={compare.b} onClose={() => setCompare(null)} />}
+      <ReceiptsToastHost />
     </div>
   );
 }

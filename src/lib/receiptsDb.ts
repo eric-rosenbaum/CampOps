@@ -52,6 +52,7 @@ export function rowToReceipt(r: Row): Receipt {
     reviewedBy: s(r.reviewed_by), reviewedAt: s(r.reviewed_at),
     possibleDuplicateOf: s(r.possible_duplicate_of),
     duplicateDismissed: Boolean(r.duplicate_dismissed),
+    deferredMonth: s(r.deferred_month), deferredNote: s(r.deferred_note),
     exportId: s(r.export_id), exportedAt: s(r.exported_at),
     createdAt: r.created_at as string, updatedAt: r.updated_at as string,
   };
@@ -79,7 +80,9 @@ export function rowToTaxSettings(r: Row): TaxSettings {
     province: s(r.province),
     taxRules: Array.isArray(r.tax_rules) ? (r.tax_rules as Row[]).map((x) => ({
       type: x.type as TaxRule['type'], recoverablePct: Number(x.recoverable_pct ?? 0),
+      ...(x.federal_pct != null && x.provincial_pct != null ? { federalPct: Number(x.federal_pct), provincialPct: Number(x.provincial_pct) } : {}),
     })) : [],
+    claimBasis: (r.claim_basis as TaxSettings['claimBasis']) ?? null,
     confirmedAt: s(r.confirmed_at),
   };
 }
@@ -88,7 +91,7 @@ export function rowToStatement(r: Row): CardStatement {
   return {
     id: r.id as string, campId: r.camp_id as string, cardId: r.card_id as string,
     periodMonth: r.period_month as string, statementTotal: n(r.statement_total),
-    fileName: s(r.file_name), createdAt: r.created_at as string,
+    fileName: s(r.file_name), exportId: s(r.export_id), exportedAt: s(r.exported_at), createdAt: r.created_at as string,
   };
 }
 
@@ -106,7 +109,9 @@ export function rowToExport(r: Row): ExpenseExport {
     id: r.id as string, campId: r.camp_id as string, periodFrom: s(r.period_from), periodTo: s(r.period_to),
     cardIds: (r.card_ids as string[]) ?? [], format: r.format as ExportFormat, fileName: s(r.file_name),
     includeExported: Boolean(r.include_exported), rowCount: Number(r.row_count ?? 0), total: Number(r.total ?? 0),
-    createdByName: s(r.created_by_name), createdAt: r.created_at as string,
+    createdByName: s(r.created_by_name), statementId: s(r.statement_id),
+    personalTotal: r.personal_total == null ? null : Number(r.personal_total), dateFormat: s(r.date_format),
+    createdAt: r.created_at as string,
   };
 }
 
@@ -120,6 +125,8 @@ export interface ReceiptsData {
   statements: CardStatement[];
   lines: StatementLine[];
   exports: ExpenseExport[];
+  /** camps.timezone: which month an undated receipt was snapped in is a camp-local question. */
+  timeZone: string;
 }
 
 const RECEIPT_TABLES = [
@@ -129,7 +136,7 @@ const RECEIPT_TABLES = [
 
 async function loadInner(campId: string): Promise<ReceiptsData> {
   const q = (t: string) => supabase.from(t).select('*').eq('camp_id', campId);
-  const [rec, cards, codes, tax, stmts, lines, exps] = await Promise.all([
+  const [rec, cards, codes, tax, stmts, lines, exps, camp] = await Promise.all([
     q('receipts').order('purchase_date', { ascending: false, nullsFirst: true }).order('created_at', { ascending: false }),
     q('expense_cards').order('label'),
     q('expense_budget_codes').order('sort_order').order('code'),
@@ -137,6 +144,7 @@ async function loadInner(campId: string): Promise<ReceiptsData> {
     q('card_statements').order('period_month', { ascending: false }),
     q('statement_lines').order('posted_date').order('created_at'),
     q('expense_exports').order('created_at', { ascending: false }),
+    supabase.from('camps').select('timezone').eq('id', campId).maybeSingle(),
   ]);
   assertLoaded('receipts', rec, cards, codes, tax, stmts, lines, exps);
   return {
@@ -147,6 +155,7 @@ async function loadInner(campId: string): Promise<ReceiptsData> {
     statements: (stmts.data ?? []).map((r) => rowToStatement(r as Row)),
     lines: (lines.data ?? []).map((r) => rowToLine(r as Row)),
     exports: (exps.data ?? []).map((r) => rowToExport(r as Row)),
+    timeZone: (camp.data?.timezone as string | undefined) || 'America/Toronto',
   };
 }
 
@@ -208,6 +217,7 @@ export function receiptToRow(r: Receipt): Row {
     purpose: r.purpose, status: r.status, ai_result: r.aiResult, ai_min_confidence: r.aiMinConfidence,
     reviewed_by: r.reviewedBy, reviewed_at: r.reviewedAt,
     possible_duplicate_of: r.possibleDuplicateOf, duplicate_dismissed: r.duplicateDismissed,
+    deferred_month: r.deferredMonth, deferred_note: r.deferredNote,
   };
 }
 
@@ -219,7 +229,9 @@ export async function dbInsertReceipt(r: Receipt): Promise<Result> {
 /** Everything a person edits on the review form. Export columns are never sent from here. */
 export async function dbUpdateReceipt(r: Receipt): Promise<Result> {
   const row = receiptToRow(r);
-  delete row.id; delete row.camp_id; delete row.submitted_by;
+  // Setting aside is finance's own write (dbSetReceiptAside); the guard refuses it from a holder,
+  // so the review form never sends those columns.
+  delete row.id; delete row.camp_id; delete row.submitted_by; delete row.deferred_month; delete row.deferred_note;
   const { error } = await supabase.from('receipts').update(row).eq('id', r.id);
   return error ? fail('update receipt', error.message) : ok;
 }
@@ -259,6 +271,20 @@ export async function signReceiptUrls(paths: string[], seconds = 3600): Promise<
 }
 
 /**
+ * What the person sees when the automatic read did not happen. The photo is always saved by then,
+ * so every message says what to do next rather than what broke. A 503 is the reader being
+ * switched off or out of credit: it read "Receipt reading is unavailable right now", which in a
+ * red box looked like the receipt itself had been lost.
+ */
+export function readFailureMessage(status: number, serverMessage?: string | null): string {
+  if (status === 503) return 'Automatic reading is switched off right now, so type the details from the receipt. Your photo is saved.';
+  if (status === 429) return serverMessage ?? 'This camp has used today’s automatic reads, so type the details from the receipt. Your photo is saved.';
+  if (status === 413 || status === 415) return serverMessage ?? 'This file can’t be read automatically, so type the details from the receipt.';
+  if (status === 401 || status === 403) return serverMessage ?? 'You don’t have access to read receipts here.';
+  return 'The receipt couldn’t be read automatically, so type the details from it. Your photo is saved.';
+}
+
+/**
  * Ask the AI to read a stored receipt.
  *
  * Plain fetch rather than supabase.functions.invoke, on purpose. The client's fetch wrapper
@@ -284,12 +310,12 @@ export async function readReceiptWithAi(campId: string, path: string): Promise<{
       signal: controller.signal,
     });
     const body = await res.json().catch(() => null) as (ReceiptAiResult & { error?: string }) | null;
-    if (!res.ok) return { result: null, error: body?.error ?? `Reading failed (${res.status}).`, status: res.status };
+    if (!res.ok) return { result: null, error: readFailureMessage(res.status, body?.error), status: res.status };
     if (!body?.readable) return { result: body, error: body?.error ?? 'This could not be read as a receipt.', status: res.status };
     return { result: body, error: null, status: res.status };
   } catch (e) {
     campError('[receipts] read-receipt', String(e));
-    return { result: null, error: 'Reading took too long. Enter the details by hand, or try again.', status: 0 };
+    return { result: null, error: 'Reading took too long, so type the details from the receipt. The photo is saved.', status: 0 };
   } finally {
     clearTimeout(timer);
   }
@@ -327,7 +353,11 @@ export async function dbSaveTaxSettings(t: TaxSettings, confirmed: boolean): Pro
   const { data: sess } = await supabase.auth.getSession();
   const { error } = await supabase.from('expense_tax_settings').upsert({
     camp_id: t.campId, currency: t.currency, province: t.province,
-    tax_rules: t.taxRules.map((r) => ({ type: r.type, recoverable_pct: r.recoverablePct })),
+    tax_rules: t.taxRules.map((r) => ({
+      type: r.type, recoverable_pct: r.recoverablePct,
+      ...(r.federalPct != null && r.provincialPct != null ? { federal_pct: r.federalPct, provincial_pct: r.provincialPct } : {}),
+    })),
+    claim_basis: t.claimBasis,
     confirmed_at: confirmed ? new Date().toISOString() : null,
     confirmed_by: confirmed ? sess.session?.user.id ?? null : null,
   });
@@ -348,6 +378,12 @@ export async function dbImportStatement(input: {
   });
   if (error) return fail('import statement', error.message);
   return { error: null, id: data as string };
+}
+
+/** A typo in the statement total is fixed here, without importing the lines again. */
+export async function dbSetStatementTotal(id: string, total: number): Promise<Result> {
+  const { error } = await supabase.from('card_statements').update({ statement_total: total }).eq('id', id);
+  return error ? fail('statement total', error.message) : ok;
 }
 
 export async function dbDeleteStatement(id: string): Promise<Result> {
@@ -374,6 +410,39 @@ export async function dbRemindHolder(lineId: string): Promise<Result & { toEmail
   const d = data as { queued: boolean; reason?: string; to_email?: string; body_text?: string };
   if (!d.queued && d.reason === 'no_email') return { error: 'This card has no holder email. Add one in Settings.' };
   return { error: null, queued: d.queued, toEmail: d.to_email, bodyText: d.body_text };
+}
+
+/** "Posts next month": set a receipt aside from a month, with finance's note. `null` brings it back. */
+export async function dbSetReceiptAside(id: string, month: string | null, note: string | null): Promise<Result> {
+  const { error } = await supabase.from('receipts').update({ deferred_month: month, deferred_note: note }).eq('id', id);
+  return error ? fail('set aside', error.message) : ok;
+}
+
+/** Keep one copy of a duplicate: its statement match moves across, and the other copy is removed. */
+export async function dbMergeDuplicate(keepId: string, removeId: string): Promise<Result> {
+  const { data, error } = await supabase.rpc('merge_duplicate_receipt', { p_keep: keepId, p_remove: removeId });
+  if (error) return fail('merge duplicate', error.message);
+  const path = (data as { file_path?: string | null } | null)?.file_path;
+  if (path) {
+    // The storage policy looks the row up, and the row is gone, so this is refused and the photo
+    // is left behind as an unreferenced object. Harmless to anyone (nothing can sign it), and
+    // logged; deleting it first would lose the photo whenever the merge itself is refused.
+    const { error: e2 } = await supabase.storage.from(RECEIPTS_BUCKET).remove([path]);
+    if (e2) campError('[receipts] remove merged file', e2.message);
+  }
+  return ok;
+}
+
+export async function dbExportStatement(input: {
+  statementId: string; format: 'qbo_bank_3col' | 'qbo_bank_4col' | 'qbo_bills'; fileName: string; dateFormat: string; includeExported: boolean;
+}): Promise<Result & { exportId?: string; rowCount?: number; total?: number }> {
+  const { data, error } = await supabase.rpc('export_card_statement', {
+    p_statement_id: input.statementId, p_format: input.format, p_file_name: input.fileName,
+    p_date_format: input.dateFormat, p_include_exported: input.includeExported,
+  });
+  if (error) return fail('export statement', error.message);
+  const d = data as { export_id: string; row_count: number; total: number };
+  return { error: null, exportId: d.export_id, rowCount: Number(d.row_count), total: Number(d.total) };
 }
 
 export async function dbExportReceipts(input: {

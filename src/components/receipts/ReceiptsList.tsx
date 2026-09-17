@@ -46,6 +46,7 @@ export function ReceiptsList({ onOpen, onCompare }: { onOpen: (id: string) => vo
   );
   const duplicates = useMemo(() => findDuplicates(receipts), [receipts]);
   const dupOf = useMemo(() => new Map(duplicates.map((d) => [d.duplicateId, d.originalId])), [duplicates]);
+  const crossCard = useMemo(() => new Set(duplicates.filter((d) => d.crossCard).map((d) => d.duplicateId)), [duplicates]);
 
   const base = useMemo(() => receipts.filter((r) =>
     (cardFilter === 'all' || (cardFilter === 'none' ? !r.cardId : r.cardId === cardFilter))
@@ -188,7 +189,7 @@ export function ReceiptsList({ onOpen, onCompare }: { onOpen: (id: string) => vo
                         {dup && (
                           <button className="ml-2 inline-flex items-center gap-1 rounded-tag bg-amber-bg px-1.5 py-0.5 text-[11px] font-bold text-amber-text hover:underline"
                                   onClick={(e) => { e.stopPropagation(); onCompare(dup, r.id); }}>
-                            <Copy className="h-3 w-3" /> Possible duplicate
+                            <Copy className="h-3 w-3" /> Possible duplicate{crossCard.has(r.id) ? ' on another card' : ''}
                           </button>
                         )}
                         {r.purpose && <span className="block truncate text-[12px] text-ink-soft">{r.purpose}</span>}
@@ -225,7 +226,7 @@ export function ReceiptsList({ onOpen, onCompare }: { onOpen: (id: string) => vo
                       {dup && (
                         <button className="inline-flex items-center gap-1 rounded-tag bg-amber-bg px-1.5 py-0.5 text-[11px] font-bold text-amber-text"
                                 onClick={(e) => { e.stopPropagation(); onCompare(dup, r.id); }}>
-                          <Copy className="h-3 w-3" /> Duplicate?
+                          <Copy className="h-3 w-3" /> {crossCard.has(r.id) ? 'Duplicate on another card?' : 'Duplicate?'}
                         </button>
                       )}
                     </div>

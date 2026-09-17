@@ -17,8 +17,10 @@ import { Callout, fieldClass, fmtDay, inputClass, labelClass, money } from './re
  * and then shown, never silently applied: a wrong guess about which column is the amount, or
  * whether 03/08 is March or August, imports a month that cannot agree with anything.
  */
-export function StatementImport({ card, month, replace, onDone, onCancel }: {
-  card: ExpenseCard; month: string; replace: boolean;
+export function StatementImport({ card, month, replacing, onDone, onCancel }: {
+  card: ExpenseCard; month: string;
+  /** The statement already imported for this card-month, when this is a replacement. */
+  replacing: { chargeCount: number; creditCount: number; resolvedCount: number } | null;
   onDone: (month: string) => void; onCancel?: () => void;
 }) {
   const [text, setText] = useState('');
@@ -30,6 +32,8 @@ export function StatementImport({ card, month, replace, onDone, onCancel }: {
   const [pasting, setPasting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [acceptMismatch, setAcceptMismatch] = useState(false);
+  const replace = !!replacing;
   const fileRef = useRef<HTMLInputElement>(null);
 
   const grid = useMemo(() => (text.trim() ? parseCsv(text) : []), [text]);
@@ -72,7 +76,13 @@ export function StatementImport({ card, month, replace, onDone, onCancel }: {
 
   const hasAmount = mapping?.columns.some((c) => c === 'amount' || c === 'debit');
   const hasDate = mapping?.columns.includes('date');
-  const canImport = !!mapping && hasAmount && hasDate && parsed.lines.length > 0 && parsed.errors.length === 0 && !(totalInput.trim() && typedTotal == null);
+  // A total typed from the bill that the lines do not add up to is either a typo or a line the CSV
+  // dropped. It was accepted silently, and the month then refused to agree for a reason nobody saw
+  // at import. Now it is said at once, and importing anyway takes a tick.
+  const totalMismatch = typedTotal != null && toCents(typedTotal) !== netCents;
+  const newCharges = parsed.lines.filter((l) => l.amount > 0).length;
+  const canImport = !!mapping && hasAmount && hasDate && parsed.lines.length > 0 && parsed.errors.length === 0 && !(totalInput.trim() && typedTotal == null)
+    && (!totalMismatch || acceptMismatch);
 
   async function doImport() {
     if (!mapping) return;
@@ -91,6 +101,12 @@ export function StatementImport({ card, month, replace, onDone, onCancel }: {
     return (
       <div className="rounded-card border border-border bg-white p-4 sm:p-6" data-testid="statement-import">
         <h3 className="font-display text-[16px] font-bold text-forest">{replace ? 'Replace the statement' : 'Import the statement'} for {card.label} · {monthLabel(month)}</h3>
+        {replacing && (
+          <Callout tone="amber" className="mt-2">
+            A statement for this card and month is already imported, with {replacing.chargeCount} charge{replacing.chargeCount === 1 ? '' : 's'}
+            {replacing.resolvedCount ? ` (${replacing.resolvedCount} matched or explained)` : ''}. Importing a new file replaces all of them, and their matches and notes.
+          </Callout>
+        )}
         <p className="mt-1 text-[13px] text-ink-soft">Download the card's transactions as a CSV from online banking (RBC, TD, Scotiabank, BMO, CIBC, Desjardins and others all work) and drop it here.</p>
         <div
           className="mt-4 flex flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-border bg-paper-raised px-4 py-8 text-center"
@@ -211,11 +227,25 @@ export function StatementImport({ card, month, replace, onDone, onCancel }: {
           <p className="mt-1 text-[12px] text-ink-soft">The lines add up to <b className="tabular-nums">{formatCents(netCents)}</b> ({chargeCount} charges). Type the bill's total so we can check nothing was dropped.</p>
         </div>
       </div>
+      {totalMismatch && (
+        <Callout tone="red" className="mt-3" >
+          <p data-testid="total-mismatch"><b>The bill’s total, {formatCents(toCents(typedTotal))}, is not what the lines add up to ({formatCents(netCents)}).</b> A {formatCents(Math.abs(toCents(typedTotal) - netCents))} difference: check the total for a typo, or the file for a missing line.</p>
+          <label className="mt-1.5 flex items-center gap-2 font-semibold">
+            <input type="checkbox" checked={acceptMismatch} onChange={(e) => setAcceptMismatch(e.target.checked)} />
+            Import anyway. The month will not agree until they match; the total can be corrected later.
+          </label>
+        </Callout>
+      )}
+      {replacing && (
+        <Callout tone="amber" className="mt-3">
+          <span data-testid="replace-warning">This replaces {replacing.chargeCount} charge{replacing.chargeCount === 1 ? '' : 's'} with {newCharges}.{replacing.resolvedCount ? ` The ${replacing.resolvedCount} match${replacing.resolvedCount === 1 ? '' : 'es'} and notes on the old lines are cleared; receipts are kept and suggested again.` : ''}</span>
+        </Callout>
+      )}
 
       {error && <Callout tone="red" className="mt-3">{error}</Callout>}
       <div className="mt-4 flex flex-wrap justify-end gap-2">
         <Button variant="ghost" onClick={() => { setText(''); setMapping(null); onCancel?.(); }}>Start over</Button>
-        <Button onClick={doImport} disabled={!canImport || busy}>{busy ? 'Importing…' : `Import ${parsed.lines.length} lines`}</Button>
+        <Button onClick={doImport} disabled={!canImport || busy}>{busy ? 'Importing…' : replace ? `Replace with ${parsed.lines.length} lines` : `Import ${parsed.lines.length} lines`}</Button>
       </div>
     </div>
   );

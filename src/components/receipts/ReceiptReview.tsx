@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useCampStore } from '@/store/campStore';
 import { AlertTriangle, Copy, ExternalLink, Loader2, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useReceiptsStore } from '@/store/receiptsStore';
-import { dbDeleteReceipt, dbUpdateReceipt } from '@/lib/receiptsDb';
-import { LOW_CONFIDENCE, mathCheck, parseMoney, toCents, formatCents } from '@/lib/receipts';
+import { dbUpdateReceipt } from '@/lib/receiptsDb';
+import { LOW_CONFIDENCE, duplicatePartner, findDuplicates, fromCents, mathCheck, parseMoney, toCents, formatCents } from '@/lib/receipts';
 import { TAX_LABELS, TAX_TYPES, type AiField, type Receipt, type TaxType } from '@/lib/receiptTypes';
 import {
-  Callout, StatusChip, fieldClass, fmtDay, fmtInstantDay, inputClass, labelClass, money, useReceiptsRole, useSignedUrls,
+  Callout, ConfirmDialog, StatusChip, cardWithHolder, fieldClass, fmtDay, fmtInstantDay, inputClass, labelClass, money, useEscape, useReceiptsRole, useSignedUrls,
 } from './receiptsUi';
+import { removeReceiptWithUndo } from './removeWithUndo';
 import type { CaptureItem } from './useReceiptCapture';
 
-interface TaxRow { type: TaxType; rate: string; amount: string }
+/** `auto`: the amount was worked out from the rate, so a new subtotal or rate works it out again. */
+interface TaxRow { type: TaxType; rate: string; amount: string; auto?: boolean }
 interface SplitRow { codeId: string; amount: string }
 
 interface FormState {
@@ -25,6 +28,8 @@ interface FormState {
   codeId: string;
   purpose: string;
   splits: SplitRow[];
+  /** The total is the sum of the parts until someone types one (or the reader found one). */
+  totalAuto: boolean;
 }
 
 const amt = (n: number | null) => (n == null ? '' : n.toFixed(2));
@@ -42,7 +47,33 @@ function formFrom(r: Receipt): FormState {
     codeId: r.budgetCodeId ?? '',
     purpose: r.purpose ?? '',
     splits: r.splits.map((s) => ({ codeId: s.budgetCodeId, amount: s.amount.toFixed(2) })),
+    totalAuto: r.total == null,
   };
+}
+
+const parseRate = (v: string): number | null => {
+  const n = Number(v.trim().replace(',', '.').replace('%', ''));
+  return v.trim() && Number.isFinite(n) && n >= 0 && n <= 30 ? n : null;
+};
+
+/**
+ * Typing by hand does the arithmetic a calculator would: a tax rate and a subtotal give the tax,
+ * and the parts give the total, until the person types either over. After a failed read, the form
+ * used to leave every sum to be worked out on a phone's calculator.
+ */
+function recompute(f: FormState): FormState {
+  const sub = parseMoney(f.subtotal);
+  const taxes = f.taxes.map((t) => {
+    const rate = parseRate(t.rate);
+    if (!t.auto || rate == null || sub == null) return t;
+    return { ...t, amount: fromCents(Math.round(toCents(sub) * rate / 100)).toFixed(2) };
+  });
+  let total = f.total;
+  if (f.totalAuto && sub != null) {
+    const cents = toCents(sub) + taxes.reduce((s, t) => s + toCents(parseMoney(t.amount)), 0) + toCents(parseMoney(f.tip));
+    total = fromCents(cents).toFixed(2);
+  }
+  return { ...f, taxes, total };
 }
 
 const READ_STAGE_TEXT: Record<string, string> = {
@@ -65,11 +96,11 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
   onClose: () => void;
   onCompare?: (a: string, b: string) => void;
 }) {
+  const campId = useCampStore((s) => s.currentCamp?.id ?? null);
   const receipts = useReceiptsStore((s) => s.receipts);
   const cards = useReceiptsStore((s) => s.cards);
   const codes = useReceiptsStore((s) => s.codes);
   const upsertLocal = useReceiptsStore((s) => s.upsertReceiptLocal);
-  const removeLocal = useReceiptsStore((s) => s.removeReceiptLocal);
   const { isFinance, userId, myCards } = useReceiptsRole();
 
   const receipt = useMemo(() => receipts.find((r) => r.id === receiptId) ?? null, [receipts, receiptId]);
@@ -89,6 +120,7 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
   const [showErrors, setShowErrors] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [zoom, setZoom] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (!reading) return;
@@ -97,11 +129,8 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
     return () => clearInterval(t);
   }, [reading, capture?.startedAt]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !zoom) onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, zoom]);
+  useEscape(onClose, !zoom && !confirmDelete);
+  useEscape(() => setZoom(false), zoom);
 
   const ai = receipt?.aiResult ?? null;
   const locked = receipt?.status === 'exported' && !isFinance;
@@ -123,7 +152,12 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
   };
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K], field?: AiField) => {
-    setForm((f) => { const base = f ?? form; return base ? { ...base, [k]: v } : base; });
+    setForm((f) => {
+      const base = f ?? form;
+      if (!base) return base;
+      const next = { ...base, [k]: v, ...(k === 'total' ? { totalAuto: false } : {}) };
+      return k === 'subtotal' || k === 'taxes' || k === 'tip' ? recompute(next) : next;
+    });
     if (field) setTouched((t) => ({ ...t, [field]: true }));
   };
 
@@ -140,8 +174,17 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
 
   const math = parsed ? mathCheck(parsed) : null;
   const splitCovered = parsed ? parsed.splits.reduce((s, x) => s + toCents(x.amount), 0) : 0;
-  const duplicateOf = receipt?.possibleDuplicateOf && !receipt.duplicateDismissed
-    ? receipts.find((r) => r.id === receipt.possibleDuplicateOf) : null;
+  // Worked out live, on every card: the flag stored at snap time only knew the receipts of that
+  // moment, and only on the same card.
+  const partner = useMemo(() => (receipt && receipt.purchaseDate && receipt.total != null
+    ? duplicatePartner(findDuplicates(receipts), receipt.id) : null), [receipts, receipt]);
+  const duplicateOf = partner ? receipts.find((r) => r.id === partner.otherId) ?? null
+    : receipt?.possibleDuplicateOf && !receipt.duplicateDismissed ? receipts.find((r) => r.id === receipt.possibleDuplicateOf) ?? null : null;
+  const printedLast4 = ai?.cardLast4 ?? null;
+  const chosenCard = cards.find((c) => c.id === form?.cardId) ?? null;
+  const printedCard = printedLast4 ? cards.find((c) => c.active && c.last4 === printedLast4) ?? null : null;
+  const cardMatchesSlip = !!printedLast4 && chosenCard?.last4 === printedLast4;
+  const cardMismatch = !!printedLast4 && !cardMatchesSlip;
 
   const problems: string[] = [];
   if (form && !form.vendor.trim()) problems.push('vendor');
@@ -173,14 +216,10 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
     onClose();
   }
 
-  async function remove() {
-    if (!receipt) return;
-    if (!window.confirm('Delete this receipt and its photo?')) return;
-    setSaving('delete');
-    const res = await dbDeleteReceipt(receipt);
-    setSaving(null);
-    if (res.error) { setError(res.error); return; }
-    removeLocal(receipt.id);
+  function remove() {
+    if (!receipt || !campId) return;
+    setConfirmDelete(false);
+    removeReceiptWithUndo({ receipt, keepId: null, campId, label: `Deleted the receipt from ${receipt.vendor ?? 'an unknown vendor'}.` });
     onClose();
   }
 
@@ -254,9 +293,11 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
             ) : form ? (
               <div className="space-y-4 px-4 py-4 sm:px-6">
                 {locked && <Callout tone="blue">Exported to the books on {fmtInstantDay(receipt!.exportedAt)}. Ask finance to change it.</Callout>}
-                {ai && !ai.readable && (
-                  <Callout tone="amber">
-                    <b>Couldn't read this one.</b> {ai.error ?? capture?.aiError ?? ''} Type the details from the receipt.
+                {ai && !ai.readable && receipt?.status === 'needs_review' && !(form.vendor.trim() && form.total.trim()) && (
+                  // Only until the details are in: it stayed on screen after the receipt was typed
+                  // in and saved, still saying it could not be read.
+                  <Callout tone="blue">
+                    <b>Not read automatically.</b> {capture?.aiError ?? ai.error ?? 'Type the details from the receipt.'}
                   </Callout>
                 )}
                 {ai?.readable && !locked && receipt?.status === 'needs_review' && (
@@ -269,7 +310,7 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
                   <Callout tone="amber">
                     <div className="flex flex-wrap items-center gap-2">
                       <Copy className="h-4 w-4 flex-none" />
-                      <span className="min-w-0 flex-1">Looks like a receipt already saved: <b>{duplicateOf.vendor}</b> · {money(duplicateOf.total, duplicateOf.currency)} · {fmtDay(duplicateOf.purchaseDate)}.</span>
+                      <span className="min-w-0 flex-1" data-testid="review-duplicate">Looks like a receipt already saved: <b>{duplicateOf.vendor}</b> · {money(duplicateOf.total, duplicateOf.currency)} · {fmtDay(duplicateOf.purchaseDate)} · on {cardWithHolder(cards, duplicateOf.cardId)}{duplicateOf.cardId !== receipt?.cardId ? ' (a different card)' : ''}.</span>
                       {onCompare && <button className="font-bold underline" onClick={() => onCompare(duplicateOf.id, receipt!.id)}>Compare</button>}
                     </div>
                   </Callout>
@@ -291,7 +332,7 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
                     </div>
                     <div>
                       <label className={labelClass} htmlFor="rc-card">Card</label>
-                      <select id="rc-card" className={inputClass} value={form.cardId}
+                      <select id="rc-card" className={`${inputClass} ${!locked && cardMatchesSlip ? '!border-green-muted-text ring-2 ring-green-muted-text/20' : ''} ${!locked && cardMismatch ? '!border-amber bg-amber-bg/60 ring-2 ring-amber/25' : ''}`} value={form.cardId}
                               onChange={(e) => {
                                 const card = cards.find((c) => c.id === e.target.value);
                                 setForm((f) => { const b = f ?? form; return b ? { ...b, cardId: e.target.value, codeId: b.codeId || card?.defaultBudgetCodeId || '' } : b; });
@@ -301,6 +342,16 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
                           <option key={c.id} value={c.id}>{c.label}{c.holderName ? ` · ${c.holderName}` : ''}{myCards.some((m) => m.id === c.id) ? ' (yours)' : ''}</option>
                         ))}
                       </select>
+                      {!locked && cardMatchesSlip && (
+                        <p className="mt-1 text-[12px] font-semibold text-green-muted-text" data-testid="card-matches-slip">Matches the card on the receipt (····{printedLast4})</p>
+                      )}
+                      {!locked && cardMismatch && (
+                        <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] font-semibold text-amber-text" data-testid="card-mismatch">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          <span>Receipt shows ····{printedLast4}; saving to {chosenCard?.last4 ? `····${chosenCard.last4}` : 'no card'}.</span>
+                          {printedCard && <button type="button" className="underline" onClick={() => set('cardId', printedCard.id)}>Use {printedCard.label}</button>}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -332,13 +383,13 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
                             </select>
                             <div className="relative w-[76px] flex-none">
                               <input aria-label="Rate percent" inputMode="decimal" className={`${fieldClass} w-full pr-6`} value={t.rate} placeholder="rate"
-                                     onChange={(e) => set('taxes', form.taxes.map((x, j) => (j === i ? { ...x, rate: e.target.value } : x)), 'taxes')} />
+                                     onChange={(e) => set('taxes', form.taxes.map((x, j) => (j === i ? { ...x, rate: e.target.value, auto: parseRate(e.target.value) != null ? true : x.auto } : x)), 'taxes')} />
                               <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[12px] text-ink-soft">%</span>
                             </div>
                             <div className="relative min-w-0 flex-1">
                               <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] text-ink-soft">$</span>
                               <input aria-label={`${TAX_LABELS[t.type]} amount`} inputMode="decimal" className={`${fieldClass} w-full pl-6 text-right tabular-nums`} value={t.amount}
-                                     onChange={(e) => set('taxes', form.taxes.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)), 'taxes')} />
+                                     onChange={(e) => set('taxes', form.taxes.map((x, j) => (j === i ? { ...x, amount: e.target.value, auto: false } : x)), 'taxes')} />
                             </div>
                             {!locked && (
                               <button type="button" aria-label="Remove tax line" className="flex-none rounded-btn p-2 text-ink-soft hover:bg-cream hover:text-red"
@@ -351,7 +402,7 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
                       </div>
                       {!locked && (
                         <button type="button" className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-forest hover:underline"
-                                onClick={() => set('taxes', [...form.taxes, { type: 'HST', rate: '', amount: '' }], 'taxes')}>
+                                onClick={() => set('taxes', [...form.taxes, { type: 'HST', rate: '', amount: '', auto: true }], 'taxes')}>
                           <Plus className="h-3.5 w-3.5" /> Add a tax line
                         </button>
                       )}
@@ -362,6 +413,7 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
                       <MoneyInput id="rc-total" label="Total charged" value={form.total} onChange={(v) => set('total', v, 'total')}
                                   className={`text-[17px] font-bold ${amberClass('total')} ${errClass('total')}`} />
                       {hint('total')}
+                      {form.totalAuto && form.total && !locked && <p className="mt-1 text-[12px] text-ink-soft">Worked out from the subtotal, taxes and tip. Type over it if the receipt says otherwise.</p>}
                     </div>
                     {math?.mismatch && (
                       <Callout tone="red" className="mt-3">
@@ -442,7 +494,7 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
           <div className="flex flex-none flex-wrap items-center gap-2 border-t border-border bg-paper-raised px-4 py-3 sm:px-6"
                style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
             {canDelete && !locked && (
-              <button type="button" onClick={remove} disabled={!!saving}
+              <button type="button" onClick={() => setConfirmDelete(true)} disabled={!!saving}
                       className="inline-flex items-center gap-1 rounded-btn px-2 py-2 text-[13px] font-semibold text-red hover:bg-red-bg disabled:opacity-50">
                 <Trash2 className="h-4 w-4" /> Delete
               </button>
@@ -465,6 +517,11 @@ export function ReceiptReview({ receiptId, capture, onClose, onCompare }: {
         )}
       </div>
 
+      {confirmDelete && receipt && (
+        <ConfirmDialog title="Delete this receipt?" confirmLabel="Delete receipt" danger onCancel={() => setConfirmDelete(false)} onConfirm={remove}>
+          {receipt.vendor ?? 'This receipt'}{receipt.total != null ? `, ${money(receipt.total, receipt.currency)},` : ''} and its photo are deleted. You can undo this for a few seconds.
+        </ConfirmDialog>
+      )}
       {zoom && imageUrl && (
         <div className="fixed inset-0 z-[60] overflow-auto bg-black/90" onClick={() => setZoom(false)} role="dialog" aria-label="Receipt photo">
           <button className="fixed right-3 top-3 rounded-full bg-white/15 p-2 text-white" aria-label="Close photo" style={{ top: 'max(0.75rem, env(safe-area-inset-top))' }}>

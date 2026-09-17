@@ -28,6 +28,8 @@ declare
   r1 uuid := gen_random_uuid(); r2 uuid := gen_random_uuid(); r3 uuid := gen_random_uuid();
   r4 uuid := gen_random_uuid(); r5 uuid := gen_random_uuid();
   v_stmt uuid; l1 uuid; l2 uuid;
+  c3 uuid; ra uuid := gen_random_uuid(); rb uuid := gen_random_uuid(); rc uuid := gen_random_uuid();
+  rd uuid := gen_random_uuid(); rc2 uuid := gen_random_uuid(); v_sep uuid; v_oct uuid; v_codes text;
   v_n int; v_ok boolean; v_j jsonb; v_passed int := 0; v_fn record;
 begin
   -- ── Fixtures (as postgres) ────────────────────────────────────────────────
@@ -66,13 +68,14 @@ begin
      and p.proname in ('is_expense_card_holder','can_see_receipt','can_use_receipts','can_read_receipt_file',
                        'can_write_receipt_file','receipts_guard','statement_lines_guard','card_statements_guard',
                        'expense_cards_guard','expense_html','claim_ai_quota','import_card_statement',
-                       'resolve_statement_lines','remind_card_holder','export_receipts','plan_receipt_messages_internal')
+                       'resolve_statement_lines','remind_card_holder','export_receipts','plan_receipt_messages_internal',
+                       'card_month_blockers_internal','export_card_statement','merge_duplicate_receipt')
      and has_function_privilege('anon', p.oid, 'execute');
   if v_n <> 0 then raise exception 'R1 FAIL: % receipts functions executable by anon', v_n; end if;
   select count(*) into v_n from pg_proc p
    where p.pronamespace = 'public'::regnamespace
      and p.proname in ('receipts_guard','statement_lines_guard','card_statements_guard','expense_cards_guard',
-                       'expense_html','plan_receipt_messages_internal')
+                       'expense_html','plan_receipt_messages_internal','card_month_blockers_internal')
      and has_function_privilege('authenticated', p.oid, 'execute');
   if v_n <> 0 then raise exception 'R1 FAIL: % internal receipts functions executable by authenticated', v_n; end if;
   select count(*) into v_n from (values ('receipts'),('expense_cards'),('expense_budget_codes'),('expense_tax_settings'),
@@ -375,9 +378,149 @@ begin
   if not v_ok then raise exception 'R13 FAIL: a card was given a holder from another camp'; end if;
   v_passed := v_passed + 1;
 
-  raise notice 'receipts: %/13 passed', v_passed;
-  if v_passed <> 13 then raise exception 'receipts FAIL: only % of 13', v_passed; end if;
+
+  -- ── R14: a month agrees only when nothing is left to explain ─────────────
+  -- The same rules as reconcileSummary() in src/lib/receipts.ts, so an export cannot mark a month
+  -- the screen would have called unresolved.
+  -- As postgres with no signed-in subject: `reset role` leaves the last login's JWT claims behind.
+  perform set_config('request.jwt.claims', '', true);
+  insert into expense_cards (camp_id, label, last4) values (v_camp, 'Visa 3333', '3333') returning id into c3;
+  insert into receipts (id, camp_id, card_id, submitted_by, vendor, purchase_date, total, status, created_at) values
+    (ra, v_camp, c3, u_admin, 'North Store', '2026-09-03', 50.00, 'ready', '2026-09-04 12:00-04'),
+    (rb, v_camp, c3, u_admin, 'South Store', '2026-09-05', 20.00, 'needs_review', '2026-09-06 12:00-04'),
+    (rc, v_camp, c3, u_admin, 'Orphan Shop', '2026-09-30', 7.00, 'ready', '2026-09-30 20:00-04'),
+    -- Undated, snapped at 22:30 on September 30th in Ontario (already October in UTC).
+    (rd, v_camp, c3, u_admin, 'No Date Diner', null, 3.00, 'needs_review', '2026-10-01 02:30+00');
+  perform pg_temp.login(u_admin);
+  v_sep := import_card_statement(c3, '2026-09-01', 79.00, 'sep.csv',
+    '[{"posted_date":"2026-09-04","description":"NORTH STORE","amount":50.00},
+      {"posted_date":"2026-09-06","description":"SOUTH STORE","amount":20.00},
+      {"posted_date":"2026-09-12","description":"PARKING","amount":10.00},
+      {"posted_date":"2026-09-14","description":"REFUND","amount":-5.00},
+      {"posted_date":"2026-09-20","description":"STREAMING","amount":4.00}]'::jsonb);
+  reset role;
+  select string_agg((b->>'code') || '=' || (b->>'count'), ',' order by b->>'code') into v_codes from jsonb_array_elements(card_month_blockers_internal(v_sep)) b;
+  if v_codes is distinct from 'no_charge=3,undated=1,unexplained=4' then raise exception 'R14 FAIL: fresh month blockers %', v_codes; end if;
+
+  perform pg_temp.login(u_admin);
+  perform resolve_statement_lines((select jsonb_agg(jsonb_build_object('line_id', id, 'match_state',
+      case description when 'NORTH STORE' then 'matched' when 'SOUTH STORE' then 'matched' when 'PARKING' then 'no_receipt_ok' else 'personal' end,
+      'receipt_id', case description when 'NORTH STORE' then ra when 'SOUTH STORE' then rb end))
+    from statement_lines where statement_id = v_sep and amount > 0));
+  reset role;
+  select string_agg((b->>'code') || '=' || (b->>'count'), ',' order by b->>'code') into v_codes from jsonb_array_elements(card_month_blockers_internal(v_sep)) b;
+  -- The reviewer's green month: everything matched, one match still unchecked, a receipt with no
+  -- charge, and an undated receipt the screen never listed.
+  if v_codes is distinct from 'matched_needs_review=1,no_charge=1,undated=1' then raise exception 'R14 FAIL: resolved month blockers %', v_codes; end if;
+
+  perform pg_temp.login(u_admin);
+  v_ok := false;
+  begin perform export_card_statement(v_sep, 'qbo_bills', 'x.csv', 'DD/MM/YYYY', false);
+  exception when others then v_ok := sqlerrm like 'This month does not agree%'; end;
+  reset role;
+  if not v_ok then raise exception 'R14 FAIL: a month that does not agree was exported'; end if;
+
+  -- A holder cannot set their own receipt aside; finance can.
+  perform pg_temp.login(u_h1);
+  v_ok := false;
+  begin update receipts set deferred_month = '2026-08-01' where id = r5;
+  exception when others then v_ok := sqlerrm like 'Only finance can set a receipt aside%'; end;
+  reset role;
+  if not v_ok then raise exception 'R14 FAIL: a holder set a receipt aside'; end if;
+
+  perform pg_temp.login(u_admin);
+  update receipts set deferred_month = '2026-09-01', deferred_note = 'Bought on the 30th' where id = rc;   -- posts next month
+  update receipts set card_id = c2 where id = rd;                                                        -- wrong card
+  update receipts set status = 'ready' where id = rb;                                                   -- checked
+  reset role;
+  if jsonb_array_length(card_month_blockers_internal(v_sep)) <> 0 then
+    raise exception 'R14 FAIL: resolved month still blocked by %', card_month_blockers_internal(v_sep);
+  end if;
+  -- Each matched receipt against its own charge, and the bill's total against the lines.
+  perform set_config('request.jwt.claims', '', true);
+  update receipts set total = 51.00 where id = ra;
+  if card_month_blockers_internal(v_sep)->0->>'code' <> 'amount_differs' then raise exception 'R14 FAIL: a receipt unequal to its charge was not a blocker'; end if;
+  update receipts set total = 50.00 where id = ra;
+  update card_statements set statement_total = 97.00 where id = v_sep;
+  if card_month_blockers_internal(v_sep)->0->>'code' <> 'total_mismatch' then raise exception 'R14 FAIL: a typo in the total was not a blocker'; end if;
+  update card_statements set statement_total = 79.00 where id = v_sep;
+  -- The receipt set aside from September is October's to explain.
+  perform pg_temp.login(u_admin);
+  v_oct := import_card_statement(c3, '2026-10-01', 7.00, 'oct.csv', '[{"posted_date":"2026-10-02","description":"ORPHAN SHOP","amount":7.00}]'::jsonb);
+  reset role;
+  select string_agg((b->>'code') || '=' || (b->>'count'), ',' order by b->>'code') into v_codes from jsonb_array_elements(card_month_blockers_internal(v_oct)) b;
+  if v_codes is distinct from 'no_charge=1,unexplained=1' then raise exception 'R14 FAIL: October blockers %', v_codes; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R15: an export follows the statement and is recorded once ─────────────
+  perform pg_temp.login(u_h1);
+  v_ok := false;
+  begin perform export_card_statement(v_sep, 'qbo_bank_3col', 'x.csv', 'DD/MM/YYYY', false);
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R15 FAIL: staff exported a statement'; end if;
+  perform pg_temp.login(u_admin);
+  v_ok := false;
+  begin perform export_card_statement(v_sep, 'detailed', 'x.csv', 'DD/MM/YYYY', false);
+  exception when others then v_ok := true; end;
+  if not v_ok then reset role; raise exception 'R15 FAIL: the review spreadsheet marked a month exported'; end if;
+  -- Bank upload: every line but the personal one, credits included. 50 + 20 + 10 - 5.
+  v_j := export_card_statement(v_sep, 'qbo_bank_3col', 'quickbooks-bank-3col-visa-3333-2026-09.csv', 'DD/MM/YYYY', false);
+  if (v_j->>'row_count')::int <> 4 or (v_j->>'total')::numeric <> 75.00 or (v_j->>'personal_total')::numeric <> 4.00 then
+    reset role; raise exception 'R15 FAIL: bank export recorded %', v_j;
+  end if;
+  select count(*) into v_n from receipts where id in (ra, rb) and status = 'exported' and export_id = (v_j->>'export_id')::uuid;
+  if v_n <> 2 then reset role; raise exception 'R15 FAIL: % of 2 matched receipts marked exported', v_n; end if;
+  select count(*) into v_n from card_statements where id = v_sep and export_id = (v_j->>'export_id')::uuid and exported_at is not null;
+  if v_n <> 1 then reset role; raise exception 'R15 FAIL: the statement was not marked exported'; end if;
+  v_ok := false;
+  begin perform export_card_statement(v_sep, 'qbo_bills', 'again.csv', 'DD/MM/YYYY', false);
+  exception when others then v_ok := sqlerrm like '%already exported%'; end;
+  if not v_ok then reset role; raise exception 'R15 FAIL: a statement was exported twice without opting in'; end if;
+  -- Bills: charges only (no credit memos), personal left out. 50 + 20 + 10.
+  v_j := export_card_statement(v_sep, 'qbo_bills', 'quickbooks-bills-visa-3333-2026-09.csv', 'MM/DD/YYYY', true);
+  reset role;
+  if (v_j->>'row_count')::int <> 3 or (v_j->>'total')::numeric <> 80.00 then raise exception 'R15 FAIL: bills export recorded %', v_j; end if;
+  -- The person's own name, not the camp's display name for them ("Demo guest" in a demo camp).
+  select count(*) into v_n from expense_exports where statement_id = v_sep
+     and created_by_name = (select full_name from profiles where id = u_admin) and created_by_name <> 'Admin';
+  if v_n <> 2 then raise exception 'R15 FAIL: % export rows name the person', v_n; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R16: keeping one copy of a duplicate moves its statement match ────────
+  perform pg_temp.login(u_admin);
+  perform resolve_statement_lines((select jsonb_agg(jsonb_build_object('line_id', id, 'match_state', 'matched', 'receipt_id', rc)) from statement_lines where statement_id = v_oct));
+  reset role;
+  perform set_config('request.jwt.claims', '', true);
+  insert into receipts (id, camp_id, card_id, submitted_by, vendor, purchase_date, total, status, budget_code_id, created_at)
+  values (rc2, v_camp, c2, u_h2, 'Orphan Shop Inc.', '2026-09-30', 7.00, 'ready', code1, now());
+  -- A holder cannot remove the copy the bill is matched to, nor keep one they cannot see.
+  perform pg_temp.login(u_h2);
+  v_ok := false;
+  begin perform merge_duplicate_receipt(rc, rc2);
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R16 FAIL: a holder merged into a receipt they cannot see'; end if;
+  perform pg_temp.login(u_admin);
+  v_j := merge_duplicate_receipt(rc2, rc);
+  reset role;
+  select count(*) into v_n from statement_lines where statement_id = v_oct and receipt_id = rc2 and match_state = 'matched';
+  if v_n <> 1 then raise exception 'R16 FAIL: the match did not move to the kept copy (%)', v_j; end if;
+  select count(*) into v_n from receipts where id = rc;
+  if v_n <> 0 then raise exception 'R16 FAIL: the removed copy is still there'; end if;
+  if jsonb_array_length(card_month_blockers_internal(v_oct)) <> 0 then raise exception 'R16 FAIL: October no longer agrees after the merge'; end if;
+  -- Both copies matched: refused, because one charge would lose its paper.
+  perform pg_temp.login(u_admin);
+  v_ok := false;
+  begin perform merge_duplicate_receipt(ra, rb);
+  exception when others then v_ok := sqlerrm like 'Both copies are matched%'; end;
+  reset role;
+  if not v_ok then raise exception 'R16 FAIL: two matched receipts were merged'; end if;
+  v_passed := v_passed + 1;
+
+  raise notice 'receipts: %/16 passed', v_passed;
+  if v_passed <> 16 then raise exception 'receipts FAIL: only % of 16', v_passed; end if;
 end $$;
 
-select 'receipts: 13/13 passed' as result;
+select 'receipts: 16/16 passed' as result;
 rollback;

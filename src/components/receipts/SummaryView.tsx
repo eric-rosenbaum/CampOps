@@ -23,7 +23,8 @@ export function SummaryView() {
   const rules = useMemo(() => taxSettings?.taxRules ?? [], [taxSettings]);
   const currency = taxSettings?.currency ?? 'CAD';
   const scoped = useMemo(() => receipts.filter((r) => cardId === 'all' || r.cardId === cardId), [receipts, cardId]);
-  const s = useMemo(() => spendSummary(scoped, codes, rules, currency), [scoped, codes, rules, currency]);
+  const province = taxSettings?.province ?? null;
+  const s = useMemo(() => spendSummary(scoped, codes, rules, currency, province), [scoped, codes, rules, currency, province]);
   const taxTypes = TAX_TYPES.filter((t) => s.totals.taxes[t] !== 0);
 
   if (!receipts.some((r) => r.status === 'ready' || r.status === 'exported')) {
@@ -49,13 +50,19 @@ export function SummaryView() {
         <Figure label="Exported" value={`${s.totals.exportedCount} of ${s.totals.count}`} hint="to QuickBooks" />
       </div>
 
+      {s.totals.taxes.HST !== 0 && (
+        <p className="mt-2 text-[12.5px] text-ink-soft" data-testid="hst-split">
+          HST {fig(s.totals.taxes.HST)} = federal part {fig(s.totals.hst.federal)} + provincial part {fig(s.totals.hst.provincial)}, split at the rate on each receipt.
+        </p>
+      )}
+
       {(s.needsReviewCount > 0 || s.otherCurrency.count > 0 || !taxSettings?.confirmedAt) && (
         <div className="mt-3 space-y-2">
           {s.needsReviewCount > 0 && <Callout tone="amber">{s.needsReviewCount} receipt{s.needsReviewCount === 1 ? ' is' : 's are'} still waiting to be checked and {s.needsReviewCount === 1 ? 'is' : 'are'} not counted.</Callout>}
           {s.otherCurrency.count > 0 && <Callout tone="blue">{s.otherCurrency.count} receipt{s.otherCurrency.count === 1 ? '' : 's'} in {s.otherCurrency.currency} ({formatCents(s.otherCurrency.totalCents, s.otherCurrency.currency ?? 'USD')}) {s.otherCurrency.count === 1 ? 'is' : 'are'} not added to {currency} totals.</Callout>}
           {!taxSettings?.confirmedAt && (
             <Callout tone="amber">
-              Recoverable amounts are an <b>estimate</b> from rules nobody has confirmed yet. <Link to="/receipts?tab=settings" className="font-bold underline">Confirm them with your finance director</Link>.
+              Recoverable amounts are an <b>estimate</b> from tax rules nobody has checked yet. <Link to="/receipts?tab=settings" className="font-bold underline">Check they match how your camp claims sales tax back</Link>.
             </Callout>
           )}
         </div>
@@ -68,7 +75,7 @@ export function SummaryView() {
       <SpendTable rows={s.byCode} taxTypes={taxTypes} fig={fig} firstLabel="Budget code" totals={s.totals} />
 
       <p className="mt-4 text-[12px] text-ink-soft">
-        Recoverable tax is estimated per tax type as paid × your recoverable %, rounded once on the total. It is not tax advice.
+        Recoverable tax is estimated from your tax settings, HST part by part, rounded to the cent on each receipt and then added up, so every total is the sum of the rows above it. It is an estimate, not tax advice.
       </p>
     </div>
   );

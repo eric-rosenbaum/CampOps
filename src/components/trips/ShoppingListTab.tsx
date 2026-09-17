@@ -100,9 +100,14 @@ export function ShoppingListTab({ trips, errands, now, userId, role, onAddErrand
             </p>
           )}
         </div>
-        {/* One line, never wrapping the × under a long trip name: the chip truncates instead. */}
-        <div className="flex min-w-0 items-center gap-2">
-          {pile !== 'needs' && trip && <div className="flex min-w-0 flex-1 sm:flex-initial">{tripChip(trip, pile === 'departed')}</div>}
+        {/* The × never wraps under a long trip name: the chip truncates instead. A departed errand
+            has three controls, so on a phone its chip takes a line of its own above them. */}
+        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:flex-nowrap">
+          {pile !== 'needs' && trip && (
+            <div className={`flex min-w-0 ${pile === 'departed' ? 'basis-full sm:basis-auto' : 'flex-1 sm:flex-initial'}`}>
+              {tripChip(trip, pile === 'departed')}
+            </div>
+          )}
           {pile !== 'on' && canWrite && choices.length > 0 && (
             <select
               aria-label={`Put ${e.item} on ${pile === 'departed' ? 'another' : 'a'} trip`}

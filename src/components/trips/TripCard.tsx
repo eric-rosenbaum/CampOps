@@ -81,7 +81,8 @@ export function TripCard({ trip, usage, errandCount, mine, iDrive, strandedCount
           {trip.title}
         </p>
         {(route || trip.direction === 'outbound') && (
-          <p className={`truncate text-ink-soft ${row ? 'text-[13px]' : 'text-[11.5px]'}`} data-testid="trip-route">
+          // Wraps in a narrow laptop column: "Town centre → ca…" hid the one word that says which way.
+          <p className={`text-ink-soft ${row ? 'truncate text-[13px]' : 'text-[11.5px] leading-snug'}`} data-testid="trip-route">
             {route}
             {trip.direction === 'outbound' && <span className="font-semibold text-ink-soft">{route ? ' · ' : ''}one way</span>}
           </p>

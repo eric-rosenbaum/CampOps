@@ -74,7 +74,8 @@ function LeavingNext({ leaving, now, lookups, onOpenTrip }: Pick<Props, 'leaving
   return (
     <section aria-label="Leaving next" className="border-b border-border bg-paper-raised px-4 py-3.5 sm:px-7">
       <p className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-ink-soft">Leaving next</p>
-      <div className="grid gap-2.5 sm:grid-cols-2">
+      {/* minmax(0,1fr): an implicit column grew to the long nowrap title and pushed the card 8px off a phone. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-2.5 sm:grid-cols-2">
         {leaving.map((t) => {
           const k = kindStyle(t.kind);
           const sum = seatSummary(t, lookups.usage(t.id));
@@ -91,7 +92,7 @@ function LeavingNext({ leaving, now, lookups, onOpenTrip }: Pick<Props, 'leaving
               type="button"
               onClick={() => onOpenTrip(t.id)}
               data-testid="leaving-next"
-              className="flex items-center gap-3 rounded-card border border-border bg-white p-3 text-left transition-colors hover:border-sage"
+              className="flex min-w-0 items-center gap-3 rounded-card border border-border bg-white p-3 text-left transition-colors hover:border-sage"
             >
               <span className="grid h-12 w-12 flex-none place-items-center rounded-card" style={{ background: k.wash }}>
                 <Icon className="h-6 w-6" style={{ color: k.color }} />
@@ -193,7 +194,7 @@ export function WeekBoard({ days, weekStart, isCurrentWeek, leaving, now, lookup
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col" data-testid="board-pane">
       <LeavingNext leaving={leaving} now={now} lookups={lookups} onOpenTrip={onOpenTrip} />
 
       <div className="flex flex-wrap items-center gap-2 px-4 pb-2 pt-3.5 sm:px-7">

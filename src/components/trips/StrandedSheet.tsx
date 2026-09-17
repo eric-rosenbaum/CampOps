@@ -103,10 +103,10 @@ export function StrandedSheet({ date, trips, seats, requests, userId, role, onOp
                     </button>
                   )}
 
-                  {h.options.length > 0 ? (
+                  {h.options.length > 0 ? (h.isMe && h.options.length === 1 ? null : (
                     <div className="mt-3">
                       <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-ink-soft">
-                        {h.isMe ? (h.options.length > 1 ? 'Or another way back' : 'The way back') : 'Trips with a seat back'}
+                        {h.isMe ? 'Or another way back' : 'Trips with a seat back'}
                       </p>
                       <ul className="space-y-1.5">
                         {(h.isMe ? h.options.slice(1, 4) : h.options.slice(0, 3)).map((t) => {
@@ -116,7 +116,7 @@ export function StrandedSheet({ date, trips, seats, requests, userId, role, onOp
                             <li key={t.id} className="flex items-center gap-2">
                               <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: kindStyle(t.kind).color }} />
                               <button type="button" onClick={() => onOpenTrip(t.id)} className="min-w-0 flex-1 text-left">
-                                <span className="block truncate text-[13px] font-semibold text-ink">
+                                <span className="block text-[13px] font-semibold leading-snug text-ink">
                                   {t.departDate === trip.departDate ? '' : `${shortDow(t.departDate)} `}{clock(t.departTime)} · {t.title}
                                 </span>
                                 <span className="block truncate text-[11.5px] text-ink-soft">{routeLabel(t) || 'Back to camp'} · {free} seat{free === 1 ? '' : 's'} back</span>
@@ -139,7 +139,7 @@ export function StrandedSheet({ date, trips, seats, requests, userId, role, onOp
                         })}
                       </ul>
                     </div>
-                  ) : (
+                  )) : (
                     <p className="mt-3 flex items-start gap-1.5 text-[12.5px] text-red-text">
                       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" />
                       Nothing with a free seat is coming back that day or the next.

@@ -321,6 +321,21 @@ RLS: select `is_camp_member`. Writes through RPCs (seat capacity has to be atomi
 - **Seat math per leg:** a `there`-only rider and a `back`-only rider don't double-book a seat.
   "One-way riders with no way back" = confirmed `there` seats on trips with no matching `back`
   seat on any trip that day or the next. This is the stranding warning.
+- **Direction** (added after the demo review, migration
+  `20260918150000_a_trip_says_which_way_it_goes_and_a_rider_can_be_offered_a_way_home`):
+  `trips.direction` is `round_trip | outbound | pickup`. A trip sells only its legs (outbound →
+  `there`, pickup → `back`); `claim_trip_seat` with no leg takes the trip's own and refuses others
+  (`leg_not_offered`). Matching a there-and-back request to a one-way trip seats the covered leg and
+  leaves a new open request for the rest. Kind `pickup` presets the direction.
+- **One car at a time — prevented, not warned.** Two live (confirmed or waitlisted) seats of the
+  same person clash when they use the same leg on trips whose `[departure, return]` windows
+  overlap; the claim raises `overlapping_seat` with the other trip in DETAIL, and
+  `switch_trip_seat` moves the seat atomically. Prevention was chosen because a warned-about
+  waitlist place would later be promoted into a second confirmed seat that somebody else needed.
+  In on one car and home on another never clashes.
+- **Stranded riders are actionable:** `offer_ride_back(seat, trip)` (the rider, the ride-in's
+  creator/driver, the return trip's managers, admins) and `request_ride_back(seat)` (the rider,
+  the ride-in's managers, admins; idempotent). Both work for name-only riders.
 
 ### B.3 Reminders — `plan_trip_messages_internal()`
 

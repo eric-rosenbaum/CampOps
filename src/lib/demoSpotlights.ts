@@ -150,7 +150,7 @@ export const SPOTLIGHTS: SpotlightTemplate[] = [
         check: { kind: 'auto', id: 'receipt_saved' },
       },
       {
-        text: 'Open last month’s reconciliation and resolve the missing receipt and the duplicate.',
+        text: 'Open last month’s reconciliation: mark the gas charge “Receipt lost” with a note, and remove the duplicate.',
         notice: 'The header turns green when the month agrees with the Visa statement.',
         href: '{reconcileStatement}',
         check: { kind: 'manual' },

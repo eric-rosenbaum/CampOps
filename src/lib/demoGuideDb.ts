@@ -5,6 +5,7 @@
 import { supabase } from '@/lib/supabase';
 import { qrToSvg } from '@/lib/qr';
 import { todayInZone } from '@/lib/foodRequests';
+import { samplePhotoForReceipt } from '@/lib/demoReceiptPhotos';
 import type { AutoCheckId, BriefSpotlight, DemoBrief } from '@/lib/demoSpotlights';
 
 function rowToBrief(r: Record<string, unknown>): DemoBrief {
@@ -169,13 +170,15 @@ export async function resetDemoSampleData(campId: string, keys: string[]): Promi
 async function uploadSamplePhotos(data: unknown): Promise<void> {
   // Storage can't be written from SQL, so the receipts seed returns which rows need a photo and
   // the sample image each one shows; the images ship with the app under /demo/receipts/.
-  const files = ((data as { receipt_files?: { file_path: string; sample_file: string }[] } | null)?.receipt_files) ?? [];
+  const files = ((data as { receipt_files?: { receipt_id: string; file_path: string; sample_file: string }[] } | null)?.receipt_files) ?? [];
   const failed: string[] = [];
   for (const f of files) {
     try {
       const res = await fetch(`/demo/receipts/${f.sample_file}`);
       if (!res.ok) throw new Error(String(res.status));
-      const blob = await res.blob();
+      // The sample photos print one month; redraw the date to the receipt row's own date, or a
+      // demo seeded in another month shows photos that contradict their receipts.
+      const blob = await samplePhotoForReceipt(await res.blob(), f.sample_file, f.receipt_id);
       // Re-seeding re-uploads: remove first, because an upsert needs a read policy check the
       // uploader may not pass.
       await supabase.storage.from('receipts').remove([f.file_path]);
@@ -196,7 +199,7 @@ async function uploadSamplePhotos(data: unknown): Promise<void> {
  * month plus one charge with no receipt, so "import a statement yourself" works and matches.
  * Returned as CSV text in the shape a Canadian bank export takes.
  */
-export async function buildSampleStatementCsv(campId: string): Promise<{ csv: string; fileName: string } | null> {
+export async function buildSampleStatementCsv(campId: string): Promise<{ csv: string; fileName: string; total: number } | null> {
   const { data: card } = await supabase.from('expense_cards').select('id, last4')
     .eq('camp_id', campId).eq('last4', '1156').maybeSingle();
   if (!card) return null;
@@ -221,6 +224,8 @@ export async function buildSampleStatementCsv(campId: string): Promise<{ csv: st
   return {
     csv: ['Transaction Date,Description,Debit,Credit', ...lines].join('\r\n') + '\r\n',
     fileName: `visa-${card.last4}-${y}-${m}.csv`,
+    // The import asks for the bill's total; the guide shows it so a visitor has one to type.
+    total: monthRows.reduce((n, r) => n + Math.round(Number(r.total) * 100), 0) / 100 + 14,
   };
 }
 

@@ -189,6 +189,7 @@ function SampleStatementLink() {
   const camp = useCampStore((s) => s.currentCamp);
   const [busy, setBusy] = useState(false);
   const [missing, setMissing] = useState(false);
+  const [total, setTotal] = useState<number | null>(null);
 
   async function download() {
     if (!camp) return;
@@ -196,6 +197,7 @@ function SampleStatementLink() {
     try {
       const sample = await buildSampleStatementCsv(camp.id);
       if (!sample) { setMissing(true); return; }
+      setTotal(sample.total);
       const url = URL.createObjectURL(new Blob([sample.csv], { type: 'text/csv' }));
       const a = document.createElement('a');
       a.href = url; a.download = sample.fileName;
@@ -206,10 +208,17 @@ function SampleStatementLink() {
 
   if (missing) return <p className="text-[12px] text-ink-faint mt-1">There are no sample receipts to build a statement from.</p>;
   return (
-    <button type="button" onClick={download} disabled={busy} data-testid="sample-statement"
-      className="inline-flex items-center gap-1 text-[12px] font-semibold text-forest underline mt-1 disabled:opacity-50">
-      <Download className="w-3 h-3" /> {busy ? 'Preparing…' : 'Download the sample statement (CSV)'}
-    </button>
+    <span className="block mt-1">
+      <button type="button" onClick={download} disabled={busy} data-testid="sample-statement"
+        className="inline-flex items-center gap-1 text-[12px] font-semibold text-forest underline disabled:opacity-50">
+        <Download className="w-3 h-3" /> {busy ? 'Preparing…' : 'Download the sample statement (CSV)'}
+      </button>
+      {total != null && (
+        <span className="block text-[12px] text-ink-soft mt-0.5" data-testid="sample-statement-total">
+          When the import asks for the bill’s total, type ${total.toFixed(2)}.
+        </span>
+      )}
+    </span>
   );
 }
 

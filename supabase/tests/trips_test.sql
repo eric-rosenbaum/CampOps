@@ -697,6 +697,23 @@ begin
      and rule_key like 'errand_done:bought%' and to_email in ('qa-program@example.com','qa-holder@example.com');
   if v_n <> 2 then raise exception 'T19 FAIL: % of 2 people who needed it were told', v_n; end if;
 
+  -- ── T23: whoever is waiting on an errand can move it ─────────────────────
+  perform set_config('request.jwt.claims', json_build_object('sub', v_c, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  v_e2 := add_errand(v_camp, jsonb_build_object('item','Craft glue','quantity','3','trip_id', v_rt));
+  reset role;
+  perform set_config('request.jwt.claims', json_build_object('sub', v_d, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  begin perform detach_errand(v_e2); v_err := null; exception when others then v_err := sqlerrm; end;
+  if v_err is distinct from 'not_allowed' then reset role; raise exception 'T23 FAIL: a stranger moved an errand (%)', v_err; end if;
+  perform also_need_errand(v_e2, '2');
+  perform detach_errand(v_e2);
+  select trip_id into v_id from trip_errands where id = v_e2;
+  if v_id is not null then reset role; raise exception 'T23 FAIL: joiner could not take it off the trip'; end if;
+  v_n := attach_errands(v_rt, array[v_e2]);
+  reset role;
+  if v_n <> 1 then raise exception 'T23 FAIL: joiner could not put it on a trip (%)', v_n; end if;
+
   -- ── T20: a rider rides home in the car they rode in ──────────────────────
   -- Marcus's case: into town on a round trip with seats free on its way back. The way back is the
   -- same car; offer_ride_back on the seat's own trip makes it there-and-back.
@@ -811,8 +828,8 @@ begin
    where s.trip_id = v_pick and s.rider_user_id = v_c and m.rule_key = 'seat_confirmed' and m.body_text ~ 'picks up in town';
   if v_n <> 1 then raise exception 'T22 FAIL: pickup seat confirmation still says it leaves'; end if;
 
-  raise notice 'trips: 22/22 passed';
+  raise notice 'trips: 23/23 passed';
 end $$;
 
-select 'trips: 22/22 passed' as result;
+select 'trips: 23/23 passed' as result;
 rollback;

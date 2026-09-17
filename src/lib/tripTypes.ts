@@ -73,7 +73,7 @@ export interface TripErrand {
   neededBy: string | null;
   forActivity: string | null;
   /** Other people who said "I need that too" instead of adding a duplicate. */
-  alsoNeededBy: { userId: string; name: string }[];
+  alsoNeededBy: { userId: string; name: string; quantity?: string | null }[];
   status: ErrandStatus;
   driverNote: string | null;
   doneAt: string | null;

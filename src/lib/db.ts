@@ -249,13 +249,24 @@ const ISSUE_COLUMNS: Partial<Record<keyof Issue, string>> = {
   minutesSpent: 'minutes_spent',
 };
 
-export async function dbUpdateIssue(id: string, patch: Partial<Issue>) {
+/**
+ * Returns the database's message when the write is refused, `null` when it lands.
+ *
+ * It used to return nothing and only console.error, which is how a "Take it" that violated
+ * `issues_one_assignee` looked to a camp like a chip that did nothing at all. A caller that can
+ * say something useful about a failure now has something to say it with.
+ */
+export async function dbUpdateIssue(id: string, patch: Partial<Issue>): Promise<string | null> {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   for (const [field, column] of Object.entries(ISSUE_COLUMNS) as [keyof Issue, string][]) {
     if (patch[field] !== undefined) row[column] = patch[field];
   }
   const { error } = await supabase.from('issues').update(row).eq('id', id);
-  if (error) console.error('dbUpdateIssue error:', error.message);
+  if (error) {
+    console.error('dbUpdateIssue error:', error.message);
+    return error.message;
+  }
+  return null;
 }
 
 export async function dbAddIssueActivity(issueId: string, entry: ActivityEntry) {

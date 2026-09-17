@@ -16,7 +16,7 @@ import { loadAndApply, debounce, WAL_DEBOUNCE_MS } from './syncGuard';
 import { uploadToBucket } from './storageUpload';
 import type {
   BudgetCode, CardStatement, ExpenseCard, ExpenseExport, ExportFormat, MatchState, Receipt,
-  ReceiptAiResult, ReceiptSplit, StatementLine, TaxLine, TaxRule, TaxSettings,
+  NoReceiptKind, ReceiptAiResult, ReceiptSplit, StatementLine, TaxLine, TaxRule, TaxSettings,
 } from './receiptTypes';
 
 type Row = Record<string, unknown>;
@@ -54,6 +54,8 @@ export function rowToReceipt(r: Row): Receipt {
     duplicateDismissed: Boolean(r.duplicate_dismissed),
     deferredMonth: s(r.deferred_month), deferredNote: s(r.deferred_note),
     exportId: s(r.export_id), exportedAt: s(r.exported_at),
+    unlockedAt: s(r.unlocked_at), unlockedByName: s(r.unlocked_by_name), unlockReason: s(r.unlock_reason),
+    holderAskedAt: s(r.holder_asked_at),
     createdAt: r.created_at as string, updatedAt: r.updated_at as string,
   };
 }
@@ -84,6 +86,8 @@ export function rowToTaxSettings(r: Row): TaxSettings {
     })) : [],
     claimBasis: (r.claim_basis as TaxSettings['claimBasis']) ?? null,
     confirmedAt: s(r.confirmed_at),
+    qboTaxCodes: r.qbo_tax_codes && typeof r.qbo_tax_codes === 'object' ? r.qbo_tax_codes as Record<string, string> : {},
+    nonrecoverableTax: (r.nonrecoverable_tax as TaxSettings['nonrecoverableTax']) ?? null,
   };
 }
 
@@ -91,7 +95,9 @@ export function rowToStatement(r: Row): CardStatement {
   return {
     id: r.id as string, campId: r.camp_id as string, cardId: r.card_id as string,
     periodMonth: r.period_month as string, statementTotal: n(r.statement_total),
-    fileName: s(r.file_name), exportId: s(r.export_id), exportedAt: s(r.exported_at), createdAt: r.created_at as string,
+    fileName: s(r.file_name), totalSource: r.total_source === 'sum_of_lines' ? 'sum_of_lines' : 'typed',
+    exportId: s(r.export_id), exportedAt: s(r.exported_at),
+    reexportNeededAt: s(r.reexport_needed_at), reexportReason: s(r.reexport_reason), createdAt: r.created_at as string,
   };
 }
 
@@ -101,6 +107,7 @@ export function rowToLine(r: Row): StatementLine {
     postedDate: r.posted_date as string, description: (r.description as string) ?? '',
     amount: Number(r.amount ?? 0), matchState: (r.match_state as MatchState) ?? 'unmatched',
     receiptId: s(r.receipt_id), note: s(r.note), remindedAt: s(r.reminded_at),
+    noReceiptKind: (r.no_receipt_kind as StatementLine['noReceiptKind']) ?? null, budgetCodeId: s(r.budget_code_id),
   };
 }
 
@@ -111,6 +118,7 @@ export function rowToExport(r: Row): ExpenseExport {
     includeExported: Boolean(r.include_exported), rowCount: Number(r.row_count ?? 0), total: Number(r.total ?? 0),
     createdByName: s(r.created_by_name), statementId: s(r.statement_id),
     personalTotal: r.personal_total == null ? null : Number(r.personal_total), dateFormat: s(r.date_format),
+    taxTreatment: s(r.tax_treatment),
     createdAt: r.created_at as string,
   };
 }
@@ -232,6 +240,7 @@ export async function dbUpdateReceipt(r: Receipt): Promise<Result> {
   // Setting aside is finance's own write (dbSetReceiptAside); the guard refuses it from a holder,
   // so the review form never sends those columns.
   delete row.id; delete row.camp_id; delete row.submitted_by; delete row.deferred_month; delete row.deferred_note;
+
   const { error } = await supabase.from('receipts').update(row).eq('id', r.id);
   return error ? fail('update receipt', error.message) : ok;
 }
@@ -358,6 +367,8 @@ export async function dbSaveTaxSettings(t: TaxSettings, confirmed: boolean): Pro
       ...(r.federalPct != null && r.provincialPct != null ? { federal_pct: r.federalPct, provincial_pct: r.provincialPct } : {}),
     })),
     claim_basis: t.claimBasis,
+    qbo_tax_codes: Object.fromEntries(Object.entries(t.qboTaxCodes ?? {}).map(([k, v]) => [k, v.trim()]).filter(([k, v]) => v && v !== k)),
+    nonrecoverable_tax: t.nonrecoverableTax,
     confirmed_at: confirmed ? new Date().toISOString() : null,
     confirmed_by: confirmed ? sess.session?.user.id ?? null : null,
   });
@@ -367,7 +378,7 @@ export async function dbSaveTaxSettings(t: TaxSettings, confirmed: boolean): Pro
 // Statements ----------------------------------------------------------------
 
 export async function dbImportStatement(input: {
-  cardId: string; periodMonth: string; statementTotal: number; fileName: string | null;
+  cardId: string; periodMonth: string; statementTotal: number | null; fileName: string | null;
   lines: { postedDate: string; description: string; amount: number }[]; replace: boolean;
 }): Promise<Result & { id?: string }> {
   const { data, error } = await supabase.rpc('import_card_statement', {
@@ -382,7 +393,7 @@ export async function dbImportStatement(input: {
 
 /** A typo in the statement total is fixed here, without importing the lines again. */
 export async function dbSetStatementTotal(id: string, total: number): Promise<Result> {
-  const { error } = await supabase.from('card_statements').update({ statement_total: total }).eq('id', id);
+  const { error } = await supabase.from('card_statements').update({ statement_total: total, total_source: 'typed' }).eq('id', id);
   return error ? fail('statement total', error.message) : ok;
 }
 
@@ -391,7 +402,10 @@ export async function dbDeleteStatement(id: string): Promise<Result> {
   return error ? fail('delete statement', error.message) : ok;
 }
 
-export interface LineChange { lineId: string; matchState: MatchState; receiptId?: string | null; note?: string | null }
+export interface LineChange {
+  lineId: string; matchState: MatchState; receiptId?: string | null; note?: string | null;
+  noReceiptKind?: NoReceiptKind | null; budgetCodeId?: string | null;
+}
 
 export async function dbResolveLines(changes: LineChange[]): Promise<Result> {
   if (!changes.length) return ok;
@@ -399,6 +413,7 @@ export async function dbResolveLines(changes: LineChange[]): Promise<Result> {
     p_changes: changes.map((c) => ({
       line_id: c.lineId, match_state: c.matchState, receipt_id: c.receiptId ?? null,
       ...(c.note !== undefined ? { note: c.note } : {}),
+      ...(c.matchState === 'no_receipt_ok' ? { no_receipt_kind: c.noReceiptKind ?? 'not_expected', budget_code_id: c.budgetCodeId ?? null } : {}),
     })),
   });
   return error ? fail('resolve lines', error.message) : ok;
@@ -418,19 +433,49 @@ export async function dbSetReceiptAside(id: string, month: string | null, note: 
   return error ? fail('set aside', error.message) : ok;
 }
 
-/** Keep one copy of a duplicate: its statement match moves across, and the other copy is removed. */
-export async function dbMergeDuplicate(keepId: string, removeId: string): Promise<Result> {
-  const { data, error } = await supabase.rpc('merge_duplicate_receipt', { p_keep: keepId, p_remove: removeId });
+/**
+ * Keep one copy of a duplicate: its statement match moves across, the other copy is removed at
+ * once, and the removal is recorded so Undo can restore it. `takePhoto`: the kept copy takes the
+ * removed one's photo (it had none of its own).
+ */
+export async function dbMergeDuplicate(keepId: string, removeId: string, takePhoto = false): Promise<Result & { removalId?: string }> {
+  const { data, error } = await supabase.rpc('merge_duplicate_receipt', { p_keep: keepId, p_remove: removeId, p_take_photo: takePhoto });
   if (error) return fail('merge duplicate', error.message);
-  const path = (data as { file_path?: string | null } | null)?.file_path;
-  if (path) {
-    // The storage policy looks the row up, and the row is gone, so this is refused and the photo
-    // is left behind as an unreferenced object. Harmless to anyone (nothing can sign it), and
-    // logged; deleting it first would lose the photo whenever the merge itself is refused.
-    const { error: e2 } = await supabase.storage.from(RECEIPTS_BUCKET).remove([path]);
-    if (e2) campError('[receipts] remove merged file', e2.message);
-  }
-  return ok;
+  return { error: null, removalId: (data as { removal_id?: string } | null)?.removal_id };
+}
+
+/** Delete one receipt, restorably. Its photo stays in storage until then. */
+export async function dbRemoveReceipt(id: string): Promise<Result & { removalId?: string }> {
+  const { data, error } = await supabase.rpc('remove_receipt', { p_receipt_id: id });
+  if (error) return fail('remove receipt', error.message);
+  return { error: null, removalId: (data as { removal_id?: string } | null)?.removal_id };
+}
+
+/** Undo a removal. */
+export async function dbRestoreRemoval(removalId: string): Promise<Result & { linesNotRestored?: number }> {
+  const { data, error } = await supabase.rpc('restore_removed_receipt', { p_removal_id: removalId });
+  if (error) return fail('restore receipt', error.message);
+  return { error: null, linesNotRestored: Number((data as { lines_not_restored?: number } | null)?.lines_not_restored ?? 0) };
+}
+
+/** Unlock an exported receipt to correct it: who, when and why are kept, and the month needs exporting again. */
+export async function dbUnlockReceipt(id: string, reason: string): Promise<Result> {
+  const { error } = await supabase.rpc('unlock_exported_receipt', { p_receipt_id: id, p_reason: reason });
+  return error ? fail('unlock receipt', error.message) : ok;
+}
+
+export async function dbUnlockStatement(id: string, reason: string): Promise<Result> {
+  const { error } = await supabase.rpc('unlock_exported_statement', { p_statement_id: id, p_reason: reason });
+  return error ? fail('unlock statement', error.message) : ok;
+}
+
+/** Email the card holder a question about a receipt (an undated one, usually). */
+export async function dbAskHolder(receiptId: string, question?: string): Promise<Result & { toEmail?: string; bodyText?: string }> {
+  const { data, error } = await supabase.rpc('ask_card_holder_about_receipt', { p_receipt_id: receiptId, p_question: question ?? null });
+  if (error) return fail('ask holder', error.message);
+  const d = data as { queued: boolean; reason?: string; to_email?: string; body_text?: string };
+  if (!d.queued && d.reason === 'no_email') return { error: 'Nobody on this receipt has an email address. Add the card holder’s email in Settings.' };
+  return { error: null, toEmail: d.to_email, bodyText: d.body_text };
 }
 
 export async function dbExportStatement(input: {

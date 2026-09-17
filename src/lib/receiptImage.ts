@@ -30,8 +30,12 @@ export async function prepareReceiptFile(file: File): Promise<PreparedFile> {
     }
     return { file, ext: 'pdf', type: 'application/pdf' };
   }
+  if (/\.(csv|tsv|xlsx?|ofx|qfx|qbo)$/i.test(file.name) || /csv|spreadsheet|excel/i.test(file.type)) {
+    // A card statement dropped on the receipt reader. Say where it goes instead of only what it is not.
+    throw new ReceiptFileError('That is a spreadsheet, not a receipt. A card statement is imported on Reconcile: pick the card and month, then “Choose the statement CSV”.');
+  }
   if (!file.type.startsWith('image/') && !isHeic(file)) {
-    throw new ReceiptFileError('That file is not a photo or a PDF.');
+    throw new ReceiptFileError('That file is not a photo or a PDF of a receipt.');
   }
 
   let bitmap: ImageBitmap;

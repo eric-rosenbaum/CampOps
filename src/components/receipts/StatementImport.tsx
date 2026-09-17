@@ -33,6 +33,10 @@ export function StatementImport({ card, month, replacing, onDone, onCancel }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [acceptMismatch, setAcceptMismatch] = useState(false);
+  // "I don't have the bill's total": the import goes ahead, and every screen says the total is only
+  // the lines' own sum. A blank total used to import as if it had been typed, and the header then
+  // read "$885.78 from the bill" though nobody had looked at the bill.
+  const [noTotal, setNoTotal] = useState(false);
   const replace = !!replacing;
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -51,13 +55,14 @@ export function StatementImport({ card, month, replacing, onDone, onCancel }: {
     const dom = dominantMonth(parsed.lines.map((l) => l.postedDate));
     if (dom) setPeriodMonth(dom);
     setTotalInput('');
+    setNoTotal(false);
   }
 
   const parsed = useMemo(() => (mapping ? parseStatementGrid(grid, mapping) : { lines: [], errors: [] }), [grid, mapping]);
   const netCents = parsed.lines.reduce((s, l) => s + toCents(l.amount), 0);
   const chargeCount = parsed.lines.filter((l) => l.amount > 0).length;
   const typedTotal = totalInput.trim() ? parseMoney(totalInput) : null;
-  const totalCents = typedTotal != null ? toCents(typedTotal) : netCents;
+  const creditCount = parsed.lines.filter((l) => l.amount <= 0).length;
   const dates = parsed.lines.map((l) => l.postedDate).sort();
   const header = mapping?.hasHeader ? grid[0] : null;
   const width = Math.max(0, ...grid.map((r) => r.length));
@@ -79,16 +84,17 @@ export function StatementImport({ card, month, replacing, onDone, onCancel }: {
   // A total typed from the bill that the lines do not add up to is either a typo or a line the CSV
   // dropped. It was accepted silently, and the month then refused to agree for a reason nobody saw
   // at import. Now it is said at once, and importing anyway takes a tick.
-  const totalMismatch = typedTotal != null && toCents(typedTotal) !== netCents;
+  const totalMismatch = !noTotal && typedTotal != null && toCents(typedTotal) !== netCents;
   const newCharges = parsed.lines.filter((l) => l.amount > 0).length;
-  const canImport = !!mapping && hasAmount && hasDate && parsed.lines.length > 0 && parsed.errors.length === 0 && !(totalInput.trim() && typedTotal == null)
-    && (!totalMismatch || acceptMismatch);
+  const totalReady = noTotal || typedTotal != null;
+  const canImport = !!mapping && hasAmount && hasDate && parsed.lines.length > 0 && parsed.errors.length === 0 && !(!noTotal && totalInput.trim() && typedTotal == null)
+    && totalReady && (!totalMismatch || acceptMismatch);
 
   async function doImport() {
     if (!mapping) return;
     setBusy(true); setError(null);
     const res = await dbImportStatement({
-      cardId: card.id, periodMonth: `${periodMonth}-01`, statementTotal: totalCents / 100, fileName,
+      cardId: card.id, periodMonth: `${periodMonth}-01`, statementTotal: noTotal ? null : toCents(typedTotal) / 100, fileName,
       lines: parsed.lines.map((l) => ({ postedDate: l.postedDate, description: l.description, amount: l.amount })),
       replace,
     });
@@ -118,8 +124,9 @@ export function StatementImport({ card, month, replacing, onDone, onCancel }: {
           }}
         >
           <FileUp className="h-7 w-7 text-sage" />
-          <Button onClick={() => fileRef.current?.click()}>Choose CSV file</Button>
+          <Button onClick={() => fileRef.current?.click()}>Choose the statement CSV</Button>
           <input ref={fileRef} type="file" accept=".csv,text/csv,text/plain" className="hidden" data-testid="statement-file"
+                 name="statement-csv" aria-label={`Card statement CSV for ${card.label}`}
                  onChange={async (e) => { const f = e.target.files?.[0]; if (f) load(await f.text(), f.name); e.target.value = ''; }} />
           <button className="text-[12.5px] font-semibold text-forest underline" onClick={() => setPasting((p) => !p)}>or paste the rows</button>
         </div>
@@ -135,7 +142,7 @@ export function StatementImport({ card, month, replacing, onDone, onCancel }: {
     <div className="rounded-card border border-border bg-white p-4 sm:p-6" data-testid="statement-mapper">
       <div className="flex flex-wrap items-baseline gap-2">
         <h3 className="flex-1 font-display text-[16px] font-bold text-forest">Check the columns</h3>
-        <span className="text-[12.5px] text-ink-soft">{fileName ?? 'Pasted rows'} · {grid.length} rows</span>
+        <span className="text-[12.5px] text-ink-soft">{fileName ?? 'Pasted rows'} · {parsed.lines.length} {parsed.lines.length === 1 ? 'line' : 'lines'}{mapping?.hasHeader ? ' and a header row' : ''}</span>
       </div>
       <p className="mt-1 text-[13px] text-ink-soft">We guessed what each column is. Fix anything that looks wrong; the preview updates as you go.</p>
       {warnings.map((w) => <Callout key={w} tone="amber" className="mt-3">{w}</Callout>)}
@@ -181,7 +188,7 @@ export function StatementImport({ card, month, replacing, onDone, onCancel }: {
 
       {/* Preview */}
       <div className="mt-4">
-        <p className={labelClass}>Preview · {parsed.lines.length} lines{dates.length ? `, ${fmtDay(dates[0])} to ${fmtDay(dates[dates.length - 1])}` : ''}</p>
+        <p className={labelClass}>Preview · {parsed.lines.length} lines: {chargeCount} {chargeCount === 1 ? 'charge' : 'charges'}{creditCount ? `, ${creditCount} ${creditCount === 1 ? 'credit' : 'credits'}` : ''}{dates.length ? `, ${fmtDay(dates[0])} to ${fmtDay(dates[dates.length - 1])}` : ''}</p>
         {parsed.errors.length > 0 && (
           <Callout tone="red" className="mb-2">
             {parsed.errors.slice(0, 3).map((e) => <div key={e.row}>{e.message}</div>)}
@@ -221,13 +228,17 @@ export function StatementImport({ card, month, replacing, onDone, onCancel }: {
           <label className={labelClass} htmlFor="st-total">Statement total (from the Visa bill)</label>
           <div className="relative">
             <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] text-ink-soft">$</span>
-            <input id="st-total" inputMode="decimal" className={`${inputClass} pl-6 tabular-nums`} placeholder={(netCents / 100).toFixed(2)}
-                   value={totalInput} onChange={(e) => setTotalInput(e.target.value)} />
+            <input id="st-total" inputMode="decimal" className={`${inputClass} pl-6 tabular-nums`} placeholder="From the bill"
+                   disabled={noTotal} value={noTotal ? '' : totalInput} onChange={(e) => setTotalInput(e.target.value)} />
           </div>
-          <p className="mt-1 text-[12px] text-ink-soft">The lines add up to <b className="tabular-nums">{formatCents(netCents)}</b> ({chargeCount} charges). Type the bill's total so we can check nothing was dropped.</p>
+          <p className="mt-1 text-[12px] text-ink-soft">The lines add up to <b className="tabular-nums">{formatCents(netCents)}</b> ({chargeCount} {chargeCount === 1 ? 'charge' : 'charges'}). Type the total from the bill so we can check nothing was dropped.</p>
+          <label className="mt-1.5 flex items-start gap-2 text-[12.5px]">
+            <input type="checkbox" className="mt-0.5" checked={noTotal} onChange={(e) => { setNoTotal(e.target.checked); setAcceptMismatch(false); }} data-testid="no-total" />
+            <span>I don’t have the bill’s total. Import anyway; the total will say “sum of lines, not checked against the bill” until it is typed.</span>
+          </label>
         </div>
       </div>
-      {totalMismatch && (
+      {totalMismatch && !noTotal && (
         <Callout tone="red" className="mt-3" >
           <p data-testid="total-mismatch"><b>The bill’s total, {formatCents(toCents(typedTotal))}, is not what the lines add up to ({formatCents(netCents)}).</b> A {formatCents(Math.abs(toCents(typedTotal) - netCents))} difference: check the total for a typo, or the file for a missing line.</p>
           <label className="mt-1.5 flex items-center gap-2 font-semibold">
@@ -245,6 +256,7 @@ export function StatementImport({ card, month, replacing, onDone, onCancel }: {
       {error && <Callout tone="red" className="mt-3">{error}</Callout>}
       <div className="mt-4 flex flex-wrap justify-end gap-2">
         <Button variant="ghost" onClick={() => { setText(''); setMapping(null); onCancel?.(); }}>Start over</Button>
+        {!totalReady && parsed.lines.length > 0 && <span className="mr-auto self-center text-[12.5px] text-amber-text" data-testid="total-needed">Type the bill’s total, or tick “I don’t have the bill’s total”.</span>}
         <Button onClick={doImport} disabled={!canImport || busy}>{busy ? 'Importing…' : replace ? `Replace with ${parsed.lines.length} lines` : `Import ${parsed.lines.length} lines`}</Button>
       </div>
     </div>

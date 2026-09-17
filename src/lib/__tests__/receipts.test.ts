@@ -7,7 +7,8 @@ import {
   spendSummary, reconcileSummary, vendorSimilarity, qboDescription, csvText,
   dominantMonth, monthBounds, exportFileName, formatMoney, recoverableCents, hstParts, taxPreset,
   detectClaimBasis, rankAttachCandidates, buildStatementExport, toStatementCsv, openReceiptsForMonth, formatDate,
-  duplicatePartner, type MonthInput,
+  duplicatePartner, type MonthInput, recoverableFromTotals, statementTieOut, noReceiptCharges, qboTaxCodeFor, qboTaxCodeName,
+  billLineAmounts, vendorNameMatch, blockerText, noReceiptText, defaultNonrecoverableTax,
 } from '@/lib/receipts';
 import { parseCsv } from '@/lib/csv';
 import type { Receipt, StatementLine, TaxLine } from '@/lib/receiptTypes';
@@ -21,7 +22,8 @@ function receipt(over: Partial<Receipt>): Receipt {
     fileType: null, vendor: null, purchaseDate: '2026-08-01', subtotal: null, taxes: [], tip: null, total: 0,
     currency: 'CAD', budgetCodeId: null, splits: [], purpose: null, status: 'ready', aiResult: null,
     aiMinConfidence: null, reviewedBy: null, reviewedAt: null, possibleDuplicateOf: null, duplicateDismissed: false,
-    deferredMonth: null, deferredNote: null, exportId: null, exportedAt: null, createdAt: '2026-08-01T12:00:00Z', updatedAt: '2026-08-01T12:00:00Z',
+    deferredMonth: null, deferredNote: null, exportId: null, exportedAt: null, unlockedAt: null, unlockedByName: null, unlockReason: null,
+    holderAskedAt: null, createdAt: '2026-08-01T12:00:00Z', updatedAt: '2026-08-01T12:00:00Z',
     ...over,
   };
 }
@@ -29,7 +31,8 @@ function receipt(over: Partial<Receipt>): Receipt {
 function line(over: Partial<StatementLine>): StatementLine {
   return {
     id: 'l', statementId: 's', campId: 'camp', postedDate: '2026-08-01', description: '', amount: 0,
-    matchState: 'unmatched', receiptId: null, note: null, remindedAt: null, ...over,
+    matchState: 'unmatched', receiptId: null, note: null, remindedAt: null, noReceiptKind: over.matchState === 'no_receipt_ok' ? 'not_expected' : null,
+    budgetCodeId: null, ...over,
   };
 }
 
@@ -235,6 +238,26 @@ describe('findDuplicates', () => {
     expect(findDuplicates([a, b({ duplicateDismissed: true })])).toEqual([]);
     expect(findDuplicates([a, b({ purchaseDate: '2026-08-19' })])).toHaveLength(1);
   });
+  it('does not call two receipts copies when their card numbers say they were different cards', () => {
+    // The reviewer's case: the Trillium photo prints ····1156 and sits on ··1156; the Trillium
+    // receipt on ··4821 has no photo. Once the undated one was given its date they were "duplicates",
+    // and resolving it meant deleting one of two real purchases.
+    const cards = [{ id: 'c4821', last4: '4821' }, { id: 'c1156', last4: '1156' }];
+    const trillium = { total: 87.53, vendor: 'Trillium Craft Supply', purchaseDate: '2026-08-19' };
+    const onA = receipt({ ...trillium, id: 'a', cardId: 'c4821', createdAt: '2026-08-19T15:00:00Z' });
+    const photo = (last4: string | null) => receipt({ ...trillium, id: 'b', cardId: 'c1156', createdAt: '2026-09-16T10:00:00Z',
+      aiResult: { cardLast4: last4 } as Receipt['aiResult'] });
+    expect(findDuplicates([onA, photo('1156')], cards)).toEqual([]);
+    // The slip prints the other receipt's card: the copy was saved to the wrong card, and is flagged.
+    expect(findDuplicates([onA, photo('4821')], cards)).toEqual([expect.objectContaining({ originalId: 'a', duplicateId: 'b', crossCard: true })]);
+    // Two slips printing different cards, whatever cards they were saved to.
+    const printedA = receipt({ ...trillium, id: 'a', cardId: 'c4821', createdAt: '2026-08-19T15:00:00Z', aiResult: { cardLast4: '9999' } as Receipt['aiResult'] });
+    expect(findDuplicates([printedA, photo('4821')], cards)).toEqual([]);
+    // No number printed on either: the saved cards prove nothing, so the cross-card copy is still found.
+    expect(findDuplicates([onA, photo(null)], cards)).toHaveLength(1);
+    // Without the card list, a printed number is compared only with another printed number.
+    expect(findDuplicates([onA, photo('1156')])).toHaveLength(1);
+  });
 });
 
 describe('attaching a receipt to a charge', () => {
@@ -250,11 +273,41 @@ describe('attaching a receipt to a charge', () => {
   ];
   const opts = { cardId: 'c1', excludeIds: new Set(['taken']) };
 
-  it('ranks by vendor likeness first, then amount and date, on any card', () => {
+  it('ranks the same amount first, then close amounts, on any card', () => {
     const out = rankAttachCandidates(charge, receipts, opts);
     expect(out.map((c) => c.receipt.id)).toEqual(['maple', 'pine', 'undated']);
-    expect(out[0]).toMatchObject({ diffCents: 0, dateDiff: -27, otherCard: true });
-    expect(out[0].similarity).toBeGreaterThan(0.9);
+    expect(out[0]).toMatchObject({ diffCents: 0, dateDiff: -27, otherCard: true, strength: 'strong' });
+    expect(out[0].reasons).toEqual(['Same amount', 'Name matches: maple ridge', '27 days after the charge', 'On another card']);
+    expect(out[1].reasons).toEqual(['$0.25 less than the charge', '2 days before the charge']);
+  });
+
+  it('does not put a shop sharing one word with the charge above receipts close to its amount (the Maple case)', () => {
+    // The finance director's screen: "Best first: a vendor like the charge" put Maple Leaf Games &
+    // Toys, $71.22 off, at the top for MAPLE RIDGE GAS BAR because both names start with "Maple".
+    const gas = line({ id: 'gas', description: 'MAPLE RIDGE GAS BAR', amount: 64.37, postedDate: '2026-08-22' });
+    const seen = [
+      receipt({ id: 'toys', cardId: 'c3', vendor: 'Maple Leaf Games & Toys', total: 135.59, purchaseDate: '2026-08-18' }),
+      receipt({ id: 'feed', cardId: 'c3', vendor: 'Foothills Farm & Feed', total: 53.03, purchaseDate: '2026-08-19' }),
+      receipt({ id: 'heron', cardId: 'c1', vendor: 'Blue Heron Marine', total: 353.0, purchaseDate: '2026-08-15' }),
+      receipt({ id: 'pine', cardId: 'c3', vendor: 'Pinegrove General Store', total: 40.23, purchaseDate: '2026-08-25' }),
+      receipt({ id: 'paper', cardId: 'c3', vendor: 'Paper Moon Stationers', total: 72.46, purchaseDate: '2026-08-08' }),
+      receipt({ id: 'pine2', cardId: 'c3', vendor: 'Pinegrove General Store', total: 34.43, purchaseDate: '2026-08-14' }),
+      receipt({ id: 'trill', cardId: 'c3', vendor: 'Trillium Craft Supply', total: 87.53, purchaseDate: null }),
+    ];
+    const out = rankAttachCandidates(gas, seen, { cardId: 'c1', excludeIds: new Set() });
+    const ids = out.map((c) => c.receipt.id);
+    expect(ids.slice(0, 2)).toEqual(['paper', 'feed']);
+    expect(ids.indexOf('toys')).toBeGreaterThan(ids.indexOf('pine'));
+    const toys = out.find((c) => c.receipt.id === 'toys')!;
+    expect(toys).toMatchObject({ similarity: 0, strength: 'weak' });
+    expect(toys.reasons[0]).toBe('$71.22 more than the charge');
+    expect(out.find((c) => c.receipt.id === 'feed')!.strength).toBe('possible');
+    expect(vendorNameMatch('MAPLE RIDGE GAS BAR', 'Maple Leaf Games & Toys')).toMatchObject({ matches: false, shared: ['maple'] });
+    expect(vendorNameMatch('MAPLE RIDGE GAS BAR #0423 HUNTSVILLE ON', 'Maple Ridge Gas Bar').matches).toBe(true);
+    expect(vendorNameMatch('SQ *BIRCHBARK BAKERY', 'Birchbark Bakery').matches).toBe(true);
+    expect(vendorNameMatch('NETFLIX.COM', 'Netflix').matches).toBe(true);
+    expect(vendorNameMatch('NORTHWIND HARDWARE #214', 'Maple Leaf Hardware').matches).toBe(false);
+    expect(vendorNameMatch('PINEGROVE GENERAL STORE', 'Cedar General Store').matches).toBe(false);
   });
   it('without a search, leaves out receipts dated more than 45 days away, matched ones and ones still reading', () => {
     const ids = rankAttachCandidates(charge, receipts, opts).map((c) => c.receipt.id);
@@ -314,11 +367,11 @@ describe('allocation and summaries', () => {
     const s = spendSummary(receipts, codes, [{ type: 'HST', recoverablePct: 50 }, { type: 'GST', recoverablePct: 50 }]);
     expect(s.totals.totalCents).toBe(400 + 11200 + 333);
     expect(s.totals.taxes).toEqual({ GST: 500, HST: 40, PST: 700, QST: 0, other: 0 });
-    // Rounded per receipt (half a cent up, forty times) and then added: 40¢ of HST at 50% is an
-    // estimate of 40¢, where rounding once on the total said 20¢ and disagreed with its own rows.
-    expect(s.recoverable).toEqual({ byType: { GST: 250, HST: 40, PST: 0, QST: 0, other: 0 }, totalCents: 290 });
+    // On the totals, the way the rebate is filed: 40¢ of HST at 50% is 20¢, not the 40¢ that rounding
+    // each receipt's half cent up forty times made it. The rows still add up to it (next test).
+    expect(s.recoverable).toEqual({ byType: { GST: 250, HST: 20, PST: 0, QST: 0, other: 0 }, totalCents: 270 });
     expect(s.byMonth.map((m) => [m.key, m.count, m.totalCents, m.exportedCount])).toEqual([['2026-07', 1, 11200, 1], ['2026-08', 41, 733, 0]]);
-    expect(s.byCode.map((c) => [c.label, c.count, c.totalCents])).toEqual([['PRG · Programs', 40, 400], ['KIT · Kitchen', 1, 11200], ['Not coded yet', 1, 333]]);
+    expect(s.byCode.map((c) => [c.label, c.count, c.totalCents])).toEqual([['Programs', 40, 400], ['Kitchen', 1, 11200], ['Not coded yet', 1, 333]]);
     expect(s.needsReviewCount).toBe(1);
     expect(s.otherCurrency).toEqual({ count: 1, totalCents: 5000, currency: 'USD' });
   });
@@ -504,12 +557,15 @@ describe('QuickBooks exports follow the statement', () => {
     line({ id: 'l5', postedDate: '2026-08-23', description: 'NETFLIX.COM', amount: 16.99, matchState: 'personal', note: 'Hana repays in September' }),
     line({ id: 'l2', postedDate: '2026-08-07', description: 'SQ *BIRCHBARK BAKERY', amount: 23.4, matchState: 'matched', receiptId: 'b2' }),
     line({ id: 'l3', postedDate: '2026-08-11', description: 'LOONS LANDING CRAFT', amount: 1145.9, matchState: 'matched', receiptId: 'c3' }),
-    line({ id: 'l4', postedDate: '2026-08-22', description: 'MAPLE RIDGE GAS BAR', amount: 64.37, matchState: 'no_receipt_ok', note: 'Pump receipt lost + truck fuel' }),
+    line({ id: 'l4', postedDate: '2026-08-22', description: 'MAPLE RIDGE GAS BAR', amount: 64.37, matchState: 'no_receipt_ok', noReceiptKind: 'lost', note: 'Pump receipt lost + truck fuel' }),
+    line({ id: 'l9', postedDate: '2026-08-31', description: 'ANNUAL FEE', amount: 29, matchState: 'no_receipt_ok', noReceiptKind: 'not_expected', budgetCodeId: 'PRG', note: 'No receipt: card fee' }),
     line({ id: 'l6', postedDate: '2026-08-13', description: 'NORTHWIND HARDWARE RETURN', amount: -10 }),
     line({ id: 'l8', postedDate: '2026-08-09', description: 'THE LOONS NEST GRILL', amount: 185.46, matchState: 'matched', receiptId: 'd4' }),
   ];
-  const statementTotal = 1010.87;
+  const statementTotal = 1039.87;
   const ex = buildStatementExport({ card, month: '2026-08', statement: { statementTotal }, lines, receipts, codes, province: 'ON' });
+  // The same month for an Ontario charity on the public service bodies' rebate, left on its default.
+  const psb = buildStatementExport({ card, month: '2026-08', statement: { statementTotal }, lines, receipts, codes, province: 'ON', taxRules: taxPreset('psb', 'ON') });
   const col = (csv: string, name: string) => {
     const grid = parseCsv(csv);
     const i = grid[0].indexOf(name);
@@ -517,14 +573,16 @@ describe('QuickBooks exports follow the statement', () => {
   };
 
   it('reconciles to the statement: exported rows + personal (+ credits for bills) = the bill', () => {
-    expect(ex.netCents).toBe(101087);
-    expect(ex).toMatchObject({ bankRowCount: 7, personalCount: 1, personalCents: 1699, creditCount: 2, creditsCents: -51000, billCount: 5 });
+    expect(ex.netCents).toBe(103987);
+    expect(ex).toMatchObject({ bankRowCount: 8, personalCount: 1, personalCents: 1699, creditCount: 2, creditsCents: -51000, billCount: 6 });
     expect(ex.bankRowsCents + ex.personalCents).toBe(toCents(statementTotal));
     expect(ex.billsCents + ex.personalCents + ex.creditsCents).toBe(toCents(statementTotal));
-    // The no-receipt-needed charge is in, under the card's default account, with its note.
+    // The lost-receipt charge is in, under the card's default account, with its note; the fee goes
+    // to the code it was given, not the card's default.
     const gas = ex.rows.find((r) => r.lineId === 'l4')!;
-    expect(gas).toMatchObject({ treatment: 'no_receipt', amountCents: 6437, note: 'Pump receipt lost + truck fuel' });
+    expect(gas).toMatchObject({ treatment: 'no_receipt', noReceiptKind: 'lost', amountCents: 6437, note: 'Pump receipt lost + truck fuel' });
     expect(gas.parts).toEqual([expect.objectContaining({ account: 'Repairs & Maintenance', totalCents: 6437 })]);
+    expect(ex.rows.find((r) => r.lineId === 'l9')!.parts).toEqual([expect.objectContaining({ account: 'Program Supplies', totalCents: 2900 })]);
   });
 
   it('writes files whose amounts add up to that reconciliation, in every format', () => {
@@ -540,6 +598,16 @@ describe('QuickBooks exports follow the statement', () => {
     expect(col(review, 'HST federal part') + col(review, 'HST provincial part')).toBe(col(review, 'HST'));
   });
 
+  // WRITE_GOLDEN=1 npx vitest run … rewrites the golden files from the code. Only ever deliberately,
+  // and each file is then read line by line against the statement above before it is committed.
+  if (process.env.WRITE_GOLDEN) {
+    const put = (name: string, text: string) => fs.writeFileSync(path.join(root, `src/lib/__tests__/fixtures/receipts/${name}`), text);
+    put('statement_bank_3col.golden.csv', toStatementCsv(ex, 'qbo_bank_3col', 'DD/MM/YYYY'));
+    put('statement_bank_4col.golden.csv', toStatementCsv(ex, 'qbo_bank_4col', 'MM/DD/YYYY'));
+    put('statement_bills.golden.csv', toStatementCsv(ex, 'qbo_bills', 'DD/MM/YYYY', { last4: '4821' }));
+    put('statement_bills_psb.golden.csv', toStatementCsv(psb, 'qbo_bills', 'DD/MM/YYYY', { last4: '4821' }));
+    put('statement_review.golden.csv', toStatementCsv(psb, 'detailed', 'YYYY-MM-DD', { appOrigin: 'https://app.example' }));
+  }
   // Golden files. Regenerated deliberately on 2026-09-16 when exports moved from receipts to the
   // statement: each was read line by line against the statement above before being committed.
   it('writes the bank upload, 3 columns, exactly', () => {
@@ -552,7 +620,77 @@ describe('QuickBooks exports follow the statement', () => {
     expect(toStatementCsv(ex, 'qbo_bills', 'DD/MM/YYYY', { last4: '4821' })).toBe(golden('statement_bills.golden.csv'));
   });
   it('writes the review spreadsheet exactly, every line including personal and credits', () => {
-    expect(toStatementCsv(ex, 'detailed', 'YYYY-MM-DD', { appOrigin: 'https://app.example' })).toBe(golden('statement_review.golden.csv'));
+    expect(toStatementCsv(psb, 'detailed', 'YYYY-MM-DD', { appOrigin: 'https://app.example' })).toBe(golden('statement_review.golden.csv'));
+  });
+  it('writes the bills import for a charity exactly: the tax it gets back as tax, the rest in the line', () => {
+    expect(toStatementCsv(psb, 'qbo_bills', 'DD/MM/YYYY', { last4: '4821' })).toBe(golden('statement_bills_psb.golden.csv'));
+  });
+
+  it('writes QuickBooks Online Canada’s own tax code names, or the camp’s renames', () => {
+    const t = (taxes: Partial<Record<'GST' | 'HST' | 'PST' | 'QST' | 'other', number>>) => ({ taxes: { GST: 0, HST: 0, PST: 0, QST: 0, other: 0, ...taxes } });
+    const rate = (type: 'GST' | 'HST' | 'PST' | 'QST', ratePct: number | null) => [{ type, ratePct }];
+    expect(qboTaxCodeFor(t({ HST: 975 }), rate('HST', 13), 'ON')).toBe('HST ON');
+    expect(qboTaxCodeFor(t({ HST: 1400 }), rate('HST', 14), 'ON')).toBe('HST NS');
+    expect(qboTaxCodeFor(t({ HST: 1500 }), rate('HST', 15), 'NL')).toBe('HST NL');
+    expect(qboTaxCodeFor(t({ HST: 1500 }), rate('HST', 15), 'PE')).toBe('HST');
+    expect(qboTaxCodeFor(t({ HST: 1500 }), rate('HST', 15), 'ON')).toBe('HST NB');
+    expect(qboTaxCodeFor(t({ HST: 1500 }), rate('HST', null), 'NS')).toBe('HST NS');
+    expect(qboTaxCodeFor(t({ GST: 500 }), rate('GST', 5), 'AB')).toBe('GST');
+    expect(qboTaxCodeFor(t({ GST: 500, PST: 700 }), [], 'MB')).toBe('GST/PST MB');
+    expect(qboTaxCodeFor(t({ GST: 500, PST: 700 }), [], 'ON')).toBe('GST/PST BC');
+    expect(qboTaxCodeFor(t({ GST: 500, QST: 998 }), [], 'ON')).toBe('GST/QST QC');
+    expect(qboTaxCodeFor(t({ QST: 998 }), [], 'QC')).toBe('QST QC');
+    expect(qboTaxCodeFor(t({ other: 520 }), [], 'ON')).toBe('Out of scope');
+    expect(qboTaxCodeFor(t({}), [], 'ON')).toBe('Zero-rated');
+    expect(qboTaxCodeFor(t({}), [], 'ON', 'no_receipt', 'lost')).toBe('Out of scope');
+    expect(qboTaxCodeFor(t({}), [], 'ON', 'no_receipt', 'not_expected')).toBe('Exempt');
+    expect(qboTaxCodeName('HST ON', { 'HST ON': 'H' })).toBe('H');
+    expect(qboTaxCodeName('HST ON', { 'HST ON': '  ' })).toBe('HST ON');
+    const renamed = toStatementCsv({ ...ex, qboTaxCodes: { 'HST ON': 'HST ON 13%', 'Zero-rated': 'Z' } }, 'qbo_bills', 'DD/MM/YYYY');
+    const grid = parseCsv(renamed);
+    const codeCol = grid[0].indexOf('Line Tax Code');
+    expect(new Set(grid.slice(1).map((r) => r[codeCol]))).toEqual(new Set(['HST ON 13%', 'Z', 'Out of scope', 'GST/PST BC', 'Exempt']));
+    // Nothing the first version wrote survives: "HST 13%", "GST 5%" and "No tax" are no company's codes.
+    expect(toStatementCsv(ex, 'qbo_bills', 'DD/MM/YYYY')).not.toMatch(/HST 13%|GST 5%|No tax/);
+  });
+
+  it('books the tax a charity does not get back as expense, cent-exact, still adding up to the statement', () => {
+    expect(psb.nonrecoverableTax).toBe('expense');
+    expect(defaultNonrecoverableTax(taxPreset('itc', 'ON'))).toBe('claim_all');
+    expect(defaultNonrecoverableTax([])).toBe('claim_all');
+    const bills = toStatementCsv(psb, 'qbo_bills', 'DD/MM/YYYY');
+    // The file still adds up to the bills, and the bills (+ personal + credits) to the statement.
+    expect(col(bills, 'Line Amount') + col(bills, 'Line Tax Amount')).toBe(psb.billsCents);
+    expect(psb.billsCents + psb.personalCents + psb.creditsCents).toBe(toCents(statementTotal));
+    // The tax in the file is exactly the recoverable estimate for the month, worked out on its totals.
+    const parts = psb.rows.filter((r) => r.treatment === 'receipt').flatMap((r) => r.parts);
+    expect(col(bills, 'Line Tax Amount')).toBe(recoverableFromTotals(parts, taxPreset('psb', 'ON')).totalCents);
+    expect(col(bills, 'Line Tax Amount')).toBe(psb.recoverableCents);
+    // Each part: line + tax = the part's subtotal + tax; nothing is lost to rounding.
+    for (const p of parts) {
+      const a = billLineAmounts(p, 'expense');
+      const tax = p.taxes.GST + p.taxes.HST + p.taxes.PST + p.taxes.QST + p.taxes.other;
+      expect(a.lineCents + a.taxCents).toBe(p.subtotalCents + tax);
+      expect(a.nonrecoverableCents).toBe(tax - p.recoverableCents);
+    }
+    // Northwind: $75.00 + $9.75 HST ON. 50% of the $3.75 federal part and 82% of the $6.00 provincial
+    // part: $6.80 back, so $77.95 of expense and $6.80 of tax.
+    const nw = parts[0];
+    expect(billLineAmounts(nw, 'expense')).toEqual({ lineCents: 7795, taxCents: 680, nonrecoverableCents: 295 });
+    // BC PST is never recoverable and half of GST is: the line carries the other half and all the PST.
+    const craft = psb.rows.find((r) => r.lineId === 'l3')!.parts;
+    expect(craft.reduce((sum, p) => sum + p.recoverableCents, 0)).toBe(2558);
+    // Claiming all of it writes the full tax, as before.
+    const claimAll = toStatementCsv({ ...psb, nonrecoverableTax: 'claim_all' }, 'qbo_bills', 'DD/MM/YYYY');
+    expect(col(claimAll, 'Line Tax Amount')).toBe(975 + 1846 + 5116 + 7162);
+  });
+
+  it('says a charge has no receipt once, whatever the note already says', () => {
+    expect(noReceiptText('lost', 'Pump receipt lost + truck fuel')).toBe('Receipt lost: Pump receipt lost + truck fuel');
+    expect(noReceiptText('not_expected', 'No receipt: card fee')).toBe('No receipt expected: card fee');
+    expect(noReceiptText('lost', 'receipt lost - van fuel')).toBe('Receipt lost: van fuel');
+    expect(noReceiptText('not_expected', null)).toBe('No receipt expected');
+    expect(toStatementCsv(ex, 'qbo_bills', 'DD/MM/YYYY')).not.toMatch(/No receipt - No receipt|- No receipt/);
   });
 
   it('keeps QuickBooks text to what its importer accepts, without eating ordinary punctuation', () => {
@@ -574,5 +712,90 @@ describe('QuickBooks exports follow the statement', () => {
     expect(formatDate('2026-08-03', 'DD/MM/YYYY')).toBe('03/08/2026');
     expect(formatDate('2026-08-03', 'MM/DD/YYYY')).toBe('08/03/2026');
     expect(formatDate('2026-08-03', 'YYYY-MM-DD')).toBe('2026-08-03');
+  });
+});
+
+describe('the rebate is worked out on the totals, the way it is filed', () => {
+  it('rounds each tax part once on the total and shares it back out so the shares add up exactly', () => {
+    // Twenty Ontario receipts: rounding each receipt's rebate and adding them came to more than
+    // rounding the month's HST parts once, the $252.51 against $252.45 the finance director found.
+    const subtotals = [188.04, 75, 30.47, 42.65, 312.39, 77.46, 18.99, 142, 264.18, 612.4, 58.2, 129.75, 22.1, 96.33, 146.8, 64.12, 88.45, 119.99, 35.6, 50.5];
+    const allocs = subtotals.map((sub) => receiptAllocations(receipt({ subtotal: sub, taxes: [{ type: 'HST', ratePct: 13, amount: Math.round(sub * 13) / 100 }], total: 0 }), 'ON')[0]);
+    const rules = taxPreset('psb', 'ON');
+    const perReceipt = allocs.reduce((sum, a) => sum + recoverableCents(a, rules).totalCents, 0);
+    const out = recoverableFromTotals(allocs, rules);
+    const fed = allocs.reduce((sum, a) => sum + a.hst.federal, 0);
+    const prov = allocs.reduce((sum, a) => sum + a.hst.provincial, 0);
+    expect(out.totalCents).toBe(Math.floor(fed * 0.5 + 0.5) + Math.floor(prov * 0.82 + 0.5));
+    expect(out.perAllocation.reduce((a, b) => a + b, 0)).toBe(out.totalCents);
+    expect(out.byType.HST).toBe(out.totalCents);
+    expect(perReceipt).not.toBe(out.totalCents);
+    // No receipt is given more than a cent away from its own unrounded share.
+    allocs.forEach((a, k) => expect(Math.abs(out.perAllocation[k] - (a.hst.federal * 0.5 + a.hst.provincial * 0.82))).toBeLessThan(1));
+  });
+  it('shares GST, PST and QST rules the same way, and gives nothing for a tax with no rule', () => {
+    const allocs = [
+      { taxes: { GST: 333, HST: 0, PST: 467, QST: 0, other: 12 }, hst: { federal: 0, provincial: 0 } },
+      { taxes: { GST: 333, HST: 0, PST: 0, QST: 665, other: 0 }, hst: { federal: 0, provincial: 0 } },
+      { taxes: { GST: 333, HST: 0, PST: 0, QST: 665, other: 0 }, hst: { federal: 0, provincial: 0 } },
+    ];
+    const out = recoverableFromTotals(allocs, [{ type: 'GST', recoverablePct: 50 }, { type: 'QST', recoverablePct: 50 }, { type: 'PST', recoverablePct: 0 }]);
+    expect(out.byType).toEqual({ GST: 500, HST: 0, PST: 0, QST: 665, other: 0 });
+    expect(out.perAllocation.reduce((a, b) => a + b, 0)).toBe(1165);
+    expect(recoverableFromTotals([], taxPreset('psb', 'ON'))).toEqual({ byType: { GST: 0, HST: 0, PST: 0, QST: 0, other: 0 }, totalCents: 0, perAllocation: [] });
+  });
+});
+
+describe('the summary ties out to the card bills', () => {
+  const statements = [
+    { id: 'sA', cardId: 'A', periodMonth: '2026-08-01', statementTotal: 1066.68, totalSource: 'typed' as const },
+    { id: 'sB', cardId: 'B', periodMonth: '2026-08-01', statementTotal: 200, totalSource: 'sum_of_lines' as const },
+  ];
+  const receipts = [
+    receipt({ id: 'r1', total: 1002.31, status: 'ready', budgetCodeId: 'WATER', subtotal: 887, taxes: [{ type: 'HST', ratePct: 13, amount: 115.31 }] }),
+    receipt({ id: 'r2', total: 150, status: 'needs_review' }),
+    receipt({ id: 'r3', total: 30, status: 'ready' }),
+  ];
+  const lines = [
+    line({ id: 'a1', statementId: 'sA', amount: 1002.31, matchState: 'matched', receiptId: 'r1' }),
+    line({ id: 'a2', statementId: 'sA', postedDate: '2026-08-22', amount: 64.37, matchState: 'no_receipt_ok', noReceiptKind: 'lost', note: 'Van fuel', budgetCodeId: 'TRIP' }),
+    line({ id: 'b1', statementId: 'sB', amount: 150, matchState: 'matched', receiptId: 'r2' }),
+    line({ id: 'b2', statementId: 'sB', amount: 31, matchState: 'matched', receiptId: 'r3' }),
+    line({ id: 'b3', statementId: 'sB', amount: 25, matchState: 'personal' }),
+    line({ id: 'b4', statementId: 'sB', amount: 19 }),
+    line({ id: 'b5', statementId: 'sB', amount: -25 }),
+  ];
+
+  it('adds receipts, no-receipt charges, personal and credits up to each statement, or says why not', () => {
+    const [a, b] = statementTieOut(statements, lines, receipts);
+    expect(a).toMatchObject({ statementId: 'sA', receiptsCents: 100231, noReceiptCents: 6437, explainedCents: 106668, statementTotalCents: 106668, differenceCents: 0, ties: true, reasons: [] });
+    expect(b).toMatchObject({ statementId: 'sB', receiptsCents: 18000, personalCents: 2500, creditsCents: -2500, explainedCents: 18000, differenceCents: 2000, ties: false, totalSource: 'sum_of_lines' });
+    expect(b.reasons).toEqual([
+      '1 charge has no receipt or reason ($19.00)',
+      '1 matched receipt differs from its charge ($1.00)',
+      '1 matched receipt is not confirmed yet, so not in the spend above',
+    ]);
+  });
+
+  it('counts explained no-receipt charges as spend, at their own budget code, so the summary equals the bills', () => {
+    const charges = noReceiptCharges(lines, statements, [{ id: 'A', defaultBudgetCodeId: 'WATER' }]);
+    expect(charges).toEqual([{ lineId: 'a2', postedDate: '2026-08-22', amount: 64.37, budgetCodeId: 'TRIP', cardId: 'A' }]);
+    const codes = [{ id: 'WATER', code: 'WATER', name: 'Waterfront', sortOrder: 1 }, { id: 'TRIP', code: 'TRIP', name: 'Trips', sortOrder: 2 }];
+    const s = spendSummary([receipts[0]], codes, taxPreset('psb', 'ON'), 'CAD', 'ON', charges);
+    // $1,002.31 of receipts + $64.37 of fuel = the $1,066.68 statement.
+    expect(s.totals.totalCents).toBe(106668);
+    expect(s.totals).toMatchObject({ count: 1, noReceiptCount: 1 });
+    expect(s.byCode.map((r) => [r.label, r.totalCents, r.recoverableCents])).toEqual([['Waterfront', 100231, s.totals.recoverableCents], ['Trips', 6437, 0]]);
+  });
+});
+
+describe('the Reconcile banner agrees with the sections under it', () => {
+  it('says suggested matches are waiting instead of "no charge" above an empty section', () => {
+    const b = { code: 'no_charge' as const, count: 9, message: '9 receipts on this card have no charge.' };
+    expect(blockerText(b, 9)).toBe('9 receipts have suggested matches: accept them below.');
+    expect(blockerText(b, 4)).toBe('9 receipts on this card have no charge: 4 with a suggested match below, 5 under “Receipts with no charge”.');
+    expect(blockerText(b, 0)).toBe(b.message);
+    expect(blockerText({ code: 'unexplained', count: 1, message: 'x' }, 1)).toBe('1 charge has a suggested receipt: accept it below.');
+    expect(blockerText({ code: 'undated', count: 1, message: 'u' }, 3)).toBe('u');
   });
 });

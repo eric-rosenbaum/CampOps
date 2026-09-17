@@ -98,6 +98,7 @@ export function useReceiptCapture() {
       budgetCodeId: myCard?.defaultBudgetCodeId ?? null, splits: [], purpose: null, status: 'processing',
       aiResult: null, aiMinConfidence: null, reviewedBy: null, reviewedAt: null,
       possibleDuplicateOf: null, duplicateDismissed: false, deferredMonth: null, deferredNote: null, exportId: null, exportedAt: null,
+      unlockedAt: null, unlockedByName: null, unlockReason: null, holderAskedAt: null,
       createdAt: now, updatedAt: now,
     };
     patch(key, { stage: 'uploading', receiptId: id });
@@ -121,7 +122,7 @@ export function useReceiptCapture() {
       ? applyAiResult(current, result, useReceiptsStore.getState().cards, !!opts.cardId)
       : { ...current, status: 'needs_review', aiResult: result ?? { readable: false, error: error ?? undefined } as ReceiptAiResult };
     if (next.purchaseDate && next.total != null) {
-      const dup = findDuplicates(useReceiptsStore.getState().receipts.filter((r) => r.id !== id).concat(next))
+      const dup = findDuplicates(useReceiptsStore.getState().receipts.filter((r) => r.id !== id).concat(next), useReceiptsStore.getState().cards)
         .find((p) => p.duplicateId === id);
       if (dup) next = { ...next, possibleDuplicateOf: dup.originalId };
     }

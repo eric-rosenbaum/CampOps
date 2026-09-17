@@ -17,8 +17,10 @@ import { parseCsv } from './csv';
 import {
   TAX_TYPES,
   type BudgetCode, type CardStatement, type ClaimBasis, type DateFormat, type ExpenseCard, type ExportFormat, type Receipt,
-  type StatementLine, type TaxLine, type TaxRule, type TaxType,
+  type NoReceiptKind, type NonrecoverableTax, type ReceiptAiResult, type StatementLine, type TaxLine, type TaxRule, type TaxType,
 } from './receiptTypes';
+
+const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
 /** Below this, the review form highlights a field. The pool test-strip threshold. */
 export const LOW_CONFIDENCE = 0.65;
@@ -551,17 +553,47 @@ export interface DuplicatePair {
   crossCard: boolean;
 }
 
-type DupReceipt = Pick<Receipt, 'id' | 'cardId' | 'total' | 'purchaseDate' | 'vendor' | 'createdAt' | 'duplicateDismissed' | 'status'>;
+type DupReceipt = Pick<Receipt, 'id' | 'cardId' | 'total' | 'purchaseDate' | 'vendor' | 'createdAt' | 'duplicateDismissed' | 'status'>
+  & { aiResult?: Pick<ReceiptAiResult, 'cardLast4'> | null };
 
 /**
- * The same receipt snapped twice: same total, dated within a day, and a vendor name at least 60%
- * alike, on any card.
+ * The card number a receipt is evidence of: the digits printed on the slip when the reader saw
+ * them, and only when it did not, the last four of the card it was saved to.
+ */
+function printedLast4(r: DupReceipt): string | null {
+  const v = r.aiResult?.cardLast4;
+  return v && /^\d{4}$/.test(v) ? v : null;
+}
+
+/**
+ * Can two receipts be the same purchase, going by the card numbers? No, when the slips print
+ * different cards, or when one slip prints a card and the other receipt was saved to a card with
+ * different digits.
+ *
+ * Without this a Trillium receipt photographed on ····1156 was called a copy of a Trillium receipt
+ * on ··4821 the moment someone typed its date, and "resolving" it meant deleting one of two real
+ * purchases. When neither side printed a number the saved cards prove nothing: the commonest copy
+ * is finance saving the emailed invoice to the wrong card.
+ */
+function cardsCanBeSame(a: DupReceipt, b: DupReceipt, last4Of: (cardId: string | null) => string | null): boolean {
+  const pa = printedLast4(a); const pb = printedLast4(b);
+  if (pa && pb) return pa === pb;
+  if (pa) { const rb = last4Of(b.cardId); return !rb || rb === pa; }
+  if (pb) { const ra = last4Of(a.cardId); return !ra || ra === pb; }
+  return true;
+}
+
+/**
+ * The same receipt snapped twice: same total, dated within a day, a vendor name at least 60% alike,
+ * on any card, and no card number that says otherwise.
  *
  * This used to require the same card, and the commonest duplicate is exactly the one that is not:
  * the holder snaps it on their card and finance, snapping the emailed copy, saves it to another.
  * The copy on the wrong card then sat in that card's "receipts with no charge" looking unrelated.
  */
-export function findDuplicates(receipts: DupReceipt[], dateWindow = 1, minSimilarity = 0.6): DuplicatePair[] {
+export function findDuplicates(receipts: DupReceipt[], cards: Pick<ExpenseCard, 'id' | 'last4'>[] = [], dateWindow = 1, minSimilarity = 0.6): DuplicatePair[] {
+  const last4ById = new Map(cards.map((c) => [c.id, c.last4 ?? null]));
+  const last4Of = (id: string | null) => (id ? last4ById.get(id) ?? null : null);
   const rows = receipts
     .filter((r) => r.total != null && r.purchaseDate && r.status !== 'processing')
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
@@ -572,6 +604,7 @@ export function findDuplicates(receipts: DupReceipt[], dateWindow = 1, minSimila
       if (toCents(a.total) !== toCents(b.total)) continue;
       if (Math.abs(daysBetween(a.purchaseDate!, b.purchaseDate!)) > dateWindow) continue;
       if (b.duplicateDismissed) continue;
+      if (!cardsCanBeSame(a, b, last4Of)) continue;
       const sim = vendorSimilarity(a.vendor, b.vendor);
       if (sim < minSimilarity) continue;
       out.push({ originalId: a.id, duplicateId: b.id, similarity: sim, crossCard: (a.cardId ?? null) !== (b.cardId ?? null) });
@@ -592,26 +625,64 @@ export function duplicatePartner(pairs: DuplicatePair[], id: string): { otherId:
 
 // ─── Attaching a receipt to a charge ─────────────────────────────────────────
 
+/**
+ * Words that name a kind of shop rather than a shop. "MAPLE RIDGE GAS BAR" and "Maple Leaf Games &
+ * Toys" share "maple" and nothing else that means anything, and the attach list used to put the
+ * toy shop, $71.22 off, above receipts within a few dollars of the charge.
+ */
+const GENERIC_VENDOR_WORDS = new Set([
+  'store', 'stores', 'general', 'supply', 'supplies', 'supp', 'shop', 'shoppe', 'market', 'mart', 'depot', 'centre',
+  'center', 'service', 'services', 'gas', 'bar', 'station', 'restaurant', 'grill', 'cafe', 'limited', 'depanneur',
+]);
+
+/**
+ * Do two merchant names share enough to be called the same shop? Meaningful words only, and at
+ * least two of them in common, unless one name only has one word to give. Returns the shared words
+ * so the screen can say why.
+ */
+export function vendorNameMatch(a: string | null | undefined, b: string | null | undefined): { matches: boolean; score: number; shared: string[] } {
+  const ta = [...new Set(vendorTokens(a).filter((t) => !GENERIC_VENDOR_WORDS.has(t)))];
+  const tb = [...new Set(vendorTokens(b).filter((t) => !GENERIC_VENDOR_WORDS.has(t)))];
+  if (!ta.length || !tb.length) return { matches: false, score: 0, shared: [] };
+  const same = (t: string, u: string) => t === u || (u.length >= 4 && t.startsWith(u)) || (t.length >= 4 && u.startsWith(t));
+  const shared = ta.filter((t) => tb.some((u) => same(t, u)));
+  const need = Math.min(2, ta.length, tb.length);
+  const matches = shared.length >= need;
+  return { matches, score: matches ? shared.length / Math.min(ta.length, tb.length) : 0, shared };
+}
+
 export interface AttachCandidate {
   receipt: Pick<Receipt, 'id' | 'cardId' | 'vendor' | 'purchaseDate' | 'total' | 'purpose' | 'submitterName' | 'status'>;
   score: number;
+  /** 0–1, and 0 unless the names share meaningful words. */
   similarity: number;
   /** Receipt total minus the charge, in cents. */
   diffCents: number;
   /** Days between purchase and posting; null for an undated receipt. */
   dateDiff: number | null;
   otherCard: boolean;
+  /**
+   * `strong`: the amount is the charge's, or close and the name matches. `possible`: within 30% of
+   * the charge, or the name matches. `weak`: neither; offered only because it is open and nearby.
+   */
+  strength: 'strong' | 'possible' | 'weak';
+  /** Why it is suggested, in words: "Same amount", "Name matches: maple ridge", "2 days before". */
+  reasons: string[];
 }
 
 type AttachReceipt = AttachCandidate['receipt'];
 
+/** Share of the charge within which an amount still counts as close. */
+const ATTACH_AMOUNT_BAND = 0.3;
+
 /**
  * Receipts that could be the paper for a charge, best first.
  *
- * Ranked by how much the vendor name looks like the statement descriptor, then how close the
- * amount and the date are. Sorting by amount alone put a different vendor from another month at
- * the top ("Pinegrove General Store, $64.12" for "MAPLE RIDGE GAS BAR, $64.37"), because nothing
- * else was scored.
+ * The amount leads, because a card charge is the receipt's total to the cent far more often than
+ * it is a shop with a similar name: the same amount scores 100, and a different one falls to
+ * nothing by 30% away. A matching name (meaningful words, at least two in common) adds up to 40,
+ * a close date up to 15, the same card 5. The first version ranked by name likeness, so a toy shop
+ * sharing one word with a gas bar came first at $71.22 off.
  *
  * With no search text only receipts dated within 45 days (or undated) are offered. A search looks
  * at every open receipt in the camp, on any card, by vendor, purpose, who snapped it or amount.
@@ -619,7 +690,7 @@ type AttachReceipt = AttachCandidate['receipt'];
 export function rankAttachCandidates(
   line: Pick<StatementLine, 'description' | 'amount' | 'postedDate'>,
   receipts: AttachReceipt[],
-  opts: { cardId: string | null; excludeIds: Set<string>; query?: string; limit?: number },
+  opts: { cardId: string | null; excludeIds: Set<string>; query?: string; limit?: number; cardLabel?: (cardId: string | null) => string },
 ): AttachCandidate[] {
   const query = (opts.query ?? '').trim().toLowerCase();
   const lineCents = toCents(line.amount);
@@ -633,14 +704,27 @@ export function rankAttachCandidates(
     } else if (dateDiff != null && Math.abs(dateDiff) > 45) {
       continue;
     }
-    const similarity = vendorSimilarity(r.vendor, line.description);
-    const diffCents = toCents(r.total) - lineCents;
-    const amountScore = diffCents === 0 ? 40
-      : lineCents !== 0 ? Math.max(0, 25 - (Math.abs(diffCents) / Math.abs(lineCents)) * 100) : 0;
-    const dateScore = dateDiff == null ? 6 : Math.max(0, 20 - 2 * Math.abs(dateDiff));
+    const name = vendorNameMatch(r.vendor, line.description);
+    const diffCents = r.total == null ? lineCents : toCents(r.total) - lineCents;
+    const off = lineCents !== 0 ? Math.abs(diffCents) / Math.abs(lineCents) : Infinity;
+    const amountScore = r.total == null ? 0 : diffCents === 0 ? 100 : Math.max(0, 70 * (1 - off / ATTACH_AMOUNT_BAND));
+    const dateScore = dateDiff == null ? 5 : Math.max(0, 15 - 1.5 * Math.abs(dateDiff));
     const otherCard = !!opts.cardId && !!r.cardId && r.cardId !== opts.cardId;
-    const score = similarity * 45 + amountScore + dateScore + (otherCard ? 0 : 5);
-    out.push({ receipt: r, score, similarity, diffCents, dateDiff, otherCard });
+    const score = amountScore + name.score * 40 + dateScore + (otherCard ? 0 : 5);
+
+    const reasons: string[] = [];
+    if (r.total == null) reasons.push('No total yet');
+    else if (diffCents === 0) reasons.push('Same amount');
+    else reasons.push(`${formatCents(Math.abs(diffCents))} ${diffCents > 0 ? 'more' : 'less'} than the charge`);
+    if (name.matches) reasons.push(`Name matches: ${name.shared.join(' ')}`);
+    if (dateDiff == null) reasons.push('No date');
+    else if (dateDiff === 0) reasons.push('Same day');
+    else reasons.push(`${Math.abs(dateDiff)} day${Math.abs(dateDiff) === 1 ? '' : 's'} ${dateDiff > 0 ? 'before' : 'after'} the charge`);
+    if (otherCard) reasons.push(`On ${opts.cardLabel?.(r.cardId) ?? 'another card'}`);
+
+    const close = diffCents === 0 || off <= ATTACH_AMOUNT_BAND;
+    const strength: AttachCandidate['strength'] = diffCents === 0 || (close && name.matches) ? 'strong' : close || name.matches ? 'possible' : 'weak';
+    out.push({ receipt: r, score, similarity: name.score, diffCents, dateDiff, otherCard, strength, reasons });
   }
   return out
     .sort((a, b) => b.score - a.score || a.receipt.id.localeCompare(b.receipt.id))
@@ -778,10 +862,48 @@ export function recoverableCents(a: Pick<Allocation, 'taxes' | 'hst'>, rules: Ta
   return { byType, totalCents: Object.values(byType).reduce((s, v) => s + v, 0) };
 }
 
+/**
+ * The claim for a set of allocations, computed the way the rebate or ITC is filed: each tax part
+ * added up first and rounded ONCE, then shared back out to the allocations in proportion to what
+ * each paid, largest remainder first, so the shares add up to the claim exactly.
+ *
+ * Rounding each receipt and adding the results is not how the return is filed: the demo month
+ * came to $252.51 that way against $252.45 from the totals. The per-receipt estimate
+ * (recoverableCents) is kept for one receipt on its own.
+ */
+export function recoverableFromTotals(allocs: Pick<Allocation, 'taxes' | 'hst'>[], rules: TaxRule[]): {
+  byType: TaxCents; totalCents: number; perAllocation: number[];
+} {
+  const byType = zeroTaxes();
+  const perAllocation = allocs.map(() => 0);
+  const share = (t: TaxType, bases: number[], pct: number) => {
+    const sum = bases.reduce((a, b) => a + b, 0);
+    const claim = pctOf(sum, pct);
+    if (claim === 0) return;
+    byType[t] += claim;
+    const parts = allocateCents(claim, bases.map((b) => Math.abs(b)));
+    parts.forEach((c, k) => { perAllocation[k] += c; });
+  };
+  for (const t of TAX_TYPES) {
+    const rule = rules.find((r) => r.type === t);
+    if (!rule) continue;
+    if (t === 'HST' && rule.federalPct != null && rule.provincialPct != null) {
+      share('HST', allocs.map((a) => a.hst.federal), rule.federalPct);
+      share('HST', allocs.map((a) => a.hst.provincial), rule.provincialPct);
+    } else if (rule.recoverablePct > 0) {
+      share(t, allocs.map((a) => a.taxes[t]), rule.recoverablePct);
+    }
+  }
+  return { byType, totalCents: Object.values(byType).reduce((a, b) => a + b, 0), perAllocation };
+}
+
 export interface SpendRow {
   key: string;
   label: string;
+  /** Receipts. */
   count: number;
+  /** Charges explained with no receipt ("receipt lost", "no receipt expected"). */
+  noReceiptCount: number;
   subtotalCents: number;
   taxes: TaxCents;
   hst: { federal: number; provincial: number };
@@ -792,7 +914,7 @@ export interface SpendRow {
 }
 
 function emptyRow(key: string, label: string): SpendRow {
-  return { key, label, count: 0, subtotalCents: 0, taxes: zeroTaxes(), hst: { federal: 0, provincial: 0 }, tipCents: 0, totalCents: 0, recoverableCents: 0, exportedCount: 0 };
+  return { key, label, count: 0, noReceiptCount: 0, subtotalCents: 0, taxes: zeroTaxes(), hst: { federal: 0, provincial: 0 }, tipCents: 0, totalCents: 0, recoverableCents: 0, exportedCount: 0 };
 }
 
 function addAlloc(row: SpendRow, a: Allocation, recoverable: number) {
@@ -818,48 +940,92 @@ export interface SpendSummary {
 
 type SummaryReceipt = Pick<Receipt, 'id' | 'purchaseDate' | 'status' | 'currency' | 'budgetCodeId' | 'splits' | 'subtotal' | 'taxes' | 'tip' | 'total'>;
 
+/** A charge explained without a receipt, as the summary counts it: spend with no tax to claim. */
+export interface NoReceiptCharge {
+  lineId: string;
+  postedDate: string;
+  amount: number;
+  budgetCodeId: string | null;
+}
+
+/**
+ * The explained no-receipt charges on the given statements, each with the budget code it is booked
+ * to (its own, else the card's default).
+ */
+export function noReceiptCharges(
+  lines: Pick<StatementLine, 'id' | 'statementId' | 'postedDate' | 'amount' | 'matchState' | 'budgetCodeId'>[],
+  statements: Pick<CardStatement, 'id' | 'cardId'>[],
+  cards: Pick<ExpenseCard, 'id' | 'defaultBudgetCodeId'>[],
+): (NoReceiptCharge & { cardId: string })[] {
+  const cardOf = new Map(statements.map((st) => [st.id, st.cardId]));
+  return lines.filter((l) => l.matchState === 'no_receipt_ok' && toCents(l.amount) > 0 && cardOf.has(l.statementId)).map((l) => {
+    const cardId = cardOf.get(l.statementId)!;
+    return { lineId: l.id, postedDate: l.postedDate, amount: l.amount, cardId,
+      budgetCodeId: l.budgetCodeId ?? cards.find((c) => c.id === cardId)?.defaultBudgetCodeId ?? null };
+  });
+}
+
 /**
  * Spend by month and by budget code, taxes by type, and the estimated recoverable tax.
  *
  * Only confirmed receipts (ready or exported) count. A receipt the AI read and nobody checked is
  * not yet a fact, and a summary built on it would move when someone finally corrects the total.
+ * Charges explained with no receipt count too, at their posted date, with no tax: leaving them out
+ * made the summary $78.37 short of the Visa bills with nothing on screen to say why.
+ *
+ * The recoverable estimate is worked out on the totals of everything in the summary (see
+ * recoverableFromTotals) and shared out, so every row adds up to it.
  */
 export function spendSummary(
   receipts: SummaryReceipt[], codes: Pick<BudgetCode, 'id' | 'code' | 'name' | 'sortOrder'>[], rules: TaxRule[],
-  currency: string = 'CAD', province: string | null = null,
+  currency: string = 'CAD', province: string | null = null, charges: NoReceiptCharge[] = [],
 ): SpendSummary {
   const months = new Map<string, SpendRow>();
   const byCode = new Map<string, SpendRow>();
   const totals = emptyRow('total', 'Total');
-  const recoverable = { byType: zeroTaxes(), totalCents: 0 };
   let needsReviewCount = 0;
   const other = { count: 0, totalCents: 0, currency: null as string | null };
 
+  const monthRow = (mk: string) => { const m = months.get(mk) ?? emptyRow(mk, monthLabel(mk)); months.set(mk, m); return m; };
+  const codeRow = (id: string | null) => {
+    const key = id ?? 'uncoded';
+    const code = codes.find((c) => c.id === id);
+    const row = byCode.get(key) ?? emptyRow(key, code ? code.name : 'Not coded yet');
+    byCode.set(key, row);
+    return row;
+  };
+
+  const pending: { a: Allocation; month: SpendRow; code: SpendRow }[] = [];
   for (const r of receipts) {
     if (r.status === 'needs_review' || r.status === 'processing') { if (r.status === 'needs_review') needsReviewCount++; continue; }
     if (!r.purchaseDate) continue;
     if (r.currency !== currency) { other.count++; other.totalCents += toCents(r.total); other.currency = r.currency; continue; }
-    const mk = monthKey(r.purchaseDate);
-    const month = months.get(mk) ?? emptyRow(mk, monthLabel(mk));
-    months.set(mk, month);
+    const month = monthRow(monthKey(r.purchaseDate));
     month.count++; totals.count++;
     if (r.status === 'exported') { month.exportedCount++; totals.exportedCount++; }
     const seen = new Set<string>();
     for (const a of receiptAllocations(r, province)) {
-      const rec = recoverableCents(a, rules);
-      for (const t of TAX_TYPES) recoverable.byType[t] += rec.byType[t];
-      recoverable.totalCents += rec.totalCents;
-      addAlloc(month, a, rec.totalCents);
-      addAlloc(totals, a, rec.totalCents);
-      const key = a.budgetCodeId ?? 'uncoded';
-      const code = codes.find((c) => c.id === a.budgetCodeId);
-      const row = byCode.get(key) ?? emptyRow(key, code ? `${code.code} · ${code.name}` : 'Not coded yet');
-      if (!byCode.has(key)) byCode.set(key, row);
-      addAlloc(row, a, rec.totalCents);
+      const code = codeRow(a.budgetCodeId);
       // Counted once per receipt even when it is split across codes.
-      if (!seen.has(key)) { row.count++; seen.add(key); }
+      if (!seen.has(code.key)) { code.count++; seen.add(code.key); }
+      pending.push({ a, month, code });
     }
   }
+  for (const c of charges) {
+    const cents = toCents(c.amount);
+    const a: Allocation = { budgetCodeId: c.budgetCodeId, subtotalCents: cents, taxes: zeroTaxes(), hst: { federal: 0, provincial: 0 }, tipCents: 0, totalCents: cents };
+    const month = monthRow(monthKey(c.postedDate));
+    const code = codeRow(c.budgetCodeId);
+    month.noReceiptCount++; code.noReceiptCount++; totals.noReceiptCount++;
+    pending.push({ a, month, code });
+  }
+
+  const rec = recoverableFromTotals(pending.map((p) => p.a), rules);
+  pending.forEach((p, k) => {
+    addAlloc(p.month, p.a, rec.perAllocation[k]);
+    addAlloc(p.code, p.a, rec.perAllocation[k]);
+    addAlloc(totals, p.a, rec.perAllocation[k]);
+  });
 
   const codeOrder = (key: string) => {
     const c = codes.find((x) => x.id === key);
@@ -872,10 +1038,86 @@ export function spendSummary(
       return x[0] - y[0] || x[1] - y[1] || x[2].localeCompare(y[2]);
     }),
     totals,
-    recoverable,
+    recoverable: { byType: rec.byType, totalCents: rec.totalCents },
     needsReviewCount,
     otherCurrency: other,
   };
+}
+
+// ─── Does the summary tie out to the Visa bills? ─────────────────────────────
+
+export interface TieOutRow {
+  statementId: string;
+  cardId: string;
+  /** YYYY-MM */
+  month: string;
+  /** Matched receipts, at the receipts' own totals. */
+  receiptsCents: number;
+  receiptCount: number;
+  noReceiptCents: number;
+  noReceiptCount: number;
+  personalCents: number;
+  /** Payments and refunds, negative. */
+  creditsCents: number;
+  /** Receipts + no-receipt charges + personal + credits. */
+  explainedCents: number;
+  statementTotalCents: number | null;
+  totalSource: CardStatement['totalSource'];
+  /** statement total − explained; 0 when it ties out. */
+  differenceCents: number;
+  ties: boolean;
+  /** Why it does not tie, each with its amount. Empty when it does. */
+  reasons: string[];
+}
+
+/**
+ * One row per card statement: Σ matched receipts + Σ no-receipt charges + personal (+ credits) =
+ * the statement total, or the difference and every reason for it. The Summary only ever adds up
+ * receipts, so without this the finance director could not see that its $3,210.83 and the three
+ * bills' $3,289.20 were the same money minus a fuel charge with no receipt.
+ */
+export function statementTieOut(
+  statements: Pick<CardStatement, 'id' | 'cardId' | 'periodMonth' | 'statementTotal' | 'totalSource'>[],
+  lines: Pick<StatementLine, 'id' | 'statementId' | 'amount' | 'matchState' | 'receiptId'>[],
+  receipts: Pick<Receipt, 'id' | 'total' | 'status'>[],
+): TieOutRow[] {
+  const byId = new Map(receipts.map((r) => [r.id, r]));
+  return statements.map((st) => {
+    const row: TieOutRow = {
+      statementId: st.id, cardId: st.cardId, month: st.periodMonth.slice(0, 7),
+      receiptsCents: 0, receiptCount: 0, noReceiptCents: 0, noReceiptCount: 0, personalCents: 0, creditsCents: 0,
+      explainedCents: 0, statementTotalCents: st.statementTotal != null ? toCents(st.statementTotal) : null,
+      totalSource: st.totalSource ?? 'typed', differenceCents: 0, ties: false, reasons: [],
+    };
+    let unexplained = 0; let unexplainedCents = 0; let differs = 0; let differsCents = 0; let unchecked = 0;
+    let linesCents = 0;
+    for (const l of lines) {
+      if (l.statementId !== st.id) continue;
+      const c = toCents(l.amount);
+      linesCents += c;
+      if (c <= 0) { row.creditsCents += c; continue; }
+      if (l.matchState === 'matched') {
+        const r = byId.get(l.receiptId ?? '');
+        const rc = toCents(r?.total);
+        row.receiptsCents += rc; row.receiptCount++;
+        if (rc !== c) { differs++; differsCents += c - rc; }
+        if (r && (r.status === 'needs_review' || r.status === 'processing')) unchecked++;
+      } else if (l.matchState === 'no_receipt_ok') { row.noReceiptCents += c; row.noReceiptCount++; }
+      else if (l.matchState === 'personal') row.personalCents += c;
+      else { unexplained++; unexplainedCents += c; }
+    }
+    row.explainedCents = row.receiptsCents + row.noReceiptCents + row.personalCents + row.creditsCents;
+    const target = row.statementTotalCents ?? linesCents;
+    row.differenceCents = target - row.explainedCents;
+    if (unexplained) row.reasons.push(`${unexplained} ${plural(unexplained, 'charge has', 'charges have')} no receipt or reason (${formatCents(unexplainedCents)})`);
+    if (differs) row.reasons.push(`${differs} matched ${plural(differs, 'receipt differs', 'receipts differ')} from ${plural(differs, 'its charge', 'their charges')} (${formatCents(differsCents)})`);
+    if (row.statementTotalCents != null && row.statementTotalCents !== linesCents) {
+      row.reasons.push(`The imported lines add up to ${formatCents(linesCents)}, not the bill’s ${formatCents(row.statementTotalCents)}`);
+    }
+    if (unchecked) row.reasons.push(`${unchecked} matched ${plural(unchecked, 'receipt is', 'receipts are')} not confirmed yet, so not in the spend above`);
+    row.ties = row.differenceCents === 0 && unexplained === 0 && differs === 0 && unchecked === 0;
+    return row;
+  }).sort((a, b) => b.month.localeCompare(a.month) || a.cardId.localeCompare(b.cardId));
 }
 
 // ─── Does a card-month agree with the bill? ──────────────────────────────────
@@ -981,7 +1223,6 @@ export interface ReconcileSummary {
   reasons: string[];
 }
 
-const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
 /**
  * Does this card-month agree with the bill?
@@ -1044,6 +1285,26 @@ export function reconcileSummary(input: MonthInput): ReconcileSummary {
   return s;
 }
 
+/**
+ * A blocker as the Reconcile banner says it, given how many of its items have a suggested match
+ * waiting below. A suggestion is not a match until accepted, so it still blocks; but "9 receipts on
+ * this card have no charge" above a section headed "Receipts with no charge · 0" read as a
+ * contradiction, when all nine were suggestions.
+ */
+export function blockerText(b: Pick<Blocker, 'code' | 'count' | 'message'>, suggested: number): string {
+  const n = b.count;
+  const k = Math.min(suggested, n);
+  if (!k || (b.code !== 'unexplained' && b.code !== 'no_charge')) return b.message;
+  if (b.code === 'unexplained') {
+    return k === n
+      ? `${n} ${plural(n, 'charge has a suggested receipt', 'charges have suggested receipts')}: accept ${plural(n, 'it', 'them')} below.`
+      : `${n} ${plural(n, 'charge still has', 'charges still have')} no receipt or reason: ${k} with a suggested match below, ${n - k} under “Charges with no receipt”.`;
+  }
+  return k === n
+    ? `${n} ${plural(n, 'receipt has a suggested match', 'receipts have suggested matches')}: accept ${plural(n, 'it', 'them')} below.`
+    : `${n} ${plural(n, 'receipt', 'receipts')} on this card ${plural(n, 'has', 'have')} no charge: ${k} with a suggested match below, ${n - k} under “Receipts with no charge”.`;
+}
+
 // ─── Exports ─────────────────────────────────────────────────────────────────
 //
 // One file per card per month, built from the STATEMENT: one row per charge, at its posted date
@@ -1083,7 +1344,7 @@ export const QBO_MAX_BILLS = 100;
 export const EXPORT_FORMATS: { value: ExportFormat; label: string; carries: string; lacks: string }[] = [
   {
     value: 'qbo_bills', label: 'QuickBooks bills import — with GST/HST',
-    carries: 'One bill per charge: supplier, account, amount before tax, tax code and tax amount on each line.',
+    carries: 'One bill per charge: supplier, account, amount, QuickBooks tax code and tax amount on each line.',
     lacks: 'Imports as bills: pay them from the card account in QuickBooks so the card balance matches. Payments and refunds are not included (bills have no credits); they are counted separately.',
   },
   {
@@ -1171,6 +1432,11 @@ export interface ExportPart {
   hst: { federal: number; provincial: number };
   tipCents: number;
   totalCents: number;
+  /**
+   * The part of this part's tax the camp gets back, from the card-month's totals shared out
+   * (recoverableFromTotals). Equal to the tax when the camp has no rules to say otherwise.
+   */
+  recoverableCents: number;
 }
 
 export interface ExportRow {
@@ -1181,9 +1447,10 @@ export interface ExportRow {
   /** The receipt's vendor, else the statement's descriptor. */
   supplier: string;
   treatment: ExportTreatment;
+  noReceiptKind: NoReceiptKind | null;
   amountCents: number;
   parts: ExportPart[];
-  /** The ratePct of the receipt's taxes, for the tax code label. */
+  /** The ratePct of the receipt's taxes, for the tax code. */
   taxRates: { type: TaxType; ratePct: number | null }[];
   note: string | null;
   receiptId: string | null;
@@ -1210,16 +1477,29 @@ export interface StatementExport {
   personalCount: number;
   creditsCents: number;
   creditCount: number;
+  /** Tax on the month's receipts, and the part of it the camp gets back (from the month's totals). */
+  taxCents: number;
+  recoverableCents: number;
+  province: string | null;
+  /** How the bills file writes tax the camp does not get back. */
+  nonrecoverableTax: NonrecoverableTax;
+  /** Camp overrides of QuickBooks tax code names, by default name. */
+  qboTaxCodes: Record<string, string>;
 }
 
 export interface ExportContext {
   card: Pick<ExpenseCard, 'id' | 'label' | 'holderName' | 'last4' | 'defaultBudgetCodeId'>;
   month: string;
   statement: Pick<CardStatement, 'statementTotal'>;
-  lines: Pick<StatementLine, 'id' | 'postedDate' | 'description' | 'amount' | 'matchState' | 'receiptId' | 'note'>[];
+  lines: (Pick<StatementLine, 'id' | 'postedDate' | 'description' | 'amount' | 'matchState' | 'receiptId' | 'note'>
+    & Partial<Pick<StatementLine, 'noReceiptKind' | 'budgetCodeId'>>)[];
   receipts: Pick<Receipt, 'id' | 'vendor' | 'purchaseDate' | 'subtotal' | 'taxes' | 'tip' | 'total' | 'currency' | 'budgetCodeId' | 'splits' | 'purpose' | 'status' | 'submitterName'>[];
   codes: Pick<BudgetCode, 'id' | 'code' | 'name' | 'qbAccount'>[];
   province?: string | null;
+  /** The camp's recovery rules. None: every dollar of tax is treated as recoverable, as before. */
+  taxRules?: TaxRule[];
+  nonrecoverableTax?: NonrecoverableTax | null;
+  qboTaxCodes?: Record<string, string>;
 }
 
 /** When nothing better is known. QuickBooks Online Canada's own default expense account. */
@@ -1236,12 +1516,24 @@ export function cardSlug(card: Pick<ExpenseCard, 'label' | 'last4'>): string {
 }
 
 /**
+ * The treatment of non-recoverable tax a camp gets when it has not chosen: booked as expense when
+ * its rules recover less than all of it (a charity on the rebate, a camp claiming nothing), all
+ * of it as tax when they recover everything (a registrant on input tax credits) or say nothing.
+ */
+export function defaultNonrecoverableTax(rules: TaxRule[] | null | undefined): NonrecoverableTax {
+  if (!rules || !rules.length) return 'claim_all';
+  const partial = rules.some((r) => (r.type === 'HST' && r.federalPct != null && r.provincialPct != null)
+    ? r.federalPct < 100 || r.provincialPct < 100 : r.recoverablePct < 100);
+  return partial ? 'expense' : 'claim_all';
+}
+
+/**
  * Every line on a card-month's statement, with what the books need to know about it. The single
  * source for every export format and for the totals the export screen reconciles on.
  */
 export function buildStatementExport(ctx: ExportContext): StatementExport {
   const byId = new Map(ctx.receipts.map((r) => [r.id, r]));
-  const defaultAcct = accountFor(ctx.codes, ctx.card.defaultBudgetCodeId);
+  const defaultCode = ctx.card.defaultBudgetCodeId;
   const rows: ExportRow[] = [...ctx.lines]
     .sort((a, b) => a.postedDate.localeCompare(b.postedDate) || a.id.localeCompare(b.id))
     .map((l) => {
@@ -1252,21 +1544,36 @@ export function buildStatementExport(ctx: ExportContext): StatementExport {
           : l.matchState === 'no_receipt_ok' ? 'no_receipt'
             : r ? 'receipt' : 'unexplained';
       const plain = (acct: { account: string; codeLabel: string }): ExportPart => ({
-        ...acct, subtotalCents: cents, taxes: zeroTaxes(), hst: { federal: 0, provincial: 0 }, tipCents: 0, totalCents: cents,
+        ...acct, subtotalCents: cents, taxes: zeroTaxes(), hst: { federal: 0, provincial: 0 }, tipCents: 0, totalCents: cents, recoverableCents: 0,
       });
       const parts: ExportPart[] = r && treatment === 'receipt'
-        ? receiptAllocations(r, ctx.province).map((a) => ({ ...accountFor(ctx.codes, a.budgetCodeId), subtotalCents: a.subtotalCents, taxes: a.taxes, hst: a.hst, tipCents: a.tipCents, totalCents: a.totalCents }))
-        // A credit is not an expense, and a personal or unexplained charge has no account yet.
-        : [plain(treatment === 'no_receipt' ? defaultAcct : { account: '', codeLabel: '' })];
+        ? receiptAllocations(r, ctx.province).map((a) => ({ ...accountFor(ctx.codes, a.budgetCodeId), subtotalCents: a.subtotalCents, taxes: a.taxes, hst: a.hst, tipCents: a.tipCents, totalCents: a.totalCents, recoverableCents: 0 }))
+        // A no-receipt charge goes to the code it was given, else the card's default. A credit is
+        // not an expense, and a personal or unexplained charge has no account yet.
+        : [plain(treatment === 'no_receipt' ? accountFor(ctx.codes, l.budgetCodeId ?? defaultCode) : { account: '', codeLabel: '' })];
       return {
         lineId: l.id, postedDate: l.postedDate, purchaseDate: r?.purchaseDate ?? null, description: l.description,
-        supplier: (r?.vendor || l.description || 'Card charge').trim(), treatment, amountCents: cents, parts,
+        supplier: (r?.vendor || l.description || 'Card charge').trim(), treatment,
+        noReceiptKind: treatment === 'no_receipt' ? (l.noReceiptKind ?? 'not_expected') : null,
+        amountCents: cents, parts,
         taxRates: r ? r.taxes.map((t) => ({ type: t.type, ratePct: t.ratePct })) : [],
         note: (treatment === 'receipt' ? r?.purpose : l.note) ?? null,
         receiptId: r?.id ?? null, receiptStatus: r?.status ?? null, snappedBy: r?.submitterName ?? null,
         currency: r?.currency ?? 'CAD',
       };
     });
+
+  // What the camp gets back, from this card-month's totals, shared out to the parts.
+  const taxed = rows.filter((x) => x.treatment === 'receipt').flatMap((x) => x.parts);
+  const taxOf = (p: ExportPart) => TAX_TYPES.reduce((s, t) => s + p.taxes[t], 0);
+  const rules = ctx.taxRules ?? [];
+  if (rules.length) {
+    const rec = recoverableFromTotals(taxed, rules);
+    taxed.forEach((p, k) => { p.recoverableCents = rec.perAllocation[k]; });
+  } else {
+    for (const p of taxed) p.recoverableCents = taxOf(p);
+  }
+
   const sum = (xs: ExportRow[]) => xs.reduce((s, x) => s + x.amountCents, 0);
   const bank = rows.filter((x) => x.treatment !== 'personal');
   const bills = rows.filter((x) => x.treatment !== 'personal' && x.treatment !== 'credit');
@@ -1280,26 +1587,110 @@ export function buildStatementExport(ctx: ExportContext): StatementExport {
     billsCents: sum(bills), billCount: bills.length,
     personalCents: sum(personal), personalCount: personal.length,
     creditsCents: sum(credits), creditCount: credits.length,
+    taxCents: taxed.reduce((s, p) => s + taxOf(p), 0),
+    recoverableCents: taxed.reduce((s, p) => s + p.recoverableCents, 0),
+    province: ctx.province ?? null,
+    nonrecoverableTax: ctx.nonrecoverableTax ?? defaultNonrecoverableTax(rules),
+    qboTaxCodes: ctx.qboTaxCodes ?? {},
   };
 }
 
-/** The tax code a bill line is imported with, mapped to the company's own codes in QuickBooks. */
-export function taxCodeLabel(part: Pick<ExportPart, 'taxes'>, rates: ExportRow['taxRates']): string {
+// ─── QuickBooks Online Canada tax codes ──────────────────────────────────────
+//
+// The names QuickBooks Online Canada sets up for a company, by province, from Intuit's "Common sales
+// tax codes" (checked 2026-09-16):
+//   https://quickbooks.intuit.com/learn-support/en-ca/help-article/remit-sales-taxes/common-sales-tax-codes/L3Kfh9jls_CA_en_CA
+//   every province: Zero-rated, Exempt, Out of scope · AB/NT/NU/YT: GST · BC: GST BC, PST BC, GST/PST BC
+//   MB: GST/PST MB, GST, PST MB · NB: HST NB · NL: HST NL · NS: HST NS · ON: HST ON · PE: HST
+//   QC: GST/QST QC, GST, QST QC · SK: GST/PST SK, GST, PST SK
+// The article lists Prince Edward Island's code as plain "HST". Intuit shows zero-rated and exempt
+// as Z and E in lists; the names used here are the code names.
+//
+// The bills import maps the file's codes to the company's in its last step ("Your sales tax codes
+// are mapped, so you don't need to change them to QuickBooks Online sales tax code formats before
+// importing"), and a Line Tax Amount "will override any calculation that would normally be made by
+// QuickBooks Online":
+//   https://quickbooks.intuit.com/learn-support/en-ca/help-article/import-transactions/import-bills-quickbooks-online/L4Q6QWsRw_CA_en_CA
+// Writing QuickBooks' own names makes that mapping step a row of confirmations, and a camp that
+// renamed its codes sets its names once in Settings. The first version wrote "HST 13%", "GST 5%"
+// and "No tax", which exist in no QuickBooks company.
+
+/** Every code name the export can write, in the order Settings lists them. */
+export const QBO_TAX_CODES: { name: string; use: string }[] = [
+  { name: 'HST ON', use: 'Receipts with Ontario HST (13%)' },
+  { name: 'HST NS', use: 'Receipts with Nova Scotia HST (14%)' },
+  { name: 'HST NB', use: 'Receipts with New Brunswick HST (15%)' },
+  { name: 'HST NL', use: 'Receipts with Newfoundland and Labrador HST (15%)' },
+  { name: 'HST', use: 'Receipts with Prince Edward Island HST (15%)' },
+  { name: 'GST', use: 'Receipts with GST only' },
+  { name: 'GST/PST BC', use: 'Receipts with GST and BC PST' },
+  { name: 'GST/PST MB', use: 'Receipts with GST and Manitoba RST' },
+  { name: 'GST/PST SK', use: 'Receipts with GST and Saskatchewan PST' },
+  { name: 'GST/QST QC', use: 'Receipts with GST and QST' },
+  { name: 'PST BC', use: 'Receipts with provincial sales tax only' },
+  { name: 'QST QC', use: 'Receipts with QST only' },
+  { name: 'Zero-rated', use: 'Receipts with no tax on them (basic groceries, for instance)' },
+  { name: 'Exempt', use: 'Charges with no receipt expected (bank fees, for instance)' },
+  { name: 'Out of scope', use: 'Tips, foreign sales tax, and charges whose receipt was lost' },
+];
+
+const HST_CODE_BY_PROVINCE: Record<string, string> = { ON: 'HST ON', NS: 'HST NS', NB: 'HST NB', NL: 'HST NL', PE: 'HST' };
+const PST_PROVINCES: Record<string, string> = { BC: 'BC', MB: 'MB', SK: 'SK' };
+
+/**
+ * The QuickBooks tax code name for one bill line, before the camp's own renames.
+ *
+ * HST by the rate printed on the receipt (13% is Ontario, 14% Nova Scotia); 15% is ambiguous
+ * between three provinces, so the camp's own province when it is one of them, else New Brunswick.
+ * A receipt with no rate takes the camp's province. PST by the camp's province when it has one.
+ */
+export function qboTaxCodeFor(part: Pick<ExportPart, 'taxes'>, rates: ExportRow['taxRates'], province: string | null,
+  treatment: ExportTreatment = 'receipt', noReceiptKind: NoReceiptKind | null = null): string {
+  if (treatment === 'no_receipt') return noReceiptKind === 'lost' ? 'Out of scope' : 'Exempt';
+  const p = (province ?? '').toUpperCase();
   const has = (t: TaxType) => part.taxes[t] !== 0;
-  const rate = (t: TaxType) => rates.find((x) => x.type === t && x.ratePct != null)?.ratePct;
-  if (has('HST')) return rate('HST') != null ? `HST ${rate('HST')}%` : 'HST';
-  if (has('GST') && has('QST')) return 'GST/QST';
-  if (has('GST') && has('PST')) return 'GST/PST';
-  if (has('GST')) return 'GST 5%';
-  if (has('PST')) return 'PST';
-  if (has('QST')) return 'QST';
-  if (has('other')) return 'Other tax';
-  return 'No tax';
+  const rate = (t: TaxType) => rates.find((x) => x.type === t && x.ratePct != null)?.ratePct ?? null;
+  if (has('HST')) {
+    const r = rate('HST');
+    if (r === 13) return 'HST ON';
+    if (r === 14) return 'HST NS';
+    if (r === 15) return ['NB', 'NL', 'PE', 'NS'].includes(p) ? HST_CODE_BY_PROVINCE[p] : 'HST NB';
+    return HST_CODE_BY_PROVINCE[p] ?? 'HST ON';
+  }
+  const pst = PST_PROVINCES[p] ?? 'BC';
+  if (has('GST') && has('QST')) return 'GST/QST QC';
+  if (has('GST') && has('PST')) return `GST/PST ${pst}`;
+  if (has('GST')) return 'GST';
+  if (has('PST')) return `PST ${pst}`;
+  if (has('QST')) return 'QST QC';
+  if (has('other')) return 'Out of scope';
+  return 'Zero-rated';
+}
+
+/** The name as the camp's QuickBooks spells it. */
+export function qboTaxCodeName(defaultName: string, overrides: Record<string, string> | null | undefined): string {
+  const v = overrides?.[defaultName]?.trim();
+  return v || defaultName;
 }
 
 function accountSummary(row: ExportRow): string {
   if (row.parts.length > 1) return 'Split ' + row.parts.map((p) => p.account).join(' / ');
   return row.parts[0]?.account ?? '';
+}
+
+/** "Receipt lost: pump receipt, van fuel for canoe trip" — said once, whatever the note says. */
+export function noReceiptText(kind: NoReceiptKind | null, note: string | null): string {
+  const label = kind === 'lost' ? 'Receipt lost' : 'No receipt expected';
+  const n = (note ?? '').trim().replace(/^(receipt lost|no receipt( expected| needed)?)\s*[:\-–—]?\s*/i, '');
+  return n ? `${label}: ${n}` : label;
+}
+
+/** One bill line's amounts under the camp's treatment of non-recoverable tax. Always sums to the part. */
+export function billLineAmounts(p: ExportPart, treatment: NonrecoverableTax): { lineCents: number; taxCents: number; nonrecoverableCents: number } {
+  const tax = TAX_TYPES.reduce((s, t) => s + p.taxes[t], 0);
+  if (treatment === 'claim_all') return { lineCents: p.subtotalCents, taxCents: tax, nonrecoverableCents: 0 };
+  const rec = Math.max(Math.min(p.recoverableCents, Math.max(tax, 0)), Math.min(tax, 0));
+  return { lineCents: p.subtotalCents + (tax - rec), taxCents: rec, nonrecoverableCents: tax - rec };
 }
 
 export type StatementExportFormat = 'qbo_bank_3col' | 'qbo_bank_4col' | 'qbo_bills' | 'detailed';
@@ -1312,11 +1703,13 @@ export function toStatementCsv(ex: StatementExport, format: StatementExportForma
   opts: { appOrigin?: string; last4?: string | null } = {}): string {
   const out: string[] = [];
   const date = (d: string) => formatDate(d, dateFormat);
+  const note = (r: ExportRow) => (r.treatment === 'no_receipt' ? noReceiptText(r.noReceiptKind, r.note) : r.note);
+  const code = (name: string) => qboTaxCodeName(name, ex.qboTaxCodes);
   if (format === 'qbo_bank_3col' || format === 'qbo_bank_4col') {
     out.push(format === 'qbo_bank_3col' ? 'Date,Description,Amount' : 'Date,Description,Credit,Debit');
     for (const r of ex.rows) {
       if (r.treatment === 'personal') continue;
-      const desc = qboDescription([r.supplier, r.treatment === 'credit' ? '' : accountSummary(r), r.note].filter(Boolean).join(' - '));
+      const desc = qboDescription([r.supplier, r.treatment === 'credit' ? '' : accountSummary(r), note(r)].filter(Boolean).join(' - '));
       if (format === 'qbo_bank_3col') {
         out.push([date(r.postedDate), csvCell(desc), money(-r.amountCents, true)].join(','));
       } else {
@@ -1336,16 +1729,16 @@ export function toStatementCsv(ex: StatementExport, format: StatementExportForma
       const billNo = `${opts.last4 ?? 'CARD'}-${r.postedDate.replace(/-/g, '')}-${pad2(n)}`;
       const memo = qboDescription(`${ex.cardLabel} charge posted ${r.postedDate}: ${r.description}`, 1000);
       const supplier = qboDescription(r.supplier, 100);
-      const lineDesc = qboDescription([r.note, r.treatment === 'no_receipt' ? 'No receipt' : ''].filter(Boolean).join(' - '), 1000);
-      const push = (account: string, amountCents: number, code: string, taxCentsTotal: number, desc = lineDesc) => out.push([
+      const lineDesc = qboDescription(note(r) ?? '', 1000);
+      const push = (account: string, amountCents: number, taxCode: string, taxCentsTotal: number, desc = lineDesc) => out.push([
         csvCell(billNo), csvCell(supplier), date(r.postedDate), date(r.postedDate), csvCell(memo), csvCell(qboDescription(account, 200)),
-        csvCell(desc), money(amountCents), csvCell(code), money(taxCentsTotal), r.currency,
+        csvCell(desc), money(amountCents), csvCell(code(taxCode)), money(taxCentsTotal), r.currency,
       ].join(','));
       for (const p of r.parts) {
-        const tax = TAX_TYPES.reduce((s, t) => s + p.taxes[t], 0);
-        push(p.account, p.subtotalCents, taxCodeLabel(p, r.taxRates), tax);
-        // A tip carries no sales tax, so it is its own untaxed line.
-        if (p.tipCents !== 0) push(p.account, p.tipCents, 'No tax', 0, 'Tip');
+        const amounts = billLineAmounts(p, r.treatment === 'receipt' ? ex.nonrecoverableTax : 'claim_all');
+        push(p.account, amounts.lineCents, qboTaxCodeFor(p, r.taxRates, ex.province, r.treatment, r.noReceiptKind), amounts.taxCents);
+        // A tip carries no sales tax, so it is its own line, outside the scope of GST/HST.
+        if (p.tipCents !== 0) push(p.account, p.tipCents, 'Out of scope', 0, 'Tip');
       }
     }
     return out.join('\r\n') + '\r\n';
@@ -1353,12 +1746,15 @@ export function toStatementCsv(ex: StatementExport, format: StatementExportForma
 
   out.push(['Posted date', 'Purchase date', 'Card', 'Card holder', 'Statement description', 'Vendor', 'Treatment',
     'QuickBooks account', 'Budget code', 'Subtotal', 'GST', 'HST', 'HST federal part', 'HST provincial part', 'PST', 'QST',
-    'Other tax', 'Tip', 'Total', 'Charge amount', 'Receipt status', 'Snapped by', 'Note', 'Split', 'Receipt link'].join(','));
+    'Other tax', 'Tip', 'Total', 'Charge amount', 'QuickBooks tax code', 'Recoverable tax', 'Non-recoverable tax',
+    'Receipt status', 'Snapped by', 'Note', 'Split', 'Receipt link'].join(','));
   const treatmentLabel: Record<ExportTreatment, string> = {
-    receipt: 'Receipt', no_receipt: 'No receipt needed', personal: 'Personal - not exported', credit: 'Payment or credit', unexplained: 'Not explained yet',
+    receipt: 'Receipt', no_receipt: 'No receipt', personal: 'Personal - not exported', credit: 'Payment or credit', unexplained: 'Not explained yet',
   };
   for (const r of ex.rows) {
     r.parts.forEach((p, i) => {
+      const tax = TAX_TYPES.reduce((s, t) => s + p.taxes[t], 0);
+      const exported = r.treatment === 'receipt' || r.treatment === 'no_receipt';
       out.push([
         date(r.postedDate), r.purchaseDate ? date(r.purchaseDate) : '', csvText(ex.cardLabel), csvText(ex.holderName), csvText(r.description),
         csvText(r.supplier), treatmentLabel[r.treatment], csvText(p.account), csvText(p.codeLabel),
@@ -1366,7 +1762,9 @@ export function toStatementCsv(ex: StatementExport, format: StatementExportForma
         money(p.taxes.PST), money(p.taxes.QST), money(p.taxes.other), money(p.tipCents), money(p.totalCents),
         // On the first row of a charge only, so the column adds up to the statement.
         i === 0 ? money(r.amountCents) : '',
-        r.receiptStatus ? r.receiptStatus.replace('_', ' ') : '', csvText(r.snappedBy), csvText(r.note),
+        exported ? csvText(code(qboTaxCodeFor(p, r.taxRates, ex.province, r.treatment, r.noReceiptKind))) : '',
+        money(p.recoverableCents), money(tax - p.recoverableCents),
+        r.receiptStatus ? r.receiptStatus.replace('_', ' ') : '', csvText(r.snappedBy), csvText(note(r)),
         r.parts.length > 1 ? `${i + 1} of ${r.parts.length}` : '',
         r.receiptId && opts.appOrigin ? `${opts.appOrigin}/receipts?receipt=${r.receiptId}` : '',
       ].join(','));

@@ -79,6 +79,15 @@ export interface Receipt {
   deferredNote: string | null;
   exportId: string | null;
   exportedAt: string | null;
+  /**
+   * An exported receipt is read-only until finance unlocks it to correct it. Set by
+   * unlock_exported_receipt(), cleared when the corrected month is exported again.
+   */
+  unlockedAt: string | null;
+  unlockedByName: string | null;
+  unlockReason: string | null;
+  /** Finance emailed the card holder about this receipt (an undated one, usually). */
+  holderAskedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -127,7 +136,20 @@ export interface TaxSettings {
   taxRules: TaxRule[];
   claimBasis: ClaimBasis | null;
   confirmedAt: string | null;
+  /**
+   * The camp's own QuickBooks tax code names, by the default name the export would write
+   * ("HST ON" → "HST ON 13%"), for companies that renamed their codes. Absent: the default.
+   */
+  qboTaxCodes: Record<string, string>;
+  /**
+   * How the bills export writes tax the camp cannot get back. `expense`: the non-recoverable part is
+   * added to the line amount and only the recoverable part is the line's tax. `claim_all`: every
+   * dollar of tax is the line's tax. Null: `expense` when the camp recovers less than all of it.
+   */
+  nonrecoverableTax: NonrecoverableTax | null;
 }
+
+export type NonrecoverableTax = 'expense' | 'claim_all';
 
 export interface CardStatement {
   id: string;
@@ -137,12 +159,27 @@ export interface CardStatement {
   periodMonth: string;
   statementTotal: number | null;
   fileName: string | null;
+  /**
+   * `typed`: the total was typed from the bill, so the lines were checked against it.
+   * `sum_of_lines`: nobody had the bill's total; it is only what the lines add up to.
+   */
+  totalSource: 'typed' | 'sum_of_lines';
   exportId: string | null;
   exportedAt: string | null;
+  /** Finance unlocked something in this exported month to correct it: the export is stale. */
+  reexportNeededAt: string | null;
+  reexportReason: string | null;
   createdAt: string;
 }
 
 export type MatchState = 'unmatched' | 'matched' | 'no_receipt_ok' | 'personal';
+
+/**
+ * Why a charge has no receipt. `lost`: there was one and it is gone, so the note is the
+ * missing-receipt record an auditor asks for, and it is required. `not_expected`: nothing was ever
+ * printed (a bank fee, a parking meter).
+ */
+export type NoReceiptKind = 'lost' | 'not_expected';
 
 export interface StatementLine {
   id: string;
@@ -155,6 +192,10 @@ export interface StatementLine {
   matchState: MatchState;
   receiptId: string | null;
   note: string | null;
+  /** Only for no_receipt_ok. */
+  noReceiptKind: NoReceiptKind | null;
+  /** The budget code a no-receipt charge is booked to; null means the card's default. */
+  budgetCodeId: string | null;
   remindedAt: string | null;
 }
 
@@ -181,5 +222,7 @@ export interface ExpenseExport {
   statementId: string | null;
   personalTotal: number | null;
   dateFormat: string | null;
+  /** The bills export's treatment of non-recoverable tax when it was written. */
+  taxTreatment: string | null;
   createdAt: string;
 }

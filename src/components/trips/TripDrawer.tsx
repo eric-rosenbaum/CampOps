@@ -330,7 +330,7 @@ export function TripDrawer({ trip, trips, seats, errands, requests, userId, role
                                     if (!d) return;
                                     const took = tookLastSeatLine(d);
                                     if (d.already) notify('You’re already on that ride back.', 'warn');
-                                    else if (d.status === 'confirmed') notify(`You’re riding back — ${journeyNow(own ? mySeat.id : d.seat_id) ?? wayBackLabel(trip, t)}.${took}`, took ? 'warn' : 'ok');
+                                    else if (d.status === 'confirmed') notify(`You’re riding back — ${journeyNow(mySeat.id) ?? wayBackLabel(trip, t)}.${took}`, took ? 'warn' : 'ok');
                                     else notify(`On the waitlist to ride back on ${clock(backLegAt(t).time)} ${t.title}. Moved up automatically if a seat frees.`, 'warn');
                                   })}
                                   className={`flex min-h-11 w-full items-center justify-center rounded-btn px-3 text-center text-[13px] font-bold disabled:opacity-50

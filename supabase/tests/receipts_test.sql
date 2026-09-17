@@ -31,6 +31,8 @@ declare
   c3 uuid; ra uuid := gen_random_uuid(); rb uuid := gen_random_uuid(); rc uuid := gen_random_uuid();
   rd uuid := gen_random_uuid(); rc2 uuid := gen_random_uuid(); v_sep uuid; v_oct uuid; v_codes text;
   v_n int; v_ok boolean; v_j jsonb; v_passed int := 0; v_fn record;
+  c4 uuid; re1 uuid := gen_random_uuid(); re2 uuid := gen_random_uuid(); re3 uuid := gen_random_uuid(); v_nov uuid; v_export uuid;
+  v_line uuid; v_removal uuid; v_text text;
 begin
   -- ── Fixtures (as postgres) ────────────────────────────────────────────────
   insert into camps (id, name, slug, timezone, account_type, platform_modules, modules)
@@ -69,13 +71,18 @@ begin
                        'can_write_receipt_file','receipts_guard','statement_lines_guard','card_statements_guard',
                        'expense_cards_guard','expense_html','claim_ai_quota','import_card_statement',
                        'resolve_statement_lines','remind_card_holder','export_receipts','plan_receipt_messages_internal',
-                       'card_month_blockers_internal','export_card_statement','merge_duplicate_receipt')
+                       'card_month_blockers_internal','export_card_statement','merge_duplicate_receipt',
+                       'unlock_exported_receipt','unlock_exported_statement','remove_receipt','restore_removed_receipt',
+                       'ask_card_holder_about_receipt','receipts_delete_guard','card_statements_delete_guard',
+                       'receipts_books_write_allowed','receipts_person_name','receipt_lines_snapshot_internal')
      and has_function_privilege('anon', p.oid, 'execute');
   if v_n <> 0 then raise exception 'R1 FAIL: % receipts functions executable by anon', v_n; end if;
   select count(*) into v_n from pg_proc p
    where p.pronamespace = 'public'::regnamespace
      and p.proname in ('receipts_guard','statement_lines_guard','card_statements_guard','expense_cards_guard',
-                       'expense_html','plan_receipt_messages_internal','card_month_blockers_internal')
+                       'expense_html','plan_receipt_messages_internal','card_month_blockers_internal',
+                       'receipts_delete_guard','card_statements_delete_guard','receipts_books_write_allowed',
+                       'receipts_person_name','receipt_lines_snapshot_internal')
      and has_function_privilege('authenticated', p.oid, 'execute');
   if v_n <> 0 then raise exception 'R1 FAIL: % internal receipts functions executable by authenticated', v_n; end if;
   select count(*) into v_n from (values ('receipts'),('expense_cards'),('expense_budget_codes'),('expense_tax_settings'),
@@ -513,14 +520,243 @@ begin
   perform pg_temp.login(u_admin);
   v_ok := false;
   begin perform merge_duplicate_receipt(ra, rb);
-  exception when others then v_ok := sqlerrm like 'Both copies are matched%'; end;
+  -- (Both were exported in R15, which is refused first, and just as final.)
+  exception when others then v_ok := sqlerrm like 'Both copies are matched%' or sqlerrm like 'That copy was exported to QuickBooks%'; end;
   reset role;
   if not v_ok then raise exception 'R16 FAIL: two matched receipts were merged'; end if;
   v_passed := v_passed + 1;
 
-  raise notice 'receipts: %/16 passed', v_passed;
-  if v_passed <> 16 then raise exception 'receipts FAIL: only % of 16', v_passed; end if;
+  -- ── R17: an exported receipt is locked, for finance too, until it is unlocked on the record ──
+  perform set_config('request.jwt.claims', '', true);
+  insert into expense_cards (camp_id, label, last4) values (v_camp, 'Visa 4444', '4444') returning id into c4;
+  insert into expense_tax_settings (camp_id, province, claim_basis, tax_rules)
+  values (v_camp, 'ON', 'psb', '[{"type":"HST","recoverable_pct":69.69,"federal_pct":50,"provincial_pct":82},{"type":"GST","recoverable_pct":50}]')
+  on conflict (camp_id) do update set tax_rules = excluded.tax_rules, nonrecoverable_tax = null;
+  insert into receipts (id, camp_id, card_id, submitted_by, vendor, purchase_date, subtotal, taxes, total, status, file_path) values
+    (re1, v_camp, c4, u_admin, 'Lock Hardware', '2026-11-03', 75.00, '[{"type":"HST","rate_pct":13,"amount":9.75}]', 84.75, 'ready', v_camp || '/' || re1 || '.jpg'),
+    (re2, v_camp, c4, u_admin, 'Lock Grocer', '2026-11-05', 20.00, '[]', 20.00, 'ready', null);
+  perform pg_temp.login(u_admin);
+  v_nov := import_card_statement(c4, '2026-11-01', 104.75, 'nov.csv',
+    '[{"posted_date":"2026-11-04","description":"LOCK HARDWARE","amount":84.75},{"posted_date":"2026-11-06","description":"LOCK GROCER","amount":20.00}]'::jsonb);
+  perform resolve_statement_lines((select jsonb_agg(jsonb_build_object('line_id', id, 'match_state', 'matched',
+    'receipt_id', case when description = 'LOCK HARDWARE' then re1 else re2 end)) from statement_lines where statement_id = v_nov));
+  v_j := export_card_statement(v_nov, 'qbo_bills', 'nov.csv', 'DD/MM/YYYY', false);
+  v_export := (v_j->>'export_id')::uuid;
+  if v_j->>'tax_treatment' is distinct from 'expense' then reset role; raise exception 'R17 FAIL: an Ontario charity export recorded %', v_j->>'tax_treatment'; end if;
+  -- Finance, directly: refused.
+  v_ok := false;
+  begin update receipts set total = 1 where id = re1;
+  exception when others then v_ok := sqlerrm like 'This receipt was exported to QuickBooks. Unlock it%'; end;
+  if not v_ok then reset role; raise exception 'R17 FAIL: finance edited a locked exported receipt'; end if;
+  v_ok := false;
+  begin delete from receipts where id = re1;
+  exception when others then v_ok := sqlerrm like 'This receipt was exported%'; end;
+  if not v_ok then reset role; raise exception 'R17 FAIL: finance deleted a locked exported receipt'; end if;
+  v_ok := false;
+  begin perform remove_receipt(re1);
+  exception when others then v_ok := true; end;
+  if not v_ok then reset role; raise exception 'R17 FAIL: remove_receipt removed a locked exported receipt'; end if;
+  v_ok := false;
+  begin update receipts set unlocked_at = now() where id = re1;
+  exception when others then v_ok := sqlerrm like 'Use "Unlock to correct"%'; end;
+  if not v_ok then reset role; raise exception 'R17 FAIL: an exported receipt was unlocked by setting a column'; end if;
+  -- The statement is locked too: its lines, its total, and deleting it.
+  v_ok := false;
+  begin perform resolve_statement_lines((select jsonb_agg(jsonb_build_object('line_id', id, 'match_state', 'unmatched')) from statement_lines where statement_id = v_nov));
+  exception when others then v_ok := sqlerrm like 'This statement was exported%'; end;
+  if not v_ok then reset role; raise exception 'R17 FAIL: a line on an exported statement was unmatched'; end if;
+  v_ok := false;
+  begin update card_statements set statement_total = 1 where id = v_nov;
+  exception when others then v_ok := sqlerrm like 'This statement was exported%'; end;
+  if not v_ok then reset role; raise exception 'R17 FAIL: an exported statement total was changed'; end if;
+  v_ok := false;
+  begin delete from card_statements where id = v_nov;
+  exception when others then v_ok := sqlerrm like 'This statement was exported%'; end;
+  if not v_ok then reset role; raise exception 'R17 FAIL: an exported statement was deleted'; end if;
+  -- A duplicate flag is not a correction.
+  update receipts set duplicate_dismissed = true where id = re2;
+  reset role;
+
+  -- A holder cannot unlock; finance must say why.
+  perform pg_temp.login(u_h1);
+  v_ok := false;
+  begin perform unlock_exported_receipt(re1, 'mine now');
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R17 FAIL: staff unlocked an exported receipt'; end if;
+  perform pg_temp.login(u_admin);
+  v_ok := false;
+  begin perform unlock_exported_receipt(re1, '  ');
+  exception when others then v_ok := sqlerrm like 'Say what needs correcting%'; end;
+  if not v_ok then reset role; raise exception 'R17 FAIL: unlocked without a reason'; end if;
+  v_j := unlock_exported_receipt(re1, 'Coded to the wrong budget');
+  update receipts set purpose = 'Corrected' where id = re1;
+  -- The unlocked month's lines can be changed; the other receipt is still locked.
+  v_ok := false;
+  begin update receipts set total = 2 where id = re2;
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R17 FAIL: unlocking one receipt unlocked another'; end if;
+  select count(*) into v_n from receipts where id = re1 and unlocked_at is not null and unlock_reason = 'Coded to the wrong budget'
+     and unlocked_by = u_admin and unlocked_by_name is not null and purpose = 'Corrected';
+  if v_n <> 1 then raise exception 'R17 FAIL: the unlock was not recorded on the receipt'; end if;
+  select count(*) into v_n from card_statements where id = v_nov and reexport_needed_at is not null and reexport_reason like '%Coded to the wrong budget%';
+  if v_n <> 1 then raise exception 'R17 FAIL: the export was not flagged as needing to be done again'; end if;
+  select count(*) into v_n from receipt_unlocks where receipt_id = re1 and statement_id = v_nov and export_id = v_export
+     and reason = 'Coded to the wrong budget' and unlocked_by = u_admin and relocked_at is null;
+  if v_n <> 1 then raise exception 'R17 FAIL: % audit rows for the unlock', v_n; end if;
+  -- Exporting again needs no "export again" tick, and locks it all again.
+  perform pg_temp.login(u_admin);
+  v_j := export_card_statement(v_nov, 'qbo_bills', 'nov-corrected.csv', 'DD/MM/YYYY', false);
+  reset role;
+  select count(*) into v_n from receipts where id = re1 and unlocked_at is null and unlock_reason is null and export_id = (v_j->>'export_id')::uuid;
+  if v_n <> 1 then raise exception 'R17 FAIL: re-export did not lock the receipt again'; end if;
+  select count(*) into v_n from card_statements where id = v_nov and reexport_needed_at is null;
+  if v_n <> 1 then raise exception 'R17 FAIL: re-export left the month flagged'; end if;
+  select count(*) into v_n from receipt_unlocks where receipt_id = re1 and relocked_at is not null and relocked_export_id = (v_j->>'export_id')::uuid;
+  if v_n <> 1 then raise exception 'R17 FAIL: the audit row was not closed by the re-export'; end if;
+  select count(*) into v_n from expense_exports where id = (v_j->>'export_id')::uuid and include_exported;
+  if v_n <> 1 then raise exception 'R17 FAIL: the corrected export is not recorded as a re-export'; end if;
+  -- A statement can be unlocked on its own, with a reason, and then its lines change.
+  perform pg_temp.login(u_admin);
+  perform unlock_exported_statement(v_nov, 'Grocer charge was personal');
+  perform resolve_statement_lines((select jsonb_agg(jsonb_build_object('line_id', id, 'match_state', 'personal', 'note', 'Repaid')) from statement_lines where statement_id = v_nov and description = 'LOCK GROCER'));
+  reset role;
+  select count(*) into v_n from receipt_unlocks where statement_id = v_nov and receipt_id is null and reason = 'Grocer charge was personal';
+  if v_n <> 1 then raise exception 'R17 FAIL: the statement unlock was not recorded'; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R18: a lost receipt needs its note; each kind is booked where it is told ──
+  perform pg_temp.login(u_admin);
+  select id into v_line from statement_lines where statement_id = v_sep and description = 'PARKING';
+  -- (September was exported in R15.) Unlock it to correct.
+  perform unlock_exported_statement(v_sep, 'Parking was a lost receipt');
+  v_ok := false;
+  begin perform resolve_statement_lines(jsonb_build_array(jsonb_build_object('line_id', v_line, 'match_state', 'no_receipt_ok', 'no_receipt_kind', 'lost', 'note', ' ')));
+  exception when others then v_ok := sqlerrm like 'Say what the charge was for%'; end;
+  if not v_ok then reset role; raise exception 'R18 FAIL: a lost receipt was accepted with no note'; end if;
+  perform resolve_statement_lines(jsonb_build_array(jsonb_build_object('line_id', v_line, 'match_state', 'no_receipt_ok', 'no_receipt_kind', 'lost',
+    'note', 'Meter at the trailhead, slip blew away', 'budget_code_id', code1)));
+  reset role;
+  select count(*) into v_n from statement_lines where id = v_line and no_receipt_kind = 'lost' and budget_code_id = code1 and note like 'Meter%';
+  if v_n <> 1 then raise exception 'R18 FAIL: the lost receipt was not recorded with its code'; end if;
+  v_ok := false;
+  begin update statement_lines set note = null where id = v_line;
+  exception when check_violation then v_ok := true; end;
+  if not v_ok then raise exception 'R18 FAIL: a lost receipt''s note was cleared directly'; end if;
+  perform pg_temp.login(u_admin);
+  perform resolve_statement_lines(jsonb_build_array(jsonb_build_object('line_id', v_line, 'match_state', 'no_receipt_ok')));
+  reset role;
+  select count(*) into v_n from statement_lines where id = v_line and no_receipt_kind = 'not_expected' and budget_code_id is null;
+  if v_n <> 1 then raise exception 'R18 FAIL: a plain "no receipt" was not "not expected"'; end if;
+  perform pg_temp.login(u_admin);
+  perform resolve_statement_lines(jsonb_build_array(jsonb_build_object('line_id', v_line, 'match_state', 'unmatched')));
+  reset role;
+  select count(*) into v_n from statement_lines where id = v_line and no_receipt_kind is null and budget_code_id is null;
+  if v_n <> 1 then raise exception 'R18 FAIL: unmatching left a no-receipt kind behind'; end if;
+  v_ok := false;
+  begin update statement_lines set match_state = 'no_receipt_ok', no_receipt_kind = null where id = v_line;
+  exception when check_violation then v_ok := true; end;
+  if not v_ok then raise exception 'R18 FAIL: a no-receipt charge with no kind was accepted'; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R19: a removal is saved at once and Undo restores it, match and photo included ──
+  perform set_config('request.jwt.claims', '', true);
+  insert into receipts (id, camp_id, card_id, submitted_by, vendor, purchase_date, total, status, file_path, budget_code_id) values
+    (re3, v_camp, c1, u_h1, 'Photo Hardware', null, 64.10, 'ready', v_camp || '/' || re3 || '.jpg', code1);
+  -- r5 (holder one, no photo, matched to nothing) is kept and takes re3's photo.
+  perform pg_temp.login(u_admin);
+  v_j := merge_duplicate_receipt(r5, re3, true);
+  reset role;
+  v_removal := (v_j->>'removal_id')::uuid;
+  select count(*) into v_n from receipts where id = re3;
+  if v_n <> 0 then raise exception 'R19 FAIL: the removed copy is still there'; end if;
+  select count(*) into v_n from receipts where id = r5 and file_path = v_camp || '/' || re3 || '.jpg';
+  if v_n <> 1 then raise exception 'R19 FAIL: the kept copy did not take the photo'; end if;
+  select count(*) into v_n from receipt_removals where id = v_removal and receipt_id = re3 and kind = 'duplicate' and kept_receipt_id = r5 and restored_at is null;
+  if v_n <> 1 then raise exception 'R19 FAIL: the removal was not recorded'; end if;
+  -- Another holder cannot put it back; the admin who removed it can.
+  perform pg_temp.login(u_h2);
+  v_ok := false;
+  begin perform restore_removed_receipt(v_removal);
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R19 FAIL: another holder restored a removal'; end if;
+  perform pg_temp.login(u_admin);
+  v_j := restore_removed_receipt(v_removal);
+  reset role;
+  select count(*) into v_n from receipts where id = re3 and file_path = v_camp || '/' || re3 || '.jpg' and budget_code_id = code1 and vendor = 'Photo Hardware';
+  if v_n <> 1 then raise exception 'R19 FAIL: the restored receipt is not as it was'; end if;
+  select count(*) into v_n from receipts where id = r5 and file_path is null;
+  if v_n <> 1 then raise exception 'R19 FAIL: the kept copy did not give the photo back'; end if;
+  perform pg_temp.login(u_admin);
+  v_ok := false;
+  begin perform restore_removed_receipt(v_removal);
+  exception when others then v_ok := sqlerrm like '%already put back%'; end;
+  reset role;
+  if not v_ok then raise exception 'R19 FAIL: a removal was restored twice'; end if;
+
+  -- Deleting a matched receipt unmatches its charge, and Undo matches it again.
+  select id into v_line from statement_lines where statement_id = v_oct;
+  perform pg_temp.login(u_admin);
+  v_j := remove_receipt(rc2);
+  reset role;
+  select count(*) into v_n from statement_lines where id = v_line and match_state = 'unmatched' and receipt_id is null;
+  if v_n <> 1 then raise exception 'R19 FAIL: deleting a matched receipt did not leave its charge unexplained'; end if;
+  perform pg_temp.login(u_admin);
+  perform restore_removed_receipt((v_j->>'removal_id')::uuid);
+  reset role;
+  select count(*) into v_n from statement_lines where id = v_line and match_state = 'matched' and receipt_id = rc2;
+  if v_n <> 1 then raise exception 'R19 FAIL: restoring did not match the charge again'; end if;
+  -- A holder can remove and restore their own; not someone else's.
+  perform pg_temp.login(u_h2);
+  v_ok := false;
+  begin perform remove_receipt(r1);
+  exception when others then v_ok := true; end;
+  if not v_ok then reset role; raise exception 'R19 FAIL: a holder deleted another holder''s receipt'; end if;
+  reset role;
+  perform pg_temp.login(u_h1);
+  v_j := remove_receipt(re3);
+  perform restore_removed_receipt((v_j->>'removal_id')::uuid);
+  select count(*) into v_n from receipts where id = re3;
+  reset role;
+  if v_n <> 1 then raise exception 'R19 FAIL: a holder could not undo their own deletion'; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R20: a total nobody typed is recorded as the sum of the lines ─────────
+  perform pg_temp.login(u_admin);
+  v_stmt := import_card_statement(c4, '2026-12-01', null, 'dec.csv',
+    '[{"posted_date":"2026-12-02","description":"A","amount":10.10},{"posted_date":"2026-12-03","description":"B","amount":-2.05}]'::jsonb);
+  reset role;
+  select count(*) into v_n from card_statements where id = v_stmt and total_source = 'sum_of_lines' and statement_total = 8.05;
+  if v_n <> 1 then raise exception 'R20 FAIL: an untyped total was not recorded as the sum of the lines'; end if;
+  select count(*) into v_n from card_statements where id = v_nov and total_source = 'typed';
+  if v_n <> 1 then raise exception 'R20 FAIL: a typed total was not recorded as typed'; end if;
+  v_passed := v_passed + 1;
+
+  -- ── R21: finance can ask the card holder about a receipt ──────────────────
+  perform pg_temp.login(u_h1);
+  v_ok := false;
+  begin perform ask_card_holder_about_receipt(re3);
+  exception when others then v_ok := true; end;
+  reset role;
+  if not v_ok then raise exception 'R21 FAIL: staff sent a receipt question'; end if;
+  perform pg_temp.login(u_admin);
+  v_j := ask_card_holder_about_receipt(re3);
+  perform ask_card_holder_about_receipt(re3);
+  reset role;
+  if not (v_j->>'queued')::boolean or v_j->>'to_email' <> 'holder.one@campcommand.app' or v_j->>'body_text' not like 'Receipt question: Photo Hardware, $64.10 (Visa 1111%What date was it bought?%' then
+    raise exception 'R21 FAIL: question not queued: %', v_j;
+  end if;
+  select count(*) into v_n from scheduled_messages where subject_type = 'receipt' and subject_id = re3 and recipient_kind = 'card_holder';
+  if v_n <> 1 then raise exception 'R21 FAIL: % question rows (want one a day)', v_n; end if;
+  select count(*) into v_n from receipts where id = re3 and holder_asked_at is not null;
+  if v_n <> 1 then raise exception 'R21 FAIL: the question was not noted on the receipt'; end if;
+  v_passed := v_passed + 1;
+
+  raise notice 'receipts: %/21 passed', v_passed;
+  if v_passed <> 21 then raise exception 'receipts FAIL: only % of 21', v_passed; end if;
 end $$;
 
-select 'receipts: 16/16 passed' as result;
+select 'receipts: 21/21 passed' as result;
 rollback;

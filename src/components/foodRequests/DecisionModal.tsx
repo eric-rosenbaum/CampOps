@@ -6,7 +6,7 @@ import { useCommissaryStore } from '@/store/commissaryStore';
 import type { FoodProgram, FoodRequest, FoodRequestLine } from '@/lib/foodRequestTypes';
 import type { InventoryItem } from '@/lib/types';
 import { askedSummary, formatLineQty, formatNumber, formatPickup, kitchenLineView, matchItems } from '@/lib/foodRequests';
-import { formatInStockUnit } from '@/lib/commissaryUnits';
+import { formatInStockUnit, pluralizeUnit } from '@/lib/commissaryUnits';
 import type { DecisionLineInput } from '@/lib/foodRequestsDb';
 import { useFoodRequestActions } from './useFoodRequestActions';
 import { LateChip } from './foodUi';
@@ -114,7 +114,7 @@ export function DecisionModal({ request, lines, program, mode, onClose }: {
                 <div key={l.id} data-testid="decision-line" className={`rounded-card border px-3 py-2.5 ${d.unavailable ? 'border-border bg-cream-dark/60' : 'border-border bg-white'}`}>
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                     <p className={`text-[14px] font-semibold ${d.unavailable ? 'text-ink-faint' : 'text-forest'}`}>{l.label}</p>
-                    <p className="text-[12px] text-ink-soft">asked {formatLineQty(l.qtyRequested, l.unitLabel)}</p>
+                    {!(item && item.name !== l.label) && <p className="text-[12px] text-ink-soft">asked {formatLineQty(l.qtyRequested, l.unitLabel)}</p>}
                   </div>
                   {item && item.name !== l.label && (
                     <p className="text-[12px] text-ink-soft" data-testid="asked-for">Asked for: {askedSummary(l)}</p>
@@ -140,7 +140,7 @@ export function DecisionModal({ request, lines, program, mode, onClose }: {
                           aria-label={`Approved quantity for ${l.label}`}
                           aria-invalid={!(Number(d.qty) > 0)}
                           inputMode="decimal"
-                          placeholder={item ? item.stockUnit : 'Qty'}
+                          placeholder={item ? pluralizeUnit(item.stockUnit, 2) : 'Qty'}
                           value={d.qty}
                           onChange={(e) => setD({ qty: e.target.value.replace(/[^0-9.]/g, '').slice(0, 9) })}
                           className={`w-20 rounded-btn border bg-white px-2.5 py-1.5 font-mono text-[13px] focus:border-sage focus:outline-none ${Number(d.qty) > 0 ? 'border-border' : 'border-amber'}`}
@@ -151,7 +151,7 @@ export function DecisionModal({ request, lines, program, mode, onClose }: {
                   )}
                   {!d.unavailable && item && !(Number(d.qty) > 0) && (
                     <p role="alert" className="mt-1.5 text-[11.5px] font-semibold text-amber-text">
-                      How much {item.name} to give, in {item.stockUnit}? They asked for {formatLineQty(l.qtyRequested, l.unitLabel)}.
+                      Enter how much {item.name} to give, in {pluralizeUnit(item.stockUnit, 2)}. They asked for {formatLineQty(l.qtyRequested, l.unitLabel)}.
                     </p>
                   )}
                   {!d.unavailable && item && (() => {
@@ -163,7 +163,7 @@ export function DecisionModal({ request, lines, program, mode, onClose }: {
                     return (
                       <p data-testid="stock-context" className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11.5px] text-ink-soft">
                         <span>On shelf <span className="font-mono text-ink">{formatInStockUnit(item, pic.onShelf)}</span></span>
-                        <span>Already promised <span className="font-mono text-ink">{formatInStockUnit(item, pic.promised)}</span></span>
+                        <span>{pic.promised > 0 ? <>Already promised <span className="font-mono text-ink">{formatInStockUnit(item, pic.promised)}</span></> : 'Nothing promised yet'}</span>
                         <span>Left after this <span className={`font-mono ${tone}`}>{left < 0 ? `short ${formatInStockUnit(item, -left)}` : formatInStockUnit(item, left)}</span>
                           {left >= 0 && item.parLevelBase > 0 && left < item.parLevelBase ? ' (below min on hand)' : ''}</span>
                       </p>

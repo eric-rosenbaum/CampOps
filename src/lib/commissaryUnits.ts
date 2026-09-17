@@ -211,7 +211,8 @@ export function tidy(n: number, places = 2): number {
 
 // Short symbol units (lb, oz, ea, tsp…) never pluralize; word units follow basic
 // English rules so a cook never sees "4 boxs" or "2 loafs".
-const NO_PLURAL = new Set(['oz', 'lb', 'fl oz', 'tsp', 'tbsp', 'each', 'ea']);
+// "dozen" is a count word: "2 dozen eggs", never "2 dozens".
+const NO_PLURAL = new Set(['oz', 'lb', 'fl oz', 'tsp', 'tbsp', 'each', 'ea', 'dozen']);
 const IRREGULAR_PLURALS: Record<string, string> = { loaf: 'loaves', leaf: 'leaves', half: 'halves' };
 
 /** Pluralize a stock/purchase unit for display: box→boxes, loaf→loaves, berry→berries. */

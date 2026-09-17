@@ -345,7 +345,8 @@ export function kitchenLineView(line: FoodRequestLine, itemName: string | undefi
   const name = line.itemId && itemName ? itemName : line.label;
   const differs = !!line.itemId && !!itemName && (itemName !== line.label
     || (line.qtyApproved != null && (line.qtyApproved !== line.qtyRequested || (line.approvedUnitLabel ?? '') !== (line.unitLabel ?? ''))));
-  return { name, qty, asked: differs ? askedSummary(line) : null, linked: !!line.itemId };
+  const asked = !differs ? null : itemName === line.label ? formatLineQty(line.qtyRequested, line.unitLabel) : askedSummary(line);
+  return { name, qty, asked, linked: !!line.itemId };
 }
 
 /** What the kitchen changed on one line, in the requester's words. Null when nothing changed. */

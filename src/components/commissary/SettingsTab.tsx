@@ -56,7 +56,7 @@ export function SettingsTab() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-7 pt-4 pb-24 sm:pt-6">
       <div className="max-w-2xl space-y-8">
         {/* ── Sessions ─────────────────────────────────────────────────────── */}
         <section>

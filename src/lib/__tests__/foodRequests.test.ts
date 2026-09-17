@@ -235,7 +235,7 @@ describe('the request form', () => {
     expect(c.errors).toEqual(['Add how much (e.g. 3 boxes).', 'Pick a pickup time.', 'That email address doesn’t look right.']);
     expect(c.fieldErrors.map((e) => e.field)).toEqual(['qty-0', 'pickup', 'email']);
     const picked = checkDraft(draft({ lines: [{ itemId: 'eggs', label: 'Large eggs', qty: '', unitLabel: 'dozen' }] }), opts);
-    expect(picked.errors).toEqual(['Add how much (in dozens).']);
+    expect(picked.errors).toEqual(['Add how much (in dozen).']);
     expect(checkDraft(draft({ requesterName: '', requesterEmail: '' }), opts).errors).toEqual(['Add your name.', 'Add an email address so the kitchen can reply.']);
     expect(checkDraft(draft({ pickupDate: '2026-07-15', pickupTime: '13:00' }), opts).errors).toContain('That pickup time has already passed.');
   });
@@ -291,6 +291,9 @@ describe('one vocabulary for notice, quantities and lateness', () => {
     expect(kitchenLineView(l, 'Semi-sweet chocolate chips')).toEqual({ name: 'Semi-sweet chocolate chips', qty: '1.5 lb', asked: '2 bags of mini chocolate chips', linked: true });
     const same = line('r', { label: 'Flour' });
     expect(kitchenLineView(same, 'Flour').asked).toBeNull();
+    // Same item, trimmed amount: just the amount they asked for, not the name again.
+    expect(kitchenLineView(line('r', { label: 'Flour', qtyApproved: 3, approvedUnitLabel: 'lb', lineState: 'changed' }), 'Flour').asked).toBe('5 lb');
+    expect(formatLineQty(2, 'dozen')).toBe('2 dozen');
     expect(kitchenLineView(line('r', { itemId: null, label: 'Trail mix', unitLabel: 'bags', qtyRequested: 6 }), undefined)).toEqual({ name: 'Trail mix', qty: '6 bags', asked: null, linked: false });
   });
 

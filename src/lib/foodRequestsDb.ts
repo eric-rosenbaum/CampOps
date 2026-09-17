@@ -283,6 +283,8 @@ export interface PublicFoodStatus {
   lines: {
     label: string; qty_requested: number; unit_label: string | null; qty_approved: number | null;
     approved_unit_label: string | null; line_state: FoodRequestLine['lineState']; note: string | null;
+    /** The kitchen item the line is linked to, when it has been linked. */
+    item_name: string | null;
   }[];
 }
 

@@ -264,6 +264,7 @@ test('J1–J2: a counselor asks, the kitchen approves with changes, sets it asid
   await expect(await statusHeadline(page)).toHaveText('Picked up');
   await expect(page.getByTestId('picked-up-when')).toContainText('(pickup was ');
   await expect(page.getByTestId('status-purpose')).toContainText(`${purpose} · 14 people`);
+  await expect(page.getByTestId('kitchen-item')).toHaveText('The kitchen is giving you: Mini marshmallows');
   await expect(page.getByRole('button', { name: 'Cancel this request' })).toHaveCount(0);
   await shot(page, 'counselor-status-picked-up');
 

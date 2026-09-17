@@ -166,6 +166,9 @@ export function PublicFoodStatus() {
                 <li key={i} className="flex items-start justify-between gap-3 border-b border-border px-3.5 py-2.5 last:border-0">
                   <div className="min-w-0">
                     <p className={`text-[15px] ${l.line_state === 'unavailable' ? 'text-ink-soft' : 'text-ink'}`}>{l.label}</p>
+                    {l.item_name && l.item_name !== l.label && l.line_state !== 'unavailable' && (
+                      <p data-testid="kitchen-item" className="text-[12.5px] font-semibold text-forest">The kitchen is giving you: {l.item_name}</p>
+                    )}
                     {l.note && <p className="text-[12.5px] text-ink-soft">{l.note}</p>}
                   </div>
                   <div className="flex-shrink-0 text-right text-[14px]">

@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import UIKit
 
 /// The notes and steps on one work order.
 ///
@@ -67,17 +68,29 @@ final class IssueThreadViewModel: ObservableObject {
     // MARK: - Writing
 
     /// Post a note. Appears immediately, goes out when there is signal.
-    func postComment(_ body: String, by user: CampUser, visibleToReporter: Bool = false) async {
+    /// - Parameters:
+    ///   - mentions: ids of people named with `@`. Sent as ids so a mention survives somebody
+    ///     changing how their name is spelled.
+    ///   - photo: attached without waiting for an upload. It goes through `PhotoQueue`, which
+    ///     patches the message once the file lands, so a note written in a basement keeps its
+    ///     picture instead of losing it.
+    func postComment(_ body: String, by user: CampUser, visibleToReporter: Bool = false,
+                     mentions: [String] = [], photo: UIImage? = nil) async {
         let text = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty || photo != nil else { return }
 
         let comment = IssueComment(
             issueId: issueId,
             authorId: user.id,
             authorName: user.name,
             body: text,
-            visibleToReporter: visibleToReporter
+            visibleToReporter: visibleToReporter,
+            mentions: mentions
         )
+        if let photo {
+            await PhotoQueue.shared.enqueue(photo, campId: campId,
+                                            target: .comment(commentId: comment.id, issueId: issueId))
+        }
         // Optimistic, and NOT rolled back if the push fails. The queue owns delivery now: a
         // failure surfaces in the sync pill with the note's text intact, rather than the note
         // vanishing out from under the person who wrote it.
@@ -87,7 +100,11 @@ final class IssueThreadViewModel: ObservableObject {
     }
 
     /// Tick or un-tick a step.
-    func toggle(_ item: IssueChecklistItem, by user: CampUser) async {
+    ///
+    /// Never closes the work order, even when this was the last step. A database trigger
+    /// (`checklist_close_issue`) already does that, and a client that closes it too is racing
+    /// the server to write the same status.
+    func toggle(_ item: IssueChecklistItem, by user: CampUser, photo: UIImage? = nil) async {
         guard let index = checklist.firstIndex(where: { $0.id == item.id }) else { return }
         let done = !checklist[index].isDone
 
@@ -97,7 +114,26 @@ final class IssueThreadViewModel: ObservableObject {
         checklist[index].doneAt = done ? Date() : nil
         Haptics.tap()
 
+        if let photo, done {
+            await PhotoQueue.shared.enqueue(photo, campId: campId,
+                                            target: .checklistStep(itemId: item.id, issueId: issueId))
+        }
         await SyncEngine.shared.queueChecklistTick(checklist[index], done: done, by: user)
+    }
+
+    /// Puts an admin-written template's steps onto this work order.
+    ///
+    /// Needs a connection: it is an RPC that holds the "don't apply the same template twice"
+    /// rule, not a row write, so there is nothing sensible to queue.
+    func applyTemplate(_ template: WorkChecklistTemplate) async {
+        do {
+            try await DataService.shared.applyChecklistTemplate(issueId: issueId,
+                                                                templateId: template.id)
+            await refresh()
+            Haptics.success()
+        } catch {
+            errorMessage = "Couldn't add \(template.name). It needs a connection -- try again in range."
+        }
     }
 
     /// Add a step from the field.

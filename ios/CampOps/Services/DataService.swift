@@ -29,8 +29,11 @@ final class DataService {
     func fetchIssues() async throws -> [Issue] {
         let rows: [IssueDBRow] = try await supabase.from("issues")
             .select().eq("camp_id", value: campId).order("created_at", ascending: false).execute().value
+        // Filtered by camp: without this the phone pulled every activity row the caller could
+        // see, which for a founder is every camp on the platform.
         let allActivity: [IssueActivityRow] = try await supabase.from("issue_activity")
-            .select().order("created_at", ascending: true).execute().value
+            .select().eq("camp_id", value: campId)
+            .order("created_at", ascending: true).execute().value
         let byIssue = Dictionary(grouping: allActivity, by: \.issueId)
         return rows.map { $0.toIssue(activity: (byIssue[$0.id] ?? []).map { $0.toEntry() }) }
     }
@@ -57,10 +60,89 @@ final class DataService {
         try await supabase.from("issues").delete().eq("id", value: id).execute()
     }
 
+    /// Writes one timeline row.
+    ///
+    /// The client writes these itself: nothing on the server generates them, so a status change
+    /// with no activity row is a work order whose history simply stops.
+    ///
+    /// `user_id` is sent as a real null when there is no user. It used to be sent as `""`,
+    /// which a uuid column rejects outright -- so the one row that explains what happened was
+    /// the one row that failed to save.
     func insertIssueActivity(_ entry: ActivityEntry, issueId: String) async throws {
-        let row: [String: String] = ["id": entry.id, "camp_id": campId, "issue_id": issueId,
-            "user_id": entry.userId ?? "", "user_name": entry.userName, "action": entry.action]
+        let row = IssueActivityInsert(
+            id: entry.id, campId: campId, issueId: issueId,
+            userId: entry.userId, userName: entry.userName, action: entry.action
+        )
         try await supabase.from("issue_activity").insert(row).execute()
+    }
+
+    // MARK: - Campground reference data
+    //
+    // Crews, vendors, routines, templates and routing. The phone reads all of it and writes
+    // none of it: authoring a routine or a template is a desk job, and the web owns it.
+
+    func fetchServiceVendors() async throws -> [ServiceVendor] {
+        try await supabase.from("service_vendors")
+            .select().eq("camp_id", value: campId)
+            .order("name", ascending: true).execute().value
+    }
+
+    func fetchWorkSchedules() async throws -> [WorkSchedule] {
+        try await supabase.from("work_schedules")
+            .select().eq("camp_id", value: campId)
+            .order("title", ascending: true).execute().value
+    }
+
+    func fetchChecklistTemplates() async throws -> [WorkChecklistTemplate] {
+        try await supabase.from("work_checklist_templates")
+            .select().eq("camp_id", value: campId)
+            .order("name", ascending: true).execute().value
+    }
+
+    func fetchWorkRouting() async throws -> [WorkRouting] {
+        try await supabase.from("work_routing")
+            .select().eq("camp_id", value: campId).execute().value
+    }
+
+    /// Per-issue access grants: somebody tagged a person into one work order and opened it.
+    func fetchIssueViewers() async throws -> [IssueViewer] {
+        try await supabase.from("issue_viewers")
+            .select("issue_id, user_id").eq("camp_id", value: campId).execute().value
+    }
+
+    /// Appends a template's steps to a work order.
+    ///
+    /// An RPC rather than an insert, because it holds the "don't apply the same template twice"
+    /// rule. Call it only after the parent row exists on the server.
+    func applyChecklistTemplate(issueId: String, templateId: String) async throws {
+        try await supabase.rpc("apply_checklist_template", params: [
+            "p_issue_id": issueId, "p_template_id": templateId,
+        ]).execute()
+    }
+
+    /// Materialises any routine occurrences that have come due.
+    ///
+    /// Idempotent, and cheap when there is nothing to make. The web runs it on module load and
+    /// a cron runs it nightly; the phone runs it when the board opens so a crew that never
+    /// touches a laptop still sees today's routines.
+    func generateScheduledWork() async throws {
+        try await supabase.rpc("generate_scheduled_work", params: [
+            "p_camp_id": campId,
+        ]).execute()
+    }
+
+    /// Marks a thread read for the signed-in user.
+    func markThreadRead(issueId: String, userId: String) async throws {
+        let row = CommentReadUpsert(issueId: issueId, userId: userId,
+                                    campId: campId, lastReadAt: Date())
+        try await supabase.from("issue_comment_reads").upsert(row).execute()
+    }
+
+    func fetchCommentReads(userId: String) async throws -> [CommentRead] {
+        try await supabase.from("issue_comment_reads")
+            .select("issue_id, last_read_at")
+            .eq("camp_id", value: campId).eq("user_id", value: userId)
+            .execute().value
     }
 
     // MARK: - Issue thread (comments + checklist steps)
@@ -81,35 +163,9 @@ final class DataService {
             .order("position", ascending: true).execute().value
     }
 
-    // MARK: - Tasks
-
-    func fetchTasks() async throws -> [ChecklistTask] {
-        let rows: [ChecklistTaskDBRow] = try await supabase.from("checklist_tasks")
-            .select().eq("camp_id", value: campId).order("created_at", ascending: true).execute().value
-        let allActivity: [TaskActivityRow] = (try? await supabase.from("checklist_activity")
-            .select().order("created_at", ascending: true).execute().value) ?? []
-        let byTask = Dictionary(grouping: allActivity, by: \.taskId)
-        return rows.map { $0.toTask(activity: (byTask[$0.id] ?? []).map { $0.toEntry() }) }
-    }
-
-    func insertTask(_ task: ChecklistTask) async throws {
-        try await supabase.from("checklist_tasks").insert(TaskInsert(task: task)).execute()
-    }
-
-    func updateTask(_ task: ChecklistTask) async throws {
-        try await supabase.from("checklist_tasks").update(TaskUpdate(task: task))
-            .eq("id", value: task.id).execute()
-    }
-
-    func deleteTask(id: String) async throws {
-        try await supabase.from("checklist_tasks").delete().eq("id", value: id).execute()
-    }
-
-    func insertTaskActivity(_ entry: ActivityEntry, taskId: String) async throws {
-        let row: [String: String] = ["id": entry.id, "camp_id": campId, "task_id": taskId,
-            "user_id": entry.userId ?? "", "user_name": entry.userName, "action": entry.action]
-        try await supabase.from("checklist_activity").insert(row).execute()
-    }
+    // Pre/Post lived here until 2026-09-17. The web retired the module (`checklist_tasks` is
+    // "no longer read"), and a phone showing a tab that no other surface writes to is a phone
+    // showing a ghost. The tables are left alone; nothing here touches them.
 
     // MARK: - Pool: Pools CRUD
 
@@ -340,15 +396,6 @@ final class DataService {
 
     // MARK: - Seasons
 
-    func fetchLatestSeason() async throws -> Season? {
-        let seasons: [Season] = try await supabase.from("seasons")
-            .select().eq("camp_id", value: campId).order("created_at", ascending: false).limit(1).execute().value
-        return seasons.first
-    }
-
-    func upsertSeason(_ season: Season) async throws {
-        try await supabase.from("seasons").upsert(season).execute()
-    }
 
     // MARK: - Building Systems
 
@@ -440,114 +487,136 @@ private struct IssueActivityRow: Codable {
     }
 }
 
-private struct TaskActivityRow: Codable {
-    let id: String; let taskId: String; let userId: String?
-    let userName: String; let action: String; let createdAt: Date
+
+/// One timeline row. `userId` stays optional all the way to the wire so a system entry writes
+/// a real null rather than an empty string a uuid column rejects.
+private struct IssueActivityInsert: Encodable {
+    let id, campId, issueId: String
+    let userId: String?
+    let userName, action: String
+
     enum CodingKeys: String, CodingKey {
-        case id; case taskId = "task_id"; case userId = "user_id"
-        case userName = "user_name"; case action; case createdAt = "created_at"
-    }
-    func toEntry() -> ActivityEntry {
-        ActivityEntry(id: id, userId: userId, userName: userName, action: action, createdAt: createdAt)
+        case id, action
+        case campId   = "camp_id"
+        case issueId  = "issue_id"
+        case userId   = "user_id"
+        case userName = "user_name"
     }
 }
 
+private struct CommentReadUpsert: Encodable {
+    let issueId, userId, campId: String
+    let lastReadAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case issueId    = "issue_id"
+        case userId     = "user_id"
+        case campId     = "camp_id"
+        case lastReadAt = "last_read_at"
+    }
+}
+
+/// The columns this app writes when a work order is created.
+///
+/// Deliberately does NOT include `estimated_cost`. This app wrote that column for months and it
+/// has never existed: the estimate fields are `estimated_cost_display` / `estimated_cost_value`
+/// and both were deprecated in the 2026-09-02 rework ("an estimate typed under time pressure is
+/// fiction"). Every insert and update from a phone was rejected by PostgREST as an unknown
+/// column, which is why the last work order logged from iOS in production is dated 2026-08-23.
+///
+/// Also absent, and equally deliberate: `assigned_at`, `resolved_at`, `reporter_token`. Those
+/// are stamped by database triggers, and a client clock is the wrong source for a number the
+/// season review reports as fact.
 private struct IssueInsert: Encodable {
     let id, campId, title: String; let description: String?
     let locationIds: [String]; let locations: [String]; let priority, status: String
-    let assigneeId: String?; let reportedById: String
-    let estimatedCost: Double?; let actualCost: Double?; let photoUrl: String?
-    /// Constant, not read off the model: every row this struct writes came from this app.
-    let source = "ios"
+    let assigneeId: String?; let assigneeGroupId: String?; let reportedById: String?
+    let trade: String
+    let assetId: String?; let vendorId: String?
+    let actualCost: Double?; let minutesSpent: Int?; let photoUrl: String?
+    let dueDate: String?; let dueTime: String?
+    /// The source of a row this struct writes, unless a sticker scan said otherwise.
+    let source: String
+
     enum CodingKeys: String, CodingKey {
-        case id, title, description, locations, priority, status, source
-        case locationIds   = "location_ids"
-        case campId        = "camp_id"
-        case assigneeId    = "assignee_id"
-        case reportedById  = "reported_by_id"
-        case estimatedCost = "estimated_cost"
-        case actualCost    = "actual_cost"
-        case photoUrl      = "photo_url"
+        case id, title, description, locations, priority, status, source, trade
+        case locationIds     = "location_ids"
+        case campId          = "camp_id"
+        case assigneeId      = "assignee_id"
+        case assigneeGroupId = "assignee_group_id"
+        case reportedById    = "reported_by_id"
+        case assetId         = "asset_id"
+        case vendorId        = "vendor_id"
+        case actualCost      = "actual_cost"
+        case minutesSpent    = "minutes_spent"
+        case photoUrl        = "photo_url"
+        case dueDate         = "due_date"
+        case dueTime         = "due_time"
     }
+
     init(issue: Issue) {
         id = issue.id; campId = DataService.shared.campId
         title = issue.title; description = issue.description
         locationIds = issue.locationIds; locations = issue.locations
         priority = issue.priority.rawValue
-        status = issue.status.rawValue; assigneeId = issue.assigneeId
-        reportedById = issue.reportedById; estimatedCost = issue.estimatedCost
-        actualCost = issue.actualCost; photoUrl = issue.photoUrl
+        status = issue.status.rawValue
+        assigneeId = issue.assigneeId; assigneeGroupId = issue.assigneeGroupId
+        reportedById = issue.reportedById
+        trade = issue.trade
+        assetId = issue.assetId; vendorId = issue.vendorId
+        actualCost = issue.actualCost; minutesSpent = issue.minutesSpent
+        photoUrl = issue.photoUrl
+        dueDate = issue.dueDate; dueTime = issue.dueTime
+        source = (issue.source ?? .ios).rawValue
     }
 }
 
+/// The columns an edit rewrites.
+///
+/// `assignee_id` and `assignee_group_id` always travel together, even when only one changed: a
+/// job sits with a person or a crew and never both (`issues_one_assignee`), so sending one
+/// without clearing the other is how a write gets rejected by a constraint nobody reads.
 private struct IssueUpdate: Encodable {
     let title: String; let description: String?
     let locationIds: [String]; let locations: [String]; let priority, status: String
-    let assigneeId: String?; let estimatedCost: Double?
-    let actualCost: Double?; let photoUrl: String?; let updatedAt: Date
+    let assigneeId: String?; let assigneeGroupId: String?
+    let trade: String
+    let assetId: String?; let vendorId: String?
+    let actualCost: Double?; let minutesSpent: Int?; let photoUrl: String?
+    let dueDate: String?; let dueTime: String?
+    let updatedAt: Date
+
     enum CodingKeys: String, CodingKey {
-        case title, description, locations, priority, status
-        case locationIds   = "location_ids"
-        case assigneeId    = "assignee_id"
-        case estimatedCost = "estimated_cost"
-        case actualCost    = "actual_cost"
-        case photoUrl      = "photo_url"
-        case updatedAt     = "updated_at"
+        case title, description, locations, priority, status, trade
+        case locationIds     = "location_ids"
+        case assigneeId      = "assignee_id"
+        case assigneeGroupId = "assignee_group_id"
+        case assetId         = "asset_id"
+        case vendorId        = "vendor_id"
+        case actualCost      = "actual_cost"
+        case minutesSpent    = "minutes_spent"
+        case photoUrl        = "photo_url"
+        case dueDate         = "due_date"
+        case dueTime         = "due_time"
+        case updatedAt       = "updated_at"
     }
+
     init(issue: Issue) {
         title = issue.title; description = issue.description
         locationIds = issue.locationIds; locations = issue.locations
         priority = issue.priority.rawValue
-        status = issue.status.rawValue; assigneeId = issue.assigneeId
-        estimatedCost = issue.estimatedCost; actualCost = issue.actualCost
-        photoUrl = issue.photoUrl; updatedAt = Date()
+        status = issue.status.rawValue
+        assigneeId = issue.assigneeId; assigneeGroupId = issue.assigneeGroupId
+        trade = issue.trade
+        assetId = issue.assetId; vendorId = issue.vendorId
+        actualCost = issue.actualCost; minutesSpent = issue.minutesSpent
+        photoUrl = issue.photoUrl
+        dueDate = issue.dueDate; dueTime = issue.dueTime
+        updatedAt = Date()
     }
 }
 
-private struct TaskInsert: Encodable {
-    let id, campId, title, description: String
-    let locationIds: [String]; let locations: [String]; let priority, status, phase: String
-    let assigneeId: String?; let daysRelativeToOpening: Int?
-    let dueDate: String?; let isRecurring: Bool
-    enum CodingKeys: String, CodingKey {
-        case id, title, description, locations, priority, status, phase
-        case locationIds           = "location_ids"
-        case campId                = "camp_id"
-        case assigneeId            = "assignee_id"
-        case daysRelativeToOpening = "days_relative_to_opening"
-        case dueDate               = "due_date"
-        case isRecurring           = "is_recurring"
-    }
-    init(task: ChecklistTask) {
-        id = task.id; campId = DataService.shared.campId
-        title = task.title; description = task.description
-        locationIds = task.locationIds; locations = task.locations
-        priority = task.priority.rawValue
-        status = task.status.rawValue; phase = task.phase.rawValue
-        assigneeId = task.assigneeId; daysRelativeToOpening = task.daysRelativeToOpening
-        dueDate = task.dueDate; isRecurring = task.isRecurring
-    }
-}
 
-private struct TaskUpdate: Encodable {
-    let title, description: String
-    let locationIds: [String]; let locations: [String]; let priority, status, phase: String
-    let assigneeId: String?; let dueDate: String?; let updatedAt: Date
-    enum CodingKeys: String, CodingKey {
-        case title, description, locations, priority, status, phase
-        case locationIds = "location_ids"
-        case assigneeId = "assignee_id"
-        case dueDate    = "due_date"
-        case updatedAt  = "updated_at"
-    }
-    init(task: ChecklistTask) {
-        title = task.title; description = task.description
-        locationIds = task.locationIds; locations = task.locations
-        priority = task.priority.rawValue
-        status = task.status.rawValue; phase = task.phase.rawValue
-        assigneeId = task.assigneeId; dueDate = task.dueDate; updatedAt = Date()
-    }
-}
 
 // MARK: - Pool encode types
 

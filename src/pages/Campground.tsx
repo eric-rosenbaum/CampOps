@@ -147,6 +147,8 @@ export function Campground() {
   const [filter, setFilter] = useState<BoardFilter>('all');
   const [search, setSearch] = useState('');
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+  /** Why "Take it" did not take. Null until a write is actually refused. */
+  const [takeError, setTakeError] = useState<string | null>(null);
 
   const today = todayStr();
   const failedDevices = failedLastInspectionItems();
@@ -314,8 +316,35 @@ export function Campground() {
     downloadCsv(`campground-${lane}-${filter}-${today}.csv`, csv);
   }
 
-  function handleTakeIt(issueId: string) {
-    updateIssue(issueId, { assigneeId: currentUser.id, status: 'assigned' });
+  /**
+   * Taking a job has to let the crew go of it.
+   *
+   * `issues_one_assignee` allows a person or a crew, never both. Writing only `assignee_id` on a
+   * job a crew was holding violated the constraint, and the rejection reached nothing but the
+   * console: the chip looked like it did nothing. Assigning from the detail panel always cleared
+   * the other side; this path did not.
+   */
+  async function handleTakeIt(issueId: string) {
+    const before = issues.find((i) => i.id === issueId);
+    setTakeError(null);
+    const error = await updateIssue(issueId, {
+      assigneeId: currentUser.id,
+      assigneeGroupId: null,
+      status: 'assigned',
+    });
+    if (error) {
+      // Put the card back as it was. A chip that vanished on a write that never landed is the
+      // same lie in the other direction: work that looks taken and is not.
+      if (before) {
+        updateIssue(issueId, {
+          assigneeId: before.assigneeId,
+          assigneeGroupId: before.assigneeGroupId,
+          status: before.status,
+        });
+      }
+      setTakeError(`That did not save — ${error}. Open the work order and assign it there.`);
+      return;
+    }
     addActivityEntry(issueId, {
       id: `a${Date.now()}`,
       userId: currentUser.id,
@@ -491,6 +520,20 @@ export function Campground() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 pb-10 sm:px-7">
+              {takeError && (
+                <div className="mb-4 mt-4 flex items-start justify-between gap-3 rounded-card border border-red/20 bg-red-bg px-4 py-3.5">
+                  <p className="min-w-0 text-[12.5px] font-semibold text-red">{takeError}</p>
+                  <button
+                    type="button"
+                    onClick={() => setTakeError(null)}
+                    aria-label="Dismiss"
+                    className="flex-none text-red/60 hover:text-red"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
               {unreadThreads.length > 0 && !messagesDismissed && (
                 <div className="mb-4 mt-4 rounded-card border border-blue/30 bg-blue-bg px-4 py-3">
                   <div className="flex items-start justify-between gap-3">

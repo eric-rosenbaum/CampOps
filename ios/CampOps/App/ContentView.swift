@@ -3,19 +3,22 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var authManager: AuthManager
     @StateObject private var issueVM     = IssueListViewModel()
-    @StateObject private var checklistVM = ChecklistViewModel()
     @StateObject private var poolVM      = PoolViewModel()
     @StateObject private var assetVM     = AssetViewModel()
     @StateObject private var buildingVM  = BuildingViewModel()
+    @StateObject private var campground  = CampgroundStore.shared
     @StateObject private var syncService = SyncService.shared
     @ObservedObject private var push = PushService.shared
     @ObservedObject private var deepLink = DeepLinkRouter.shared
     @Environment(\.scenePhase) private var scenePhase
 
-    /// Bound so a tapped notification can put the Issues tab in front. Nothing else moves it.
+    /// Bound so a tapped notification or a scanned sticker can put a tab in front.
     @State private var selectedTab = Tab.home
+    /// A scanned sticker opens the place itself, over whatever tab is in front.
+    @State private var scannedTarget: DeepLinkRouter.ScannedTarget?
+    @State private var isScannerOpen = false
 
-    private enum Tab: Hashable { case home, issues, prePost, pool, assets, building }
+    private enum Tab: Hashable { case home, work, pool, assets, building }
 
     var body: some View {
         Group {
@@ -27,9 +30,13 @@ struct ContentView: View {
                 // Signed in, camp still arriving. Covering this window is what stops a
                 // successful sign-in flashing the "you don't belong to a camp" screen.
                 AppLoadingView(message: "Setting up your camp…")
+            } else if authManager.isPlatformAdmin && !authManager.hasCamp {
+                // A founder is never dropped into a camp on launch. They choose one, every
+                // time, because the alternative is editing a customer's live data by accident.
+                AdminCampListView()
             } else if !authManager.hasCamp {
                 JoinCampView()
-            } else if let camp = authManager.currentCamp, !camp.isAccessible {
+            } else if authManager.isCampBlocked, let camp = authManager.currentCamp {
                 // Suspended or trial-expired camps are blocked before any data loads.
                 CampBlockedView(status: camp.status)
             } else {
@@ -44,14 +51,22 @@ struct ContentView: View {
                         }
                         await loadCampData()
                     }
-                    // A tapped notification names a work order. Bring Issues forward; the list
-                    // itself opens it, and clears the request once it has.
+                    // A tapped notification names a work order. Bring the board forward; the
+                    // list itself opens it, and clears the request once it has.
                     .task(id: push.pendingWorkOrderId) {
-                        if push.pendingWorkOrderId != nil { selectedTab = .issues }
+                        if push.pendingWorkOrderId != nil { selectedTab = .work }
                     }
-                    // A scanned sticker names a place. Same idea: bring the right tab forward
-                    // and narrow it to what they are standing in front of.
+                    // A scanned sticker names a place: open it directly.
                     .task(id: deepLink.pending) { routeScannedSticker() }
+                    .sheet(item: $scannedTarget) { target in
+                        ScannedTargetSheet(target: target)
+                    }
+                    .sheet(isPresented: $isScannerOpen) {
+                        StickerScannerView { target in
+                            isScannerOpen = false
+                            scannedTarget = target
+                        }
+                    }
                     .alert(
                         "That sticker",
                         isPresented: Binding(
@@ -79,31 +94,25 @@ struct ContentView: View {
         }
         .environmentObject(authManager)
         .environmentObject(issueVM)
-        .environmentObject(checklistVM)
         .environmentObject(poolVM)
         .environmentObject(assetVM)
         .environmentObject(buildingVM)
+        .environmentObject(campground)
     }
 
     // `syncStatusBar()` goes on each tab rather than on the TabView, so the pill sits above the
     // tab bar instead of behind it. It is the offline layer's only visible surface.
     private var mainTabView: some View {
         TabView(selection: $selectedTab) {
-            HomeView()
+            HomeView(onScan: { isScannerOpen = true })
                 .syncStatusBar()
                 .tabItem { Label("Home", systemImage: "house") }
                 .tag(Tab.home)
-            if authManager.canAccessModule("issues_repairs") {
-                IssueListView()
+            if authManager.canAccessModule("issues") {
+                IssueListView(onScan: { isScannerOpen = true })
                     .syncStatusBar()
-                    .tabItem { Label("Issues", systemImage: "wrench.adjustable") }
-                    .tag(Tab.issues)
-            }
-            if authManager.canAccessModule("pre_post") {
-                ChecklistView()
-                    .syncStatusBar()
-                    .tabItem { Label("Pre/Post", systemImage: "checklist") }
-                    .tag(Tab.prePost)
+                    .tabItem { Label("Work", systemImage: "wrench.adjustable") }
+                    .tag(Tab.work)
             }
             if authManager.canAccessModule("pool") {
                 PoolView()
@@ -117,46 +126,50 @@ struct ContentView: View {
                     .tabItem { Label("Assets", systemImage: "car.fill") }
                     .tag(Tab.assets)
             }
-            if authManager.canAccessModule("building_systems") {
+            if authManager.canAccessModule("building") {
                 BuildingView()
                     .syncStatusBar()
                     .tabItem { Label("Building", systemImage: "building.2.fill") }
                     .tag(Tab.building)
             }
         }
-        // An admin with every module sees six tabs, which iPhone collapses into "More".
-        // On iPad the same set becomes a proper sidebar instead of a cramped tab strip.
+        // On iPhone extra tabs collapse into "More"; on iPad the same set becomes a sidebar.
         .tabViewStyle(.sidebarAdaptable)
+        // The borrowed-camp banner sits above everything, on every tab, and cannot be
+        // dismissed. It is the only thing standing between a founder and a customer's data.
+        .safeAreaInset(edge: .top) {
+            if authManager.isImpersonating { ImpersonationBanner() }
+        }
     }
 
     /// Where a scanned sticker lands.
     ///
-    /// A location filters the work list down to that one place; an equipment tag just brings
-    /// the fleet forward, because a work order does not carry the asset it belongs to on this
-    /// client and filtering by a guess would show an empty list for a door with work on it.
+    /// Straight onto the place itself -- what is open here, log something here -- rather than
+    /// into a filtered list. Somebody scanning a sticker is standing in front of the thing.
     private func routeScannedSticker() {
         guard let target = deepLink.pending else { return }
         deepLink.pending = nil
-        if target.kind == "asset" {
-            selectedTab = .assets
-            return
-        }
-        issueVM.scannedLocationId = target.targetId
-        issueVM.scannedLocationName = target.targetName
-        selectedTab = .issues
+        scannedTarget = target
     }
 
     private func loadCampData() async {
+        guard let campId = authManager.currentCamp?.id else { return }
         async let l = LocationStore.shared.load()
         async let i = issueVM.load()
-        async let c = checklistVM.load()
+        async let g = campground.load(campId: campId)
         async let p = poolVM.load()
         async let a = assetVM.load()
         async let b = buildingVM.load()
-        _ = await (l, i, c, p, a, b)
+        _ = await (l, i, g, p, a, b)
+
+        // Materialise any routine occurrences that have come due. Cheap when there is nothing
+        // to make, and it means a crew who never open a laptop still see today's routines.
+        try? await DataService.shared.generateScheduledWork()
+        await issueVM.refresh()
+
         await syncService.subscribeToChanges(
             onIssueChange:      { await issueVM.refresh() },
-            onTaskChange:       { await checklistVM.refresh() },
+            onThreadChange:     { await campground.refresh() },
             onPoolChange:       { await poolVM.refresh() },
             onAssetChange:      { await assetVM.refresh() },
             onBuildingChange:   { await buildingVM.refresh() },
@@ -169,12 +182,36 @@ struct ContentView: View {
     private func refreshAll() async {
         async let l = LocationStore.shared.refresh()
         async let i = issueVM.refresh()
-        async let c = checklistVM.refresh()
+        async let g = campground.refresh()
         async let p = poolVM.refresh()
         async let a = assetVM.refresh()
         async let b = buildingVM.refresh()
         async let m = authManager.reloadMemberAndGroup()
-        _ = await (l, i, c, p, a, b, m)
+        _ = await (l, i, g, p, a, b, m)
+    }
+}
+
+/// "You are in somebody else's camp." Fixed to the top of every tab while impersonating.
+private struct ImpersonationBanner: View {
+    @EnvironmentObject private var authManager: AuthManager
+
+    var body: some View {
+        HStack(spacing: Spacing.sm) {
+            Image(systemName: "eye.fill").font(.system(size: 11))
+            Text("Viewing **\(authManager.currentCamp?.name ?? "this camp")** as CampCommand admin")
+                .font(.campMeta)
+                .lineLimit(2)
+            Spacer()
+            Button("Exit") { authManager.exitImpersonation() }
+                .font(.campLabel)
+                .buttonStyle(.plain)
+                .underline()
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.sm)
+        .frame(maxWidth: .infinity)
+        .background(Color.forestFill)
+        .foregroundStyle(Color.ccCream)
     }
 }
 
@@ -183,7 +220,7 @@ struct ContentView: View {
 /// This is the first thing a new staff member sees after their code is accepted, so it carries
 /// the wordmark and says what's happening, an unadorned spinner on a white field reads as a
 /// hang, which is precisely the impression we're trying to avoid here.
-private struct AppLoadingView: View {
+struct AppLoadingView: View {
     var message: String = "Loading…"
 
     var body: some View {

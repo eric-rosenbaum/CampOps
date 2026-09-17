@@ -60,15 +60,117 @@ extension SyncEngine {
         )
     }
 
-    func queueIssueAssignment(issueId: String, title: String, assigneeId: String?, status: IssueStatus) async {
+    /// Handing a job to a person, to a crew, or to nobody.
+    ///
+    /// Both assignee columns always travel together, even when only one of them changed. A job
+    /// sits with a person or with a crew and never both (`issues_one_assignee`), so naming a
+    /// person without clearing the crew is a write the database refuses -- which on the web is
+    /// still a live bug where "Take it" on a crew-held job fails into the console.
+    func queueIssueAssignment(
+        issueId: String, title: String,
+        assigneeId: String?, assigneeGroupId: String? = nil,
+        status: IssueStatus
+    ) async {
         await enqueue(
             table: SyncTable.issues,
             rowId: issueId,
             fields: [
                 "assignee_id": assigneeId.json,
+                "assignee_group_id": assigneeGroupId.json,
                 "status": .string(status.rawValue),
             ],
-            summary: assigneeId == nil ? "Unassigned: \(title)" : "Assigned: \(title)"
+            summary: assigneeId == nil && assigneeGroupId == nil
+                ? "Unassigned: \(title)" : "Assigned: \(title)"
+        )
+    }
+
+    /// A whole work order, logged on a phone.
+    ///
+    /// Full payload, because the row does not exist server-side yet -- and it may not for some
+    /// time. This is the write the offline layer exists for: somebody standing in a cabin with
+    /// no signal types what is wrong, and it is a real row with a real id the moment they do.
+    ///
+    /// What is deliberately absent: `assigned_at`, `resolved_at`, `updated_at`. All three are
+    /// stamped by the server, and a phone whose clock is a day out must not get to claim
+    /// otherwise.
+    func queueIssueCreate(_ issue: Issue) async {
+        var fields: SyncRow = [
+            "title": .string(issue.title),
+            "description": issue.description.json,
+            "locations": .array(issue.locations.map { .string($0) }),
+            "location_ids": .array(issue.locationIds.map { .string($0) }),
+            "priority": .string(issue.priority.rawValue),
+            "status": .string(issue.status.rawValue),
+            "assignee_id": issue.assigneeId.json,
+            "assignee_group_id": issue.assigneeGroupId.json,
+            "reported_by_id": issue.reportedById.json,
+            "trade": .string(issue.trade),
+            "asset_id": issue.assetId.json,
+            "vendor_id": issue.vendorId.json,
+            "due_date": issue.dueDate.json,
+            "due_time": issue.dueTime.json,
+            "photo_url": issue.photoUrl.json,
+            "source": .string((issue.source ?? .ios).rawValue),
+            "created_at": .string(SyncTimestamp.string(issue.createdAt)),
+        ]
+        if let cost = issue.actualCost { fields["actual_cost"] = .double(cost) }
+        await enqueue(
+            table: SyncTable.issues,
+            rowId: issue.id,
+            fields: fields,
+            summary: "Logged: \(issue.title)"
+        )
+    }
+
+    /// An edit to a work order that already exists. Partial: only what the form can change.
+    func queueIssueEdit(_ issue: Issue) async {
+        await enqueue(
+            table: SyncTable.issues,
+            rowId: issue.id,
+            fields: [
+                "title": .string(issue.title),
+                "description": issue.description.json,
+                "locations": .array(issue.locations.map { .string($0) }),
+                "location_ids": .array(issue.locationIds.map { .string($0) }),
+                "priority": .string(issue.priority.rawValue),
+                "trade": .string(issue.trade),
+                "asset_id": issue.assetId.json,
+                "vendor_id": issue.vendorId.json,
+                "due_date": issue.dueDate.json,
+                "due_time": issue.dueTime.json,
+                "photo_url": issue.photoUrl.json,
+            ],
+            summary: "Edited: \(issue.title)"
+        )
+    }
+
+    /// The contractor a job is waiting on.
+    func queueIssueVendor(issueId: String, title: String, vendorId: String?) async {
+        await enqueue(
+            table: SyncTable.issues,
+            rowId: issueId,
+            fields: ["vendor_id": vendorId.json],
+            summary: "Vendor set: \(title)"
+        )
+    }
+
+    /// Time spent, entered when closing out.
+    func queueIssueMinutes(issueId: String, title: String, minutes: Int?) async {
+        await enqueue(
+            table: SyncTable.issues,
+            rowId: issueId,
+            fields: ["minutes_spent": minutes.map { SyncJSON.integer($0) } ?? .null],
+            summary: "Time logged: \(title)"
+        )
+    }
+
+    /// Attaches a photo that finished uploading after the fact. See `PhotoQueue`.
+    func queueIssuePhoto(issueId: String, url: String) async {
+        await enqueue(
+            table: SyncTable.issues,
+            rowId: issueId,
+            fields: ["photo_url": .string(url)],
+            summary: "Photo attached"
         )
     }
 
@@ -104,9 +206,30 @@ extension SyncEngine {
                 "body": .string(comment.body),
                 "photo_urls": .array(comment.photoUrls.map { .string($0) }),
                 "visible_to_reporter": .bool(comment.visibleToReporter),
+                "mentions": .array(comment.mentions.map { .string($0) }),
                 "created_at": .string(SyncTimestamp.string(comment.createdAt)),
             ],
             summary: "Comment: \(comment.body.prefix(40))"
+        )
+    }
+
+    /// The photo a step asked for, once it has uploaded.
+    func queueChecklistPhoto(itemId: String, url: String) async {
+        await enqueue(
+            table: SyncTable.issueChecklistItems,
+            rowId: itemId,
+            fields: ["photo_url": .string(url)],
+            summary: "Photo attached to a step"
+        )
+    }
+
+    /// Photos that finished uploading after the message was already sent.
+    func queueCommentPhotos(commentId: String, urls: [String]) async {
+        await enqueue(
+            table: SyncTable.issueComments,
+            rowId: commentId,
+            fields: ["photo_urls": .array(urls.map { .string($0) })],
+            summary: "Photo attached to a message"
         )
     }
 
@@ -114,8 +237,14 @@ extension SyncEngine {
 
     /// Ticking (or un-ticking) a step. Partial by design, so two people working the same work
     /// order from two phones do not overwrite each other's ticks on other steps.
-    func queueChecklistTick(_ item: IssueChecklistItem, done: Bool, by user: CampUser) async {
+    ///
+    /// Note what this does NOT do: resolve the work order when the last step is ticked. A
+    /// database trigger (`checklist_close_issue`) already does that, and a client that also
+    /// closes it races the trigger and writes a status the server is about to write anyway.
+    func queueChecklistTick(_ item: IssueChecklistItem, done: Bool, by user: CampUser,
+                            photoUrl: String? = nil) async {
         var fields: SyncRow = ["is_done": .bool(done)]
+        if let photoUrl { fields["photo_url"] = .string(photoUrl) }
         if done {
             fields["done_by"] = .string(user.id)
             fields["done_by_name"] = .string(user.name)
@@ -150,27 +279,6 @@ extension SyncEngine {
         )
     }
 
-    // MARK: Pre/post season tasks
-
-    func queueTaskStatus(taskId: String, title: String, status: ChecklistStatus) async {
-        await enqueue(
-            table: SyncTable.checklistTasks,
-            rowId: taskId,
-            fields: ["status": .string(status.rawValue)],
-            summary: "\(status.displayName): \(title)"
-        )
-    }
-
-    func queueTaskAssignment(taskId: String, title: String, assigneeId: String?, status: ChecklistStatus?) async {
-        var fields: SyncRow = ["assignee_id": assigneeId.json]
-        if let status { fields["status"] = .string(status.rawValue) }
-        await enqueue(
-            table: SyncTable.checklistTasks,
-            rowId: taskId,
-            fields: fields,
-            summary: assigneeId == nil ? "Unassigned: \(title)" : "Assigned: \(title)"
-        )
-    }
 }
 
 // MARK: - Reading the cache
@@ -204,16 +312,28 @@ enum OfflineReads {
         return decode(IssueDBRow.self, raw).map { $0.toIssue() }.sorted { $0.createdAt > $1.createdAt }
     }
 
-    static func tasks(campId: String) async -> [ChecklistTask] {
-        let raw = await OfflineCache.shared.rows(of: SyncTable.checklistTasks, campId: campId)
-        return decode(ChecklistTaskDBRow.self, raw).map { $0.toTask() }.sorted { $0.createdAt < $1.createdAt }
-    }
-
     static func comments(issueId: String, campId: String) async -> [IssueComment] {
         let raw = await OfflineCache.shared.rows(of: SyncTable.issueComments, campId: campId)
         return decode(IssueComment.self, raw)
             .filter { $0.issueId == issueId && $0.deletedAt == nil }
             .sorted { $0.createdAt < $1.createdAt }
+    }
+
+    /// Crews, vendors and routines all arrive through `sync_pull`, so every Campground screen
+    /// -- including the one a sticker opens -- can render with no signal at all.
+    static func vendors(campId: String) async -> [ServiceVendor] {
+        let raw = await OfflineCache.shared.rows(of: SyncTable.serviceVendors, campId: campId)
+        return decode(ServiceVendor.self, raw).sorted { $0.name < $1.name }
+    }
+
+    static func schedules(campId: String) async -> [WorkSchedule] {
+        let raw = await OfflineCache.shared.rows(of: SyncTable.workSchedules, campId: campId)
+        return decode(WorkSchedule.self, raw).filter(\.isActive)
+    }
+
+    static func routing(campId: String) async -> [WorkRouting] {
+        let raw = await OfflineCache.shared.rows(of: SyncTable.workRouting, campId: campId)
+        return decode(WorkRouting.self, raw)
     }
 
     static func checklist(issueId: String, campId: String) async -> [IssueChecklistItem] {

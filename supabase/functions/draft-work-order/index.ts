@@ -24,9 +24,10 @@ const json = (body: unknown, status = 200) =>
 /** Matches the CHECK constraint on issues.priority. Anything else is a bug, not a suggestion. */
 const PRIORITIES = ["urgent", "high", "normal"] as const;
 
+type Crew = { key: string; name: string };
+
 /**
- * The five crews, and they must stay identical to `issues_trade_check` in the database and to
- * TRADES in src/lib/types.ts.
+ * The seed five, and only a fallback now.
  *
  * This list used to be a ten-value taxonomy left over from an earlier design — electrical,
  * plumbing, hvac, carpentry and so on. Only "grounds" overlapped with what the schema actually
@@ -35,11 +36,35 @@ const PRIORITIES = ["urgent", "high", "normal"] as const;
  * constraint. The client had already drawn the row optimistically, so it looked saved and then
  * failed on the wire — and the write queue's retries turned one failure into four.
  *
- * A trade is a CREW here, not a skill. If that changes, all three places change together.
+ * The same failure came back the moment trades became the camp's own (a camp with a waterfront
+ * crew and no IT person), because a hard-coded list cannot know a camp renamed Tech or deleted
+ * Kitchen. So the list is now fetched per camp below, and these five are what a camp that has
+ * answered nothing still gets — the same seed the database hands a new camp.
+ *
+ * A trade is a CREW here, not a skill.
  */
-const TRADES = [
-  "maintenance", "housekeeping", "grounds", "kitchen", "it",
-] as const;
+const FALLBACK_TRADES: Crew[] = [
+  { key: "maintenance", name: "Maintenance" },
+  { key: "housekeeping", name: "Housekeeping" },
+  { key: "grounds", name: "Grounds" },
+  { key: "kitchen", name: "Kitchen" },
+  { key: "it", name: "Tech" },
+];
+
+/**
+ * What each of the seed five means, printed only for the keys it actually knows. A camp's own
+ * crew ("waterfront", "barn") gets its label and nothing else, which is honest: inventing a
+ * description of a crew we have never heard of would be the model guessing about dispatch.
+ */
+const TRADE_HINTS: Record<string, string> = {
+  maintenance: "repairs and building fabric: plumbing, electrical, heating, carpentry, appliances, vehicles and equipment. Most work lands here.",
+  housekeeping: "cleaning, linen, turnovers, bathrooms, rubbish.",
+  grounds: "outside: mowing, trees, paths, docks, fences, snow.",
+  kitchen: "the kitchen and food service, including its own equipment.",
+  it: "network, wifi, phones, computers, cameras.",
+};
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Anthropic caps an image at ~5MB of raw bytes, and base64 inflates by ~4/3. Rejecting an
@@ -114,17 +139,36 @@ Deno.serve(async (req) => {
   }
 
   let imageBase64: string | undefined, transcript: string | undefined, context: Record<string, unknown> | undefined;
+  let campId: unknown;
   try {
-    ({ imageBase64, transcript, context } = await req.json());
+    ({ imageBase64, transcript, context, campId } = await req.json());
   } catch {
     return json({ readable: false, error: "Invalid request body." }, 400);
   }
 
   const ctx = (context ?? {}) as {
+    campId?: string;
     locationName?: string; locationId?: string; assetName?: string; assetId?: string;
     trade?: string; members?: Member[]; locations?: NamedRow[]; assets?: NamedRow[];
     recentTitles?: string[];
   };
+
+  // Which camp this is about used to be something the function never asked. Being logged in as
+  // anybody was enough, and the members, locations and assets to match against arrived in the
+  // body — so a session at one camp could send another camp's rows and get them back matched to
+  // ids. Nothing was written, which is why it went unnoticed, but reading is the whole product
+  // here. The camp is now named, and membership is checked against it.
+  // Accepted at the root or inside `context`, because both clients think of it as context.
+  const camp = typeof campId === "string" && campId ? campId : ctx.campId;
+  if (typeof camp !== "string" || !UUID_RE.test(camp)) {
+    return json({ readable: false, error: "This request did not say which camp it is for." }, 400);
+  }
+
+  const { data: isMember, error: memberErr } = await supabase.rpc("is_camp_member", { p_camp_id: camp });
+  if (memberErr || isMember !== true) {
+    if (memberErr) console.error("draft-work-order membership check failed:", memberErr.message);
+    return json({ readable: false, error: "You do not have access to this camp." }, 403);
+  }
   const members = Array.isArray(ctx.members) ? ctx.members.filter((m) => m?.id && m?.name) : [];
   const locations = Array.isArray(ctx.locations) ? ctx.locations.filter((l) => l?.id && l?.name) : [];
   const assets = Array.isArray(ctx.assets) ? ctx.assets.filter((a) => a?.id && a?.name) : [];
@@ -138,6 +182,55 @@ Deno.serve(async (req) => {
   if (hasImage && imageBase64!.length > MAX_IMAGE_BASE64_CHARS) {
     return json({ readable: false, error: "That photo is too large. Retake it at a smaller size." }, 400);
   }
+
+  // Spent only once the request is known to be one we would actually pay for: a body with no
+  // photo and no words costs nothing, so it should not cost budget either.
+  //
+  // Fails CLOSED. Every other error in this function degrades to "try again", but this one is
+  // the only thing standing between a stuck retry loop and the Anthropic bill, so if it cannot
+  // be checked, the draft does not happen.
+  const { error: budgetErr } = await supabase.rpc("spend_ai_draft_budget", { p_camp_id: camp });
+  if (budgetErr) {
+    if (budgetErr.code === "54000") return json({ readable: false, error: budgetErr.message }, 429);
+    if (budgetErr.code === "42501") {
+      return json({ readable: false, error: "You do not have access to this camp." }, 403);
+    }
+    console.error("draft-work-order budget check failed:", budgetErr.code, budgetErr.message);
+    return json({ readable: false, error: "AI drafting is unavailable right now. Please try again." }, 503);
+  }
+
+  // The crews this camp actually has. A draft that names a crew the camp does not have is
+  // rejected by a trigger at save time, after the person has read the draft and pressed save,
+  // which reads as "the app lost my work order" rather than as a bad guess.
+  //
+  // Two lists are consulted because two exist: `staff_groups` is what the app offers a person
+  // (a crew and a trade are one thing now), and `camp_trades` is what the database trigger
+  // still enforces. They have drifted apart on staging — several camps have a `tech` crew and
+  // no `tech` trade row — so the only safe answer is the overlap: a crew this camp has that a
+  // work order is also allowed to carry. Fall back outwards rather than offering nothing.
+  const [crewRes, tradeRes] = await Promise.all([
+    supabase.from("staff_groups").select("key,name,sort_order,is_active").eq("camp_id", camp),
+    supabase.from("camp_trades").select("key,is_active").eq("camp_id", camp),
+  ]);
+  if (crewRes.error) console.error("draft-work-order crews:", crewRes.error.message);
+  if (tradeRes.error) console.error("draft-work-order trades:", tradeRes.error.message);
+
+  const crews: Crew[] = (crewRes.data ?? [])
+    .filter((g: { key?: string; name?: string; is_active?: boolean }) => g?.key && g?.name && g.is_active !== false)
+    .sort((a: { sort_order?: number; name?: string }, b: { sort_order?: number; name?: string }) =>
+      (a.sort_order ?? 0) - (b.sort_order ?? 0) || String(a.name).localeCompare(String(b.name)))
+    .map((g: { key: string; name: string }) => ({ key: g.key, name: g.name }));
+  const savable = new Set(
+    (tradeRes.data ?? [])
+      .filter((t: { key?: string; is_active?: boolean }) => t?.key && t.is_active !== false)
+      .map((t: { key: string }) => t.key),
+  );
+  const overlap = savable.size ? crews.filter((c) => savable.has(c.key)) : crews;
+  const trades: Crew[] = overlap.length ? overlap : (crews.length ? crews : FALLBACK_TRADES);
+  const tradeKeys = trades.map((t) => t.key);
+  const tradeLines = trades
+    .map((t) => `  ${t.key} — ${t.name}${TRADE_HINTS[t.key] ? `: ${TRADE_HINTS[t.key]}` : ""}`)
+    .join("\n");
 
   // Only the lists the caller supplied are offered to the model. If a camp sends no members,
   // the model has nobody to match against and must return null — which is the correct answer.
@@ -211,15 +304,12 @@ Reuse their nouns. If they say "screen door", write "screen door", not "insect b
 call a building "Bunk 7", do not call it "Cabin 7". Titles are short and specific: what is wrong
 and where, under about 60 characters.
 
-"trade" is the CREW who will do the work, one of: ${TRADES.join(", ")} — or null if the input
-does not settle it. They are broad on purpose, so pick by who gets dispatched, not by skill:
-  maintenance  — repairs and building fabric: plumbing, electrical, heating, carpentry, appliances,
-                 vehicles and equipment. Most work lands here.
-  housekeeping — cleaning, linen, turnovers, bathrooms, rubbish.
-  grounds      — outside: mowing, trees, paths, docks, fences, snow.
-  kitchen      — the kitchen and food service, including its own equipment.
-  it           — network, wifi, phones, computers, cameras.
-Never invent a value outside that list.
+"trade" is the CREW who will do the work — or null if the input does not settle it. These are
+THIS camp's own crews, so pick by who gets dispatched, not by skill, and return the key on the
+left, never the label:
+${tradeLines}
+Never invent a value outside that list. A crew that sounds right but is not printed above does
+not exist at this camp; the answer there is null plus a question.
 
 QUESTIONS — this field is an asset, not an admission of failure.
 "questions" holds the things the input could not settle, phrased for the person who will read the
@@ -241,7 +331,7 @@ outside the object:
   "confidence": 0.0,
   "title": "short specific title",
   "description": "what is wrong, what it affects, and anything needed to work on it",
-  "trade": "maintenance",
+  "trade": "one of the crew keys printed above, or null",
   "priority": "normal",
   "locationId": null,
   "assetId": null,
@@ -297,7 +387,7 @@ it — return {"readable": false, "error": "one sentence saying what would help"
     // is the guarantee. An id that was never sent to us must never come back, because the client
     // writes these straight into a form and a hallucinated uuid would fail on save at best and
     // attach the work order to another camp's row at worst.
-    const trade = typeof parsed.trade === "string" && (TRADES as readonly string[]).includes(parsed.trade)
+    const trade = typeof parsed.trade === "string" && tradeKeys.includes(parsed.trade)
       ? parsed.trade : null;
 
     let priority = typeof parsed.priority === "string" && (PRIORITIES as readonly string[]).includes(parsed.priority)
@@ -319,7 +409,10 @@ it — return {"readable": false, "error": "one sentence saying what would help"
       confidence,
       title: typeof parsed.title === "string" ? parsed.title.trim().slice(0, 120) : "",
       description: typeof parsed.description === "string" ? parsed.description.trim() : "",
-      trade: trade ?? (typeof ctx.trade === "string" ? ctx.trade : null),
+      // The crew the person had already picked wins when the model settled nothing — but it is
+      // checked against this camp's list too. It arrives from the client, and a client holding a
+      // stale crew list is exactly how a draft ends up unsaveable.
+      trade: trade ?? (typeof ctx.trade === "string" && tradeKeys.includes(ctx.trade) ? ctx.trade : null),
       priority,
       // A matched id wins; otherwise fall back to whatever the person was already looking at,
       // which is a fact from the client rather than a guess from the model.

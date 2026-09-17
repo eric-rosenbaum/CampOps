@@ -1,221 +1,210 @@
 import SwiftUI
 
+/// The board.
+///
+/// Open work, newest trouble first, with the filters a crew actually uses standing in a doorway:
+/// whose is it, which crew, and is anything on fire. Everything here renders from the offline
+/// cache, so it is on screen before the network has been asked.
 struct IssueListView: View {
+    var onScan: (() -> Void)?
+
     @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var vm: IssueListViewModel
+    @EnvironmentObject private var campground: CampgroundStore
     @ObservedObject private var push = PushService.shared
-    @State private var showingLogIssue = false
-    /// Bound so a tapped notification can open a work order directly. Taps in the list still go
-    /// through NavigationLink and push onto the same stack.
-    @State private var path: [Issue] = []
 
-    // Staff see only their own issues + (if permitted) unassigned ones.
-    /// True when the list is being narrowed by staff-group rules rather than genuinely empty.
-    private var isFilteredStaffView: Bool {
-        authManager.currentMember?.role == .staff
-            && !authManager.issuesSeeUnassigned
-            && !vm.issues.isEmpty
-    }
-
-    private var staffFilteredIssues: [Issue] {
-        guard authManager.currentMember?.role == .staff else { return vm.filteredIssues }
-        let userId = authManager.currentUser.id
-        return vm.filteredIssues.filter { issue in
-            issue.assigneeId == userId ||
-            issue.reportedById == userId ||
-            (authManager.issuesSeeUnassigned && issue.assigneeId == nil)
-        }
-    }
-
-    // Work I'm responsible for. Always the first thing on screen.
-    private var assignedToMe: [Issue] {
-        let uid = authManager.currentUser.id
-        return staffFilteredIssues.filter { $0.assigneeId == uid }
-    }
-
-    // Issues I raised that someone else owns (or nobody owns yet). Kept visually distinct
-    // from my assignments: reporting something is not the same as being on the hook for it.
-    private var reportedByMe: [Issue] {
-        let uid = authManager.currentUser.id
-        return staffFilteredIssues.filter { $0.reportedById == uid && $0.assigneeId != uid }
-    }
-
-    /// Split the list only when the group can't see everything; otherwise a flat list is right.
-    private var showsSplitSections: Bool {
-        authManager.currentMember?.role == .staff && !authManager.issuesSeeUnassigned
-    }
+    @State private var isLogging = false
+    @State private var isCapturing = false
+    @State private var openIssue: Issue?
 
     var body: some View {
-        NavigationStack(path: $path) {
-            Group {
-                VStack(spacing: 0) {
-                    scannedBanner
-                    if vm.isLoading && vm.issues.isEmpty {
-                        ProgressView("Loading...").frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if staffFilteredIssues.isEmpty {
-                        emptyState
-                    } else {
-                        issueList
-                    }
+        NavigationStack {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: Spacing.md) {
+                    if let name = vm.scannedLocationName { scannedBanner(name) }
+                    stats
+                    filters
+                    list
                 }
+                .padding(Spacing.lg)
             }
-            // On the stack rather than on the list, so a notification can still open a work order
-            // when the list underneath is empty or still loading.
-            .navigationDestination(for: Issue.self) { issue in
-                IssueDetailView(issue: issue).environmentObject(vm)
-            }
-            .task(id: push.pendingWorkOrderId) { await openWorkOrderFromNotification() }
-            .campCanvas()
             .refreshable { await vm.refresh() }
-            .navigationTitle("Issues & Repairs")
-            .navigationBarTitleDisplayMode(.inline)
+            .campCanvas()
+            .navigationTitle("Work")
+            .searchable(text: $vm.searchText, prompt: "Search work")
             .toolbar {
-                ToolbarItem(placement: .primaryAction) { UserMenuButton() }
-                if authManager.can.createIssue {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button { showingLogIssue = true } label: { Image(systemName: "plus") }
+                ToolbarItem(placement: .topBarLeading) { UserMenuButton() }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if let onScan {
+                        Button { onScan() } label: { Image(systemName: "qrcode.viewfinder") }
+                            .accessibilityLabel("Scan a sticker")
+                    }
+                    if authManager.can.createIssue {
+                        Button { isCapturing = true } label: { Image(systemName: "camera.viewfinder") }
+                            .accessibilityLabel("Photo or voice")
+                        Button { isLogging = true } label: { Image(systemName: "plus") }
+                            .accessibilityLabel("Log work")
                     }
                 }
-                ToolbarItem(placement: .navigationBarLeading) { filterMenu }
             }
-            .searchable(text: $vm.searchText, prompt: "Search issues")
-            .sheet(isPresented: $showingLogIssue) {
-                LogIssueView { newIssue in vm.issues.insert(newIssue, at: 0) }
+            .navigationDestination(item: $openIssue) { issue in
+                IssueDetailView(issue: issue)
+            }
+            .sheet(isPresented: $isLogging) { LogIssueView() }
+            .sheet(isPresented: $isCapturing) { CaptureSheet() }
+            // A tapped notification names a work order: open it, then clear the request.
+            .task(id: push.pendingWorkOrderId) {
+                guard let id = push.pendingWorkOrderId else { return }
+                if let match = vm.issues.first(where: { $0.id == id }) { openIssue = match }
+                push.pendingWorkOrderId = nil
             }
         }
     }
 
-    /// Says what the list is actually showing after a sticker narrowed it.
-    ///
-    /// Without this, a scan that finds nothing looks identical to a camp with no open work, and
-    /// the way out of the filter is invisible.
+    // MARK: - Pieces
+
+    private func scannedBanner(_ name: String) -> some View {
+        HStack {
+            Label("Showing \(name)", systemImage: "qrcode")
+                .font(.campMeta)
+            Spacer()
+            Button("Show all") { vm.clearScannedLocation() }
+                .font(.campLabel)
+                .buttonStyle(.plain)
+                .underline()
+        }
+        .padding(Spacing.md)
+        .background(Color.sagePale, in: RoundedRectangle(cornerRadius: Radius.lg))
+    }
+
+    private var stats: some View {
+        let counts = vm.counts
+        return HStack(spacing: Spacing.sm) {
+            StatTile(value: counts.urgent, label: "Urgent", tint: .priorityUrgent)
+            StatTile(value: counts.open, label: "Open", tint: .forest)
+            StatTile(value: counts.waiting, label: "Waiting", tint: .forestMid)
+            StatTile(value: counts.overdue, label: "Overdue", tint: .priorityHigh)
+        }
+    }
+
+    private var filters: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Spacing.sm) {
+                    ForEach(IssueListViewModel.BoardFilter.allCases) { option in
+                        Button(option.label) {
+                            Haptics.tap()
+                            vm.filter = option
+                        }
+                        .buttonStyle(.campChip(filled: vm.filter == option))
+                    }
+                }
+            }
+            // The crew filter only earns its row when the camp has more than one crew.
+            if campground.trades.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Spacing.sm) {
+                        Button("All crews") {
+                            Haptics.tap()
+                            vm.filterTrade = nil
+                        }
+                        .buttonStyle(.campChip(filled: vm.filterTrade == nil))
+                        ForEach(campground.trades) { crew in
+                            Button(crew.name) {
+                                Haptics.tap()
+                                vm.filterTrade = crew.key
+                            }
+                            .buttonStyle(.campChip(filled: vm.filterTrade == crew.key))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     @ViewBuilder
-    private var scannedBanner: some View {
-        if let name = vm.scannedLocationName {
-            HStack(spacing: Spacing.sm) {
-                Image(systemName: "qrcode.viewfinder")
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("You scanned").font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
-                    Text(name).font(.campBodyMedium).foregroundStyle(Color.forest)
+    private var list: some View {
+        if vm.isLoading && vm.issues.isEmpty {
+            ProgressView().frame(maxWidth: .infinity).padding(.top, Spacing.xl)
+        } else if vm.filteredIssues.isEmpty {
+            emptyState
+        } else {
+            ForEach(vm.filteredIssues) { issue in
+                Button {
+                    openIssue = issue
+                } label: {
+                    IssueRow(
+                        issue: issue,
+                        hasUnread: vm.unreadIssueIds.contains(issue.id),
+                        onTakeIt: canTake(issue) ? { take(issue) } : nil,
+                        onUntake: issue.assigneeId == authManager.currentUser.id
+                            ? { untake(issue) }
+                            : nil
+                    )
                 }
-                Spacer(minLength: Spacing.sm)
-                Button("Show all") { vm.clearScannedLocation() }
-                    .font(.campMeta)
-            }
-            .padding(Spacing.md)
-            .background(Color.sagePale, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .padding(.horizontal, Spacing.md)
-            .padding(.top, Spacing.sm)
-        }
-    }
-
-    private var issueList: some View {
-        ScrollView {
-            LazyVStack(spacing: Spacing.sm) {
-                if showsSplitSections {
-                    if !assignedToMe.isEmpty {
-                        SectionEyebrow(text: "Assigned to you")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        ForEach(assignedToMe) { row(for: $0) }
-                    }
-                    if !reportedByMe.isEmpty {
-                        SectionEyebrow(text: "You reported")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.top, assignedToMe.isEmpty ? 0 : Spacing.md)
-                        Text("Someone else will pick these up. You'll see status changes here.")
-                            .font(.campMeta)
-                            .foregroundStyle(Color.forest.opacity(0.45))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        ForEach(reportedByMe) { row(for: $0) }
-                    }
-                } else {
-                    ForEach(staffFilteredIssues) { row(for: $0) }
-                }
-            }
-            .padding(Spacing.md)
-        }
-    }
-
-    /// Opens the work order a notification named.
-    ///
-    /// The list is allowed not to have it. Being assigned something a second ago is precisely the
-    /// case that produced the notification, so a miss falls back to fetching the single row rather
-    /// than showing "nothing here".
-    private func openWorkOrderFromNotification() async {
-        guard let id = push.pendingWorkOrderId else { return }
-        push.pendingWorkOrderId = nil
-
-        var issue = vm.issues.first { $0.id == id }
-        if issue == nil { issue = try? await DataService.shared.fetchIssue(id: id) }
-        guard let issue else { return }
-        path = [issue]
-    }
-
-    @ViewBuilder
-    private func row(for issue: Issue) -> some View {
-        let isStaff = authManager.currentMember?.role == .staff
-        let uid = authManager.currentUser.id
-        let takeAction: (() -> Void)? = (isStaff && authManager.issuesSeeUnassigned && issue.assigneeId == nil)
-            ? { Task { await vm.takeIssue(issue, by: authManager.currentUser) } }
-            : nil
-        let untakeAction: (() -> Void)? = (isStaff && issue.assigneeId == uid)
-            ? { Task { await vm.untakeIssue(issue, by: authManager.currentUser) } }
-            : nil
-        NavigationLink(value: issue) {
-            IssueRow(issue: issue, onTakeIt: takeAction, onUntake: untakeAction)
-        }
-        .buttonStyle(.plain)
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                Task { await vm.delete(issue: issue) }
-            } label: {
-                Label("Delete", systemImage: "trash")
+                .buttonStyle(.plain)
             }
         }
     }
 
     private var emptyState: some View {
-        Group {
-            if vm.searchText.isEmpty {
-                ContentUnavailableView {
-                    Label(isFilteredStaffView ? "Nothing assigned to you" : "No issues logged",
-                          systemImage: "wrench.adjustable")
-                        .font(.campSection)
-                } description: {
-                    // Staff in a group that can't see unassigned work will find this screen
-                    // empty even when the camp has plenty of open issues. Saying so beats
-                    // implying nothing exists.
-                    Text(isFilteredStaffView
-                         ? "You'll see issues here once they're assigned to you, plus anything you report yourself."
-                         : "When something breaks, log it here so the right person picks it up.")
-                        .font(.campBody)
-                } actions: {
-                    if authManager.can.createIssue {
-                        Button("Log an issue") { showingLogIssue = true }
-                            .font(.campBodySemibold)
-                            .foregroundStyle(Color.sage)
-                    }
-                }
-            } else {
-                ContentUnavailableView.search(text: vm.searchText)
-            }
+        VStack(spacing: Spacing.md) {
+            Image(systemName: vm.filter == .done ? "checkmark.seal" : "leaf")
+                .font(.system(size: 34))
+                .foregroundStyle(Color.sage.opacity(0.6))
+            Text(emptyTitle).font(.campTitle)
+            Text(emptyMessage)
+                .font(.campBody)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Color.forest.opacity(0.55))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.xxl)
     }
 
-    private var filterMenu: some View {
-        Menu {
-            Section("Status") {
-                Button("All") { vm.filterStatus = nil }
-                ForEach(IssueStatus.allCases, id: \.self) { s in Button(s.displayName) { vm.filterStatus = s } }
-            }
-            Section("Priority") {
-                Button("All") { vm.filterPriority = nil }
-                ForEach(Priority.allCases, id: \.self) { p in Button(p.displayName) { vm.filterPriority = p } }
-            }
-        } label: {
-            Image(systemName: vm.filterStatus != nil || vm.filterPriority != nil
-                  ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+    private var emptyTitle: String {
+        switch vm.filter {
+        case .done:       return "Nothing closed yet"
+        case .mine:       return "Nothing on your plate"
+        case .urgent:     return "Nothing urgent"
+        case .unassigned: return "Nothing up for grabs"
+        case .waiting:    return "Nothing is stuck"
+        case .all:        return "All clear"
         }
+    }
+
+    private var emptyMessage: String {
+        vm.searchText.isEmpty
+            ? "Scan a sticker or tap + to log something."
+            : "Nothing matches “\(vm.searchText)”."
+    }
+
+    private func take(_ issue: Issue) {
+        Task { await vm.takeIssue(issue, by: authManager.currentUser) }
+    }
+
+    private func untake(_ issue: Issue) {
+        Task { await vm.untakeIssue(issue, by: authManager.currentUser) }
+    }
+
+    /// Only work nobody holds can be taken, and only by somebody allowed to see it.
+    private func canTake(_ issue: Issue) -> Bool {
+        authManager.can.assign && issue.isOpen && issue.assigneeId == nil
+    }
+}
+
+/// One number and what it counts.
+struct StatTile: View {
+    let value: Int
+    let label: String
+    var tint: Color = .forest
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(value)").font(.campDisplay).foregroundStyle(tint)
+            Text(label).font(.campLabel).foregroundStyle(Color.forest.opacity(0.55))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface()
     }
 }

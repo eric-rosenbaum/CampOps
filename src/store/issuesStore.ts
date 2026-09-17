@@ -28,7 +28,8 @@ interface IssuesStore {
   setSearch: (q: string) => void;
   selectIssue: (id: string | null) => void;
   addIssue: (issue: Issue) => Promise<WriteOutcome>;
-  updateIssue: (id: string, patch: Partial<Issue>) => void;
+  /** Resolves to the database's message when the write is refused, `null` when it lands. */
+  updateIssue: (id: string, patch: Partial<Issue>) => Promise<string | null>;
   deleteIssue: (id: string) => void;
   resolveIssue: (id: string, actualCost?: number | null) => void;
   reopenIssue: (id: string) => void;
@@ -152,7 +153,7 @@ export const useIssuesStore = create<IssuesStore>((set, get) => ({
         i.id === id ? { ...i, ...patch, updatedAt: now } : i,
       ),
     }));
-    dbUpdateIssue(id, { ...patch, updatedAt: now });
+    return dbUpdateIssue(id, { ...patch, updatedAt: now });
   },
 
   resolveIssue: (id, actualCost) => {

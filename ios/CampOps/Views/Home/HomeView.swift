@@ -1,271 +1,220 @@
 import SwiftUI
 
+/// The first screen of a shift.
+///
+/// Not a dashboard. The question it answers is "what am I doing next", so it leads with the two
+/// buttons somebody uses while walking -- scan a sticker, log what they are looking at -- and
+/// then lists their own work, overdue first. Camp-wide numbers sit underneath, because they are
+/// context rather than instruction.
 struct HomeView: View {
+    var onScan: (() -> Void)?
+
     @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var issueVM: IssueListViewModel
-    @EnvironmentObject private var checklistVM: ChecklistViewModel
+    @Environment(\.scenePhase) private var scenePhase
+
+    @State private var isLogging = false
+    @State private var isCapturing = false
+    @State private var openIssue: Issue?
+
+    /// Whether this camp has Campground at all. Home is the one screen every camp sees, so it
+    /// has to hold its tongue about work orders in a camp that does not have them -- a founder
+    /// opening a kitchen-only camp should not be told it has four overdue repairs.
+    private var hasCampground: Bool { authManager.canAccessModule("issues") }
+
+    private var me: String { authManager.currentUser.id }
+    private var today: String { CampDate.today() }
+
+    private var myWork: [Issue] {
+        issueVM.visible
+            .filter { $0.isOpen && $0.assigneeId == me }
+            .sorted { lhs, rhs in
+                let l = lhs.isOverdue(today: today) ? 0 : 1
+                let r = rhs.isOverdue(today: today) ? 0 : 1
+                if l != r { return l < r }
+                return lhs.priority.sortOrder < rhs.priority.sortOrder
+            }
+    }
+
+    /// Work waiting for this person's crews, which is what they can pick up.
+    private var upForGrabs: [Issue] {
+        guard authManager.issuesSeeUnassigned else { return [] }
+        let mine = Set(authManager.myCrewIds)
+        return issueVM.visible.filter {
+            $0.isOpen && $0.assigneeId == nil
+                && ($0.assigneeGroupId == nil || mine.contains($0.assigneeGroupId ?? ""))
+        }
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.xl) {
-                    greetingHeader
-                    statsGrid
-                    myWorkSection
-                    recentIssues
+                    greeting
+                    if hasCampground {
+                        quickActions
+                        if !myWork.isEmpty { mySection }
+                        if !upForGrabs.isEmpty { grabsSection }
+                        if myWork.isEmpty && upForGrabs.isEmpty { allClear }
+                        campNumbers
+                    } else {
+                        noCampground
+                    }
                 }
                 .padding(Spacing.lg)
-                .id(authManager.currentUser.id)
-                .navigationDestination(for: Issue.self) { issue in
-                    IssueDetailView(issue: issue).environmentObject(issueVM)
-                }
-                .navigationDestination(for: String.self) { taskId in
-                    ChecklistDetailView(taskId: taskId)
-                        .environmentObject(authManager)
-                        .environmentObject(checklistVM)
-                }
             }
+            .refreshable { await issueVM.refresh() }
             .campCanvas()
-            .refreshable {
-                async let i: Void = issueVM.refresh()
-                async let c: Void = checklistVM.refresh()
-                _ = await (i, c)
-            }
-            .navigationTitle("CampCommand")
+            .navigationTitle(authManager.currentCamp?.name ?? "CampCommand")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .principal) { campHeader }
-                ToolbarItem(placement: .primaryAction) { UserMenuButton() }
+                ToolbarItem(placement: .topBarLeading) { UserMenuButton() }
             }
-        }
-        .task(id: authManager.currentUser.id) {
-            if issueVM.issues.isEmpty { await issueVM.load() }
-            await checklistVM.load()
+            .navigationDestination(item: $openIssue) { issue in
+                IssueDetailView(issue: issue)
+            }
+            .sheet(isPresented: $isLogging) { LogIssueView() }
+            .sheet(isPresented: $isCapturing) { CaptureSheet() }
         }
     }
 
-    // The camp's own identity in the title bar, its logo when it has one, otherwise a
-    // wordmark. `logoUrl` was fetched but never shown anywhere in the app before.
-    private var campHeader: some View {
+    private var greeting: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(timeOfDayGreeting).font(.campHero)
+            Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)))
+                .font(.campMeta)
+                .foregroundStyle(Color.forest.opacity(0.55))
+        }
+    }
+
+    private var timeOfDayGreeting: String {
+        let name = authManager.currentUser.name.split(separator: " ").first.map(String.init) ?? "Hello"
+        switch Calendar.current.component(.hour, from: Date()) {
+        case 0..<12:  return "Morning, \(name)"
+        case 12..<17: return "Afternoon, \(name)"
+        default:      return "Evening, \(name)"
+        }
+    }
+
+    private var quickActions: some View {
         HStack(spacing: Spacing.sm) {
-            if let logo = authManager.currentCamp?.logoUrl, let url = URL(string: logo) {
-                AsyncImage(url: url) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Color.sagePale
+            if let onScan {
+                Button {
+                    Haptics.tap()
+                    onScan()
+                } label: {
+                    VStack(spacing: Spacing.xs) {
+                        Image(systemName: "qrcode.viewfinder").font(.system(size: 22))
+                        Text("Scan").font(.campLabel)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.lg)
                 }
-                .frame(width: 22, height: 22)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            } else {
-                CampCommandMark(size: 20, compact: true)
+                .buttonStyle(.campPrimary())
             }
-            Text(authManager.currentCamp?.name ?? "CampCommand")
-                .font(.campBodySemibold)
-                .foregroundStyle(Color.forest)
-                .lineLimit(1)
+            if authManager.can.createIssue {
+                Button {
+                    Haptics.tap()
+                    isCapturing = true
+                } label: {
+                    VStack(spacing: Spacing.xs) {
+                        Image(systemName: "camera.viewfinder").font(.system(size: 22))
+                        Text("Capture").font(.campLabel)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.lg)
+                }
+                .buttonStyle(.campSecondary)
+
+                Button {
+                    Haptics.tap()
+                    isLogging = true
+                } label: {
+                    VStack(spacing: Spacing.xs) {
+                        Image(systemName: "square.and.pencil").font(.system(size: 22))
+                        Text("Log").font(.campLabel)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.lg)
+                }
+                .buttonStyle(.campSecondary)
+            }
         }
     }
 
-    // MARK: - Helpers
-
-    // Issues visible to the current user, respecting staff group filtering.
-    private var visibleIssues: [Issue] {
-        guard authManager.currentMember?.role == .staff else { return issueVM.issues }
-        let uid = authManager.currentUser.id
-        return issueVM.issues.filter { issue in
-            issue.assigneeId == uid ||
-            issue.reportedById == uid ||
-            (authManager.issuesSeeUnassigned && issue.assigneeId == nil)
+    private var mySection: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            SectionEyebrow(text: "Yours")
+            ForEach(myWork) { issue in
+                Button { openIssue = issue } label: {
+                    IssueRow(issue: issue, today: today,
+                             hasUnread: issueVM.unreadIssueIds.contains(issue.id))
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
-    // MARK: - Subviews
-
-    private var greetingHeader: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Good \(greeting), \(authManager.currentUser.firstName)")
-                .font(.campDisplay)
-                .foregroundStyle(Color.forest)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
-            Text(todayLabel)
-                .font(.campSecondary)
-                .foregroundStyle(Color.forest.opacity(0.5))
+    private var grabsSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            SectionEyebrow(text: "Up for grabs")
+            ForEach(upForGrabs.prefix(5)) { issue in
+                Button { openIssue = issue } label: {
+                    IssueRow(
+                        issue: issue, today: today,
+                        hasUnread: issueVM.unreadIssueIds.contains(issue.id),
+                        onTakeIt: authManager.can.assign ? { take(issue) } : nil
+                    )
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
-    private var todayLabel: String {
-        let f = DateFormatter()
-        f.dateFormat = "EEEE, MMMM d"
-        return f.string(from: Date())
+    private func take(_ issue: Issue) {
+        Task { await issueVM.takeIssue(issue, by: authManager.currentUser) }
     }
 
-    private var statsGrid: some View {
-        let uid = authManager.currentUser.id
-        // The two left-hand tiles report the CAMP's state, not the viewer's slice of it.
-        // A counselor who can't open every issue should still know whether the camp has 3
-        // open or 30, that's situational awareness, not access to the detail. The list
-        // itself stays filtered; only these counts are camp-wide.
-        let openIssues = issueVM.issues.filter { $0.status != .resolved }
-        let urgent = openIssues.filter { $0.priority == .urgent }
-        let myIssues = visibleIssues.filter { $0.status != .resolved && $0.assigneeId == uid }
-        let myTasks = checklistVM.tasks.filter { $0.assigneeId == uid && $0.status != .complete }
-        let overdue = myTasks.filter { $0.dueDateRelative?.overdue == true }
-        let myWorkCount = myIssues.count + myTasks.count
-        return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Spacing.md) {
-            StatCard(label: "Open issues", hint: "Across the camp", value: "\(openIssues.count)", icon: "wrench.adjustable",           color: .forestMid)
-            StatCard(label: "Urgent",      hint: "Across the camp", value: "\(urgent.count)",     icon: "exclamationmark.circle",      color: .priorityUrgent)
-            StatCard(label: "My work",     hint: "Assigned to you", value: "\(myWorkCount)",      icon: "checkmark.circle",            color: .sage)
-            StatCard(label: "Overdue",     hint: "Assigned to you", value: "\(overdue.count)",    icon: "clock.badge.exclamationmark", color: overdue.isEmpty ? .forestLight : .priorityUrgent)
+    /// A camp without Campground still gets a front door, and an honest one.
+    private var noCampground: some View {
+        VStack(spacing: Spacing.sm) {
+            Image(systemName: "leaf")
+                .font(.system(size: 32))
+                .foregroundStyle(Color.sage.opacity(0.6))
+            Text("Nothing to do here yet").font(.campTitle)
+            Text("This camp does not have the Campground module switched on.")
+                .font(.campBody)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Color.forest.opacity(0.55))
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.xl)
     }
 
-    private var myWorkSection: some View {
-        let uid = authManager.currentUser.id
-        let myIssues = Array(
-            issueVM.issues
-                .filter { $0.assigneeId == uid && $0.status != .resolved }
-                .sorted { $0.priority.sortOrder < $1.priority.sortOrder }
-                .prefix(5)
-        )
-        let myTasks = Array(
-            checklistVM.tasks
-                .filter { $0.assigneeId == uid && $0.status != .complete }
-                .prefix(5)
-        )
-        let bothPresent = !myIssues.isEmpty && !myTasks.isEmpty
+    private var allClear: some View {
+        VStack(spacing: Spacing.sm) {
+            Image(systemName: "leaf")
+                .font(.system(size: 32))
+                .foregroundStyle(Color.sage.opacity(0.6))
+            Text("Nothing waiting on you").font(.campTitle)
+            Text("Scan a sticker if you spot something out on your rounds.")
+                .font(.campBody)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Color.forest.opacity(0.55))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.xl)
+    }
 
+    private var campNumbers: some View {
+        let counts = issueVM.counts
         return VStack(alignment: .leading, spacing: Spacing.sm) {
-            Text("My work").font(.campSection).foregroundStyle(Color.forest)
-
-            if myIssues.isEmpty && myTasks.isEmpty {
-                HomeEmptyState(
-                    icon: "checkmark.circle",
-                    title: "You're all clear",
-                    message: "Nothing is assigned to you right now."
-                )
-            } else {
-                if !myIssues.isEmpty {
-                    if bothPresent {
-                        SectionEyebrow(text: "Issues").padding(.top, 2)
-                    }
-                    ForEach(myIssues) { issue in
-                        let isStaff = authManager.currentMember?.role == .staff
-                        NavigationLink(value: issue) {
-                            IssueRow(issue: issue,
-                                     onUntake: isStaff
-                                        ? { Task { await issueVM.untakeIssue(issue, by: authManager.currentUser) } }
-                                        : nil)
-                        }.buttonStyle(.plain)
-                    }
-                }
-
-                if !myTasks.isEmpty {
-                    if bothPresent {
-                        SectionEyebrow(text: "Tasks").padding(.top, 4)
-                    }
-                    ForEach(myTasks) { task in
-                        NavigationLink(value: task.id) {
-                            ChecklistTaskRow(task: task)
-                        }.buttonStyle(.plain)
-                    }
-                }
+            SectionEyebrow(text: "Across camp")
+            HStack(spacing: Spacing.sm) {
+                StatTile(value: counts.open, label: "Open", tint: .forest)
+                StatTile(value: counts.urgent, label: "Urgent", tint: .priorityUrgent)
+                StatTile(value: counts.overdue, label: "Overdue", tint: .priorityHigh)
             }
         }
-    }
-
-    private var recentIssues: some View {
-        let recent = Array(visibleIssues.filter { $0.status != .resolved }.prefix(3))
-        return VStack(alignment: .leading, spacing: Spacing.sm) {
-            Text("Recent issues").font(.campSection).foregroundStyle(Color.forest)
-            if recent.isEmpty {
-                HomeEmptyState(
-                    icon: "wrench.adjustable",
-                    title: "No open issues",
-                    message: "Everything reported has been resolved."
-                )
-            } else {
-                ForEach(recent) { issue in
-                    NavigationLink(value: issue) { IssueRow(issue: issue) }.buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    // MARK: - Helpers
-
-    private var greeting: String {
-        let h = Calendar.current.component(.hour, from: Date())
-        if h < 12 { return "morning" }
-        if h < 17 { return "afternoon" }
-        return "evening"
-    }
-}
-
-/// Quiet in-card empty state. `ContentUnavailableView` is the right tool for a whole screen,
-/// but it centres itself in the available space, which is wrong for a section inside a scroll.
-private struct HomeEmptyState: View {
-    let icon: String
-    let title: String
-    let message: String
-
-    var body: some View {
-        HStack(spacing: Spacing.md) {
-            Image(systemName: icon)
-                .font(.system(size: 17))
-                .foregroundStyle(Color.sage)
-                .frame(width: 36, height: 36)
-                .background(Color.sagePale, in: Circle())
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.campBodySemibold)
-                    .foregroundStyle(Color.forest)
-                Text(message)
-                    .font(.campMeta)
-                    .foregroundStyle(Color.forest.opacity(0.5))
-            }
-            Spacer(minLength: 0)
-        }
-        .cardSurface()
-    }
-}
-
-private struct StatCard: View {
-    let label: String
-    /// Says whose number this is. Without it, a camp-wide count sitting next to a personal
-    /// one is just misleading. The viewer can't tell which is which.
-    var hint: String? = nil
-    let value: String; let icon: String; let color: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            // Icon sits in a tinted disc rather than floating, which gives the tiles a
-            // consistent optical weight regardless of glyph shape.
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(color)
-                .frame(width: 32, height: 32)
-                .background(color.opacity(0.12), in: Circle())
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(value)
-                    .font(.campStat)
-                    .monospacedDigit()
-                    // Counts change on every refresh; roll them rather than snapping.
-                    .contentTransition(.numericText())
-                    .animation(.snappy(duration: 0.28), value: value)
-                    .foregroundStyle(color)
-                Text(label)
-                    .font(.campMeta)
-                    .foregroundStyle(Color.forest.opacity(0.55))
-                if let hint {
-                    Text(hint)
-                        .font(.campMicro)
-                        .foregroundStyle(Color.forest.opacity(0.35))
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
     }
 }

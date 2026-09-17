@@ -20,6 +20,8 @@ struct Location: Codable, Identifiable, Hashable {
     var sortOrder: Int
     var isActive: Bool
     var notes: String?
+    /// The code on the sticker at this place. Held locally so a scan resolves with no signal.
+    var qrToken: String?
     let createdAt: Date
     var updatedAt: Date
 
@@ -34,6 +36,7 @@ struct Location: Codable, Identifiable, Hashable {
         case accessible
         case sortOrder        = "sort_order"
         case isActive         = "is_active"
+        case qrToken          = "qr_token"
         case createdAt        = "created_at"
         case updatedAt        = "updated_at"
     }
@@ -52,6 +55,7 @@ struct Location: Codable, Identifiable, Hashable {
         sortOrder        = (try? c.decode(Int.self, forKey: .sortOrder)) ?? 0
         isActive         = (try? c.decode(Bool.self, forKey: .isActive)) ?? true
         notes            = try c.decodeIfPresent(String.self, forKey: .notes)
+        qrToken          = try? c.decodeIfPresent(String.self, forKey: .qrToken)
         createdAt        = (try? c.decode(Date.self, forKey: .createdAt)) ?? Date()
         updatedAt        = (try? c.decode(Date.self, forKey: .updatedAt)) ?? Date()
     }

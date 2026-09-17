@@ -91,6 +91,16 @@ begin
   insert into service_vendors (camp_id, name, trade) values (camp, 'T Septic Co', 'septic')
   returning id into vendor;
 
+  -- The camp's crews, which are also its trades: one list since 2026-09-10, and what
+  -- `assert_trade_belongs_to_camp` validates against. Without these the fixture camp has no
+  -- active crews at all, and every trade below slips through the trigger's "nothing to validate
+  -- against" branch — so the suite was green whatever that trigger checked. T36 covers the rule
+  -- itself, and can only do so from a camp that actually has crews.
+  insert into staff_groups (camp_id, name, key, sort_order, is_active)
+  values (camp, 'T Housekeeping', 'housekeeping', 1, true),
+         (camp, 'T Maintenance',  'maintenance',  2, true)
+  on conflict do nothing;
+
   insert into work_checklist_templates (camp_id, name, trade, items) values
     (camp, 'T Cabin turnover', 'housekeeping',
      '[{"text":"Strip beds"},{"text":"Mop"},{"text":"Restock"}]'::jsonb)
@@ -503,6 +513,28 @@ begin
     values (camp, 'T Bad booking', 'other', 20, 'flat', 'confirmed', 'won',
             encode(gen_random_bytes(16),'hex'));
     raise exception 'T35 FAIL: a confirmed booking was allowed with no dates';
+  exception when check_violation then
+    passed := passed + 1;
+  end;
+
+  -- ═══ 36 · A trade is one of this camp's crews ═════════════════════════════
+  --
+  -- The trigger validated against `camp_trades` for a year after crews and trades merged, so
+  -- every crew a camp added showed up as a chip on the board and on the phone and then failed on
+  -- save. Both halves are asserted: a real crew files, and a key with no active crew does not.
+  begin
+    insert into issues (camp_id, title, priority, status, is_public_report, source, trade)
+    values (camp, 'T Trade belongs to a crew', 'normal', 'unassigned', false, 'web', 'housekeeping');
+    passed := passed + 1;
+  exception when others then
+    raise exception 'T36 FAIL: a work order under the camp''s own Housekeeping crew was refused: %',
+      sqlerrm;
+  end;
+
+  begin
+    insert into issues (camp_id, title, priority, status, is_public_report, source, trade)
+    values (camp, 'T Trade with no crew', 'normal', 'unassigned', false, 'web', 'ballooning');
+    raise exception 'T36 FAIL: a trade with no crew behind it was accepted';
   exception when check_violation then
     passed := passed + 1;
   end;

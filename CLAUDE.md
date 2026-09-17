@@ -65,8 +65,10 @@ until TCP timeout rather than failing fast, which reads like a broken test run.
 **The env badge in the bottom-left of the running app names the live project — read it before
 trusting any test.** `docs/ops/staging-deploy.md` has the rest.
 
-The iOS app is hardcoded to **production** (`ios/CampOps/CampOps/Info.plist`), so it does not
-see staging work at all.
+The iOS app ships pointed at **production** (`ios/CampOps/CampOps/Info.plist`). A debug build can
+be pointed at staging instead — launch it with the `-staging` argument (or `CAMPOPS_ENV=staging`)
+and `SupabaseService` swaps the host. Compiled out of release entirely, so a shipped build cannot
+be talked into it. Test iOS changes there, not in a customer's camp.
 
 Hosts are resolved in `src/lib/env.ts`, and every default there is the production value, so a
 missing env var behaves as production rather than as something subtly wrong. `localhost` and
@@ -91,9 +93,16 @@ supabase/
   migrations/        253 files. Naming is a sentence, not a ticket number.
   functions/         12 edge functions (email, portal access, stripe, push, AI vision)
   tests/             pgTAP-ish suites driven by scripts/runsql.js
-ios/CampOps/         SwiftUI, 93 files
+ios/CampOps/         SwiftUI. Campground rebuilt to match the web, 2026-09-17
+  Views/Scan/        what a scanned sticker opens: one place, its open work, log something here
+  Services/Offline/  MutationQueue + SyncEngine + PhotoQueue. Reads cache-first, writes queue
+  ViewModels/CampgroundStore.swift   crews, vendors, routines, templates, routing, read state
 docs/                start at docs/README.md
 ```
+
+**Adding a Swift file needs `scripts/ios-add-files.py <path…>`.** Only `ios/CampOps/CampOps/`
+is a synchronized folder and it holds no code, so every source file is registered by hand in four
+places in `project.pbxproj`. A file that is not registered compiles nowhere and fails at runtime.
 
 ### Modules
 
@@ -206,6 +215,25 @@ needed. The outbox was an open email relay for this reason until 2026-09-16.
 
 **14. Module switches read absent as ON.** A module added for particular camps must declare
 `defaultOn: false` in `src/lib/modules.ts`, or it appears in every camp's sidebar on deploy.
+
+**15. `insert … on conflict do update` is not an upsert for a PARTIAL payload.** Postgres builds
+the proposed insert row and checks its NOT NULL constraints *before* it looks for the conflict, so
+a payload carrying only the columns that changed is rejected on `title` and never reaches the
+`do update`. This is what `sync_push` did, which meant every status change, assignment and
+resolution queued by the phone failed with "null value in column title" while the activity row
+beside it (a complete payload) succeeded — a timeline that said Resolved on work orders that were
+still open. A change to a row that exists is an `update`.
+
+**16. A routing default outlives the person in it.** `work_routing.default_assignee_id` can name
+somebody who has left; `route_work()` only honours it while they are an active member, and any
+client prefilling from that table must apply the same test. Prospect QA's housekeeping route still
+names a departed staff member.
+
+**17. A universal link is matched against the host that was scanned, and redirects are never
+followed.** Printed stickers carry the marketing host; associating only `app.campcommand.app`
+meant every sticker ever printed opened Safari. Apple also will not fetch
+`/.well-known/apple-app-site-association` through a redirect, which the apex still answers with —
+so `STICKER_HOST` (src/lib/env.ts) prints the `www` host, which serves the file directly.
 
 ## 7. Working habits this project expects
 

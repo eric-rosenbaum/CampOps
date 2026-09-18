@@ -33,7 +33,11 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const MODEL = "claude-haiku-4-5";
+// Opus 5 at low effort, not Haiku. Haiku's Hebrew failed on the first real work orders: "llave de
+// paso" (shutoff valve) came out as a fire valve and "Fuga de agua en la cabaña 3" as "דיסה של
+// מים" — nonsense a crew member would act on. These are short notes, so the stronger model costs
+// cents per camp-week; TRANSLATE_MODEL overrides it without a redeploy of the code.
+const MODEL = Deno.env.get("TRANSLATE_MODEL") ?? "claude-opus-5";
 
 /** Matches content_translations_lang_check. */
 const LANGS = ["en", "es", "he"] as const;
@@ -230,15 +234,20 @@ async function callModel(
   // Output is at most a few translations of short notes; the budget scales with the input so a
   // long description into two languages is never cut off mid-sentence.
   const inputChars = Object.values(texts).reduce((n, t) => n + (t?.length ?? 0), 0);
-  const maxTokens = Math.min(16000, 1024 + inputChars * 3);
+  // Headroom for Opus 5's adaptive thinking, which is on by default and kept small by low effort.
+  const maxTokens = Math.min(16000, 4096 + inputChars * 3);
 
-  const response = await anthropic.messages.create({
+  // Server-side fallback: a refusal (vanishingly unlikely on a maintenance note) is re-run on the
+  // model the API picks for that refusal category instead of leaving the row untranslated.
+  const response = await anthropic.beta.messages.create({
     model: MODEL,
     max_tokens: maxTokens,
     system: SYSTEM_PROMPT,
-    output_config: { format: { type: "json_schema", schema: OUTPUT_SCHEMA } },
+    output_config: { effort: "low", format: { type: "json_schema", schema: OUTPUT_SCHEMA } },
     messages: [{ role: "user", content: JSON.stringify(request) }],
-  });
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+  } as never) as Anthropic.Beta.BetaMessage;
 
   if (response.stop_reason === "refusal") throw new Error("the model declined to translate this row");
   if (response.stop_reason === "max_tokens") throw new Error("the translation was cut off (max_tokens)");

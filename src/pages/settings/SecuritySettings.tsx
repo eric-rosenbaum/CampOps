@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Download, ScrollText, Smartphone, Trash2, Check, FileText, ExternalLink } from 'lucide-react';
+import { Download, ScrollText, Smartphone, Trash2, Check, FileText, ExternalLink, Languages } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { LanguagePicker } from '@/components/i18n/LanguagePicker';
+import { useLang } from '@/lib/language';
 import { Topbar } from '@/components/layout/Topbar';
 import { Button } from '@/components/shared/Button';
 import { supabase } from '@/lib/supabase';
@@ -17,6 +20,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 interface Factor { id: string; friendlyName: string | null; status: string; }
 
 function MfaSection() {
+  const { t } = useTranslation('account');
   const [factors, setFactors] = useState<Factor[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState<{ factorId: string; qr: string; secret: string } | null>(null);
@@ -40,7 +44,7 @@ function MfaSection() {
   async function startEnroll() {
     setError(null);
     const { data, error: e } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
-    if (e || !data) { setError(e?.message ?? 'Could not start setup. Please try again.'); return; }
+    if (e || !data) { setError(e?.message ?? t('mfa.startFailed')); return; }
     setEnrolling({ factorId: data.id, qr: data.totp.qr_code, secret: data.totp.secret });
     setCode('');
   }
@@ -49,16 +53,16 @@ function MfaSection() {
     if (!enrolling || busy) return;
     setBusy(true); setError(null);
     const ch = await supabase.auth.mfa.challenge({ factorId: enrolling.factorId });
-    if (ch.error || !ch.data) { setError(ch.error?.message ?? 'Something went wrong. Please try again.'); setBusy(false); return; }
+    if (ch.error || !ch.data) { setError(ch.error?.message ?? t('generic')); setBusy(false); return; }
     const v = await supabase.auth.mfa.verify({ factorId: enrolling.factorId, challengeId: ch.data.id, code: code.trim() });
     setBusy(false);
-    if (v.error) { setError('That code didn’t match. Check your authenticator app and try again.'); return; }
+    if (v.error) { setError(t('mfa.codeMismatch')); return; }
     setEnrolling(null); setCode('');
     reload();
   }
 
   async function removeFactor(factorId: string) {
-    if (!window.confirm('Turn off two-factor authentication for this device? You’ll no longer be asked for a code from it when you sign in.')) return;
+    if (!window.confirm(t('mfa.confirmOff'))) return;
     await supabase.auth.mfa.unenroll({ factorId });
     reload();
   }
@@ -72,13 +76,13 @@ function MfaSection() {
           <Smartphone className="w-4.5 h-4.5 text-forest" />
         </div>
         <div>
-          <h2 className="text-[15px] font-semibold text-forest">Two-step sign-in</h2>
-          <p className="text-[13px] text-ink-soft mt-0.5">Add a second step when you sign in, using a free authenticator app (Google Authenticator, 1Password, Authy). Recommended for anyone with access to camper information.</p>
+          <h2 className="text-[15px] font-semibold text-forest">{t('mfa.title')}</h2>
+          <p className="text-[13px] text-ink-soft mt-0.5">{t('mfa.blurb')}</p>
         </div>
       </div>
 
       {loading ? (
-        <LoadingBlock size="sm" label="Loading" className="py-6" />
+        <LoadingBlock size="sm" label={t('loading')} className="py-6" />
       ) : (
         <>
           {verified.length > 0 && (
@@ -86,8 +90,8 @@ function MfaSection() {
               {verified.map((f) => (
                 <div key={f.id} className="flex items-center gap-3 px-4 py-3 rounded-btn border border-border bg-cream/40">
                   <Check className="w-4 h-4 text-green-muted-text flex-shrink-0" />
-                  <span className="text-[13px] font-medium text-forest flex-1">Two-step sign-in is on</span>
-                  <button onClick={() => removeFactor(f.id)} className="text-ink-faint hover:text-red transition-colors" title="Turn off">
+                  <span className="text-[13px] font-medium text-forest flex-1">{t('mfa.on')}</span>
+                  <button onClick={() => removeFactor(f.id)} className="text-ink-faint hover:text-red transition-colors" title={t('mfa.turnOff')} aria-label={t('mfa.turnOff')}>
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -97,24 +101,26 @@ function MfaSection() {
 
           {enrolling ? (
             <div className="rounded-btn border border-border p-4">
-              <p className="text-[13px] font-medium text-forest mb-3">Scan this with your authenticator app, then enter the 6-digit code it shows.</p>
+              <p className="text-[13px] font-medium text-forest mb-3">{t('mfa.scan')}</p>
               <div className="flex flex-wrap gap-5 items-start">
                 {/* qr_code is an SVG data URI from Supabase */}
-                <img src={enrolling.qr} alt="QR code for authenticator setup" className="w-40 h-40 rounded-lg border border-border bg-white" />
+                <img src={enrolling.qr} alt={t('mfa.qrAlt')} className="w-40 h-40 rounded-lg border border-border bg-white" />
                 <div className="flex-1 min-w-[200px]">
-                  <p className="text-[11px] uppercase tracking-wide text-ink-faint font-semibold mb-1">Can’t scan? Enter this key instead</p>
-                  <code className="text-[12px] break-all text-ink">{enrolling.secret}</code>
+                  <p className="text-[11px] uppercase tracking-wide text-ink-faint font-semibold mb-1">{t('mfa.cantScan')}</p>
+                  <code dir="ltr" className="text-[12px] break-all text-ink">{enrolling.secret}</code>
                   <div className="mt-4">
                     <input
                       value={code}
                       onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       inputMode="numeric"
+                      dir="ltr"
+                      aria-label={t('mfa.codeLabel')}
                       placeholder="123456"
                       className="w-32 px-3 py-2 rounded-btn border border-border text-[15px] tracking-[0.3em] text-center text-forest focus:outline-none focus:border-sage"
                     />
                     <div className="flex gap-2 mt-3">
-                      <Button size="sm" onClick={confirmEnroll} disabled={code.length !== 6 || busy}>{busy ? 'Checking…' : 'Turn on'}</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEnrolling(null)}>Cancel</Button>
+                      <Button size="sm" onClick={confirmEnroll} disabled={code.length !== 6 || busy}>{busy ? t('mfa.checking') : t('mfa.turnOn')}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEnrolling(null)}>{t('cancel')}</Button>
                     </div>
                   </div>
                 </div>
@@ -122,7 +128,7 @@ function MfaSection() {
             </div>
           ) : (
             <Button size="sm" variant={verified.length ? 'ghost' : 'primary'} onClick={startEnroll}>
-              {verified.length ? 'Add another device' : 'Turn on two-step sign-in'}
+              {verified.length ? t('mfa.addDevice') : t('mfa.enable')}
             </Button>
           )}
           {error && <p className="text-[12px] text-red mt-3">{error}</p>}
@@ -135,6 +141,7 @@ function MfaSection() {
 // ─── Data export (admin) ────────────────────────────────────────────────────────
 
 function DataExportSection({ campId, campName }: { campId: string; campName: string }) {
+  const { t } = useTranslation('account');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -142,7 +149,7 @@ function DataExportSection({ campId, campName }: { campId: string; campName: str
     setBusy(true); setError(null);
     const { data, error: e } = await supabase.rpc('export_camp_data', { p_camp_id: campId });
     setBusy(false);
-    if (e || !data) { setError(e?.message ?? 'The export didn’t finish. Please try again.'); return; }
+    if (e || !data) { setError(e?.message ?? t('export.failed')); return; }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -159,11 +166,11 @@ function DataExportSection({ campId, campName }: { campId: string; campName: str
           <Download className="w-4.5 h-4.5 text-forest" />
         </div>
         <div>
-          <h2 className="text-[15px] font-semibold text-forest">Download your data</h2>
-          <p className="text-[13px] text-ink-soft mt-0.5">Get a complete copy of everything in your camp as a single file, useful for your own records or backups. The download is noted in your activity log.</p>
+          <h2 className="text-[15px] font-semibold text-forest">{t('export.title')}</h2>
+          <p className="text-[13px] text-ink-soft mt-0.5">{t('export.blurb')}</p>
         </div>
       </div>
-      <Button size="sm" variant="ghost" onClick={exportData} disabled={busy}>{busy ? 'Preparing…' : 'Download a copy'}</Button>
+      <Button size="sm" variant="ghost" onClick={exportData} disabled={busy}>{busy ? t('export.preparing') : t('export.download')}</Button>
       {error && <p className="text-[12px] text-red mt-3">{error}</p>}
     </section>
   );
@@ -173,21 +180,21 @@ function DataExportSection({ campId, campName }: { campId: string; campName: str
 
 interface AuditRow { id: string; action: string; target_table: string | null; target_id: string | null; actor_id: string | null; actor_email: string | null; created_at: string; }
 
-const ACTION_LABELS: Record<string, string> = {
-  insert: 'Added a record', update: 'Edited a record', delete: 'Removed a record',
-  view_camper_health: 'Viewed camper health info', export_data: 'Downloaded a data copy',
-  regenerate_portal_token: 'Reset a guest portal link',
-};
+const AUDIT_ACTIONS = ['insert', 'update', 'delete', 'view_camper_health', 'export_data', 'regenerate_portal_token'] as const;
+type AuditAction = (typeof AUDIT_ACTIONS)[number];
+const isAuditAction = (a: string): a is AuditAction => (AUDIT_ACTIONS as readonly string[]).includes(a);
 
 // Human names for the records touched, so the log doesn't show raw table names.
-const TABLE_LABELS: Record<string, string> = {
-  campers: 'Camper', camper_restrictions: 'Camper health', camper_sessions: 'Camper session',
-  commissary_files: 'Health document', camp_members: 'Team member',
-  retreat_charges: 'Retreat billing', retreat_payments: 'Retreat payment', retreat_costs: 'Retreat cost',
-  retreats: 'Retreat',
-};
+const AUDIT_TABLES = [
+  'campers', 'camper_restrictions', 'camper_sessions', 'commissary_files', 'camp_members',
+  'retreat_charges', 'retreat_payments', 'retreat_costs', 'retreats',
+] as const;
+type AuditTable = (typeof AUDIT_TABLES)[number];
+const isAuditTable = (t: string): t is AuditTable => (AUDIT_TABLES as readonly string[]).includes(t);
 
 function ActivitySection({ campId, memberNames }: { campId: string; memberNames: Record<string, string> }) {
+  const { t } = useTranslation('account');
+  const lang = useLang();
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -204,32 +211,32 @@ function ActivitySection({ campId, memberNames }: { campId: string; memberNames:
           <ScrollText className="w-4.5 h-4.5 text-forest" />
         </div>
         <div>
-          <h2 className="text-[15px] font-semibold text-forest">Activity log</h2>
-          <p className="text-[13px] text-ink-soft mt-0.5">A record of sensitive actions, who viewed or changed camper health info, team roles, retreat billing, data downloads, and guest-link resets.</p>
+          <h2 className="text-[15px] font-semibold text-forest">{t('audit.title')}</h2>
+          <p className="text-[13px] text-ink-soft mt-0.5">{t('audit.blurb')}</p>
         </div>
       </div>
       {loading ? (
-        <LoadingBlock size="sm" label="Loading" className="py-6" />
+        <LoadingBlock size="sm" label={t('loading')} className="py-6" />
       ) : rows.length === 0 ? (
-        <p className="text-[13px] text-ink-faint italic">No activity yet.</p>
+        <p className="text-[13px] text-ink-faint italic">{t('audit.empty')}</p>
       ) : (
         <div className="overflow-x-auto -mx-2">
           <table className="w-full min-w-[520px] text-[13px]">
             <thead>
               <tr className="text-ink-faint text-[11px] uppercase tracking-wide">
-                <th className="text-start font-semibold px-2 py-1.5">When</th>
-                <th className="text-start font-semibold px-2 py-1.5">Who</th>
-                <th className="text-start font-semibold px-2 py-1.5">Action</th>
-                <th className="text-start font-semibold px-2 py-1.5">Area</th>
+                <th className="text-start font-semibold px-2 py-1.5">{t('audit.when')}</th>
+                <th className="text-start font-semibold px-2 py-1.5">{t('audit.who')}</th>
+                <th className="text-start font-semibold px-2 py-1.5">{t('audit.action')}</th>
+                <th className="text-start font-semibold px-2 py-1.5">{t('audit.area')}</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-cream-dark">
-                  <td className="px-2 py-2 text-ink-soft whitespace-nowrap">{new Date(r.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                  <td className="px-2 py-2 text-ink">{(r.actor_id ? memberNames[r.actor_id] : '') || r.actor_email || 'System'}</td>
-                  <td className="px-2 py-2 text-forest font-medium">{ACTION_LABELS[r.action] ?? r.action}</td>
-                  <td className="px-2 py-2 text-ink-soft">{r.target_table ? (TABLE_LABELS[r.target_table] ?? '-') : '-'}</td>
+                  <td className="px-2 py-2 text-ink-soft whitespace-nowrap">{new Date(r.created_at).toLocaleString(lang === 'he' ? 'he-IL' : lang === 'es' ? 'es' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                  <td className="px-2 py-2 text-ink">{(r.actor_id ? memberNames[r.actor_id] : '') || (r.actor_email ? <bdi>{r.actor_email}</bdi> : t('audit.system'))}</td>
+                  <td className="px-2 py-2 text-forest font-medium">{isAuditAction(r.action) ? t(`audit.actions.${r.action}`) : r.action}</td>
+                  <td className="px-2 py-2 text-ink-soft">{r.target_table && isAuditTable(r.target_table) ? t(`audit.tables.${r.target_table}`) : '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -257,13 +264,14 @@ function PolicyLink({ href, title, desc }: { href: string; title: string; desc: 
 }
 
 function PrivacySection() {
+  const { t } = useTranslation('account');
   return (
     <section className="bg-white rounded-card border border-border p-4 sm:p-6">
-      <h2 className="text-[15px] font-semibold text-forest mb-1">Privacy &amp; security</h2>
-      <p className="text-[13px] text-ink-soft mb-4">Your camp's information (including camper health details) is kept private to your camp and protected with industry-standard safeguards. The full details are here:</p>
+      <h2 className="text-[15px] font-semibold text-forest mb-1">{t('privacy.title')}</h2>
+      <p className="text-[13px] text-ink-soft mb-4">{t('privacy.blurb')}</p>
       <div className="grid sm:grid-cols-2 gap-2.5">
-        <PolicyLink href="/privacy" title="Privacy Policy" desc="What we collect and how it's used" />
-        <PolicyLink href="/security" title="Security Overview" desc="How your data is protected" />
+        <PolicyLink href="/privacy" title={t('privacy.policy')} desc={t('privacy.policyDesc')} />
+        <PolicyLink href="/security" title={t('privacy.overview')} desc={t('privacy.overviewDesc')} />
       </div>
     </section>
   );
@@ -274,32 +282,57 @@ function PrivacySection() {
 // Two-step sign-in (MFA) is built but archived for now, flip to true to re-enable it.
 const MFA_ENABLED = false;
 
+/**
+ * The interface language is the person's, not the camp's, so it lives on the personal settings
+ * page. It also decides which language other people's work orders are translated into for them —
+ * saying so here is what tells a director why the crew's Spanish reads as English on their board.
+ */
+function LanguageSection() {
+  const { t } = useTranslation('account');
+  return (
+    <section className="bg-white rounded-card border border-border p-4 sm:p-6">
+      <div className="flex items-start gap-3">
+        <div className="w-9 h-9 rounded-lg bg-sage-pale flex items-center justify-center flex-shrink-0">
+          <Languages className="w-4.5 h-4.5 text-forest" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[15px] font-semibold text-forest">{t('language.title')}</h2>
+          <p className="text-[13px] text-ink-soft mt-0.5 mb-3">{t('language.blurb')}</p>
+          <LanguagePicker tone="light" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function SecuritySettings() {
+  const { t } = useTranslation('account');
   const { role } = useAuth();
   const { currentCamp, members } = useCampStore();
   const isAdmin = role === 'admin';
 
   const memberNames: Record<string, string> = {};
-  for (const m of members ?? []) if (m.userId) memberNames[m.userId] = m.displayName ?? m.email ?? 'Team member';
+  for (const m of members ?? []) if (m.userId) memberNames[m.userId] = m.displayName ?? m.email ?? t('teamMember');
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <Topbar title="Security & privacy" subtitle="Protect your account and manage your camp's information" />
+      <Topbar title={t('page.title')} subtitle={t('page.subtitle')} />
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="max-w-2xl mx-auto space-y-4">
-          <SectionLabel>Your account</SectionLabel>
+          <SectionLabel>{t('sections.account')}</SectionLabel>
+          <LanguageSection />
           <PasswordSection />
           {MFA_ENABLED && <MfaSection />}
 
           {isAdmin && currentCamp && (
             <>
-              <SectionLabel>Your camp's data</SectionLabel>
+              <SectionLabel>{t('sections.campData')}</SectionLabel>
               <DataExportSection campId={currentCamp.id} campName={currentCamp.name} />
               <ActivitySection campId={currentCamp.id} memberNames={memberNames} />
             </>
           )}
 
-          <SectionLabel>Policies</SectionLabel>
+          <SectionLabel>{t('sections.policies')}</SectionLabel>
           <PrivacySection />
         </div>
       </div>

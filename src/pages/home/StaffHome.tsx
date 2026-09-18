@@ -1,13 +1,29 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, Waves } from 'lucide-react';
 import { useIssuesStore } from '@/store/issuesStore';
 import { usePoolStore } from '@/store/poolStore';
 import { useAuth } from '@/lib/auth';
 import { useModules } from '@/lib/modules';
 import { useCampStore } from '@/store/campStore';
+import { TranslatedText } from '@/components/i18n/TranslatedText';
+
+type PoolStatus = 'open_all_clear' | 'open_monitoring' | 'closed_corrective' | 'closed_retest';
+const DEPARTMENTS = ['waterfront', 'maintenance', 'kitchen', 'administration', 'health', 'program', 'other'] as const;
+type Department = (typeof DEPARTMENTS)[number];
+const isDepartment = (d: unknown): d is Department => (DEPARTMENTS as readonly unknown[]).includes(d);
+
+const POOL_STATUS_COLOR: Record<PoolStatus, string> = {
+  open_all_clear:    'text-green-700 bg-green-50 border-green-200',
+  open_monitoring:   'text-amber-700 bg-amber-50 border-amber-200',
+  closed_corrective: 'text-red-700 bg-red-50 border-red-200',
+  closed_retest:     'text-red-700 bg-red-50 border-red-200',
+};
 
 export function StaffHome() {
+  const { t } = useTranslation('home');
+  const { t: tc } = useTranslation('common');
   const { currentUser, department } = useAuth();
   const { currentCamp } = useCampStore();
   const issues = useIssuesStore((s) => s.issues);
@@ -31,39 +47,27 @@ export function StaffHome() {
   // does not get a pool banner on the dashboard that its sidebar has no page for.
   const modules = useModules();
 
-  const deptLabel: Record<string, string> = {
-    waterfront: 'Waterfront', maintenance: 'Maintenance', kitchen: 'Kitchen',
-    administration: 'Administration', health: 'Health', program: 'Program', other: 'Staff',
-  };
-
-  const statusLabel: Record<string, { label: string; color: string }> = {
-    open_all_clear:    { label: 'Open, All Clear',    color: 'text-green-700 bg-green-50 border-green-200' },
-    open_monitoring:   { label: 'Open, Monitoring',   color: 'text-amber-700 bg-amber-50 border-amber-200' },
-    closed_corrective: { label: 'Closed, Corrective', color: 'text-red-700 bg-red-50 border-red-200' },
-    closed_retest:     { label: 'Closed, Retest Due', color: 'text-red-700 bg-red-50 border-red-200' },
-  };
-
   return (
     <div className="p-7 max-w-3xl">
       <div className="mb-7">
         <h1 className="text-[22px] font-bold text-forest">
-          {department ? deptLabel[department] : 'Staff'}
+          {isDepartment(department) ? t(`dept.${department}`) : t('dept.other')}
         </h1>
         <p className="text-[13px] text-ink-soft mt-0.5">{currentCamp?.name}</p>
       </div>
 
       {/* Pool status for waterfront */}
       {isWaterfront && modules.enabled('pool') && poolStatus && (
-        <div className={`rounded-xl border px-5 py-4 mb-5 flex items-center justify-between ${statusLabel[poolStatus]?.color ?? ''}`}>
+        <div className={`rounded-xl border px-5 py-4 mb-5 flex items-center justify-between ${POOL_STATUS_COLOR[poolStatus] ?? ''}`}>
           <div className="flex items-center gap-2.5">
             <Waves className="w-4 h-4" />
             <div>
-              <p className="text-[12px] font-semibold uppercase tracking-wide opacity-70">Pool Status</p>
-              <p className="text-[15px] font-bold">{statusLabel[poolStatus]?.label ?? poolStatus}</p>
+              <p className="text-[12px] font-semibold uppercase tracking-wide opacity-70">{t('poolStatus.label')}</p>
+              <p className="text-[15px] font-bold">{t(`poolStatus.${poolStatus}`)}</p>
             </div>
           </div>
           <Link to="/pool" className="text-[12px] font-medium opacity-70 hover:opacity-100 flex items-center gap-1">
-            View <ChevronRight className="w-3 h-3" />
+            {t('view')} <ChevronRight className="w-3 h-3 rtl:-scale-x-100" />
           </Link>
         </div>
       )}
@@ -71,21 +75,24 @@ export function StaffHome() {
       {/* Assigned issues */}
       <div className="bg-white rounded-xl border border-border mb-5">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="text-[14px] font-semibold text-forest">Assigned to me</h2>
+          <h2 className="text-[14px] font-semibold text-forest">{t('staff.assignedToMe')}</h2>
           <Link to="/campground" className="text-[12px] text-ink-soft hover:text-forest flex items-center gap-1">
-            All issues <ChevronRight className="w-3 h-3" />
+            {t('staff.allIssues')} <ChevronRight className="w-3 h-3 rtl:-scale-x-100" />
           </Link>
         </div>
         {myIssues.length === 0 ? (
-          <p className="px-5 py-4 sm:py-6 text-[13px] text-ink-faint text-center">No issues assigned.</p>
+          <p className="px-5 py-4 sm:py-6 text-[13px] text-ink-faint text-center">{t('staff.noneAssigned')}</p>
         ) : (
           <div className="divide-y divide-stone-100">
             {myIssues.slice(0, 6).map((issue) => (
               <div key={issue.id} className="px-5 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-[13px] font-medium text-forest">{issue.title}</p>
+                <div className="min-w-0">
+                  <TranslatedText
+                    as="p" source="issues" id={issue.id} field="title" text={issue.title}
+                    className="text-[13px] font-medium text-forest"
+                  />
                   <p className="text-[11px] text-ink-faint mt-0.5">
-                    {issue.locations.join(', ') || 'No location'}
+                    {issue.locations.join(', ') || t('noLocation')}
                   </p>
                 </div>
                 <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
@@ -93,7 +100,7 @@ export function StaffHome() {
                   issue.priority === 'high'   ? 'bg-amber-100 text-amber-700' :
                   'bg-cream-dark text-ink-soft'
                 }`}>
-                  {issue.priority}
+                  {tc(`priority.${issue.priority}`)}
                 </span>
               </div>
             ))}

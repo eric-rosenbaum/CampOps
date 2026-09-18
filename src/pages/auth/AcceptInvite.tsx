@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Lock, Mail } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import { LanguagePicker } from '@/components/i18n/LanguagePicker';
+import { authErrorMessage } from './authErrors';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
@@ -10,24 +14,29 @@ import { CampLoader } from '@/components/shared/ModuleLoading';
 type Info = { email: string; campName: string; role: string };
 type Phase = 'loading' | 'invalid' | 'ready' | 'joining' | 'confirm-email' | 'done';
 
-function reasonText(reason: string): string {
-  if (reason === 'used') return 'This invitation has already been used. If that wasn’t you, ask for a new one.';
-  if (reason === 'expired') return 'This invitation has expired. Ask whoever invited you to send a new link.';
-  return 'This invitation link isn’t valid.';
+// Stored as the reason code rather than the sentence, so the page re-says it in whatever
+// language the picker is set to after it loaded.
+function reasonText(t: TFunction<'auth'>, reason: string): string {
+  if (reason === 'used') return t('invite.reasonUsed');
+  if (reason === 'expired') return t('invite.reasonExpired');
+  return t('invite.reasonInvalid');
 }
-function roleLabel(role: string): string {
-  return role === 'admin' ? 'an administrator' : role === 'viewer' ? 'a viewer' : 'a team member';
+// Whole sentences per role: "invited as {{role}}" cannot agree in gender or article in Spanish
+// or Hebrew once the role is a separate fragment.
+function invitedAs(t: TFunction<'auth'>, role: string): string {
+  return role === 'admin' ? t('invite.invitedAsAdmin') : role === 'viewer' ? t('invite.invitedAsViewer') : t('invite.invitedAsStaff');
 }
 
 // Accept an invitation. The email is LOCKED to what the invite was sent to (read from the token):
 // the invitee just sets a password and signs in. Works for the initial customer admin and for any
 // team member a camp admin invites, same link, same flow.
 export function AcceptInvite() {
+  const { t } = useTranslation('auth');
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const [phase, setPhase] = useState<Phase>('loading');
   const [info, setInfo] = useState<Info | null>(null);
-  const [invalidMsg, setInvalidMsg] = useState('');
+  const [invalidReason, setInvalidReason] = useState('not_found');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -53,12 +62,12 @@ export function AcceptInvite() {
     (async () => {
       const { data, error: e } = await supabase.rpc('invitation_info', { p_token: token });
       const d = (data ?? {}) as { valid?: boolean; reason?: string; email?: string; camp_name?: string; role?: string };
-      if (e || !d.valid || !d.email) { setInvalidMsg(reasonText(d.reason ?? 'not_found')); setPhase('invalid'); return; }
-      setInfo({ email: d.email, campName: d.camp_name ?? 'your camp', role: d.role ?? 'staff' });
+      if (e || !d.valid || !d.email) { setInvalidReason(d.reason ?? 'not_found'); setPhase('invalid'); return; }
+      setInfo({ email: d.email, campName: d.camp_name ?? '', role: d.role ?? 'staff' });
 
       const session = (await supabase.auth.getSession()).data.session;
       if (session?.user?.email && session.user.email.toLowerCase() === d.email.toLowerCase()) {
-        try { await acceptAndGo(); } catch (err) { setError(err instanceof Error ? err.message : 'Could not join.'); setPhase('ready'); }
+        try { await acceptAndGo(); } catch (err) { setError(err instanceof Error ? authErrorMessage(t, err.message) : t('errors.couldNotJoin')); setPhase('ready'); }
       } else {
         setPhase('ready');
       }
@@ -69,8 +78,8 @@ export function AcceptInvite() {
     e.preventDefault();
     setError(null);
     if (!info) return;
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
-    if (mode === 'create' && password !== confirm) { setError('Passwords don’t match.'); return; }
+    if (password.length < 8) { setError(t('errors.tooShort', { min: 8 })); return; }
+    if (mode === 'create' && password !== confirm) { setError(t('errors.mismatch')); return; }
     setBusy(true);
     try {
       // If a different account is signed in on this device, drop it so we act as the invited user.
@@ -90,11 +99,11 @@ export function AcceptInvite() {
         if (err) {
           if (/already|registered|exists/i.test(err)) {
             setMode('signin');
-            setError('An account already exists for this email. Enter its password to sign in and join.');
+            setError(t('invite.accountExists'));
             setBusy(false);
             return;
           }
-          setError(err); setBusy(false); return;
+          setError(authErrorMessage(t, err)); setBusy(false); return;
         }
         if (needsEmailConfirmation) {
           setPhase('confirm-email');
@@ -103,11 +112,11 @@ export function AcceptInvite() {
         }
       } else {
         const err = await useAuthStore.getState().signIn(info.email, password);
-        if (err) { setError(err); setBusy(false); return; }
+        if (err) { setError(authErrorMessage(t, err)); setBusy(false); return; }
       }
       await acceptAndGo();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setError(authErrorMessage(t, err instanceof Error ? err.message : null));
       setPhase('ready');
     } finally {
       setBusy(false);
@@ -115,7 +124,10 @@ export function AcceptInvite() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-paper p-4 sm:p-6">
+    <div className="relative min-h-screen w-full flex items-center justify-center bg-paper p-4 sm:p-6">
+      <div className="absolute top-4 end-4">
+        <LanguagePicker tone="light" />
+      </div>
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2 mb-8 justify-center">
           <CampCommandMark size={36} decorative />
@@ -126,23 +138,23 @@ export function AcceptInvite() {
           {(phase === 'loading' || phase === 'joining') && (
             <div className="text-center py-2">
               <CampLoader size="sm" className="mb-4" />
-              <p className="text-[14px] font-medium text-forest">{phase === 'joining' ? 'Joining…' : 'Loading your invitation…'}</p>
+              <p className="text-[14px] font-medium text-forest">{phase === 'joining' ? t('invite.joining') : t('invite.loading')}</p>
             </div>
           )}
 
           {phase === 'invalid' && (
             <div className="text-center">
-              <h1 className="text-[18px] font-semibold text-forest mb-2">Invitation unavailable</h1>
-              <p className="text-[13px] text-ink-soft leading-relaxed mb-5">{invalidMsg}</p>
-              <Link to="/login" className="text-[13px] font-medium text-forest hover:underline">Go to sign in</Link>
+              <h1 className="text-[18px] font-semibold text-forest mb-2">{t('invite.unavailable')}</h1>
+              <p className="text-[13px] text-ink-soft leading-relaxed mb-5">{reasonText(t, invalidReason)}</p>
+              <Link to="/login" className="text-[13px] font-medium text-forest hover:underline">{t('invite.goToSignIn')}</Link>
             </div>
           )}
 
           {phase === 'done' && (
             <div className="text-center">
               <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4"><span className="text-green-600 text-lg">✓</span></div>
-              <p className="text-[15px] font-semibold text-forest mb-1">You’re in</p>
-              <p className="text-[12px] text-ink-soft">Taking you to {info?.campName}…</p>
+              <p className="text-[15px] font-semibold text-forest mb-1">{t('invite.youreIn')}</p>
+              <p className="text-[12px] text-ink-soft">{info?.campName ? t('invite.takingYou', { camp: info.campName }) : t('invite.takingYouNoName')}</p>
             </div>
           )}
 
@@ -151,57 +163,61 @@ export function AcceptInvite() {
               <div className="w-11 h-11 rounded-full bg-sage-pale flex items-center justify-center mx-auto mb-4">
                 <Mail className="w-5 h-5 text-ink" />
               </div>
-              <h1 className="text-[17px] font-semibold text-forest mb-2">Confirm your email</h1>
+              <h1 className="text-[17px] font-semibold text-forest mb-2">{t('invite.confirmTitle')}</h1>
               <p className="text-[13px] text-ink-soft leading-relaxed">
-                We’ve sent a link to <span className="font-medium text-forest">{info.email}</span>.
-                Open it to finish joining {info.campName}.
+                <Trans
+                  t={t}
+                  i18nKey="invite.confirmBody"
+                  values={{ email: info.email, camp: info.campName || t('invite.yourCamp') }}
+                  components={{ email: <bdi className="font-medium text-forest" /> }}
+                />
               </p>
               <p className="text-[12px] text-ink-faint leading-relaxed mt-4">
-                You can close this page. The link works on any device.
+                {t('invite.confirmHint')}
               </p>
             </div>
           )}
 
           {phase === 'ready' && info && (
             <>
-              <h1 className="text-[18px] font-semibold text-forest mb-1.5">Join {info.campName}</h1>
-              <p className="text-[13px] text-ink-soft mb-5">You’ve been invited as {roleLabel(info.role)}. {mode === 'create' ? 'Set a password to create your account.' : 'Sign in to join.'}</p>
+              <h1 className="text-[18px] font-semibold text-forest mb-1.5">{t('invite.title', { camp: info.campName || t('invite.yourCamp') })}</h1>
+              <p className="text-[13px] text-ink-soft mb-5">{invitedAs(t, info.role)} {mode === 'create' ? t('invite.createHint') : t('invite.signinHint')}</p>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-[12px] font-medium text-ink mb-1.5">Email</label>
+                  <label className="block text-[12px] font-medium text-ink mb-1.5">{t('fields.emailShort')}</label>
                   <div className="flex items-center gap-2 w-full px-3 py-2 rounded-lg border border-border bg-paper text-[13px] text-ink">
                     <Lock className="w-3.5 h-3.5 text-ink-faint flex-shrink-0" />
-                    <span className="truncate">{info.email}</span>
+                    <span className="truncate" dir="ltr">{info.email}</span>
                   </div>
-                  <p className="text-[11px] text-ink-faint mt-1">This invite is locked to this address.</p>
+                  <p className="text-[11px] text-ink-faint mt-1">{t('invite.locked')}</p>
                 </div>
                 {mode === 'create' && (
                   <div>
-                    <label className="block text-[12px] font-medium text-ink mb-1.5">Your name</label>
-                    <input type="text" autoFocus autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)}
+                    <label htmlFor="invite-name" className="block text-[12px] font-medium text-ink mb-1.5">{t('fields.name')}</label>
+                    <input id="invite-name" type="text" autoFocus autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40" />
                   </div>
                 )}
                 <div>
-                  <label className="block text-[12px] font-medium text-ink mb-1.5">{mode === 'create' ? 'Create a password' : 'Password'}</label>
-                  <input type="password" required autoComplete={mode === 'create' ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)}
+                  <label htmlFor="invite-password" className="block text-[12px] font-medium text-ink mb-1.5">{mode === 'create' ? t('fields.createPassword') : t('fields.password')}</label>
+                  <input id="invite-password" dir="ltr" type="password" required autoComplete={mode === 'create' ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40" />
-                  {mode === 'create' && <p className="text-[11px] text-ink-faint mt-1">Minimum 8 characters</p>}
+                  {mode === 'create' && <p className="text-[11px] text-ink-faint mt-1">{t('fields.minLength', { min: 8 })}</p>}
                 </div>
                 {mode === 'create' && (
                   <div>
-                    <label className="block text-[12px] font-medium text-ink mb-1.5">Confirm password</label>
-                    <input type="password" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
+                    <label htmlFor="invite-confirm" className="block text-[12px] font-medium text-ink mb-1.5">{t('fields.confirmPassword')}</label>
+                    <input id="invite-confirm" dir="ltr" type="password" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20 focus:border-forest/40" />
                   </div>
                 )}
                 {error && <p className="text-[12px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
                 <button type="submit" disabled={busy} className="w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50 mt-1">
-                  {busy ? 'Setting up…' : mode === 'create' ? 'Create account & join' : 'Sign in & join'}
+                  {busy ? t('invite.settingUp') : mode === 'create' ? t('invite.createAndJoin') : t('invite.signInAndJoin')}
                 </button>
                 {mode === 'signin' && (
                   <p className="text-center text-[12px] text-ink-soft">
-                    Forgot it? <Link to="/forgot-password" className="text-forest font-medium hover:underline">Reset your password</Link>
+                    <Trans t={t} i18nKey="invite.forgot" components={{ reset: <Link to="/forgot-password" className="text-forest font-medium hover:underline" /> }} />
                   </p>
                 )}
               </form>

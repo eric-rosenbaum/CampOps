@@ -14,9 +14,11 @@
  */
 import { useEffect } from 'react';
 import { ArrowUpRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { APP_STORE_URL, installSmartAppBanner, isIOS, stickerLink } from '@/lib/appLinks';
 
 export function OpenInAppCard({ token, targetName }: { token: string; targetName?: string | null }) {
+  const { t } = useTranslation('scan');
   const ios = isIOS();
 
   useEffect(() => {
@@ -30,11 +32,9 @@ export function OpenInAppCard({ token, targetName }: { token: string; targetName
     <div className="bg-white border border-border rounded-xl px-4 py-3.5 flex items-center gap-3">
       <AppMark />
       <div className="min-w-0 flex-1">
-        <p className="text-[14px] font-bold text-ink leading-tight">CampCommand for iPhone</p>
+        <p className="text-[14px] font-bold text-ink leading-tight">{t('app.title')}</p>
         <p className="text-[12.5px] text-ink-faint leading-snug mt-0.5">
-          {targetName
-            ? <>Scan this sticker with your camera and the app opens on {targetName}.</>
-            : <>Scan a sticker with your camera and the app opens on that spot.</>}
+          {targetName ? t('app.bodyNamed', { name: targetName }) : t('app.body')}
         </p>
       </div>
       <a
@@ -44,8 +44,8 @@ export function OpenInAppCard({ token, targetName }: { token: string; targetName
         className="flex-none inline-flex items-center gap-1 rounded-xl bg-stone-800 px-3.5 py-2.5 text-[13px]
                    font-semibold text-white transition-colors hover:bg-stone-700 active:bg-stone-900"
       >
-        Get the app
-        <ArrowUpRight className="w-3.5 h-3.5" />
+        {t('app.get')}
+        <ArrowUpRight className="w-3.5 h-3.5 rtl:-scale-x-100" />
       </a>
     </div>
   );

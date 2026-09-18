@@ -17,12 +17,14 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 import { resolveQrToken } from '@/lib/campgroundDb';
 import type { QrTarget } from '@/lib/types';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
 import { CampCommandMark } from '@/components/shared/CampCommandMark';
 import { OpenInAppCard } from '@/components/qr/OpenInAppCard';
+import { LanguagePicker } from '@/components/i18n/LanguagePicker';
 import { PublicReportForm } from '@/pages/report/PublicReportForm';
 
 /** Where a staff member is sent. Lives inside the app shell, where the camp's data is loaded. */
@@ -74,6 +76,7 @@ export function ScanTarget() {
 // ─── States ───────────────────────────────────────────────────────────────────
 
 function Shell({ target, children }: { target?: QrTarget | null; children: React.ReactNode }) {
+  const { t } = useTranslation('scan');
   return (
     <div className="min-h-screen w-full bg-paper flex flex-col">
       <div className="bg-white border-b border-border px-5 py-4">
@@ -83,14 +86,16 @@ function Shell({ target, children }: { target?: QrTarget | null; children: React
           ) : (
             <CampCommandMark size={36} decorative className="flex-none" />
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold text-ink-faint uppercase tracking-widest">
-              {target ? (target.kind === 'asset' ? 'Equipment' : 'Location') : 'CampCommand'}
+              {target ? (target.kind === 'asset' ? t('kind.asset') : t('kind.location')) : 'CampCommand'}
             </p>
             <h1 className="text-[16px] font-bold text-ink leading-tight truncate">
-              {target?.targetName ?? 'Scanned code'}
+              {target?.targetName ?? t('target.scannedCode')}
             </h1>
           </div>
+          {/* Whoever scanned this may have no account and no reason to read English. */}
+          <LanguagePicker tone="light" className="flex-none" />
         </div>
       </div>
       <div className="flex-1 flex items-center justify-center p-5">
@@ -101,6 +106,7 @@ function Shell({ target, children }: { target?: QrTarget | null; children: React
 }
 
 function Waiting({ target, onGuest }: { target?: QrTarget | null; onGuest: () => void }) {
+  const { t } = useTranslation('scan');
   const [slow, setSlow] = useState(false);
   useEffect(() => {
     const t = window.setTimeout(() => setSlow(true), 2500);
@@ -119,7 +125,7 @@ function Waiting({ target, onGuest }: { target?: QrTarget | null; onGuest: () =>
             onClick={onGuest}
             className="mt-5 text-[13px] text-ink-soft underline hover:text-forest"
           >
-            Just report a problem here
+            {t('target.justReport')}
           </button>
         )}
       </div>
@@ -128,17 +134,15 @@ function Waiting({ target, onGuest }: { target?: QrTarget | null; onGuest: () =>
 }
 
 function UnknownCode() {
+  const { t } = useTranslation('scan');
   return (
     <Shell>
       <div className="text-center">
         <div className="w-14 h-14 bg-cream-dark rounded-card grid place-items-center mx-auto mb-4">
           <AlertCircle className="w-7 h-7 text-ink-faint" />
         </div>
-        <h2 className="text-[19px] font-bold text-ink mb-2">This code is not recognised</h2>
-        <p className="text-[14px] text-ink-soft leading-relaxed">
-          The sticker may have been replaced, or the place it pointed at may no longer be listed.
-          Tell someone at the camp office what you found and where — they can reprint it.
-        </p>
+        <h2 className="text-[19px] font-bold text-ink mb-2">{t('unknown.title')}</h2>
+        <p className="text-[14px] text-ink-soft leading-relaxed">{t('unknown.body')}</p>
       </div>
     </Shell>
   );
@@ -153,6 +157,7 @@ function UnknownCode() {
  * form that fails at the end.
  */
 function WrongCamp({ token, target }: { token: string; target: QrTarget }) {
+  const { t } = useTranslation('scan');
   const navigate = useNavigate();
   const camps = useCampStore((s) => s.camps);
   const currentCamp = useCampStore((s) => s.currentCamp);
@@ -178,12 +183,12 @@ function WrongCamp({ token, target }: { token: string; target: QrTarget }) {
     <Shell target={target}>
       <div>
         <h2 className="text-[19px] font-bold text-ink mb-2">
-          This is {target.campName}
+          {t('wrongCamp.title', { camp: target.campName })}
         </h2>
         <p className="text-[14px] text-ink-soft leading-relaxed mb-6">
           {currentCamp
-            ? <>You are signed in to <span className="font-semibold text-ink">{currentCamp.name}</span>, so this sticker is not one of yours.</>
-            : <>You are signed in, but not to this camp.</>}
+            ? <Trans t={t} i18nKey="wrongCamp.otherCamp" values={{ camp: currentCamp.name }} components={{ camp: <span className="font-semibold text-ink" /> }} />
+            : t('wrongCamp.notThisCamp')}
         </p>
 
         <div className="space-y-2.5">
@@ -193,16 +198,16 @@ function WrongCamp({ token, target }: { token: string; target: QrTarget }) {
               disabled={switching}
               className="w-full flex items-center justify-between gap-3 bg-forest text-paper rounded-btn px-4 py-3.5 text-[14px] font-bold hover:bg-forest-mid disabled:opacity-50"
             >
-              <span>{switching ? 'Switching…' : `Switch to ${target.campName}`}</span>
-              <ArrowRight className="w-4 h-4 flex-none" />
+              <span>{switching ? t('wrongCamp.switching') : t('wrongCamp.switchTo', { camp: target.campName })}</span>
+              <ArrowRight className="w-4 h-4 flex-none rtl:-scale-x-100" />
             </button>
           )}
           <button
             onClick={() => setAsGuest(true)}
             className="w-full flex items-center justify-between gap-3 bg-white border border-border text-forest rounded-btn px-4 py-3.5 text-[14px] font-bold hover:border-sage"
           >
-            <span>Report a problem here</span>
-            <ArrowRight className="w-4 h-4 flex-none" />
+            <span>{t('wrongCamp.report')}</span>
+            <ArrowRight className="w-4 h-4 flex-none rtl:-scale-x-100" />
           </button>
         </div>
 

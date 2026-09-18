@@ -1,1 +1,162 @@
-{}
+{
+  "kind": {
+    "asset": "Equipo",
+    "location": "Ubicación"
+  },
+  "target": {
+    "scannedCode": "Código escaneado",
+    "justReport": "Solo quiero reportar un problema aquí"
+  },
+  "unknown": {
+    "title": "No reconocemos este código",
+    "body": "Puede que la etiqueta se haya reemplazado o que el lugar al que apuntaba ya no esté en la lista. Avisa en la oficina del campamento qué encontraste y dónde; pueden volver a imprimirla."
+  },
+  "wrongCamp": {
+    "title": "Esto es {{camp}}",
+    "otherCamp": "Iniciaste sesión en <camp>{{camp}}</camp>, así que esta etiqueta no es de tu campamento.",
+    "notThisCamp": "Iniciaste sesión, pero no en este campamento.",
+    "switching": "Cambiando…",
+    "switchTo": "Cambiar a {{camp}}",
+    "report": "Reportar un problema aquí"
+  },
+  "app": {
+    "title": "CampCommand para iPhone",
+    "bodyNamed": "Escanea esta etiqueta con la cámara y la app se abre en {{name}}.",
+    "body": "Escanea una etiqueta con la cámara y la app se abre en ese lugar.",
+    "get": "Descargar la app"
+  },
+  "report": {
+    "header": "Reportar un problema",
+    "notFound": "Página no encontrada",
+    "notFoundToken": "Puede que la etiqueta se haya reemplazado. Avisa en la oficina del campamento qué encontraste y dónde.",
+    "notFoundLink": "Este enlace para reportar no existe o ya no está activo.",
+    "knownTitle": "Gracias, ya lo saben",
+    "knownBody": "Ya está en la lista de {{camp}}. No tienes que hacer nada más.",
+    "somethingElse": "Reportar otra cosa aquí",
+    "submittedTitle": "Reporte enviado",
+    "submittedBody": "Gracias · El personal de {{camp}} lo verá en su lista.",
+    "receiptHint": "Guarda este enlace para ver cómo va la reparación. Funciona sin cuenta.",
+    "copied": "Copiado",
+    "copyLink": "Copiar enlace",
+    "checkOnIt": "Ver cómo va",
+    "another": "Enviar otro reporte",
+    "youScanned": "Escaneaste",
+    "youreAt": "Estás en",
+    "alreadyReported_one": "Ya hay {{count}} cosa reportada aquí",
+    "alreadyReported_many": "Ya hay {{count}} cosas reportadas aquí",
+    "alreadyReported_other": "Ya hay {{count}} cosas reportadas aquí",
+    "thatsTheOne": "Eso es lo que iba a reportar",
+    "titleLabel": "¿Cuál es el problema?",
+    "titlePlaceholder": "p. ej. tabla del muelle rota, llave que gotea…",
+    "details": "Detalles",
+    "optional": "opcional",
+    "detailsPlaceholderTarget": "¿Qué parte? ¿Cuándo lo notaste? Cualquier otro dato…",
+    "detailsPlaceholder": "¿Dónde está exactamente? ¿Cuándo lo notaste? Cualquier otro dato…",
+    "location": "Ubicación",
+    "locationPlaceholder": "¿Dónde está? (elige un lugar)",
+    "photo": "Foto",
+    "preview": "Vista previa",
+    "removePhoto": "Quitar foto",
+    "changePhoto": "Cambiar foto",
+    "attachPhoto": "Toca para adjuntar una foto",
+    "yourInfo": "Tus datos · opcional",
+    "name": "Nombre",
+    "namePlaceholder": "Nombre o nombre completo",
+    "contact": "Correo o teléfono",
+    "contactPlaceholder": "Por si el personal necesita contactarte",
+    "submitting": "Enviando…",
+    "submit": "Enviar reporte",
+    "staffSignIn": "¿Eres del personal? <signin>Inicia sesión</signin> para trabajar en esto.",
+    "open": {
+      "notStarted": "sin empezar",
+      "inProgress": "en proceso",
+      "today": "hoy",
+      "daysAgo_one": "hace {{count}} día",
+      "daysAgo_many": "hace {{count}} días",
+      "daysAgo_other": "hace {{count}} días"
+    },
+    "errors": {
+      "tooMany": "Demasiados reportes desde este dispositivo en la última hora. Inténtalo más tarde o llama a la oficina del campamento.",
+      "titleRequired": "Escribe una descripción corta del problema.",
+      "unknownCode": "No reconocemos este código.",
+      "unknownLocation": "No reconocemos esta ubicación.",
+      "unknownCamp": "No reconocemos este campamento.",
+      "generic": "Algo salió mal. Inténtalo otra vez."
+    }
+  },
+  "hub": {
+    "openInAssets": "Abrir en Equipos",
+    "openInCampground": "Abrir en Campground",
+    "openHere_one": "{{count}} cosa abierta aquí",
+    "openHere_many": "{{count}} cosas abiertas aquí",
+    "openHere_other": "{{count}} cosas abiertas aquí",
+    "nothingOpen": "Nada abierto aquí. Bien.",
+    "markDone": "Marcar “{{title}}” como hecha",
+    "done": "Hecho",
+    "logTitle": "Registrar algo aquí",
+    "whatsWrong": "¿Qué pasa?",
+    "unassigned": "Sin asignar",
+    "filedAgainst": "Se registra en <name>{{name}}</name>: lo escaneaste, así que nadie tiene que nombrarlo.",
+    "logIt": "Registrar",
+    "logged": "Registrado.",
+    "addDetail": "Agregar detalles",
+    "somethingWrong": "Algo anda mal aquí",
+    "routinesHere": "Rutinas aquí",
+    "undoDone": "Hecho · <item></item>",
+    "undo": "Deshacer",
+    "service": {
+      "title": "Estado de servicio",
+      "limited": "Uso limitado",
+      "out": "Fuera de servicio",
+      "since": "Desde el {{date}}.",
+      "expectedBackOn": "Vuelve el {{date}}.",
+      "noReturnDate": "Sin fecha de regreso.",
+      "whyPlaceholder": "¿Por qué? p. ej. gotera en el techo, piso secándose",
+      "expectedBack": "Fecha prevista de regreso",
+      "explain": "Esto hace más que ponerle una etiqueta: no se pueden reservar grupos en un espacio fuera de servicio, y el tablero de alojamiento no pondrá a nadie aquí.",
+      "takeItOut": "Sacarlo de servicio",
+      "putBack": "Volver a ponerlo en servicio",
+      "takeOut": "Sacar de servicio"
+    },
+    "building": {
+      "title": "Llaves de paso y tablero",
+      "mainWater": "Llave principal de agua",
+      "mainGas": "Llave principal de gas",
+      "mainElectrical": "Tablero eléctrico principal",
+      "valves": "Válvulas",
+      "noBreakers": "Todavía no hay interruptores registrados.",
+      "unlabelled": "Sin etiqueta",
+      "off": "apagado"
+    },
+    "meter": {
+      "title": "Medidor",
+      "hours": "Horas",
+      "miles": "Millas",
+      "readingNow": "Lectura actual",
+      "record": "Registrar",
+      "recorded": "Registrado.",
+      "recordedRaised_one": "Registrado · se generó {{count}} rutina.",
+      "recordedRaised_many": "Registrado · se generaron {{count}} rutinas.",
+      "recordedRaised_other": "Registrado · se generaron {{count}} rutinas."
+    },
+    "history": {
+      "title": "Historial de servicio",
+      "empty": "Todavía no hay nada registrado."
+    },
+    "photo": {
+      "title": "¿Agregar una foto?",
+      "take": "Tomar una foto",
+      "notePlaceholder": "¿Qué hiciste? (opcional)",
+      "skip": "Omitir",
+      "sending": "Enviando…",
+      "send": "Enviar",
+      "receiptNote": "Quien lo reportó lo verá en su comprobante."
+    },
+    "notHere": {
+      "title": "Esa etiqueta es de {{camp}}",
+      "body": "Iniciaste sesión en otro campamento, así que aquí no hay nada en qué trabajar.",
+      "open": "Abrir la etiqueta",
+      "unknownBody": "Puede que se haya vuelto a emitir o que el lugar al que apuntaba se haya eliminado. Vuelve a imprimirla desde Camp Info → Locations."
+    }
+  }
+}

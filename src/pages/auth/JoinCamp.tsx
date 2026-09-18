@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import { LanguagePicker } from '@/components/i18n/LanguagePicker';
+import { authErrorMessage } from './authErrors';
 import { supabase } from '@/lib/supabase';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore, OTP_MIN_LENGTH, OTP_MAX_LENGTH } from '@/store/authStore';
@@ -19,11 +23,11 @@ function normaliseCode(raw: string): string {
   return raw.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 24);
 }
 
-function codeProblem(reason?: string): string {
-  if (reason === 'expired') return 'This join link has expired. Ask your camp administrator for a new one.';
-  if (reason === 'used_up') return 'This join link has been used the maximum number of times.';
-  if (reason === 'camp_unavailable') return 'This camp isn’t accepting new staff right now.';
-  return 'That join code isn’t valid. Check it and try again.';
+function codeProblem(t: TFunction<'auth'>, reason?: string): string {
+  if (reason === 'expired') return t('join.problemExpired');
+  if (reason === 'used_up') return t('join.problemUsedUp');
+  if (reason === 'camp_unavailable') return t('join.problemUnavailable');
+  return t('join.problemInvalid');
 }
 
 /**
@@ -35,6 +39,8 @@ function codeProblem(reason?: string): string {
  * path for seasonal staff who will mostly live in the phone app.
  */
 export function JoinCamp() {
+  const { t } = useTranslation('auth');
+  const { t: tc } = useTranslation('common');
   const { joinWithCode } = useCampStore();
   const { user, sendEmailOtp, verifyEmailOtp } = useAuthStore();
   const navigate = useNavigate();
@@ -55,8 +61,8 @@ export function JoinCamp() {
 
   useEffect(() => {
     if (cooldown <= 0) return;
-    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
   }, [cooldown]);
 
   const autoChecked = useRef(false);
@@ -66,9 +72,9 @@ export function JoinCamp() {
     setError(null);
     const { data, error: rpcError } = await supabase.rpc('join_code_info', { p_code: raw });
     setCheckingCode(false);
-    if (rpcError) { setError('Could not check that code. Please try again.'); return; }
+    if (rpcError) { setError(t('join.checkFailed')); return; }
     const d = (data ?? {}) as { valid?: boolean; reason?: string; camp_name?: string; role?: string; group_name?: string };
-    if (!d.valid) { setInfo({ valid: false, reason: d.reason }); setError(codeProblem(d.reason)); return; }
+    if (!d.valid) { setInfo({ valid: false, reason: d.reason }); setError(codeProblem(t, d.reason)); return; }
     setCode(raw);
     setInfo({ valid: true, campName: d.camp_name, role: d.role, groupName: d.group_name ?? undefined });
     setStep('identity');
@@ -80,7 +86,7 @@ export function JoinCamp() {
     setError(null);
     const err = await sendEmailOtp(email, name);
     setBusy(false);
-    if (err) { setError(err); return; }
+    if (err) { setError(authErrorMessage(t, err)); return; }
     setStep('otp');
     setCooldown(60);
   }
@@ -90,7 +96,7 @@ export function JoinCamp() {
     setBusy(true);
     setError(null);
     const err = await verifyEmailOtp(email, otp);
-    if (err) { setError(err); setBusy(false); return; }
+    if (err) { setError(authErrorMessage(t, err)); setBusy(false); return; }
     await finishJoin();
   }
 
@@ -98,7 +104,7 @@ export function JoinCamp() {
     setStep('joining');
     const result = await joinWithCode(code);
     if ('error' in result) {
-      setError(result.error);
+      setError(authErrorMessage(t, result.error));
       setStep('identity');
       setBusy(false);
       return;
@@ -109,7 +115,7 @@ export function JoinCamp() {
   async function handleResend() {
     setError(null);
     const err = await sendEmailOtp(email, name);
-    if (err) { setError(err); return; }
+    if (err) { setError(authErrorMessage(t, err)); return; }
     setCooldown(60);
   }
 
@@ -122,6 +128,9 @@ export function JoinCamp() {
     if (!fromUrl || autoChecked.current) return;
     autoChecked.current = true;
     void checkCode(fromUrl.toUpperCase().trim());
+    // checkCode closes over `t`; the ref above already makes this run once per arrival, so
+    // re-running it when the language changes would only re-check the same code.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Someone already signed in (e.g. adding a second camp) skips straight to joining.
@@ -131,7 +140,10 @@ export function JoinCamp() {
   }, [user, info, step]);
 
   return (
-    <div className="min-h-screen bg-paper flex items-center justify-center p-4">
+    <div className="relative min-h-screen bg-paper flex items-center justify-center p-4">
+      <div className="absolute top-4 end-4">
+        <LanguagePicker tone="light" />
+      </div>
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2.5 mb-8 justify-center">
           <CampCommandMark size={36} decorative />
@@ -142,17 +154,17 @@ export function JoinCamp() {
           {step === 'joining' && (
             <div className="text-center py-4">
               <CampLoader size="sm" className="mb-4" />
-              <p className="text-[14px] font-medium text-forest mb-1">Joining {info?.campName ?? 'camp'}…</p>
-              <p className="text-[12px] text-ink-faint">Just a moment</p>
+              <p className="text-[14px] font-medium text-forest mb-1">{info?.campName ? t('join.joining', { camp: info.campName }) : t('join.joiningNoName')}</p>
+              <p className="text-[12px] text-ink-faint">{t('join.moment')}</p>
             </div>
           )}
 
           {/* Step 1. The code itself. Also the manual path for someone told the code verbally. */}
           {step === 'code' && (
             <>
-              <h1 className="text-[17px] font-semibold text-forest mb-1">Join your camp</h1>
+              <h1 className="text-[17px] font-semibold text-forest mb-1">{t('join.title')}</h1>
               <p className="text-[12px] text-ink-soft mb-6">
-                Enter the code from your camp administrator, like CEDAR-4821.
+                <Trans t={t} i18nKey="join.intro" values={{ example: 'CEDAR-4821' }} components={{ code: <bdi className="font-mono" /> }} />
               </p>
               {error && <ErrorNote>{error}</ErrorNote>}
               <form
@@ -163,6 +175,8 @@ export function JoinCamp() {
                   value={code}
                   onChange={(e) => setCode(normaliseCode(e.target.value))}
                   autoFocus
+                  dir="ltr"
+                  aria-label={t('join.codeLabel')}
                   autoCapitalize="characters"
                   autoCorrect="off"
                   spellCheck={false}
@@ -174,7 +188,7 @@ export function JoinCamp() {
                   disabled={code.trim().length < MIN_JOIN_CODE_LENGTH || checkingCode}
                   className="w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50"
                 >
-                  {checkingCode ? 'Checking…' : 'Continue'}
+                  {checkingCode ? t('status.checking') : t('join.continue')}
                 </button>
               </form>
             </>
@@ -183,23 +197,25 @@ export function JoinCamp() {
           {/* Step 2. Who they are. The camp is named so they know they're in the right place. */}
           {step === 'identity' && info?.valid && (
             <>
-              <h1 className="text-[17px] font-semibold text-forest mb-1">Join {info.campName}</h1>
+              <h1 className="text-[17px] font-semibold text-forest mb-1">{info.campName ? t('join.titleCamp', { camp: info.campName }) : t('join.title')}</h1>
               <p className="text-[12px] text-ink-soft mb-6">
-                {info.groupName ? `You'll join as ${info.groupName}. ` : ''}
-                We'll email you a code to sign in, no password needed.
+                {info.groupName ? `${t('join.asGroup', { group: info.groupName })} ` : ''}
+                {t('join.noPassword')}
               </p>
               {error && <ErrorNote>{error}</ErrorNote>}
               <form onSubmit={handleSendCode} className="space-y-3">
-                <Field label="Your name">
+                <Field label={t('fields.name')} htmlFor="join-name">
                   <input
+                    id="join-name"
                     type="text" required autoFocus value={name}
                     onChange={(e) => setName(e.target.value)}
                     autoComplete="name"
                     className={inputClass}
                   />
                 </Field>
-                <Field label="Email">
+                <Field label={t('fields.emailShort')} htmlFor="join-email">
                   <input
+                    id="join-email" dir="ltr"
                     type="email" required value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="email"
@@ -212,7 +228,7 @@ export function JoinCamp() {
                   disabled={busy || !name.trim() || !email.trim()}
                   className="w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50 mt-1"
                 >
-                  {busy ? 'Sending…' : 'Email me a code'}
+                  {busy ? t('status.sending') : t('code.send')}
                 </button>
               </form>
             </>
@@ -225,11 +241,11 @@ export function JoinCamp() {
                 onClick={() => { setStep('identity'); setOtp(''); setError(null); }}
                 className="inline-flex items-center gap-1.5 text-[12px] text-ink-faint hover:text-forest mb-4 transition-colors"
               >
-                <ArrowLeft className="w-3.5 h-3.5" /> Back
+                <ArrowLeft className="w-3.5 h-3.5 rtl:-scale-x-100" /> {tc('actions.back')}
               </button>
-              <h1 className="text-[17px] font-semibold text-forest mb-1">Enter your code</h1>
+              <h1 className="text-[17px] font-semibold text-forest mb-1">{t('join.enterCode')}</h1>
               <p className="text-[12px] text-ink-soft mb-6">
-                We sent a sign-in code to <span className="font-medium text-forest">{email}</span>.
+                <Trans t={t} i18nKey="code.sentTo" values={{ email }} components={{ email: <bdi className="font-medium text-forest" /> }} />
               </p>
               {error && <ErrorNote>{error}</ErrorNote>}
               <form onSubmit={handleVerify} className="space-y-3">
@@ -238,6 +254,8 @@ export function JoinCamp() {
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, OTP_MAX_LENGTH))}
                   autoFocus
                   inputMode="numeric"
+                  dir="ltr"
+                  aria-label={t('code.codeLabel')}
                   // Lets iOS/Android offer the code straight from the notification.
                   autoComplete="one-time-code"
                   className="w-full px-3 py-3 rounded-lg border border-border text-center text-[22px] font-mono font-semibold tracking-[0.35em] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
@@ -247,7 +265,7 @@ export function JoinCamp() {
                   disabled={busy || otp.length < OTP_MIN_LENGTH}
                   className="w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50"
                 >
-                  {busy ? 'Verifying…' : 'Join camp'}
+                  {busy ? t('status.verifying') : t('join.submit')}
                 </button>
               </form>
               <button
@@ -255,7 +273,7 @@ export function JoinCamp() {
                 disabled={cooldown > 0}
                 className="w-full text-[12px] text-ink-faint hover:text-forest transition-colors pt-3 disabled:hover:text-ink-faint"
               >
-                {cooldown > 0 ? `Send a new code in ${cooldown}s` : 'Send a new code'}
+                {cooldown > 0 ? t('join.resendIn', { count: cooldown }) : t('join.resend')}
               </button>
             </>
           )}
@@ -268,10 +286,10 @@ export function JoinCamp() {
 const inputClass =
   'w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20';
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[12px] font-medium text-ink mb-1.5">{label}</label>
+      <label htmlFor={htmlFor} className="block text-[12px] font-medium text-ink mb-1.5">{label}</label>
       {children}
     </div>
   );

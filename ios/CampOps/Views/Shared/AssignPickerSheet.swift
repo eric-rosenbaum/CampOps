@@ -32,7 +32,7 @@ struct AssignPickerSheet: View {
                                     Image(systemName: "person.2.fill")
                                         .foregroundStyle(Trade.color(crew.key))
                                     VStack(alignment: .leading, spacing: 1) {
-                                        Text(crew.name).font(.campBody)
+                                        Text(crew.displayName).font(.campBody)
                                         Text("Stays up for grabs")
                                             .font(.campMicro)
                                             .foregroundStyle(Color.forest.opacity(0.5))

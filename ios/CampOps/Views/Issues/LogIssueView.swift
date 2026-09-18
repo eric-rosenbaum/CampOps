@@ -194,7 +194,7 @@ struct LogIssueView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Spacing.sm) {
                         ForEach(campground.trades) { crew in
-                            Button(crew.name) {
+                            Button(crew.displayName) {
                                 Haptics.tap()
                                 focus = nil
                                 vm.tradeChanged(to: crew.key)
@@ -254,7 +254,7 @@ struct LogIssueView: View {
                 if !campground.trades.isEmpty {
                     Section("A crew") {
                         ForEach(campground.trades) { crew in
-                            Button(L10n.tr("%@ crew", crew.name)) { vm.setAssignment(.crew(crew.id)) }
+                            Button(L10n.tr("%@ crew", crew.displayName)) { vm.setAssignment(.crew(crew.id)) }
                         }
                     }
                 }
@@ -285,7 +285,7 @@ struct LogIssueView: View {
         case let .person(id):
             return authManager.members.first { $0.id == id }?.name ?? L10n.tr("Somebody")
         case let .crew(id):
-            return (campground.trades.first { $0.id == id }?.name).map { L10n.tr("%@ crew", $0) } ?? L10n.tr("A crew")
+            return (campground.trades.first { $0.id == id }?.displayName).map { L10n.tr("%@ crew", $0) } ?? L10n.tr("A crew")
         }
     }
 

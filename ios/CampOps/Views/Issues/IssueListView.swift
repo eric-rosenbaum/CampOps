@@ -119,7 +119,7 @@ struct IssueListView: View {
                         }
                         .buttonStyle(.campChip(filled: vm.filterTrade == nil))
                         ForEach(campground.trades) { crew in
-                            Button(crew.name) {
+                            Button(crew.displayName) {
                                 Haptics.tap()
                                 vm.filterTrade = crew.key
                             }

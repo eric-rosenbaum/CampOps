@@ -60,6 +60,21 @@ struct StaffGroup: Codable, Identifiable {
     let issuesSeeUnassigned: Bool
     let canViewCamperHealth: Bool
 
+    /// The crew's name as a reader should see it. A camp's own name is its own words and shows as
+    /// typed, but the five seed crews under their seed names were never the camp's words — they are
+    /// our defaults, so a Spanish reader sees "Mantenimiento" until the camp renames it. Before this
+    /// the phone showed "Housekeeping" in the middle of an otherwise Spanish board. Mirrors
+    /// `seedCrewName` in src/lib/useTrades.ts.
+    var displayName: String {
+        guard let seed = StaffGroup.seedNames[key], seed == name else { return name }
+        return L10n.tr(seed)
+    }
+
+    static let seedNames: [String: String] = [
+        "maintenance": "Maintenance", "housekeeping": "Housekeeping", "grounds": "Grounds",
+        "kitchen": "Kitchen", "it": "Tech",
+    ]
+
     enum CodingKeys: String, CodingKey {
         case id, name, modules, key
         case campId               = "camp_id"

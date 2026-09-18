@@ -18,7 +18,7 @@ enum Trade {
 
     /// The label for a key, from this camp's crews, falling back to a tidied key.
     static func label(_ key: String) -> String {
-        if let crew = AuthManager.shared.crews.first(where: { $0.key == key }) { return crew.name }
+        if let crew = AuthManager.shared.crews.first(where: { $0.key == key }) { return crew.displayName }
         return key.replacingOccurrences(of: "_", with: " ").capitalized
     }
 

@@ -3182,6 +3182,22 @@
         }
       }
     },
+    "Grounds": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terrenos"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שטח"
+          }
+        }
+      }
+    },
     "Guest report": {
       "localizations": {
         "es": {
@@ -3258,6 +3274,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "בית"
+          }
+        }
+      }
+    },
+    "Housekeeping": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limpieza"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ניקיון"
           }
         }
       }
@@ -3434,6 +3466,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "להשאיר את החשבון"
+          }
+        }
+      }
+    },
+    "Kitchen": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cocina"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מטבח"
           }
         }
       }
@@ -3658,6 +3706,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "נרשמה: %@"
+          }
+        }
+      }
+    },
+    "Maintenance": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantenimiento"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אחזקה"
           }
         }
       }
@@ -5765,6 +5829,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "הקשה לעצירה"
+          }
+        }
+      }
+    },
+    "Tech": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tecnología"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "טכנולוגיה"
           }
         }
       }

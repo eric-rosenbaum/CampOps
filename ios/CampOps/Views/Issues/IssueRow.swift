@@ -91,7 +91,7 @@ struct IssueRow: View {
                 } else if let crew = issue.assignedCrew {
                     // Waiting with a crew is not the same as waiting with nobody, and a board
                     // that renders both as "Unassigned" hides who is meant to pick it up.
-                    Label(L10n.tr("With %@", crew.name), systemImage: "person.2")
+                    Label(L10n.tr("With %@", crew.displayName), systemImage: "person.2")
                         .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                 }
                 Spacer()

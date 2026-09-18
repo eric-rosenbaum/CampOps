@@ -18,6 +18,7 @@ struct ScannedTargetSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var isCapturing = false
+    @State private var isLogging = false
     @State private var openIssue: Issue?
     /// The work order just marked done, held for a few seconds so it can be undone.
     @State private var justClosed: Issue?
@@ -71,6 +72,12 @@ struct ScannedTargetSheet: View {
             .navigationDestination(item: $openIssue) { issue in
                 IssueDetailView(issue: issue)
             }
+            .sheet(isPresented: $isLogging) {
+                LogIssueView(
+                    prefillLocationId: target.isAsset ? nil : target.targetId,
+                    prefillAssetId: target.isAsset ? target.targetId : nil
+                )
+            }
             .sheet(isPresented: $isCapturing) {
                 CaptureSheet(
                     locationId: target.isAsset ? nil : target.targetId,
@@ -108,16 +115,24 @@ struct ScannedTargetSheet: View {
     private var actions: some View {
         VStack(spacing: Spacing.sm) {
             if authManager.can.createIssue {
-                // One button. Photo, voice and "just type it" all live behind it, with this
-                // place already filled in whichever way they go.
+                // Both doors, with this place already filled in whichever way they go.
+                Button {
+                    Haptics.tap()
+                    isLogging = true
+                } label: {
+                    Label("Log something here", systemImage: "square.and.pencil")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.campPrimary())
+
                 Button {
                     Haptics.tap()
                     isCapturing = true
                 } label: {
-                    Label("Log something here", systemImage: "plus.circle.fill")
+                    Label("Photo or voice", systemImage: "sparkles")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.campPrimary())
+                .buttonStyle(.campSecondary)
             }
         }
     }

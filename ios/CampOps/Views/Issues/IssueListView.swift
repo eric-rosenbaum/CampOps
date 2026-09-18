@@ -14,6 +14,7 @@ struct IssueListView: View {
     @ObservedObject private var push = PushService.shared
 
     @State private var isCapturing = false
+    @State private var isLogging = false
     @State private var openIssue: Issue?
 
     var body: some View {
@@ -39,11 +40,19 @@ struct IssueListView: View {
                             .accessibilityLabel("Scan a sticker")
                     }
                     if authManager.can.createIssue {
-                        // One way in. The capture sheet holds the photo, the recording and
-                        // "Just type it", so the plain form is a tap inside rather than a
-                        // second button arguing with this one.
-                        Button { isCapturing = true } label: { Image(systemName: "plus") }
-                            .accessibilityLabel("Log work")
+                        // Scan, AI, Log -- in that order, left to right. Three named doors
+                        // rather than one that has to be opened before you can see what is
+                        // behind it: photographing a thing, and typing a line about it, are
+                        // different intentions and both are one tap.
+                        Button { isCapturing = true } label: {
+                            Image(systemName: "sparkles")
+                        }
+                        .accessibilityLabel("Log with a photo or your voice")
+
+                        Button { isLogging = true } label: {
+                            Image(systemName: "square.and.pencil")
+                        }
+                        .accessibilityLabel("Log work")
                     }
                 }
             }
@@ -51,6 +60,7 @@ struct IssueListView: View {
                 IssueDetailView(issue: issue)
             }
             .sheet(isPresented: $isCapturing) { CaptureSheet() }
+            .sheet(isPresented: $isLogging) { LogIssueView() }
             // A tapped notification names a work order: open it, then clear the request.
             .task(id: push.pendingWorkOrderId) {
                 guard let id = push.pendingWorkOrderId else { return }

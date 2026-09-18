@@ -8,6 +8,7 @@ import { useUIStore } from '@/store/uiStore';
 import { CampCommandMark } from '@/components/shared/CampCommandMark';
 import { UnsavedChangesBanner } from '@/components/shared/UnsavedChangesBanner';
 import { useDemoBrief } from '@/lib/useDemoBrief';
+import { useLang } from '@/lib/language';
 
 // Shown when a founder is viewing a camp they don't belong to, or when a trial is counting down.
 function StatusBanners() {
@@ -33,7 +34,7 @@ function StatusBanners() {
         <Clock className="w-3.5 h-3.5" />
         {trialDays >= 0 ? `Demo · ${trialDays} day${trialDays === 1 ? '' : 's'} left` : 'Demo ended'}
         {trialDays >= 0 && hasGuide && (
-          <button onClick={() => navigate('/demo-guide')} className="underline font-semibold hover:text-forest ml-1">
+          <button onClick={() => navigate('/demo-guide')} className="underline font-semibold hover:text-forest ms-1">
             Open the demo guide
           </button>
         )}
@@ -47,7 +48,7 @@ function SyncIndicator() {
   const pendingCount = useIssuesStore((s) => Object.keys(s.pendingIssues).length);
   if (pendingCount === 0) return null;
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-forest/90 px-3 py-1.5 shadow-lg">
+    <div className="fixed bottom-4 end-4 z-50 flex items-center gap-2 rounded-full bg-forest/90 px-3 py-1.5 shadow-lg">
       <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
       <span className="text-[11px] font-medium text-cream">Saving…</span>
     </div>
@@ -84,6 +85,7 @@ export function Layout() {
   const [navOpen, setNavOpen] = useState(false);
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+  const lang = useLang();
 
   // `[` toggles the rail, matching the reference. Ignored while typing so it can't fire from
   // inside a search box or a note field.
@@ -105,7 +107,9 @@ export function Layout() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <StatusBanners />
         <MobileHeader onMenu={() => setNavOpen(true)} />
-        <Outlet />
+        {/* Keyed by language: a switch remounts the page so module-level label maps and
+            memoised strings are all re-read. The sidebar and the data loaders stay mounted. */}
+        <Outlet key={lang} />
       </div>
       <SyncIndicator />
       <UnsavedChangesBanner />

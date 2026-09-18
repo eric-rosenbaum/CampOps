@@ -70,7 +70,7 @@ export function AppHandoff() {
             where you find them.
           </p>
 
-          <ul className="text-left space-y-2.5 mb-7">
+          <ul className="text-start space-y-2.5 mb-7">
             <Benefit icon={Camera} text="Photograph problems on the spot" />
             <Benefit icon={Bell} text="Pick up jobs assigned to you" />
             <Benefit icon={ClipboardCheck} text="Work through opening and closing lists" />

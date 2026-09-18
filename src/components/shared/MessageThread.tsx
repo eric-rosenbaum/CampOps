@@ -68,7 +68,7 @@ export function MessageThread({
 
   return (
     <div className="flex flex-col">
-      <div className="max-h-[22rem] overflow-y-auto pr-1 space-y-2.5">
+      <div className="max-h-[22rem] overflow-y-auto pe-1 space-y-2.5">
         {messages.length === 0 ? (
           <p className="text-[12.5px] text-ink-faint italic py-3">
             {emptyMessage ?? 'No messages yet.'}

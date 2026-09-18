@@ -217,10 +217,10 @@ function ActivitySection({ campId, memberNames }: { campId: string; memberNames:
           <table className="w-full min-w-[520px] text-[13px]">
             <thead>
               <tr className="text-ink-faint text-[11px] uppercase tracking-wide">
-                <th className="text-left font-semibold px-2 py-1.5">When</th>
-                <th className="text-left font-semibold px-2 py-1.5">Who</th>
-                <th className="text-left font-semibold px-2 py-1.5">Action</th>
-                <th className="text-left font-semibold px-2 py-1.5">Area</th>
+                <th className="text-start font-semibold px-2 py-1.5">When</th>
+                <th className="text-start font-semibold px-2 py-1.5">Who</th>
+                <th className="text-start font-semibold px-2 py-1.5">Action</th>
+                <th className="text-start font-semibold px-2 py-1.5">Area</th>
               </tr>
             </thead>
             <tbody>

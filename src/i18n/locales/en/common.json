@@ -1,0 +1,71 @@
+{
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "es": "Español",
+    "he": "עברית"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "done": "Done",
+    "back": "Back",
+    "next": "Next",
+    "retry": "Try again",
+    "search": "Search",
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "signOut": "Sign out",
+    "confirm": "Confirm",
+    "remove": "Remove",
+    "open": "Open",
+    "more": "More",
+    "none": "None",
+    "all": "All",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "status": {
+    "unassigned": "Unassigned",
+    "assigned": "Assigned",
+    "in_progress": "In progress",
+    "waiting_on_vendor": "Waiting on vendor",
+    "waiting_on_part": "Waiting on a part",
+    "resolved": "Done"
+  },
+  "priority": {
+    "urgent": "Urgent",
+    "high": "High",
+    "normal": "Normal"
+  },
+  "source": {
+    "web": "Logged in the app",
+    "ios": "Logged on a phone",
+    "public": "Public report",
+    "qr": "Scanned a sticker",
+    "routine": "Routine",
+    "retreat": "Rental group",
+    "session": "Session turnover",
+    "module": "Flagged by another module"
+  },
+  "cadence": {
+    "daily": "Every day",
+    "weekly": "Every week",
+    "monthly": "Every month",
+    "annually": "Every year",
+    "season_relative": "Relative to opening day",
+    "on_turnover": "On every turnover",
+    "meter": "By hours or miles"
+  },
+  "crew": {
+    "maintenance": "Maintenance",
+    "housekeeping": "Housekeeping",
+    "grounds": "Grounds",
+    "kitchen": "Kitchen",
+    "it": "Tech"
+  }
+}

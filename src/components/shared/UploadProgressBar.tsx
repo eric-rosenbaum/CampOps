@@ -54,7 +54,7 @@ export function UploadProgressBar({ status, fileName }: { status: UploadStatus; 
             </span>
           );
         })}
-        {fileName && <span className="ml-auto text-[10.5px] text-ink-faint truncate max-w-[45%]">{fileName}</span>}
+        {fileName && <span className="ms-auto text-[10.5px] text-ink-faint truncate max-w-[45%]">{fileName}</span>}
       </div>
     </div>
   );

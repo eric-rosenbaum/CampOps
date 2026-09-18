@@ -1,3 +1,5 @@
+import { localizedLabels } from '../i18n';
+
 export type Role = 'doe' | 'facilities_manager' | 'maintenance_staff';
 
 export interface User {
@@ -113,13 +115,7 @@ export type Trade = string;
 /** The seed list, and the fallback when a camp's trades have not loaded yet. */
 export const TRADES: Trade[] = ['maintenance', 'housekeeping', 'grounds', 'kitchen', 'it'];
 
-export const TRADE_LABELS: Record<string, string> = {
-  maintenance: 'Maintenance',
-  housekeeping: 'Housekeeping',
-  grounds: 'Grounds',
-  kitchen: 'Kitchen',
-  it: 'Tech',
-};
+export const TRADE_LABELS: Record<string, string> = localizedLabels('common:crew', TRADES);
 
 export interface CampTrade {
   id: string;
@@ -2204,15 +2200,9 @@ export type Cadence =
   | 'daily' | 'weekly' | 'monthly' | 'annually'
   | 'season_relative' | 'on_turnover' | 'meter';
 
-export const CADENCE_LABELS: Record<Cadence, string> = {
-  daily: 'Every day',
-  weekly: 'Every week',
-  monthly: 'Every month',
-  annually: 'Every year',
-  season_relative: 'Relative to opening day',
-  on_turnover: 'On every turnover',
-  meter: 'By hours or miles',
-};
+export const CADENCE_LABELS: Record<Cadence, string> = localizedLabels('common:cadence', [
+  'daily', 'weekly', 'monthly', 'annually', 'season_relative', 'on_turnover', 'meter',
+]);
 
 /**
  * A routine: recurring work, done properly this time.

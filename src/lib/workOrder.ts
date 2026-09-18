@@ -14,6 +14,7 @@ import type {
   Issue, IssueStatus, Priority, Trade, IssueSource, ActivityEntry, WorkSchedule, Cadence,
 } from './types';
 import { TRADE_LABELS } from './types';
+import { localizedLabels } from '../i18n';
 
 // ─── The queue's vocabulary ───────────────────────────────────────────────────
 
@@ -22,14 +23,9 @@ import { TRADE_LABELS } from './types';
  * render as `in_progress`, which is how a queue stops meaning anything. Both are open but
  * explicitly not being worked — which is the honest state of roughly a third of a camp's list.
  */
-export const STATUS_LABELS: Record<IssueStatus, string> = {
-  unassigned: 'Unassigned',
-  assigned: 'Assigned',
-  in_progress: 'In progress',
-  waiting_on_vendor: 'Waiting on vendor',
-  waiting_on_part: 'Waiting on a part',
-  resolved: 'Done',
-};
+export const STATUS_LABELS: Record<IssueStatus, string> = localizedLabels('common:status', [
+  'unassigned', 'assigned', 'in_progress', 'waiting_on_vendor', 'waiting_on_part', 'resolved',
+]);
 
 /** Everything that is not `resolved`. Named, because "open" is asked for on every surface. */
 export const OPEN_STATUSES: IssueStatus[] = [
@@ -42,16 +38,9 @@ export const isOpen = (i: Issue) => i.status !== 'resolved';
 export const isStalled = (i: Issue) =>
   i.status === 'waiting_on_vendor' || i.status === 'waiting_on_part';
 
-export const SOURCE_LABELS: Record<NonNullable<IssueSource>, string> = {
-  web: 'Logged in the app',
-  ios: 'Logged on a phone',
-  public: 'Public report',
-  qr: 'Scanned a sticker',
-  routine: 'Routine',
-  retreat: 'Rental group',
-  session: 'Session turnover',
-  module: 'Flagged by another module',
-};
+export const SOURCE_LABELS: Record<NonNullable<IssueSource>, string> = localizedLabels('common:source', [
+  'web', 'ios', 'public', 'qr', 'routine', 'retreat', 'session', 'module',
+]);
 
 // ─── Colour ───────────────────────────────────────────────────────────────────
 
@@ -63,11 +52,11 @@ export const SOURCE_LABELS: Record<NonNullable<IssueSource>, string> = {
  * priority keeps the loud half.
  */
 export const TRADE_STRIPE: Record<Trade, string> = {
-  maintenance: 'border-l-forest',
-  housekeeping: 'border-l-blue',
-  grounds: 'border-l-sage',
-  kitchen: 'border-l-amber',
-  it: 'border-l-purple',
+  maintenance: 'border-s-forest',
+  housekeeping: 'border-s-blue',
+  grounds: 'border-s-sage',
+  kitchen: 'border-s-amber',
+  it: 'border-s-purple',
 };
 
 export const TRADE_PILL: Record<Trade, string> = {
@@ -80,12 +69,13 @@ export const TRADE_PILL: Record<Trade, string> = {
 
 export const tradeLabel = (t: Trade) => TRADE_LABELS[t] ?? t;
 
+
 /**
  * A camp-invented trade has no colour of its own, so it gets one from the quiet half of the
  * palette, chosen by its key. Stable across reloads, and never red or amber — those belong to
  * priority and overdue.
  */
-const SPARE_STRIPES = ['border-l-forest', 'border-l-blue', 'border-l-sage', 'border-l-purple'];
+const SPARE_STRIPES = ['border-s-forest', 'border-s-blue', 'border-s-sage', 'border-s-purple'];
 const SPARE_PILLS = [
   'bg-green-muted-bg text-green-muted-text',
   'bg-blue-bg text-blue-text',

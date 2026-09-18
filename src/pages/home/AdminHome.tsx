@@ -182,7 +182,7 @@ function ExpandedPoolCard({ pool, latestReading, recentReadings }: {
     <div className={`bg-white rounded-card border overflow-hidden ${dot === 'red' ? 'border-red/30' : 'border-border'}`}>
       {/* Header */}
       <div className={`flex items-start justify-between px-4 pt-3.5 pb-3 border-b border-border ${dot === 'red' ? 'bg-red-bg/30' : ''}`}>
-        <div className="min-w-0 flex-1 pr-3">
+        <div className="min-w-0 flex-1 pe-3">
           <p className="text-[13px] font-semibold text-forest truncate">{pool.name}</p>
           <p className={`text-[11px] mt-0.5 ${statusCls[dot]}`}>{statusLabel}</p>
         </div>
@@ -195,10 +195,10 @@ function ExpandedPoolCard({ pool, latestReading, recentReadings }: {
           <table className="w-full">
             <thead>
               <tr>
-                <th className="text-left text-[9px] font-semibold text-ink-faint uppercase tracking-wide pb-1.5 pr-2">Chemical</th>
-                <th className="text-right text-[9px] font-semibold text-ink-faint uppercase tracking-wide pb-1.5 pr-2">Reading</th>
-                <th className="text-right text-[9px] font-semibold text-ink-faint uppercase tracking-wide pb-1.5 pr-2">Range</th>
-                <th className="text-right text-[9px] font-semibold text-ink-faint uppercase tracking-wide pb-1.5">Status</th>
+                <th className="text-start text-[9px] font-semibold text-ink-faint uppercase tracking-wide pb-1.5 pe-2">Chemical</th>
+                <th className="text-end text-[9px] font-semibold text-ink-faint uppercase tracking-wide pb-1.5 pe-2">Reading</th>
+                <th className="text-end text-[9px] font-semibold text-ink-faint uppercase tracking-wide pb-1.5 pe-2">Range</th>
+                <th className="text-end text-[9px] font-semibold text-ink-faint uppercase tracking-wide pb-1.5">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -209,14 +209,14 @@ function ExpandedPoolCard({ pool, latestReading, recentReadings }: {
                 const displayed = decimals === 0 ? Math.round(val).toString() : val.toFixed(decimals);
                 return (
                   <tr key={field} className="border-t border-border/50">
-                    <td className="py-1.5 pr-2 text-[11px] text-ink-soft">{range.label}</td>
-                    <td className={`py-1.5 pr-2 text-right font-mono text-[12px] font-semibold ${status === 'alert' ? 'text-red' : status === 'warn' ? 'text-amber' : 'text-forest'}`}>
+                    <td className="py-1.5 pe-2 text-[11px] text-ink-soft">{range.label}</td>
+                    <td className={`py-1.5 pe-2 text-end font-mono text-[12px] font-semibold ${status === 'alert' ? 'text-red' : status === 'warn' ? 'text-amber' : 'text-forest'}`}>
                       {displayed}{range.unit}
                     </td>
-                    <td className="py-1.5 pr-2 text-right text-[10px] text-forest/30">
+                    <td className="py-1.5 pe-2 text-end text-[10px] text-forest/30">
                       {range.min}–{range.max}{range.unit}
                     </td>
-                    <td className="py-1.5 text-right">
+                    <td className="py-1.5 text-end">
                       <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase ${statusPillCls[status]}`}>
                         {status === 'ok' ? 'OK' : status === 'warn' ? 'Warn' : 'Alert'}
                       </span>
@@ -653,7 +653,7 @@ export function AdminHome() {
             <h2 className="text-[15px] font-semibold text-forest">
               Action required
               {deduped.length > 0 && (
-                <span className="ml-2 text-[11px] font-semibold bg-red/10 text-red px-1.5 py-0.5 rounded-full">
+                <span className="ms-2 text-[11px] font-semibold bg-red/10 text-red px-1.5 py-0.5 rounded-full">
                   {deduped.length}
                 </span>
               )}
@@ -953,7 +953,7 @@ export function AdminHome() {
               <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wide mb-3">
                 Currently checked out
                 {checkedOutNow.length > 0 && (
-                  <span className="ml-1.5 font-mono">({checkedOutNow.length})</span>
+                  <span className="ms-1.5 font-mono">({checkedOutNow.length})</span>
                 )}
               </p>
               {checkedOutNow.length === 0 ? (
@@ -967,7 +967,7 @@ export function AdminHome() {
                     style={{ gridTemplateColumns: '1fr 1fr auto' }}>
                     <span>Asset</span>
                     <span>Checked out by</span>
-                    <span className="text-right">Expected return</span>
+                    <span className="text-end">Expected return</span>
                   </div>
                   {checkedOutNow.map(({ asset, checkout }) => {
                     const isOverdue = overdueOuts.some(o => o.checkout.id === checkout.id);
@@ -985,7 +985,7 @@ export function AdminHome() {
                           <p className="text-[10px] text-ink-faint truncate">{asset.category}</p>
                         </div>
                         <p className="text-[11px] text-ink-soft truncate pt-0.5">{checkout.checkedOutBy}</p>
-                        <div className="text-right">
+                        <div className="text-end">
                           {isOverdue ? (
                             <span className="text-[10px] font-semibold text-red bg-red/8 px-1.5 py-0.5 rounded">
                               {daysOver}d overdue

@@ -1,0 +1,71 @@
+{
+  "language": {
+    "label": "שפה",
+    "en": "English",
+    "es": "Español",
+    "he": "עברית"
+  },
+  "actions": {
+    "save": "שמירה",
+    "cancel": "ביטול",
+    "close": "סגירה",
+    "delete": "מחיקה",
+    "edit": "עריכה",
+    "add": "הוספה",
+    "done": "סיום",
+    "back": "חזרה",
+    "next": "הבא",
+    "retry": "לנסות שוב",
+    "search": "חיפוש",
+    "loading": "טוען…",
+    "saving": "שומר…",
+    "signOut": "התנתקות",
+    "confirm": "אישור",
+    "remove": "הסרה",
+    "open": "פתיחה",
+    "more": "עוד",
+    "none": "ללא",
+    "all": "הכול",
+    "yes": "כן",
+    "no": "לא"
+  },
+  "status": {
+    "unassigned": "לא משויך",
+    "assigned": "משויך",
+    "in_progress": "בטיפול",
+    "waiting_on_vendor": "ממתין לספק",
+    "waiting_on_part": "ממתין לחלק",
+    "resolved": "בוצע"
+  },
+  "priority": {
+    "urgent": "דחוף",
+    "high": "גבוה",
+    "normal": "רגיל"
+  },
+  "source": {
+    "web": "נרשם באפליקציה",
+    "ios": "נרשם בטלפון",
+    "public": "דיווח ציבורי",
+    "qr": "סריקת מדבקה",
+    "routine": "שגרה",
+    "retreat": "קבוצת השכרה",
+    "session": "החלפת מחזור",
+    "module": "סומן ממודול אחר"
+  },
+  "cadence": {
+    "daily": "כל יום",
+    "weekly": "כל שבוע",
+    "monthly": "כל חודש",
+    "annually": "כל שנה",
+    "season_relative": "ביחס ליום הפתיחה",
+    "on_turnover": "בכל החלפה",
+    "meter": "לפי שעות או מיילים"
+  },
+  "crew": {
+    "maintenance": "אחזקה",
+    "housekeeping": "ניקיון",
+    "grounds": "שטח",
+    "kitchen": "מטבח",
+    "it": "טכנולוגיה"
+  }
+}

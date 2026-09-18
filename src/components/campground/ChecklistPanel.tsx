@@ -148,7 +148,7 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
           {g.name && (
             <p className="mb-1 text-[11px] font-semibold text-ink-soft">
               {g.name}
-              <span className="ml-1.5 font-normal text-ink-faint">
+              <span className="ms-1.5 font-normal text-ink-faint">
                 {g.items.filter((i) => i.isDone).length} of {g.items.length}
               </span>
             </p>
@@ -264,7 +264,7 @@ function Step({ item, uploading, onToggle, onPhoto, onRemove }: {
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
               title={item.photoUrl ? 'Replace the photo' : 'Add the photo this step asks for'}
-              className={`ml-1.5 inline-flex translate-y-px items-center gap-1 rounded-tag px-1.5 py-px
+              className={`ms-1.5 inline-flex translate-y-px items-center gap-1 rounded-tag px-1.5 py-px
                           align-middle text-[9.5px] font-bold uppercase tracking-[0.08em]
                           transition-colors disabled:opacity-50 ${
                 item.photoUrl

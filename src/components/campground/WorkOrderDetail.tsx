@@ -463,7 +463,7 @@ export function WorkOrderDetail({ issue }: Props) {
             {asset && (
               <button
                 onClick={() => { setActiveAsset(asset.id); navigate('/assets'); }}
-                className="flex w-full items-center gap-2 text-left text-[12.5px] font-semibold text-forest hover:underline"
+                className="flex w-full items-center gap-2 text-start text-[12.5px] font-semibold text-forest hover:underline"
               >
                 <Wrench className="h-3.5 w-3.5 flex-none text-sage" />
                 <span className="truncate">{asset.name}</span>
@@ -474,7 +474,7 @@ export function WorkOrderDetail({ issue }: Props) {
                 <Phone className="h-3.5 w-3.5 flex-none text-sage" />
                 <span className="truncate font-semibold">{vendor.name}</span>
                 {vendor.phone && (
-                  <a href={`tel:${vendor.phone}`} className="ml-auto flex-none tabular-nums text-forest hover:underline">
+                  <a href={`tel:${vendor.phone}`} className="ms-auto flex-none tabular-nums text-forest hover:underline">
                     {vendor.phone}
                   </a>
                 )}
@@ -484,7 +484,7 @@ export function WorkOrderDetail({ issue }: Props) {
               <div className="flex items-center gap-2 text-[12.5px] text-ink">
                 <Repeat className="h-3.5 w-3.5 flex-none text-sage" />
                 <span className="truncate">{schedule.title} · {describeCadence(schedule)}</span>
-                {behind && <span className="ml-auto flex-none font-bold text-red">{behind}</span>}
+                {behind && <span className="ms-auto flex-none font-bold text-red">{behind}</span>}
               </div>
             )}
             {retreat && (

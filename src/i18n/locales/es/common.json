@@ -1,0 +1,71 @@
+{
+  "language": {
+    "label": "Idioma",
+    "en": "English",
+    "es": "Español",
+    "he": "עברית"
+  },
+  "actions": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Agregar",
+    "done": "Listo",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "retry": "Intentar de nuevo",
+    "search": "Buscar",
+    "loading": "Cargando…",
+    "saving": "Guardando…",
+    "signOut": "Cerrar sesión",
+    "confirm": "Confirmar",
+    "remove": "Quitar",
+    "open": "Abrir",
+    "more": "Más",
+    "none": "Ninguno",
+    "all": "Todos",
+    "yes": "Sí",
+    "no": "No"
+  },
+  "status": {
+    "unassigned": "Sin asignar",
+    "assigned": "Asignado",
+    "in_progress": "En curso",
+    "waiting_on_vendor": "Esperando al proveedor",
+    "waiting_on_part": "Esperando una pieza",
+    "resolved": "Hecho"
+  },
+  "priority": {
+    "urgent": "Urgente",
+    "high": "Alta",
+    "normal": "Normal"
+  },
+  "source": {
+    "web": "Registrado en la app",
+    "ios": "Registrado en un teléfono",
+    "public": "Reporte público",
+    "qr": "Escaneó una etiqueta",
+    "routine": "Rutina",
+    "retreat": "Grupo de alquiler",
+    "session": "Cambio de sesión",
+    "module": "Marcado desde otro módulo"
+  },
+  "cadence": {
+    "daily": "Cada día",
+    "weekly": "Cada semana",
+    "monthly": "Cada mes",
+    "annually": "Cada año",
+    "season_relative": "Según el día de apertura",
+    "on_turnover": "En cada cambio",
+    "meter": "Por horas o millas"
+  },
+  "crew": {
+    "maintenance": "Mantenimiento",
+    "housekeeping": "Limpieza",
+    "grounds": "Terrenos",
+    "kitchen": "Cocina",
+    "it": "Tecnología"
+  }
+}

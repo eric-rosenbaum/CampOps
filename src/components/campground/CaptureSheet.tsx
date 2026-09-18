@@ -284,7 +284,7 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
               {!reading && (
                 <button
                   onClick={() => { setPhotoPreview(null); setPhotoBase64(null); setPhotoFile(null); }}
-                  className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full
+                  className="absolute end-2 top-2 grid h-6 w-6 place-items-center rounded-full
                              bg-black/50 text-white transition-colors hover:bg-black/70"
                   title="Remove this photo"
                 >

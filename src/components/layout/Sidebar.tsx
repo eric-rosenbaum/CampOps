@@ -24,22 +24,22 @@ type LucideIcon = React.ComponentType<{ className?: string }>;
 function navClass(isActive: boolean, collapsed: boolean): string {
   const base = collapsed
     ? 'group relative flex items-center justify-center mx-2 mb-0.5 py-2 rounded-btn transition-colors'
-    : 'group relative flex items-center gap-2.5 py-[7px] pr-2 mb-px text-[14px] transition-colors border-l-[3px]';
+    : 'group relative flex items-center gap-2.5 py-[7px] pe-2 mb-px text-[14px] transition-colors border-s-[3px]';
   if (isActive) {
     return collapsed
       ? `${base} bg-cream text-forest`
-      : `${base} bg-cream text-forest border-red font-bold pl-[15px]`;
+      : `${base} bg-cream text-forest border-red font-bold ps-[15px]`;
   }
   return collapsed
     ? `${base} text-side hover:bg-white/[0.07] hover:text-side-strong`
-    : `${base} text-side border-transparent pl-[15px] hover:bg-white/[0.07] hover:text-side-strong`;
+    : `${base} text-side border-transparent ps-[15px] hover:bg-white/[0.07] hover:text-side-strong`;
 }
 
 /** Tooltip shown only in rail mode, where the label is hidden. */
 function RailTip({ label }: { label: string }) {
   return (
     <span
-      className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-20 hidden -translate-y-1/2
+      className="pointer-events-none absolute start-[calc(100%+10px)] top-1/2 z-20 hidden -translate-y-1/2
                  whitespace-nowrap rounded-md border border-white/15 bg-[#14211B] px-2.5 py-1.5
                  text-[12px] font-semibold text-cream opacity-0 shadow-lg transition-opacity
                  group-hover:opacity-100 lg:block"
@@ -203,7 +203,7 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
           `lg:sticky` are both positioned, which is all the contours layer inside needs. */}
       <aside
         className={`h-screen bg-forest flex flex-col flex-shrink-0 overflow-hidden
-          fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out
+          fixed inset-y-0 start-0 z-50 transition-transform duration-200 ease-out
           w-sidebar min-w-sidebar
           ${open ? 'translate-x-0' : '-translate-x-full'}
           lg:sticky lg:top-0 lg:z-auto lg:translate-x-0

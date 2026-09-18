@@ -81,8 +81,8 @@ export function WorkOrderCard({ issue, selected, onClick, today, onTakeIt }: Pro
     <div
       onClick={onClick}
       aria-current={selected || undefined}
-      className={`mb-2 flex w-full items-center gap-3 sm:gap-4 rounded-card border border-l-4 bg-white
-                  px-3 py-3 sm:px-4 sm:py-4 text-left cursor-pointer
+      className={`mb-2 flex w-full items-center gap-3 sm:gap-4 rounded-card border border-s-4 bg-white
+                  px-3 py-3 sm:px-4 sm:py-4 text-start cursor-pointer
                   transition-[box-shadow,transform,border-color] duration-150
                   hover:-translate-y-px hover:shadow-[0_3px_0_rgba(35,32,27,0.07)]
                   ${tradeStripe(issue.trade)}
@@ -143,7 +143,7 @@ export function WorkOrderCard({ issue, selected, onClick, today, onTakeIt }: Pro
         )}
       </div>
 
-      <div className="flex-none text-right">
+      <div className="flex-none text-end">
         {assigneeName ? (
           <div className="flex items-center justify-end gap-1.5">
             <Avatar name={assigneeName} size={20} />

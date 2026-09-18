@@ -244,7 +244,7 @@ export function SeasonReview() {
             onChange={(e) => setOverride({ ...period, scope: 'custom', to: e.target.value })}
           />
         </div>
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 ms-auto">
           <Button variant="ghost" onClick={() => window.print()}>
             <Printer className="w-3.5 h-3.5" aria-hidden="true" /> Print
           </Button>
@@ -309,7 +309,7 @@ export function SeasonReview() {
                     saved {localDay(sn.taken_at)}
                     {sn.taken_by ? ` by ${sn.taken_by}` : ''}
                   </span>
-                  <span className="ml-auto flex items-center gap-1">
+                  <span className="ms-auto flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => setViewingId(on ? null : sn.id)}
@@ -423,8 +423,8 @@ function Scroller({ children }: { children: React.ReactNode }) {
   return <div className="overflow-x-auto">{children}</div>;
 }
 
-const th = 'text-left text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft pb-2 pr-4 whitespace-nowrap';
-const td = 'text-[12.5px] text-ink py-2 pr-4 border-t border-border align-top';
+const th = 'text-start text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft pb-2 pe-4 whitespace-nowrap';
+const td = 'text-[12.5px] text-ink py-2 pe-4 border-t border-border align-top';
 
 // ─── 1 · Volume & flow ────────────────────────────────────────────────────────
 

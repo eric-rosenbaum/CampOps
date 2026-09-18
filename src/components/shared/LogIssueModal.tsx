@@ -341,7 +341,7 @@ export function LogIssueModal() {
               type="button"
               onClick={() => setCaptureOpen(true)}
               className="mb-1.5 flex w-full items-center gap-2 rounded-card border border-dashed
-                         border-sage/60 bg-sage-pale/40 px-3 py-2.5 text-left transition-colors
+                         border-sage/60 bg-sage-pale/40 px-3 py-2.5 text-start transition-colors
                          hover:border-sage"
             >
               <Sparkles className="h-4 w-4 flex-none text-sage" />
@@ -362,7 +362,7 @@ export function LogIssueModal() {
                 <button
                   type="button"
                   onClick={handleRemovePhoto}
-                  className="absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                  className="absolute top-2 end-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>

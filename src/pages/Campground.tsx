@@ -513,7 +513,7 @@ export function Campground() {
                   </button>
                 )}
 
-                <div className="ml-auto">
+                <div className="ms-auto">
                   <SearchInput value={search} onChange={setSearch} placeholder="Search work…" />
                 </div>
               </div>
@@ -647,7 +647,7 @@ export function Campground() {
           {/* A fixed column beside the list on desktop; on a phone there isn't room for both,
               so it becomes a full-screen layer over the list once something is selected. */}
           <div
-            className={`flex-col overflow-hidden border-l border-border bg-white
+            className={`flex-col overflow-hidden border-s border-border bg-white
               lg:static lg:z-auto lg:flex lg:w-detail lg:min-w-detail
               ${selectedIssue && mobileDetailOpen ? 'fixed inset-0 z-40 flex w-full' : 'hidden'}`}
           >

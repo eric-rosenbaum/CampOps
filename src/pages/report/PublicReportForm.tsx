@@ -501,7 +501,7 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
                     type="button"
                     onClick={handleRemovePhoto}
                     disabled={pageState === 'submitting'}
-                    className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                    className="absolute top-2.5 end-2.5 w-7 h-7 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>

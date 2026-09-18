@@ -75,7 +75,7 @@ export function LocationPicker({ value, onChange, multiple = true, filter, place
         <button
           type="button"
           onClick={() => toggle(l.id)}
-          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-btn text-left text-[13px] hover:bg-cream/60 transition-colors ${isSel ? 'text-forest font-medium' : 'text-forest/75'}`}
+          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-btn text-start text-[13px] hover:bg-cream/60 transition-colors ${isSel ? 'text-forest font-medium' : 'text-forest/75'}`}
           style={{ paddingLeft: `${8 + depth * 16}px` }}
         >
           <span className={`w-4 h-4 rounded ${multiple ? '' : 'rounded-full'} border flex items-center justify-center flex-shrink-0 ${isSel ? 'bg-sage border-sage text-white' : 'border-border'}`}>
@@ -97,7 +97,7 @@ export function LocationPicker({ value, onChange, multiple = true, filter, place
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-2 text-body bg-white border border-border rounded-btn px-3 py-2 text-left focus:outline-none focus:border-sage"
+        className="w-full flex items-center gap-2 text-body bg-white border border-border rounded-btn px-3 py-2 text-start focus:outline-none focus:border-sage"
       >
         <MapPin className="w-4 h-4 text-ink-faint flex-shrink-0" />
         <span className={`flex-1 truncate ${selected.length ? 'text-forest' : 'text-ink-faint'}`}>{label}</span>
@@ -108,7 +108,7 @@ export function LocationPicker({ value, onChange, multiple = true, filter, place
       {multiple && selected.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-2">
           {selected.map((l) => (
-            <span key={l.id} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-tag bg-sage-pale text-forest text-[12px]">
+            <span key={l.id} className="inline-flex items-center gap-1 ps-2 pe-1 py-0.5 rounded-tag bg-sage-pale text-forest text-[12px]">
               {fullPath(l)}
               <button type="button" onClick={() => toggle(l.id)} className="text-ink-soft hover:text-forest"><X className="w-3 h-3" /></button>
             </span>
@@ -138,7 +138,7 @@ export function LocationPicker({ value, onChange, multiple = true, filter, place
                     const isSel = value.includes(l.id);
                     return (
                       <button key={l.id} type="button" onClick={() => toggle(l.id)}
-                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-[13px] hover:bg-cream/60 ${isSel ? 'text-forest font-medium' : 'text-forest/75'}`}>
+                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-start text-[13px] hover:bg-cream/60 ${isSel ? 'text-forest font-medium' : 'text-forest/75'}`}>
                         <span className={`w-4 h-4 rounded ${multiple ? '' : 'rounded-full'} border flex items-center justify-center flex-shrink-0 ${isSel ? 'bg-sage border-sage text-white' : 'border-border'}`}>{isSel && <Check className="w-3 h-3" />}</span>
                         <span className="flex-1 truncate">{fullPath(l)}</span>
                       </button>

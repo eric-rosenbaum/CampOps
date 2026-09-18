@@ -297,14 +297,14 @@ export function CommentComposer({ issue }: Props) {
 
         {/* The people picker. Above the box, because the box sits at the bottom of a thread. */}
         {query && candidates.length > 0 && (
-          <ul className="absolute bottom-full left-0 z-20 mb-1 w-72 overflow-hidden rounded-card
+          <ul className="absolute bottom-full start-0 z-20 mb-1 w-72 overflow-hidden rounded-card
                          border border-border bg-white shadow-lg">
             {candidates.map((m, i) => (
               <li key={m.userId}>
                 <button
                   onMouseDown={(e) => { e.preventDefault(); choose(m); }}
                   onMouseEnter={() => setHighlight(i)}
-                  className={`block w-full px-3 py-1.5 text-left ${
+                  className={`block w-full px-3 py-1.5 text-start ${
                     i === highlight ? 'bg-forest/8' : 'hover:bg-cream'
                   }`}
                 >
@@ -339,7 +339,7 @@ export function CommentComposer({ issue }: Props) {
               <button
                 onClick={() => removeAt(i)}
                 title="Remove this photo"
-                className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full
+                className="absolute -end-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full
                            bg-black/55 text-white transition-colors hover:bg-black/75"
               >
                 <X className="h-3 w-3" />
@@ -378,7 +378,7 @@ export function CommentComposer({ issue }: Props) {
         {canReachReporter ? (
           // Two buttons, no pre-selected answer. Whoever is typing says who it is for, every
           // time, and the words on the button are the whole explanation.
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ms-auto flex items-center gap-2">
             <button
               onClick={() => void handleSend(false)}
               disabled={sending || (!body.trim() && files.length === 0)}
@@ -406,7 +406,7 @@ export function CommentComposer({ issue }: Props) {
           <button
             onClick={() => void handleSend(false)}
             disabled={sending || (!body.trim() && files.length === 0)}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-btn bg-forest px-3 py-1.5
+            className="ms-auto inline-flex items-center gap-1.5 rounded-btn bg-forest px-3 py-1.5
                        text-[12.5px] font-bold text-paper transition-colors hover:bg-forest-mid
                        disabled:opacity-50"
           >

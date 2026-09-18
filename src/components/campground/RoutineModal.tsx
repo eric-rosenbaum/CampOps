@@ -692,7 +692,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
           </Button>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           {!isNew && (
-            <div className="ml-auto">
+            <div className="ms-auto">
               {confirmDelete ? (
                 <div className="flex items-center gap-2">
                   <span className="text-[12px] text-ink-soft">Delete it?</span>

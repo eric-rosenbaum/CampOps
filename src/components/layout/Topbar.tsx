@@ -58,7 +58,7 @@ export function Topbar({ title, subtitle, actions, flush = false }: Props) {
           </p>
         )}
       </div>
-      <div className="ml-auto flex items-center gap-2 sm:gap-3 flex-shrink-0">
+      <div className="ms-auto flex items-center gap-2 sm:gap-3 flex-shrink-0">
         {actions}
         <div className="flex items-center gap-2">
           <div className="grid h-[30px] w-[30px] flex-shrink-0 place-items-center rounded-full bg-sage text-[11px] font-bold text-paper-raised">

@@ -100,7 +100,7 @@ export function ChecklistTemplatesPanel() {
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {items.map((t) => {
                   const photos = t.items.filter((i) => i.requiresPhoto).length;
-                  const shell = `w-full text-left block rounded-card border border-border bg-white px-4 py-3.5 transition-colors ${
+                  const shell = `w-full text-start block rounded-card border border-border bg-white px-4 py-3.5 transition-colors ${
                     canEdit ? 'cursor-pointer hover:border-sage' : ''
                   } ${t.isActive ? '' : 'opacity-60'}`;
                   const body = (
@@ -250,7 +250,7 @@ function TemplateModal({ template, onClose }: {
               {draft.items.map((item, i) => (
                 <li key={i} className="rounded-card border border-border bg-cream px-3 py-2.5">
                   <div className="flex items-start gap-2">
-                    <span className="font-mono text-[11px] text-ink-faint pt-2.5 w-5 flex-shrink-0 text-right">
+                    <span className="font-mono text-[11px] text-ink-faint pt-2.5 w-5 flex-shrink-0 text-end">
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0 space-y-2">
@@ -355,7 +355,7 @@ function TemplateModal({ template, onClose }: {
           </Button>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           {!isNew && (
-            <div className="ml-auto">
+            <div className="ms-auto">
               {confirmDelete ? (
                 <div className="flex items-center gap-2">
                   <span className="text-[12px] text-ink-soft">Delete it?</span>

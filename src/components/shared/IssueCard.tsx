@@ -13,9 +13,9 @@ interface Props {
 
 /** The left edge carries priority, so urgency is readable down the gutter of the whole list. */
 const priorityEdge: Record<string, string> = {
-  urgent: 'border-l-red',
-  high: 'border-l-amber',
-  normal: 'border-l-sage',
+  urgent: 'border-s-red',
+  high: 'border-s-amber',
+  normal: 'border-s-sage',
 };
 
 const priorityWord: Record<string, string> = {
@@ -43,7 +43,7 @@ export function IssueCard({ issue, selected, onClick, compact = false, onTakeIt 
     <div
       onClick={onClick}
       aria-current={selected || undefined}
-      className={`mb-2 flex w-full items-center gap-4 rounded-card border border-l-4 bg-white text-left
+      className={`mb-2 flex w-full items-center gap-4 rounded-card border border-s-4 bg-white text-start
                   transition-[box-shadow,transform,border-color] duration-150 cursor-pointer
                   hover:-translate-y-px hover:shadow-[0_3px_0_rgba(35,32,27,0.07)]
                   ${priorityEdge[issue.priority]}
@@ -72,7 +72,7 @@ export function IssueCard({ issue, selected, onClick, compact = false, onTakeIt 
         </div>
       </div>
 
-      <div className="flex-none text-right">
+      <div className="flex-none text-end">
         {assigneeName ? (
           <p className="text-[12.5px] font-bold text-forest">{assigneeName.trim().split(/\s+/)[0]}</p>
         ) : (

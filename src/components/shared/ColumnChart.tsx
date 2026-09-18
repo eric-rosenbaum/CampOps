@@ -159,7 +159,7 @@ export function ColumnChart({ data, series, formatValue, height = 180, emptyMess
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 mt-2 pl-[52px]">
+      <div className="flex flex-wrap items-center gap-4 mt-2 ps-[52px]">
         {series.map((s) => (
           <span key={s.label} className="inline-flex items-center gap-1.5 text-[11px] text-ink-soft">
             <span className="w-2.5 h-2.5 rounded-[2px] flex-shrink-0" style={{ backgroundColor: s.color }} />

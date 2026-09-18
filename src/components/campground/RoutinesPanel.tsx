@@ -164,7 +164,7 @@ export function RoutinesPanel() {
               </p>
             </div>
           </div>
-          <ul className="mt-3.5 space-y-2 pl-8">
+          <ul className="mt-3.5 space-y-2 ps-8">
             {behind.map((s) => {
               const openTitle = openByScheduleId.get(s.id);
               return (
@@ -172,7 +172,7 @@ export function RoutinesPanel() {
                   <button
                     type="button"
                     onClick={() => canEdit && setEditing(s)}
-                    className="text-left font-semibold text-red-text underline underline-offset-2 cursor-pointer hover:text-red"
+                    className="text-start font-semibold text-red-text underline underline-offset-2 cursor-pointer hover:text-red"
                   >
                     {s.title}
                   </button>
@@ -263,7 +263,7 @@ function RoutineRow({
   const runsYearRound = s.isActive && !s.activeUntil
     && (s.cadence === 'daily' || s.cadence === 'weekly');
 
-  const shellClass = `w-full text-left block rounded-card border border-border bg-white px-4 py-3.5 transition-colors ${
+  const shellClass = `w-full text-start block rounded-card border border-border bg-white px-4 py-3.5 transition-colors ${
     onOpen ? 'cursor-pointer hover:border-sage' : ''
   } ${s.isActive ? '' : 'opacity-60'}`;
 
@@ -310,7 +310,7 @@ function RoutineRow({
             </div>
           </div>
 
-          <div className="text-right flex-shrink-0">
+          <div className="text-end flex-shrink-0">
             {missed ? (
               <span className="inline-flex items-center gap-1 rounded-tag bg-red-bg px-2 py-0.5 text-[11px] font-bold text-red">
                 {missed}
@@ -395,7 +395,7 @@ function MeterEntry({ schedule: s }: { schedule: WorkSchedule }) {
   }
 
   return (
-    <div className="mt-1.5 ml-4 flex flex-wrap items-center gap-2">
+    <div className="mt-1.5 ms-4 flex flex-wrap items-center gap-2">
       <label className="text-[11.5px] text-ink-soft" htmlFor={`meter-${s.id}`}>
         {s.meterLastAt != null
           ? `Last counted at ${s.meterLastAt.toLocaleString()} ${unit}. New reading:`

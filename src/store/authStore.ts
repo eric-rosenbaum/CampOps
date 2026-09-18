@@ -1,3 +1,4 @@
+import { isLang, type Lang } from '@/i18n';
 import { create } from 'zustand';
 import { supabase, clearStoredAuthSession } from '@/lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
@@ -7,6 +8,8 @@ export interface Profile {
   id: string;
   fullName: string;
   avatarUrl: string | null;
+  /** The interface language this person chose. Null = never chosen; the device's is used. */
+  preferredLanguage: Lang | null;
 }
 
 /**
@@ -277,7 +280,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data } = await supabase
     .from('profiles')
-    .select('id, full_name, avatar_url')
+    .select('id, full_name, avatar_url, preferred_language')
     .eq('id', userId)
     .single();
   if (!data) return null;
@@ -285,5 +288,6 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
     id: data.id,
     fullName: data.full_name,
     avatarUrl: data.avatar_url ?? null,
+    preferredLanguage: isLang(data.preferred_language) ? data.preferred_language : null,
   };
 }

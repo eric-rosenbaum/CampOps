@@ -210,7 +210,7 @@ function VendorRow({ vendor: v, openCount, onOpen }: {
     </>
   );
 
-  const shell = `w-full text-left block rounded-card border border-border bg-white px-4 py-3.5 transition-colors ${
+  const shell = `w-full text-start block rounded-card border border-border bg-white px-4 py-3.5 transition-colors ${
     onOpen ? 'cursor-pointer hover:border-sage' : ''
   } ${v.isActive ? '' : 'opacity-60'}`;
 
@@ -369,7 +369,7 @@ function VendorModal({ vendor, openCount, onClose }: {
           </Button>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           {!isNew && (
-            <div className="ml-auto">
+            <div className="ms-auto">
               {confirmDelete ? (
                 <div className="flex items-center gap-2">
                   <span className="text-[12px] text-ink-soft">

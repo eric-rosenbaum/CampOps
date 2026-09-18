@@ -247,14 +247,14 @@ export function PropertyCalendar() {
             {/* Header: months, then week ticks */}
             <div className="flex bg-cream border-b border-border">
               <div
-                className="sticky left-0 z-20 bg-cream flex-shrink-0 border-r border-border"
+                className="sticky start-0 z-20 bg-cream flex-shrink-0 border-e border-border"
                 style={{ width: LABEL_W }}
               />
               <div className="relative flex-shrink-0" style={{ width: trackW, height: 40 }}>
                 {months.map((m) => (
                   <div
                     key={`${m.label}-${m.index}`}
-                    className="absolute top-0 h-5 flex items-center border-l border-border px-1.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-forest whitespace-nowrap overflow-hidden"
+                    className="absolute top-0 h-5 flex items-center border-s border-border px-1.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-forest whitespace-nowrap overflow-hidden"
                     style={{ left: m.index * DAY_W, width: m.span * DAY_W }}
                   >
                     {m.label}
@@ -263,7 +263,7 @@ export function PropertyCalendar() {
                 {weekTicks.map((w) => (
                   <div
                     key={w.index}
-                    className="absolute top-5 h-5 flex items-center border-l border-border pl-1 text-[9.5px] text-ink-soft whitespace-nowrap overflow-hidden"
+                    className="absolute top-5 h-5 flex items-center border-s border-border ps-1 text-[9.5px] text-ink-soft whitespace-nowrap overflow-hidden"
                     style={{ left: w.index * DAY_W, width: 7 * DAY_W }}
                   >
                     {w.label}
@@ -412,7 +412,7 @@ function GroupLabel({ label, count }: { label: string; count: number }) {
   return (
     <div className="flex border-t border-border bg-cream">
       <div
-        className="sticky left-0 z-20 bg-cream flex-shrink-0 px-3 py-1.5 border-r border-border text-[10px] font-bold uppercase tracking-[0.12em] text-forest"
+        className="sticky start-0 z-20 bg-cream flex-shrink-0 px-3 py-1.5 border-e border-border text-[10px] font-bold uppercase tracking-[0.12em] text-forest"
         style={{ width: LABEL_W }}
       >
         {label}
@@ -426,7 +426,7 @@ function EmptyRow({ text }: { text: string }) {
   return (
     <div className="flex border-t border-border">
       <div
-        className="sticky left-0 z-10 bg-white flex-shrink-0 px-3 py-1.5 border-r border-border text-[11.5px] text-ink-faint italic"
+        className="sticky start-0 z-10 bg-white flex-shrink-0 px-3 py-1.5 border-e border-border text-[11.5px] text-ink-faint italic"
         style={{ width: LABEL_W }}
       >
         {text}
@@ -451,7 +451,7 @@ function Row({
   return (
     <div className="flex border-t border-border">
       <div
-        className={`sticky left-0 z-10 bg-white flex-shrink-0 px-3 border-r border-border flex items-center text-[11.5px] text-ink truncate ${labelClassName}`}
+        className={`sticky start-0 z-10 bg-white flex-shrink-0 px-3 border-e border-border flex items-center text-[11.5px] text-ink truncate ${labelClassName}`}
         style={{ width: LABEL_W, height: ROW_H }}
         title={label}
       >
@@ -462,7 +462,7 @@ function Row({
         {weekTicks.map((w) => (
           <div
             key={w.index}
-            className="absolute top-0 bottom-0 border-l border-border/60"
+            className="absolute top-0 bottom-0 border-s border-border/60"
             style={{ left: w.index * DAY_W }}
             aria-hidden="true"
           />

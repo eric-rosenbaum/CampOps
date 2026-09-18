@@ -23,7 +23,7 @@ export function UnsavedChangesBanner() {
   return (
     <div
       role="alert"
-      className="fixed bottom-4 right-4 z-[60] w-[min(24rem,calc(100vw-2rem))] rounded-card
+      className="fixed bottom-4 end-4 z-[60] w-[min(24rem,calc(100vw-2rem))] rounded-card
                  border border-red bg-red-bg p-4 shadow-lg"
     >
       <div className="flex items-start gap-2.5">

@@ -159,7 +159,7 @@ function Message({ comment, mine, canReachReporter, onDelete, onShare }: {
             <button
               onClick={onDelete}
               title="Delete this message"
-              className="ml-auto flex-none text-ink-faint opacity-0 transition-opacity
+              className="ms-auto flex-none text-ink-faint opacity-0 transition-opacity
                          hover:text-red group-hover:opacity-100 focus:opacity-100"
             >
               <Trash2 className="h-3.5 w-3.5" />

@@ -87,6 +87,7 @@ import { loadCompliance } from '@/lib/complianceDb';
 import { useComplianceStore } from '@/store/complianceStore';
 import { MARKETING_HOSTS, APP_HOST } from '@/lib/env';
 import { EnvironmentBanner } from '@/components/shared/EnvironmentBanner';
+import { LanguageSync } from '@/lib/language';
 import { ModuleLoading } from '@/components/shared/ModuleLoading';
 import { campLog } from '@/lib/campLog';
 import { useIssuesStore, startIssueWriteQueue } from '@/store/issuesStore';
@@ -167,12 +168,25 @@ const COMMISSARY_DOMAINS = [
  * It waits for the camp to load first. Redirecting during the blank moment before
  * `currentCamp` arrives would bounce every deep link on a cold refresh.
  */
+/**
+ * Modules whose screens have been translated. The rest still read in English, and in a
+ * right-to-left language they are held left-to-right: English sentences laid out mirrored are
+ * harder to read than English sentences, and those pages were never checked mirrored.
+ */
+const TRANSLATED_MODULES: ReadonlySet<ModuleKey> = new Set<ModuleKey>(['issues', 'tasks']);
+
 function ModuleRoute({ of, children }: { of: ModuleKey; children: React.ReactNode }) {
   const { currentCamp } = useCamp();
   const allowed = useModules().enabled(of);
   if (!currentCamp) return null;
   if (!allowed) return <Navigate to="/home" replace />;
+  if (!TRANSLATED_MODULES.has(of)) return <Untranslated>{children}</Untranslated>;
   return <>{children}</>;
+}
+
+/** A screen that has not been translated yet: English, laid out left-to-right. */
+function Untranslated({ children }: { children: React.ReactNode }) {
+  return <div dir="ltr" lang="en" className="contents">{children}</div>;
 }
 
 function Gate({ of, label, children }: { of: string[]; label: string; children: React.ReactNode }) {
@@ -617,6 +631,7 @@ export default function App() {
       <AppBootstrap>
         <HostGuard />
         <EnvironmentBanner />
+        <LanguageSync />
         <Routes>
           {/* Public */}
           <Route path="/" element={<LandingOrHome />} />
@@ -665,13 +680,13 @@ export default function App() {
 
             {/* Founder super-admin only: the admin console + direct camp setup */}
             <Route element={<PlatformAdminRoute />}>
-              <Route path="/admin" element={<AdminConsole />} />
-              <Route path="/setup" element={<CampSetup />} />
+              <Route path="/admin" element={<Untranslated><AdminConsole /></Untranslated>} />
+              <Route path="/setup" element={<Untranslated><CampSetup /></Untranslated>} />
             </Route>
 
             {/* Authenticated + camp required, full-screen */}
             <Route element={<CampRoute />}>
-              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/onboarding" element={<Untranslated><Onboarding /></Untranslated>} />
             </Route>
 
             {/* Authenticated + camp required */}
@@ -683,7 +698,7 @@ export default function App() {
                     order. See <Gate> for why an empty state is the wrong thing to show. */}
                 <Route path="/home" element={<HomeEntry />} />
                 <Route path="/my-tasks" element={<ModuleRoute of="tasks"><Gate of={['tasks']} label="Loading your tasks"><MyTasks /></Gate></ModuleRoute>} />
-                <Route path="/demo-guide" element={<DemoGuide />} />
+                <Route path="/demo-guide" element={<Untranslated><DemoGuide /></Untranslated>} />
                 <Route
                   path="/campground"
                   element={(
@@ -727,10 +742,10 @@ export default function App() {
                 <Route path="/trips" element={<ModuleRoute of="trips"><Gate of={['trips']} label="Opening town trips"><Trips /></Gate></ModuleRoute>} />
                 <Route path="/receipts" element={<ModuleRoute of="receipts"><Gate of={['receipts']} label="Opening receipts"><Receipts /></Gate></ModuleRoute>} />
                 <Route path="/receipts/reconcile" element={<ModuleRoute of="receipts"><Gate of={['receipts']} label="Opening receipts"><Receipts /></Gate></ModuleRoute>} />
-                <Route path="/settings" element={<CampSettings />} />
-                <Route path="/settings/team" element={<Team />} />
+                <Route path="/settings" element={<Untranslated><CampSettings /></Untranslated>} />
+                <Route path="/settings/team" element={<Untranslated><Team /></Untranslated>} />
                 {/* Staff is a Camp Info tab now; this path deep-links straight to it. */}
-                <Route path="/settings/staff" element={<CampSettings />} />
+                <Route path="/settings/staff" element={<Untranslated><CampSettings /></Untranslated>} />
                 <Route path="/settings/security" element={<SecuritySettings />} />
               </Route>
             </Route>

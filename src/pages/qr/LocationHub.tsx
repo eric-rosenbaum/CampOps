@@ -258,7 +258,7 @@ function Hub({
                 <div className="flex items-stretch">
                   <button
                     onClick={() => openEditIssueModal(issue.id)}
-                    className="min-w-0 flex-1 px-4 py-3.5 text-left hover:bg-paper"
+                    className="min-w-0 flex-1 px-4 py-3.5 text-start hover:bg-paper"
                   >
                     <p className="text-[15px] font-bold leading-snug text-ink">{issue.title}</p>
                     <p className="mt-0.5 text-[12px] text-ink-faint">
@@ -273,7 +273,7 @@ function Hub({
                       onClick={() => markDone(issue)}
                       // 56px of thumb. Anything smaller is a mis-tap in sunlight with gloves on.
                       className="flex w-[84px] flex-none flex-col items-center justify-center gap-0.5
-                                 border-l border-border/60 bg-white text-forest
+                                 border-s border-border/60 bg-white text-forest
                                  hover:bg-green-muted-bg active:bg-sage-pale"
                       aria-label={`Mark "${issue.title}" done`}
                     >
@@ -370,7 +370,7 @@ function Hub({
           ) : (
             <button
               onClick={() => setLogOpen(true)}
-              className="flex w-full items-center gap-2.5 px-4 py-4 text-left text-[15px] font-bold text-forest hover:bg-paper"
+              className="flex w-full items-center gap-2.5 px-4 py-4 text-start text-[15px] font-bold text-forest hover:bg-paper"
             >
               <Plus className="h-5 w-5 flex-none" />
               Something's wrong here
@@ -572,7 +572,7 @@ function ServicePanel({ location }: { location: CampLocation }) {
       ) : isDown ? (
         <button
           onClick={() => apply('in_service')}
-          className="flex w-full items-center gap-2.5 px-4 py-4 text-left text-[15px] font-bold text-forest hover:bg-paper"
+          className="flex w-full items-center gap-2.5 px-4 py-4 text-start text-[15px] font-bold text-forest hover:bg-paper"
         >
           <Check className="h-5 w-5 flex-none" />
           Put back in service
@@ -580,7 +580,7 @@ function ServicePanel({ location }: { location: CampLocation }) {
       ) : (
         <button
           onClick={() => { setStatus('out_of_service'); setEditing(true); }}
-          className="flex w-full items-center gap-2.5 px-4 py-4 text-left text-[15px] font-bold text-ink hover:bg-paper"
+          className="flex w-full items-center gap-2.5 px-4 py-4 text-start text-[15px] font-bold text-ink hover:bg-paper"
         >
           <Ban className="h-5 w-5 flex-none text-ink-faint" />
           Take out of service
@@ -786,7 +786,7 @@ function AssetPanels({ asset }: { asset: CampAsset }) {
                 disabled={!reading.trim() || saving}
                 className="flex-none rounded-btn bg-forest px-4 py-3 text-[14px] font-bold text-paper disabled:opacity-40"
               >
-                <Gauge className="mr-1 inline h-4 w-4" />
+                <Gauge className="me-1 inline h-4 w-4" />
                 {saving ? '…' : 'Record'}
               </button>
             </div>

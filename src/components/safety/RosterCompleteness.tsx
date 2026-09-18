@@ -1,4 +1,6 @@
+import { useContext } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { UntranslatedContext, useScreenTranslation } from '@/components/i18n/untranslated';
 import { useSafetyStore } from '@/store/safetyStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
@@ -27,24 +29,29 @@ const CERTS_ON_367A: CertType[] = ['lifeguard', 'first_aid', 'cpr_aed', 'wsi'];
  * uses to name the same directors on the packet; a title that matches neither simply is not a
  * director as far as either of them is concerned.
  */
-const DIRECTOR_ROLES: { label: string; match: RegExp; needs: (m: SafetyStaff) => string[] }[] = [
+type Role = 'campDirector' | 'healthDirector' | 'aquaticsDirector';
+type Need = 'education' | 'experience' | 'license' | 'dob';
+
+// Keys rather than English phrases, so the sentence below can be said in the reader's language.
+// The patterns match the title as the camp typed it, which is unchanged by any translation.
+const DIRECTOR_ROLES: { role: Role; match: RegExp; needs: (m: SafetyStaff) => Need[] }[] = [
   {
-    label: 'Camp director',
+    role: 'campDirector',
     match: /^camp director$|^director$/i,
     needs: (m) => [
-      ...(m.education ? [] : ['education']),
-      ...(m.qualifyingExperience ? [] : ['qualifying experience']),
+      ...(m.education ? [] : ['education' as const]),
+      ...(m.qualifyingExperience ? [] : ['experience' as const]),
     ],
   },
   {
-    label: 'Health director',
+    role: 'healthDirector',
     match: /health director/i,
-    needs: (m) => (m.professionalLicenseNumber ? [] : ['a professional license number']),
+    needs: (m) => (m.professionalLicenseNumber ? [] : ['license']),
   },
   {
-    label: 'Aquatics director',
+    role: 'aquaticsDirector',
     match: /aquatics? director/i,
-    needs: (m) => (m.dateOfBirth ? [] : ['a date of birth']),
+    needs: (m) => (m.dateOfBirth ? [] : ['dob']),
   },
 ];
 
@@ -53,6 +60,10 @@ export function RosterCompleteness() {
   const certifications = useSafetyStore((s) => s.certifications);
   const openSafetyAddStaffModal = useUIStore((s) => s.openSafetyAddStaffModal);
   const { can } = useAuth();
+  // Rendered on Camp Info (translated) and on Safety's staff tab (still English).
+  const { t, i18n } = useScreenTranslation('staff');
+  const english = useContext(UntranslatedContext);
+  const list = new Intl.ListFormat(english ? 'en' : i18n.language, { type: 'conjunction' });
 
   if (!can('manageSafetyStaff')) return null;
 
@@ -76,8 +87,8 @@ export function RosterCompleteness() {
     const member = active.find((m) => role.match.test(m.title));
     if (!member) return [];
     const needs = role.needs(member)
-      .filter((n) => !(n === 'a date of birth' && alreadyListed.has(member.id)));
-    return needs.length === 0 ? [] : [{ member, label: role.label, needs }];
+      .filter((n) => !(n === 'dob' && alreadyListed.has(member.id)));
+    return needs.length === 0 ? [] : [{ member, role: role.role, needs }];
   });
 
   if (missingDob.length === 0 && directorGaps.length === 0) return null;
@@ -86,17 +97,14 @@ export function RosterCompleteness() {
     <div className="rounded-card border border-amber/30 bg-amber-bg px-4 py-3.5 mb-4">
       <p className="text-[12.5px] font-semibold text-amber-text inline-flex items-start gap-1.5">
         <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-        <span>The permit forms are waiting on some of this roster.</span>
+        <span>{t('completeness.heading')}</span>
       </p>
 
       <div className="mt-2.5 space-y-3 ps-5">
         {missingDob.length > 0 && (
           <div>
             <p className="text-[12.5px] text-ink leading-relaxed">
-              {missingDob.length} of the {onForm.length} certified staff{' '}
-              {missingDob.length === 1 ? 'has' : 'have'} no date of birth on file. DOH-367a prints
-              one beside every certification, so {missingDob.length === 1 ? 'that cell' : 'those cells'}{' '}
-              will come out blank.
+              {t('completeness.missingDob', { count: missingDob.length, total: onForm.length })}
             </p>
             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
               {missingDob.map((m) => (
@@ -112,17 +120,21 @@ export function RosterCompleteness() {
           </div>
         )}
 
-        {directorGaps.map(({ member, label, needs }) => (
+        {directorGaps.map(({ member, role, needs }) => (
           <div key={member.id}>
             <p className="text-[12.5px] text-ink leading-relaxed">
-              DOH-367 asks your {label.toLowerCase()} for {needs.join(' and ')}. {member.name} has{' '}
-              {needs.length === 1 ? 'none' : 'neither'} on file.
+              {t('completeness.directorAsks', {
+                count: needs.length,
+                role: t(`role.${role}`),
+                needs: list.format(needs.map((n) => t(`need.${n}`))),
+                name: member.name,
+              })}
             </p>
             <button
               onClick={() => openSafetyAddStaffModal(member.id)}
               className="text-[12px] text-sage hover:underline cursor-pointer font-medium mt-1"
             >
-              Fill in {member.name}
+              {t('completeness.fillIn', { name: member.name })}
             </button>
           </div>
         ))}

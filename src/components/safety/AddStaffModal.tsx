@@ -6,6 +6,7 @@ import { Button } from '@/components/shared/Button';
 import { useUIStore } from '@/store/uiStore';
 import { useSafetyStore } from '@/store/safetyStore';
 import { generateId } from '@/lib/utils';
+import { useScreenTranslation } from '@/components/i18n/untranslated';
 import type { SafetyStaff } from '@/lib/types';
 
 interface FormValues {
@@ -25,6 +26,10 @@ const lc = 'block text-[12px] font-medium text-ink mb-1';
 export function AddStaffModal() {
   const { closeAllModals, editingSafetyStaffId } = useUIStore();
   const { staff, addStaff, updateStaff, deleteStaff } = useSafetyStore();
+  // Opened from Camp Info (translated) and from Safety and Compliance (still English), so it
+  // speaks whichever language the page around it does.
+  const { t } = useScreenTranslation('staff');
+  const { t: tc } = useScreenTranslation('common');
 
   const editing = editingSafetyStaffId
     ? staff.find((s) => s.id === editingSafetyStaffId) ?? null
@@ -62,7 +67,7 @@ export function AddStaffModal() {
 
   function handleDelete() {
     if (!editing) return;
-    if (!window.confirm(`Remove ${editing.name} from staff? This will delete all their certifications.`)) return;
+    if (!window.confirm(t('form.confirmDelete', { name: editing.name }))) return;
     deleteStaff(editing.id);
     closeAllModals();
   }
@@ -102,30 +107,30 @@ export function AddStaffModal() {
   }
 
   return (
-    <Modal title={editing ? 'Edit staff member' : 'Add staff member'} onClose={closeAllModals} width="420px">
+    <Modal title={editing ? t('form.titleEdit') : t('form.titleAdd')} onClose={closeAllModals} width="420px">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <p className="text-[13px] text-ink-soft -mt-1">
-          Staff members added here can be tracked for certifications and training compliance.
+          {t('form.intro')}
         </p>
 
         <div>
-          <label className={lc}>Full name *</label>
+          <label className={lc}>{t('form.name')}</label>
           <input
             {...register('name', { required: true })}
             className={`${ic} ${errors.name ? 'border-red' : ''}`}
-            placeholder="e.g. Alex Rivera"
+            placeholder={t('form.namePlaceholder')}
           />
-          {errors.name && <p className="text-[11px] text-red mt-1">Name is required.</p>}
+          {errors.name && <p className="text-[11px] text-red mt-1">{t('form.nameRequired')}</p>}
         </div>
 
         <div>
-          <label className={lc}>Title / role *</label>
+          <label className={lc}>{t('form.title')}</label>
           <input
             {...register('title', { required: true })}
             className={`${ic} ${errors.title ? 'border-red' : ''}`}
-            placeholder="e.g. Head Lifeguard, Counselor, Cook"
+            placeholder={t('form.titlePlaceholder')}
           />
-          {errors.title && <p className="text-[11px] text-red mt-1">Title is required.</p>}
+          {errors.title && <p className="text-[11px] text-red mt-1">{t('form.titleRequired')}</p>}
         </div>
 
         {editing && (
@@ -137,7 +142,7 @@ export function AddStaffModal() {
               className="w-4 h-4 accent-sage cursor-pointer"
             />
             <label htmlFor="isActive" className="text-[13px] text-ink cursor-pointer">
-              Active staff member
+              {t('form.active')}
             </label>
           </div>
         )}
@@ -149,9 +154,9 @@ export function AddStaffModal() {
             className="w-full flex items-center justify-between text-start cursor-pointer"
           >
             <span>
-              <span className="block text-[12px] font-medium text-ink">Details the permit forms ask for</span>
+              <span className="block text-[12px] font-medium text-ink">{t('form.permitHeading')}</span>
               <span className="block text-[11px] text-ink-faint mt-0.5">
-                Optional. Leave blank and the form prints a blank line for someone to write on.
+                {t('form.permitHint')}
               </span>
             </span>
             {showPermitDetails
@@ -162,64 +167,61 @@ export function AddStaffModal() {
           {showPermitDetails && (
             <div className="mt-4 space-y-4">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-                Asked about every certified staff member
+                {t('form.everyCertified')}
               </p>
 
               <div>
-                <label className={lc}>Date of birth</label>
-                <input type="date" {...register('dateOfBirth')} className={ic} />
+                <label className={lc}>{t('form.dob')}</label>
+                <input type="date" {...register('dateOfBirth')} className={ic} dir="ltr" />
                 <p className="text-[11px] text-ink-faint mt-1 leading-relaxed">
-                  DOH-367a prints this beside every lifeguard and first aid certification. It is
-                  personal information about an employee, and anyone with access to this camp can
-                  see it.
+                  {t('form.dobHelp')}
                 </p>
               </div>
 
               <div>
-                <label className={lc}>Sex</label>
+                <label className={lc}>{t('form.sex')}</label>
                 <select {...register('sex')} className={ic}>
-                  <option value="">Not recorded</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
+                  <option value="">{t('form.sexNotRecorded')}</option>
+                  <option value="male">{t('form.male')}</option>
+                  <option value="female">{t('form.female')}</option>
                 </select>
                 <p className="text-[11px] text-ink-faint mt-1">
-                  The counselor table on DOH-367a counts staff as male or female. Those are the
-                  only two columns the state prints.
+                  {t('form.sexHelp')}
                 </p>
               </div>
 
               <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint pt-1">
-                Asked only about the camp, health and aquatics directors
+                {t('form.directorsOnly')}
               </p>
 
               <div>
-                <label className={lc}>Education</label>
+                <label className={lc}>{t('form.education')}</label>
                 <input
                   {...register('education')}
                   className={ic}
-                  placeholder="e.g. BS Recreation Management, SUNY Cortland 2014"
+                  placeholder={t('form.educationPlaceholder')}
                 />
               </div>
 
               <div>
-                <label className={lc}>Qualifying experience</label>
+                <label className={lc}>{t('form.experience')}</label>
                 <textarea
                   {...register('qualifyingExperience')}
                   rows={2}
                   className={`${ic} resize-none`}
-                  placeholder="e.g. Six seasons as unit head at a NYS children's camp"
+                  placeholder={t('form.experiencePlaceholder')}
                 />
               </div>
 
               <div>
-                <label className={lc}>Professional license number</label>
+                <label className={lc}>{t('form.license')}</label>
                 <input
                   {...register('professionalLicenseNumber')}
                   className={ic}
-                  placeholder="e.g. NYS RN 123456"
+                  placeholder={t('form.licensePlaceholder')}
                 />
                 <p className="text-[11px] text-ink-faint mt-1">
-                  DOH-367 asks the health director for a NYS license number.
+                  {t('form.licenseHelp')}
                 </p>
               </div>
             </div>
@@ -228,12 +230,12 @@ export function AddStaffModal() {
 
         <div className="flex gap-2 pt-1">
           <Button type="submit" className="flex-1 justify-center" disabled={isSubmitting}>
-            {editing ? 'Save changes' : 'Add staff member'}
+            {editing ? t('form.saveChanges') : t('form.add')}
           </Button>
-          <Button type="button" variant="ghost" onClick={closeAllModals}>Cancel</Button>
+          <Button type="button" variant="ghost" onClick={closeAllModals}>{tc('actions.cancel')}</Button>
           {editing && (
             <Button type="button" variant="ghost" onClick={handleDelete} className="text-red hover:bg-red-bg">
-              Delete
+              {tc('actions.delete')}
             </Button>
           )}
         </div>

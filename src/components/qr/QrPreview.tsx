@@ -15,7 +15,8 @@
  * and the on-screen preview have to agree on them or the preview lies. Splitting them into a
  * sibling module to satisfy fast refresh would put the definition of a label in one file and the
  * drawing of it in another, for a dev-server nicety. */
-import { useMemo } from 'react';
+import { useContext, useMemo } from 'react';
+import { UntranslatedContext, useScreenTranslation } from '@/components/i18n/untranslated';
 import { encodeQr, qrToSvgPath } from '@/lib/qr';
 import { APP_ENV, STICKER_HOST } from '@/lib/env';
 
@@ -100,6 +101,8 @@ export const stickerText = (token: string) => stickerUrl(token).replace(/^https?
  * by a screen door and written on with a marker.
  */
 export function QrCode({ text, className, style }: { text: string; className?: string; style?: React.CSSProperties }) {
+  // Also drawn by the food-programs settings, which are not translated yet.
+  const { t } = useScreenTranslation('staff');
   const { d, extent } = useMemo(() => {
     const quiet = 4; // the spec's quiet zone; a code printed flush to a border does not scan
     const qr = encodeQr(text, 'Q');
@@ -113,7 +116,7 @@ export function QrCode({ text, className, style }: { text: string; className?: s
       className={className}
       style={style}
       role="img"
-      aria-label="QR code"
+      aria-label={t('labels.qrAria')}
     >
       <rect width={extent} height={extent} fill="#ffffff" />
       <path d={d} fill="#000000" />
@@ -138,6 +141,12 @@ export function QrLabel({ spec, layout, size, unit }: LabelProps) {
   const h = (size * geo.h) / geo.w;
   const url = stickerUrl(spec.token);
   const text = stickerText(spec.token);
+  // The printed words follow the language of the person printing, and so does the direction of
+  // the label: a Hebrew sticker reads from the right. Set here, on the label itself, because the
+  // sheet around it is pinned left-to-right to match the physical label stock.
+  const { i18n } = useScreenTranslation('staff');
+  const english = useContext(UntranslatedContext);
+  const dir = english ? 'ltr' : i18n.dir(i18n.language);
 
   // Pure black on pure white. Camp colours are for the screen the scan lands on; a label is a
   // scanning target first, and every colour a printer approximates costs contrast.
@@ -157,7 +166,7 @@ export function QrLabel({ spec, layout, size, unit }: LabelProps) {
     const pad = w * 0.05;
     const inner = w - pad * 2;
     return (
-      <div className="qr-label" style={{ ...frame, padding: u(pad), display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div className="qr-label" dir={dir} style={{ ...frame, padding: u(pad), display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <LabelHead spec={spec} u={u} nameSize={w * 0.098} pathSize={w * 0.046} logoSize={w * 0.11} centered />
         {/*
           The QR takes whatever height is left rather than a fixed side, and `min-height: 0` is
@@ -187,7 +196,7 @@ export function QrLabel({ spec, layout, size, unit }: LabelProps) {
   const qrSide = h - pad * 2 - strip;
 
   return (
-    <div className="qr-label" style={{ ...frame, padding: u(pad), display: 'flex', flexDirection: 'column' }}>
+    <div className="qr-label" dir={dir} style={{ ...frame, padding: u(pad), display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'stretch', gap: u(pad), height: u(qrSide) }}>
         <QrCode text={url} style={{ width: u(qrSide), height: u(qrSide), flex: 'none' }} />
         <div style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -223,7 +232,7 @@ function LabelHead({
   centered?: boolean;
 }) {
   return (
-    <div style={{ width: '100%', textAlign: centered ? 'center' : 'left' }}>
+    <div style={{ width: '100%', textAlign: centered ? 'center' : 'start' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: u(logoSize * 0.35), justifyContent: centered ? 'center' : 'flex-start' }}>
         {spec.logoUrl && (
           <img
@@ -232,7 +241,9 @@ function LabelHead({
             style={{ width: u(logoSize), height: u(logoSize), objectFit: 'contain', flex: 'none' }}
           />
         )}
+        {/* A camp's own name for the place, in whatever script it was typed in. */}
         <span
+          dir="auto"
           style={{
             fontSize: u(nameSize),
             lineHeight: 1.05,
@@ -251,6 +262,7 @@ function LabelHead({
       </div>
       {spec.path && (
         <div
+          dir="auto"
           style={{
             fontSize: u(pathSize),
             lineHeight: 1.2,
@@ -270,13 +282,17 @@ function LabelHead({
 }
 
 function Prompt({ u, size, centered = false }: { u: (n: number) => string; size: number; centered?: boolean }) {
+  const { t } = useScreenTranslation('staff');
+  // Two lines, then clip, rather than one. The English line fitted with room to spare, but the
+  // same words in another language can run longer, and a clipped call to action on a sticker
+  // reads as a printing fault.
   return (
     <div style={{
       fontSize: u(size), lineHeight: 1.2, opacity: 0.62,
-      marginTop: u(size * 0.9), textAlign: centered ? 'center' : 'left',
-      whiteSpace: 'nowrap', overflow: 'hidden',
+      marginTop: u(size * 0.9), textAlign: centered ? 'center' : 'start',
+      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
     }}>
-      Something broken? Scan this.
+      {t('labels.prompt')}
     </div>
   );
 }
@@ -308,9 +324,11 @@ function UrlStrip({
       paddingTop: rule ? u(size * 0.35) : undefined,
       borderTop: rule ? '1px solid rgba(0,0,0,0.28)' : undefined,
       width: '100%',
-      textAlign: centered ? 'center' : 'left',
+      textAlign: centered ? 'center' : 'start',
     }}>
-      <span style={{
+      {/* An address is left-to-right in every language; unpinned, a Hebrew label moved its
+          slashes and dots to the wrong ends. */}
+      <span dir="ltr" style={{
         fontSize: u(size),
         lineHeight: 1.15,
         fontFamily: '"DM Mono", ui-monospace, monospace',

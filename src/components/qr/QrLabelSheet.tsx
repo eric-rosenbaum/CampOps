@@ -115,8 +115,12 @@ export function QrLabelSheet({ specs, layout, startSlot = 0, onReady }: Props) {
     <>
       <style>{printCss(layout)}</style>
       {pages.map((page, pageIndex) => (
+        // Pinned left-to-right: the grid is the physical label stock, and slot 1 is its top-left
+        // corner in every language. Under a Hebrew page the grid mirrored, and a sheet started at a
+        // free slot printed onto the labels already peeled off.
         <div
           key={pageIndex}
+          dir="ltr"
           className="qr-sheet"
           style={{
             width: `${geo.cols * geo.w}in`,

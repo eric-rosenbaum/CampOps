@@ -185,7 +185,7 @@
       "pillCurrent": "Vigente"
     },
     "assets": {
-      "title": "Equipos y vehículos",
+      "title": "Activos y vehículos",
       "fleetStatus": "Estado de la flota",
       "available": "Disponibles",
       "checkedOut": "Prestados",

@@ -17,7 +17,7 @@ export function EnvironmentBanner() {
   const staging = APP_ENV === 'staging';
   return (
     <div
-      className={`fixed bottom-3 left-3 z-[60] pointer-events-none select-none rounded-btn px-3 py-1.5
+      className={`fixed bottom-3 start-3 z-[60] pointer-events-none select-none rounded-btn px-3 py-1.5
         shadow-lg border font-mono text-[11px] font-semibold tracking-wide
         ${staging ? 'bg-amber text-white border-amber-text/40' : 'bg-forest text-cream border-white/20'}`}
       role="status"

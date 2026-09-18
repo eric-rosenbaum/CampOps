@@ -1,0 +1,114 @@
+{
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "es": "Español",
+    "he": "עברית"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "done": "Done",
+    "back": "Back",
+    "next": "Next",
+    "retry": "Try again",
+    "search": "Search",
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "signOut": "Sign out",
+    "confirm": "Confirm",
+    "remove": "Remove",
+    "open": "Open",
+    "more": "More",
+    "none": "None",
+    "all": "All",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "status": {
+    "unassigned": "Unassigned",
+    "assigned": "Assigned",
+    "in_progress": "In progress",
+    "waiting_on_vendor": "Waiting on vendor",
+    "waiting_on_part": "Waiting on a part",
+    "resolved": "Done"
+  },
+  "priority": {
+    "urgent": "Urgent",
+    "high": "High",
+    "normal": "Normal"
+  },
+  "source": {
+    "web": "Logged in the app",
+    "ios": "Logged on a phone",
+    "public": "Public report",
+    "qr": "Scanned a sticker",
+    "routine": "Routine",
+    "retreat": "Rental group",
+    "session": "Session turnover",
+    "module": "Flagged by another module"
+  },
+  "cadence": {
+    "daily": "Every day",
+    "weekly": "Every week",
+    "monthly": "Every month",
+    "annually": "Every year",
+    "season_relative": "Relative to opening day",
+    "on_turnover": "On every turnover",
+    "meter": "By hours or miles"
+  },
+  "crew": {
+    "maintenance": "Maintenance",
+    "housekeeping": "Housekeeping",
+    "grounds": "Grounds",
+    "kitchen": "Kitchen",
+    "it": "Tech"
+  },
+  "schedule": {
+    "everyDay_one": "Every day",
+    "everyDay_other": "Every {{count}} days",
+    "everyWeek_one": "Every week",
+    "everyWeek_other": "Every {{count}} weeks",
+    "everyWeekOn_one": "Every week on {{days}}",
+    "everyWeekOn_other": "Every {{count}} weeks on {{days}}",
+    "everyMonth_one": "Every month",
+    "everyMonth_other": "Every {{count}} months",
+    "everyMonthOn_one": "Every month on day {{day}}",
+    "everyMonthOn_other": "Every {{count}} months on day {{day}}",
+    "everyYear_one": "Every year",
+    "everyYear_other": "Every {{count}} years",
+    "openingDay": "On opening day",
+    "beforeOpening_one": "{{count}} day before opening",
+    "beforeOpening_other": "{{count}} days before opening",
+    "afterOpening_one": "{{count}} day after opening",
+    "afterOpening_other": "{{count}} days after opening",
+    "everyTurnover": "Every turnover",
+    "everyMiles": "Every {{n}} miles",
+    "everyHours": "Every {{n}} hours",
+    "byMeter": "By meter",
+    "behind_one": "{{count}} cycle behind",
+    "behind_other": "{{count}} cycles behind"
+  },
+  "role": {
+    "admin": "Administrator",
+    "staff": "Staff",
+    "viewer": "Viewer"
+  },
+  "upload": {
+    "uploading": "Uploading",
+    "saving": "Saving the record",
+    "verifying": "Checking it opens",
+    "done": "Done",
+    "failed": "Failed"
+  },
+  "loading": {
+    "dashboard": "Building your dashboard",
+    "tasks": "Loading your tasks",
+    "campground": "Opening the campground",
+    "spot": "Opening this spot"
+  }
+}

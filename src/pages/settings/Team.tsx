@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   UserPlus, Copy, Check, Trash2, Plus, Link2, Mail,
   Pencil, ChevronDown, ChevronUp, Shield, Users,
@@ -7,12 +8,21 @@ import { useCampStore } from '@/store/campStore';
 import type { CampRole, StaffGroup, Invitation, JoinCode } from '@/store/campStore';
 import { sendEmail, buildInviteEmail } from '@/lib/email';
 import { BulkInviteForm } from '@/components/settings/BulkInviteForm';
+import { seedCrewName } from '@/lib/useTrades';
+import { formatDate } from '@/lib/utils';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ROLE_LABELS: Record<CampRole, string> = {
-  admin: 'Admin', staff: 'Staff', viewer: 'Viewer',
-};
+const ROLES: CampRole[] = ['admin', 'staff', 'viewer'];
+
+/**
+ * A crew as the reader should see it: the camp's own words as typed, except the five seed crews
+ * under their seed names, which were ours and read in the reader's language. Display only — an
+ * edit input shows `group.name`, or saving the form would write Spanish into the row.
+ */
+function crewLabel(g: Pick<StaffGroup, 'key' | 'name'>): string {
+  return seedCrewName(g.key, g.name) ?? g.name;
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -34,6 +44,7 @@ interface GroupFormProps {
 }
 
 function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps) {
+  const { t } = useTranslation(['team', 'common']);
   const [name, setName] = useState(initial?.name ?? '');
   const [issuesSeeUnassigned, setIssuesSeeUnassigned] = useState(initial?.issuesSeeUnassigned ?? true);
   const [canViewCamperHealth, setCanViewCamperHealth] = useState(initial?.canViewCamperHealth ?? false);
@@ -47,14 +58,14 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
-        <label className="block text-[11px] font-medium text-ink-soft mb-1">Crew name</label>
+        <label className="block text-[11px] font-medium text-ink-soft mb-1">{t('form.name')}</label>
         <input
           type="text"
           required
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Housekeeping, Grounds"
+          placeholder={t('form.namePlaceholder')}
           className="w-full px-3 py-1.5 border border-border rounded-lg text-[12px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20"
         />
       </div>
@@ -63,7 +74,7 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
           you could open at all, which made setting a camp up an exercise in guessing who might
           one day need the pool page. */}
       <div className="bg-paper border border-border rounded-lg px-3 py-2.5">
-        <p className="text-[11px] font-medium text-ink-soft mb-1.5">What this crew sees</p>
+        <p className="text-[11px] font-medium text-ink-soft mb-1.5">{t('form.sees')}</p>
         <label className="flex items-start gap-2 cursor-pointer">
           <input
             type="radio"
@@ -73,9 +84,9 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
             className="w-3.5 h-3.5 accent-forest mt-0.5"
           />
           <span className="text-[12px] text-forest">
-            Work waiting for the crew, so they can pick it up
+            {t('form.pickUp')}
             <span className="block text-[11px] text-ink-soft mt-0.5">
-              Their own jobs, plus anything unassigned or sitting with this crew.
+              {t('form.pickUpHint')}
             </span>
           </span>
         </label>
@@ -88,9 +99,9 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
             className="w-3.5 h-3.5 accent-forest mt-0.5"
           />
           <span className="text-[12px] text-forest">
-            Only what has their name on it
+            {t('form.own')}
             <span className="block text-[11px] text-ink-soft mt-0.5">
-              They see a job once somebody hands it to them.
+              {t('form.ownHint')}
             </span>
           </span>
         </label>
@@ -99,7 +110,7 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
       {(
 
         <div className="bg-red-bg border border-red/20 rounded-lg px-3 py-2.5 space-y-1.5">
-          <p className="text-[11px] font-medium text-red/80 mb-1">Camper health data</p>
+          <p className="text-[11px] font-medium text-red/80 mb-1">{t('form.healthTitle')}</p>
           <label className="flex items-start gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -108,11 +119,9 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
               className="w-3.5 h-3.5 accent-forest mt-0.5"
             />
             <span className="text-[12px] text-forest">
-              Can view camper names, cabins and allergy severities
+              {t('form.health')}
               <span className="block text-[11px] text-ink-soft mt-0.5 leading-relaxed">
-                Leave off for kitchen staff: they still see allergen counts and which recipes
-                conflict, which is what they need to cook safely. Enforced in the database,
-                not just hidden in the interface.
+                {t('form.healthHint')}
               </span>
             </span>
           </label>
@@ -131,14 +140,14 @@ function GroupForm({ initial, onSave, onCancel, saving, error }: GroupFormProps)
           onClick={onCancel}
           className="text-[12px] text-ink-faint hover:text-forest px-3 py-1.5 rounded-lg hover:bg-paper transition-colors"
         >
-          Cancel
+          {t('common:actions.cancel')}
         </button>
         <button
           type="submit"
           disabled={saving || !name.trim()}
           className="flex-1 bg-forest text-cream text-[12px] font-medium py-1.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50"
         >
-          {saving ? 'Saving…' : (initial ? 'Save changes' : 'Create crew')}
+          {saving ? t('common:actions.saving') : (initial ? t('form.saveChanges') : t('form.create'))}
         </button>
       </div>
     </form>
@@ -152,6 +161,7 @@ interface AddLinkFormProps {
 }
 
 function AddLinkForm({ onSave, onCancel, saving }: AddLinkFormProps) {
+  const { t } = useTranslation(['team', 'common']);
   const [days, setDays] = useState('30');
   const [maxUses, setMaxUses] = useState('');
 
@@ -163,7 +173,7 @@ function AddLinkForm({ onSave, onCancel, saving }: AddLinkFormProps) {
   return (
     <form onSubmit={handleSubmit} className="flex items-end gap-2 mt-2">
       <div>
-        <label className="block text-[10px] font-medium text-ink-soft mb-0.5">Expires (days)</label>
+        <label className="block text-[10px] font-medium text-ink-soft mb-0.5">{t('links.expiresDays')}</label>
         <input
           type="number" min="1" max="365" required value={days}
           onChange={(e) => setDays(e.target.value)}
@@ -171,7 +181,7 @@ function AddLinkForm({ onSave, onCancel, saving }: AddLinkFormProps) {
         />
       </div>
       <div>
-        <label className="block text-[10px] font-medium text-ink-soft mb-0.5">Max uses</label>
+        <label className="block text-[10px] font-medium text-ink-soft mb-0.5">{t('links.maxUses')}</label>
         <input
           type="number" min="1" value={maxUses}
           onChange={(e) => setMaxUses(e.target.value)}
@@ -184,14 +194,14 @@ function AddLinkForm({ onSave, onCancel, saving }: AddLinkFormProps) {
         onClick={onCancel}
         className="text-[11px] text-ink-faint hover:text-forest px-2 py-1 rounded transition-colors"
       >
-        Cancel
+        {t('common:actions.cancel')}
       </button>
       <button
         type="submit"
         disabled={saving}
         className="bg-forest text-cream text-[11px] font-medium px-3 py-1 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50"
       >
-        {saving ? '…' : 'Create'}
+        {saving ? '…' : t('links.create')}
       </button>
     </form>
   );
@@ -207,6 +217,7 @@ function AddLinkForm({ onSave, onCancel, saving }: AddLinkFormProps) {
  * than the camp collapsing three categories it actually tracks.
  */
 function CrewRoster({ group, campId }: { group: StaffGroup; campId: string }) {
+  const { t } = useTranslation('team');
   const members = useCampStore((s) => s.members);
   const crewMembership = useCampStore((s) => s.crewMembership);
   const setCrewMembers = useCampStore((s) => s.setCrewMembers);
@@ -225,7 +236,7 @@ function CrewRoster({ group, campId }: { group: StaffGroup; campId: string }) {
     try {
       await setCrewMembers(campId, group.id, next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save that');
+      setError(err instanceof Error ? err.message : t('roster.errorSave'));
     } finally {
       setSaving(null);
     }
@@ -234,10 +245,10 @@ function CrewRoster({ group, campId }: { group: StaffGroup; campId: string }) {
   return (
     <div className="mb-3">
       <p className="text-[11px] font-medium text-ink-soft mb-1.5">
-        On this crew{onCrew.length > 0 && ` · ${onCrew.length}`}
+        {onCrew.length > 0 ? t('roster.titleCount', { count: onCrew.length }) : t('roster.title')}
       </p>
       {assignable.length === 0 ? (
-        <p className="text-[11px] text-forest/30 italic">Nobody to add yet.</p>
+        <p className="text-[11px] text-forest/30 italic">{t('roster.nobodyToAdd')}</p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {assignable.map((m) => {
@@ -253,7 +264,7 @@ function CrewRoster({ group, campId }: { group: StaffGroup; campId: string }) {
                     : 'bg-white border-border text-ink-soft hover:border-forest/30'
                 }`}
               >
-                {on && <Check className="w-3 h-3 inline -mt-px mr-1" />}
+                {on && <Check className="w-3 h-3 inline -mt-px me-1" />}
                 {m.displayName ?? m.fullName}
               </button>
             );
@@ -262,7 +273,7 @@ function CrewRoster({ group, campId }: { group: StaffGroup; campId: string }) {
       )}
       {onCrew.length === 0 && assignable.length > 0 && (
         <p className="text-[11px] text-ink-faint mt-1.5">
-          Work filed as {group.name.toLowerCase()} has nobody to land on until someone is here.
+          {t('roster.nobodyHere', { crew: crewLabel(group).toLowerCase() })}
         </p>
       )}
       {error && <p className="text-[11px] text-red mt-1.5">{error}</p>}
@@ -280,6 +291,7 @@ interface StaffGroupCardProps {
 }
 
 function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardProps) {
+  const { t } = useTranslation('team');
   const { generateJoinCode, revokeJoinCode, updateStaffGroup, deleteStaffGroup } = useCampStore();
   const [expanded, setExpanded] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -303,13 +315,13 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
   }
 
   function formatExpiry(expiresAt: string | null) {
-    if (!expiresAt) return 'No expiry';
+    if (!expiresAt) return t('links.noExpiry');
     const d = new Date(expiresAt);
     const diffDays = Math.ceil((d.getTime() - Date.now()) / 86400000);
-    if (diffDays < 0) return 'Expired';
-    if (diffDays === 0) return 'Expires today';
-    if (diffDays === 1) return 'Expires tomorrow';
-    return `Expires ${d.toLocaleDateString()}`;
+    if (diffDays < 0) return t('links.expired');
+    if (diffDays === 0) return t('links.expiresToday');
+    if (diffDays === 1) return t('links.expiresTomorrow');
+    return t('links.expiresOn', { date: formatDate(expiresAt) });
   }
 
   async function handleSaveEdit(
@@ -322,7 +334,7 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
       setEditing(false);
     } catch (err) {
       console.error('[handleSaveEdit]', err);
-      setEditError(err instanceof Error ? err.message : 'Could not save that crew');
+      setEditError(err instanceof Error ? err.message : t('crews.errorSave'));
     } finally {
       setSavingEdit(false);
     }
@@ -337,25 +349,25 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
       onUpdated();
     } catch (err) {
       console.error('[handleAddLink]', err);
-      setLinkError(err instanceof Error ? err.message : 'Failed to create join link');
+      setLinkError(err instanceof Error ? err.message : t('links.errorCreate'));
     } finally {
       setSavingLink(false);
     }
   }
 
   async function handleDeleteGroup() {
-    if (!confirm(`Delete "${group.name}"? This will remove all join links for this group. Members already in it will keep full access until reassigned.`)) return;
+    if (!confirm(t('crews.confirmDelete', { name: crewLabel(group) }))) return;
     try {
       await deleteStaffGroup(group.id);
     } catch (err) {
       console.error('[handleDeleteGroup]', err);
-      setEditError(err instanceof Error ? err.message : 'Failed to delete group');
+      setEditError(err instanceof Error ? err.message : t('crews.errorDelete'));
       setEditing(true); // surface the message; the form is where errors are rendered
     }
   }
 
   async function handleRevokeCode(codeId: string) {
-    if (!confirm('Revoke this join link?')) return;
+    if (!confirm(t('links.confirmRevoke'))) return;
     await revokeJoinCode(codeId);
     onUpdated();
   }
@@ -368,29 +380,33 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
           <Shield className="w-3.5 h-3.5 text-ink-soft" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-forest">{group.name}</p>
+          <p className="text-[13px] font-semibold text-forest">{crewLabel(group)}</p>
           <div className="flex flex-wrap gap-1 mt-1">
-            <ModuleBadge label={group.issuesSeeUnassigned ? 'Can pick up work' : 'Own work only'} />
-            {group.canViewCamperHealth && <ModuleBadge label="Camper health" />}
+            <ModuleBadge label={group.issuesSeeUnassigned ? t('crews.badgePickUp') : t('crews.badgeOwn')} />
+            {group.canViewCamperHealth && <ModuleBadge label={t('crews.badgeHealth')} />}
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             onClick={() => { setEditing(true); setExpanded(true); }}
             className="p-1.5 rounded hover:bg-cream-dark text-ink-faint hover:text-forest transition-colors"
-            title="Edit group"
+            title={t('crews.edit')}
+            aria-label={t('crews.edit')}
           >
             <Pencil className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={handleDeleteGroup}
             className="p-1.5 rounded hover:bg-red-50 text-ink-faint hover:text-red-500 transition-colors"
-            title="Delete group"
+            title={t('crews.delete')}
+            aria-label={t('crews.delete')}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => setExpanded((v) => !v)}
+            aria-label={expanded ? t('crews.hideDetails') : t('crews.showDetails')}
+            aria-expanded={expanded}
             className="p-1.5 rounded hover:bg-cream-dark text-ink-faint hover:text-forest transition-colors"
           >
             {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -415,24 +431,16 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
           ) : (
             <>
               <div className="mb-3 text-[11px] text-ink-soft space-y-0.5">
-                <p>
-                  Work: {group.issuesSeeUnassigned
-                    ? 'their own, plus anything unassigned or waiting for this crew'
-                    : 'only what is assigned to them'}
-                </p>
-                <p>
-                  Camper health: {group.canViewCamperHealth
-                    ? 'names and severities visible'
-                    : 'aggregate counts only'}
-                </p>
+                <p>{group.issuesSeeUnassigned ? t('crews.workPickUp') : t('crews.workOwn')}</p>
+                <p>{group.canViewCamperHealth ? t('crews.healthVisible') : t('crews.healthAggregate')}</p>
               </div>
 
               <CrewRoster group={group} campId={campId} />
 
               {/* Join codes */}
-              <p className="text-[11px] font-medium text-ink-soft mb-1.5">Join links</p>
+              <p className="text-[11px] font-medium text-ink-soft mb-1.5">{t('links.title')}</p>
               {groupCodes.length === 0 && !showAddLink && (
-                <p className="text-[11px] text-forest/30 italic mb-2">No active links</p>
+                <p className="text-[11px] text-forest/30 italic mb-2">{t('links.none')}</p>
               )}
               {groupCodes.map((jc) => {
                 const url = joinCodeUrl(jc.code);
@@ -442,10 +450,14 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
                   <div key={jc.id} className="py-2.5 border-b border-stone-50 last:border-0">
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-[10px] text-ink-faint">
-                        {jc.useCount}{jc.maxUses ? `/${jc.maxUses}` : ''} uses · {formatExpiry(jc.expiresAt)}
+                        <bdi>{jc.maxUses
+                          ? t('links.usesOf', { count: jc.useCount, max: jc.maxUses })
+                          : t('links.uses', { count: jc.useCount })}</bdi> · {formatExpiry(jc.expiresAt)}
                       </span>
                       <button
                         onClick={() => handleRevokeCode(jc.id)}
+                        title={t('links.revoke')}
+                        aria-label={t('links.revoke')}
                         className="p-1 rounded hover:bg-red-50 text-stone-300 hover:text-red-500 transition-colors"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -454,26 +466,28 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
                     <div className="flex items-center gap-2">
                       {/* Short code */}
                       <div className="flex items-center gap-1.5 bg-paper border border-border rounded-lg px-2.5 py-1.5 flex-shrink-0">
-                        <code className="text-[12px] font-mono font-bold text-forest tracking-widest">{jc.code}</code>
+                        <code dir="ltr" className="text-[12px] font-mono font-bold text-forest tracking-widest">{jc.code}</code>
                         <button
                           onClick={() => handleCopy(jc.code, codeKey)}
                           className="text-ink-faint hover:text-forest transition-colors"
-                          title="Copy code"
+                          title={t('links.copyCode')}
+                          aria-label={t('links.copyCode')}
                         >
                           {copiedId === codeKey
                             ? <Check className="w-3 h-3 text-green-600" />
                             : <Copy className="w-3 h-3" />}
                         </button>
                       </div>
-                      <span className="text-[10px] text-forest/30">or</span>
+                      <span className="text-[10px] text-forest/30">{t('links.or')}</span>
                       {/* Full link */}
                       <div className="flex items-center gap-1.5 bg-paper border border-border rounded-lg px-2.5 py-1.5 flex-1 min-w-0">
                         <Link2 className="w-3 h-3 text-forest/30 flex-shrink-0" />
-                        <span className="text-[11px] text-ink-soft truncate flex-1">{url}</span>
+                        <span dir="ltr" className="text-[11px] text-ink-soft truncate flex-1 text-start">{url}</span>
                         <button
                           onClick={() => handleCopy(url, linkKey)}
                           className="text-ink-faint hover:text-forest transition-colors flex-shrink-0"
-                          title="Copy link"
+                          title={t('links.copyLink')}
+                          aria-label={t('links.copyLink')}
                         >
                           {copiedId === linkKey
                             ? <Check className="w-3 h-3 text-green-600" />
@@ -502,7 +516,7 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
                   className="mt-2 flex items-center gap-1.5 text-[11px] text-ink-soft hover:text-forest transition-colors"
                 >
                   <Plus className="w-3 h-3" />
-                  Add join link
+                  {t('links.add')}
                 </button>
               )}
             </>
@@ -516,6 +530,7 @@ function StaffGroupCard({ group, joinCodes, campId, onUpdated }: StaffGroupCardP
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function Team() {
+  const { t } = useTranslation(['team', 'common', 'shell']);
   const {
     currentCamp, currentMember, members,
     removeMember, updateMemberRole, staffGroups,
@@ -590,7 +605,7 @@ export function Team() {
       // Previously this had no catch: createStaffGroup throws on error, the rejection went
       // unhandled, and the button just flipped back to "Create group" with no explanation.
       console.error('[handleCreateGroup]', err);
-      setGroupError(err instanceof Error ? err.message : 'Could not create that crew');
+      setGroupError(err instanceof Error ? err.message : t('crews.errorCreate'));
     } finally {
       setSavingGroup(false);
     }
@@ -602,7 +617,7 @@ export function Team() {
     setInviteError(null);
     try {
       const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Request timed out. Check your connection and try again.')), 30_000)
+        setTimeout(() => reject(new Error(t('invite.timeout'))), 30_000)
       );
       const groupId = inviteRole === 'staff' ? inviteGroupId || null : null;
       const to = inviteEmail.trim();
@@ -624,12 +639,15 @@ export function Team() {
       setShowInviteForm(false);
       reload();
     } catch (err) {
-      setInviteError(err instanceof Error ? err.message : 'Failed to generate link. Please try again.');
+      setInviteError(err instanceof Error ? err.message : t('invite.errorLink'));
     } finally {
       setInviteLoading(false);
     }
   }
 
+  // The invitation (this draft and the email sent through buildInviteEmail) stays English on
+  // purpose: it goes to someone whose language nobody knows yet, not to the admin reading this
+  // page, and following the admin's interface language would send Hebrew to an English speaker.
   function mailtoHref(email: string, link: string) {
     const subject = encodeURIComponent(`You're invited to join ${currentCamp?.name ?? 'your camp'} on CampCommand`);
     const body = encodeURIComponent(
@@ -640,13 +658,15 @@ export function Team() {
 
   function groupNameForMember(staffGroupId: string | null) {
     if (!staffGroupId) return null;
-    return staffGroups.find((g) => g.id === staffGroupId)?.name ?? null;
+    const g = staffGroups.find((x) => x.id === staffGroupId);
+    return g ? crewLabel(g) : null;
   }
 
   function groupNameForInvite(inv: Invitation) {
     if (inv.role !== 'staff') return null;
     if (!inv.staffGroupId) return null;
-    return staffGroups.find((g) => g.id === inv.staffGroupId)?.name ?? null;
+    const g = staffGroups.find((x) => x.id === inv.staffGroupId);
+    return g ? crewLabel(g) : null;
   }
 
   // Legacy join codes have no staffGroupId
@@ -656,16 +676,16 @@ export function Team() {
     <div className="h-full overflow-y-auto">
     <div className="p-7 max-w-3xl">
       <div className="mb-7">
-        <h1 className="text-[20px] font-bold text-forest">Team</h1>
-        <p className="text-[12px] text-ink-soft mt-0.5">{members.length} active member{members.length !== 1 ? 's' : ''}</p>
+        <h1 className="text-[20px] font-bold text-forest">{t('shell:nav.items.team')}</h1>
+        <p className="text-[12px] text-ink-soft mt-0.5">{t('activeCount', { count: members.length })}</p>
       </div>
 
       {/* ─── Staff Groups ─────────────────────────────────────────────────────── */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-[14px] font-semibold text-forest">Crews</h2>
-            <p className="text-[11px] text-ink-faint mt-0.5">A crew is who work routes to, and who can see work that is not theirs.</p>
+            <h2 className="text-[14px] font-semibold text-forest">{t('crews.title')}</h2>
+            <p className="text-[11px] text-ink-faint mt-0.5">{t('crews.intro')}</p>
           </div>
           {isAdmin && !showCreateGroup && (
             <button
@@ -673,14 +693,14 @@ export function Team() {
               className="flex items-center gap-1.5 bg-forest text-cream text-[12px] font-medium px-3 py-1.5 rounded-lg hover:bg-forest/90 transition-colors flex-shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              New crew
+              {t('crews.new')}
             </button>
           )}
         </div>
 
         {showCreateGroup && (
           <div className="bg-white border border-border rounded-xl p-5 mb-3">
-            <h3 className="text-[13px] font-semibold text-forest mb-3">New crew</h3>
+            <h3 className="text-[13px] font-semibold text-forest mb-3">{t('crews.new')}</h3>
             <GroupForm
               onSave={handleCreateGroup}
               onCancel={() => { setShowCreateGroup(false); setGroupError(null); }}
@@ -693,8 +713,8 @@ export function Team() {
         <div className="space-y-3">
           {staffGroups.length === 0 && !showCreateGroup && (
             <div className="bg-white border border-dashed border-border rounded-xl px-5 py-4 sm:py-6 text-center">
-              <p className="text-[13px] font-medium text-ink-soft">No crews yet</p>
-              <p className="text-[11px] text-ink-faint mt-1">Create a group to start inviting staff with specific module access.</p>
+              <p className="text-[13px] font-medium text-ink-soft">{t('crews.emptyTitle')}</p>
+              <p className="text-[11px] text-ink-faint mt-1">{t('crews.emptyHint')}</p>
             </div>
           )}
           {staffGroups.map((group) => (
@@ -712,31 +732,35 @@ export function Team() {
         {legacyJoinCodes.length > 0 && (
           <div className="bg-white border border-border rounded-xl mt-3 overflow-hidden">
             <div className="px-5 py-3.5 border-b border-border">
-              <h3 className="text-[12px] font-semibold text-ink-soft">Legacy join links</h3>
-              <p className="text-[11px] text-ink-faint">Created before groups were introduced. Staff who join with these links get full access.</p>
+              <h3 className="text-[12px] font-semibold text-ink-soft">{t('links.legacyTitle')}</h3>
+              <p className="text-[11px] text-ink-faint">{t('links.legacyHint')}</p>
             </div>
             <div className="px-5 py-3 space-y-2">
               {legacyJoinCodes.map((jc) => {
                 const url = `${window.location.origin}/join?code=${jc.code}`;
                 return (
                   <div key={jc.id} className="flex items-center gap-3">
-                    <code className="text-[11px] font-mono font-bold text-forest tracking-widest w-16">{jc.code}</code>
+                    <code dir="ltr" className="text-[11px] font-mono font-bold text-forest tracking-widest w-16 text-start">{jc.code}</code>
                     <span className="text-[10px] text-ink-faint flex-1">
-                      {ROLE_LABELS[jc.role]} · {jc.useCount}{jc.maxUses ? `/${jc.maxUses}` : ''} uses
+                      {t(`common:role.${jc.role}`)} · <bdi>{jc.maxUses
+                        ? t('links.usesOf', { count: jc.useCount, max: jc.maxUses })
+                        : t('links.uses', { count: jc.useCount })}</bdi>
                     </span>
                     <button
                       onClick={() => handleCopy(url, jc.id)}
                       className="flex items-center gap-1 text-[10px] text-ink-soft hover:text-forest transition-colors"
                     >
-                      {copiedId === jc.id ? <><Check className="w-2.5 h-2.5 text-green-600" /> Copied</> : <><Link2 className="w-2.5 h-2.5" /> Copy</>}
+                      {copiedId === jc.id ? <><Check className="w-2.5 h-2.5 text-green-600" /> {t('copied')}</> : <><Link2 className="w-2.5 h-2.5" /> {t('copy')}</>}
                     </button>
                     <button
                       onClick={async () => {
                         const { revokeJoinCode } = useCampStore.getState();
-                        if (!confirm('Revoke this join link?')) return;
+                        if (!confirm(t('links.confirmRevoke'))) return;
                         await revokeJoinCode(jc.id);
                         reload();
                       }}
+                      title={t('links.revoke')}
+                      aria-label={t('links.revoke')}
                       className="p-1 rounded hover:bg-red-50 text-stone-300 hover:text-red-500 transition-colors"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -751,10 +775,9 @@ export function Team() {
 
       {/* ─── Invite by email ──────────────────────────────────────────────────── */}
       <div className="bg-white border border-border rounded-xl p-5 mb-6">
-        <h2 className="text-[13px] font-semibold text-forest mb-0.5">Invite by email</h2>
+        <h2 className="text-[13px] font-semibold text-forest mb-0.5">{t('invite.title')}</h2>
         <p className="text-[11px] text-ink-faint leading-relaxed mb-4">
-          The simplest way to bring staff on. We email each person their own link, and they set
-          up an account without needing a join code.
+          {t('invite.intro')}
         </p>
 
         {!showInviteForm && !showBulkInvite && !inviteLink && (
@@ -764,14 +787,14 @@ export function Team() {
               className="flex items-center gap-2 bg-forest text-cream text-[12px] font-medium px-3 py-1.5 rounded-lg hover:bg-forest/90 transition-colors"
             >
               <Users className="w-3.5 h-3.5" />
-              Invite your team
+              {t('invite.team')}
             </button>
             <button
               onClick={() => setShowInviteForm(true)}
               className="flex items-center gap-2 text-[12px] font-medium text-forest px-3 py-1.5 rounded-lg border border-border hover:bg-paper transition-colors"
             >
               <UserPlus className="w-3.5 h-3.5" />
-              Invite one person
+              {t('invite.one')}
             </button>
           </div>
         )}
@@ -790,9 +813,9 @@ export function Team() {
         {showInviteForm && !inviteLink && (
           <form onSubmit={handleInvite} className="space-y-2.5">
             <div>
-              <label className="block text-[11px] font-medium text-ink-soft mb-1">Email address</label>
+              <label className="block text-[11px] font-medium text-ink-soft mb-1">{t('invite.email')}</label>
               <input
-                type="email" required autoFocus value={inviteEmail}
+                type="email" dir="ltr" required autoFocus value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 className="w-full px-3 py-1.5 border border-border rounded-lg text-[12px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
               />
@@ -800,20 +823,20 @@ export function Team() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
-                <label className="block text-[11px] font-medium text-ink-soft mb-1">Role</label>
+                <label className="block text-[11px] font-medium text-ink-soft mb-1">{t('invite.role')}</label>
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as CampRole)}
                   className="w-full px-2 py-1.5 border border-border rounded-lg text-[12px] text-forest bg-white focus:outline-none focus:ring-2 focus:ring-forest/20"
                 >
-                  {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  {ROLES.map((v) => <option key={v} value={v}>{t(`common:role.${v}`)}</option>)}
                 </select>
               </div>
               {inviteRole === 'staff' && (
                 <div>
-                  <label className="block text-[11px] font-medium text-ink-soft mb-1">Crew</label>
+                  <label className="block text-[11px] font-medium text-ink-soft mb-1">{t('invite.crew')}</label>
                   {staffGroups.length === 0 ? (
-                    <p className="text-[11px] text-red-500 pt-1.5">Create a crew first</p>
+                    <p className="text-[11px] text-red-500 pt-1.5">{t('invite.createCrewFirst')}</p>
                   ) : (
                     <select
                       value={inviteGroupId}
@@ -821,8 +844,8 @@ export function Team() {
                       required
                       className="w-full px-2 py-1.5 border border-border rounded-lg text-[12px] text-forest bg-white focus:outline-none focus:ring-2 focus:ring-forest/20"
                     >
-                      <option value="">Select group…</option>
-                      {staffGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                      <option value="">{t('invite.selectCrew')}</option>
+                      {staffGroups.map((g) => <option key={g.id} value={g.id}>{crewLabel(g)}</option>)}
                     </select>
                   )}
                 </div>
@@ -839,14 +862,14 @@ export function Team() {
                 onClick={() => { setShowInviteForm(false); setInviteError(null); }}
                 className="text-[12px] text-ink-faint hover:text-forest px-3 py-1.5 rounded-lg hover:bg-paper transition-colors"
               >
-                Cancel
+                {t('common:actions.cancel')}
               </button>
               <button
                 type="submit"
                 disabled={inviteLoading || (inviteRole === 'staff' && !inviteGroupId)}
                 className="flex-1 bg-forest text-cream text-[12px] font-medium py-1.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50"
               >
-                {inviteLoading ? 'Sending…' : 'Send invite'}
+                {inviteLoading ? t('invite.sending') : t('invite.send')}
               </button>
             </div>
           </form>
@@ -856,11 +879,21 @@ export function Team() {
           <div>
             <p className="text-[11px] mb-2">
               {inviteEmailed
-                ? <span className="text-green-700 font-medium">✓ Invite emailed to <strong>{inviteLinkEmail}</strong>. Here’s the link as a backup:</span>
-                : <span className="text-amber-700 font-medium">Couldn’t email {inviteLinkEmail}{inviteEmailError ? ` (${inviteEmailError})` : ''}, copy the link and send it manually:</span>}
+                ? (
+                  <span className="text-green-700 font-medium">
+                    <Trans t={t} i18nKey="invite.emailed" values={{ email: inviteLinkEmail }}
+                      components={{ b: <strong dir="ltr" /> }} />
+                  </span>
+                ) : (
+                  <span className="text-amber-700 font-medium">
+                    <Trans t={t} i18nKey={inviteEmailError ? 'invite.notEmailedReason' : 'invite.notEmailed'}
+                      values={{ email: inviteLinkEmail, reason: inviteEmailError ?? '' }}
+                      components={{ e: <bdi /> }} />
+                  </span>
+                )}
             </p>
             <div className="bg-paper border border-border rounded-lg px-3 py-2 mb-2.5">
-              <code className="text-[10px] text-forest break-all leading-relaxed">{inviteLink}</code>
+              <code dir="ltr" className="block text-[10px] text-forest break-all leading-relaxed text-start">{inviteLink}</code>
             </div>
             <div className="flex gap-2 mb-3">
               <button
@@ -868,21 +901,21 @@ export function Team() {
                 className="flex items-center gap-1.5 text-[11px] text-forest font-medium px-2.5 py-1.5 rounded-lg border border-border hover:bg-paper transition-colors"
               >
                 {copiedId === 'invite-link' ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
-                {copiedId === 'invite-link' ? 'Copied!' : 'Copy link'}
+                {copiedId === 'invite-link' ? t('copiedLink') : t('copyLink')}
               </button>
               <a
                 href={mailtoHref(inviteLinkEmail, inviteLink)}
                 className="flex items-center gap-1.5 text-[11px] text-forest font-medium px-2.5 py-1.5 rounded-lg border border-border hover:bg-paper transition-colors"
               >
                 <Mail className="w-3 h-3" />
-                Open in email
+                {t('invite.openInEmail')}
               </a>
             </div>
             <button
               onClick={() => { setInviteLink(null); setInviteLinkEmail(''); setShowInviteForm(true); }}
               className="text-[11px] text-ink-faint hover:text-forest transition-colors"
             >
-              + Invite another person
+              {t('invite.another')}
             </button>
           </div>
         )}
@@ -891,7 +924,7 @@ export function Team() {
       {/* ─── Active members ───────────────────────────────────────────────────── */}
       <div className="bg-white border border-border rounded-xl mb-6">
         <div className="px-5 py-4 border-b border-border">
-          <h2 className="text-[13px] font-semibold text-forest">Active members</h2>
+          <h2 className="text-[13px] font-semibold text-forest">{t('members.title')}</h2>
         </div>
         <div className="divide-y divide-stone-100">
           {roleError && (
@@ -910,11 +943,11 @@ export function Team() {
                   <div className="flex items-center gap-1.5">
                     <p className="text-[13px] font-medium text-forest truncate">{m.fullName}</p>
                     {m.isCreator && (
-                      <span className="text-[10px] font-medium text-ink-faint bg-cream-dark px-1.5 py-0.5 rounded">Creator</span>
+                      <span className="text-[10px] font-medium text-ink-faint bg-cream-dark px-1.5 py-0.5 rounded">{t('members.creator')}</span>
                     )}
                   </div>
                   {m.role === 'staff' && (
-                    <p className="text-[11px] text-ink-faint">{groupName ?? 'Full access (legacy)'}</p>
+                    <p className="text-[11px] text-ink-faint">{groupName ?? t('members.fullAccessLegacy')}</p>
                   )}
                 </div>
                 <select
@@ -927,12 +960,13 @@ export function Team() {
                       await updateMemberRole(m.id, newRole, newRole === 'staff' ? m.staffGroupId : null);
                       reload();
                     } catch (err) {
-                      setRoleError(err instanceof Error ? err.message : 'Failed to update role');
+                      setRoleError(err instanceof Error ? err.message : t('members.errorRole'));
                     }
                   }}
+                  aria-label={t('members.roleFor', { name: m.fullName })}
                   className="text-[12px] border border-border rounded-md px-2 py-1 text-forest bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  {ROLES.map((v) => <option key={v} value={v}>{t(`common:role.${v}`)}</option>)}
                 </select>
                 {isAdmin && m.role === 'staff' && !isSelf && !m.isCreator && (
                   <select
@@ -943,22 +977,25 @@ export function Team() {
                         await updateMemberRole(m.id, 'staff', e.target.value || null);
                         reload();
                       } catch (err) {
-                        setRoleError(err instanceof Error ? err.message : 'Failed to update group');
+                        setRoleError(err instanceof Error ? err.message : t('members.errorCrew'));
                       }
                     }}
+                    aria-label={t('members.crewFor', { name: m.fullName })}
                     className="text-[12px] border border-border rounded-md px-2 py-1 text-forest bg-white"
                   >
-                    <option value="">Full access</option>
-                    {staffGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                    <option value="">{t('members.fullAccess')}</option>
+                    {staffGroups.map((g) => <option key={g.id} value={g.id}>{crewLabel(g)}</option>)}
                   </select>
                 )}
                 {isAdmin && !isSelf && !m.isCreator && (
                   <button
                     onClick={async () => {
-                      if (!confirm('Remove this member from the camp?')) return;
+                      if (!confirm(t('members.confirmRemove'))) return;
                       await removeMember(m.id);
                       reload();
                     }}
+                    title={t('members.remove', { name: m.fullName })}
+                    aria-label={t('members.remove', { name: m.fullName })}
                     className="p-1.5 rounded hover:bg-red-50 text-ink-faint hover:text-red-500 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -974,7 +1011,7 @@ export function Team() {
       {invitations.length > 0 && (
         <div className="bg-white border border-border rounded-xl">
           <div className="px-5 py-4 border-b border-border">
-            <h2 className="text-[13px] font-semibold text-forest">Pending invitations</h2>
+            <h2 className="text-[13px] font-semibold text-forest">{t('pending.title')}</h2>
           </div>
           <div className="divide-y divide-stone-100">
             {invitations.map((inv) => {
@@ -983,9 +1020,11 @@ export function Team() {
               return (
                 <div key={inv.id} className="px-5 py-3 flex items-center gap-4">
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-forest truncate">{inv.email}</p>
+                    <p dir="ltr" className="text-[13px] font-medium text-forest truncate text-start">{inv.email}</p>
                     <p className="text-[11px] text-ink-faint">
-                      {ROLE_LABELS[inv.role]}{gName ? ` · ${gName}` : ''} · expires {new Date(inv.expiresAt).toLocaleDateString()}
+                      {gName
+                        ? t('pending.metaCrew', { role: t(`common:role.${inv.role}`), crew: gName, date: formatDate(inv.expiresAt) })
+                        : t('pending.meta', { role: t(`common:role.${inv.role}`), date: formatDate(inv.expiresAt) })}
                     </p>
                   </div>
                   <button
@@ -993,17 +1032,19 @@ export function Team() {
                     className="flex items-center gap-1.5 text-[12px] text-ink-soft hover:text-forest transition-colors flex-shrink-0"
                   >
                     {copiedId === `inv-${inv.id}` ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
-                    {copiedId === `inv-${inv.id}` ? 'Copied!' : 'Copy link'}
+                    {copiedId === `inv-${inv.id}` ? t('copiedLink') : t('copyLink')}
                   </button>
                   <a
                     href={mailtoHref(inv.email, link)}
                     className="flex items-center gap-1.5 text-[12px] text-ink-soft hover:text-forest transition-colors flex-shrink-0"
                   >
                     <Mail className="w-3 h-3" />
-                    Send email
+                    {t('pending.sendEmail')}
                   </a>
                   <button
                     onClick={async () => { await revokeInvitation(inv.id); reload(); }}
+                    title={t('pending.revoke', { email: inv.email })}
+                    aria-label={t('pending.revoke', { email: inv.email })}
                     className="p-1.5 rounded hover:bg-red-50 text-ink-faint hover:text-red-500 transition-colors flex-shrink-0"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

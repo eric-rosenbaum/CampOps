@@ -1,0 +1,158 @@
+{
+  "kind": {
+    "asset": "Equipment",
+    "location": "Location"
+  },
+  "target": {
+    "scannedCode": "Scanned code",
+    "justReport": "Just report a problem here"
+  },
+  "unknown": {
+    "title": "This code is not recognised",
+    "body": "The sticker may have been replaced, or the place it pointed at may no longer be listed. Tell someone at the camp office what you found and where — they can reprint it."
+  },
+  "wrongCamp": {
+    "title": "This is {{camp}}",
+    "otherCamp": "You are signed in to <camp>{{camp}}</camp>, so this sticker is not one of yours.",
+    "notThisCamp": "You are signed in, but not to this camp.",
+    "switching": "Switching…",
+    "switchTo": "Switch to {{camp}}",
+    "report": "Report a problem here"
+  },
+  "app": {
+    "title": "CampCommand for iPhone",
+    "bodyNamed": "Scan this sticker with your camera and the app opens on {{name}}.",
+    "body": "Scan a sticker with your camera and the app opens on that spot.",
+    "get": "Get the app"
+  },
+  "report": {
+    "header": "Report an issue",
+    "notFound": "Page not found",
+    "notFoundToken": "The sticker may have been replaced. Tell someone at the camp office what you found and where.",
+    "notFoundLink": "This report link doesn’t exist or is no longer active.",
+    "knownTitle": "Thanks — they know",
+    "knownBody": "It is already on {{camp}}’s list. Nothing else for you to do.",
+    "somethingElse": "Report something else here",
+    "submittedTitle": "Report submitted",
+    "submittedBody": "Thank you · {{camp}} staff will see this on their list.",
+    "receiptHint": "Save this link to check on the repair later. It works without an account.",
+    "copied": "Copied",
+    "copyLink": "Copy link",
+    "checkOnIt": "Check on it",
+    "another": "Submit another report",
+    "youScanned": "You scanned",
+    "youreAt": "You’re at",
+    "alreadyReported_one": "{{count}} thing is already reported here",
+    "alreadyReported_other": "{{count}} things are already reported here",
+    "thatsTheOne": "That’s the one I was going to report",
+    "titleLabel": "What’s the issue?",
+    "titlePlaceholder": "e.g. Broken dock plank, leaking faucet…",
+    "details": "Details",
+    "optional": "optional",
+    "detailsPlaceholderTarget": "Which part of it? When did you notice it? Any other context…",
+    "detailsPlaceholder": "Where exactly is it? When did you notice it? Any other context…",
+    "location": "Location",
+    "locationPlaceholder": "Where is it? (select a place)",
+    "photo": "Photo",
+    "preview": "Preview",
+    "removePhoto": "Remove photo",
+    "changePhoto": "Change photo",
+    "attachPhoto": "Tap to attach a photo",
+    "yourInfo": "Your info · optional",
+    "name": "Name",
+    "namePlaceholder": "First name or full name",
+    "contact": "Email or phone",
+    "contactPlaceholder": "In case staff need to follow up",
+    "submitting": "Submitting…",
+    "submit": "Submit report",
+    "staffSignIn": "Staff? <signin>Sign in</signin> to work on this instead.",
+    "open": {
+      "notStarted": "not started yet",
+      "inProgress": "being worked on",
+      "today": "today",
+      "daysAgo_one": "{{count}} day ago",
+      "daysAgo_other": "{{count}} days ago"
+    },
+    "errors": {
+      "tooMany": "Too many reports from this device in the last hour. Please try again later, or call the camp office.",
+      "titleRequired": "A short description of the problem is required.",
+      "unknownCode": "This code is not recognised.",
+      "unknownLocation": "This location is not recognised.",
+      "unknownCamp": "This camp is not recognised.",
+      "generic": "Something went wrong. Please try again."
+    }
+  },
+  "hub": {
+    "openInAssets": "Open in Assets",
+    "openInCampground": "Open in Campground",
+    "openHere_one": "{{count}} thing open here",
+    "openHere_other": "{{count}} things open here",
+    "nothingOpen": "Nothing open here. Good.",
+    "markDone": "Mark “{{title}}” done",
+    "done": "Done",
+    "logTitle": "Log something here",
+    "whatsWrong": "What’s wrong?",
+    "unassigned": "Unassigned",
+    "filedAgainst": "Filed against <name>{{name}}</name> — you scanned it, so nobody has to name it.",
+    "logIt": "Log it",
+    "logged": "Logged.",
+    "addDetail": "Add detail",
+    "somethingWrong": "Something’s wrong here",
+    "routinesHere": "Routines here",
+    "undoDone": "Done · <item></item>",
+    "undo": "Undo",
+    "service": {
+      "title": "Service status",
+      "limited": "Limited use",
+      "out": "Out of service",
+      "since": "Since {{date}}.",
+      "expectedBackOn": "Expected back {{date}}.",
+      "noReturnDate": "No return date set.",
+      "whyPlaceholder": "Why? e.g. ceiling leak, floor drying",
+      "expectedBack": "Expected back",
+      "explain": "This does more than label it: rental groups cannot be booked into a space that is out of service, and the rooming board will not place anyone here.",
+      "takeItOut": "Take it out of service",
+      "putBack": "Put back in service",
+      "takeOut": "Take out of service"
+    },
+    "building": {
+      "title": "Shutoffs & panel",
+      "mainWater": "Main water",
+      "mainGas": "Main gas",
+      "mainElectrical": "Main electrical",
+      "valves": "Valves",
+      "noBreakers": "No breakers recorded yet.",
+      "unlabelled": "Unlabelled",
+      "off": "off"
+    },
+    "meter": {
+      "title": "Meter",
+      "hours": "Hours",
+      "miles": "Miles",
+      "readingNow": "Reading now",
+      "record": "Record",
+      "recorded": "Recorded.",
+      "recordedRaised_one": "Recorded · raised {{count}} routine.",
+      "recordedRaised_other": "Recorded · raised {{count}} routines."
+    },
+    "history": {
+      "title": "Service history",
+      "empty": "Nothing logged against this yet."
+    },
+    "photo": {
+      "title": "Add a photo?",
+      "take": "Take a photo",
+      "notePlaceholder": "What did you do? (optional)",
+      "skip": "Skip",
+      "sending": "Sending…",
+      "send": "Send",
+      "receiptNote": "Whoever reported it will see this on their receipt."
+    },
+    "notHere": {
+      "title": "That sticker belongs to {{camp}}",
+      "body": "You are signed in somewhere else, so there is nothing here to work on.",
+      "open": "Open the sticker",
+      "unknownBody": "It may have been reissued, or the place it pointed at may have been removed. Reprint it from Camp Info → Locations."
+    }
+  }
+}

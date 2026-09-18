@@ -1,11 +1,15 @@
 import { useMemo } from 'react';
 import { Lock, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Issue, IssueComment } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
 import { useCampgroundStore, commentsFor } from '@/store/campgroundStore';
 import { useCampStore } from '@/store/campStore';
 import { Avatar } from '@/components/shared/Avatar';
 import { relativeTime } from '@/lib/utils';
+import { translateActivity } from '@/i18n/activity';
+import { useContentTranslation } from '@/lib/contentTranslation';
+import { TranslatedText } from '@/components/i18n/TranslatedText';
 
 /**
  * ONE stream, not two tabs.
@@ -29,6 +33,7 @@ interface Props {
 }
 
 export function WorkTimeline({ issue }: Props) {
+  const { t } = useTranslation('campground');
   const { currentUser } = useAuth();
   const comments = useCampgroundStore((s) => s.comments);
   const removeComment = useCampgroundStore((s) => s.removeComment);
@@ -48,7 +53,7 @@ export function WorkTimeline({ issue }: Props) {
   }, [issue.activityLog, comments, issue.id]);
 
   if (rows.length === 0) {
-    return <p className="text-[12px] italic text-ink-soft">Nothing has happened yet.</p>;
+    return <p className="text-[12px] italic text-ink-soft">{t('timeline.nothingYet')}</p>;
   }
 
   return (
@@ -58,7 +63,9 @@ export function WorkTimeline({ issue }: Props) {
           <div key={row.id} className="flex gap-2.5">
             <span className="mt-[7px] h-1.5 w-1.5 flex-none rounded-full bg-sage-light" />
             <p className="min-w-0 flex-1 text-[11.5px] leading-snug text-ink-soft">
-              {row.text}
+              {/* Stored in English on purpose (SQL and iOS read the same sentence); re-said here
+                  in the reader's language. */}
+              {translateActivity(row.text)}
               <span className="text-ink-faint"> · {relativeTime(row.at)}</span>
             </p>
           </div>
@@ -120,8 +127,12 @@ function Message({ comment, mine, canReachReporter, onDelete, onShare }: {
   onDelete: () => void;
   onShare: () => void;
 }) {
+  const { t } = useTranslation('campground');
   const members = useCampStore((s) => s.members);
   const who = attribution(comment, members);
+  // Only asked to know whether a translation exists: an untranslated message keeps its @names
+  // drawn as names, which a translated string (a plain string by contract) cannot carry.
+  const body = useContentTranslation('issue_comments', comment.id, 'body', comment.body);
   // Only the camp's own messages have an audience to get wrong. What the reporter wrote is
   // obviously visible to the reporter, and a system note is not addressed to anyone.
   const fromCamp = comment.authorId !== null;
@@ -137,45 +148,58 @@ function Message({ comment, mine, canReachReporter, onDelete, onShare }: {
               no record of. */}
           {who.badge === 'reporter' && (
             <span className="rounded-tag border border-red px-[4px] py-px text-[9px] font-bold uppercase tracking-[0.1em] text-red">
-              Reporter
+              {t('timeline.reporter')}
             </span>
           )}
           {who.badge === 'system' && (
             <span className="rounded-tag border border-border px-[4px] py-px text-[9px] font-bold uppercase tracking-[0.1em] text-ink-faint">
-              Automatic
+              {t('timeline.automatic')}
             </span>
           )}
           {who.badge === 'former' && (
             <span
-              title="This account is no longer active at this camp"
+              title={t('timeline.formerTitle')}
               className="rounded-tag border border-border px-[4px] py-px text-[9px] font-bold uppercase tracking-[0.1em] text-ink-faint"
             >
-              No longer here
+              {t('timeline.former')}
             </span>
           )}
           <span className="text-[11px] text-ink-faint">{relativeTime(comment.createdAt)}</span>
-          {comment.editedAt && <span className="text-[11px] text-ink-faint">· edited</span>}
+          {comment.editedAt && <span className="text-[11px] text-ink-faint">· {t('timeline.edited')}</span>}
           {mine && (
             <button
               onClick={onDelete}
-              title="Delete this message"
-              className="ml-auto flex-none text-ink-faint opacity-0 transition-opacity
+              title={t('timeline.deleteMessage')}
+              aria-label={t('timeline.deleteMessage')}
+              className="ms-auto flex-none text-ink-faint opacity-0 transition-opacity
                          hover:text-red group-hover:opacity-100 focus:opacity-100"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
-        <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed text-ink">
-          {renderMentions(comment.body)}
-        </p>
+        {body.translated ? (
+          <TranslatedText
+            variant="block"
+            as="p"
+            source="issue_comments"
+            id={comment.id}
+            field="body"
+            text={comment.body}
+            className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed text-ink"
+          />
+        ) : (
+          <p dir="auto" className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed text-ink">
+            {renderMentions(comment.body)}
+          </p>
+        )}
         {comment.photoUrls.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {comment.photoUrls.map((url) => (
               <a key={url} href={url} target="_blank" rel="noreferrer">
                 <img
                   src={url}
-                  alt="Attached to this message"
+                  alt={t('timeline.photoAlt')}
                   className="h-16 w-16 rounded-card border border-border object-cover"
                 />
               </a>
@@ -184,7 +208,7 @@ function Message({ comment, mine, canReachReporter, onDelete, onShare }: {
         )}
         {comment.visibleToReporter ? (
           <p className="mt-1 text-[11px] font-semibold text-green-muted-text">
-            Sent to the person who reported this
+            {t('timeline.sentToReporter')}
           </p>
         ) : canReachReporter && fromCamp ? (
           /* Said out loud, because a thread of internal notes on a public report otherwise
@@ -193,13 +217,13 @@ function Message({ comment, mine, canReachReporter, onDelete, onShare }: {
           <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-faint">
             <span className="inline-flex items-center gap-1 font-semibold">
               <Lock className="h-3 w-3" />
-              Internal · the reporter cannot see this
+              {t('timeline.internal')}
             </span>
             <button
               onClick={onShare}
               className="font-semibold text-forest underline underline-offset-2 hover:text-forest-mid"
             >
-              Send it to them
+              {t('timeline.sendToThem')}
             </button>
           </p>
         ) : null}

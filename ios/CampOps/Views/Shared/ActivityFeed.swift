@@ -21,7 +21,7 @@ struct ActivityFeed: View {
                                 Text(entry.createdAt.relativeDisplay)
                                     .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                             }
-                            Text(entry.action).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
+                            Text(entry.displayAction).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                         }
                     }
                     .padding(.vertical, Spacing.xs)

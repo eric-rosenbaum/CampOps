@@ -35,9 +35,23 @@ export function useTradeLabel(): (t: Trade) => string {
   const groups = useCampStore((s) => s.staffGroups);
   return useMemo(() => {
     const byKey = new Map(groups.map((g) => [g.key, g.name]));
-    return (t: Trade) => byKey.get(t) ?? TRADE_LABELS[t] ?? t;
+    return (t: Trade) => seedCrewName(t, byKey.get(t)) ?? TRADE_LABELS[t] ?? t;
   }, [groups]);
 }
+
+/**
+ * A crew's name is the camp's own words, so it is shown as the camp wrote it — except for the
+ * five seed crews under their seed names, which were never the camp's words at all. "Maintenance"
+ * is our default, and a Spanish reader should see "Mantenimiento" until the camp renames it.
+ */
+export function seedCrewName(key: string, name: string | undefined): string | undefined {
+  if (name === undefined) return undefined;
+  return name === SEED_CREW_NAMES[key] ? TRADE_LABELS[key] : name;
+}
+
+const SEED_CREW_NAMES: Record<string, string> = {
+  maintenance: 'Maintenance', housekeeping: 'Housekeeping', grounds: 'Grounds', kitchen: 'Kitchen', it: 'Tech',
+};
 
 /** The crew a trade key names, when the caller needs the row and not just the label. */
 export function useCrewByTrade(): (t: Trade) => { id: string; name: string } | undefined {

@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Upload, AlertTriangle, Check, ShieldOff } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useSafetyStore } from '@/store/safetyStore';
 import { generateId } from '@/lib/utils';
 import {
-  parseDelimited, detectColumns, buildRows, isRefusedHeader, FIELD_LABEL,
+  parseDelimited, detectColumns, buildRows, isRefusedHeader,
   type StaffField, type ImportedStaffRow,
 } from '@/lib/staffImport';
 import type { SafetyStaff } from '@/lib/types';
@@ -26,7 +27,23 @@ const FIELDS: StaffField[] = [
   'education', 'qualifyingExperience', 'hiredOn', 'firstDayOn', 'isVolunteer',
 ];
 
+/**
+ * The parser names a row's trouble in English (src/lib/staffImport.ts, shared and unit-tested).
+ * Its known phrases are said in the reader's language here; anything new it learns to say still
+ * shows, in English, rather than disappearing.
+ */
+const ROW_NOTE = {
+  'no name in this row': 'import.noNameInRow',
+  'date of birth not understood, left blank': 'import.dobNotUnderstood',
+} as const;
+
 export function StaffImportModal({ onClose }: { onClose: () => void }) {
+  // Only opened from Camp Info › Staff, which is translated. The column headings a roster is
+  // matched on are NOT translated: detectColumns reads English headings, and a camp's export
+  // comes out of CampMinder or CampBrain in English whatever language its director reads.
+  const { t, i18n } = useTranslation(['staff', 'common']);
+  const rowNote = (s: string | null) =>
+    s ? (ROW_NOTE[s as keyof typeof ROW_NOTE] ? t(ROW_NOTE[s as keyof typeof ROW_NOTE]) : s) : '';
   const { staff, addStaff } = useSafetyStore();
   const [text, setText] = useState('');
   const [mapping, setMapping] = useState<(StaffField | null)[] | null>(null);
@@ -77,19 +94,18 @@ export function StaffImportModal({ onClose }: { onClose: () => void }) {
 
   if (done !== null) {
     return (
-      <Modal title="Roster imported" onClose={onClose} width="520px">
+      <Modal title={t('import.doneTitle')} onClose={onClose} width="520px">
         <div className="py-2">
           <p className="text-[13px] text-ink leading-relaxed">
-            <strong className="font-mono">{done}</strong> {done === 1 ? 'person' : 'people'} added.
-            {skipped.length > 0 && ` ${skipped.length} skipped, listed before you confirmed.`}
+            <Trans t={t} i18nKey="import.added" count={done}
+              components={{ b: <strong className="font-mono" /> }} />
+            {skipped.length > 0 && <> {t('import.skippedAfter', { count: skipped.length })}</>}
           </p>
           <p className="text-[12px] text-ink-soft mt-2 leading-relaxed">
-            Certifications and screening dates are not part of an import. Add those from the staff
-            clearance screen, where each one is recorded by a person who knows what they are
-            attesting to.
+            {t('import.doneNote')}
           </p>
           <div className="flex justify-end mt-4">
-            <Button onClick={onClose}>Done</Button>
+            <Button onClick={onClose}>{t('common:actions.done')}</Button>
           </div>
         </div>
       </Modal>
@@ -97,29 +113,29 @@ export function StaffImportModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Modal title="Import a staff roster" onClose={onClose} width="820px">
+    <Modal title={t('import.title')} onClose={onClose} width="820px">
       <div className="space-y-4">
         <p className="text-[12.5px] text-ink-soft leading-relaxed">
-          Export your roster from CampMinder, CampBrain, or whatever holds it, and paste it below.
-          A spreadsheet copied straight out of Excel works too. Nothing is saved until you confirm
-          the columns.
+          {t('import.intro')}
+          {i18n.language !== 'en' && <> {t('import.headersNote')}</>}
         </p>
 
         <div className="flex items-center gap-2.5 flex-wrap">
           <label className="inline-flex items-center gap-2 text-[12.5px] font-semibold text-forest
                             border border-border rounded-btn px-3 py-1.5 cursor-pointer hover:border-sage">
             <Upload className="w-3.5 h-3.5" />
-            Choose a CSV
+            {t('import.chooseCsv')}
             <input type="file" accept=".csv,.tsv,.txt,text/csv" className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); }} />
           </label>
-          <span className="text-[11.5px] text-ink-faint">or paste below</span>
+          <span className="text-[11.5px] text-ink-faint">{t('import.orPaste')}</span>
         </div>
 
         <textarea
           value={text}
           onChange={(e) => read(e.target.value)}
           rows={text ? 4 : 7}
+          dir="auto"
           placeholder={'Name,Position,Date of Birth\nAvery Cole,Counselor,03/14/2007'}
           className="w-full rounded-input border border-border px-3 py-2 text-[12px] font-mono
                      focus:border-sage focus:outline-none"
@@ -130,8 +146,7 @@ export function StaffImportModal({ onClose }: { onClose: () => void }) {
             <p className="text-[12.5px] text-amber-text inline-flex items-start gap-1.5">
               <ShieldOff className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
               <span>
-                Ignoring {refusedHeaders.map((h) => `"${h}"`).join(', ')}. We record that a check
-                was run and when — never its result, and never a social security number.
+                {t('import.ignoring', { headers: refusedHeaders.map((h) => `"${h}"`).join(', ') })}
               </span>
             </p>
           </div>
@@ -141,14 +156,14 @@ export function StaffImportModal({ onClose }: { onClose: () => void }) {
           <>
             <div>
               <p className="text-[12px] font-semibold text-forest mb-2">
-                What is in each column?
+                {t('import.whatColumn')}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {headers.map((h, i) => (
                   <div key={i} className="flex items-center gap-2 min-w-0">
                     <span className="text-[11.5px] font-mono text-ink-soft truncate flex-1 min-w-0"
                       title={h}>
-                      {h || <em className="text-ink-faint">unnamed</em>}
+                      {h || <em className="text-ink-faint">{t('import.unnamed')}</em>}
                     </span>
                     <select
                       value={mapping[i] ?? ''}
@@ -159,9 +174,9 @@ export function StaffImportModal({ onClose }: { onClose: () => void }) {
                                  focus:border-sage focus:outline-none disabled:bg-paper-raised
                                  w-[10.5rem] flex-shrink-0"
                     >
-                      <option value="">Do not import</option>
+                      <option value="">{t('import.doNotImport')}</option>
                       {FIELDS.map((f) => (
-                        <option key={f} value={f}>{FIELD_LABEL[f]}</option>
+                        <option key={f} value={f}>{t(`field.${f}`)}</option>
                       ))}
                     </select>
                   </div>
@@ -172,14 +187,14 @@ export function StaffImportModal({ onClose }: { onClose: () => void }) {
             <div className="rounded-card border border-border overflow-hidden">
               <div className="px-4 py-2 border-b border-cream-dark flex items-baseline gap-3 flex-wrap">
                 <span className="text-[10px] uppercase tracking-[0.12em] font-bold text-ink-soft">
-                  Preview
+                  {t('import.preview')}
                 </span>
                 <span className="text-[11.5px] text-green-muted-text font-semibold">
-                  {importable.length} to add
+                  {t('import.toAdd', { count: importable.length })}
                 </span>
                 {skipped.length > 0 && (
                   <span className="text-[11.5px] text-amber-text font-semibold">
-                    {skipped.length} skipped
+                    {t('import.skipped', { count: skipped.length })}
                   </span>
                 )}
               </div>
@@ -193,22 +208,22 @@ export function StaffImportModal({ onClose }: { onClose: () => void }) {
                         ? <AlertTriangle className="w-3 h-3 text-ink-faint flex-shrink-0" />
                         : <Check className="w-3 h-3 text-green-muted-text flex-shrink-0" />}
                     <span className="font-medium text-ink min-w-0 truncate flex-1">
-                      {r.name || <em className="text-ink-faint">no name</em>}
+                      {r.name || <em className="text-ink-faint">{t('import.noName')}</em>}
                     </span>
                     <span className="text-ink-soft min-w-0 truncate flex-1">{r.title}</span>
-                    <span className="font-mono text-[11px] text-ink-faint w-24 text-right">
+                    <span dir="ltr" className="font-mono text-[11px] text-ink-faint w-24 text-end">
                       {r.dateOfBirth ?? ''}
                     </span>
-                    <span className={`text-[11px] w-52 text-right truncate ${
+                    <span className={`text-[11px] w-52 text-end truncate ${
                       r.problem || r.duplicate ? 'text-amber-text' : 'text-ink-faint'}`}
-                      title={r.warning ?? undefined}>
-                      {r.duplicate ? 'already on the roster' : r.problem ?? r.warning ?? ''}
+                      title={r.warning ? rowNote(r.warning) : undefined}>
+                      {r.duplicate ? t('import.alreadyOnRoster') : rowNote(r.problem ?? r.warning)}
                     </span>
                   </div>
                 ))}
                 {preview.length > 60 && (
                   <p className="px-4 py-2 text-[11.5px] text-ink-faint">
-                    …and {preview.length - 60} more.
+                    {t('import.more', { count: preview.length - 60 })}
                   </p>
                 )}
               </div>
@@ -217,9 +232,9 @@ export function StaffImportModal({ onClose }: { onClose: () => void }) {
         )}
 
         <div className="flex justify-end gap-2 pt-1">
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
           <Button disabled={importable.length === 0} onClick={runImport}>
-            Add {importable.length} {importable.length === 1 ? 'person' : 'people'}
+            {t('import.addPeople', { count: importable.length })}
           </Button>
         </div>
       </div>

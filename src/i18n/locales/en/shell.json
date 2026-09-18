@@ -1,0 +1,224 @@
+{
+  "nav": {
+    "label": "Main navigation",
+    "sections": {
+      "today": "Today",
+      "facilities": "Facilities",
+      "commissary": "Commissary",
+      "aquatics": "Aquatics",
+      "retreats": "Retreats",
+      "logistics": "Logistics",
+      "finance": "Finance",
+      "settings": "Settings"
+    },
+    "items": {
+      "demoGuide": "Demo guide",
+      "dashboard": "Dashboard",
+      "myTasks": "My Tasks",
+      "campground": "Campground",
+      "compliance": "Compliance",
+      "assets": "Assets & Vehicles",
+      "building": "Building Systems",
+      "kitchen": "Kitchen Manager",
+      "askKitchen": "Ask the kitchen",
+      "pool": "Pool Manager",
+      "retreats": "Retreat Manager",
+      "trips": "Town Trips",
+      "receipts": "Receipts",
+      "campInfo": "Camp Info",
+      "team": "Team",
+      "securityPrivacy": "Security & Privacy"
+    },
+    "security": "Security",
+    "signingOut": "Signing out…",
+    "userLine": "{{name}} · {{role}}",
+    "railUser": "{{camp}} · {{name}}"
+  },
+  "rail": {
+    "show": "Show sidebar",
+    "hide": "Hide sidebar"
+  },
+  "banner": {
+    "impersonating": "Viewing <b>{{camp}}</b> as CampCommand admin",
+    "exitToAdmin": "Exit to admin",
+    "demoDaysLeft_one": "Demo · {{count}} day left",
+    "demoDaysLeft_other": "Demo · {{count}} days left",
+    "demoEnded": "Demo ended",
+    "openGuide": "Open the demo guide"
+  },
+  "mobile": {
+    "openNav": "Open navigation",
+    "closeNav": "Close navigation"
+  },
+  "sync": {
+    "saving": "Saving…"
+  },
+  "loading": {
+    "label": "Loading",
+    "pulling": "Pulling the latest from your camp…",
+    "appLabel": "Getting your camp ready",
+    "appSublabel": "Signing you in and loading your modules"
+  },
+  "time": {
+    "minutesAgo_one": "{{count}} min ago",
+    "minutesAgo_other": "{{count}} mins ago",
+    "hoursAgo_one": "{{count}} hr ago",
+    "hoursAgo_other": "{{count}} hrs ago",
+    "yesterday": "Yesterday"
+  },
+  "due": {
+    "overdueDays_one": "Overdue {{count}} day",
+    "overdueDays_other": "Overdue {{count}} days",
+    "overdueWasDue": "Overdue — was due {{time}}",
+    "today": "Due today",
+    "todayBy": "Due today by {{time}}",
+    "tomorrow": "Due tomorrow",
+    "tomorrowBy": "Due tomorrow by {{time}}",
+    "inDays_one": "Due in {{count}} day",
+    "inDays_other": "Due in {{count}} days"
+  },
+  "search": {
+    "placeholder": "Search…"
+  },
+  "status": {
+    "pending": "Pending",
+    "complete": "Complete"
+  },
+  "logWork": {
+    "titleNew": "Log work",
+    "titleEdit": "Edit work order",
+    "photo": "Photo",
+    "capture": "Capture",
+    "captureHint": "Photo or voice — fills this in, and keeps the photo",
+    "photoAlt": "Work order photo",
+    "removePhoto": "Remove photo",
+    "changePhoto": "Change photo",
+    "attachOnly": "Or attach one without reading it",
+    "filledFromCapture": "Filled in from your capture.",
+    "title": "Title",
+    "titleRequired": "Title is required",
+    "titlePlaceholder": "What is wrong, in a few words",
+    "location": "Location",
+    "extras": "Checklist, equipment and contractors",
+    "extrasSet_one": "{{count}} set",
+    "extrasSet_other": "{{count}} set",
+    "checklist": "Checklist",
+    "noChecklist": "No checklist",
+    "templateOption_one": "{{name}} · {{count}} step",
+    "templateOption_other": "{{name}} · {{count}} steps",
+    "asset": "Vehicle or equipment",
+    "noAsset": "Not about a specific one",
+    "vendor": "Outside vendor",
+    "noVendor": "Nobody outside",
+    "priority": "Priority",
+    "description": "Description",
+    "descriptionPlaceholder": "Anything else worth knowing",
+    "crew": "Crew",
+    "assignTo": "Assign to",
+    "nobodyYet": "Nobody yet",
+    "crewGroup": "A crew picks it up",
+    "personGroup": "A person",
+    "due": "Due",
+    "dueTime": "Due by (time)",
+    "anyTime": "Any time that day.",
+    "scheduleQuestion": "Does this happen on a schedule?",
+    "routineInstead": "Set it up as a routine instead",
+    "saveChanges": "Save changes",
+    "logIt": "Log it"
+  },
+  "issue": {
+    "public": "Public",
+    "noDueDate": "No due date",
+    "takeIt": "Take it",
+    "anonymous": "Anonymous",
+    "loggedBy": "Logged by {{name}} {{date}}",
+    "loggedOn": "Logged {{date}}",
+    "priority": "Priority",
+    "status": "Status",
+    "assignedTo": "Assigned to",
+    "description": "Description",
+    "noDescription": "No description provided",
+    "reportedBy": "Reported by",
+    "photo": "Photo",
+    "noPhoto": "No photo attached",
+    "cost": "Cost",
+    "estimated": "Estimated",
+    "actual": "Actual",
+    "pendingResolution": "pending resolution",
+    "dueDate": "Due date",
+    "noDueDateSet": "No due date set",
+    "logged": "Logged",
+    "activity": "Activity",
+    "deleteConfirm": "Delete this work order? This cannot be undone.",
+    "confirmDelete": "Confirm delete",
+    "reopen": "Reopen work order",
+    "delete": "Delete work order",
+    "costPlaceholder": "Actual cost (optional, e.g. 280)",
+    "confirmResolve": "Confirm done",
+    "markResolved": "Mark done",
+    "noActivity": "No activity yet."
+  },
+  "location": {
+    "placeholder": "Select location…",
+    "uncategorized": "Uncategorized",
+    "dorm": "Dorm",
+    "selected_one": "{{count}} selected",
+    "selected_other": "{{count}} selected",
+    "search": "Search locations…",
+    "empty": "No locations yet. Add them in Camp Info.",
+    "noMatch": "No match for “{{query}}”.",
+    "remove": "Remove {{name}}"
+  },
+  "thread": {
+    "empty": "No messages yet.",
+    "placeholderTo": "Message {{name}}…",
+    "placeholder": "Write a message…",
+    "send": "Send"
+  },
+  "required": {
+    "marker": "Required",
+    "addFirst": "Add {{list}} first."
+  },
+  "unsaved": {
+    "title_one": "A change didn’t save",
+    "title_other": "{{count}} changes didn’t save",
+    "body": "What’s on screen may not match what’s stored. Reload to see exactly what saved.",
+    "affected": "Affected: {{list}}.",
+    "reload": "Reload",
+    "dismiss": "Dismiss"
+  },
+  "upload": {
+    "ready": "Ready to open",
+    "upload": "Upload",
+    "save": "Save",
+    "open": "Open it"
+  },
+  "season": {
+    "title": "New season",
+    "warning": "This will reset all checklist task statuses to Pending and recompute due dates.",
+    "name": "Season name",
+    "nameRequired": "Season name is required",
+    "namePlaceholder": "e.g. Summer {{year}}",
+    "defaultName": "Summer {{year}}",
+    "opening": "Opening date",
+    "closing": "Closing date",
+    "required": "Required",
+    "aca": "ACA inspection date (optional)",
+    "acaHint": "If your camp has an upcoming ACA accreditation visit, enter the date to track it in Compliance.",
+    "activate": "Activate new season"
+  },
+  "chart": {
+    "summary": "{{series}}: {{count}} columns, maximum {{max}}"
+  },
+  "access": {
+    "demoEndedTitle": "Your demo has ended",
+    "pausedTitle": "Your account is paused",
+    "demoEndedBody": "Your 30-day CampCommand demo is over. To set up a real account and pick up where you left off, get in touch and we’ll get you started.",
+    "pausedBody": "This account is currently paused. Please reach out and we’ll get you back up and running.",
+    "email": "Email {{email}}",
+    "signOutRetry": "Sign out and try a different account",
+    "signOutDifferentEmail": "Sign out and use a different email",
+    "noCampTitle": "Your account isn’t set up yet",
+    "noCampBody": "You’re signed in, but you don’t have access to a camp yet. If you signed in with the wrong email, sign out and try again with the address your invite was sent to."
+  }
+}

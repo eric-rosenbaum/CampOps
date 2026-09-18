@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Upload, ArrowLeft } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/shared/Button';
-import { CERT_TYPE_LABELS, useSafetyStore } from '@/store/safetyStore';
+import { useSafetyStore } from '@/store/safetyStore';
 import { useUIStore } from '@/store/uiStore';
 import { AddStaffModal } from '@/components/safety/AddStaffModal';
 import { useAuth } from '@/lib/auth';
@@ -11,6 +12,21 @@ import { StaffImportModal } from '@/components/safety/StaffImportModal';
 import { StaffIntakePanel } from '@/components/settings/StaffIntakePanel';
 import { FORM_ROLES, CERTS_ON_367A } from '@/lib/compliance/formRoles';
 import type { SafetyStaff, StaffCertification } from '@/lib/types';
+
+// FORM_ROLES is shared with the compliance form builder and speaks English. Its labels and the
+// details it asks for are translated here, at display, by the English words it returns; anything
+// it grows later that is not in these maps still shows, in English, rather than as a raw key.
+const ROLE_KEY = {
+  'Camp director': 'campDirector',
+  'Health director': 'healthDirector',
+  'Aquatics director': 'aquaticsDirector',
+} as const;
+const NEED_KEY = {
+  education: 'education',
+  'qualifying experience': 'experience',
+  'a professional license number': 'license',
+  'a date of birth': 'dob',
+} as const;
 
 /**
  * The camp's people and their certifications.
@@ -39,6 +55,20 @@ export function StaffRosterTab() {
   const [params] = useSearchParams();
   const cameFromCompliance = params.get('from') === 'compliance';
   const { can } = useAuth();
+  const { t, i18n } = useTranslation(['staff', 'common']);
+  // "X and Y" said the reader's way: "X y Y", "X ו-Y".
+  const list = useMemo(
+    () => new Intl.ListFormat(i18n.language, { type: 'conjunction' }),
+    [i18n.language],
+  );
+  const roleLabel = (label: string) => {
+    const k = ROLE_KEY[label as keyof typeof ROLE_KEY];
+    return k ? t(`role.${k}`) : label.toLowerCase();
+  };
+  const needLabel = (need: string) => {
+    const k = NEED_KEY[need as keyof typeof NEED_KEY];
+    return k ? t(`need.${k}`) : need;
+  };
 
   // The permit columns are readable only by a camp admin, through an admin-gated function.
   // Everyone else holds nulls that mean "not yours to see", which is not the same as "blank",
@@ -67,7 +97,7 @@ export function StaffRosterTab() {
     const out = new Map<string, string[]>();
     for (const r of roles) {
       if (!r.printed) continue;
-      out.set(r.printed.id, [...(out.get(r.printed.id) ?? []), r.label.toLowerCase()]);
+      out.set(r.printed.id, [...(out.get(r.printed.id) ?? []), r.label]);
     }
     return out;
   }, [roles]);
@@ -83,7 +113,7 @@ export function StaffRosterTab() {
       if (r.printed?.id !== member.id) continue;
       for (const need of r.needs(member)) if (!gaps.includes(need)) gaps.push(need);
     }
-    return gaps;
+    return gaps.map(needLabel);
   }
 
   return (
@@ -92,23 +122,21 @@ export function StaffRosterTab() {
         {cameFromCompliance && (
           <Link to="/compliance?tab=staff"
             className="text-[12.5px] font-semibold text-sage hover:text-forest inline-flex items-center gap-1.5">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to staff clearance
+            <ArrowLeft className="w-3.5 h-3.5 rtl:-scale-x-100" /> {t('roster.backToClearance')}
           </Link>
         )}
           <div className="bg-white rounded-card border border-border overflow-hidden">
             <div className="px-5 py-4 border-b border-cream-dark flex items-start justify-between gap-4">
               <p className="text-[12.5px] text-ink-soft leading-relaxed min-w-0">
-                One list, read by several parts of the platform: drills and certification tracking
-                in Safety, the three directors named on your permit forms, and lifeguard cover in
-                Pool Manager. Change someone once and they change everywhere.
+                {t('roster.intro')}
               </p>
               {canManage && (
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <Button size="sm" variant="ghost" onClick={() => setImporting(true)}>
-                    <Upload className="w-3.5 h-3.5" /> Import a roster
+                    <Upload className="w-3.5 h-3.5" /> {t('roster.importRoster')}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => openSafetyAddStaffModal()}>
-                    Add a person
+                    {t('roster.addPerson')}
                   </Button>
                 </div>
               )}
@@ -124,7 +152,7 @@ export function StaffRosterTab() {
 
             {active.length === 0 ? (
               <p className="px-5 py-6 text-[12.5px] text-ink-faint">
-                No active staff yet. Add the people who work at your camp and their certifications.
+                {t('roster.empty')}
               </p>
             ) : (
               <div>
@@ -138,21 +166,21 @@ export function StaffRosterTab() {
                       <div className="min-w-0">
                         <p className="text-[13px] text-forest">
                           <span className="font-medium">{m.name}</span>
-                          <span className="text-[11.5px] text-ink-faint ml-2">{m.title}</span>
+                          <span className="text-[11.5px] text-ink-faint ms-2">{m.title}</span>
                         </p>
                         {printsAs.length > 0 && (
                           <p className="text-[11.5px] text-ink-soft mt-0.5">
-                            Prints as your {printsAs.join(' and ')} on DOH-367.
+                            {t('roster.printsAs', { roles: list.format(printsAs.map(roleLabel)) })}
                           </p>
                         )}
                         <p className="text-[11.5px] text-ink-faint mt-0.5">
                           {certs.length === 0
-                            ? 'No certifications on file'
-                            : certs.map((c) => CERT_TYPE_LABELS[c.certType]).join(' · ')}
+                            ? t('roster.noCerts')
+                            : certs.map((c) => t(`certType.${c.certType}`)).join(' · ')}
                         </p>
                         {gaps.length > 0 && (
                           <p className="text-[11.5px] text-amber-text mt-0.5">
-                            The forms still want {gaps.join(' and ')} from this record.
+                            {t('roster.formsWant', { gaps: list.format(gaps) })}
                           </p>
                         )}
                       </div>
@@ -161,7 +189,7 @@ export function StaffRosterTab() {
                           onClick={() => openSafetyAddStaffModal(m.id)}
                           className="text-[11.5px] text-sage hover:underline cursor-pointer flex-shrink-0"
                         >
-                          Edit
+                          {t('common:actions.edit')}
                         </button>
                       )}
                     </div>
@@ -172,8 +200,7 @@ export function StaffRosterTab() {
 
             {!seesPersonal && active.length > 0 && (
               <p className="px-5 py-3 border-t border-cream-dark text-[11.5px] text-ink-faint leading-relaxed">
-                Dates of birth and the other details the permit forms ask about a person are kept
-                for camp admins only, so they are not shown here.
+                {t('roster.privateNote')}
               </p>
             )}
         </div>

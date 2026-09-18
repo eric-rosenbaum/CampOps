@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Trans, useTranslation } from 'react-i18next';
+import { LanguagePicker } from '@/components/i18n/LanguagePicker';
+import { authErrorMessage } from './authErrors';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
 import { useAuthStore, OTP_MIN_LENGTH, OTP_MAX_LENGTH } from '@/store/authStore';
 
@@ -18,6 +21,7 @@ interface CodeSignInProps {
 
 /** Passwordless sign-in for staff who joined with a code and never set a password. */
 function CodeSignIn(p: CodeSignInProps) {
+  const { t } = useTranslation('auth');
   const input =
     'w-full px-3 py-2 rounded-lg border border-border text-[13px] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20';
   return (
@@ -25,8 +29,9 @@ function CodeSignIn(p: CodeSignInProps) {
       {!p.otpSent ? (
         <form onSubmit={p.onSend} className="space-y-4">
           <div>
-            <label className="block text-[12px] font-medium text-ink mb-1.5">Email address</label>
+            <label htmlFor="code-email" className="block text-[12px] font-medium text-ink mb-1.5">{t('fields.email')}</label>
             <input
+              id="code-email" dir="ltr"
               type="email" required autoFocus autoComplete="email" inputMode="email"
               value={p.email} onChange={(e) => p.setEmail(e.target.value)} className={input}
             />
@@ -36,18 +41,19 @@ function CodeSignIn(p: CodeSignInProps) {
             type="submit" disabled={p.loading || !p.email.trim()}
             className="w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50 mt-2"
           >
-            {p.loading ? 'Sending…' : 'Email me a code'}
+            {p.loading ? t('status.sending') : t('code.send')}
           </button>
         </form>
       ) : (
         <form onSubmit={p.onVerify} className="space-y-4">
           <p className="text-[12px] text-ink-soft leading-relaxed">
-            We sent a sign-in code to <span className="font-medium text-forest">{p.email}</span>.
+            <Trans t={t} i18nKey="code.sentTo" values={{ email: p.email }} components={{ email: <bdi className="font-medium text-forest" /> }} />
           </p>
           <input
             value={p.otp}
             onChange={(e) => p.setOtp(e.target.value.replace(/\D/g, '').slice(0, OTP_MAX_LENGTH))}
-            autoFocus inputMode="numeric" autoComplete="one-time-code"
+            autoFocus inputMode="numeric" autoComplete="one-time-code" dir="ltr"
+            aria-label={t('code.codeLabel')}
             className="w-full px-3 py-3 rounded-lg border border-border text-center text-[22px] font-mono font-semibold tracking-[0.35em] text-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
           />
           {p.error && <ErrorBox>{p.error}</ErrorBox>}
@@ -55,12 +61,12 @@ function CodeSignIn(p: CodeSignInProps) {
             type="submit" disabled={p.loading || p.otp.length < OTP_MIN_LENGTH}
             className="w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50"
           >
-            {p.loading ? 'Verifying…' : 'Sign in'}
+            {p.loading ? t('status.verifying') : t('login.submit')}
           </button>
         </form>
       )}
       <button onClick={p.onBack} className="w-full text-[12px] text-ink-faint hover:text-forest transition-colors pt-4">
-        Use a password instead
+        {t('code.usePassword')}
       </button>
     </>
   );
@@ -75,6 +81,7 @@ function ErrorBox({ children }: { children: React.ReactNode }) {
 }
 
 export function Login() {
+  const { t } = useTranslation('auth');
   const signIn = useAuthStore((s) => s.signIn);
   const sendEmailOtp = useAuthStore((s) => s.sendEmailOtp);
   const verifyEmailOtp = useAuthStore((s) => s.verifyEmailOtp);
@@ -101,7 +108,7 @@ export function Login() {
     setLoading(true);
     const err = await signIn(email, password);
     setLoading(false);
-    if (err) { setError(err); return; }
+    if (err) { setError(authErrorMessage(t, err)); return; }
     goAfterAuth();
   }
 
@@ -112,7 +119,7 @@ export function Login() {
     // No account is created here: someone signing in must already exist.
     const err = await sendEmailOtp(email);
     setLoading(false);
-    if (err) { setError(err); return; }
+    if (err) { setError(authErrorMessage(t, err)); return; }
     setOtpSent(true);
   }
 
@@ -122,7 +129,7 @@ export function Login() {
     setLoading(true);
     const err = await verifyEmailOtp(email, otp);
     setLoading(false);
-    if (err) { setError(err); return; }
+    if (err) { setError(authErrorMessage(t, err)); return; }
     goAfterAuth();
   }
 
@@ -136,21 +143,26 @@ export function Login() {
         </div>
         <div>
           <h2 className="text-[28px] font-bold text-cream leading-snug mb-3">
-            Camp operations, simplified.
+            {t('brand.tagline')}
           </h2>
           <p className="text-[14px] text-cream/60 leading-relaxed">
-            Manage issues, safety, pools, and more, all in one place for your entire staff.
+            {t('brand.blurb')}
           </p>
         </div>
         <div className="flex items-center gap-4 text-[11px] text-cream/30">
-          <span>Built for camp operators.</span>
-          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-cream/60 transition-colors">Privacy</a>
-          <a href="/security" target="_blank" rel="noopener noreferrer" className="hover:text-cream/60 transition-colors">Security</a>
+          <span>{t('brand.builtFor')}</span>
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-cream/60 transition-colors">{t('brand.privacy')}</a>
+          <a href="/security" target="_blank" rel="noopener noreferrer" className="hover:text-cream/60 transition-colors">{t('brand.security')}</a>
         </div>
       </div>
 
       {/* Right form panel */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-paper p-4 sm:p-6 sm:p-10">
+      <div className="relative flex-1 flex flex-col items-center justify-center bg-paper p-4 sm:p-6 sm:p-10">
+        {/* Before sign-in there is no account to read a language from, so the choice has to be
+            reachable right here, before the first word of the form. */}
+        <div className="absolute top-4 end-4">
+          <LanguagePicker tone="light" />
+        </div>
         <div className="lg:hidden flex items-center gap-2 mb-8">
           <CampCommandMark size={30} decorative />
           <span className="text-base font-semibold text-forest">CampCommand</span>
@@ -158,7 +170,7 @@ export function Login() {
 
         <div className="w-full max-w-sm">
           <div className="bg-white rounded-xl border border-border shadow-sm p-8">
-            <h1 className="text-[18px] font-semibold text-forest mb-6">Sign in</h1>
+            <h1 className="text-[18px] font-semibold text-forest mb-6">{t('login.title')}</h1>
 
             {mode === 'code' ? (
               <CodeSignIn
@@ -177,10 +189,12 @@ export function Login() {
             <>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-[12px] font-medium text-ink mb-1.5">
-                  Email address
+                <label htmlFor="login-email" className="block text-[12px] font-medium text-ink mb-1.5">
+                  {t('fields.email')}
                 </label>
                 <input
+                  id="login-email"
+                  dir="ltr"
                   type="email"
                   required
                   autoFocus
@@ -192,10 +206,12 @@ export function Login() {
               </div>
 
               <div>
-                <label className="block text-[12px] font-medium text-ink mb-1.5">
-                  Password
+                <label htmlFor="login-password" className="block text-[12px] font-medium text-ink mb-1.5">
+                  {t('fields.password')}
                 </label>
                 <input
+                  id="login-password"
+                  dir="ltr"
                   type="password"
                   required
                   autoComplete="current-password"
@@ -216,7 +232,7 @@ export function Login() {
                 disabled={loading}
                 className="w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50 mt-2"
               >
-                {loading ? 'Signing in…' : 'Sign in'}
+                {loading ? t('login.submitting') : t('login.submit')}
               </button>
             </form>
 
@@ -225,10 +241,10 @@ export function Login() {
                 onClick={() => { setMode('code'); setError(null); }}
                 className="text-[12px] font-medium text-forest hover:underline"
               >
-                Email me a sign-in code instead
+                {t('login.useCode')}
               </button>
               <Link to="/forgot-password" className="text-[12px] text-ink-soft hover:text-forest transition-colors">
-                Forgot your password?
+                {t('login.forgot')}
               </Link>
             </div>
             </>

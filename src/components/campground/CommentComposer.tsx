@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Camera, Lock, Send, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { currentLang } from '@/i18n';
 import type { Issue } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
 import { useCampgroundStore } from '@/store/campgroundStore';
@@ -8,6 +10,15 @@ import { dbUploadPhoto } from '@/lib/db';
 import { generateId } from '@/lib/utils';
 
 const MAX_PHOTOS = 4;
+
+/** "Ana and Luis", "Ana, Luis y Marta", "אנה ולואיס" — the reader's own way of listing people. */
+function listNames(names: string[]): string {
+  try {
+    return new Intl.ListFormat(currentLang(), { style: 'long', type: 'conjunction' }).format(names);
+  } catch {
+    return names.join(', ');
+  }
+}
 
 interface Props {
   issue: Issue;
@@ -21,6 +32,7 @@ interface Props {
  * attached to it and does not.
  */
 export function CommentComposer({ issue }: Props) {
+  const { t } = useTranslation('campground');
   const { currentUser } = useAuth();
   const postComment = useCampgroundStore((s) => s.postComment);
   const grantIssueView = useCampgroundStore((s) => s.grantIssueView);
@@ -133,7 +145,7 @@ export function CommentComposer({ issue }: Props) {
 
   function choose(m: { userId: string; displayName: string | null; fullName: string | null }) {
     if (!query) return;
-    const name = m.displayName ?? m.fullName ?? 'Someone';
+    const name = m.displayName ?? m.fullName ?? t('composer.someone');
     const before = body.slice(0, query.from);
     const after = body.slice(query.from + 1 + query.text.length);
     const next = `${before}@${name}${after.startsWith(' ') ? '' : ' '}${after}`;
@@ -177,7 +189,7 @@ export function CommentComposer({ issue }: Props) {
       const url = await dbUploadPhoto(file, `${issue.id}-c${generateId().slice(0, 8)}`);
       if (!url) {
         setSending(false);
-        setError('A photo did not upload. Nothing was posted, so try again.');
+        setError(t('composer.uploadError'));
         return;
       }
       urls.push(url);
@@ -213,7 +225,7 @@ export function CommentComposer({ issue }: Props) {
   }
 
   const nameOf = (m: { displayName: string | null; fullName: string | null }) =>
-    m.displayName ?? m.fullName ?? 'They';
+    m.displayName ?? m.fullName ?? t('composer.they');
 
   /** Open this one work order to the people who were named and cannot see it. */
   async function grantAccess() {
@@ -229,24 +241,18 @@ export function CommentComposer({ issue }: Props) {
       {needsAccess.length > 0 && (() => {
         const staff = needsAccess.filter((m) => m.role !== 'viewer');
         const viewers = needsAccess.filter((m) => m.role === 'viewer');
-        const list = (xs: typeof needsAccess) =>
-          xs.map(nameOf).join(xs.length === 2 ? ' and ' : ', ');
+        const list = (xs: typeof needsAccess) => listNames(xs.map(nameOf));
         return (
           <div className="mb-2.5 rounded-card border border-amber-text/25 bg-amber-bg px-3.5 py-3">
-            <p className="text-[12.5px] font-semibold text-amber-text">Your message is posted.</p>
+            <p className="text-[12.5px] font-semibold text-amber-text">{t('composer.posted')}</p>
             {staff.length > 0 && (
               <p className="mt-1 text-[12.5px] leading-relaxed text-amber-text/90">
-                {list(staff)} cannot open this work order: it is not assigned to them, and{' '}
-                {staff.length === 1 ? 'their crew sees' : 'their crews see'} only their own work.
-                Let them see this one?
+                {t('composer.staffBlocked', { count: staff.length, names: list(staff) })}
               </p>
             )}
             {viewers.length > 0 && (
               <p className="mt-1 text-[12.5px] leading-relaxed text-amber-text/90">
-                {list(viewers)} {viewers.length === 1 ? 'is a viewer' : 'are viewers'} and cannot
-                open Campground at all, so this is not something to grant from here. An
-                administrator can change {viewers.length === 1 ? 'their role' : 'their roles'} under
-                Team.
+                {t('composer.viewersBlocked', { count: viewers.length, names: list(viewers) })}
               </p>
             )}
             <div className="mt-2.5 flex flex-wrap gap-2">
@@ -256,7 +262,7 @@ export function CommentComposer({ issue }: Props) {
                   className="rounded-btn bg-forest px-3 py-1.5 text-[12.5px] font-bold text-paper
                              transition-colors hover:bg-forest-mid"
                 >
-                  Let {staff.length === 1 ? nameOf(staff[0]) : 'them'} see this work order
+                  {t('composer.letSee', { count: staff.length, name: nameOf(staff[0]) })}
                 </button>
               )}
               <button
@@ -264,12 +270,12 @@ export function CommentComposer({ issue }: Props) {
                 className="rounded-btn border border-amber-text/30 px-3 py-1.5 text-[12.5px]
                            font-semibold text-amber-text transition-colors hover:bg-amber-text/5"
               >
-                {staff.length > 0 ? 'No, leave it' : 'Got it'}
+                {staff.length > 0 ? t('composer.leaveIt') : t('composer.gotIt')}
               </button>
             </div>
             {staff.length > 0 && (
               <p className="mt-1.5 text-[11px] text-amber-text/75">
-                This work order only. Nothing else opens up, and their crew setting does not change.
+                {t('composer.thisOnly')}
               </p>
             )}
           </div>
@@ -290,21 +296,22 @@ export function CommentComposer({ issue }: Props) {
             else if (e.key === 'Escape') { setQuery(null); }
           }}
           rows={2}
-          placeholder="Add a message… @ to name someone"
+          placeholder={t('composer.placeholder')}
+          dir="auto"
           className="w-full resize-none bg-transparent text-[13px] leading-relaxed text-ink
                      placeholder:text-ink-faint focus:outline-none"
         />
 
         {/* The people picker. Above the box, because the box sits at the bottom of a thread. */}
         {query && candidates.length > 0 && (
-          <ul className="absolute bottom-full left-0 z-20 mb-1 w-72 overflow-hidden rounded-card
+          <ul className="absolute bottom-full start-0 z-20 mb-1 w-72 overflow-hidden rounded-card
                          border border-border bg-white shadow-lg">
             {candidates.map((m, i) => (
               <li key={m.userId}>
                 <button
                   onMouseDown={(e) => { e.preventDefault(); choose(m); }}
                   onMouseEnter={() => setHighlight(i)}
-                  className={`block w-full px-3 py-1.5 text-left ${
+                  className={`block w-full px-3 py-1.5 text-start ${
                     i === highlight ? 'bg-forest/8' : 'hover:bg-cream'
                   }`}
                 >
@@ -324,12 +331,14 @@ export function CommentComposer({ issue }: Props) {
         )}
       </div>
 
-      {mentioned.filter((m) => body.includes(`@${m.name}`)).length > 0 && (
-        <p className="mb-2 text-[11px] text-ink-soft">
-          {mentioned.filter((m) => body.includes(`@${m.name}`)).map((m) => m.name).join(', ')}
-          {' '}will see this at the top of Campground.
-        </p>
-      )}
+      {(() => {
+        const named = mentioned.filter((m) => body.includes(`@${m.name}`)).map((m) => m.name);
+        return named.length > 0 && (
+          <p className="mb-2 text-[11px] text-ink-soft">
+            {t('composer.willSee', { count: named.length, names: listNames(named) })}
+          </p>
+        );
+      })()}
 
       {previews.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
@@ -338,8 +347,9 @@ export function CommentComposer({ issue }: Props) {
               <img src={src} alt="" className="h-14 w-14 rounded-card border border-border object-cover" />
               <button
                 onClick={() => removeAt(i)}
-                title="Remove this photo"
-                className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full
+                title={t('composer.removePhoto')}
+                aria-label={t('composer.removePhoto')}
+                className="absolute -end-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full
                            bg-black/55 text-white transition-colors hover:bg-black/75"
               >
                 <X className="h-3 w-3" />
@@ -355,7 +365,10 @@ export function CommentComposer({ issue }: Props) {
         <button
           onClick={() => fileRef.current?.click()}
           disabled={files.length >= MAX_PHOTOS || sending}
-          title={files.length >= MAX_PHOTOS ? `Four photos is the limit` : 'Attach a photo'}
+          title={files.length >= MAX_PHOTOS
+            ? t('composer.photoLimit', { max: MAX_PHOTOS })
+            : t('composer.attachPhoto')}
+          aria-label={t('composer.attachPhoto')}
           className="grid h-[30px] w-[30px] flex-none place-items-center rounded-btn border border-border
                      text-forest transition-colors hover:border-sage disabled:opacity-40"
         >
@@ -373,45 +386,45 @@ export function CommentComposer({ issue }: Props) {
           }}
         />
         <span className="text-[11px] text-ink-faint">
-          {files.length > 0 ? `${files.length} of ${MAX_PHOTOS} photos` : ''}
+          {files.length > 0 ? t('composer.photosCount', { count: files.length, max: MAX_PHOTOS }) : ''}
         </span>
         {canReachReporter ? (
           // Two buttons, no pre-selected answer. Whoever is typing says who it is for, every
           // time, and the words on the button are the whole explanation.
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ms-auto flex items-center gap-2">
             <button
               onClick={() => void handleSend(false)}
               disabled={sending || (!body.trim() && files.length === 0)}
-              title="Only people at the camp will see this"
+              title={t('composer.internalTitle')}
               className="inline-flex items-center gap-1.5 rounded-btn border border-border px-3 py-1.5
                          text-[12.5px] font-semibold text-ink-soft transition-colors
                          hover:border-sage hover:text-forest disabled:opacity-50"
             >
               <Lock className="h-3.5 w-3.5" />
-              Internal note
+              {t('composer.internalNote')}
             </button>
             <button
               onClick={() => void handleSend(true)}
               disabled={sending || (!body.trim() && files.length === 0)}
-              title="The person who reported this will see it on their receipt link"
+              title={t('composer.replyTitle')}
               className="inline-flex items-center gap-1.5 rounded-btn bg-forest px-3 py-1.5
                          text-[12.5px] font-bold text-paper transition-colors hover:bg-forest-mid
                          disabled:opacity-50"
             >
-              <Send className="h-3.5 w-3.5" />
-              {sending ? 'Sending…' : 'Reply to reporter'}
+              <Send className="h-3.5 w-3.5 rtl:-scale-x-100" />
+              {sending ? t('composer.sending') : t('composer.replyToReporter')}
             </button>
           </div>
         ) : (
           <button
             onClick={() => void handleSend(false)}
             disabled={sending || (!body.trim() && files.length === 0)}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-btn bg-forest px-3 py-1.5
+            className="ms-auto inline-flex items-center gap-1.5 rounded-btn bg-forest px-3 py-1.5
                        text-[12.5px] font-bold text-paper transition-colors hover:bg-forest-mid
                        disabled:opacity-50"
           >
-            <Send className="h-3.5 w-3.5" />
-            {sending ? 'Sending…' : 'Send'}
+            <Send className="h-3.5 w-3.5 rtl:-scale-x-100" />
+            {sending ? t('composer.sending') : t('composer.send')}
           </button>
         )}
       </div>
@@ -420,9 +433,9 @@ export function CommentComposer({ issue }: Props) {
           press, this is the sentence that decides it. */}
       {canReachReporter && (
         <p className="mt-1.5 text-[11px] text-ink-faint">
-          {issue.reporterName ? `${issue.reporterName} reported this` : 'This was reported from a QR code'}
-          {' '}and can open a link showing what you send them. Everything else on this thread stays
-          inside the camp.
+          {issue.reporterName
+            ? t('composer.reporterFooterNamed', { name: issue.reporterName })
+            : t('composer.reporterFooterQr')}
         </p>
       )}
     </div>

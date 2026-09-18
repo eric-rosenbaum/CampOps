@@ -115,23 +115,27 @@ struct CreateAccountWithCodeView: View {
 
     private var title: String {
         switch step {
-        case .code:     return "Join your camp"
-        case .identity: return campInfo?.campName ?? "Your details"
-        case .verify:   return "Check your email"
+        case .code:     return L10n.tr("Join your camp")
+        case .identity: return campInfo?.campName ?? L10n.tr("Your details")
+        case .verify:   return L10n.tr("Check your email")
         }
     }
 
     private var subtitle: String {
         switch step {
         case .code:
-            return "Enter the join code from your camp administrator, like CEDAR-4821."
+            return L10n.tr("Enter the join code from your camp administrator, like CEDAR-4821.")
         case .identity:
             // Naming the camp back to them is the confirmation that the code was the right one.
-            var line = "You're joining \(campInfo?.campName ?? "this camp")"
-            if let group = campInfo?.groupName { line += " as \(group)" }
-            return line + ". Tell us who you are and we'll set up your account."
+            // One whole sentence per case: stitching "You're joining" to " as " broke in both
+            // Spanish and Hebrew, where the pieces go in a different order.
+            let camp = campInfo?.campName ?? L10n.tr("this camp")
+            if let group = campInfo?.groupName {
+                return L10n.tr("You're joining %1$@ as %2$@. Tell us who you are and we'll set up your account.", camp, group)
+            }
+            return L10n.tr("You're joining %@. Tell us who you are and we'll set up your account.", camp)
         case .verify:
-            return "We sent a code to \(email.lowercased()). Enter it to finish setting up."
+            return L10n.tr("We sent a code to %@. Enter it to finish setting up.", email.lowercased())
         }
     }
 
@@ -211,9 +215,9 @@ struct CreateAccountWithCodeView: View {
 
     private var primaryLabel: String {
         switch step {
-        case .code:     return "Continue"
-        case .identity: return "Email me a code"
-        case .verify:   return "Create my account"
+        case .code:     return L10n.tr("Continue")
+        case .identity: return L10n.tr("Email me a code")
+        case .verify:   return L10n.tr("Create my account")
         }
     }
 

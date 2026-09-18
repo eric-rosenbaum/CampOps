@@ -1,0 +1,94 @@
+{
+  "loading": "Loading",
+  "saving": "Saving…",
+  "cancel": "Cancel",
+  "generic": "Something went wrong. Please try again.",
+  "teamMember": "Team member",
+  "page": {
+    "title": "Security & privacy",
+    "subtitle": "Protect your account and manage your camp’s information"
+  },
+  "sections": {
+    "account": "Your account",
+    "campData": "Your camp’s data",
+    "policies": "Policies"
+  },
+  "password": {
+    "title": "Password",
+    "setTitle": "Set a password",
+    "changeBlurb": "Change the password you use to sign in.",
+    "setBlurb": "You sign in with an emailed code. Set a password to sign in with one instead — the emailed code keeps working either way.",
+    "updated": "Your password has been updated.",
+    "changeAgain": "Change it again",
+    "current": "Current password",
+    "new": "New password",
+    "confirm": "Confirm new password",
+    "minLength": "At least {{min}} characters.",
+    "update": "Update password",
+    "set": "Set password",
+    "tooShort": "Password must be at least {{min}} characters.",
+    "mismatch": "Passwords do not match.",
+    "same": "That’s already your password. Choose a different one."
+  },
+  "mfa": {
+    "title": "Two-step sign-in",
+    "blurb": "Add a second step when you sign in, using a free authenticator app (Google Authenticator, 1Password, Authy). Recommended for anyone with access to camper information.",
+    "on": "Two-step sign-in is on",
+    "turnOff": "Turn off",
+    "scan": "Scan this with your authenticator app, then enter the 6-digit code it shows.",
+    "qrAlt": "QR code for authenticator setup",
+    "cantScan": "Can’t scan? Enter this key instead",
+    "codeLabel": "6-digit code",
+    "checking": "Checking…",
+    "turnOn": "Turn on",
+    "addDevice": "Add another device",
+    "enable": "Turn on two-step sign-in",
+    "startFailed": "Could not start setup. Please try again.",
+    "codeMismatch": "That code didn’t match. Check your authenticator app and try again.",
+    "confirmOff": "Turn off two-step sign-in for this device? You’ll no longer be asked for a code from it when you sign in."
+  },
+  "export": {
+    "title": "Download your data",
+    "blurb": "Get a complete copy of everything in your camp as a single file, useful for your own records or backups. The download is noted in your activity log.",
+    "preparing": "Preparing…",
+    "download": "Download a copy",
+    "failed": "The export didn’t finish. Please try again."
+  },
+  "audit": {
+    "title": "Activity log",
+    "blurb": "A record of sensitive actions: who viewed or changed camper health info, team roles, retreat billing, data downloads and guest-link resets.",
+    "empty": "No activity yet.",
+    "when": "When",
+    "who": "Who",
+    "action": "Action",
+    "area": "Area",
+    "system": "System",
+    "actions": {
+      "insert": "Added a record",
+      "update": "Edited a record",
+      "delete": "Removed a record",
+      "view_camper_health": "Viewed camper health info",
+      "export_data": "Downloaded a data copy",
+      "regenerate_portal_token": "Reset a guest portal link"
+    },
+    "tables": {
+      "campers": "Camper",
+      "camper_restrictions": "Camper health",
+      "camper_sessions": "Camper session",
+      "commissary_files": "Health document",
+      "camp_members": "Team member",
+      "retreat_charges": "Retreat billing",
+      "retreat_payments": "Retreat payment",
+      "retreat_costs": "Retreat cost",
+      "retreats": "Retreat"
+    }
+  },
+  "privacy": {
+    "title": "Privacy & security",
+    "blurb": "Your camp’s information (including camper health details) is kept private to your camp and protected with industry-standard safeguards. The full details are here:",
+    "policy": "Privacy Policy",
+    "policyDesc": "What we collect and how it’s used",
+    "overview": "Security Overview",
+    "overviewDesc": "How your data is protected"
+  }
+}

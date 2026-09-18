@@ -14,6 +14,7 @@ struct HomeView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var isCapturing = false
+    @State private var isLogging = false
     @State private var openIssue: Issue?
 
     /// Whether this camp has Campground at all. Home is the one screen every camp sees, so it
@@ -64,7 +65,7 @@ struct HomeView: View {
             }
             .refreshable { await issueVM.refresh() }
             .campCanvas()
-            .navigationTitle(authManager.currentCamp?.name ?? "CampCommand")
+            .navigationTitle(Text(verbatim: authManager.currentCamp?.name ?? "CampCommand"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { UserMenuButton() }
@@ -73,63 +74,65 @@ struct HomeView: View {
                 IssueDetailView(issue: issue)
             }
             .sheet(isPresented: $isCapturing) { CaptureSheet() }
+            .sheet(isPresented: $isLogging) { LogIssueView() }
         }
     }
 
     private var greeting: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(timeOfDayGreeting).font(.campHero)
-            Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)))
+            Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide).locale(L10n.locale)))
                 .font(.campMeta)
                 .foregroundStyle(Color.forest.opacity(0.55))
         }
     }
 
     private var timeOfDayGreeting: String {
-        let name = authManager.currentUser.name.split(separator: " ").first.map(String.init) ?? "Hello"
+        guard let name = authManager.currentUser.name.split(separator: " ").first.map(String.init),
+              !name.isEmpty else { return L10n.tr("Hello") }
         switch Calendar.current.component(.hour, from: Date()) {
-        case 0..<12:  return "Morning, \(name)"
-        case 12..<17: return "Afternoon, \(name)"
-        default:      return "Evening, \(name)"
+        case 0..<12:  return L10n.tr("Morning, %@", name)
+        case 12..<17: return L10n.tr("Afternoon, %@", name)
+        default:      return L10n.tr("Evening, %@", name)
         }
     }
 
-    /// Two doors, not three.
-    ///
-    /// Scan, and log. "Log" opens the capture sheet, which offers a photo, a recording, and
-    /// "Just type it" -- so the ordinary form is one tap in rather than a third button competing
-    /// with the other two. Most people will type most days; they should not have to choose
-    /// between three things to do it.
+    /// Scan, AI, Log -- the same three doors as the board's toolbar, so the gesture that logs
+    /// something is the same wherever you start from.
     private var quickActions: some View {
         HStack(spacing: Spacing.sm) {
             if let onScan {
-                Button {
-                    Haptics.tap()
+                quickAction(icon: "qrcode.viewfinder", title: "Scan", primary: false) {
                     onScan()
-                } label: {
-                    VStack(spacing: Spacing.xs) {
-                        Image(systemName: "qrcode.viewfinder").font(.system(size: 22))
-                        Text("Scan").font(.campLabel)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Spacing.lg)
                 }
-                .buttonStyle(.campSecondary)
             }
             if authManager.can.createIssue {
-                Button {
-                    Haptics.tap()
+                quickAction(icon: "sparkles", title: "AI", primary: false) {
                     isCapturing = true
-                } label: {
-                    VStack(spacing: Spacing.xs) {
-                        Image(systemName: "plus.circle.fill").font(.system(size: 22))
-                        Text("Log something").font(.campLabel)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Spacing.lg)
                 }
-                .buttonStyle(.campPrimary())
+                quickAction(icon: "square.and.pencil", title: "Log", primary: true) {
+                    isLogging = true
+                }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func quickAction(icon: String, title: LocalizedStringKey, primary: Bool,
+                             action: @escaping () -> Void) -> some View {
+        let label = VStack(spacing: Spacing.xs) {
+            Image(systemName: icon).font(.system(size: 22))
+            Text(title).font(.campLabel)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.lg)
+
+        if primary {
+            Button { Haptics.tap(); action() } label: { label }
+                .buttonStyle(.campPrimary())
+        } else {
+            Button { Haptics.tap(); action() } label: { label }
+                .buttonStyle(.campSecondary)
         }
     }
 

@@ -51,40 +51,52 @@ enum Radius {
 //
 // `relativeTo:` keeps every token scaling with Dynamic Type.
 extension Font {
-    private static func sans(_ face: String, _ size: CGFloat, _ style: Font.TextStyle) -> Font {
-        .custom(face, size: size, relativeTo: style)
+    /// A brand face, or -- under Hebrew -- the system face at the same text style.
+    ///
+    /// Karla and Bitter have no Hebrew glyphs. CoreText does fall back per character, but it
+    /// falls back to a Hebrew face whose metrics have nothing to do with Karla's, so a Hebrew
+    /// label with a number in it rendered in two typefaces at two sizes on one baseline. Under
+    /// Hebrew every token is the system face instead, which is designed for Hebrew and Latin
+    /// together. Tokens are computed, not stored, so a language switch picks the new face up on
+    /// the next render.
+    private static func sans(_ face: String, _ size: CGFloat, _ style: Font.TextStyle,
+                             _ weight: Font.Weight = .regular) -> Font {
+        if L10n.language.isRightToLeft {
+            return .system(style, design: .default, weight: weight)
+        }
+        return .custom(face, size: size, relativeTo: style)
     }
 
     // Display, Bitter. Reserved for greetings, hero numbers, and empty-state titles.
-    static let campHero      = sans("Bitter-Bold", 32, .largeTitle)
-    static let campDisplay   = sans("Bitter-SemiBold", 27, .title)
-    static let campTitle     = sans("Bitter-SemiBold", 22, .title2)
+    static var campHero: Font      { sans("Bitter-Bold", 32, .largeTitle, .bold) }
+    static var campDisplay: Font   { sans("Bitter-SemiBold", 27, .title, .semibold) }
+    static var campTitle: Font     { sans("Bitter-SemiBold", 22, .title2, .semibold) }
 
     // UI · Karla.
-    static let campPageTitle = sans("Karla-Regular_Bold", 20, .title3)
-    static let campSection   = sans("Karla-Regular_SemiBold", 17, .headline)
-    static let campBodyLarge = sans("Karla-Regular", 17, .body)
+    static var campPageTitle: Font { sans("Karla-Regular_Bold", 20, .title3, .bold) }
+    static var campSection: Font   { sans("Karla-Regular_SemiBold", 17, .headline, .semibold) }
+    static var campBodyLarge: Font { sans("Karla-Regular", 17, .body) }
 
-    static let campBody          = sans("Karla-Regular", 15, .subheadline)
-    static let campBodyMedium    = sans("Karla-Regular_Medium", 15, .subheadline)
-    static let campBodySemibold  = sans("Karla-Regular_SemiBold", 15, .subheadline)
+    static var campBody: Font          { sans("Karla-Regular", 15, .subheadline) }
+    static var campBodyMedium: Font    { sans("Karla-Regular_Medium", 15, .subheadline, .medium) }
+    static var campBodySemibold: Font  { sans("Karla-Regular_SemiBold", 15, .subheadline, .semibold) }
 
-    static let campSmall         = sans("Karla-Regular", 14, .subheadline)
-    static let campSmallMedium   = sans("Karla-Regular_Medium", 14, .subheadline)
-    static let campSmallSemibold = sans("Karla-Regular_SemiBold", 14, .subheadline)
+    static var campSmall: Font         { sans("Karla-Regular", 14, .subheadline) }
+    static var campSmallMedium: Font   { sans("Karla-Regular_Medium", 14, .subheadline, .medium) }
+    static var campSmallSemibold: Font { sans("Karla-Regular_SemiBold", 14, .subheadline, .semibold) }
 
-    static let campSecondary         = sans("Karla-Regular", 13, .footnote)
-    static let campSecondarySemibold = sans("Karla-Regular_SemiBold", 13, .footnote)
+    static var campSecondary: Font         { sans("Karla-Regular", 13, .footnote) }
+    static var campSecondarySemibold: Font { sans("Karla-Regular_SemiBold", 13, .footnote, .semibold) }
 
-    static let campMeta          = sans("Karla-Regular", 12, .caption)
-    static let campMetaMedium    = sans("Karla-Regular_Medium", 12, .caption)
-    static let campMetaSemibold  = sans("Karla-Regular_SemiBold", 12, .caption)
+    static var campMeta: Font          { sans("Karla-Regular", 12, .caption) }
+    static var campMetaMedium: Font    { sans("Karla-Regular_Medium", 12, .caption, .medium) }
+    static var campMetaSemibold: Font  { sans("Karla-Regular_SemiBold", 12, .caption, .semibold) }
 
-    static let campMicro         = sans("Karla-Regular", 11, .caption2)
-    static let campMicroMedium   = sans("Karla-Regular_Medium", 11, .caption2)
+    static var campMicro: Font         { sans("Karla-Regular", 11, .caption2) }
+    static var campMicroMedium: Font   { sans("Karla-Regular_Medium", 11, .caption2, .medium) }
     /// Small all-caps section eyebrow.
-    static let campLabel         = sans("Karla-Regular_SemiBold", 11, .caption2)
+    static var campLabel: Font         { sans("Karla-Regular_SemiBold", 11, .caption2, .semibold) }
 
     /// Big numerals on stat tiles.
-    static let campStat = sans("Karla-Regular_Bold", 30, .title)
+    static var campStat: Font { sans("Karla-Regular_Bold", 30, .title, .bold) }
 }

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
+import { Trans, useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
 // A plain client: no session, no custom fetch wrapper, no timeout logic. Everything this page
 // calls is granted to `anon` on purpose, and a stale staff token would only make these requests
@@ -15,6 +17,7 @@ import type { QrTarget } from '@/lib/types';
 import { Camera, X, CheckCircle, AlertCircle, Copy, Check, Clock } from 'lucide-react';
 import { CampCommandMark } from '@/components/shared/CampCommandMark';
 import { OpenInAppCard } from '@/components/qr/OpenInAppCard';
+import { LanguagePicker } from '@/components/i18n/LanguagePicker';
 
 interface CampLocationOption { id: string; name: string; }
 
@@ -33,6 +36,36 @@ interface OpenReport {
   status: string;
 }
 
+/**
+ * The database words its refusals for people ("Too many reports from this device…"), in English.
+ * Re-say the ones we know in the reader's language; anything else is shown as it came.
+ */
+function reportError(t: TFunction<'scan'>, message: string): string {
+  if (/too many reports/i.test(message)) return t('report.errors.tooMany');
+  if (/short description of the problem is required/i.test(message)) return t('report.errors.titleRequired');
+  if (/code is not recognised/i.test(message)) return t('report.errors.unknownCode');
+  if (/location is not recognised/i.test(message)) return t('report.errors.unknownLocation');
+  if (/camp is not recognised/i.test(message)) return t('report.errors.unknownCamp');
+  if (message && message.length < 200) return message;
+  return t('report.errors.generic');
+}
+
+/** `open_reports_at` says where a report stands in two plain English phrases. */
+function openStatus(t: TFunction<'scan'>, status: string): string {
+  if (status === 'not started yet') return t('report.open.notStarted');
+  if (status === 'being worked on') return t('report.open.inProgress');
+  return status;
+}
+
+/** Top-end, on the pages that have no header of their own. */
+function CornerPicker() {
+  return (
+    <div className="absolute top-4 end-4">
+      <LanguagePicker tone="light" />
+    </div>
+  );
+}
+
 type PageState = 'loading' | 'not_found' | 'form' | 'submitting' | 'success' | 'already_known';
 
 interface Props {
@@ -49,6 +82,7 @@ interface Props {
 }
 
 export function PublicReportForm({ token: tokenProp, target: targetProp }: Props = {}) {
+  const { t } = useTranslation('scan');
   const { camp: slug } = useParams<{ camp: string }>();
   const [searchParams] = useSearchParams();
   const token = tokenProp ?? searchParams.get('token') ?? undefined;
@@ -206,7 +240,7 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
         typeof err === 'object' && err !== null && typeof (err as { message?: unknown }).message === 'string'
           ? (err as { message: string }).message
           : '';
-      setSubmitError(message && message.length < 200 ? message : 'Something went wrong. Please try again.');
+      setSubmitError(reportError(t, message));
       setPageState('form');
     }
   }
@@ -256,18 +290,17 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
 
   if (pageState === 'not_found') {
     return (
-      <div className="min-h-screen bg-paper w-full flex items-center justify-center p-4 sm:p-6">
+      <div className="relative min-h-screen bg-paper w-full flex items-center justify-center p-4 sm:p-6">
+        <CornerPicker />
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 bg-cream-dark rounded-2xl flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-7 h-7 text-ink-faint" />
           </div>
           <h1 className="text-[20px] font-bold text-ink mb-2">
-            {token ? 'This code is not recognised' : 'Page not found'}
+            {token ? t('unknown.title') : t('report.notFound')}
           </h1>
           <p className="text-[14px] text-ink-faint leading-relaxed">
-            {token
-              ? 'The sticker may have been replaced. Tell someone at the camp office what you found and where.'
-              : "This report link doesn't exist or is no longer active."}
+            {token ? t('report.notFoundToken') : t('report.notFoundLink')}
           </p>
         </div>
       </div>
@@ -276,20 +309,21 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
 
   if (pageState === 'already_known') {
     return (
-      <div className="min-h-screen bg-paper w-full flex items-center justify-center p-4 sm:p-6">
+      <div className="relative min-h-screen bg-paper w-full flex items-center justify-center p-4 sm:p-6">
+        <CornerPicker />
         <div className="text-center max-w-sm">
           <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
             <CheckCircle className="w-8 h-8 text-emerald-500" />
           </div>
-          <h1 className="text-[22px] font-bold text-ink mb-2">Thanks — they know</h1>
+          <h1 className="text-[22px] font-bold text-ink mb-2">{t('report.knownTitle')}</h1>
           <p className="text-[15px] text-ink-faint leading-relaxed mb-8">
-            It is already on {camp?.name}'s list. Nothing else for you to do.
+            {t('report.knownBody', { camp: camp?.name ?? '' })}
           </p>
           <button
             onClick={resetForm}
             className="w-full bg-stone-800 text-white text-[14px] font-semibold rounded-xl py-3.5 hover:bg-stone-700 active:bg-stone-900 transition-colors"
           >
-            Report something else here
+            {t('report.somethingElse')}
           </button>
         </div>
       </div>
@@ -298,15 +332,16 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
 
   if (pageState === 'success') {
     return (
-      <div className="min-h-screen bg-paper w-full flex items-center justify-center p-4 sm:p-6">
+      <div className="relative min-h-screen bg-paper w-full flex items-center justify-center p-4 sm:p-6">
+        <CornerPicker />
         <div className="max-w-sm w-full">
           <div className="text-center">
             <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
               <CheckCircle className="w-8 h-8 text-emerald-500" />
             </div>
-            <h1 className="text-[22px] font-bold text-ink mb-2">Report submitted</h1>
+            <h1 className="text-[22px] font-bold text-ink mb-2">{t('report.submittedTitle')}</h1>
             <p className="text-[15px] text-ink-faint leading-relaxed mb-6">
-              Thank you · {camp?.name} staff will see this on their list.
+              {t('report.submittedBody', { camp: camp?.name ?? '' })}
             </p>
           </div>
 
@@ -319,11 +354,12 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
           {receiptPath && (
             <div className="bg-white border border-border rounded-xl p-4 mb-5">
               <p className="text-[13px] text-ink-soft leading-relaxed mb-3">
-                Save this link to check on the repair later. It works without an account.
+                {t('report.receiptHint')}
               </p>
               <Link
                 to={receiptPath}
-                className="block text-[13px] font-mono text-forest break-all underline mb-3"
+                dir="ltr"
+                className="block text-[13px] font-mono text-forest break-all underline mb-3 text-start"
               >
                 {receiptUrl ?? receiptPath}
               </Link>
@@ -333,13 +369,13 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
                   className="flex-1 inline-flex items-center justify-center gap-1.5 bg-white border border-border text-ink text-[13px] font-semibold rounded-xl py-2.5 hover:border-stone-400 transition-colors"
                 >
                   {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copied ? 'Copied' : 'Copy link'}
+                  {copied ? t('report.copied') : t('report.copyLink')}
                 </button>
                 <Link
                   to={receiptPath}
                   className="flex-1 inline-flex items-center justify-center bg-white border border-border text-ink text-[13px] font-semibold rounded-xl py-2.5 hover:border-stone-400 transition-colors"
                 >
-                  Check on it
+                  {t('report.checkOnIt')}
                 </Link>
               </div>
             </div>
@@ -349,7 +385,7 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
             onClick={resetForm}
             className="w-full bg-stone-800 text-white text-[14px] font-semibold rounded-xl py-3.5 hover:bg-stone-700 active:bg-stone-900 transition-colors"
           >
-            Submit another report
+            {t('report.another')}
           </button>
         </div>
       </div>
@@ -368,10 +404,13 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
           ) : (
             <CampCommandMark size={36} decorative className="flex-shrink-0" />
           )}
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-widest">Report an issue</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-widest">{t('report.header')}</p>
             <h1 className="text-[16px] font-bold text-ink leading-tight truncate">{camp?.name}</h1>
           </div>
+          {/* Reporters are guests and crew with no account here; the form has to meet them in
+              their own language before they type a word. What they type is sent as typed. */}
+          <LanguagePicker tone="light" className="flex-none" />
         </div>
       </div>
 
@@ -387,7 +426,7 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
         {target && (
           <div className="bg-white border border-border rounded-xl px-4 py-3.5 mb-5">
             <p className="text-[11px] font-semibold text-ink-faint uppercase tracking-widest mb-0.5">
-              {target.kind === 'asset' ? 'You scanned' : "You're at"}
+              {target.kind === 'asset' ? t('report.youScanned') : t('report.youreAt')}
             </p>
             <p className="text-[17px] font-bold text-ink leading-tight">{target.targetName}</p>
             {target.targetPath && (
@@ -408,9 +447,7 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
         {alreadyOpen.length > 0 && (
           <div className="bg-amber-bg border border-amber/40 rounded-xl px-4 py-3.5 mb-5">
             <p className="text-[14px] font-bold text-amber-text mb-2">
-              {alreadyOpen.length === 1
-                ? '1 thing is already reported here'
-                : `${alreadyOpen.length} things are already reported here`}
+              {t('report.alreadyReported', { count: alreadyOpen.length })}
             </p>
             <ul className="space-y-1.5 mb-3">
               {alreadyOpen.map((r, i) => (
@@ -420,8 +457,8 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
                     <span className="font-semibold">{r.title}</span>
                     <span className="opacity-75">
                       {' · '}
-                      {r.reported_days_ago === 0 ? 'today' : `${r.reported_days_ago}d ago`}
-                      {' · '}{r.status}
+                      {r.reported_days_ago === 0 ? t('report.open.today') : t('report.open.daysAgo', { count: r.reported_days_ago })}
+                      {' · '}{openStatus(t, r.status)}
                     </span>
                   </span>
                 </li>
@@ -431,7 +468,7 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
               onClick={() => setPageState('already_known')}
               className="w-full bg-white border border-amber/50 text-amber-text text-[13px] font-semibold rounded-xl py-2.5 hover:bg-amber-bg transition-colors"
             >
-              That's the one I was going to report
+              {t('report.thatsTheOne')}
             </button>
           </div>
         )}
@@ -440,12 +477,13 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
 
           {/* Issue title */}
           <div>
-            <label className={labelClass}>What's the issue? <span className="text-red-400">*</span></label>
+            <label htmlFor="report-title" className={labelClass}>{t('report.titleLabel')} <span className="text-red-400">*</span></label>
             <input
+              id="report-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className={inputClass}
-              placeholder="e.g. Broken dock plank, leaking faucet…"
+              placeholder={t('report.titlePlaceholder')}
               required
               disabled={pageState === 'submitting'}
             />
@@ -453,17 +491,16 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
 
           {/* Description */}
           <div>
-            <label className={labelClass}>
-              Details <span className="text-stone-300 normal-case font-normal tracking-normal">optional</span>
+            <label htmlFor="report-details" className={labelClass}>
+              {t('report.details')} <span className="text-stone-300 normal-case font-normal tracking-normal">{t('report.optional')}</span>
             </label>
             <textarea
+              id="report-details"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className={`${inputClass} resize-none`}
               rows={4}
-              placeholder={target
-                ? 'Which part of it? When did you notice it? Any other context…'
-                : 'Where exactly is it? When did you notice it? Any other context…'}
+              placeholder={target ? t('report.detailsPlaceholderTarget') : t('report.detailsPlaceholder')}
               disabled={pageState === 'submitting'}
             />
           </div>
@@ -471,16 +508,17 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
           {/* Location — only on the slug form. A sticker has already answered this. */}
           {!target && camp && camp.locations.length > 0 && (
             <div>
-              <label className={labelClass}>
-                Location <span className="text-stone-300 normal-case font-normal tracking-normal">optional</span>
+              <label htmlFor="report-location" className={labelClass}>
+                {t('report.location')} <span className="text-stone-300 normal-case font-normal tracking-normal">{t('report.optional')}</span>
               </label>
               <select
+                id="report-location"
                 value={locationId}
                 onChange={(e) => setLocationId(e.target.value)}
                 disabled={pageState === 'submitting'}
                 className={`${inputClass} appearance-none bg-white`}
               >
-                <option value="">Where is it? (select a place)</option>
+                <option value="">{t('report.locationPlaceholder')}</option>
                 {camp.locations.map((l) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
                 ))}
@@ -490,25 +528,26 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
 
           {/* Photo */}
           <div>
-            <label className={labelClass}>
-              Photo <span className="text-stone-300 normal-case font-normal tracking-normal">optional</span>
-            </label>
+            <p className={labelClass}>
+              {t('report.photo')} <span className="text-stone-300 normal-case font-normal tracking-normal">{t('report.optional')}</span>
+            </p>
             {photoPreview ? (
               <div className="space-y-2.5">
                 <div className="relative rounded-xl overflow-hidden border border-border">
-                  <img src={photoPreview} alt="Preview" className="w-full max-h-52 object-cover" />
+                  <img src={photoPreview} alt={t('report.preview')} className="w-full max-h-52 object-cover" />
                   <button
                     type="button"
                     onClick={handleRemovePhoto}
                     disabled={pageState === 'submitting'}
-                    className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                    aria-label={t('report.removePhoto')}
+                    className="absolute top-2.5 end-2.5 w-7 h-7 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 <label className="flex items-center gap-1.5 text-[12px] text-ink-faint cursor-pointer hover:text-ink-soft transition-colors w-fit">
                   <Camera className="w-3.5 h-3.5" />
-                  <span>Change photo</span>
+                  <span>{t('report.changePhoto')}</span>
                   <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
                 </label>
               </div>
@@ -517,7 +556,7 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
                 <div className="w-9 h-9 bg-cream-dark rounded-xl flex items-center justify-center">
                   <Camera className="w-4.5 h-4.5 text-ink-faint" />
                 </div>
-                <span className="text-[13px] text-ink-faint">Tap to attach a photo</span>
+                <span className="text-[13px] text-ink-faint">{t('report.attachPhoto')}</span>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
               </label>
             )}
@@ -527,28 +566,31 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
           <div className="pt-1">
             <div className="flex items-center gap-3 mb-5">
               <div className="h-px flex-1 bg-cream-dark" />
-              <p className="text-[11px] font-semibold text-ink-faint uppercase tracking-widest">Your info · optional</p>
+              <p className="text-[11px] font-semibold text-ink-faint uppercase tracking-widest">{t('report.yourInfo')}</p>
               <div className="h-px flex-1 bg-cream-dark" />
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className={labelClass}>Name</label>
+                <label htmlFor="report-name" className={labelClass}>{t('report.name')}</label>
                 <input
+                  id="report-name"
                   value={reporterName}
                   onChange={(e) => setReporterName(e.target.value)}
                   className={inputClass}
-                  placeholder="First name or full name"
+                  placeholder={t('report.namePlaceholder')}
                   disabled={pageState === 'submitting'}
                 />
               </div>
               <div>
-                <label className={labelClass}>Email or phone</label>
+                <label htmlFor="report-contact" className={labelClass}>{t('report.contact')}</label>
                 <input
+                  id="report-contact"
+                  dir="ltr"
                   value={reporterContact}
                   onChange={(e) => setReporterContact(e.target.value)}
                   className={inputClass}
-                  placeholder="In case staff need to follow up"
+                  placeholder={t('report.contactPlaceholder')}
                   disabled={pageState === 'submitting'}
                 />
               </div>
@@ -567,7 +609,7 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
             disabled={!title.trim() || pageState === 'submitting'}
             className="w-full bg-stone-800 text-white text-[15px] font-semibold rounded-xl py-4 hover:bg-stone-700 active:bg-stone-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {pageState === 'submitting' ? 'Submitting…' : 'Submit report'}
+            {pageState === 'submitting' ? t('report.submitting') : t('report.submit')}
           </button>
 
         </form>
@@ -575,17 +617,21 @@ export function PublicReportForm({ token: tokenProp, target: targetProp }: Props
         {/* Quiet, and last. Staff are the minority of the people holding this phone. */}
         {token && (
           <p className="mt-8 text-center text-[12.5px] text-ink-faint">
-            Staff?{' '}
-            <Link
-              to="/login"
-              // Login reads this back after a successful sign-in, which lands them on the hub for
-              // the very door they are standing at rather than on a generic dashboard.
-              onClick={() => { try { sessionStorage.setItem('redirectAfterLogin', `/l/${token}`); } catch { /* private mode */ } }}
-              className="underline hover:text-ink-soft"
-            >
-              Sign in
-            </Link>{' '}
-            to work on this instead.
+            <Trans
+              t={t}
+              i18nKey="report.staffSignIn"
+              components={{
+                signin: (
+                  <Link
+                    to="/login"
+                    // Login reads this back after a successful sign-in, which lands them on the hub
+                    // for the very door they are standing at rather than on a generic dashboard.
+                    onClick={() => { try { sessionStorage.setItem('redirectAfterLogin', `/l/${token}`); } catch { /* private mode */ } }}
+                    className="underline hover:text-ink-soft"
+                  />
+                ),
+              }}
+            />
           </p>
         )}
       </div>

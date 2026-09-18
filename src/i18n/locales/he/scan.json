@@ -1,0 +1,166 @@
+{
+  "kind": {
+    "asset": "ציוד",
+    "location": "מיקום"
+  },
+  "target": {
+    "scannedCode": "קוד שנסרק",
+    "justReport": "רק לדווח על תקלה כאן"
+  },
+  "unknown": {
+    "title": "הקוד הזה לא מוכר",
+    "body": "ייתכן שהמדבקה הוחלפה, או שהמקום שאליו היא הפנתה כבר לא ברשימה. כדאי לספר במשרד המחנה מה נמצא ואיפה — שם אפשר להדפיס אותה מחדש."
+  },
+  "wrongCamp": {
+    "title": "זה {{camp}}",
+    "otherCamp": "החשבון מחובר אל <camp>{{camp}}</camp>, כך שהמדבקה הזו לא שייכת למחנה שלך.",
+    "notThisCamp": "החשבון מחובר, אבל לא למחנה הזה.",
+    "switching": "עוברים…",
+    "switchTo": "מעבר אל {{camp}}",
+    "report": "לדווח על תקלה כאן"
+  },
+  "app": {
+    "title": "CampCommand לאייפון",
+    "bodyNamed": "סורקים את המדבקה במצלמה והאפליקציה נפתחת על {{name}}.",
+    "body": "סורקים מדבקה במצלמה והאפליקציה נפתחת על המקום הזה.",
+    "get": "הורדת האפליקציה"
+  },
+  "report": {
+    "header": "דיווח על תקלה",
+    "notFound": "הדף לא נמצא",
+    "notFoundToken": "ייתכן שהמדבקה הוחלפה. כדאי לספר במשרד המחנה מה נמצא ואיפה.",
+    "notFoundLink": "קישור הדיווח לא קיים או שאינו פעיל עוד.",
+    "knownTitle": "תודה — זה כבר ידוע",
+    "knownBody": "זה כבר ברשימה של {{camp}}. אין צורך לעשות שום דבר נוסף.",
+    "somethingElse": "לדווח על משהו אחר כאן",
+    "submittedTitle": "הדיווח נשלח",
+    "submittedBody": "תודה · הצוות של {{camp}} יראה את זה ברשימה.",
+    "receiptHint": "כדאי לשמור את הקישור כדי לבדוק מה מצב התיקון. הוא עובד בלי חשבון.",
+    "copied": "הועתק",
+    "copyLink": "העתקת הקישור",
+    "checkOnIt": "בדיקת המצב",
+    "another": "שליחת דיווח נוסף",
+    "youScanned": "נסרק",
+    "youreAt": "המיקום שלך",
+    "alreadyReported_one": "כבר יש כאן דיווח אחד",
+    "alreadyReported_two": "כבר יש כאן {{count}} דיווחים",
+    "alreadyReported_many": "כבר יש כאן {{count}} דיווחים",
+    "alreadyReported_other": "כבר יש כאן {{count}} דיווחים",
+    "thatsTheOne": "זה בדיוק מה שרציתי לדווח",
+    "titleLabel": "מה התקלה?",
+    "titlePlaceholder": "למשל: קרש שבור ברציף, ברז דולף…",
+    "details": "פרטים",
+    "optional": "לא חובה",
+    "detailsPlaceholderTarget": "איזה חלק? מתי זה התגלה? כל מידע נוסף…",
+    "detailsPlaceholder": "איפה בדיוק? מתי זה התגלה? כל מידע נוסף…",
+    "location": "מיקום",
+    "locationPlaceholder": "איפה זה? (בחירת מקום)",
+    "photo": "תמונה",
+    "preview": "תצוגה מקדימה",
+    "removePhoto": "הסרת התמונה",
+    "changePhoto": "החלפת תמונה",
+    "attachPhoto": "הקשה לצירוף תמונה",
+    "yourInfo": "הפרטים שלך · לא חובה",
+    "name": "שם",
+    "namePlaceholder": "שם פרטי או שם מלא",
+    "contact": "אימייל או טלפון",
+    "contactPlaceholder": "למקרה שהצוות ירצה לחזור אליך",
+    "submitting": "שולחים…",
+    "submit": "שליחת הדיווח",
+    "staffSignIn": "מהצוות? <signin>כניסה</signin> כדי לטפל בזה.",
+    "open": {
+      "notStarted": "עוד לא התחילו",
+      "inProgress": "בטיפול",
+      "today": "היום",
+      "daysAgo_one": "לפני יום",
+      "daysAgo_two": "לפני יומיים",
+      "daysAgo_many": "לפני {{count}} ימים",
+      "daysAgo_other": "לפני {{count}} ימים"
+    },
+    "errors": {
+      "tooMany": "יותר מדי דיווחים מהמכשיר הזה בשעה האחרונה. אפשר לנסות שוב מאוחר יותר או להתקשר למשרד המחנה.",
+      "titleRequired": "נא לכתוב תיאור קצר של התקלה.",
+      "unknownCode": "הקוד הזה לא מוכר.",
+      "unknownLocation": "המיקום הזה לא מוכר.",
+      "unknownCamp": "המחנה הזה לא מוכר.",
+      "generic": "משהו השתבש. נא לנסות שוב."
+    }
+  },
+  "hub": {
+    "openInAssets": "פתיחה בציוד",
+    "openInCampground": "פתיחה בקריאות השירות",
+    "openHere_one": "דבר אחד פתוח כאן",
+    "openHere_two": "{{count}} דברים פתוחים כאן",
+    "openHere_many": "{{count}} דברים פתוחים כאן",
+    "openHere_other": "{{count}} דברים פתוחים כאן",
+    "nothingOpen": "אין כאן שום דבר פתוח. מצוין.",
+    "markDone": "סימון „{{title}}” כבוצע",
+    "done": "בוצע",
+    "logTitle": "פתיחת קריאה כאן",
+    "whatsWrong": "מה התקלה?",
+    "unassigned": "לא משויך",
+    "filedAgainst": "נרשם על <name>{{name}}</name> — המקום נסרק, אז אין צורך לציין אותו.",
+    "logIt": "פתיחת קריאה",
+    "logged": "נרשם.",
+    "addDetail": "הוספת פרטים",
+    "somethingWrong": "יש כאן תקלה",
+    "routinesHere": "שגרות במקום הזה",
+    "undoDone": "בוצע · <item></item>",
+    "undo": "ביטול",
+    "service": {
+      "title": "מצב שירות",
+      "limited": "שימוש מוגבל",
+      "out": "מושבת",
+      "since": "מאז {{date}}.",
+      "expectedBackOn": "צפוי לחזור ב־{{date}}.",
+      "noReturnDate": "לא נקבע מועד חזרה.",
+      "whyPlaceholder": "למה? למשל: דליפה מהתקרה, רצפה מתייבשת",
+      "expectedBack": "מועד חזרה צפוי",
+      "explain": "זה יותר מתווית: אי אפשר להזמין קבוצות אירוח למקום מושבת, ולוח השיבוץ לא ישבץ כאן אף אחד.",
+      "takeItOut": "להשבית",
+      "putBack": "להחזיר לשירות",
+      "takeOut": "השבתה"
+    },
+    "building": {
+      "title": "ברזים ראשיים ולוח חשמל",
+      "mainWater": "ברז מים ראשי",
+      "mainGas": "ברז גז ראשי",
+      "mainElectrical": "לוח חשמל ראשי",
+      "valves": "ברזים",
+      "noBreakers": "עדיין לא נרשמו מפסקים.",
+      "unlabelled": "ללא תווית",
+      "off": "כבוי"
+    },
+    "meter": {
+      "title": "מונה",
+      "hours": "שעות",
+      "miles": "מיילים",
+      "readingNow": "קריאה נוכחית",
+      "record": "רישום",
+      "recorded": "נרשם.",
+      "recordedRaised_one": "נרשם · נפתחה שגרה אחת.",
+      "recordedRaised_two": "נרשם · נפתחו {{count}} שגרות.",
+      "recordedRaised_many": "נרשם · נפתחו {{count}} שגרות.",
+      "recordedRaised_other": "נרשם · נפתחו {{count}} שגרות."
+    },
+    "history": {
+      "title": "היסטוריית טיפולים",
+      "empty": "עדיין לא נרשם כאן שום דבר."
+    },
+    "photo": {
+      "title": "להוסיף תמונה?",
+      "take": "צילום תמונה",
+      "notePlaceholder": "מה נעשה? (לא חובה)",
+      "skip": "דילוג",
+      "sending": "שולחים…",
+      "send": "שליחה",
+      "receiptNote": "מי שדיווח יראה את זה באישור הדיווח."
+    },
+    "notHere": {
+      "title": "המדבקה הזו שייכת אל {{camp}}",
+      "body": "החשבון מחובר למחנה אחר, כך שאין כאן על מה לעבוד.",
+      "open": "פתיחת המדבקה",
+      "unknownBody": "ייתכן שהקוד הונפק מחדש, או שהמקום שאליו הפנה הוסר. אפשר להדפיס אותו מחדש מ־Camp Info → Locations."
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Plus, ListChecks, ArrowUp, ArrowDown, X, Camera, Trash2, AlertTriangle,
 } from 'lucide-react';
@@ -40,6 +41,7 @@ function blankTemplate(): WorkChecklistTemplate {
 }
 
 export function ChecklistTemplatesPanel() {
+  const { t: tr } = useTranslation('campgroundAdmin');
   const tradeKeys = useTradeKeys();
   const labelOf = useTradeLabel();
   const templates = useCampgroundStore((s) => s.templates);
@@ -64,14 +66,14 @@ export function ChecklistTemplatesPanel() {
     <div>
       <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
         <div className="max-w-2xl">
-          <h2 className="font-display text-[18px] font-bold text-forest">Checklists</h2>
+          <h2 className="font-display text-[18px] font-bold text-forest">{tr('checklists.heading')}</h2>
           <p className="text-[12.5px] text-ink-soft leading-relaxed mt-1">
-            Ticking the last step closes the work order.
+            {tr('checklists.lede')}
           </p>
         </div>
         {canEdit && (
           <Button onClick={() => setCreating(true)}>
-            <Plus className="w-3.5 h-3.5" aria-hidden="true" /> New checklist
+            <Plus className="w-3.5 h-3.5" aria-hidden="true" /> {tr('checklists.newChecklist')}
           </Button>
         )}
       </div>
@@ -81,10 +83,9 @@ export function ChecklistTemplatesPanel() {
       {templates.length === 0 ? (
         <div className="rounded-card border border-border bg-white px-6 py-10 text-center">
           <ListChecks className="w-6 h-6 text-sage mx-auto mb-3" aria-hidden="true" />
-          <p className="font-display text-[16px] font-bold text-forest">No checklists yet</p>
+          <p className="font-display text-[16px] font-bold text-forest">{tr('checklists.emptyTitle')}</p>
           <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-md mx-auto mt-2">
-            A cabin turnover, a bathhouse round, a vehicle pre-trip — whatever your crew
-            actually does, in your words.
+            {tr('checklists.emptyBody')}
           </p>
         </div>
       ) : (
@@ -100,7 +101,7 @@ export function ChecklistTemplatesPanel() {
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {items.map((t) => {
                   const photos = t.items.filter((i) => i.requiresPhoto).length;
-                  const shell = `w-full text-left block rounded-card border border-border bg-white px-4 py-3.5 transition-colors ${
+                  const shell = `w-full text-start block rounded-card border border-border bg-white px-4 py-3.5 transition-colors ${
                     canEdit ? 'cursor-pointer hover:border-sage' : ''
                   } ${t.isActive ? '' : 'opacity-60'}`;
                   const body = (
@@ -109,13 +110,13 @@ export function ChecklistTemplatesPanel() {
                         <b className="text-[14px] font-semibold text-forest">{t.name}</b>
                         {!t.isActive && (
                           <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">
-                            Retired
+                            {tr('checklists.retired')}
                           </span>
                         )}
                       </div>
                       <p className="text-[11.5px] text-ink-soft mt-1">
-                        {t.items.length} step{t.items.length === 1 ? '' : 's'}
-                        {photos > 0 && ` · ${photos} ask${photos === 1 ? 's' : ''} for a photo`}
+                        {tr('checklists.steps', { count: t.items.length })}
+                        {photos > 0 && ` · ${tr('checklists.asksPhoto', { count: photos })}`}
                       </p>
                       {t.items.length > 0 && (
                         <p className="text-[12px] text-ink-faint mt-1.5 leading-relaxed line-clamp-2">
@@ -155,6 +156,7 @@ function TemplateModal({ template, onClose }: {
   template: WorkChecklistTemplate | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation(['campgroundAdmin', 'common']);
   const tradeKeys = useTradeKeys();
   const labelOf = useTradeLabel();
   const addTemplate = useCampgroundStore((s) => s.addTemplate);
@@ -213,22 +215,22 @@ function TemplateModal({ template, onClose }: {
 
   return (
     <Modal
-      title={isNew ? 'New checklist' : draft.name || 'Checklist'}
+      title={isNew ? t('checklists.newChecklist') : draft.name || t('checklists.modalFallback')}
       onClose={onClose}
       width="min(620px, 94vw)"
     >
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4">
           <div>
-            <label className={labelClass} htmlFor="tmpl-name">Name</label>
+            <label className={labelClass} htmlFor="tmpl-name">{t('shared.name')}</label>
             <input
               id="tmpl-name" className={inputClass} value={draft.name}
-              placeholder="Cabin turnover"
+              placeholder={t('checklists.namePlaceholder')}
               onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
             />
           </div>
           <div>
-            <label className={labelClass} htmlFor="tmpl-trade">Crew</label>
+            <label className={labelClass} htmlFor="tmpl-trade">{t('shared.crew')}</label>
             <select
               id="tmpl-trade" className={`${inputClass} sm:w-44`} value={draft.trade}
               onChange={(e) => setDraft((d) => ({ ...d, trade: e.target.value as Trade }))}
@@ -240,31 +242,31 @@ function TemplateModal({ template, onClose }: {
 
         {/* ── Steps ────────────────────────────────────────────────────────── */}
         <div>
-          <label className={labelClass}>Steps</label>
+          <label className={labelClass}>{t('checklists.stepsLabel')}</label>
           {draft.items.length === 0 ? (
             <p className="text-[12.5px] text-ink-faint italic py-2">
-              Nothing yet. Add the first step below.
+              {t('checklists.noSteps')}
             </p>
           ) : (
             <ol className="space-y-2">
               {draft.items.map((item, i) => (
                 <li key={i} className="rounded-card border border-border bg-cream px-3 py-2.5">
                   <div className="flex items-start gap-2">
-                    <span className="font-mono text-[11px] text-ink-faint pt-2.5 w-5 flex-shrink-0 text-right">
+                    <span className="font-mono text-[11px] text-ink-faint pt-2.5 w-5 flex-shrink-0 text-end">
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0 space-y-2">
                       <input
                         className={inputClass}
                         value={item.text}
-                        aria-label={`Step ${i + 1}`}
+                        aria-label={t('checklists.stepAria', { n: i + 1 })}
                         onChange={(e) => patchItem(i, { text: e.target.value })}
                       />
                       <input
                         className={`${inputClass} text-[12px]`}
                         value={item.note ?? ''}
-                        placeholder="Note (optional)"
-                        aria-label={`Note for step ${i + 1}`}
+                        placeholder={t('checklists.notePlaceholder')}
+                        aria-label={t('checklists.noteAria', { n: i + 1 })}
                         onChange={(e) => patchItem(i, { note: e.target.value })}
                       />
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -274,7 +276,7 @@ function TemplateModal({ template, onClose }: {
                           onChange={(e) => patchItem(i, { requiresPhoto: e.target.checked })}
                         />
                         <span className="inline-flex items-center gap-1 text-[12px] text-ink-soft">
-                          <Camera className="w-3.5 h-3.5" aria-hidden="true" /> Ask for a photo
+                          <Camera className="w-3.5 h-3.5" aria-hidden="true" /> {t('checklists.askPhoto')}
                         </span>
                       </label>
                     </div>
@@ -283,14 +285,14 @@ function TemplateModal({ template, onClose }: {
                     <div className="flex flex-col gap-1 flex-shrink-0">
                       <button
                         type="button" onClick={() => move(i, -1)} disabled={i === 0}
-                        aria-label={`Move step ${i + 1} up`}
+                        aria-label={t('checklists.moveUp', { n: i + 1 })}
                         className="p-1 rounded-btn text-ink-faint hover:text-forest disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                       >
                         <ArrowUp className="w-3.5 h-3.5" aria-hidden="true" />
                       </button>
                       <button
                         type="button" onClick={() => move(i, 1)} disabled={i === draft.items.length - 1}
-                        aria-label={`Move step ${i + 1} down`}
+                        aria-label={t('checklists.moveDown', { n: i + 1 })}
                         className="p-1 rounded-btn text-ink-faint hover:text-forest disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                       >
                         <ArrowDown className="w-3.5 h-3.5" aria-hidden="true" />
@@ -298,7 +300,7 @@ function TemplateModal({ template, onClose }: {
                       <button
                         type="button"
                         onClick={() => setItems(draft.items.filter((_, x) => x !== i))}
-                        aria-label={`Remove step ${i + 1}`}
+                        aria-label={t('checklists.removeStep', { n: i + 1 })}
                         className="p-1 rounded-btn text-ink-faint hover:text-red cursor-pointer"
                       >
                         <X className="w-3.5 h-3.5" aria-hidden="true" />
@@ -314,12 +316,12 @@ function TemplateModal({ template, onClose }: {
             <input
               className={inputClass}
               value={newStep}
-              placeholder="Add a step…"
-              aria-label="New step"
+              placeholder={t('checklists.addStepPlaceholder')}
+              aria-label={t('checklists.newStepAria')}
               onChange={(e) => setNewStep(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addStep(); } }}
             />
-            <Button variant="ghost" onClick={addStep} disabled={!newStep.trim()}>Add</Button>
+            <Button variant="ghost" onClick={addStep} disabled={!newStep.trim()}>{t('common:actions.add')}</Button>
           </div>
         </div>
 
@@ -329,7 +331,7 @@ function TemplateModal({ template, onClose }: {
             <div className="flex gap-2.5">
               <AlertTriangle className="w-4 h-4 text-amber-text flex-shrink-0 mt-0.5" aria-hidden="true" />
               <p className="text-[12px] leading-relaxed text-amber-text">
-                {photoSteps} of {draft.items.length} steps need a photo.
+                {t('checklists.photoOveruse', { photos: photoSteps, total: draft.items.length })}
               </p>
             </div>
           </div>
@@ -342,30 +344,30 @@ function TemplateModal({ template, onClose }: {
             onChange={(e) => setDraft((d) => ({ ...d, isActive: !e.target.checked }))}
           />
           <span className="text-body text-ink">
-            Retire this checklist
+            {t('checklists.retire')}
             <span className="block text-[11.5px] text-ink-soft">
-              Hides it from the pickers. Work orders that already have its steps keep them.
+              {t('checklists.retireHint')}
             </span>
           </span>
         </label>
 
         <div className="flex items-center gap-2 pt-1">
           <Button onClick={save} disabled={!draft.name.trim() || draft.items.length === 0}>
-            {isNew ? 'Create checklist' : 'Save changes'}
+            {isNew ? t('checklists.create') : t('shared.saveChanges')}
           </Button>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
           {!isNew && (
-            <div className="ml-auto">
+            <div className="ms-auto">
               {confirmDelete ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-[12px] text-ink-soft">Delete it?</span>
+                  <span className="text-[12px] text-ink-soft">{t('shared.deleteIt')}</span>
                   <Button
                     variant="danger" size="sm"
                     onClick={() => { deleteTemplate(draft.id); onClose(); }}
                   >
-                    Yes, delete
+                    {t('shared.yesDelete')}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>No</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>{t('common:actions.no')}</Button>
                 </div>
               ) : (
                 <button
@@ -373,7 +375,7 @@ function TemplateModal({ template, onClose }: {
                   onClick={() => setConfirmDelete(true)}
                   className="inline-flex items-center gap-1.5 text-[12.5px] text-ink-faint hover:text-red transition-colors cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> Delete
+                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> {t('common:actions.delete')}
                 </button>
               )}
             </div>
@@ -396,25 +398,14 @@ function TemplateModal({ template, onClose }: {
  * Nothing is chosen by default. No steps is a real answer: the work order still names every room
  * it covers, because that comes from the location tree rather than from a checklist.
  */
-const AUTOMATIC_JOBS: { purpose: WorkDefaultPurpose; label: string; when: string }[] = [
-  {
-    purpose: 'space_setup',
-    label: 'Setting up a meeting space',
-    when: 'When you approve a group’s request for a room.',
-  },
-  {
-    purpose: 'space_reset',
-    label: 'Putting a meeting space back',
-    when: 'Raised with the set-up, due the day after the group leaves.',
-  },
-  {
-    purpose: 'room_turnover',
-    label: 'Turning over a cabin',
-    when: 'When a rental group departs, and at the end of a camp session.',
-  },
-];
+const AUTOMATIC_JOBS = [
+  { purpose: 'space_setup', label: 'checklists.automatic.space_setup', when: 'checklists.automatic.space_setup_when' },
+  { purpose: 'space_reset', label: 'checklists.automatic.space_reset', when: 'checklists.automatic.space_reset_when' },
+  { purpose: 'room_turnover', label: 'checklists.automatic.room_turnover', when: 'checklists.automatic.room_turnover_when' },
+] as const satisfies readonly { purpose: WorkDefaultPurpose; label: string; when: string }[];
 
 function AutomaticChecklists() {
+  const { t } = useTranslation('campgroundAdmin');
   const templates = useCampgroundStore((s) => s.templates);
   const workDefaults = useCampgroundStore((s) => s.workDefaults);
   const setWorkDefault = useCampgroundStore((s) => s.setWorkDefault);
@@ -430,10 +421,9 @@ function AutomaticChecklists() {
 
   return (
     <section className="rounded-card border border-border bg-white px-4 py-4 mb-6">
-      <h3 className="text-[14px] font-semibold text-forest">Automatic checklists</h3>
+      <h3 className="text-[14px] font-semibold text-forest">{t('checklists.automatic.heading')}</h3>
       <p className="text-[12.5px] text-ink-soft leading-relaxed mt-1 mb-3 max-w-2xl">
-        Some work orders raise themselves. Pick which of your checklists each one starts from, or
-        leave it as none — the job still lists every room it covers either way.
+        {t('checklists.automatic.lede')}
       </p>
 
       <ul className="space-y-2.5">
@@ -443,8 +433,8 @@ function AutomaticChecklists() {
             className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 rounded-btn bg-cream px-3.5 py-3"
           >
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-forest">{job.label}</p>
-              <p className="text-[11.5px] text-ink-soft mt-0.5">{job.when}</p>
+              <p className="text-[13px] font-semibold text-forest">{t(job.label)}</p>
+              <p className="text-[11.5px] text-ink-soft mt-0.5">{t(job.when)}</p>
             </div>
             <select
               value={chosen(job.purpose)}
@@ -452,7 +442,7 @@ function AutomaticChecklists() {
               onChange={(e) => setWorkDefault(job.purpose, e.target.value || null)}
               className="text-[13px] bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage disabled:opacity-50 sm:w-60 flex-shrink-0"
             >
-              <option value="">None — no steps added</option>
+              <option value="">{t('checklists.automatic.noneOption')}</option>
               {active.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </li>
@@ -461,7 +451,7 @@ function AutomaticChecklists() {
 
       {active.length === 0 && (
         <p className="text-[11.5px] text-ink-faint mt-2.5">
-          Write a checklist below first, then you can point one of these at it.
+          {t('checklists.automatic.writeFirst')}
         </p>
       )}
     </section>

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Route, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useCampgroundStore, routingFor } from '@/store/campgroundStore';
 import { useIssuesStore } from '@/store/issuesStore';
 import { useCampStore } from '@/store/campStore';
@@ -27,6 +28,7 @@ const inputClass =
   'w-full text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
 
 export function WorkRoutingCard() {
+  const { t } = useTranslation('campground');
   const tradeKeys = useTradeKeys();
   const labelOf = useTradeLabel();
   const routing = useCampgroundStore((s) => s.routing);
@@ -86,13 +88,12 @@ export function WorkRoutingCard() {
         <div className="flex items-start gap-3">
           <Route className="w-5 h-5 text-forest flex-shrink-0 mt-0.5" aria-hidden="true" />
           <div>
-            <h3 className="font-display text-[15px] font-bold text-forest">Where work lands</h3>
+            <h3 className="font-display text-[15px] font-bold text-forest">{t('routing.title')}</h3>
             <p className="text-[12.5px] text-ink-soft leading-relaxed mt-1 max-w-2xl">
-              Every crew is a kind of work. Work filed against a crew with nobody on it and no
-              default here waits in the unassigned pile until someone takes it.
+              {t('routing.intro')}
             </p>
             <p className="text-[11.5px] text-ink-faint mt-1.5">
-              {routed} of {tradeKeys.length} crews have somewhere to send work.
+              {t('routing.routedCount', { routed, count: tradeKeys.length })}
             </p>
           </div>
         </div>
@@ -118,8 +119,8 @@ export function WorkRoutingCard() {
                   </span>
                   <p className={`text-[11.5px] mt-1.5 ${waiting > 0 && !isRouted ? 'text-red-text' : 'text-ink-faint'}`}>
                     {waiting === 0
-                      ? 'nothing unassigned'
-                      : `${waiting} unassigned right now`}
+                      ? t('routing.nothingUnassigned')
+                      : t('routing.unassignedNow', { count: waiting })}
                   </p>
                 </div>
 
@@ -128,7 +129,7 @@ export function WorkRoutingCard() {
                     className="block text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-1"
                     htmlFor={`routing-assignee-${trade}`}
                   >
-                    Who on this crew gets it
+                    {t('routing.whoGetsIt')}
                   </label>
                   <select
                     id={`routing-assignee-${trade}`}
@@ -137,14 +138,14 @@ export function WorkRoutingCard() {
                     disabled={!canEdit || !crew}
                     onChange={(e) => setTradeRouting(trade, crew?.id ?? null, e.target.value || null)}
                   >
-                    <option value="">The whole crew — anyone can pick it up</option>
+                    <option value="">{t('routing.wholeCrew')}</option>
                     {crewMembers.map((m) => (
                       <option key={m.userId} value={m.userId}>{m.displayName ?? m.fullName}</option>
                     ))}
                   </select>
                   {crew && crewMembers.length === 0 && (
                     <p className="text-[11px] text-ink-faint mt-1">
-                      Nobody is on {crew.name} yet. Add people under Team, or leave this for the crew.
+                      {t('routing.nobodyOnCrew', { crew: crew.name })}
                     </p>
                   )}
                 </div>
@@ -153,7 +154,7 @@ export function WorkRoutingCard() {
                   {isRouted && (
                     <CheckCircle2
                       className="w-4 h-4 text-green-muted-text"
-                      aria-label={`${labelOf(trade)} is routed`}
+                      aria-label={t('routing.routedAria', { crew: labelOf(trade) })}
                     />
                   )}
                 </div>
@@ -165,7 +166,7 @@ export function WorkRoutingCard() {
 
       {!canEdit && (
         <p className="px-5 py-3 text-[11.5px] text-ink-faint border-t border-border">
-          Only an administrator can change routing.
+          {t('routing.adminOnly')}
         </p>
       )}
     </div>

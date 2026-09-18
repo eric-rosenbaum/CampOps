@@ -3,6 +3,7 @@
    "next due" line in RoutinesPanel must agree exactly, and two copies of this maths would
    eventually disagree. The rule this disables only affects dev fast refresh, not correctness. */
 import { useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { AlertTriangle, Trash2, CalendarRange, ChevronRight } from 'lucide-react';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
@@ -12,11 +13,11 @@ import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useLocationStore } from '@/store/locationStore';
 import { useAssetStore } from '@/store/assetStore';
-import { describeCadence } from '@/lib/workOrder';
 import { generateId, todayStr, toDateStr, parseDateStr, formatDate, fmtClock } from '@/lib/utils';
 import { CADENCE_LABELS } from '@/lib/types';
-import { useTradeKeys, useTradeLabel } from '@/lib/useTrades';
+import { seedCrewName, useTradeKeys, useTradeLabel } from '@/lib/useTrades';
 import type { Cadence, Priority, WorkSchedule } from '@/lib/types';
+import { currentLang } from '@/i18n';
 
 // ─── The preview maths ────────────────────────────────────────────────────────
 // The server generator owns what actually gets raised. This is a *preview*, and it exists
@@ -122,6 +123,84 @@ export function nextDates(
   return out;
 }
 
+// ─── Saying it in the reader's language ───────────────────────────────────────
+// describeCadence/describeMissed in lib/workOrder.ts build English sentences out of fragments,
+// which cannot be translated -- "Every 2 weeks on Mon, Thu" is one sentence per language, with
+// its own plural and its own word order. These are the whole-sentence versions the routine
+// screens use; the preview here and the row in RoutinesPanel read the same one.
+
+/** The first column of a week, as the reader's calendar has it: Monday in Spanish. */
+export function weekStartsOn(): number {
+  return currentLang() === 'es' ? 1 : 0;
+}
+
+/** Weekday indexes (0 = Sunday) in the order the reader's week runs. */
+export function weekdayOrder(): number[] {
+  const first = weekStartsOn();
+  return Array.from({ length: 7 }, (_, i) => (first + i) % 7);
+}
+
+/**
+ * Short weekday names in the reader's language, indexed 0 = Sunday. Hebrew takes the narrow form
+ * ("א׳") because its short form is "יום א׳", which is two words on a button one letter wide.
+ */
+export function weekdayNames(): string[] {
+  const lang = currentLang();
+  const fmt = new Intl.DateTimeFormat(lang, { weekday: lang === 'he' ? 'narrow' : 'short' });
+  // 2026-01-04 was a Sunday. Built from local parts, so no timezone can shift it a day.
+  return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2026, 0, 4 + i)));
+}
+
+type CadenceText = Pick<WorkSchedule,
+  'cadence' | 'intervalCount' | 'byWeekday' | 'byMonthday' | 'anchorDate'
+  | 'daysRelativeToOpening' | 'meterInterval' | 'meterKind'>;
+
+/** `describeCadence` and `describeMissed`, as whole translated sentences. */
+export function useCadenceText() {
+  const { t } = useTranslation('campgroundAdmin');
+  return useMemo(() => {
+    const describe = (s: CadenceText): string => {
+      const count = Math.max(1, s.intervalCount || 1);
+      switch (s.cadence) {
+        case 'daily':
+          return t('cadenceText.daily', { count });
+        case 'weekly': {
+          const names = weekdayNames();
+          const order = weekdayOrder();
+          const days = order.filter((d) => (s.byWeekday ?? []).includes(d)).map((d) => names[d]);
+          return days.length
+            ? t('cadenceText.weeklyOn', { count, days: days.join(t('cadenceText.listSeparator')) })
+            : t('cadenceText.weekly', { count });
+        }
+        case 'monthly':
+          return s.byMonthday
+            ? t('cadenceText.monthlyOn', { count, day: s.byMonthday })
+            : t('cadenceText.monthly', { count });
+        case 'annually':
+          return t('cadenceText.annually', { count });
+        case 'season_relative': {
+          const d = s.daysRelativeToOpening ?? 0;
+          if (d === 0) return t('cadenceText.openingDay');
+          return d < 0
+            ? t('cadenceText.beforeOpening', { count: Math.abs(d) })
+            : t('cadenceText.afterOpening', { count: d });
+        }
+        case 'on_turnover':
+          return t('cadenceText.turnover');
+        case 'meter':
+          if (!s.meterInterval) return t('cadenceText.byMeter');
+          return s.meterKind === 'odometer'
+            ? t('cadenceText.meterMiles', { count: s.meterInterval })
+            : t('cadenceText.meterHours', { count: s.meterInterval });
+        default:
+          return '';
+      }
+    };
+    const missed = (n: number): string | null => (n > 0 ? t('cadenceText.missed', { count: n }) : null);
+    return { describe, missed };
+  }, [t]);
+}
+
 // ─── The editor ───────────────────────────────────────────────────────────────
 
 const inputClass =
@@ -129,7 +208,6 @@ const inputClass =
 const labelClass = 'block text-[11px] font-semibold uppercase tracking-widest text-ink-soft mb-1';
 const hintClass = 'text-[11.5px] text-ink-soft leading-relaxed mt-1.5';
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const PRIORITIES: Priority[] = ['normal', 'high', 'urgent'];
 const CADENCE_ORDER: Cadence[] = [
   'daily', 'weekly', 'monthly', 'annually', 'season_relative', 'on_turnover', 'meter',
@@ -163,6 +241,9 @@ interface Props {
 }
 
 export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
+  const { t } = useTranslation(['campgroundAdmin', 'common']);
+  const cadenceText = useCadenceText();
+  const weekdays = useMemo(() => weekdayNames(), []);
   const tradeKeys = useTradeKeys();
   const labelOf = useTradeLabel();
   const [draft, setDraft] = useState<WorkSchedule>(() => schedule ?? blankSchedule());
@@ -209,17 +290,17 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
     || draft.cadence === 'monthly' || draft.cadence === 'annually';
 
   const problems: string[] = [];
-  if (!draft.title.trim()) problems.push('Give the routine a title — it becomes the work order title.');
+  if (!draft.title.trim()) problems.push(t('routineModal.problems.title'));
   if (draft.cadence === 'weekly' && (draft.byWeekday?.length ?? 0) === 0) {
-    problems.push('Pick at least one weekday.');
+    problems.push(t('routineModal.problems.weekday'));
   }
-  if (needsAsset && !draft.assetId) problems.push('A meter routine has to count against a specific asset.');
-  if (needsAsset && !draft.meterInterval) problems.push('Set how many hours or miles between occurrences.');
+  if (needsAsset && !draft.assetId) problems.push(t('routineModal.problems.meterAsset'));
+  if (needsAsset && !draft.meterInterval) problems.push(t('routineModal.problems.meterInterval'));
   if (draft.cadence === 'season_relative' && !season) {
-    problems.push('There is no season yet, so "relative to opening day" has no day to count from.');
+    problems.push(t('routineModal.problems.noSeason'));
   }
   if (draft.activeFrom && draft.activeUntil && draft.activeFrom > draft.activeUntil) {
-    problems.push('The active window ends before it starts.');
+    problems.push(t('routineModal.problems.windowBackwards'));
   }
 
   function toggleWeekday(day: number) {
@@ -260,28 +341,28 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
 
   return (
     <Modal
-      title={isNew ? 'New routine' : 'Edit routine'}
+      title={isNew ? t('routineModal.titleNew') : t('routineModal.titleEdit')}
       onClose={onClose}
       width="min(660px, 94vw)"
     >
       <div className="space-y-5">
         {/* ── What ─────────────────────────────────────────────────────────── */}
         <div>
-          <label className={labelClass} htmlFor="routine-title">Title</label>
+          <label className={labelClass} htmlFor="routine-title">{t('routineModal.title')}</label>
           <input
             id="routine-title"
             className={inputClass}
             value={draft.title}
-            placeholder="Flush the hot water tank"
+            placeholder={t('routineModal.titlePlaceholder')}
             onChange={(e) => set({ title: e.target.value })}
           />
           <p className={hintClass}>
-            Write it as the job, not the schedule.
+            {t('routineModal.titleHint')}
           </p>
         </div>
 
         <div>
-          <label className={labelClass} htmlFor="routine-desc">What it involves</label>
+          <label className={labelClass} htmlFor="routine-desc">{t('routineModal.description')}</label>
           <textarea
             id="routine-desc"
             className={`${inputClass} min-h-[64px]`}
@@ -292,7 +373,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelClass} htmlFor="routine-trade">Crew</label>
+            <label className={labelClass} htmlFor="routine-trade">{t('shared.crew')}</label>
             <select
               id="routine-trade" className={inputClass} value={draft.trade}
               onChange={(e) => set({ trade: e.target.value as WorkSchedule['trade'] })}
@@ -301,34 +382,34 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
             </select>
           </div>
           <div>
-            <label className={labelClass} htmlFor="routine-priority">Priority</label>
+            <label className={labelClass} htmlFor="routine-priority">{t('shared.priority')}</label>
             <select
               id="routine-priority" className={inputClass} value={draft.priority}
               onChange={(e) => set({ priority: e.target.value as Priority })}
             >
               {PRIORITIES.map((p) => (
-                <option key={p} value={p}>{p[0].toUpperCase() + p.slice(1)}</option>
+                <option key={p} value={p}>{t(`common:priority.${p}`)}</option>
               ))}
             </select>
           </div>
         </div>
 
         <div>
-          <label className={labelClass}>Where</label>
+          <label className={labelClass}>{t('routineModal.where')}</label>
           <LocationPicker
             value={draft.locationIds}
             onChange={(ids) => set({ locationIds: ids })}
-            placeholder="Anywhere in camp"
+            placeholder={t('routineModal.wherePlaceholder')}
           />
         </div>
 
         {/* ── How often ────────────────────────────────────────────────────── */}
         <div className="border-t border-border pt-5">
-          <h3 className="font-display text-[14px] font-bold text-forest mb-3">How often</h3>
+          <h3 className="font-display text-[14px] font-bold text-forest mb-3">{t('routineModal.howOften')}</h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelClass} htmlFor="routine-cadence">Cadence</label>
+              <label className={labelClass} htmlFor="routine-cadence">{t('routineModal.cadence')}</label>
               <select
                 id="routine-cadence" className={inputClass} value={draft.cadence}
                 onChange={(e) => changeCadence(e.target.value as Cadence)}
@@ -340,7 +421,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
             </div>
             {usesInterval && (
               <div>
-                <label className={labelClass} htmlFor="routine-interval">Every</label>
+                <label className={labelClass} htmlFor="routine-interval">{t('routineModal.every')}</label>
                 <div className="flex items-center gap-2">
                   <input
                     id="routine-interval" type="number" min={1} max={52}
@@ -349,9 +430,11 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
                     onChange={(e) => set({ intervalCount: Math.max(1, Number(e.target.value) || 1) })}
                   />
                   <span className="text-body text-ink-soft">
-                    {draft.cadence === 'daily' ? 'day(s)'
-                      : draft.cadence === 'weekly' ? 'week(s)'
-                        : draft.cadence === 'monthly' ? 'month(s)' : 'year(s)'}
+                    {draft.cadence === 'daily' ? t('routineModal.unitDay', { count: draft.intervalCount })
+                      : draft.cadence === 'weekly' ? t('routineModal.unitWeek', { count: draft.intervalCount })
+                        : draft.cadence === 'monthly'
+                          ? t('routineModal.unitMonth', { count: draft.intervalCount })
+                          : t('routineModal.unitYear', { count: draft.intervalCount })}
                   </span>
                 </div>
               </div>
@@ -360,15 +443,16 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
 
           {draft.cadence === 'weekly' && (
             <div className="mt-4">
-              <label className={labelClass}>On these days</label>
+              <label className={labelClass}>{t('routineModal.onTheseDays')}</label>
               <div className="flex flex-wrap gap-1.5">
-                {WEEKDAYS.map((label, day) => {
+                {weekdayOrder().map((day) => {
+                  const label = weekdays[day];
                   const on = (draft.byWeekday ?? []).includes(day);
                   return (
                     <button
-                      key={label} type="button" aria-pressed={on}
+                      key={day} type="button" aria-pressed={on}
                       onClick={() => toggleWeekday(day)}
-                      className={`px-3 py-1.5 rounded-btn text-[12px] font-bold border transition-colors cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-btn text-[12px] font-bold capitalize border transition-colors cursor-pointer ${
                         on ? 'bg-forest text-paper border-forest' : 'bg-white text-ink-soft border-border hover:border-sage'
                       }`}
                     >
@@ -382,7 +466,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
 
           {draft.cadence === 'monthly' && (
             <div className="mt-4">
-              <label className={labelClass} htmlFor="routine-monthday">Day of the month</label>
+              <label className={labelClass} htmlFor="routine-monthday">{t('routineModal.dayOfMonth')}</label>
               <input
                 id="routine-monthday" type="number" min={1} max={31}
                 className={`${inputClass} w-24`}
@@ -390,14 +474,14 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
                 onChange={(e) => set({ byMonthday: Number(e.target.value) || null })}
               />
               <p className={hintClass}>
-                A 31st routine lands on the last day of a shorter month rather than skipping it.
+                {t('routineModal.dayOfMonthHint')}
               </p>
             </div>
           )}
 
           {draft.cadence === 'season_relative' && (
             <div className="mt-4">
-              <label className={labelClass} htmlFor="routine-relative">Days relative to opening day</label>
+              <label className={labelClass} htmlFor="routine-relative">{t('routineModal.daysRelative')}</label>
               <input
                 id="routine-relative" type="number"
                 className={`${inputClass} w-28`}
@@ -405,34 +489,38 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
                 onChange={(e) => set({ daysRelativeToOpening: Number(e.target.value) || 0 })}
               />
               <p className={hintClass}>
-                Negative counts backwards — <b>-14</b> means two weeks before opening day.
+                <Trans
+                  t={t} i18nKey="routineModal.relativeHint"
+                  components={{ b: <b dir="ltr" /> }}
+                />
+                {' '}
                 {season
-                  ? ` This season opens ${formatDate(season.openingDate)}.`
-                  : ' No season is set yet, so there is nothing to count from.'}
+                  ? t('routineModal.seasonOpens', { date: formatDate(season.openingDate) })
+                  : t('routineModal.noSeasonToCount')}
               </p>
             </div>
           )}
 
           {draft.cadence === 'on_turnover' && (
             <p className={hintClass}>
-              Raised whenever a session or rental group departs.
+              {t('routineModal.onTurnoverHint')}
             </p>
           )}
 
           {needsAsset && (
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className={labelClass} htmlFor="routine-meter-kind">Counting</label>
+                <label className={labelClass} htmlFor="routine-meter-kind">{t('routineModal.counting')}</label>
                 <select
                   id="routine-meter-kind" className={inputClass} value={draft.meterKind}
                   onChange={(e) => set({ meterKind: e.target.value as WorkSchedule['meterKind'], assetId: null })}
                 >
-                  <option value="hours">Engine hours</option>
-                  <option value="odometer">Miles</option>
+                  <option value="hours">{t('routineModal.engineHours')}</option>
+                  <option value="odometer">{t('routineModal.miles')}</option>
                 </select>
               </div>
               <div>
-                <label className={labelClass} htmlFor="routine-meter-interval">Every</label>
+                <label className={labelClass} htmlFor="routine-meter-interval">{t('routineModal.every')}</label>
                 <input
                   id="routine-meter-interval" type="number" min={1}
                   className={inputClass}
@@ -441,20 +529,20 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
                 />
               </div>
               <div>
-                <label className={labelClass} htmlFor="routine-asset">Asset</label>
+                <label className={labelClass} htmlFor="routine-asset">{t('routineModal.asset')}</label>
                 <select
                   id="routine-asset" className={inputClass} value={draft.assetId ?? ''}
                   onChange={(e) => set({ assetId: e.target.value || null })}
                 >
-                  <option value="">Choose one…</option>
+                  <option value="">{t('routineModal.chooseOne')}</option>
                   {meterAssets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
               </div>
               {meterAssets.length === 0 && (
                 <p className={`${hintClass} sm:col-span-3`}>
-                  No asset is tracking {draft.meterKind === 'odometer' ? 'miles' : 'hours'} yet. Turn
-                  that on for the machine in Assets &amp; Vehicles first — this routine has nothing
-                  to count against until you do.
+                  {draft.meterKind === 'odometer'
+                    ? t('routineModal.noAssetTracksMiles')
+                    : t('routineModal.noAssetTracksHours')}
                 </p>
               )}
             </div>
@@ -464,7 +552,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
               camp the hour is usually the point -- the hall has to be clear before the group walks
               into it. Copied onto every occurrence the generator raises. */}
           <div className="mt-4">
-            <label className={labelClass} htmlFor="routine-due-time">Due by</label>
+            <label className={labelClass} htmlFor="routine-due-time">{t('routineModal.dueBy')}</label>
             <input
               id="routine-due-time" type="time" className={`${inputClass} sm:w-40`}
               value={draft.dueTime?.slice(0, 5) ?? ''}
@@ -472,21 +560,21 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
             />
             <p className={hintClass}>
               {draft.dueTime
-                ? `Every occurrence is due by ${fmtClock(draft.dueTime)}.`
-                : 'Leave blank for any time that day.'}
+                ? t('routineModal.dueByHint', { time: fmtClock(draft.dueTime) })
+                : t('routineModal.dueAnyTime')}
             </p>
           </div>
 
           {usesInterval && (
             <div className="mt-4">
-              <label className={labelClass} htmlFor="routine-anchor">Starting from</label>
+              <label className={labelClass} htmlFor="routine-anchor">{t('routineModal.startingFrom')}</label>
               <input
                 id="routine-anchor" type="date" className={`${inputClass} sm:w-56`}
                 value={draft.anchorDate ?? ''}
                 onChange={(e) => set({ anchorDate: e.target.value || null })}
               />
               <p className={hintClass}>
-                The date the count runs from.
+                {t('routineModal.startingFromHint')}
               </p>
             </div>
           )}
@@ -494,47 +582,47 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
 
         {/* ── Who ──────────────────────────────────────────────────────────── */}
         <div className="border-t border-border pt-5">
-          <h3 className="font-display text-[14px] font-bold text-forest mb-3">Who it lands on</h3>
+          <h3 className="font-display text-[14px] font-bold text-forest mb-3">{t('routineModal.whoHeading')}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelClass} htmlFor="routine-assignee">Assignee</label>
+              <label className={labelClass} htmlFor="routine-assignee">{t('routineModal.assignee')}</label>
               <select
                 id="routine-assignee" className={inputClass} value={draft.assigneeId ?? ''}
                 onChange={(e) => set({ assigneeId: e.target.value || null })}
               >
-                <option value="">Use the trade's default routing</option>
+                <option value="">{t('routineModal.defaultRouting')}</option>
                 {assignableMembers.map((m) => (
                   <option key={m.userId} value={m.userId}>{m.displayName ?? m.fullName}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className={labelClass} htmlFor="routine-group">Crew</label>
+              <label className={labelClass} htmlFor="routine-group">{t('shared.crew')}</label>
               <select
                 id="routine-group" className={inputClass} value={draft.staffGroupId ?? ''}
                 onChange={(e) => set({ staffGroupId: e.target.value || null })}
               >
-                <option value="">None</option>
-                {staffGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                <option value="">{t('common:actions.none')}</option>
+                {staffGroups.map((g) => <option key={g.id} value={g.id}>{seedCrewName(g.key, g.name)}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelClass} htmlFor="routine-vendor">Dispatch to a vendor</label>
+              <label className={labelClass} htmlFor="routine-vendor">{t('routineModal.vendor')}</label>
               <select
                 id="routine-vendor" className={inputClass} value={draft.vendorId ?? ''}
                 onChange={(e) => set({ vendorId: e.target.value || null })}
               >
-                <option value="">Nobody — we do this ourselves</option>
+                <option value="">{t('routineModal.vendorNobody')}</option>
                 {activeVendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelClass} htmlFor="routine-template">Checklist</label>
+              <label className={labelClass} htmlFor="routine-template">{t('routineModal.checklist')}</label>
               <select
                 id="routine-template" className={inputClass} value={draft.checklistTemplateId ?? ''}
                 onChange={(e) => set({ checklistTemplateId: e.target.value || null })}
               >
-                <option value="">No checklist</option>
+                <option value="">{t('routineModal.noChecklist')}</option>
                 {activeTemplates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </div>
@@ -546,20 +634,20 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
           <div className="bg-cream rounded-card border border-border px-4 py-3.5">
             <div className="flex items-center gap-2 mb-2">
               <CalendarRange className="w-4 h-4 text-forest" aria-hidden="true" />
-              <b className="text-[13px] text-forest">{describeCadence(draft) || 'Not set yet'}</b>
+              <b className="text-[13px] text-forest">{cadenceText.describe(draft) || t('routineModal.notSetYet')}</b>
             </div>
             {draft.cadence === 'meter' ? (
               <p className="text-[12.5px] text-ink-soft leading-relaxed">
-                Comes due on a reading, not a date.
+                {t('routineModal.meterPreview')}
               </p>
             ) : draft.cadence === 'on_turnover' ? (
               <p className="text-[12.5px] text-ink-soft leading-relaxed">
-                Raised on every departure.
+                {t('routineModal.turnoverPreview')}
               </p>
             ) : preview.length > 0 ? (
               <>
                 <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-1.5">
-                  Next {preview.length === 1 ? 'occurrence' : `${preview.length} occurrences`}
+                  {t('routineModal.nextOccurrences', { count: preview.length })}
                 </p>
                 <ul className="flex flex-wrap gap-x-4 gap-y-1">
                   {preview.map((d) => (
@@ -569,7 +657,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
               </>
             ) : (
               <p className="text-[12.5px] text-red-text leading-relaxed">
-                Nothing comes due in the next five years. Check the window and start date.
+                {t('routineModal.nothingDue')}
               </p>
             )}
           </div>
@@ -584,24 +672,26 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
             onClick={() => setShowAdvanced((v) => !v)}
             className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-soft hover:text-forest transition-colors"
           >
+            {/* Flipped only while closed: open it points down, and a flip composed with the
+                rotation would point it up instead. */}
             <ChevronRight
-              className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
+              className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-90' : 'rtl:-scale-x-100'}`}
               aria-hidden="true"
             />
-            More settings
+            {t('routineModal.moreSettings')}
           </button>
 
           {showAdvanced && (
             <div className="space-y-5 pt-4">
         {/* ── Active window ────────────────────────────────────────────────── */}
         <div className="border-t border-border pt-5">
-          <h3 className="font-display text-[14px] font-bold text-forest mb-1">Active window</h3>
+          <h3 className="font-display text-[14px] font-bold text-forest mb-1">{t('routineModal.activeWindow')}</h3>
           <p className="text-[12.5px] text-ink-soft leading-relaxed mb-3">
-            Without a window, this keeps raising work all year.
+            {t('routineModal.activeWindowHint')}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelClass} htmlFor="routine-from">Runs from</label>
+              <label className={labelClass} htmlFor="routine-from">{t('routineModal.runsFrom')}</label>
               <input
                 id="routine-from" type="date" className={inputClass}
                 value={draft.activeFrom ?? ''}
@@ -609,7 +699,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
               />
             </div>
             <div>
-              <label className={labelClass} htmlFor="routine-until">Runs until</label>
+              <label className={labelClass} htmlFor="routine-until">{t('routineModal.runsUntil')}</label>
               <input
                 id="routine-until" type="date" className={inputClass}
                 value={draft.activeUntil ?? ''}
@@ -623,7 +713,9 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
               onClick={() => set({ activeFrom: season.openingDate, activeUntil: season.closingDate })}
               className="mt-2 text-[12px] font-semibold text-forest underline underline-offset-2 cursor-pointer hover:text-forest-mid"
             >
-              Use this season ({formatDate(season.openingDate)} – {formatDate(season.closingDate)})
+              {t('routineModal.useSeason', {
+                from: formatDate(season.openingDate), to: formatDate(season.closingDate),
+              })}
             </button>
           )}
         </div>
@@ -631,7 +723,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
         {/* ── Generation ───────────────────────────────────────────────────── */}
         <div className="border-t border-border pt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelClass} htmlFor="routine-ahead">Raise it this many days ahead</label>
+            <label className={labelClass} htmlFor="routine-ahead">{t('routineModal.raiseAhead')}</label>
             <input
               id="routine-ahead" type="number" min={0} max={90}
               className={`${inputClass} w-24`}
@@ -640,17 +732,16 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
             />
           </div>
           <div>
-            <label className={labelClass} htmlFor="routine-reschedule">Count the next one from</label>
+            <label className={labelClass} htmlFor="routine-reschedule">{t('routineModal.countFrom')}</label>
             <select
               id="routine-reschedule" className={inputClass} value={draft.rescheduleFrom}
               onChange={(e) => set({ rescheduleFrom: e.target.value as WorkSchedule['rescheduleFrom'] })}
             >
-              <option value="due_date">The date it was due</option>
-              <option value="completed_at">The date it was finished</option>
+              <option value="due_date">{t('routineModal.fromDue')}</option>
+              <option value="completed_at">{t('routineModal.fromDone')}</option>
             </select>
             <p className={hintClass}>
-              "Finished" suits jobs measured from the last service — an oil change three weeks
-              late should push the next one back, not stay on the old grid.
+              {t('routineModal.countFromHint')}
             </p>
           </div>
         </div>
@@ -663,9 +754,9 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
             onChange={(e) => set({ isActive: !e.target.checked })}
           />
           <span className="text-body text-ink">
-            Pause this routine
+            {t('routineModal.pause')}
             <span className="block text-[11.5px] text-ink-soft">
-              Stops new occurrences. Anything already raised stays in the queue.
+              {t('routineModal.pauseHint')}
             </span>
           </span>
         </label>
@@ -688,21 +779,21 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
         {/* ── Actions ──────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 pt-1">
           <Button onClick={save} disabled={problems.length > 0}>
-            {isNew ? 'Create routine' : 'Save changes'}
+            {isNew ? t('routineModal.create') : t('shared.saveChanges')}
           </Button>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
           {!isNew && (
-            <div className="ml-auto">
+            <div className="ms-auto">
               {confirmDelete ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-[12px] text-ink-soft">Delete it?</span>
+                  <span className="text-[12px] text-ink-soft">{t('shared.deleteIt')}</span>
                   <Button
                     variant="danger" size="sm"
                     onClick={() => { deleteSchedule(draft.id); onClose(); }}
                   >
-                    Yes, delete
+                    {t('shared.yesDelete')}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>No</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>{t('common:actions.no')}</Button>
                 </div>
               ) : (
                 <button
@@ -710,7 +801,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
                   onClick={() => setConfirmDelete(true)}
                   className="inline-flex items-center gap-1.5 text-[12.5px] text-ink-faint hover:text-red transition-colors cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> Delete
+                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> {t('common:actions.delete')}
                 </button>
               )}
             </div>

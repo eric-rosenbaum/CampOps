@@ -1,0 +1,123 @@
+{
+  "language": {
+    "label": "Idioma",
+    "en": "English",
+    "es": "Español",
+    "he": "עברית"
+  },
+  "actions": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Agregar",
+    "done": "Listo",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "retry": "Intentar de nuevo",
+    "search": "Buscar",
+    "loading": "Cargando…",
+    "saving": "Guardando…",
+    "signOut": "Cerrar sesión",
+    "confirm": "Confirmar",
+    "remove": "Quitar",
+    "open": "Abrir",
+    "more": "Más",
+    "none": "Ninguno",
+    "all": "Todos",
+    "yes": "Sí",
+    "no": "No"
+  },
+  "status": {
+    "unassigned": "Sin asignar",
+    "assigned": "Asignado",
+    "in_progress": "En curso",
+    "waiting_on_vendor": "Esperando al proveedor",
+    "waiting_on_part": "Esperando una pieza",
+    "resolved": "Hecho"
+  },
+  "priority": {
+    "urgent": "Urgente",
+    "high": "Alta",
+    "normal": "Normal"
+  },
+  "source": {
+    "web": "Registrado en la app",
+    "ios": "Registrado en un teléfono",
+    "public": "Reporte público",
+    "qr": "Escaneó una etiqueta",
+    "routine": "Rutina",
+    "retreat": "Grupo de alquiler",
+    "session": "Cambio de sesión",
+    "module": "Marcado desde otro módulo"
+  },
+  "cadence": {
+    "daily": "Cada día",
+    "weekly": "Cada semana",
+    "monthly": "Cada mes",
+    "annually": "Cada año",
+    "season_relative": "Según el día de apertura",
+    "on_turnover": "En cada cambio",
+    "meter": "Por horas o millas"
+  },
+  "crew": {
+    "maintenance": "Mantenimiento",
+    "housekeeping": "Limpieza",
+    "grounds": "Terrenos",
+    "kitchen": "Cocina",
+    "it": "Tecnología"
+  },
+  "schedule": {
+    "everyDay_one": "Cada día",
+    "everyDay_many": "Cada {{count}} días",
+    "everyDay_other": "Cada {{count}} días",
+    "everyWeek_one": "Cada semana",
+    "everyWeek_many": "Cada {{count}} semanas",
+    "everyWeek_other": "Cada {{count}} semanas",
+    "everyWeekOn_one": "Cada semana los {{days}}",
+    "everyWeekOn_many": "Cada {{count}} semanas los {{days}}",
+    "everyWeekOn_other": "Cada {{count}} semanas los {{days}}",
+    "everyMonth_one": "Cada mes",
+    "everyMonth_many": "Cada {{count}} meses",
+    "everyMonth_other": "Cada {{count}} meses",
+    "everyMonthOn_one": "Cada mes el día {{day}}",
+    "everyMonthOn_many": "Cada {{count}} meses el día {{day}}",
+    "everyMonthOn_other": "Cada {{count}} meses el día {{day}}",
+    "everyYear_one": "Cada año",
+    "everyYear_many": "Cada {{count}} años",
+    "everyYear_other": "Cada {{count}} años",
+    "openingDay": "El día de apertura",
+    "beforeOpening_one": "{{count}} día antes de la apertura",
+    "beforeOpening_many": "{{count}} días antes de la apertura",
+    "beforeOpening_other": "{{count}} días antes de la apertura",
+    "afterOpening_one": "{{count}} día después de la apertura",
+    "afterOpening_many": "{{count}} días después de la apertura",
+    "afterOpening_other": "{{count}} días después de la apertura",
+    "everyTurnover": "En cada cambio",
+    "everyMiles": "Cada {{n}} millas",
+    "everyHours": "Cada {{n}} horas",
+    "byMeter": "Por medidor",
+    "behind_one": "{{count}} ciclo atrasado",
+    "behind_many": "{{count}} ciclos atrasados",
+    "behind_other": "{{count}} ciclos atrasados"
+  },
+  "role": {
+    "admin": "Administrador",
+    "staff": "Personal",
+    "viewer": "Solo lectura"
+  },
+  "upload": {
+    "uploading": "Subiendo",
+    "saving": "Guardando el registro",
+    "verifying": "Comprobando que abre",
+    "done": "Listo",
+    "failed": "Falló"
+  },
+  "loading": {
+    "dashboard": "Preparando tu panel",
+    "tasks": "Cargando tus tareas",
+    "campground": "Abriendo el campamento",
+    "spot": "Abriendo este lugar"
+  }
+}

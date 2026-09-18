@@ -1,4 +1,5 @@
 import { Repeat } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Issue, IssueStatus } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
 import { useCampStore } from '@/store/campStore';
@@ -10,6 +11,7 @@ import {
 import { LocationIcon } from '@/components/shared/LocationIcon';
 import { Avatar } from '@/components/shared/Avatar';
 import { relativeDueDate, formatDate } from '@/lib/utils';
+import { TranslatedText } from '@/components/i18n/TranslatedText';
 
 /**
  * Status colour, kept out of workOrder.ts because it is a presentation choice this card and
@@ -46,6 +48,7 @@ interface Props {
 }
 
 export function WorkOrderCard({ issue, selected, onClick, today, onTakeIt }: Props) {
+  const { t } = useTranslation(['campground', 'common']);
   const { currentUser } = useAuth();
   const members = useCampStore((s) => s.members);
   // Raw slices only. A selector that filtered any of these would allocate a new array every
@@ -81,8 +84,8 @@ export function WorkOrderCard({ issue, selected, onClick, today, onTakeIt }: Pro
     <div
       onClick={onClick}
       aria-current={selected || undefined}
-      className={`mb-2 flex w-full items-center gap-3 sm:gap-4 rounded-card border border-l-4 bg-white
-                  px-3 py-3 sm:px-4 sm:py-4 text-left cursor-pointer
+      className={`mb-2 flex w-full items-center gap-3 sm:gap-4 rounded-card border border-s-4 bg-white
+                  px-3 py-3 sm:px-4 sm:py-4 text-start cursor-pointer
                   transition-[box-shadow,transform,border-color] duration-150
                   hover:-translate-y-px hover:shadow-[0_3px_0_rgba(35,32,27,0.07)]
                   ${tradeStripe(issue.trade)}
@@ -95,14 +98,19 @@ export function WorkOrderCard({ issue, selected, onClick, today, onTakeIt }: Pro
           {unread && (
             <span
               className="h-2 w-2 flex-none rounded-full bg-red"
-              title="New message on this work order"
+              title={t('card.newMessage')}
             />
           )}
-          <p className="truncate font-display text-[15.5px] sm:text-[16.5px] font-semibold leading-snug text-ink">
-            {issue.title}
-          </p>
+          <TranslatedText
+            as="p"
+            source="issues"
+            id={issue.id}
+            field="title"
+            text={issue.title}
+            className="truncate font-display text-[15.5px] sm:text-[16.5px] font-semibold leading-snug text-ink"
+          />
           {issue.scheduleId && (
-            <Repeat className="h-3.5 w-3.5 flex-none text-sage" aria-label="Routine" />
+            <Repeat className="h-3.5 w-3.5 flex-none text-sage" aria-label={t('card.routine')} />
           )}
         </div>
 
@@ -114,14 +122,14 @@ export function WorkOrderCard({ issue, selected, onClick, today, onTakeIt }: Pro
           {location && <span className="truncate">{location}</span>}
           {issue.priority !== 'normal' && (
             <span className={issue.priority === 'urgent' ? 'font-bold text-red' : 'font-semibold text-amber-text'}>
-              {issue.priority === 'urgent' ? 'Urgent' : 'High'}
+              {t(`common:priority.${issue.priority}`)}
             </span>
           )}
           {behind && <span className="font-semibold text-red">{behind}</span>}
-          {retreatName && <span className="truncate">For {retreatName}</span>}
+          {retreatName && <span className="truncate">{t('card.forGroup', { name: retreatName })}</span>}
           {issue.isPublicReport && (
             <span className="rounded-tag border border-red px-[5px] py-px text-[9.5px] font-bold uppercase tracking-[0.1em] text-red">
-              Public
+              {t('card.public')}
             </span>
           )}
         </div>
@@ -137,13 +145,13 @@ export function WorkOrderCard({ issue, selected, onClick, today, onTakeIt }: Pro
               />
             </span>
             <span className="text-[11.5px] tabular-nums text-ink-soft">
-              {progress.done} of {progress.total}
+              {t('card.progress', { done: progress.done, total: progress.total })}
             </span>
           </div>
         )}
       </div>
 
-      <div className="flex-none text-right">
+      <div className="flex-none text-end">
         {assigneeName ? (
           <div className="flex items-center justify-end gap-1.5">
             <Avatar name={assigneeName} size={20} />
@@ -152,7 +160,7 @@ export function WorkOrderCard({ issue, selected, onClick, today, onTakeIt }: Pro
             </span>
           </div>
         ) : (
-          <p className="text-[12.5px] font-bold text-red">Unassigned</p>
+          <p className="text-[12.5px] font-bold text-red">{t('common:status.unassigned')}</p>
         )}
         {due ? (
           <p className={`mt-0.5 text-[11.5px] tabular-nums ${late ? 'font-bold text-red' : 'text-ink-soft'}`}>
@@ -160,7 +168,7 @@ export function WorkOrderCard({ issue, selected, onClick, today, onTakeIt }: Pro
           </p>
         ) : (
           <p className="mt-0.5 text-[11.5px] text-ink-faint">
-            {issue.status === 'resolved' ? formatDate(issue.updatedAt) : 'No due date'}
+            {issue.status === 'resolved' ? formatDate(issue.updatedAt) : t('card.noDueDate')}
           </p>
         )}
         {onTakeIt && !issue.assigneeId && (
@@ -169,7 +177,7 @@ export function WorkOrderCard({ issue, selected, onClick, today, onTakeIt }: Pro
             className="mt-1.5 rounded-tag border border-border bg-paper px-2 py-0.5 text-[11px] font-semibold
                        text-forest transition-colors hover:border-sage"
           >
-            Take it
+            {t('card.takeIt')}
           </button>
         )}
       </div>

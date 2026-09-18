@@ -9,12 +9,16 @@ import { ActivityFeed } from './ActivityFeed';
 import { Button } from './Button';
 import { formatDate, formatDateTime, generateId } from '@/lib/utils';
 import { Camera } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { TranslatedText } from '@/components/i18n/TranslatedText';
+import { activityStatusWord } from '@/i18n/activity';
 
 interface Props {
   issue: Issue;
 }
 
 export function IssueDetail({ issue }: Props) {
+  const { t } = useTranslation(['shell', 'common']);
   const { updateIssue, resolveIssue, reopenIssue, addActivityEntry, deleteIssue } = useIssuesStore();
   const { openEditIssueModal } = useUIStore();
   const { currentUser, can } = useAuth();
@@ -33,7 +37,7 @@ export function IssueDetail({ issue }: Props) {
 
   const assigneeName = memberName(issue.assigneeId);
   const reporterName = issue.isPublicReport
-    ? (issue.reporterName ?? 'Anonymous')
+    ? (issue.reporterName ?? t('issue.anonymous'))
     : memberName(issue.reportedById);
 
   function handleStatusChange(newStatus: IssueStatus) {
@@ -42,7 +46,8 @@ export function IssueDetail({ issue }: Props) {
       id: generateId(),
       userId: currentUser.id,
       userName: currentUser.name,
-      action: `Status changed to ${newStatus.replace('_', ' ')} by ${currentUser.name}`,
+      // Stored in English whatever the reader's language (see src/i18n/activity.ts).
+      action: `Status changed to ${activityStatusWord(newStatus)} by ${currentUser.name}`,
       timestamp: new Date().toISOString(),
     });
   }
@@ -103,16 +108,25 @@ export function IssueDetail({ issue }: Props) {
       {/* Header */}
       <div className="border-b border-border bg-white px-6 pb-4 pt-5">
         <div className="flex items-start gap-2 mb-1">
-          <h2 className="flex-1 font-display text-[21px] font-bold leading-[1.2] text-forest">{issue.title}</h2>
+          <TranslatedText
+            as="h2"
+            source="issues"
+            id={issue.id}
+            field="title"
+            text={issue.title}
+            className="flex-1 font-display text-[21px] font-bold leading-[1.2] text-forest"
+          />
           {issue.isPublicReport && (
             <span className="flex-shrink-0 rounded-tag border border-red px-[5px] py-px text-[9.5px] font-bold uppercase tracking-[0.1em] text-red">
-              Public
+              {t('issue.public')}
             </span>
           )}
         </div>
         <p className="text-[12px] text-ink-soft">
           {issue.locations.length > 0 ? `${issue.locations.join(' · ')} · ` : ''}
-          Logged {reporterName ? `by ${reporterName}` : ''} {formatDate(issue.createdAt)}
+          {reporterName
+            ? t('issue.loggedBy', { name: reporterName, date: formatDate(issue.createdAt) })
+            : t('issue.loggedOn', { date: formatDate(issue.createdAt) })}
         </p>
       </div>
 
@@ -120,7 +134,7 @@ export function IssueDetail({ issue }: Props) {
         {/* Status section */}
         <div className="space-y-3">
           <div className="flex items-baseline gap-2 pb-1">
-            <span className="flex-none text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Priority</span>
+            <span className="flex-none text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">{t('issue.priority')}</span>
             <span
               className="h-px flex-1 -translate-y-[3px] bg-[repeating-linear-gradient(90deg,#DED3BB_0_4px,transparent_4px_8px)]"
               aria-hidden="true"
@@ -129,29 +143,29 @@ export function IssueDetail({ issue }: Props) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Status</span>
+            <span className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">{t('issue.status')}</span>
             <select
               value={issue.status}
               onChange={(e) => handleStatusChange(e.target.value as IssueStatus)}
               className={`${selectClass} w-full`}
               disabled={issue.status === 'resolved'}
             >
-              <option value="unassigned">Unassigned</option>
-              <option value="assigned">Assigned</option>
-              <option value="in_progress">In progress</option>
-              <option value="resolved">Resolved</option>
+              <option value="unassigned">{t('common:status.unassigned')}</option>
+              <option value="assigned">{t('common:status.assigned')}</option>
+              <option value="in_progress">{t('common:status.in_progress')}</option>
+              <option value="resolved">{t('common:status.resolved')}</option>
             </select>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Assigned to</span>
+            <span className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">{t('issue.assignedTo')}</span>
             {can('assign') ? (
               <select
                 value={issue.assigneeId ?? ''}
                 onChange={(e) => handleAssigneeChange(e.target.value)}
                 className={`${selectClass} w-full`}
               >
-                <option value="">Unassigned</option>
+                <option value="">{t('common:status.unassigned')}</option>
                 {members.map((m) => (
                   <option key={m.userId} value={m.userId}>{m.fullName}</option>
                 ))}
@@ -159,31 +173,39 @@ export function IssueDetail({ issue }: Props) {
             ) : assigneeName ? (
               <span className="text-[13px] font-medium text-forest">{assigneeName}</span>
             ) : (
-              <span className="text-[13px] font-medium text-red">Unassigned</span>
+              <span className="text-[13px] font-medium text-red">{t('common:status.unassigned')}</span>
             )}
           </div>
         </div>
 
         {/* Description */}
         <div>
-          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">Description</p>
+          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">{t('issue.description')}</p>
           {issue.description ? (
-            <p className="text-[13px] text-ink leading-relaxed">{issue.description}</p>
+            <TranslatedText
+              as="p"
+              variant="block"
+              source="issues"
+              id={issue.id}
+              field="description"
+              text={issue.description}
+              className="text-[13px] text-ink leading-relaxed whitespace-pre-wrap"
+            />
           ) : (
-            <p className="text-[13px] text-forest/30 italic">No description provided</p>
+            <p className="text-[13px] text-forest/30 italic">{t('issue.noDescription')}</p>
           )}
         </div>
 
         {/* Reporter info, public reports only */}
         {issue.isPublicReport && (issue.reporterName || issue.reporterContact) && (
           <div>
-            <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">Reported by</p>
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">{t('issue.reportedBy')}</p>
             <div className="space-y-0.5">
               {issue.reporterName && (
                 <p className="text-[13px] text-ink">{issue.reporterName}</p>
               )}
               {issue.reporterContact && (
-                <p className="text-[13px] text-ink-soft">{issue.reporterContact}</p>
+                <p className="text-[13px] text-ink-soft" dir="auto">{issue.reporterContact}</p>
               )}
             </div>
           </div>
@@ -191,31 +213,31 @@ export function IssueDetail({ issue }: Props) {
 
         {/* Photo */}
         <div>
-          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">Photo</p>
+          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">{t('issue.photo')}</p>
           {issue.photoUrl ? (
-            <img src={issue.photoUrl} alt="Issue" className="w-full rounded-card border border-border object-cover max-h-40" />
+            <img src={issue.photoUrl} alt={t('logWork.photoAlt')} className="w-full rounded-card border border-border object-cover max-h-40" />
           ) : (
             <div className="flex items-center gap-2 py-3 px-3 bg-cream rounded-card border border-border text-ink-faint">
               <Camera className="w-4 h-4" />
-              <span className="text-[12px]">No photo attached</span>
+              <span className="text-[12px]">{t('issue.noPhoto')}</span>
             </div>
           )}
         </div>
 
         {/* Cost */}
         <div>
-          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">Cost</p>
+          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">{t('issue.cost')}</p>
           <div className="space-y-1">
             <div className="flex justify-between text-[13px]">
-              <span className="text-ink-soft">Estimated</span>
+              <span className="text-ink-soft">{t('issue.estimated')}</span>
               <span className="font-medium text-forest">{issue.estimatedCostDisplay ?? '-'}</span>
             </div>
             <div className="flex justify-between text-[13px]">
-              <span className="text-ink-soft">Actual</span>
+              <span className="text-ink-soft">{t('issue.actual')}</span>
               {issue.actualCost != null ? (
-                <span className="font-medium text-forest">${issue.actualCost.toLocaleString()}</span>
+                <bdi className="font-medium text-forest">${issue.actualCost.toLocaleString()}</bdi>
               ) : (
-                <span className="text-ink-faint italic">pending resolution</span>
+                <span className="text-ink-faint italic">{t('issue.pendingResolution')}</span>
               )}
             </div>
           </div>
@@ -223,21 +245,21 @@ export function IssueDetail({ issue }: Props) {
 
         {/* Due date */}
         <div>
-          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">Due date</p>
+          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">{t('issue.dueDate')}</p>
           <p className="text-[13px] text-ink">
-            {issue.dueDate ? formatDate(issue.dueDate) : 'No due date set'}
+            {issue.dueDate ? formatDate(issue.dueDate) : t('issue.noDueDateSet')}
           </p>
         </div>
 
         {/* Logged at */}
         <div>
-          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">Logged</p>
+          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-1.5">{t('issue.logged')}</p>
           <p className="text-[13px] text-ink">{formatDateTime(issue.createdAt)}</p>
         </div>
 
         {/* Activity log */}
         <div>
-          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-2">Activity</p>
+          <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft mb-2">{t('issue.activity')}</p>
           <ActivityFeed entries={issue.activityLog} />
         </div>
       </div>
@@ -246,24 +268,24 @@ export function IssueDetail({ issue }: Props) {
       <div className="space-y-2 border-t border-border px-6 py-5">
         {showDeleteConfirm ? (
           <div className="space-y-2">
-            <p className="text-[12px] text-ink-soft text-center">Delete this issue? This cannot be undone.</p>
+            <p className="text-[12px] text-ink-soft text-center">{t('issue.deleteConfirm')}</p>
             <div className="flex gap-2">
               <Button variant="danger" size="sm" className="flex-1 justify-center" onClick={handleDelete}>
-                Confirm delete
+                {t('issue.confirmDelete')}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setShowDeleteConfirm(false)}>
-                Cancel
+                {t('common:actions.cancel')}
               </Button>
             </div>
           </div>
         ) : issue.status === 'resolved' ? (
           <>
             <Button variant="ghost" size="sm" className="w-full justify-center" onClick={handleReopen}>
-              Reopen issue
+              {t('issue.reopen')}
             </Button>
             {can('createIssue') && (
               <Button variant="ghost" size="sm" className="w-full justify-center text-red/70 hover:text-red" onClick={() => setShowDeleteConfirm(true)}>
-                Delete issue
+                {t('issue.delete')}
               </Button>
             )}
           </>
@@ -274,7 +296,7 @@ export function IssueDetail({ issue }: Props) {
                 {can('enterActualCost') && (
                   <input
                     type="text"
-                    placeholder="Actual cost (optional, e.g. 280)"
+                    placeholder={t('issue.costPlaceholder')}
                     value={actualCostInput}
                     onChange={(e) => setActualCostInput(e.target.value)}
                     className="w-full text-[13px] bg-white border border-border rounded-btn px-3 py-1.5 focus:outline-none focus:border-sage"
@@ -282,26 +304,26 @@ export function IssueDetail({ issue }: Props) {
                 )}
                 <div className="flex gap-2">
                   <Button size="sm" className="flex-1 justify-center" onClick={handleResolve}>
-                    Confirm resolve
+                    {t('issue.confirmResolve')}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setShowResolveForm(false)}>
-                    Cancel
+                    {t('common:actions.cancel')}
                   </Button>
                 </div>
               </div>
             ) : (
               <Button size="sm" className="w-full justify-center" onClick={() => setShowResolveForm(true)}>
-                Mark resolved
+                {t('issue.markResolved')}
               </Button>
             )}
             {can('createIssue') && !showResolveForm && (
               <Button variant="ghost" size="sm" className="w-full justify-center" onClick={() => openEditIssueModal(issue.id)}>
-                Edit
+                {t('common:actions.edit')}
               </Button>
             )}
             {can('createIssue') && !showResolveForm && (
               <Button variant="ghost" size="sm" className="w-full justify-center text-red/70 hover:text-red" onClick={() => setShowDeleteConfirm(true)}>
-                Delete issue
+                {t('issue.delete')}
               </Button>
             )}
           </>

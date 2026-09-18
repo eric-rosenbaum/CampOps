@@ -163,7 +163,8 @@ struct IssueDetailView: View {
                 StatusBadge(status: vm.issue.status)
                 Spacer()
             }
-            Text(vm.issue.title).font(.campTitle).foregroundColor(.forest)
+            TranslatedText(source: .issues, id: vm.issue.id, field: "title",
+                           original: vm.issue.title, font: .campTitle)
             HStack(spacing: Spacing.xs) {
                 CrewPill(trade: vm.issue.trade)
                 if vm.issue.source == .routine {
@@ -183,10 +184,13 @@ struct IssueDetailView: View {
     }
 
     private var reportedLine: String {
-        let who = vm.issue.reportedBy?.name
-            ?? vm.issue.reporterName
-            ?? (vm.issue.source == .routine ? "a routine" : "someone")
-        return "From \(who) · \(vm.issue.createdAt.dateTimeDisplay)"
+        let when = vm.issue.createdAt.dateTimeDisplay
+        if let who = vm.issue.reportedBy?.name ?? vm.issue.reporterName {
+            return L10n.tr("From %1$@ · %2$@", who, when)
+        }
+        return vm.issue.source == .routine
+            ? L10n.tr("From a routine · %@", when)
+            : L10n.tr("From someone · %@", when)
     }
 
     /// A guest filed this. Their name and how to reach them, because the first useful action is
@@ -227,7 +231,8 @@ struct IssueDetailView: View {
     @ViewBuilder
     private var description: some View {
         if let desc = vm.issue.description, !desc.isEmpty {
-            Text(desc).font(.campBodyLarge).foregroundStyle(Color.forest.opacity(0.75))
+            TranslatedText(source: .issues, id: vm.issue.id, field: "description", original: desc,
+                           font: .campBodyLarge, color: Color.forest.opacity(0.75))
         }
     }
 
@@ -239,7 +244,8 @@ struct IssueDetailView: View {
                     Button { showingAssignPicker = true } label: {
                         HStack(spacing: Spacing.xs) {
                             Text(vm.issue.holderLabel).font(.campBody)
-                            Image(systemName: "chevron.right").font(.campMicro)
+                            // `forward`, not `right`: it has to point the way the screen reads.
+                            Image(systemName: "chevron.forward").font(.campMicro)
                         }
                         .foregroundStyle(Color.forest)
                     }
@@ -287,24 +293,24 @@ struct IssueDetailView: View {
 
             if let minutes = vm.issue.minutesSpent {
                 factRow(label: "Time", systemImage: "clock") {
-                    Text("\(minutes) min").font(.campBody)
+                    Text(L10n.tr("%lld min", minutes)).font(.campBody)
                 }
             }
 
             if let cost = vm.issue.actualCost {
                 factRow(label: "Cost", systemImage: "dollarsign.circle") {
-                    Text("$\(String(format: "%.2f", cost))").font(.campBody)
+                    Text(cost, format: .currency(code: "USD").locale(L10n.locale)).font(.campBody)
                 }
             }
         }
     }
 
     private var vendorName: String {
-        guard let id = vm.issue.vendorId else { return "None" }
-        return campground.vendors.first { $0.id == id }?.name ?? "None"
+        guard let id = vm.issue.vendorId else { return L10n.tr("None") }
+        return campground.vendors.first { $0.id == id }?.name ?? L10n.tr("None")
     }
 
-    private func factRow<Content: View>(label: String, systemImage: String,
+    private func factRow<Content: View>(label: LocalizedStringKey, systemImage: String,
                                         @ViewBuilder content: () -> Content) -> some View {
         HStack {
             Label(label, systemImage: systemImage)
@@ -369,7 +375,7 @@ struct IssueDetailView: View {
         if outstanding {
             showingResolveSheet = false
             Haptics.tap()
-            vm.errorMessage = "There are steps left. Tick them off and it closes itself."
+            vm.errorMessage = L10n.tr("There are steps left. Tick them off and it closes itself.")
             return
         }
         if authManager.can.enterActualCost || !thread.checklist.isEmpty {
@@ -429,7 +435,7 @@ struct IssueDetailView: View {
                 HStack {
                     Text("Steps").font(.campBodySemibold).foregroundStyle(Color.forest)
                     Spacer()
-                    Text("\(thread.doneCount) of \(thread.checklist.count)")
+                    Text(L10n.tr("%1$lld of %2$lld", thread.doneCount, thread.checklist.count))
                         .font(.campMeta).foregroundStyle(Color.forest.opacity(0.5))
                 }
                 // Steps that belong to a room are grouped under it; a template written without
@@ -476,13 +482,14 @@ struct IssueDetailView: View {
                     .font(.system(size: 19))
                     .foregroundStyle(item.isDone ? Color.sage : Color.forest.opacity(0.3))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.text)
+                    TranslatedLine(source: .checklistItems, id: item.id, field: "text", original: item.text)
                         .font(.campBody)
                         .foregroundStyle(Color.forest.opacity(item.isDone ? 0.45 : 1))
                         .strikethrough(item.isDone, color: Color.forest.opacity(0.35))
                         .multilineTextAlignment(.leading)
                     if let note = item.note, !note.isEmpty {
-                        Text(note).font(.campMicro).foregroundStyle(Color.forest.opacity(0.5))
+                        TranslatedLine(source: .checklistItems, id: item.id, field: "note", original: note)
+                            .font(.campMicro).foregroundStyle(Color.forest.opacity(0.5))
                     }
                     if item.requiresPhoto && item.photoUrl == nil {
                         // Asked for, never enforced: a step that refuses to tick is a step
@@ -491,7 +498,7 @@ struct IssueDetailView: View {
                             .font(.campMicro).foregroundStyle(Color.amberText)
                     }
                     if item.isDone, let who = item.doneByName {
-                        Text("\(who)\(item.doneAt.map { " · " + $0.relativeDisplay } ?? "")")
+                        Text(item.doneAt.map { L10n.tr("%1$@ · %2$@", who, $0.relativeDisplay) } ?? who)
                             .font(.campMicro).foregroundStyle(Color.forest.opacity(0.45))
                     }
                 }
@@ -557,14 +564,13 @@ struct IssueDetailView: View {
                     Text(comment.createdAt.relativeDisplay)
                         .font(.campMeta).foregroundStyle(Color.forest.opacity(0.5))
                     if comment.visibleToReporter {
-                        MetaTag(text: "Sent to reporter", systemImage: "arrowshape.turn.up.right")
+                        MetaTag(text: "Sent to reporter", systemImage: "arrowshape.turn.up.forward")
                     }
                 }
                 if !comment.body.isEmpty {
-                    Text(comment.body)
-                        .font(.campSmall)
-                        .foregroundStyle(Color.forest.opacity(0.75))
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    TranslatedText(source: .issueComments, id: comment.id, field: "body",
+                                   original: comment.body, font: .campSmall,
+                                   color: Color.forest.opacity(0.75))
                 }
                 if !comment.photoUrls.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -595,7 +601,8 @@ struct IssueDetailView: View {
                 .font(.system(size: 5))
                 .foregroundStyle(Color.forest.opacity(0.3))
                 .padding(.top, 6)
-            Text("\(entry.action) · \(entry.createdAt.relativeDisplay)")
+            // The stored sentence is English; this is the reader's language.
+            Text(L10n.tr("%1$@ · %2$@", entry.displayAction, entry.createdAt.relativeDisplay))
                 .font(.campMicro)
                 .foregroundStyle(Color.forest.opacity(0.5))
             Spacer(minLength: 0)
@@ -618,7 +625,7 @@ struct IssueDetailView: View {
                 }
             }
             if !mentioned.isEmpty {
-                Text("Notifying: " + mentionNames)
+                Text(L10n.tr("Notifying: %@", mentionNames))
                     .font(.campMicro).foregroundStyle(Color.forest.opacity(0.6))
             }
 
@@ -636,16 +643,17 @@ struct IssueDetailView: View {
                 Button { isPickingCommentPhoto = true } label: {
                     Image(systemName: "camera").font(.system(size: 18))
                 }
-                .accessibilityLabel("Attach a photo")
+                .accessibilityLabel(Text("Attach a photo"))
                 Button { showingMentionPicker = true } label: {
                     Image(systemName: "at").font(.system(size: 18))
                 }
-                .accessibilityLabel("Notify someone")
+                .accessibilityLabel(Text("Notify someone"))
                 Button {
                     send()
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 26))
+                        .accessibilityLabel(Text("Send"))
                         .foregroundStyle(canSend ? Color.sage : Color.forest.opacity(0.25))
                 }
                 .disabled(!canSend)
@@ -737,7 +745,7 @@ private struct TemplatePickerSheet: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(template.name).font(.campBody)
-                        Text("\(template.items.count) steps")
+                        Text(L10n.tr("%lld steps", template.items.count))
                             .font(.campMicro).foregroundStyle(Color.forest.opacity(0.5))
                     }
                 }

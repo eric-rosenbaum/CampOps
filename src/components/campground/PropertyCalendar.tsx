@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { format } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import { CalendarDays, RefreshCw, ArrowLeftRight } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useChecklistStore } from '@/store/checklistStore';
 import { fetchPropertyCalendar } from '@/lib/campgroundDb';
 import { parseDateStr, toDateStr, todayStr, formatDate } from '@/lib/utils';
 import type { PropertyCalendar as PropertyCalendarData } from '@/lib/types';
+import { currentLang } from '@/i18n';
+import { weekStartsOn } from './RoutineModal';
 
 /**
  * One screen where both halves of the product are visibly the same product.
@@ -26,6 +28,11 @@ const MAX_DAYS = 420;
 
 const inputClass =
   'text-body bg-white border border-border rounded-btn px-3 py-2 focus:outline-none focus:border-sage';
+
+// Every horizontal position below is `insetInlineStart`, never `left`. The timeline is a line
+// of days read in the reader's direction: in Hebrew, time runs right-to-left like the text,
+// with the sticky name column on the right. With `left` the bands stayed put while the name
+// column and the scroller flipped, so every band sat under the wrong week.
 
 function addDaysStr(day: string, n: number): string {
   const d = parseDateStr(day);
@@ -80,20 +87,22 @@ export function PropertyCalendar() {
 
   const trackW = Math.max(0, totalDays * DAY_W);
 
-  /** Left/width for an inclusive date range, clipped to the visible window. */
-  function band(start: string, end: string | null): { left: number; width: number } | null {
+  /** Start offset/width for an inclusive date range, clipped to the visible window. */
+  function band(start: string, end: string | null): { start: number; width: number } | null {
     const s = Math.max(0, dayIndex(start));
     const e = Math.min(totalDays - 1, end ? dayIndex(end) : totalDays - 1);
     if (e < 0 || s > totalDays - 1 || e < s) return null;
-    return { left: s * DAY_W, width: (e - s + 1) * DAY_W };
+    return { start: s * DAY_W, width: (e - s + 1) * DAY_W };
   }
 
-  /** Sunday offsets, for the week rules and the header ticks. */
+  /** Offsets of the first day of each week (Sunday, or Monday in Spanish), for the rules and ticks. */
   const weekTicks = useMemo(() => {
     const out: { index: number; label: string }[] = [];
+    const first = weekStartsOn();
+    const fmt = new Intl.DateTimeFormat(currentLang(), { month: 'short', day: 'numeric' });
     const cursor = parseDateStr(from);
     for (let i = 0; i < totalDays; i++) {
-      if (cursor.getDay() === 0) out.push({ index: i, label: format(cursor, 'MMM d') });
+      if (cursor.getDay() === first) out.push({ index: i, label: fmt.format(cursor) });
       cursor.setDate(cursor.getDate() + 1);
     }
     return out;
@@ -101,11 +110,12 @@ export function PropertyCalendar() {
 
   const months = useMemo(() => {
     const out: { index: number; span: number; label: string }[] = [];
+    const fmt = new Intl.DateTimeFormat(currentLang(), { month: 'long', year: 'numeric' });
     const cursor = parseDateStr(from);
     let startIdx = 0;
-    let label = format(cursor, 'MMMM yyyy');
+    let label = fmt.format(cursor);
     for (let i = 0; i < totalDays; i++) {
-      const next = format(cursor, 'MMMM yyyy');
+      const next = fmt.format(cursor);
       if (next !== label) {
         out.push({ index: startIdx, span: i - startIdx, label });
         startIdx = i;
@@ -148,6 +158,7 @@ export function PropertyCalendar() {
   }, [dayIndex, totalDays]);
 
   const tooWide = totalDays > MAX_DAYS;
+  const { t } = useTranslation(['campgroundAdmin', 'common']);
 
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
@@ -155,7 +166,7 @@ export function PropertyCalendar() {
       <div className="flex flex-wrap items-end gap-3 mb-5">
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-1" htmlFor="cal-from">
-            From
+            {t('shared.from')}
           </label>
           <input
             id="cal-from" type="date" className={inputClass} value={from}
@@ -164,7 +175,7 @@ export function PropertyCalendar() {
         </div>
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-1" htmlFor="cal-to">
-            To
+            {t('shared.to')}
           </label>
           <input
             id="cal-to" type="date" className={inputClass} value={to}
@@ -185,20 +196,22 @@ export function PropertyCalendar() {
             <ArrowLeftRight className="w-5 h-5 text-red flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div className="min-w-0">
               <p className="font-display text-[16px] font-bold text-red-text">
-                {turnovers.length} turnover day{turnovers.length === 1 ? '' : 's'} in this window
+                {t('calendar.turnoverDays', { count: turnovers.length })}
               </p>
               <p className="text-[12.5px] text-red-text/85 leading-relaxed mt-1">
                 {heaviest && heaviest.rooms_to_turn > 0
-                  ? `${formatDate(heaviest.day)} is the heaviest — ${heaviest.rooms_to_turn} room${heaviest.rooms_to_turn === 1 ? '' : 's'} to turn between a departure and an arrival. `
+                  ? `${t('calendar.heaviest', { date: formatDate(heaviest.day), count: heaviest.rooms_to_turn })} `
                   : ''}
-                A group leaves and another arrives the same day.
+                {t('calendar.sameDay')}
               </p>
               <ul className="flex flex-wrap gap-x-5 gap-y-1 mt-2.5">
-                {turnovers.map((t) => (
-                  <li key={t.day} className="text-[12px] text-red-text tabular-nums">
-                    <b className="font-semibold">{formatDate(t.day)}</b>
-                    {' — '}{t.departing} out, {t.arriving} in
-                    {t.rooms_to_turn > 0 ? `, ${t.rooms_to_turn} to turn` : ''}
+                {turnovers.map((d) => (
+                  <li key={d.day} className="text-[12px] text-red-text tabular-nums">
+                    <b className="font-semibold">{formatDate(d.day)}</b>
+                    {' — '}
+                    {d.rooms_to_turn > 0
+                      ? t('calendar.turnoverLineRooms', { departing: d.departing, arriving: d.arriving, rooms: d.rooms_to_turn })
+                      : t('calendar.turnoverLine', { departing: d.departing, arriving: d.arriving })}
                   </li>
                 ))}
               </ul>
@@ -209,36 +222,35 @@ export function PropertyCalendar() {
 
       {/* ── Legend ──────────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mb-2.5">
-        <LegendKey className="bg-forest" label="Camp session" />
-        <LegendKey className="bg-blue" label="Rental group" />
-        <LegendKey className="bg-purple" label="Program space booked" />
-        <LegendKey className="bg-amber" label="Out of service" />
-        <LegendKey className="bg-red" label="Turnover day" />
+        <LegendKey className="bg-forest" label={t('calendar.legendSession')} />
+        <LegendKey className="bg-blue" label={t('calendar.legendRental')} />
+        <LegendKey className="bg-purple" label={t('calendar.legendSpace')} />
+        <LegendKey className="bg-amber" label={t('calendar.legendOutOfService')} />
+        <LegendKey className="bg-red" label={t('calendar.legendTurnover')} />
       </div>
 
       {/* ── The timeline ────────────────────────────────────────────────────── */}
       {loading ? (
         <p className="text-[13px] text-ink-faint italic py-10 flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" /> Building the calendar…
+          <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" /> {t('calendar.building')}
         </p>
       ) : failed || !data ? (
         <div className="rounded-card border border-border bg-white px-6 py-10 text-center">
-          <p className="font-display text-[16px] font-bold text-forest">The calendar could not load</p>
+          <p className="font-display text-[16px] font-bold text-forest">{t('calendar.failedTitle')}</p>
           <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-md mx-auto mt-2">
-            Nothing is lost — the bookings themselves are unaffected.
+            {t('calendar.failedBody')}
           </p>
           <div className="mt-4 flex justify-center">
-            <Button variant="ghost" onClick={() => setReload((n) => n + 1)}>Try again</Button>
+            <Button variant="ghost" onClick={() => setReload((n) => n + 1)}>{t('common:actions.retry')}</Button>
           </div>
         </div>
       ) : tooWide ? (
         <p className="rounded-card border border-border bg-cream px-5 py-4 text-[12.5px] text-ink-soft leading-relaxed">
-          That is {totalDays} days. A timeline that wide is a wall of colour rather than something
-          you can read a week off — narrow it to a season or less.
+          {t('calendar.tooWide', { days: totalDays })}
         </p>
       ) : totalDays <= 0 ? (
         <p className="rounded-card border border-border bg-cream px-5 py-4 text-[12.5px] text-ink-soft">
-          The end date is before the start date.
+          {t('calendar.endBeforeStart')}
         </p>
       ) : (
         // The one horizontal scroller on the page. The body must never scroll sideways.
@@ -247,15 +259,15 @@ export function PropertyCalendar() {
             {/* Header: months, then week ticks */}
             <div className="flex bg-cream border-b border-border">
               <div
-                className="sticky left-0 z-20 bg-cream flex-shrink-0 border-r border-border"
+                className="sticky start-0 z-20 bg-cream flex-shrink-0 border-e border-border"
                 style={{ width: LABEL_W }}
               />
               <div className="relative flex-shrink-0" style={{ width: trackW, height: 40 }}>
                 {months.map((m) => (
                   <div
                     key={`${m.label}-${m.index}`}
-                    className="absolute top-0 h-5 flex items-center border-l border-border px-1.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-forest whitespace-nowrap overflow-hidden"
-                    style={{ left: m.index * DAY_W, width: m.span * DAY_W }}
+                    className="absolute top-0 h-5 flex items-center border-s border-border px-1.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-forest whitespace-nowrap overflow-hidden"
+                    style={{ insetInlineStart: m.index * DAY_W, width: m.span * DAY_W }}
                   >
                     {m.label}
                   </div>
@@ -263,8 +275,8 @@ export function PropertyCalendar() {
                 {weekTicks.map((w) => (
                   <div
                     key={w.index}
-                    className="absolute top-5 h-5 flex items-center border-l border-border pl-1 text-[9.5px] text-ink-soft whitespace-nowrap overflow-hidden"
-                    style={{ left: w.index * DAY_W, width: 7 * DAY_W }}
+                    className="absolute top-5 h-5 flex items-center border-s border-border ps-1 text-[9.5px] text-ink-soft whitespace-nowrap overflow-hidden"
+                    style={{ insetInlineStart: w.index * DAY_W, width: 7 * DAY_W }}
                   >
                     {w.label}
                   </div>
@@ -275,7 +287,7 @@ export function PropertyCalendar() {
             {/* Turnovers — the loudest row, and the first one. */}
             {turnovers.length > 0 && (
               <Row
-                label="Turnovers"
+                label={t('calendar.rowTurnovers')}
                 labelClassName="text-red-text font-semibold"
                 trackW={trackW}
                 weekTicks={weekTicks}
@@ -283,21 +295,23 @@ export function PropertyCalendar() {
                 dayIndex={dayIndex}
                 todayIdx={todayIdx}
               >
-                {turnovers.map((t) => (
+                {turnovers.map((d) => (
                   <div
-                    key={t.day}
-                    title={`${formatDate(t.day)} — ${t.departing} out, ${t.arriving} in, ${t.rooms_to_turn} to turn`}
+                    key={d.day}
+                    title={t('calendar.turnoverTitle', {
+                      date: formatDate(d.day), departing: d.departing, arriving: d.arriving, rooms: d.rooms_to_turn,
+                    })}
                     className="absolute top-1 bottom-1 bg-red text-white rounded-tag flex items-center justify-center text-[10px] font-bold tabular-nums"
-                    style={{ left: dayIndex(t.day) * DAY_W, width: DAY_W }}
+                    style={{ insetInlineStart: dayIndex(d.day) * DAY_W, width: DAY_W }}
                   >
-                    {t.rooms_to_turn > 0 ? t.rooms_to_turn : '·'}
+                    {d.rooms_to_turn > 0 ? d.rooms_to_turn : '·'}
                   </div>
                 ))}
               </Row>
             )}
 
-            <GroupLabel label="Camp sessions" count={data.sessions.length} />
-            {data.sessions.length === 0 && <EmptyRow text="No sessions in this window" />}
+            <GroupLabel label={t('calendar.groupSessions')} count={data.sessions.length} />
+            {data.sessions.length === 0 && <EmptyRow text={t('calendar.noSessions')} />}
             {[...data.sessions].sort((a, b) => a.start.localeCompare(b.start)).map((s) => {
               const b = band(s.start, s.end);
               return (
@@ -307,19 +321,21 @@ export function PropertyCalendar() {
                 >
                   {b && (
                     <div
-                      title={`${s.name} · ${formatDate(s.start)} – ${formatDate(s.end)} · ${s.people} people`}
+                      title={t('calendar.sessionTitle', {
+                        name: s.name, from: formatDate(s.start), to: formatDate(s.end), count: s.people,
+                      })}
                       className="absolute top-1 bottom-1 bg-forest text-paper rounded-tag px-2 flex items-center text-[11px] whitespace-nowrap overflow-hidden"
-                      style={{ left: b.left, width: b.width }}
+                      style={{ insetInlineStart: b.start, width: b.width }}
                     >
-                      {s.people > 0 ? `${s.people} people` : s.name}
+                      {s.people > 0 ? t('calendar.people', { count: s.people }) : s.name}
                     </div>
                   )}
                 </Row>
               );
             })}
 
-            <GroupLabel label="Rental groups" count={data.retreats.length} />
-            {data.retreats.length === 0 && <EmptyRow text="No rental groups in this window" />}
+            <GroupLabel label={t('calendar.groupRentals')} count={data.retreats.length} />
+            {data.retreats.length === 0 && <EmptyRow text={t('calendar.noRentals')} />}
             {[...data.retreats].sort((a, b) => a.start.localeCompare(b.start)).map((r) => {
               const b = band(r.start, r.end);
               return (
@@ -329,19 +345,21 @@ export function PropertyCalendar() {
                 >
                   {b && (
                     <div
-                      title={`${r.group} · ${formatDate(r.start)} – ${formatDate(r.end)} · ${r.people} people · ${r.status}`}
+                      title={t('calendar.retreatTitle', {
+                        name: r.group, from: formatDate(r.start), to: formatDate(r.end), count: r.people, status: r.status,
+                      })}
                       className="absolute top-1 bottom-1 bg-blue text-white rounded-tag px-2 flex items-center text-[11px] whitespace-nowrap overflow-hidden"
-                      style={{ left: b.left, width: b.width }}
+                      style={{ insetInlineStart: b.start, width: b.width }}
                     >
-                      {r.people > 0 ? `${r.people} people` : r.group}
+                      {r.people > 0 ? t('calendar.people', { count: r.people }) : r.group}
                     </div>
                   )}
                 </Row>
               );
             })}
 
-            <GroupLabel label="Program spaces" count={spaceRows.length} />
-            {spaceRows.length === 0 && <EmptyRow text="No approved space bookings" />}
+            <GroupLabel label={t('calendar.groupSpaces')} count={spaceRows.length} />
+            {spaceRows.length === 0 && <EmptyRow text={t('calendar.noSpaces')} />}
             {spaceRows.map(([space, bookings]) => (
               <Row
                 key={space} label={space} trackW={trackW} weekTicks={weekTicks}
@@ -353,17 +371,19 @@ export function PropertyCalendar() {
                   return (
                     <div
                       key={bk.id}
-                      title={`${space} · ${formatDate(bk.day)} · ${bk.group}${bk.purpose ? ` — ${bk.purpose}` : ''}`}
+                      title={bk.purpose
+                        ? t('calendar.spaceTitlePurpose', { space, date: formatDate(bk.day), group: bk.group, purpose: bk.purpose })
+                        : t('calendar.spaceTitle', { space, date: formatDate(bk.day), group: bk.group })}
                       className="absolute top-1.5 bottom-1.5 bg-purple-bg border border-purple/40 rounded-tag"
-                      style={{ left: i * DAY_W + 1, width: DAY_W - 2 }}
+                      style={{ insetInlineStart: i * DAY_W + 1, width: DAY_W - 2 }}
                     />
                   );
                 })}
               </Row>
             ))}
 
-            <GroupLabel label="Out of service" count={data.out_of_service.length} />
-            {data.out_of_service.length === 0 && <EmptyRow text="Everything is in service" />}
+            <GroupLabel label={t('calendar.groupOutOfService')} count={data.out_of_service.length} />
+            {data.out_of_service.length === 0 && <EmptyRow text={t('calendar.allInService')} />}
             {data.out_of_service.map((o) => {
               const b = band(o.since ?? from, o.expected_back);
               return (
@@ -373,11 +393,17 @@ export function PropertyCalendar() {
                 >
                   {b && (
                     <div
-                      title={`${o.name} out of service${o.reason ? ` — ${o.reason}` : ''}${o.expected_back ? `, back ${formatDate(o.expected_back)}` : ', no return date'}`}
+                      title={o.expected_back
+                        ? (o.reason
+                          ? t('calendar.oosReasonBack', { name: o.name, reason: o.reason, date: formatDate(o.expected_back) })
+                          : t('calendar.oosBack', { name: o.name, date: formatDate(o.expected_back) }))
+                        : (o.reason
+                          ? t('calendar.oosReasonNoDate', { name: o.name, reason: o.reason })
+                          : t('calendar.oosNoDate', { name: o.name }))}
                       className="absolute top-1 bottom-1 bg-amber-bg border border-amber/50 text-amber-text rounded-tag px-2 flex items-center text-[11px] whitespace-nowrap overflow-hidden"
-                      style={{ left: b.left, width: b.width }}
+                      style={{ insetInlineStart: b.start, width: b.width }}
                     >
-                      {o.reason ?? 'Out of service'}
+                      {o.reason ?? t('calendar.legendOutOfService')}
                     </div>
                   )}
                 </Row>
@@ -390,7 +416,7 @@ export function PropertyCalendar() {
       {!loading && data && turnovers.length === 0 && (
         <p className="mt-3 text-[12px] text-ink-soft flex items-center gap-2">
           <CalendarDays className="w-3.5 h-3.5 text-sage" aria-hidden="true" />
-          No turnover days in this window.
+          {t('calendar.noTurnovers')}
         </p>
       )}
     </div>
@@ -412,7 +438,7 @@ function GroupLabel({ label, count }: { label: string; count: number }) {
   return (
     <div className="flex border-t border-border bg-cream">
       <div
-        className="sticky left-0 z-20 bg-cream flex-shrink-0 px-3 py-1.5 border-r border-border text-[10px] font-bold uppercase tracking-[0.12em] text-forest"
+        className="sticky start-0 z-20 bg-cream flex-shrink-0 px-3 py-1.5 border-e border-border text-[10px] font-bold uppercase tracking-[0.12em] text-forest"
         style={{ width: LABEL_W }}
       >
         {label}
@@ -426,7 +452,7 @@ function EmptyRow({ text }: { text: string }) {
   return (
     <div className="flex border-t border-border">
       <div
-        className="sticky left-0 z-10 bg-white flex-shrink-0 px-3 py-1.5 border-r border-border text-[11.5px] text-ink-faint italic"
+        className="sticky start-0 z-10 bg-white flex-shrink-0 px-3 py-1.5 border-e border-border text-[11.5px] text-ink-faint italic"
         style={{ width: LABEL_W }}
       >
         {text}
@@ -451,7 +477,7 @@ function Row({
   return (
     <div className="flex border-t border-border">
       <div
-        className={`sticky left-0 z-10 bg-white flex-shrink-0 px-3 border-r border-border flex items-center text-[11.5px] text-ink truncate ${labelClassName}`}
+        className={`sticky start-0 z-10 bg-white flex-shrink-0 px-3 border-e border-border flex items-center text-[11.5px] text-ink truncate ${labelClassName}`}
         style={{ width: LABEL_W, height: ROW_H }}
         title={label}
       >
@@ -462,8 +488,8 @@ function Row({
         {weekTicks.map((w) => (
           <div
             key={w.index}
-            className="absolute top-0 bottom-0 border-l border-border/60"
-            style={{ left: w.index * DAY_W }}
+            className="absolute top-0 bottom-0 border-s border-border/60"
+            style={{ insetInlineStart: w.index * DAY_W }}
             aria-hidden="true"
           />
         ))}
@@ -471,14 +497,14 @@ function Row({
           <div
             key={t.day}
             className="absolute top-0 bottom-0 bg-red/10"
-            style={{ left: dayIndex(t.day) * DAY_W, width: DAY_W }}
+            style={{ insetInlineStart: dayIndex(t.day) * DAY_W, width: DAY_W }}
             aria-hidden="true"
           />
         ))}
         {todayIdx != null && (
           <div
             className="absolute top-0 bottom-0 w-px bg-forest/50"
-            style={{ left: todayIdx * DAY_W }}
+            style={{ insetInlineStart: todayIdx * DAY_W }}
             aria-hidden="true"
           />
         )}

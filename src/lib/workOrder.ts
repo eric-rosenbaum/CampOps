@@ -14,6 +14,7 @@ import type {
   Issue, IssueStatus, Priority, Trade, IssueSource, ActivityEntry, WorkSchedule, Cadence,
 } from './types';
 import { TRADE_LABELS } from './types';
+import i18n, { currentLang, localizedLabels } from '../i18n';
 
 // ─── The queue's vocabulary ───────────────────────────────────────────────────
 
@@ -22,14 +23,9 @@ import { TRADE_LABELS } from './types';
  * render as `in_progress`, which is how a queue stops meaning anything. Both are open but
  * explicitly not being worked — which is the honest state of roughly a third of a camp's list.
  */
-export const STATUS_LABELS: Record<IssueStatus, string> = {
-  unassigned: 'Unassigned',
-  assigned: 'Assigned',
-  in_progress: 'In progress',
-  waiting_on_vendor: 'Waiting on vendor',
-  waiting_on_part: 'Waiting on a part',
-  resolved: 'Done',
-};
+export const STATUS_LABELS: Record<IssueStatus, string> = localizedLabels('common:status', [
+  'unassigned', 'assigned', 'in_progress', 'waiting_on_vendor', 'waiting_on_part', 'resolved',
+]);
 
 /** Everything that is not `resolved`. Named, because "open" is asked for on every surface. */
 export const OPEN_STATUSES: IssueStatus[] = [
@@ -42,16 +38,9 @@ export const isOpen = (i: Issue) => i.status !== 'resolved';
 export const isStalled = (i: Issue) =>
   i.status === 'waiting_on_vendor' || i.status === 'waiting_on_part';
 
-export const SOURCE_LABELS: Record<NonNullable<IssueSource>, string> = {
-  web: 'Logged in the app',
-  ios: 'Logged on a phone',
-  public: 'Public report',
-  qr: 'Scanned a sticker',
-  routine: 'Routine',
-  retreat: 'Rental group',
-  session: 'Session turnover',
-  module: 'Flagged by another module',
-};
+export const SOURCE_LABELS: Record<NonNullable<IssueSource>, string> = localizedLabels('common:source', [
+  'web', 'ios', 'public', 'qr', 'routine', 'retreat', 'session', 'module',
+]);
 
 // ─── Colour ───────────────────────────────────────────────────────────────────
 
@@ -63,11 +52,11 @@ export const SOURCE_LABELS: Record<NonNullable<IssueSource>, string> = {
  * priority keeps the loud half.
  */
 export const TRADE_STRIPE: Record<Trade, string> = {
-  maintenance: 'border-l-forest',
-  housekeeping: 'border-l-blue',
-  grounds: 'border-l-sage',
-  kitchen: 'border-l-amber',
-  it: 'border-l-purple',
+  maintenance: 'border-s-forest',
+  housekeeping: 'border-s-blue',
+  grounds: 'border-s-sage',
+  kitchen: 'border-s-amber',
+  it: 'border-s-purple',
 };
 
 export const TRADE_PILL: Record<Trade, string> = {
@@ -80,12 +69,13 @@ export const TRADE_PILL: Record<Trade, string> = {
 
 export const tradeLabel = (t: Trade) => TRADE_LABELS[t] ?? t;
 
+
 /**
  * A camp-invented trade has no colour of its own, so it gets one from the quiet half of the
  * palette, chosen by its key. Stable across reloads, and never red or amber — those belong to
  * priority and overdue.
  */
-const SPARE_STRIPES = ['border-l-forest', 'border-l-blue', 'border-l-sage', 'border-l-purple'];
+const SPARE_STRIPES = ['border-s-forest', 'border-s-blue', 'border-s-sage', 'border-s-purple'];
 const SPARE_PILLS = [
   'bg-green-muted-bg text-green-muted-text',
   'bg-blue-bg text-blue-text',
@@ -232,40 +222,45 @@ export function describeCadence(s: Pick<WorkSchedule,
   'cadence' | 'intervalCount' | 'byWeekday' | 'byMonthday' | 'anchorDate'
   | 'daysRelativeToOpening' | 'meterInterval' | 'meterKind'>): string {
   const n = Math.max(1, s.intervalCount || 1);
-  const every = (unit: string) => (n === 1 ? `Every ${unit}` : `Every ${n} ${unit}s`);
-  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const t = i18n.t.bind(i18n);
 
   switch (s.cadence) {
     case 'daily':
-      return n === 1 ? 'Every day' : `Every ${n} days`;
+      return t('common:schedule.everyDay', { count: n });
     case 'weekly': {
-      const days = (s.byWeekday ?? []).map((d) => DAYS[d]).filter(Boolean);
-      return `${every('week')}${days.length ? ` on ${days.join(', ')}` : ''}`;
+      // Weekday names from Intl rather than a table, so they arrive in the reader's language.
+      // 2023-01-01 was a Sunday, which lines index 0 up with the stored byWeekday numbering.
+      const fmt = new Intl.DateTimeFormat(currentLang(), { weekday: 'short' });
+      const names = (s.byWeekday ?? [])
+        .filter((d) => d >= 0 && d <= 6)
+        .map((d) => fmt.format(new Date(2023, 0, 1 + d)));
+      if (!names.length) return t('common:schedule.everyWeek', { count: n });
+      const days = new Intl.ListFormat(currentLang(), { style: 'short', type: 'conjunction' }).format(names);
+      return t('common:schedule.everyWeekOn', { count: n, days });
     }
     case 'monthly':
-      return `${every('month')}${s.byMonthday ? ` on the ${ordinal(s.byMonthday)}` : ''}`;
+      return s.byMonthday
+        ? t('common:schedule.everyMonthOn', { count: n, day: s.byMonthday })
+        : t('common:schedule.everyMonth', { count: n });
     case 'annually':
-      return every('year');
+      return t('common:schedule.everyYear', { count: n });
     case 'season_relative': {
       const d = s.daysRelativeToOpening ?? 0;
-      if (d === 0) return 'On opening day';
-      return d < 0 ? `${Math.abs(d)} days before opening` : `${d} days after opening`;
+      if (d === 0) return t('common:schedule.openingDay');
+      return d < 0
+        ? t('common:schedule.beforeOpening', { count: Math.abs(d) })
+        : t('common:schedule.afterOpening', { count: d });
     }
     case 'on_turnover':
-      return 'Every turnover';
+      return t('common:schedule.everyTurnover');
     case 'meter':
-      return s.meterInterval
-        ? `Every ${s.meterInterval} ${s.meterKind === 'odometer' ? 'miles' : 'hours'}`
-        : 'By meter';
+      if (!s.meterInterval) return t('common:schedule.byMeter');
+      return s.meterKind === 'odometer'
+        ? t('common:schedule.everyMiles', { n: s.meterInterval })
+        : t('common:schedule.everyHours', { n: s.meterInterval });
     default:
       return '';
   }
-}
-
-function ordinal(n: number): string {
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
 }
 
 /**
@@ -278,8 +273,7 @@ function ordinal(n: number): string {
  */
 export function describeMissed(missedCount: number): string | null {
   if (missedCount <= 0) return null;
-  if (missedCount === 1) return '1 cycle behind';
-  return `${missedCount} cycles behind`;
+  return i18n.t('common:schedule.behind', { count: missedCount });
 }
 
 export const CADENCES_NEEDING_ASSET: Cadence[] = ['meter'];

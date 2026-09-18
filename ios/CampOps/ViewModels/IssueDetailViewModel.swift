@@ -25,7 +25,7 @@ final class IssueDetailViewModel: ObservableObject {
         issue.status = status
         issue.updatedAt = Date()
         let entry = ActivityEntry(id: UUID().uuidString, userId: user.id,
-                                  userName: user.name, action: "Changed status to \(status.displayName)")
+                                  userName: user.name, action: "Changed status to \(status.activityWord)")
         issue.activity.append(entry)
 
         // Two mutations, not one. `sync_push` applies them individually, so a rejected activity

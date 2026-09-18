@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   Plus, RefreshCw, Repeat, MapPin, CalendarClock, AlertTriangle, PauseCircle,
 } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { GroupHeader } from '@/components/shared/GroupHeader';
 import { StatCard } from '@/components/shared/StatCard';
-import { RoutineModal, nextDates } from './RoutineModal';
+import { RoutineModal, nextDates, useCadenceText } from './RoutineModal';
 import {
   useCampgroundStore, routinesBehind, openOccurrence, routingFor,
 } from '@/store/campgroundStore';
@@ -14,10 +15,11 @@ import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useAuth } from '@/lib/auth';
 import { dbGenerateScheduledWork, dbRecordMeter } from '@/lib/campgroundDb';
-import { describeCadence, describeMissed, tradePill } from '@/lib/workOrder';
+import { tradePill } from '@/lib/workOrder';
 import { formatDate } from '@/lib/utils';
 import { useTradeKeys, useTradeLabel } from '@/lib/useTrades';
 import type { Trade, WorkSchedule } from '@/lib/types';
+import { currentLang } from '@/i18n';
 
 /**
  * Routines — recurring work, done properly this time.
@@ -34,6 +36,8 @@ import type { Trade, WorkSchedule } from '@/lib/types';
  */
 
 export function RoutinesPanel() {
+  const { t } = useTranslation('campgroundAdmin');
+  const cadenceText = useCadenceText();
   const tradeKeys = useTradeKeys();
   const labelOf = useTradeLabel();
   // Raw slices only. A selector that filters or maps allocates a new array every render, which
@@ -94,13 +98,15 @@ export function RoutinesPanel() {
   }), [members, staffGroups, vendors, templates]);
 
   function landsOn(s: WorkSchedule): string {
-    if (s.vendorId) return nameLookup.vendor(s.vendorId) ?? 'A vendor';
-    if (s.assigneeId) return nameLookup.member(s.assigneeId) ?? 'Someone who has left';
-    if (s.staffGroupId) return nameLookup.group(s.staffGroupId) ?? 'A crew';
+    if (s.vendorId) return nameLookup.vendor(s.vendorId) ?? t('routines.aVendor');
+    if (s.assigneeId) return nameLookup.member(s.assigneeId) ?? t('routines.someoneLeft');
+    if (s.staffGroupId) return nameLookup.group(s.staffGroupId) ?? t('routines.aCrew');
     const r = routingFor(routing, s.trade);
     const fallback = nameLookup.member(r?.defaultAssigneeId ?? null)
       ?? nameLookup.group(r?.defaultStaffGroupId ?? null);
-    return fallback ? `${fallback} — the ${labelOf(s.trade).toLowerCase()} default` : 'Nobody yet';
+    return fallback
+      ? t('routines.crewDefault', { name: fallback, crew: labelOf(s.trade) })
+      : t('routines.nobodyYet');
   }
 
   async function generateNow() {
@@ -116,27 +122,29 @@ export function RoutinesPanel() {
       {/* ── Header band ─────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-1 mb-5">
         <div className="flex flex-wrap">
-          <StatCard label="Routines" value={active.length} hint={
-            schedules.length > active.length ? `${schedules.length - active.length} paused` : 'all running'
+          <StatCard label={t('routines.statRoutines')} value={active.length} hint={
+            schedules.length > active.length
+              ? t('routines.paused', { count: schedules.length - active.length })
+              : t('routines.allRunning')
           } />
           <StatCard
-            label="Behind" value={behind.length}
+            label={t('routines.statBehind')} value={behind.length}
             variant={behind.length > 0 ? 'red' : 'green'}
-            hint={behind.length === 0 ? 'nothing overdue' : 'cycles missed'}
+            hint={behind.length === 0 ? t('routines.nothingOverdue') : t('routines.cyclesMissed')}
           />
           <StatCard
-            label="Open occurrences" value={openByScheduleId.size}
-            hint="open now"
+            label={t('routines.statOpen')} value={openByScheduleId.size}
+            hint={t('routines.openNow')}
           />
         </div>
         <div className="flex items-center gap-2 pb-4">
           <Button variant="ghost" onClick={generateNow} disabled={generating || !canEdit}>
             <RefreshCw className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} aria-hidden="true" />
-            {generating ? 'Checking…' : 'Generate now'}
+            {generating ? t('routines.checking') : t('routines.generateNow')}
           </Button>
           {canEdit && (
             <Button onClick={() => setCreating(true)}>
-              <Plus className="w-3.5 h-3.5" aria-hidden="true" /> New routine
+              <Plus className="w-3.5 h-3.5" aria-hidden="true" /> {t('routines.newRoutine')}
             </Button>
           )}
         </div>
@@ -148,8 +156,8 @@ export function RoutinesPanel() {
           className="mb-5 text-[12.5px] text-ink-soft bg-cream border border-border rounded-card px-4 py-2.5"
         >
           {generated === 0
-            ? 'Nothing was due. Every routine has either already been raised or is not due yet.'
-            : `Raised ${generated} work order${generated === 1 ? '' : 's'}. They are in the queue now.`}
+            ? t('routines.nothingWasDue')
+            : t('routines.raised', { count: generated })}
         </p>
       )}
 
@@ -160,11 +168,11 @@ export function RoutinesPanel() {
             <AlertTriangle className="w-5 h-5 text-red flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div className="min-w-0">
               <p className="font-display text-[16px] font-bold text-red-text">
-                {behind.length} routine{behind.length === 1 ? ' is' : 's are'} behind
+                {t('routines.behindHeading', { count: behind.length })}
               </p>
             </div>
           </div>
-          <ul className="mt-3.5 space-y-2 pl-8">
+          <ul className="mt-3.5 space-y-2 ps-8">
             {behind.map((s) => {
               const openTitle = openByScheduleId.get(s.id);
               return (
@@ -172,15 +180,13 @@ export function RoutinesPanel() {
                   <button
                     type="button"
                     onClick={() => canEdit && setEditing(s)}
-                    className="text-left font-semibold text-red-text underline underline-offset-2 cursor-pointer hover:text-red"
+                    className="text-start font-semibold text-red-text underline underline-offset-2 cursor-pointer hover:text-red"
                   >
                     {s.title}
                   </button>
-                  <span className="text-red-text/80"> · {describeMissed(s.missedCount)} · </span>
+                  <span className="text-red-text/80"> · {cadenceText.missed(s.missedCount)} · </span>
                   <span className="text-red-text/80">
-                    {openTitle
-                      ? 'the open one is still open'
-                      : 'nothing is open — Generate now will raise the next one'}
+                    {openTitle ? t('routines.openStillOpen') : t('routines.nothingOpen')}
                   </span>
                 </li>
               );
@@ -193,14 +199,14 @@ export function RoutinesPanel() {
       {schedules.length === 0 ? (
         <div className="rounded-card border border-border bg-white px-6 py-10 text-center">
           <Repeat className="w-6 h-6 text-sage mx-auto mb-3" aria-hidden="true" />
-          <p className="font-display text-[16px] font-bold text-forest">No routines yet</p>
+          <p className="font-display text-[16px] font-bold text-forest">{t('routines.emptyTitle')}</p>
           <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-md mx-auto mt-2">
-            Set a cadence once and it lands in the queue as a real work order.
+            {t('routines.emptyBody')}
           </p>
           {canEdit && (
             <div className="mt-4 flex justify-center">
               <Button onClick={() => setCreating(true)}>
-                <Plus className="w-3.5 h-3.5" aria-hidden="true" /> New routine
+                <Plus className="w-3.5 h-3.5" aria-hidden="true" /> {t('routines.newRoutine')}
               </Button>
             </div>
           )}
@@ -250,8 +256,10 @@ function RoutineRow({
   canRecord: boolean;
   onOpen?: () => void;
 }) {
+  const { t } = useTranslation('campgroundAdmin');
+  const cadenceText = useCadenceText();
   const labelOf = useTradeLabel();
-  const missed = describeMissed(s.missedCount);
+  const missed = cadenceText.missed(s.missedCount);
   const next = useMemo(
     () => nextDates(s, { count: 1, openingDate })[0] ?? null,
     [s, openingDate],
@@ -263,7 +271,7 @@ function RoutineRow({
   const runsYearRound = s.isActive && !s.activeUntil
     && (s.cadence === 'daily' || s.cadence === 'weekly');
 
-  const shellClass = `w-full text-left block rounded-card border border-border bg-white px-4 py-3.5 transition-colors ${
+  const shellClass = `w-full text-start block rounded-card border border-border bg-white px-4 py-3.5 transition-colors ${
     onOpen ? 'cursor-pointer hover:border-sage' : ''
   } ${s.isActive ? '' : 'opacity-60'}`;
 
@@ -280,19 +288,20 @@ function RoutineRow({
               </span>
               {!s.isActive && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">
-                  <PauseCircle className="w-3 h-3" aria-hidden="true" /> Paused
+                  <PauseCircle className="w-3 h-3" aria-hidden="true" /> {t('routines.paused')}
                 </span>
               )}
             </div>
 
             <p className="text-[12.5px] text-ink-soft mt-1">
-              {describeCadence(s)}
+              {cadenceText.describe(s)}
               {s.activeFrom || s.activeUntil ? (
                 <span className="text-ink-faint">
                   {' · '}
-                  {s.activeFrom ? formatDate(s.activeFrom) : 'any time'}
-                  {' – '}
-                  {s.activeUntil ? formatDate(s.activeUntil) : 'no end'}
+                  {t('shared.range', {
+                    from: s.activeFrom ? formatDate(s.activeFrom) : t('routines.anyTime'),
+                    to: s.activeUntil ? formatDate(s.activeUntil) : t('routines.noEnd'),
+                  })}
                 </span>
               ) : null}
             </p>
@@ -302,15 +311,20 @@ function RoutineRow({
                 <span className="inline-flex items-center gap-1">
                   <MapPin className="w-3 h-3 text-sage" aria-hidden="true" />
                   {s.locations.slice(0, 3).join(', ')}
-                  {s.locations.length > 3 ? ` +${s.locations.length - 3}` : ''}
+                  {s.locations.length > 3 ? <bdi>{' '}{t('routines.moreLocations', { count: s.locations.length - 3 })}</bdi> : ''}
                 </span>
               )}
-              <span>Lands on <b className="font-semibold text-ink">{landsOn}</b></span>
-              {templateName && <span>Checklist: {templateName}</span>}
+              <span>
+                <Trans
+                  t={t} i18nKey="routines.landsOn" values={{ name: landsOn }}
+                  components={{ b: <b className="font-semibold text-ink" /> }}
+                />
+              </span>
+              {templateName && <span>{t('routines.checklistNamed', { name: templateName })}</span>}
             </div>
           </div>
 
-          <div className="text-right flex-shrink-0">
+          <div className="text-end flex-shrink-0">
             {missed ? (
               <span className="inline-flex items-center gap-1 rounded-tag bg-red-bg px-2 py-0.5 text-[11px] font-bold text-red">
                 {missed}
@@ -321,12 +335,12 @@ function RoutineRow({
               {/* A meter routine has no next DATE — only a next reading, and the reading is
                   whatever somebody logs. Saying "every N hours" is the honest version. */}
               {s.cadence === 'meter'
-                ? `Every ${s.meterInterval ?? '?'} ${s.meterKind === 'odometer' ? 'miles' : 'hours'}`
+                ? cadenceText.describe(s)
                 : s.cadence === 'on_turnover'
-                  ? 'Next turnover'
+                  ? t('routines.nextTurnover')
                   : next
-                    ? `Next ${formatDate(next)}`
-                    : 'Nothing scheduled'}
+                    ? t('routines.nextOn', { date: formatDate(next) })
+                    : t('routines.nothingScheduled')}
             </p>
           </div>
         </div>
@@ -335,14 +349,14 @@ function RoutineRow({
         {missed && (
           <p className="mt-2.5 border-t border-border pt-2.5 text-[11.5px] text-red-text leading-relaxed">
             {openTitle
-              ? 'Close the open one and the next appears.'
-              : 'No occurrence is open. Generate now will raise the one that is due.'}
+              ? t('routines.closeOpenOne')
+              : t('routines.noOccurrenceOpen')}
           </p>
         )}
 
         {runsYearRound && (
           <p className="mt-2.5 border-t border-border pt-2.5 text-[11.5px] text-amber-text leading-relaxed">
-            Runs year-round.
+            {t('routines.runsYearRound')}
           </p>
         )}
     </>
@@ -368,10 +382,11 @@ function RoutineRow({
  * on the routine itself rather than three screens away in the asset record.
  */
 function MeterEntry({ schedule: s }: { schedule: WorkSchedule }) {
+  const { t } = useTranslation('campgroundAdmin');
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; bad: boolean } | null>(null);
-  const unit = s.meterKind === 'odometer' ? 'miles' : 'hours';
+  const miles = s.meterKind === 'odometer';
 
   async function submit() {
     const reading = Number(value);
@@ -388,22 +403,25 @@ function MeterEntry({ schedule: s }: { schedule: WorkSchedule }) {
     setValue('');
     setMessage({
       text: result > 0
-        ? `Recorded. That raised ${result} work order${result === 1 ? '' : 's'}.`
-        : 'Recorded. Nothing is due yet.',
+        ? t('routines.meter.recorded', { count: result })
+        : t('routines.meter.recordedNothing'),
       bad: false,
     });
   }
 
   return (
-    <div className="mt-1.5 ml-4 flex flex-wrap items-center gap-2">
+    <div className="mt-1.5 ms-4 flex flex-wrap items-center gap-2">
       <label className="text-[11.5px] text-ink-soft" htmlFor={`meter-${s.id}`}>
         {s.meterLastAt != null
-          ? `Last counted at ${s.meterLastAt.toLocaleString()} ${unit}. New reading:`
-          : `Current ${unit}:`}
+          ? t(miles ? 'routines.meter.lastCountedMiles' : 'routines.meter.lastCountedHours', {
+            value: s.meterLastAt.toLocaleString(currentLang()),
+          })
+          : t(miles ? 'routines.meter.currentMiles' : 'routines.meter.currentHours')}
       </label>
       <input
         id={`meter-${s.id}`}
         type="number"
+        dir="ltr"
         inputMode="decimal"
         className="w-28 text-[12.5px] bg-white border border-border rounded-btn px-2 py-1 focus:outline-none focus:border-sage"
         value={value}
@@ -411,7 +429,7 @@ function MeterEntry({ schedule: s }: { schedule: WorkSchedule }) {
         onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }}
       />
       <Button variant="ghost" size="sm" onClick={submit} disabled={busy || !value.trim()}>
-        {busy ? 'Recording…' : 'Record'}
+        {busy ? t('routines.meter.recording') : t('routines.meter.record')}
       </Button>
       {message && (
         <span className={`text-[11.5px] ${message.bad ? 'text-red-text' : 'text-green-muted-text'}`}>

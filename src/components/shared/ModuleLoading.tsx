@@ -1,4 +1,5 @@
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
+import { useTranslation } from 'react-i18next';
 
 /**
  * The one loading treatment, in the three sizes the app actually needs.
@@ -72,15 +73,16 @@ export function LoadingBlock({
  * so the page does not jump when the data lands.
  */
 export function ModuleLoading({
-  label, sublabel = 'Pulling the latest from your camp…', rows = 3,
+  label, sublabel, rows = 3,
 }: {
   label: string;
   sublabel?: string;
   rows?: number;
 }) {
+  const { t } = useTranslation('shell');
   return (
     <div className="flex-1 min-h-0 overflow-hidden px-4 sm:px-7 py-10 sm:py-14">
-      <LoadingBlock label={label} sublabel={sublabel} className="mx-auto max-w-md" />
+      <LoadingBlock label={label} sublabel={sublabel ?? t('loading.pulling')} className="mx-auto max-w-md" />
 
       {rows > 0 && (
         <div className="mx-auto mt-9 max-w-3xl space-y-2.5" aria-hidden="true">
@@ -105,16 +107,17 @@ export function ModuleLoading({
  * accepting an invite, opening a guest portal link.
  */
 export function FullScreenLoading({
-  label = 'Loading', sublabel, fixed = true,
+  label, sublabel, fixed = true,
 }: {
   label?: string;
   sublabel?: string;
   /** Fixed overlay for app boot; false for routes that already own the viewport. */
   fixed?: boolean;
 }) {
+  const { t } = useTranslation('shell');
   return (
     <div className={`${fixed ? 'fixed inset-0 z-50' : 'min-h-screen w-full'} bg-paper flex items-center justify-center p-6`}>
-      <LoadingBlock label={label} sublabel={sublabel} />
+      <LoadingBlock label={label ?? t('loading.label')} sublabel={sublabel} />
     </div>
   );
 }

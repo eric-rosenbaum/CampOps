@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Button } from './Button';
+import { useTranslation } from 'react-i18next';
+import { useLang } from '@/lib/language';
 
 /**
  * Required fields, and a save button that says why it will not save.
@@ -17,22 +19,25 @@ import { Button } from './Button';
 
 /** The marker beside a label. `title` rather than a legend: a legend is read by nobody. */
 export function Req() {
+  const { t } = useTranslation('shell');
   return (
-    <span className="text-red/80 font-normal" title="Required" aria-hidden="true">
+    <span className="text-red/80 font-normal" title={t('required.marker')} aria-hidden="true">
       {' '}*
     </span>
   );
 }
 
-/** "a group name and an arrival date" — an English list, not a comma-separated dump. */
-function readable(items: string[]): string {
+/**
+ * "a group name and an arrival date" — a list as the reader's language says it, not a
+ * comma-separated dump. Intl knows "y" and "ו" as well as it knows "and".
+ */
+function readable(items: string[], lang: string): string {
   if (items.length <= 1) return items[0] ?? '';
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+  return new Intl.ListFormat(lang, { type: 'conjunction' }).format(items);
 }
 
 export function GuardedSave({
-  missing, onSave, label = 'Save', variant = 'primary', size = 'md', busy = false, className = '',
+  missing, onSave, label, variant = 'primary', size = 'md', busy = false, className = '',
   children,
 }: {
   /**
@@ -49,6 +54,8 @@ export function GuardedSave({
   /** Replaces the label when the button needs an icon beside its text. */
   children?: React.ReactNode;
 }) {
+  const { t } = useTranslation(['shell', 'common']);
+  const lang = useLang();
   const blocked = missing.length > 0;
   /**
    * What was missing at the moment they asked. Remembering the LIST rather than a boolean means
@@ -74,13 +81,13 @@ export function GuardedSave({
         }}
         className={blocked || busy ? 'opacity-40 cursor-not-allowed' : ''}
       >
-        {children ?? label}
+        {children ?? label ?? t('common:actions.save')}
       </Button>
 
       {show && (
         <p role="alert" className="flex items-start gap-1.5 text-[11.5px] text-red leading-snug">
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-px" aria-hidden="true" />
-          <span>Add {readable(missing)} first.</span>
+          <span>{t('required.addFirst', { list: readable(missing, lang) })}</span>
         </p>
       )}
     </div>

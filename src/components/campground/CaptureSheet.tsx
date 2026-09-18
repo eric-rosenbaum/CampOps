@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, Mic, Sparkles, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import { currentLang, type Lang } from '@/i18n';
 import type { WorkOrderDraft } from '@/lib/types';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
@@ -57,21 +60,27 @@ function recognizerCtor(): RecognizerCtor | null {
 }
 
 /** Say what went wrong in the words of the person holding the phone. */
-function voiceErrorMessage(code: string): string {
+function voiceErrorMessage(code: string, t: TFunction<'campground'>): string {
   switch (code) {
     case 'not-allowed':
     case 'service-not-allowed':
-      return 'The browser blocked the microphone. Allow it for this site, or type it below.';
+      return t('capture.voiceErrors.notAllowed');
     case 'no-speech':
-      return 'Nothing came through. Hold the button while you speak.';
+      return t('capture.voiceErrors.noSpeech');
     case 'audio-capture':
-      return 'No microphone was found on this device.';
+      return t('capture.voiceErrors.audioCapture');
     case 'network':
-      return 'Speech needs a connection, and there is not one right now. Type it below.';
+      return t('capture.voiceErrors.network');
     default:
-      return `Voice capture stopped (${code}). Type it below instead.`;
+      return t('capture.voiceErrors.other', { code });
   }
 }
+
+/**
+ * What the recognizer listens for. It was hard-wired to en-US, which turned a Spanish-speaking
+ * housekeeper's words into English-shaped nonsense before anything could read them.
+ */
+const SPEECH_LANG: Record<Lang, string> = { en: 'en-US', es: 'es-US', he: 'he-IL' };
 
 interface Props {
   onClose: () => void;
@@ -81,6 +90,7 @@ interface Props {
 }
 
 export function CaptureSheet({ onClose, onDraft }: Props) {
+  const { t } = useTranslation(['campground', 'common']);
   const members = useCampStore((s) => s.members);
   const locations = useLocationStore((s) => s.locations);
   const assets = useAssetStore((s) => s.assets);
@@ -120,7 +130,7 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
     const rec = new Ctor();
     rec.continuous = true;
     rec.interimResults = true;
-    rec.lang = 'en-US';
+    rec.lang = SPEECH_LANG[currentLang()];
     rec.onresult = (e) => {
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -133,7 +143,7 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
       // asking somebody to trust a red dot.
       setTranscript(`${finalRef.current} ${interim}`.trim());
     };
-    rec.onerror = (e) => { setVoiceError(voiceErrorMessage(e.error)); setListening(false); };
+    rec.onerror = (e) => { setVoiceError(voiceErrorMessage(e.error, t)); setListening(false); };
     rec.onend = () => setListening(false);
     recRef.current = rec;
     try {
@@ -183,12 +193,12 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
     });
     setReading(false);
     if (!result) {
-      setReadError('That did not come back. Your words are still here, so try again or type it in.');
+      setReadError(t('capture.readError'));
       return;
     }
     if (!result.readable) {
       // Nothing to fill the form with. Keep what they said on screen rather than closing over it.
-      setReadError(result.error ?? 'Could not make anything out of that. Type it in instead.');
+      setReadError(result.error ?? t('capture.unreadable'));
       return;
     }
     applyDraft(result);
@@ -197,7 +207,7 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
   /** The raw transcript rides along on the description: what was actually said is evidence. */
   function applyDraft(base: WorkOrderDraft) {
     const said = transcript.trim();
-    const description = [base.description?.trim(), said ? `Said: “${said}”` : '']
+    const description = [base.description?.trim(), said ? t('capture.said', { words: said }) : '']
       .filter(Boolean)
       .join('\n\n');
     onDraft({ ...base, description }, photoFile);
@@ -207,15 +217,15 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
   const nothingToRead = !photoBase64 && !transcript.trim();
 
   return (
-    <Modal title="Capture" onClose={onClose} width="460px">
+    <Modal title={t('capture.title')} onClose={onClose} width="460px">
       <div className="space-y-4">
         <p className="text-[12.5px] leading-relaxed text-ink-soft">
-          Take a picture, say what is wrong, or both.
+          {t('capture.intro')}
         </p>
 
         {/* ── Voice ─────────────────────────────────────────────────────────── */}
         <div>
-          <p className="mb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Say it</p>
+          <p className="mb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">{t('capture.sayIt')}</p>
           {supported ? (
             <button
               onPointerDown={startListening}
@@ -230,16 +240,16 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
               }`}
             >
               <Mic className="h-4 w-4" />
-              {listening ? 'Listening — let go when you are done' : 'Hold to talk'}
+              {listening ? t('capture.listening') : t('capture.holdToTalk')}
             </button>
           ) : (
             <div className="rounded-card border border-dashed border-border bg-cream px-3 py-3">
               <div className="flex items-center gap-2 text-[13px] font-semibold text-ink-faint">
                 <Mic className="h-4 w-4" />
-                Voice is not available in this browser
+                {t('capture.voiceUnavailable')}
               </div>
               <p className="mt-1 text-[11.5px] text-ink-soft">
-                Voice input needs Chrome, Edge or Safari. Type it below instead.
+                {t('capture.voiceNeeds')}
               </p>
             </div>
           )}
@@ -250,7 +260,8 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
             value={transcript}
             onChange={(e) => { finalRef.current = e.target.value; setTranscript(e.target.value); }}
             rows={3}
-            placeholder="…or type what is wrong"
+            placeholder={t('capture.typePlaceholder')}
+            dir="auto"
             className="mt-2 w-full resize-none rounded-btn border border-border bg-white px-3 py-2
                        text-[13px] leading-relaxed text-ink placeholder:text-ink-faint
                        focus:border-sage focus:outline-none"
@@ -259,12 +270,12 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
 
         {/* ── Photo ─────────────────────────────────────────────────────────── */}
         <div>
-          <p className="mb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">Show it</p>
+          <p className="mb-1.5 text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">{t('capture.showIt')}</p>
           {photoPreview ? (
             <div className="relative overflow-hidden rounded-card">
               <img
                 src={photoPreview}
-                alt="What you photographed"
+                alt={t('capture.photoAlt')}
                 className={`max-h-48 w-full rounded-card border border-border object-cover
                             transition-[filter,opacity] duration-300
                             ${reading ? 'opacity-80 saturate-[.6]' : ''}`}
@@ -284,9 +295,10 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
               {!reading && (
                 <button
                   onClick={() => { setPhotoPreview(null); setPhotoBase64(null); setPhotoFile(null); }}
-                  className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full
+                  className="absolute end-2 top-2 grid h-6 w-6 place-items-center rounded-full
                              bg-black/50 text-white transition-colors hover:bg-black/70"
-                  title="Remove this photo"
+                  title={t('capture.removePhoto')}
+                  aria-label={t('capture.removePhoto')}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -299,7 +311,7 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
                          bg-cream px-3 py-3 text-ink-faint transition-colors hover:border-sage hover:text-ink-soft"
             >
               <Camera className="h-4 w-4" />
-              <span className="text-[12.5px]">Take a photo</span>
+              <span className="text-[12.5px]">{t('capture.takePhoto')}</span>
             </button>
           )}
           <input
@@ -319,7 +331,7 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
                           bg-cream px-3 py-2.5">
             <Sparkles className="cc-loading-breathe h-4 w-4 text-sage" aria-hidden="true" />
             <span className="cc-loading-shimmer text-[12.5px] font-semibold text-ink-soft">
-              {photoPreview ? 'Reading the photo…' : 'Reading what you said…'}
+              {photoPreview ? t('capture.readingPhoto') : t('capture.readingWords')}
             </span>
           </div>
         )}
@@ -331,9 +343,9 @@ export function CaptureSheet({ onClose, onDraft }: Props) {
             disabled={nothingToRead || reading}
           >
             <Sparkles className="h-3.5 w-3.5" />
-            {reading ? 'Reading…' : 'Read this'}
+            {reading ? t('capture.reading') : t('capture.readThis')}
           </Button>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
         </div>
       </div>
     </Modal>

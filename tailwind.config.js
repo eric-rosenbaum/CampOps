@@ -35,9 +35,13 @@ export default {
         side: { DEFAULT: '#C7D6C8', dim: '#7E9C86', strong: '#FCF9F1' },
       },
       fontFamily: {
-        sans: ['"Karla"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        // Karla and Bitter have no Hebrew glyphs. Heebo and Frank Ruhl Libre sit second in each
+        // stack, so Latin text stays in the brand faces and only Hebrew characters fall through
+        // to them. Google serves them by unicode-range, so a reader who never sees Hebrew never
+        // downloads a Hebrew font.
+        sans: ['"Karla"', '"Heebo"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['"DM Mono"', 'ui-monospace', 'monospace'],
-        display: ['"Bitter"', 'Georgia', 'serif'],
+        display: ['"Bitter"', '"Frank Ruhl Libre"', 'Georgia', 'serif'],
       },
       // Field Guide is a squarer design — the softness now comes from paper tones and
       // hairline rules rather than from rounded corners.

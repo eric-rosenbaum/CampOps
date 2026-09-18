@@ -1,0 +1,123 @@
+{
+  "language": {
+    "label": "שפה",
+    "en": "English",
+    "es": "Español",
+    "he": "עברית"
+  },
+  "actions": {
+    "save": "שמירה",
+    "cancel": "ביטול",
+    "close": "סגירה",
+    "delete": "מחיקה",
+    "edit": "עריכה",
+    "add": "הוספה",
+    "done": "סיום",
+    "back": "חזרה",
+    "next": "הבא",
+    "retry": "לנסות שוב",
+    "search": "חיפוש",
+    "loading": "טוען…",
+    "saving": "שומר…",
+    "signOut": "התנתקות",
+    "confirm": "אישור",
+    "remove": "הסרה",
+    "open": "פתיחה",
+    "more": "עוד",
+    "none": "ללא",
+    "all": "הכול",
+    "yes": "כן",
+    "no": "לא"
+  },
+  "status": {
+    "unassigned": "לא משויך",
+    "assigned": "משויך",
+    "in_progress": "בטיפול",
+    "waiting_on_vendor": "ממתין לספק",
+    "waiting_on_part": "ממתין לחלק",
+    "resolved": "בוצע"
+  },
+  "priority": {
+    "urgent": "דחוף",
+    "high": "גבוה",
+    "normal": "רגיל"
+  },
+  "source": {
+    "web": "נרשם באפליקציה",
+    "ios": "נרשם בטלפון",
+    "public": "דיווח ציבורי",
+    "qr": "סריקת מדבקה",
+    "routine": "שגרה",
+    "retreat": "קבוצת השכרה",
+    "session": "החלפת מחזור",
+    "module": "סומן ממודול אחר"
+  },
+  "cadence": {
+    "daily": "כל יום",
+    "weekly": "כל שבוע",
+    "monthly": "כל חודש",
+    "annually": "כל שנה",
+    "season_relative": "ביחס ליום הפתיחה",
+    "on_turnover": "בכל החלפה",
+    "meter": "לפי שעות או מיילים"
+  },
+  "crew": {
+    "maintenance": "אחזקה",
+    "housekeeping": "ניקיון",
+    "grounds": "שטח",
+    "kitchen": "מטבח",
+    "it": "טכנולוגיה"
+  },
+  "schedule": {
+    "everyDay_one": "כל יום",
+    "everyDay_two": "כל יומיים",
+    "everyDay_other": "כל {{count}} ימים",
+    "everyWeek_one": "כל שבוע",
+    "everyWeek_two": "כל שבועיים",
+    "everyWeek_other": "כל {{count}} שבועות",
+    "everyWeekOn_one": "כל שבוע בימים {{days}}",
+    "everyWeekOn_two": "כל שבועיים בימים {{days}}",
+    "everyWeekOn_other": "כל {{count}} שבועות בימים {{days}}",
+    "everyMonth_one": "כל חודש",
+    "everyMonth_two": "כל חודשיים",
+    "everyMonth_other": "כל {{count}} חודשים",
+    "everyMonthOn_one": "כל חודש ב־{{day}} לחודש",
+    "everyMonthOn_two": "כל חודשיים ב־{{day}} לחודש",
+    "everyMonthOn_other": "כל {{count}} חודשים ב־{{day}} לחודש",
+    "everyYear_one": "כל שנה",
+    "everyYear_two": "כל שנתיים",
+    "everyYear_other": "כל {{count}} שנים",
+    "openingDay": "ביום הפתיחה",
+    "beforeOpening_one": "יום אחד לפני הפתיחה",
+    "beforeOpening_two": "יומיים לפני הפתיחה",
+    "beforeOpening_other": "{{count}} ימים לפני הפתיחה",
+    "afterOpening_one": "יום אחד אחרי הפתיחה",
+    "afterOpening_two": "יומיים אחרי הפתיחה",
+    "afterOpening_other": "{{count}} ימים אחרי הפתיחה",
+    "everyTurnover": "בכל החלפה",
+    "everyMiles": "כל {{n}} מייל",
+    "everyHours": "כל {{n}} שעות",
+    "byMeter": "לפי מונה",
+    "behind_one": "מחזור אחד באיחור",
+    "behind_two": "שני מחזורים באיחור",
+    "behind_other": "{{count}} מחזורים באיחור"
+  },
+  "role": {
+    "admin": "מנהל/ת",
+    "staff": "צוות",
+    "viewer": "צפייה בלבד"
+  },
+  "upload": {
+    "uploading": "מעלה",
+    "saving": "שומר את הרשומה",
+    "verifying": "בודק שהקובץ נפתח",
+    "done": "בוצע",
+    "failed": "נכשל"
+  },
+  "loading": {
+    "dashboard": "מכין את לוח הבקרה",
+    "tasks": "טוען את המשימות שלך",
+    "campground": "פותח את שטח המחנה",
+    "spot": "פותח את המקום הזה"
+  }
+}

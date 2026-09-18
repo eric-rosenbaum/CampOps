@@ -60,6 +60,21 @@ struct StaffGroup: Codable, Identifiable {
     let issuesSeeUnassigned: Bool
     let canViewCamperHealth: Bool
 
+    /// The crew's name as a reader should see it. A camp's own name is its own words and shows as
+    /// typed, but the five seed crews under their seed names were never the camp's words — they are
+    /// our defaults, so a Spanish reader sees "Mantenimiento" until the camp renames it. Before this
+    /// the phone showed "Housekeeping" in the middle of an otherwise Spanish board. Mirrors
+    /// `seedCrewName` in src/lib/useTrades.ts.
+    var displayName: String {
+        guard let seed = StaffGroup.seedNames[key], seed == name else { return name }
+        return L10n.tr(seed)
+    }
+
+    static let seedNames: [String: String] = [
+        "maintenance": "Maintenance", "housekeeping": "Housekeeping", "grounds": "Grounds",
+        "kitchen": "Kitchen", "it": "Tech",
+    ]
+
     enum CodingKeys: String, CodingKey {
         case id, name, modules, key
         case campId               = "camp_id"
@@ -115,9 +130,9 @@ enum CampRole: String, Codable {
 
     var displayName: String {
         switch self {
-        case .admin:  return "Administrator"
-        case .staff:  return "Staff"
-        case .viewer: return "Viewer"
+        case .admin:  return L10n.tr("Administrator")
+        case .staff:  return L10n.tr("Staff")
+        case .viewer: return L10n.tr("Viewer")
         }
     }
 }
@@ -253,10 +268,10 @@ struct JoinCodeInfo: Decodable {
 
     var problemText: String {
         switch reason {
-        case "expired":           return "This join code has expired. Ask your camp administrator for a new one."
-        case "used_up":           return "This join code has been used the maximum number of times."
-        case "camp_unavailable":  return "This camp isn't accepting new staff right now."
-        default:                  return "That join code isn't valid. Check it and try again."
+        case "expired":           return L10n.tr("This join code has expired. Ask your camp administrator for a new one.")
+        case "used_up":           return L10n.tr("This join code has been used the maximum number of times.")
+        case "camp_unavailable":  return L10n.tr("This camp isn't accepting new staff right now.")
+        default:                  return L10n.tr("That join code isn't valid. Check it and try again.")
         }
     }
 }
@@ -283,5 +298,11 @@ struct JoinCodeResult: Decodable {
 
 struct ProfileRow: Decodable {
     let fullName: String?
-    enum CodingKeys: String, CodingKey { case fullName = "full_name" }
+    /// 'en' | 'es' | 'he', shared with the web. Nil until somebody chooses, or on a server that
+    /// predates the column.
+    let preferredLanguage: String?
+    enum CodingKeys: String, CodingKey {
+        case fullName = "full_name"
+        case preferredLanguage = "preferred_language"
+    }
 }

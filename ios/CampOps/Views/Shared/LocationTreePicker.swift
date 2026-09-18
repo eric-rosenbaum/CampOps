@@ -87,7 +87,7 @@ struct LocationTreePicker: View {
         let uncategorized = preorder.filter { $0.loc.categoryId == nil || store.category($0.loc.categoryId) == nil }
             .map { (loc: $0.loc, indent: sameCategoryDepth($0.loc)) }
         if !uncategorized.isEmpty {
-            out.append((key: "__uncat__", title: "Uncategorized", nodes: uncategorized))
+            out.append((key: "__uncat__", title: L10n.tr("Uncategorized"), nodes: uncategorized))
         }
         return out
     }

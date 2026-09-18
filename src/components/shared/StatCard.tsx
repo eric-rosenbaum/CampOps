@@ -22,7 +22,7 @@ const valueColors = {
  */
 export function StatCard({ label, value, hint, variant = 'default' }: Props) {
   return (
-    <div className="flex flex-col gap-1 px-6 py-4 border-r border-border last:border-r-0 first:pl-0">
+    <div className="flex flex-col gap-1 px-6 py-4 border-e border-border last:border-e-0 first:ps-0">
       <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-ink-soft">{label}</p>
       <p className={`font-display text-[31px] font-bold leading-[1.05] tabular-nums ${valueColors[variant]}`}>
         {value}

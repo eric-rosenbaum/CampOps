@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { KeyRound, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { authErrorMessage } from '@/pages/auth/authErrors';
 import { Button } from '@/components/shared/Button';
 import { useAuthStore } from '@/store/authStore';
 import { LoadingBlock } from '@/components/shared/ModuleLoading';
@@ -16,6 +18,8 @@ const MIN_LENGTH = 8;
  * doesn't exist.
  */
 export function PasswordSection() {
+  const { t } = useTranslation('account');
+  const { t: ta } = useTranslation('auth');
   const hasUsablePassword = useAuthStore((s) => s.hasUsablePassword);
   const changePassword = useAuthStore((s) => s.changePassword);
   const updatePassword = useAuthStore((s) => s.updatePassword);
@@ -37,24 +41,22 @@ export function PasswordSection() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (next.length < MIN_LENGTH) { setError(`Password must be at least ${MIN_LENGTH} characters.`); return; }
-    if (next !== confirm) { setError('Passwords do not match.'); return; }
-    if (hasPassword && next === current) { setError('That’s already your password. Choose a different one.'); return; }
+    if (next.length < MIN_LENGTH) { setError(t('password.tooShort', { min: MIN_LENGTH })); return; }
+    if (next !== confirm) { setError(t('password.mismatch')); return; }
+    if (hasPassword && next === current) { setError(t('password.same')); return; }
 
     setSaving(true);
     const err = hasPassword ? await changePassword(current, next) : await updatePassword(next);
     setSaving(false);
-    if (err) { setError(err); return; }
+    if (err) { setError(authErrorMessage(ta, err)); return; }
 
     setCurrent(''); setNext(''); setConfirm('');
     setHasPassword(true);
     setDone(true);
   }
 
-  const heading = hasPassword === false ? 'Set a password' : 'Password';
-  const blurb = hasPassword === false
-    ? 'You sign in with an emailed code. Set a password to sign in with one instead — the emailed code keeps working either way.'
-    : 'Change the password you use to sign in.';
+  const heading = hasPassword === false ? t('password.setTitle') : t('password.title');
+  const blurb = hasPassword === false ? t('password.setBlurb') : t('password.changeBlurb');
 
   return (
     <section className="bg-white rounded-card border border-border p-4 sm:p-6">
@@ -69,24 +71,25 @@ export function PasswordSection() {
       </div>
 
       {hasPassword === null ? (
-        <LoadingBlock size="sm" label="Loading" className="py-6" />
+        <LoadingBlock size="sm" label={t('loading')} className="py-6" />
       ) : done ? (
         <div className="flex items-center gap-3 px-4 py-3 rounded-btn border border-border bg-cream/40">
           <Check className="w-4 h-4 text-green-muted-text flex-shrink-0" />
-          <span className="text-[13px] font-medium text-forest flex-1">Your password has been updated.</span>
+          <span className="text-[13px] font-medium text-forest flex-1">{t('password.updated')}</span>
           <button
             onClick={() => setDone(false)}
             className="text-[12.5px] font-medium text-forest hover:underline"
           >
-            Change it again
+            {t('password.changeAgain')}
           </button>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-3 max-w-sm">
           {hasPassword && (
             <div>
-              <label className="block text-[12px] font-medium text-ink mb-1.5">Current password</label>
+              <label htmlFor="pw-current" className="block text-[12px] font-medium text-ink mb-1.5">{t('password.current')}</label>
               <input
+                id="pw-current" dir="ltr"
                 type="password" required autoComplete="current-password" value={current}
                 onChange={(e) => setCurrent(e.target.value)}
                 className="w-full px-3 py-2 text-[13px] rounded-btn border border-border focus:outline-none focus:border-sage"
@@ -94,17 +97,19 @@ export function PasswordSection() {
             </div>
           )}
           <div>
-            <label className="block text-[12px] font-medium text-ink mb-1.5">New password</label>
+            <label htmlFor="pw-new" className="block text-[12px] font-medium text-ink mb-1.5">{t('password.new')}</label>
             <input
+              id="pw-new" dir="ltr"
               type="password" required autoComplete="new-password" value={next}
               onChange={(e) => setNext(e.target.value)}
               className="w-full px-3 py-2 text-[13px] rounded-btn border border-border focus:outline-none focus:border-sage"
             />
-            <p className="text-[11.5px] text-ink-faint mt-1">At least {MIN_LENGTH} characters.</p>
+            <p className="text-[11.5px] text-ink-faint mt-1">{t('password.minLength', { min: MIN_LENGTH })}</p>
           </div>
           <div>
-            <label className="block text-[12px] font-medium text-ink mb-1.5">Confirm new password</label>
+            <label htmlFor="pw-confirm" className="block text-[12px] font-medium text-ink mb-1.5">{t('password.confirm')}</label>
             <input
+              id="pw-confirm" dir="ltr"
               type="password" required autoComplete="new-password" value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               className="w-full px-3 py-2 text-[13px] rounded-btn border border-border focus:outline-none focus:border-sage"
@@ -114,7 +119,7 @@ export function PasswordSection() {
           {error && <p className="text-[12.5px] text-red-text">{error}</p>}
 
           <Button type="submit" disabled={saving}>
-            {saving ? 'Saving…' : hasPassword ? 'Update password' : 'Set password'}
+            {saving ? t('saving') : hasPassword ? t('password.update') : t('password.set')}
           </Button>
         </form>
       )}

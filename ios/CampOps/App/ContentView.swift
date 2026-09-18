@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var authManager: AuthManager
+    @ObservedObject private var language = LanguageStore.shared
     @StateObject private var issueVM     = IssueListViewModel()
     @StateObject private var poolVM      = PoolViewModel()
     @StateObject private var assetVM     = AssetViewModel()
@@ -26,19 +27,26 @@ struct ContentView: View {
                 AppLoadingView(message: "Loading…")
             } else if !authManager.isAuthenticated {
                 LoginView()
+                    .id(language.language)
             } else if authManager.isLoadingCamp {
                 // Signed in, camp still arriving. Covering this window is what stops a
                 // successful sign-in flashing the "you don't belong to a camp" screen.
                 AppLoadingView(message: "Setting up your camp…")
+                    .id(language.language)
             } else if authManager.isPlatformAdmin && !authManager.hasCamp {
                 // A founder is never dropped into a camp on launch. They choose one, every
                 // time, because the alternative is editing a customer's live data by accident.
                 AdminCampListView()
+                    // Rebuilt like every other root: left alone, its profile sheet stayed open
+                    // across a switch with the old language's title in UIKit's bar.
+                    .id(language.language)
             } else if !authManager.hasCamp {
                 JoinCampView()
+                    .id(language.language)
             } else if authManager.isCampBlocked, let camp = authManager.currentCamp {
                 // Suspended or trial-expired camps are blocked before any data loads.
                 CampBlockedView(status: camp.status)
+                    .id(language.language)
             } else {
                 mainTabView
                     .task(id: authManager.currentCamp?.id) {
@@ -50,6 +58,14 @@ struct ContentView: View {
                             await PushService.shared.register(campId: campId)
                         }
                         await loadCampData()
+                    }
+                    // Translations of what people typed, in this reader's language. Follows the
+                    // camp and the language: a switch to Hebrew needs Hebrew rows, which the
+                    // Spanish ones already on disk are not.
+                    .task(id: "\(authManager.currentCamp?.id ?? "")|\(language.language.rawValue)") {
+                        if let campId = authManager.currentCamp?.id {
+                            await ContentTranslations.shared.load(campId: campId, language: language.language)
+                        }
                     }
                     // A tapped notification names a work order. Bring the board forward; the
                     // list itself opens it, and clears the request once it has.
@@ -118,6 +134,7 @@ struct ContentView: View {
             }
             if authManager.canAccessModule("pool") {
                 PoolView()
+                    .untranslated()
                     .syncStatusBar()
                     .impersonationBar(authManager.isImpersonating)
                     .tabItem { Label("Pool", systemImage: "drop.fill") }
@@ -125,6 +142,7 @@ struct ContentView: View {
             }
             if authManager.canAccessModule("assets") {
                 AssetView()
+                    .untranslated()
                     .syncStatusBar()
                     .impersonationBar(authManager.isImpersonating)
                     .tabItem { Label("Assets", systemImage: "car.fill") }
@@ -132,6 +150,7 @@ struct ContentView: View {
             }
             if authManager.canAccessModule("building") {
                 BuildingView()
+                    .untranslated()
                     .syncStatusBar()
                     .impersonationBar(authManager.isImpersonating)
                     .tabItem { Label("Building", systemImage: "building.2.fill") }
@@ -140,6 +159,11 @@ struct ContentView: View {
         }
         // On iPhone extra tabs collapse into "More"; on iPad the same set becomes a sidebar.
         .tabViewStyle(.sidebarAdaptable)
+        // Rebuilt on a language change. A string the code assembles -- a status label, a count,
+        // "Due tomorrow" -- is read once when its view is built, and without a rebuild the
+        // board kept every one of them in the old language beside buttons in the new one. The
+        // view models live above this, so nothing is refetched.
+        .id(language.language)
     }
 
     /// Where a scanned sticker lands.
@@ -174,6 +198,7 @@ struct ContentView: View {
             onAssetChange:      { await assetVM.refresh() },
             onBuildingChange:   { await buildingVM.refresh() },
             onLocationChange:   { await LocationStore.shared.refresh() },
+            onTranslationChange: { await ContentTranslations.shared.refresh() },
             onPermissionChange: { await authManager.reloadMemberAndGroup() }
         )
     }
@@ -187,7 +212,8 @@ struct ContentView: View {
         async let a = assetVM.refresh()
         async let b = buildingVM.refresh()
         async let m = authManager.reloadMemberAndGroup()
-        _ = await (l, i, g, p, a, b, m)
+        async let t = ContentTranslations.shared.refresh()
+        _ = await (l, i, g, p, a, b, m, t)
     }
 }
 
@@ -197,7 +223,7 @@ struct ContentView: View {
 /// the wordmark and says what's happening, an unadorned spinner on a white field reads as a
 /// hang, which is precisely the impression we're trying to avoid here.
 struct AppLoadingView: View {
-    var message: String = "Loading…"
+    var message: LocalizedStringKey = "Loading…"
 
     var body: some View {
         VStack(spacing: Spacing.xl) {

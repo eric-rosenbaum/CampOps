@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { Search, Check, ChevronDown, ChevronRight, MapPin, X } from 'lucide-react';
 import { useLocationStore } from '@/store/locationStore';
 import type { CampLocation } from '@/lib/types';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   value: string[];                    // selected location ids
@@ -17,7 +18,8 @@ interface Props {
  * Reads the unified location tree from the location store. Multi-select by default;
  * pass multiple={false} for a single-select (assets, building link).
  */
-export function LocationPicker({ value, onChange, multiple = true, filter, placeholder = 'Select location…', emptyHint }: Props) {
+export function LocationPicker({ value, onChange, multiple = true, filter, placeholder, emptyHint }: Props) {
+  const { t } = useTranslation('shell');
   const { locations, categories } = useLocationStore();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -52,6 +54,7 @@ export function LocationPicker({ value, onChange, multiple = true, filter, place
   }
 
   // Group top-level nodes by category for the tree view
+  const uncategorizedLabel = t('location.uncategorized');
   const grouped = useMemo(() => {
     const cats = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
     const tops = active.filter((l) => l.parentId == null);
@@ -61,9 +64,9 @@ export function LocationPicker({ value, onChange, multiple = true, filter, place
       if (items.length) out.push({ key: c.id, label: c.name, items });
     }
     const uncategorized = tops.filter((l) => !l.categoryId || !categories.some((c) => c.id === l.categoryId));
-    if (uncategorized.length) out.push({ key: '_none', label: 'Uncategorized', items: uncategorized });
+    if (uncategorized.length) out.push({ key: '_none', label: uncategorizedLabel, items: uncategorized });
     return out;
-  }, [active, categories]);
+  }, [active, categories, uncategorizedLabel]);
 
   function childrenOf(id: string) { return active.filter((l) => l.parentId === id).sort((a, b) => a.sortOrder - b.sortOrder); }
 
@@ -75,29 +78,29 @@ export function LocationPicker({ value, onChange, multiple = true, filter, place
         <button
           type="button"
           onClick={() => toggle(l.id)}
-          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-btn text-left text-[13px] hover:bg-cream/60 transition-colors ${isSel ? 'text-forest font-medium' : 'text-forest/75'}`}
-          style={{ paddingLeft: `${8 + depth * 16}px` }}
+          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-btn text-start text-[13px] hover:bg-cream/60 transition-colors ${isSel ? 'text-forest font-medium' : 'text-forest/75'}`}
+          style={{ paddingInlineStart: `${8 + depth * 16}px` }}
         >
           <span className={`w-4 h-4 rounded ${multiple ? '' : 'rounded-full'} border flex items-center justify-center flex-shrink-0 ${isSel ? 'bg-sage border-sage text-white' : 'border-border'}`}>
             {isSel && <Check className="w-3 h-3" />}
           </span>
           <span className="flex-1 truncate">{l.name}</span>
-          {l.isDorm && <span className="text-[10px] font-semibold uppercase tracking-wide text-sage flex-shrink-0">Dorm</span>}
+          {l.isDorm && <span className="text-[10px] font-semibold uppercase tracking-wide text-sage flex-shrink-0">{t('location.dorm')}</span>}
         </button>
         {kids.map((k) => <Node key={k.id} l={k} depth={depth + 1} />)}
       </div>
     );
   }
 
-  const label = selected.length === 0 ? placeholder
-    : multiple ? `${selected.length} selected` : selected[0].name;
+  const label = selected.length === 0 ? (placeholder ?? t('location.placeholder'))
+    : multiple ? t('location.selected', { count: selected.length }) : selected[0].name;
 
   return (
     <div ref={rootRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-2 text-body bg-white border border-border rounded-btn px-3 py-2 text-left focus:outline-none focus:border-sage"
+        className="w-full flex items-center gap-2 text-body bg-white border border-border rounded-btn px-3 py-2 text-start focus:outline-none focus:border-sage"
       >
         <MapPin className="w-4 h-4 text-ink-faint flex-shrink-0" />
         <span className={`flex-1 truncate ${selected.length ? 'text-forest' : 'text-ink-faint'}`}>{label}</span>
@@ -108,9 +111,9 @@ export function LocationPicker({ value, onChange, multiple = true, filter, place
       {multiple && selected.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-2">
           {selected.map((l) => (
-            <span key={l.id} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-tag bg-sage-pale text-forest text-[12px]">
+            <span key={l.id} className="inline-flex items-center gap-1 ps-2 pe-1 py-0.5 rounded-tag bg-sage-pale text-forest text-[12px]">
               {fullPath(l)}
-              <button type="button" onClick={() => toggle(l.id)} className="text-ink-soft hover:text-forest"><X className="w-3 h-3" /></button>
+              <button type="button" onClick={() => toggle(l.id)} aria-label={t('location.remove', { name: l.name })} className="text-ink-soft hover:text-forest"><X className="w-3 h-3" /></button>
             </span>
           ))}
         </div>
@@ -123,22 +126,22 @@ export function LocationPicker({ value, onChange, multiple = true, filter, place
               <Search className="w-3.5 h-3.5 text-ink-faint" />
               <input
                 autoFocus value={query} onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search locations…"
+                placeholder={t('location.search')}
                 className="flex-1 bg-transparent text-[13px] text-forest focus:outline-none"
               />
             </div>
           </div>
           <div className="max-h-72 overflow-y-auto py-1">
             {active.length === 0 ? (
-              <p className="text-[12px] text-ink-faint italic px-3 py-4 text-center">{emptyHint ?? 'No locations yet. Add them in Camp Info.'}</p>
+              <p className="text-[12px] text-ink-faint italic px-3 py-4 text-center">{emptyHint ?? t('location.empty')}</p>
             ) : matches ? (
               matches.length === 0
-                ? <p className="text-[12px] text-ink-faint italic px-3 py-4 text-center">No match for “{query}”.</p>
+                ? <p className="text-[12px] text-ink-faint italic px-3 py-4 text-center">{t('location.noMatch', { query })}</p>
                 : matches.map((l) => {
                     const isSel = value.includes(l.id);
                     return (
                       <button key={l.id} type="button" onClick={() => toggle(l.id)}
-                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-[13px] hover:bg-cream/60 ${isSel ? 'text-forest font-medium' : 'text-forest/75'}`}>
+                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-start text-[13px] hover:bg-cream/60 ${isSel ? 'text-forest font-medium' : 'text-forest/75'}`}>
                         <span className={`w-4 h-4 rounded ${multiple ? '' : 'rounded-full'} border flex items-center justify-center flex-shrink-0 ${isSel ? 'bg-sage border-sage text-white' : 'border-border'}`}>{isSel && <Check className="w-3 h-3" />}</span>
                         <span className="flex-1 truncate">{fullPath(l)}</span>
                       </button>
@@ -152,7 +155,7 @@ export function LocationPicker({ value, onChange, multiple = true, filter, place
                     <button type="button"
                       onClick={() => setCollapsed((s) => { const n = new Set(s); if (n.has(g.key)) n.delete(g.key); else n.add(g.key); return n; })}
                       className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-faint hover:text-ink">
-                      {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      {isCollapsed ? <ChevronRight className="w-3.5 h-3.5 rtl:-scale-x-100" /> : <ChevronDown className="w-3.5 h-3.5" />}
                       {g.label}
                     </button>
                     {!isCollapsed && g.items.map((l) => <Node key={l.id} l={l} depth={0} />)}

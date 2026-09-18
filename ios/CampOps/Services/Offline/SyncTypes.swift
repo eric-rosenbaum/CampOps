@@ -58,6 +58,9 @@ nonisolated enum SyncTable {
     static let serviceVendors         = "service_vendors"
     static let workRouting            = "work_routing"
     static let buildingSeasonalTasks  = "building_seasonal_tasks"
+    /// Not part of `sync_pull`: `ContentTranslations` fetches it itself and parks the rows here,
+    /// in the same per-camp cache, so a translated board still reads with no signal.
+    static let contentTranslations    = "content_translations"
 
     /// Everything `sync_pull` returns, in the order it returns it.
     static let pullable: [String] = [
@@ -276,9 +279,9 @@ nonisolated enum SyncError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .noCamp:               return "No camp is selected."
-        case .notSyncable(let t):   return "\(t) cannot be synced from this device."
-        case .badResponse:          return "The server sent a response the app could not read."
+        case .noCamp:               return L10n.tr("No camp is selected.")
+        case .notSyncable(let t):   return L10n.tr("%@ cannot be synced from this device.", t)
+        case .badResponse:          return L10n.tr("The server sent a response the app could not read.")
         }
     }
 }

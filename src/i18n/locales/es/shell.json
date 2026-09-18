@@ -1,0 +1,233 @@
+{
+  "nav": {
+    "label": "Navegación principal",
+    "sections": {
+      "today": "Hoy",
+      "facilities": "Instalaciones",
+      "commissary": "Cocina",
+      "aquatics": "Acuáticos",
+      "retreats": "Retiros",
+      "logistics": "Logística",
+      "finance": "Finanzas",
+      "settings": "Configuración"
+    },
+    "items": {
+      "demoGuide": "Guía de la demo",
+      "dashboard": "Panel",
+      "myTasks": "Mis tareas",
+      "campground": "Campamento",
+      "compliance": "Cumplimiento",
+      "assets": "Activos y vehículos",
+      "building": "Sistemas del edificio",
+      "kitchen": "Gestión de cocina",
+      "askKitchen": "Pedir a la cocina",
+      "pool": "Gestión de piscina",
+      "retreats": "Gestión de retiros",
+      "trips": "Viajes al pueblo",
+      "receipts": "Recibos",
+      "campInfo": "Datos del campamento",
+      "team": "Personal",
+      "securityPrivacy": "Seguridad y privacidad"
+    },
+    "security": "Seguridad",
+    "signingOut": "Cerrando sesión…",
+    "userLine": "{{name}} · {{role}}",
+    "railUser": "{{camp}} · {{name}}"
+  },
+  "rail": {
+    "show": "Mostrar barra lateral",
+    "hide": "Ocultar barra lateral"
+  },
+  "banner": {
+    "impersonating": "Viendo <b>{{camp}}</b> como administrador de CampCommand",
+    "exitToAdmin": "Volver a la administración",
+    "demoDaysLeft_one": "Demo · queda {{count}} día",
+    "demoDaysLeft_many": "Demo · quedan {{count}} días",
+    "demoDaysLeft_other": "Demo · quedan {{count}} días",
+    "demoEnded": "La demo terminó",
+    "openGuide": "Abrir la guía de la demo"
+  },
+  "mobile": {
+    "openNav": "Abrir navegación",
+    "closeNav": "Cerrar navegación"
+  },
+  "sync": {
+    "saving": "Guardando…"
+  },
+  "loading": {
+    "label": "Cargando",
+    "pulling": "Trayendo lo más reciente de tu campamento…",
+    "appLabel": "Preparando tu campamento",
+    "appSublabel": "Iniciando sesión y cargando tus módulos"
+  },
+  "time": {
+    "minutesAgo_one": "hace {{count}} min",
+    "minutesAgo_many": "hace {{count}} min",
+    "minutesAgo_other": "hace {{count}} min",
+    "hoursAgo_one": "hace {{count}} h",
+    "hoursAgo_many": "hace {{count}} h",
+    "hoursAgo_other": "hace {{count}} h",
+    "yesterday": "Ayer"
+  },
+  "due": {
+    "overdueDays_one": "Atrasada {{count}} día",
+    "overdueDays_many": "Atrasada {{count}} días",
+    "overdueDays_other": "Atrasada {{count}} días",
+    "overdueWasDue": "Atrasada: vencía a las {{time}}",
+    "today": "Vence hoy",
+    "todayBy": "Vence hoy a las {{time}}",
+    "tomorrow": "Vence mañana",
+    "tomorrowBy": "Vence mañana a las {{time}}",
+    "inDays_one": "Vence en {{count}} día",
+    "inDays_many": "Vence en {{count}} días",
+    "inDays_other": "Vence en {{count}} días"
+  },
+  "search": {
+    "placeholder": "Buscar…"
+  },
+  "status": {
+    "pending": "Pendiente",
+    "complete": "Completa"
+  },
+  "logWork": {
+    "titleNew": "Registrar trabajo",
+    "titleEdit": "Editar orden de trabajo",
+    "photo": "Foto",
+    "capture": "Capturar",
+    "captureHint": "Foto o voz: llena esto por ti y guarda la foto",
+    "photoAlt": "Foto de la orden de trabajo",
+    "removePhoto": "Quitar foto",
+    "changePhoto": "Cambiar foto",
+    "attachOnly": "O adjunta una sin leerla",
+    "filledFromCapture": "Llenado a partir de tu captura.",
+    "title": "Título",
+    "titleRequired": "El título es obligatorio",
+    "titlePlaceholder": "Qué está mal, en pocas palabras",
+    "location": "Ubicación",
+    "extras": "Lista de pasos, equipo y contratistas",
+    "extrasSet_one": "{{count}} elegido",
+    "extrasSet_many": "{{count}} elegidos",
+    "extrasSet_other": "{{count}} elegidos",
+    "checklist": "Lista de pasos",
+    "noChecklist": "Sin lista de pasos",
+    "templateOption_one": "{{name}} · {{count}} paso",
+    "templateOption_many": "{{name}} · {{count}} pasos",
+    "templateOption_other": "{{name}} · {{count}} pasos",
+    "asset": "Vehículo o equipo",
+    "noAsset": "No es sobre uno en particular",
+    "vendor": "Proveedor externo",
+    "noVendor": "Nadie de afuera",
+    "priority": "Prioridad",
+    "description": "Descripción",
+    "descriptionPlaceholder": "Cualquier otra cosa que convenga saber",
+    "crew": "Equipo",
+    "assignTo": "Asignar a",
+    "nobodyYet": "Nadie todavía",
+    "crewGroup": "Lo toma un equipo",
+    "personGroup": "Una persona",
+    "due": "Vence",
+    "dueTime": "Vence a las (hora)",
+    "anyTime": "A cualquier hora de ese día.",
+    "scheduleQuestion": "¿Esto pasa con regularidad?",
+    "routineInstead": "Mejor configúralo como rutina",
+    "saveChanges": "Guardar cambios",
+    "logIt": "Registrar"
+  },
+  "issue": {
+    "public": "Público",
+    "noDueDate": "Sin fecha límite",
+    "takeIt": "Tomarla",
+    "anonymous": "Anónimo",
+    "loggedBy": "Registrada por {{name}} el {{date}}",
+    "loggedOn": "Registrada el {{date}}",
+    "priority": "Prioridad",
+    "status": "Estado",
+    "assignedTo": "Asignada a",
+    "description": "Descripción",
+    "noDescription": "Sin descripción",
+    "reportedBy": "Reportada por",
+    "photo": "Foto",
+    "noPhoto": "Sin foto adjunta",
+    "cost": "Costo",
+    "estimated": "Estimado",
+    "actual": "Real",
+    "pendingResolution": "pendiente hasta que esté hecha",
+    "dueDate": "Fecha límite",
+    "noDueDateSet": "Sin fecha límite",
+    "logged": "Registrada",
+    "activity": "Actividad",
+    "deleteConfirm": "¿Eliminar esta orden de trabajo? No se puede deshacer.",
+    "confirmDelete": "Sí, eliminar",
+    "reopen": "Reabrir la orden de trabajo",
+    "delete": "Eliminar la orden de trabajo",
+    "costPlaceholder": "Costo real (opcional, p. ej. 280)",
+    "confirmResolve": "Confirmar hecha",
+    "markResolved": "Marcar como hecha",
+    "noActivity": "Todavía no hay actividad."
+  },
+  "location": {
+    "placeholder": "Elegir ubicación…",
+    "uncategorized": "Sin categoría",
+    "dorm": "Dormitorio",
+    "selected_one": "{{count}} elegida",
+    "selected_many": "{{count}} elegidas",
+    "selected_other": "{{count}} elegidas",
+    "search": "Buscar ubicaciones…",
+    "empty": "Todavía no hay ubicaciones. Agrégalas en Datos del campamento.",
+    "noMatch": "Nada coincide con “{{query}}”.",
+    "remove": "Quitar {{name}}"
+  },
+  "thread": {
+    "empty": "Todavía no hay mensajes.",
+    "placeholderTo": "Mensaje para {{name}}…",
+    "placeholder": "Escribe un mensaje…",
+    "send": "Enviar"
+  },
+  "required": {
+    "marker": "Obligatorio",
+    "addFirst": "Primero agrega {{list}}."
+  },
+  "unsaved": {
+    "title_one": "Un cambio no se guardó",
+    "title_many": "{{count}} cambios no se guardaron",
+    "title_other": "{{count}} cambios no se guardaron",
+    "body": "Lo que ves en pantalla puede no coincidir con lo guardado. Recarga para ver exactamente qué se guardó.",
+    "affected": "Afectado: {{list}}.",
+    "reload": "Recargar",
+    "dismiss": "Descartar"
+  },
+  "upload": {
+    "ready": "Listo para abrir",
+    "upload": "Subir",
+    "save": "Guardar",
+    "open": "Abrirlo"
+  },
+  "season": {
+    "title": "Nueva temporada",
+    "warning": "Esto pondrá todas las tareas de la lista en Pendiente y recalculará las fechas límite.",
+    "name": "Nombre de la temporada",
+    "nameRequired": "El nombre de la temporada es obligatorio",
+    "namePlaceholder": "p. ej. Verano {{year}}",
+    "defaultName": "Verano {{year}}",
+    "opening": "Fecha de apertura",
+    "closing": "Fecha de cierre",
+    "required": "Obligatorio",
+    "aca": "Fecha de inspección de la ACA (opcional)",
+    "acaHint": "Si tu campamento tiene próxima una visita de acreditación de la ACA, ingresa la fecha para seguirla en Cumplimiento.",
+    "activate": "Activar la nueva temporada"
+  },
+  "chart": {
+    "summary": "{{series}}: {{count}} columnas, máximo {{max}}"
+  },
+  "access": {
+    "demoEndedTitle": "Tu demo terminó",
+    "pausedTitle": "Tu cuenta está en pausa",
+    "demoEndedBody": "Terminó tu demo de 30 días de CampCommand. Para abrir una cuenta real y seguir donde lo dejaste, escríbenos y te ayudamos a empezar.",
+    "pausedBody": "Esta cuenta está en pausa por ahora. Escríbenos y te ayudamos a volver a ponerla en marcha.",
+    "email": "Escribir a {{email}}",
+    "signOutRetry": "Cerrar sesión y probar con otra cuenta",
+    "signOutDifferentEmail": "Cerrar sesión y usar otro correo",
+    "noCampTitle": "Tu cuenta todavía no está lista",
+    "noCampBody": "Iniciaste sesión, pero todavía no tienes acceso a ningún campamento. Si entraste con el correo equivocado, cierra sesión y vuelve a intentarlo con la dirección a la que llegó tu invitación."
+  }
+}

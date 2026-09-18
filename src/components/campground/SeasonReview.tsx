@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { format } from 'date-fns';
+import { Trans, useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Printer, Lock, RefreshCw, Info } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { StatCard } from '@/components/shared/StatCard';
@@ -14,7 +15,9 @@ import {
 import { SOURCE_LABELS, STATUS_LABELS } from '@/lib/workOrder';
 import { formatCost, formatDate, parseDateStr, todayStr, toDateStr } from '@/lib/utils';
 import { useTradeLabel } from '@/lib/useTrades';
-import type { IssueSource, IssueStatus, SeasonReview as SeasonReviewData } from '@/lib/types';
+import type { IssueSource, IssueStatus, Priority, SeasonReview as SeasonReviewData } from '@/lib/types';
+import { TranslatedText } from '@/components/i18n/TranslatedText';
+import i18n, { currentLang } from '@/i18n';
 
 /**
  * The renewal artifact.
@@ -42,15 +45,27 @@ const CLOSED_COLOR = '#2C5342';
 /** Below this many work orders, a median is a direction rather than a measurement. */
 const SMALL_SAMPLE = 5;
 
-function hoursLabel(h: number | null): string {
+type AdminT = TFunction<'campgroundAdmin'>;
+
+function hoursLabel(t: AdminT, h: number | null): string {
   if (h == null) return '—';
-  if (h < 1) return 'under an hour';
-  if (h < 48) return `${Math.round(h)} hr`;
-  return `${(h / 24).toFixed(1)} days`;
+  if (h < 1) return t('review.underHour');
+  const nf = new Intl.NumberFormat(currentLang(), { maximumFractionDigits: 1, minimumFractionDigits: h < 48 ? 0 : 1 });
+  if (h < 48) return t('review.hours', { value: nf.format(Math.round(h)) });
+  return t('review.days', { value: nf.format(h / 24) });
 }
 
 function weekLabel(week: string): string {
-  return /^\d{4}-\d{2}-\d{2}$/.test(week) ? format(parseDateStr(week), 'MMM d') : week;
+  return /^\d{4}-\d{2}-\d{2}$/.test(week)
+    ? new Intl.DateTimeFormat(currentLang(), { month: 'short', day: 'numeric' }).format(parseDateStr(week))
+    : week;
+}
+
+/** The server sends priority as its raw key; unknown values are shown as sent. */
+function priorityLabel(p: string): string {
+  return p === 'urgent' || p === 'high' || p === 'normal'
+    ? i18n.t(`common:priority.${p as Priority}`)
+    : p;
 }
 
 interface Period { from: string; to: string; scope: string }
@@ -62,6 +77,7 @@ function defaultRange(season: { openingDate: string; closingDate: string } | nul
 }
 
 export function SeasonReview() {
+  const { t } = useTranslation(['campgroundAdmin', 'common']);
   const season = useChecklistStore((s) => s.season);
   const sessions = useCampgroundStore((s) => s.sessions);
   const { role } = useAuth();
@@ -173,7 +189,7 @@ export function SeasonReview() {
     return (
       <p className="text-[13px] text-ink-faint italic py-10 flex items-center gap-2">
         <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" />
-        Adding up the season…
+        {t('review.loading')}
       </p>
     );
   }
@@ -181,12 +197,12 @@ export function SeasonReview() {
   if (failed || !data) {
     return (
       <div className="rounded-card border border-border bg-white px-6 py-10 text-center">
-        <p className="font-display text-[16px] font-bold text-forest">The review could not be built</p>
+        <p className="font-display text-[16px] font-bold text-forest">{t('review.failedTitle')}</p>
         <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-md mx-auto mt-2">
-          That did not come back. Try again.
+          {t('review.failedBody')}
         </p>
         <div className="mt-4 flex justify-center">
-          <Button variant="ghost" onClick={() => setReload((n) => n + 1)}>Try again</Button>
+          <Button variant="ghost" onClick={() => setReload((n) => n + 1)}>{t('common:actions.retry')}</Button>
         </div>
       </div>
     );
@@ -211,24 +227,24 @@ export function SeasonReview() {
       <div className="cc-no-print flex flex-wrap items-end gap-3 mb-6">
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-1" htmlFor="review-scope">
-            Period
+            {t('review.period')}
           </label>
           <select
             id="review-scope" className={inputClass} value={scope}
             onChange={(e) => applyScope(e.target.value)}
           >
-            {season && <option value="season">{season.name} (whole season)</option>}
+            {season && <option value="season">{t('review.wholeSeason', { name: season.name })}</option>}
             {sessions.length > 0 && (
-              <optgroup label="One session">
+              <optgroup label={t('review.oneSession')}>
                 {sessions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </optgroup>
             )}
-            <option value="custom">Custom dates</option>
+            <option value="custom">{t('review.custom')}</option>
           </select>
         </div>
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-1" htmlFor="review-from">
-            From
+            {t('shared.from')}
           </label>
           <input
             id="review-from" type="date" className={inputClass} value={from}
@@ -237,20 +253,20 @@ export function SeasonReview() {
         </div>
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-1" htmlFor="review-to">
-            To
+            {t('shared.to')}
           </label>
           <input
             id="review-to" type="date" className={inputClass} value={to}
             onChange={(e) => setOverride({ ...period, scope: 'custom', to: e.target.value })}
           />
         </div>
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 ms-auto">
           <Button variant="ghost" onClick={() => window.print()}>
-            <Printer className="w-3.5 h-3.5" aria-hidden="true" /> Print
+            <Printer className="w-3.5 h-3.5" aria-hidden="true" /> {t('review.print')}
           </Button>
           {role === 'admin' && (
             <Button variant="ghost" onClick={() => setConfirmKey(isConfirming ? null : key)}>
-              <Lock className="w-3.5 h-3.5" aria-hidden="true" /> Save a snapshot
+              <Lock className="w-3.5 h-3.5" aria-hidden="true" /> {t('review.saveSnapshot')}
             </Button>
           )}
         </div>
@@ -259,9 +275,7 @@ export function SeasonReview() {
       {isConfirming && (
         <div className="cc-no-print rounded-card border border-border bg-cream px-5 py-4 mb-6">
           <p className="text-[13px] text-ink leading-relaxed">
-            Stores these numbers so they cannot change later. Leave the date blank for today, or
-            set it to rebuild the board as it stood then — useful in November for a season that
-            closed in August.
+            {t('review.confirmBody')}
           </p>
           <div className="flex flex-wrap items-end gap-3 mt-3">
             <div>
@@ -269,7 +283,7 @@ export function SeasonReview() {
                 className="block text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-1"
                 htmlFor="review-asof"
               >
-                As of
+                {t('review.asOf')}
               </label>
               <input
                 id="review-asof" type="date" className={inputClass} value={asOf} max={todayStr()}
@@ -277,15 +291,16 @@ export function SeasonReview() {
               />
             </div>
             <Button onClick={doFreeze} disabled={saving}>
-              {saving ? 'Saving…' : asOf ? `Save as of ${formatDate(asOf)}` : 'Save as of today'}
+              {saving
+                ? t('common:actions.saving')
+                : asOf ? t('review.saveAsOf', { date: formatDate(asOf) }) : t('review.saveToday')}
             </Button>
             <Button variant="ghost" onClick={() => { setConfirmKey(null); setAsOf(''); }}>
-              Not now
+              {t('review.notNow')}
             </Button>
           </div>
           <p className="text-[11.5px] text-ink-soft mt-2.5">
-            Counts, closures and ageing rebuild to that date. Recorded costs do not — nothing
-            keeps a history of what was typed into them, so they read as they are today.
+            {t('review.costsNote')}
           </p>
         </div>
       )}
@@ -295,7 +310,7 @@ export function SeasonReview() {
       {snapshots.length > 0 && (
         <div className="cc-no-print rounded-card border border-border bg-white px-5 py-3.5 mb-6">
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-2">
-            Saved snapshots
+            {t('review.savedSnapshots')}
           </p>
           <ul className="divide-y divide-border">
             {snapshots.map((sn) => {
@@ -303,28 +318,29 @@ export function SeasonReview() {
               return (
                 <li key={sn.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
                   <span className="text-[13px] font-semibold text-forest">
-                    As of {localDay(sn.as_of)}
+                    {t('review.asOfDate', { date: localDay(sn.as_of) })}
                   </span>
                   <span className="text-[11.5px] text-ink-soft">
-                    saved {localDay(sn.taken_at)}
-                    {sn.taken_by ? ` by ${sn.taken_by}` : ''}
+                    {sn.taken_by
+                      ? t('review.savedOnBy', { date: localDay(sn.taken_at), name: sn.taken_by })
+                      : t('review.savedOn', { date: localDay(sn.taken_at) })}
                   </span>
-                  <span className="ml-auto flex items-center gap-1">
+                  <span className="ms-auto flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => setViewingId(on ? null : sn.id)}
                       className="text-[12px] font-semibold text-forest hover:underline px-1.5"
                     >
-                      {on ? 'Back to live' : 'Open'}
+                      {on ? t('review.backToLive') : t('common:actions.open')}
                     </button>
                     {role === 'admin' && (
                       <button
                         type="button"
                         onClick={() => void doRelease(sn.id)}
-                        title="Delete this snapshot. The live review is unaffected."
+                        title={t('review.releaseTitle')}
                         className="text-[12px] font-semibold text-ink-soft hover:text-red px-1.5"
                       >
-                        Release
+                        {t('review.release')}
                       </button>
                     )}
                   </span>
@@ -339,36 +355,40 @@ export function SeasonReview() {
         <div className="rounded-card border border-forest/30 bg-sage-pale px-5 py-3.5 mb-6 flex items-start gap-2.5">
           <Lock className="w-4 h-4 text-forest flex-shrink-0 mt-0.5" aria-hidden="true" />
           <p className="text-[12.5px] text-forest leading-relaxed">
-            <b>Frozen snapshot</b> — the board as it stood on {localDay(viewing.as_of)}.
-            Saved {localDay(viewing.taken_at)}
-            {viewing.taken_by ? ` by ${viewing.taken_by}` : ''}. It will not change.
+            <Trans
+              t={t}
+              i18nKey={viewing.taken_by ? 'review.frozenBy' : 'review.frozen'}
+              values={{
+                asOf: localDay(viewing.as_of), saved: localDay(viewing.taken_at), name: viewing.taken_by ?? '',
+              }}
+              components={{ b: <b /> }}
+            />
           </p>
         </div>
       )}
       {freezeFailed && (
         <p className="cc-no-print text-[12.5px] text-red-text mb-6">
-          That did not work. Nothing was changed — try again.
+          {t('review.actionFailed')}
         </p>
       )}
 
       <div id="season-review">
         <header className="mb-6">
           <h1 className="font-display text-[24px] font-bold text-forest leading-tight">
-            Season review
+            {t('review.heading')}
           </h1>
           <p className="text-[12.5px] text-ink-soft mt-1">
-            {formatDate(from)} – {formatDate(to)}
+            {t('shared.range', { from: formatDate(from), to: formatDate(to) })}
           </p>
         </header>
 
         {totalSample === 0 ? (
           <div className="rounded-card border border-border bg-white px-6 py-10 text-center">
             <p className="font-display text-[16px] font-bold text-forest">
-              No work orders in this period
+              {t('review.noWorkTitle')}
             </p>
             <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-md mx-auto mt-2">
-              Nothing was reported between {formatDate(from)} and {formatDate(to)}. Widen the dates,
-              or check whether the season's opening and closing dates are right.
+              {t('review.noWorkBody', { from: formatDate(from), to: formatDate(to) })}
             </p>
           </div>
         ) : (
@@ -377,9 +397,7 @@ export function SeasonReview() {
               <p className="cc-keep-together flex items-start gap-2 rounded-card border border-border bg-cream px-4 py-3 mb-6 text-[12px] text-ink-soft leading-relaxed">
                 <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-sage" aria-hidden="true" />
                 <span>
-                  This period holds {totalSample} work order{totalSample === 1 ? '' : 's'}. That is
-                  a small sample — the medians below move a lot on one or two tickets, so read them
-                  as direction rather than measurement.
+                  {t('review.smallSample', { count: totalSample })}
                 </span>
               </p>
             )}
@@ -423,12 +441,13 @@ function Scroller({ children }: { children: React.ReactNode }) {
   return <div className="overflow-x-auto">{children}</div>;
 }
 
-const th = 'text-left text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft pb-2 pr-4 whitespace-nowrap';
-const td = 'text-[12.5px] text-ink py-2 pr-4 border-t border-border align-top';
+const th = 'text-start text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft pb-2 pe-4 whitespace-nowrap';
+const td = 'text-[12.5px] text-ink py-2 pe-4 border-t border-border align-top';
 
 // ─── 1 · Volume & flow ────────────────────────────────────────────────────────
 
 function VolumeSection({ data, weekly }: { data: SeasonReviewData; weekly: ColumnDatum[] }) {
+  const { t } = useTranslation('campgroundAdmin');
   const labelOf = useTradeLabel();
   const trades = Object.entries(data.volume.by_trade)
     .filter(([, n]) => n > 0)
@@ -437,13 +456,13 @@ function VolumeSection({ data, weekly }: { data: SeasonReviewData; weekly: Colum
 
   return (
     <Section
-      title="Volume and flow"
+      title={t('review.volume.title')}
     >
       <div className="flex flex-wrap border-b border-border mb-4">
-        <StatCard label="Reported" value={data.volume.reported} />
-        <StatCard label="Closed" value={data.volume.closed} variant="green" />
+        <StatCard label={t('review.volume.reported')} value={data.volume.reported} />
+        <StatCard label={t('review.volume.closed')} value={data.volume.closed} variant="green" />
         <StatCard
-          label="Still open" value={data.volume.open}
+          label={t('review.volume.stillOpen')} value={data.volume.open}
           variant={data.volume.open > 0 ? 'amber' : 'default'}
         />
       </div>
@@ -451,23 +470,27 @@ function VolumeSection({ data, weekly }: { data: SeasonReviewData; weekly: Colum
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-2">
-            By week
+            {t('review.volume.byWeek')}
           </p>
-          <ColumnChart
-            data={weekly}
-            series={[
-              { label: 'Reported', color: REPORTED_COLOR },
-              { label: 'Closed', color: CLOSED_COLOR },
-            ]}
-            formatValue={(n) => String(Math.round(n))}
-            height={170}
-            emptyMessage="No weekly detail for this period"
-          />
+          {/* Held left-to-right in Hebrew: the chart is SVG, which does not mirror, and under an
+              inherited rtl its text-anchor flips and the axis labels land inside the bars. */}
+          <div dir="ltr">
+            <ColumnChart
+              data={weekly}
+              series={[
+                { label: t('review.volume.reported'), color: REPORTED_COLOR },
+                { label: t('review.volume.closed'), color: CLOSED_COLOR },
+              ]}
+              formatValue={(n) => String(Math.round(n))}
+              height={170}
+              emptyMessage={t('review.volume.noWeekly')}
+            />
+          </div>
         </div>
 
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-soft mb-2">
-            By trade
+            {t('review.volume.byCrew')}
           </p>
           <ul className="space-y-2">
             {trades.map(([trade, n]) => (
@@ -486,7 +509,7 @@ function VolumeSection({ data, weekly }: { data: SeasonReviewData; weekly: Colum
                 </div>
               </li>
             ))}
-            {trades.length === 0 && <li className="text-[12px] text-ink-faint italic">Nothing recorded.</li>}
+            {trades.length === 0 && <li className="text-[12px] text-ink-faint italic">{t('review.volume.nothingRecorded')}</li>}
           </ul>
         </div>
       </div>
@@ -497,34 +520,34 @@ function VolumeSection({ data, weekly }: { data: SeasonReviewData; weekly: Colum
 // ─── 2 · Response times ───────────────────────────────────────────────────────
 
 function TimingSection({ data }: { data: SeasonReviewData }) {
+  const { t } = useTranslation('campgroundAdmin');
   const labelOf = useTradeLabel();
   const rows = [...data.timing].sort((a, b) => a.trade.localeCompare(b.trade));
   const thin = rows.every((r) => r.sample < SMALL_SAMPLE);
 
   return (
     <Section
-      title="Response times — medians"
-      lede="Medians."
+      title={t('review.timing.title')}
+      lede={t('review.timing.lede')}
     >
       {rows.length === 0 ? (
-        <p className="text-[12.5px] text-ink-faint italic">Nothing closed in this period yet.</p>
+        <p className="text-[12.5px] text-ink-faint italic">{t('review.timing.nothingClosed')}</p>
       ) : (
         <>
           {thin && (
             <p className="text-[12px] text-amber-text bg-amber-bg border border-amber/30 rounded-card px-4 py-2.5 mb-3 leading-relaxed">
-              Every row here rests on fewer than {SMALL_SAMPLE} work orders. Those are real numbers,
-              but they are not yet a pattern.
+              {t('review.timing.thin', { n: SMALL_SAMPLE })}
             </p>
           )}
           <Scroller>
             <table className="w-full min-w-[560px] border-collapse">
               <thead>
                 <tr>
-                  <th className={th}>Crew</th>
-                  <th className={th}>Priority</th>
-                  <th className={th}>Median to assign</th>
-                  <th className={th}>Median to close</th>
-                  <th className={th}>Based on</th>
+                  <th className={th}>{t('shared.crew')}</th>
+                  <th className={th}>{t('shared.priority')}</th>
+                  <th className={th}>{t('review.timing.medianAssign')}</th>
+                  <th className={th}>{t('review.timing.medianClose')}</th>
+                  <th className={th}>{t('review.timing.basedOn')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -533,12 +556,13 @@ function TimingSection({ data }: { data: SeasonReviewData }) {
                     <td className={`${td} font-semibold text-forest`}>
                       {labelOf(r.trade)}
                     </td>
-                    <td className={td}>{r.priority}</td>
-                    <td className={`${td} tabular-nums`}>{hoursLabel(r.median_hours_to_assign)}</td>
-                    <td className={`${td} tabular-nums`}>{hoursLabel(r.median_hours_to_close)}</td>
+                    <td className={td}>{priorityLabel(r.priority)}</td>
+                    <td className={`${td} tabular-nums`}>{hoursLabel(t, r.median_hours_to_assign)}</td>
+                    <td className={`${td} tabular-nums`}>{hoursLabel(t, r.median_hours_to_close)}</td>
                     <td className={`${td} tabular-nums ${r.sample < SMALL_SAMPLE ? 'text-ink-faint' : 'text-ink-soft'}`}>
-                      {r.sample} work order{r.sample === 1 ? '' : 's'}
-                      {r.sample < SMALL_SAMPLE ? ' — small sample' : ''}
+                      {r.sample < SMALL_SAMPLE
+                        ? t('review.timing.sampleSmall', { count: r.sample })
+                        : t('review.timing.sample', { count: r.sample })}
                     </td>
                   </tr>
                 ))}
@@ -554,16 +578,17 @@ function TimingSection({ data }: { data: SeasonReviewData }) {
 // ─── 3 · Where the work is ────────────────────────────────────────────────────
 
 function LocationsSection({ data }: { data: SeasonReviewData }) {
+  const { t } = useTranslation('campgroundAdmin');
   const rows = data.locations.slice(0, 15);
   const maxCount = Math.max(1, ...rows.map((r) => r.count));
   const maxDays = Math.max(1, ...rows.map((r) => r.open_days));
 
   return (
     <Section
-      title="Where the work is"
+      title={t('review.locations.title')}
     >
       {rows.length === 0 ? (
-        <p className="text-[12.5px] text-ink-faint italic">No work was tied to a location.</p>
+        <p className="text-[12.5px] text-ink-faint italic">{t('review.locations.none')}</p>
       ) : (
         <ul className="space-y-3">
           {rows.map((r) => (
@@ -571,9 +596,9 @@ function LocationsSection({ data }: { data: SeasonReviewData }) {
               <div className="flex items-baseline justify-between gap-3 flex-wrap">
                 <b className="text-[14px] font-semibold text-forest">{r.location}</b>
                 <span className="text-[12px] text-ink-soft tabular-nums">
-                  {r.count} work order{r.count === 1 ? '' : 's'}
-                  {' · '}{Math.round(r.open_days)} open-day{Math.round(r.open_days) === 1 ? '' : 's'}
-                  {r.cost > 0 ? ` · ${formatCost(r.cost)}` : ''}
+                  {t('review.locations.workOrders', { count: r.count })}
+                  {' · '}{t('review.locations.openDays', { count: Math.round(r.open_days) })}
+                  {r.cost > 0 ? <>{' · '}<bdi>{formatCost(r.cost)}</bdi></> : null}
                 </span>
               </div>
               {/* Two bars on two scales, each labelled with the value it reaches: how OFTEN it
@@ -581,7 +606,7 @@ function LocationsSection({ data }: { data: SeasonReviewData }) {
               <div className="mt-1.5 space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="w-20 text-[10px] uppercase tracking-[0.1em] text-ink-faint flex-shrink-0">
-                    Count
+                    {t('review.locations.count')}
                   </span>
                   <div className="flex-1 h-2.5 bg-cream-dark rounded-pill overflow-hidden">
                     <div className="h-full bg-forest rounded-pill" style={{ width: `${(r.count / maxCount) * 100}%` }} />
@@ -589,7 +614,7 @@ function LocationsSection({ data }: { data: SeasonReviewData }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-20 text-[10px] uppercase tracking-[0.1em] text-ink-faint flex-shrink-0">
-                    Days open
+                    {t('review.locations.daysOpen')}
                   </span>
                   <div className="flex-1 h-2.5 bg-cream-dark rounded-pill overflow-hidden">
                     <div className="h-full bg-sage rounded-pill" style={{ width: `${(r.open_days / maxDays) * 100}%` }} />
@@ -602,7 +627,7 @@ function LocationsSection({ data }: { data: SeasonReviewData }) {
       )}
       {data.locations.length > rows.length && (
         <p className="text-[11.5px] text-ink-faint mt-3">
-          Showing the top {rows.length} of {data.locations.length} locations.
+          {t('review.locations.showingTop', { shown: rows.length, total: data.locations.length })}
         </p>
       )}
     </Section>
@@ -612,24 +637,25 @@ function LocationsSection({ data }: { data: SeasonReviewData }) {
 // ─── 4 · What it cost, by thing ───────────────────────────────────────────────
 
 function AssetsSection({ data }: { data: SeasonReviewData }) {
+  const { t } = useTranslation('campgroundAdmin');
   return (
     <Section
-      title="What it cost, by thing"
-      lede={`${formatCost(data.money.recorded_cost)} recorded across ${data.money.with_cost} work order${data.money.with_cost === 1 ? '' : 's'}.`}
+      title={t('review.assets.title')}
+      lede={t('review.assets.lede', { cost: formatCost(data.money.recorded_cost), count: data.money.with_cost })}
     >
       {data.assets.length === 0 ? (
         <p className="text-[12.5px] text-ink-faint italic">
-          No work was tied to a specific asset.
+          {t('review.assets.none')}
         </p>
       ) : (
         <Scroller>
           <table className="w-full min-w-[520px] border-collapse">
             <thead>
               <tr>
-                <th className={th}>Asset</th>
-                <th className={th}>Work orders</th>
-                <th className={th}>Days out of service</th>
-                <th className={th}>Recorded cost</th>
+                <th className={th}>{t('review.assets.asset')}</th>
+                <th className={th}>{t('review.assets.workOrders')}</th>
+                <th className={th}>{t('review.assets.daysOut')}</th>
+                <th className={th}>{t('review.assets.recordedCost')}</th>
               </tr>
             </thead>
             <tbody>
@@ -652,23 +678,24 @@ function AssetsSection({ data }: { data: SeasonReviewData }) {
 // ─── 5 · Workload (admin only) ────────────────────────────────────────────────
 
 function WorkloadSection({ data }: { data: SeasonReviewData }) {
+  const { t } = useTranslation('campgroundAdmin');
   return (
-    <Section title="Workload">
+    <Section title={t('review.workload.title')}>
       <p className="text-[12.5px] text-ink-soft leading-relaxed mb-3 max-w-3xl">
-        A workload picture, not a ranking.
+        {t('review.workload.lede')}
       </p>
       {data.workload.length === 0 ? (
-        <p className="text-[12.5px] text-ink-faint italic">Nothing was assigned in this period.</p>
+        <p className="text-[12.5px] text-ink-faint italic">{t('review.workload.none')}</p>
       ) : (
         <Scroller>
           <table className="w-full min-w-[560px] border-collapse">
             <thead>
               <tr>
-                <th className={th}>Person</th>
-                <th className={th}>Closed</th>
-                <th className={th}>Still open</th>
-                <th className={th}>Median to close</th>
-                <th className={th}>Minutes logged</th>
+                <th className={th}>{t('review.workload.person')}</th>
+                <th className={th}>{t('review.workload.closed')}</th>
+                <th className={th}>{t('review.workload.stillOpen')}</th>
+                <th className={th}>{t('review.timing.medianClose')}</th>
+                <th className={th}>{t('review.workload.minutes')}</th>
               </tr>
             </thead>
             <tbody>
@@ -679,9 +706,9 @@ function WorkloadSection({ data }: { data: SeasonReviewData }) {
                   <td className={`${td} font-semibold text-forest`}>{w.name}</td>
                   <td className={`${td} tabular-nums`}>{w.closed}</td>
                   <td className={`${td} tabular-nums`}>{w.still_open}</td>
-                  <td className={`${td} tabular-nums`}>{hoursLabel(w.median_hours_to_close)}</td>
+                  <td className={`${td} tabular-nums`}>{hoursLabel(t, w.median_hours_to_close)}</td>
                   <td className={`${td} tabular-nums`}>
-                    {w.minutes_logged > 0 ? w.minutes_logged.toLocaleString() : '—'}
+                    {w.minutes_logged > 0 ? w.minutes_logged.toLocaleString(currentLang()) : '—'}
                   </td>
                 </tr>
               ))}
@@ -696,6 +723,8 @@ function WorkloadSection({ data }: { data: SeasonReviewData }) {
 // ─── Vendors ──────────────────────────────────────────────────────────────────
 
 function VendorsSection({ data }: { data: SeasonReviewData }) {
+  const { t } = useTranslation('campgroundAdmin');
+  const labelOf = useTradeLabel();
   if (data.vendors.length === 0) return null;
 
   // How much of the cost column is actually filled in. A camp that priced two of eleven jobs
@@ -705,18 +734,18 @@ function VendorsSection({ data }: { data: SeasonReviewData }) {
 
   return (
     <Section
-      title="Vendors"
-      lede={priced < jobs ? `Cost recorded on ${priced} of ${jobs} jobs.` : undefined}
+      title={t('review.vendors.title')}
+      lede={priced < jobs ? t('review.vendors.costCoverage', { priced, jobs }) : undefined}
     >
       <Scroller>
         <table className="w-full min-w-[560px] border-collapse">
           <thead>
             <tr>
-              <th className={th}>Vendor</th>
-              <th className={th}>Jobs</th>
-              <th className={th}>Still open</th>
-              <th className={th}>Median to close</th>
-              <th className={th}>Recorded cost</th>
+              <th className={th}>{t('review.vendors.vendor')}</th>
+              <th className={th}>{t('review.vendors.jobs')}</th>
+              <th className={th}>{t('review.workload.stillOpen')}</th>
+              <th className={th}>{t('review.timing.medianClose')}</th>
+              <th className={th}>{t('review.assets.recordedCost')}</th>
             </tr>
           </thead>
           <tbody>
@@ -724,12 +753,12 @@ function VendorsSection({ data }: { data: SeasonReviewData }) {
               <tr key={v.id}>
                 <td className={`${td} font-semibold text-forest`}>
                   {v.name}
-                  {v.trade && <span className="font-normal text-ink-soft"> · {v.trade}</span>}
+                  {v.trade && <span className="font-normal text-ink-soft"> · {labelOf(v.trade)}</span>}
                 </td>
                 <td className={`${td} tabular-nums`}>{v.jobs}</td>
                 <td className={`${td} tabular-nums`}>{v.open || '—'}</td>
                 <td className={`${td} tabular-nums`}>
-                  {v.median_days != null ? `${v.median_days} d` : '—'}
+                  {v.median_days != null ? t('review.daysShort', { value: v.median_days.toLocaleString(currentLang()) }) : '—'}
                 </td>
                 <td className={`${td} tabular-nums`}>{v.cost > 0 ? formatCost(v.cost) : '—'}</td>
               </tr>
@@ -748,13 +777,14 @@ function SourcesSection({ data }: { data: SeasonReviewData }) {
     .filter(([, n]) => n > 0)
     .sort((a, b) => b[1] - a[1]);
   const total = rows.reduce((s, [, n]) => s + n, 0);
+  const { t } = useTranslation('campgroundAdmin');
 
   return (
     <Section
-      title="How work arrived"
+      title={t('review.sources.title')}
     >
       {rows.length === 0 ? (
-        <p className="text-[12.5px] text-ink-faint italic">No source was recorded.</p>
+        <p className="text-[12.5px] text-ink-faint italic">{t('review.sources.none')}</p>
       ) : (
         <ul className="space-y-2 max-w-2xl">
           {rows.map(([key, n]) => (
@@ -764,7 +794,7 @@ function SourcesSection({ data }: { data: SeasonReviewData }) {
                   {SOURCE_LABELS[key as NonNullable<IssueSource>] ?? key}
                 </span>
                 <span className="text-[12.5px] text-ink-soft tabular-nums">
-                  {n} · {Math.round((n / total) * 100)}%
+                  <bdi dir="ltr">{n} · {Math.round((n / total) * 100)}%</bdi>
                 </span>
               </div>
               <div className="h-2 bg-cream-dark rounded-pill mt-1 overflow-hidden">
@@ -781,27 +811,28 @@ function SourcesSection({ data }: { data: SeasonReviewData }) {
 // ─── 7 · Routines ─────────────────────────────────────────────────────────────
 
 function RoutinesSection({ data }: { data: SeasonReviewData }) {
+  const { t } = useTranslation('campgroundAdmin');
   const r = data.routines;
   return (
     <Section
-      title="Routines"
+      title={t('review.routines.title')}
     >
       <div className="flex flex-wrap border-b border-border mb-3">
-        <StatCard label="Active routines" value={r.active} />
-        <StatCard label="Occurrences raised" value={r.generated} />
+        <StatCard label={t('review.routines.active')} value={r.active} />
+        <StatCard label={t('review.routines.raised')} value={r.generated} />
         <StatCard
-          label="Behind" value={r.behind.length}
+          label={t('review.routines.behind')} value={r.behind.length}
           variant={r.behind.length > 0 ? 'red' : 'green'}
         />
       </div>
       {r.behind.length === 0 ? (
-        <p className="text-[12.5px] text-ink-soft">Nothing fell behind in this period.</p>
+        <p className="text-[12.5px] text-ink-soft">{t('review.routines.noneBehind')}</p>
       ) : (
         <ul className="space-y-1">
           {r.behind.map((b) => (
             <li key={b.title} className="text-[12.5px] text-ink">
               <b className="font-semibold">{b.title}</b>
-              <span className="text-red-text"> — {b.cycles} cycle{b.cycles === 1 ? '' : 's'} behind</span>
+              <span className="text-red-text"> — {t('cadenceText.missed', { count: b.cycles })}</span>
             </li>
           ))}
         </ul>
@@ -813,41 +844,44 @@ function RoutinesSection({ data }: { data: SeasonReviewData }) {
 // ─── 8 · Carry-over ───────────────────────────────────────────────────────────
 
 function CarryOverSection({ data }: { data: SeasonReviewData }) {
+  const { t } = useTranslation('campgroundAdmin');
   const labelOf = useTradeLabel();
   const rows = [...data.carry_over].sort((a, b) => b.age_days - a.age_days);
 
   return (
     <Section
-      title="Carry-over"
-      lede="Open work orders from this season. Oldest first."
+      title={t('review.carry.title')}
+      lede={t('review.carry.lede')}
     >
       {rows.length === 0 ? (
         <p className="text-[12.5px] text-ink-soft">
-          Nothing is carrying over.
+          {t('review.carry.none')}
         </p>
       ) : (
         <Scroller>
           <table className="w-full min-w-[620px] border-collapse">
             <thead>
               <tr>
-                <th className={th}>Work order</th>
-                <th className={th}>Crew</th>
-                <th className={th}>Priority</th>
-                <th className={th}>Location</th>
-                <th className={th}>Status</th>
-                <th className={th}>Open for</th>
+                <th className={th}>{t('review.carry.workOrder')}</th>
+                <th className={th}>{t('shared.crew')}</th>
+                <th className={th}>{t('shared.priority')}</th>
+                <th className={th}>{t('review.carry.location')}</th>
+                <th className={th}>{t('review.carry.status')}</th>
+                <th className={th}>{t('review.carry.openFor')}</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((c) => (
                 <tr key={c.id}>
-                  <td className={`${td} font-semibold text-forest`}>{c.title}</td>
+                  <td className={`${td} font-semibold text-forest`}>
+                    <TranslatedText source="issues" id={c.id} field="title" text={c.title} />
+                  </td>
                   <td className={td}>{labelOf(c.trade)}</td>
-                  <td className={td}>{c.priority}</td>
+                  <td className={td}>{priorityLabel(c.priority)}</td>
                   <td className={td}>{c.location ?? '—'}</td>
                   <td className={td}>{STATUS_LABELS[c.status as IssueStatus] ?? c.status}</td>
                   <td className={`${td} tabular-nums ${c.age_days > 60 ? 'text-red-text font-semibold' : ''}`}>
-                    {Math.round(c.age_days)} days
+                    {t('review.carry.ageDays', { count: Math.round(c.age_days) })}
                   </td>
                 </tr>
               ))}

@@ -103,13 +103,13 @@ final class DeepLinkRouter: ObservableObject {
                 .execute()
                 .value
             guard let row = rows.first else {
-                failure = "That sticker is not recognised. It may have been reprinted."
+                failure = L10n.tr("That sticker is not recognised. It may have been reprinted.")
                 return
             }
             // Signed in somewhere else. Silently showing another camp's work would be a leak,
             // and silently showing nothing reads as a bug, so it says which camp it belongs to.
             if let campId = AuthManager.shared.currentCamp?.id, campId != row.camp_id {
-                failure = "That sticker belongs to \(row.camp_name). You are signed in to another camp."
+                failure = L10n.tr("That sticker belongs to %@. You are signed in to another camp.", row.camp_name)
                 return
             }
             pending = ScannedTarget(
@@ -117,7 +117,7 @@ final class DeepLinkRouter: ObservableObject {
                 kind: row.kind ?? "location", targetId: row.target_id, targetName: row.target_name
             )
         } catch {
-            failure = "Could not open that sticker. Check your signal and try again."
+            failure = L10n.tr("Could not open that sticker. Check your signal and try again.")
         }
     }
 

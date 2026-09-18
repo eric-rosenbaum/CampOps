@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Trans } from 'react-i18next';
+import { useScreenTranslation } from '@/components/i18n/untranslated';
 import { Check, Info } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useCampStore } from '@/store/campStore';
@@ -10,51 +12,53 @@ import { useCampStore } from '@/store/campStore';
  * that the function does not resolve renders as "{{whatever}}" in a contract, which is the one
  * outcome worth engineering against.
  */
-const TOKENS: { group: string; items: { key: string; hint: string }[] }[] = [
+// `group` and `hint` are read through t() at render. The token keys themselves are what the
+// camp writes into its stored agreement, so they are never translated.
+const TOKENS: { group: TokenGroup; items: { key: string; hint: boolean }[] }[] = [
   {
-    group: 'The group',
+    group: 'group',
     items: [
-      { key: 'group_name', hint: 'Tufts' },
-      { key: 'coordinator_name', hint: 'their contact' },
-      { key: 'coordinator_email', hint: '' },
-      { key: 'coordinator_phone', hint: '' },
-      { key: 'headcount', hint: 'how many people' },
+      { key: 'group_name', hint: true },
+      { key: 'coordinator_name', hint: true },
+      { key: 'coordinator_email', hint: false },
+      { key: 'coordinator_phone', hint: false },
+      { key: 'headcount', hint: true },
     ],
   },
   {
-    group: 'The stay',
+    group: 'stay',
     items: [
-      { key: 'arrival_date', hint: 'Wednesday, 21 October 2026' },
-      { key: 'arrival_time', hint: '7:00pm' },
-      { key: 'departure_date', hint: '' },
-      { key: 'departure_time', hint: '11:00am' },
-      { key: 'nights', hint: '3' },
+      { key: 'arrival_date', hint: true },
+      { key: 'arrival_time', hint: true },
+      { key: 'departure_date', hint: false },
+      { key: 'departure_time', hint: true },
+      { key: 'nights', hint: true },
     ],
   },
   {
-    group: 'Money',
+    group: 'money',
     items: [
-      { key: 'rate', hint: '$120 per person per night' },
-      { key: 'total', hint: '$18,000' },
-      { key: 'deposit', hint: '$5,000' },
-      { key: 'deposit_due', hint: '' },
-      { key: 'balance_due', hint: '14 days before arrival' },
+      { key: 'rate', hint: true },
+      { key: 'total', hint: true },
+      { key: 'deposit', hint: true },
+      { key: 'deposit_due', hint: false },
+      { key: 'balance_due', hint: true },
     ],
   },
   {
-    group: 'Deadlines',
+    group: 'deadlines',
     items: [
-      { key: 'cancellation_date', hint: '30 days before arrival' },
-      { key: 'headcount_due', hint: '' },
-      { key: 'coi_due', hint: '21 days before arrival' },
+      { key: 'cancellation_date', hint: true },
+      { key: 'headcount_due', hint: false },
+      { key: 'coi_due', hint: true },
     ],
   },
   {
-    group: 'You',
+    group: 'you',
     items: [
-      { key: 'camp_name', hint: '' },
-      { key: 'camp_address', hint: '' },
-      { key: 'today', hint: "the date it's sent" },
+      { key: 'camp_name', hint: false },
+      { key: 'camp_address', hint: false },
+      { key: 'today', hint: true },
     ],
   },
 ];
@@ -66,7 +70,15 @@ const TOKENS: { group: string; items: { key: string; hint: string }[] }[] = [
  * somebody reviews those values before it goes -- so the camp is never in the position of having
  * sent a contract it has not read.
  */
+type TokenGroup = 'group' | 'stay' | 'money' | 'deadlines' | 'you';
+/** The tokens whose `hint` is true, i.e. that have an example under agreement.hints. */
+type HintKey =
+  | 'group_name' | 'coordinator_name' | 'headcount' | 'arrival_date' | 'arrival_time' | 'departure_time'
+  | 'nights' | 'rate' | 'total' | 'deposit' | 'balance_due' | 'cancellation_date' | 'coi_due' | 'today';
+
 export function AgreementTemplateEditor({ campId, editable }: { campId: string; editable: boolean }) {
+  // Screen-aware: this editor is also reachable from Retreats, which is not translated yet.
+  const { t } = useScreenTranslation('campInfo');
   const current = useCampStore((s) => s.currentCamp);
   const save = useCampStore((s) => s.setAgreementTemplateBody);
 
@@ -79,8 +91,8 @@ export function AgreementTemplateEditor({ campId, editable }: { campId: string; 
   /** Tokens the camp has typed that nothing will fill. A live check, not a surprise at send. */
   const known = new Set(TOKENS.flatMap((g) => g.items.map((i) => i.key)));
   const unknown = [...new Set(
-    (body.match(/\{\{([a-z_]+)\}\}/g) ?? []).map((t) => t.slice(2, -2)),
-  )].filter((t) => !known.has(t));
+    (body.match(/\{\{([a-z_]+)\}\}/g) ?? []).map((m) => m.slice(2, -2)),
+  )].filter((k) => !known.has(k));
 
   async function handleSave() {
     setSaving(true); setError(null);
@@ -89,7 +101,7 @@ export function AgreementTemplateEditor({ campId, editable }: { campId: string; 
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'That did not save.');
+      setError(err instanceof Error ? err.message : t('agreement.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -103,21 +115,22 @@ export function AgreementTemplateEditor({ campId, editable }: { campId: string; 
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-soft">
-          Your retreat agreement
+          {t('agreement.title')}
         </p>
         <button
           onClick={() => setShowTokens((v) => !v)}
           className="inline-flex items-center gap-1 text-[12px] font-semibold text-forest hover:text-forest-mid"
         >
           <Info className="h-3.5 w-3.5" />
-          {showTokens ? 'Hide' : 'What can be filled in automatically'}
+          {showTokens ? t('agreement.hide') : t('agreement.showTokens')}
         </button>
       </div>
 
       <p className="mt-1 text-[11.5px] leading-relaxed text-ink-soft">
-        Write it once. Anywhere a detail changes by group, put a marker like{' '}
-        <code className="rounded bg-cream-dark px-1 py-px font-mono text-[11px]">{'{{group_name}}'}</code>{' '}
-        and each booking gets its own filled in. You review every value before it sends.
+        <Trans
+          t={t} i18nKey="agreement.intro" values={{ marker: '{{group_name}}' }}
+          components={{ code: <code dir="ltr" className="rounded bg-cream-dark px-1 py-px font-mono text-[11px]" /> }}
+        />
       </p>
 
       {showTokens && (
@@ -125,14 +138,17 @@ export function AgreementTemplateEditor({ campId, editable }: { campId: string; 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {TOKENS.map((g) => (
               <div key={g.group}>
-                <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-ink-faint">{g.group}</p>
+                <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-ink-faint">{t(`agreement.groups.${g.group}`)}</p>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {g.items.map((i) => (
                     <button
                       key={i.key}
                       disabled={!editable}
                       onClick={() => insert(i.key)}
-                      title={i.hint ? `e.g. ${i.hint}` : `Insert {{${i.key}}}`}
+                      title={i.hint
+                        ? t('agreement.example', { hint: t(`agreement.hints.${i.key as HintKey}`) })
+                        : t('agreement.insert', { token: `{{${i.key}}}` })}
+                      dir="ltr"
                       className="rounded-btn border border-border bg-white px-1.5 py-0.5 font-mono
                                  text-[11px] text-ink transition-colors hover:border-sage disabled:opacity-50"
                     >
@@ -144,7 +160,7 @@ export function AgreementTemplateEditor({ campId, editable }: { campId: string; 
             ))}
           </div>
           <p className="mt-2.5 text-[11px] text-ink-faint">
-            Click one to add it at the end, or type it anywhere yourself.
+            {t('agreement.clickHint')}
           </p>
         </div>
       )}
@@ -154,7 +170,7 @@ export function AgreementTemplateEditor({ campId, editable }: { campId: string; 
         onChange={(e) => setBody(e.target.value)}
         disabled={!editable}
         rows={16}
-        placeholder="Paste your facility use agreement here, then mark the parts that change by group."
+        placeholder={t('agreement.placeholder')}
         className="mt-2 w-full resize-y rounded-btn border border-border bg-white px-3 py-2
                    font-mono text-[12.5px] leading-relaxed text-ink focus:border-sage focus:outline-none
                    disabled:opacity-60"
@@ -162,8 +178,7 @@ export function AgreementTemplateEditor({ campId, editable }: { campId: string; 
 
       {unknown.length > 0 && (
         <p className="mt-1.5 text-[11.5px] text-amber-text">
-          Nothing fills {unknown.map((t) => `{{${t}}}`).join(', ')} — it will appear in the
-          agreement exactly like that. Remove it, or pick one from the list above.
+          {t('agreement.unknown', { tokens: unknown.map((k) => `{{${k}}}`).join(', ') })}
         </p>
       )}
 
@@ -172,11 +187,11 @@ export function AgreementTemplateEditor({ campId, editable }: { campId: string; 
       {editable && (
         <div className="mt-2 flex items-center gap-2.5">
           <Button size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save agreement'}
+            {saving ? t('savingEllipsis') : t('agreement.save')}
           </Button>
           {saved && (
             <span className="inline-flex items-center gap-1 text-[12px] font-medium text-green-muted-text">
-              <Check className="h-3.5 w-3.5" /> Saved
+              <Check className="h-3.5 w-3.5" /> {t('saved')}
             </span>
           )}
         </div>

@@ -1,0 +1,94 @@
+{
+  "loading": "Cargando",
+  "saving": "Guardando…",
+  "cancel": "Cancelar",
+  "generic": "Algo salió mal. Inténtalo otra vez.",
+  "teamMember": "Miembro del equipo",
+  "page": {
+    "title": "Seguridad y privacidad",
+    "subtitle": "Protege tu cuenta y administra la información de tu campamento"
+  },
+  "sections": {
+    "account": "Tu cuenta",
+    "campData": "Los datos de tu campamento",
+    "policies": "Políticas"
+  },
+  "password": {
+    "title": "Contraseña",
+    "setTitle": "Crea una contraseña",
+    "changeBlurb": "Cambia la contraseña con la que inicias sesión.",
+    "setBlurb": "Entras con un código que te llega por correo. Crea una contraseña si prefieres entrar con ella; el código por correo sigue funcionando igual.",
+    "updated": "Tu contraseña se actualizó.",
+    "changeAgain": "Cambiarla otra vez",
+    "current": "Contraseña actual",
+    "new": "Contraseña nueva",
+    "confirm": "Confirma la contraseña nueva",
+    "minLength": "Al menos {{min}} caracteres.",
+    "update": "Actualizar contraseña",
+    "set": "Guardar contraseña",
+    "tooShort": "La contraseña debe tener al menos {{min}} caracteres.",
+    "mismatch": "Las contraseñas no coinciden.",
+    "same": "Esa ya es tu contraseña. Elige una distinta."
+  },
+  "mfa": {
+    "title": "Inicio de sesión en dos pasos",
+    "blurb": "Agrega un segundo paso al iniciar sesión con una app de autenticación gratuita (Google Authenticator, 1Password, Authy). Recomendado para quien tenga acceso a información de los campistas.",
+    "on": "El inicio de sesión en dos pasos está activado",
+    "turnOff": "Desactivar",
+    "scan": "Escanea esto con tu app de autenticación y escribe el código de 6 dígitos que aparece.",
+    "qrAlt": "Código QR para configurar la app de autenticación",
+    "cantScan": "¿No puedes escanear? Escribe esta clave",
+    "codeLabel": "Código de 6 dígitos",
+    "checking": "Comprobando…",
+    "turnOn": "Activar",
+    "addDevice": "Agregar otro dispositivo",
+    "enable": "Activar el inicio de sesión en dos pasos",
+    "startFailed": "No pudimos iniciar la configuración. Inténtalo otra vez.",
+    "codeMismatch": "Ese código no coincide. Revisa tu app de autenticación e inténtalo otra vez.",
+    "confirmOff": "¿Desactivar el inicio de sesión en dos pasos para este dispositivo? Ya no se te pedirá un código de él al iniciar sesión."
+  },
+  "export": {
+    "title": "Descarga tus datos",
+    "blurb": "Obtén una copia completa de todo lo que hay en tu campamento en un solo archivo, útil para tus registros o respaldos. La descarga queda anotada en el registro de actividad.",
+    "preparing": "Preparando…",
+    "download": "Descargar una copia",
+    "failed": "La exportación no terminó. Inténtalo otra vez."
+  },
+  "audit": {
+    "title": "Registro de actividad",
+    "blurb": "Un registro de acciones delicadas: quién vio o cambió información de salud de campistas, roles del equipo, facturación de retiros, descargas de datos y enlaces de invitados restablecidos.",
+    "empty": "Todavía no hay actividad.",
+    "when": "Cuándo",
+    "who": "Quién",
+    "action": "Acción",
+    "area": "Área",
+    "system": "Sistema",
+    "actions": {
+      "insert": "Agregó un registro",
+      "update": "Editó un registro",
+      "delete": "Eliminó un registro",
+      "view_camper_health": "Vio información de salud de un campista",
+      "export_data": "Descargó una copia de los datos",
+      "regenerate_portal_token": "Restableció un enlace del portal de invitados"
+    },
+    "tables": {
+      "campers": "Campista",
+      "camper_restrictions": "Salud del campista",
+      "camper_sessions": "Sesión del campista",
+      "commissary_files": "Documento de salud",
+      "camp_members": "Miembro del equipo",
+      "retreat_charges": "Facturación de retiro",
+      "retreat_payments": "Pago de retiro",
+      "retreat_costs": "Costo de retiro",
+      "retreats": "Retiro"
+    }
+  },
+  "privacy": {
+    "title": "Privacidad y seguridad",
+    "blurb": "La información de tu campamento (incluidos los datos de salud de los campistas) es privada para tu campamento y está protegida con medidas de seguridad estándar de la industria. Todos los detalles están aquí:",
+    "policy": "Política de privacidad",
+    "policyDesc": "Qué recopilamos y cómo se usa",
+    "overview": "Resumen de seguridad",
+    "overviewDesc": "Cómo se protegen tus datos"
+  }
+}

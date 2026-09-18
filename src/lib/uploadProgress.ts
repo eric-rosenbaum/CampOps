@@ -11,6 +11,7 @@
  * the thing back through the same signed-URL path the reader will use. It only reaches 100%
  * once that read has actually returned bytes.
  */
+import { localizedLabels } from '../i18n';
 
 export type UploadStage = 'uploading' | 'saving' | 'verifying' | 'done' | 'failed';
 
@@ -34,13 +35,9 @@ export const STAGE_CEILING: Record<Exclude<UploadStage, 'failed'>, number> = {
   done: 100,
 };
 
-export const STAGE_LABEL: Record<UploadStage, string> = {
-  uploading: 'Uploading',
-  saving: 'Saving the record',
-  verifying: 'Checking it opens',
-  done: 'Done',
-  failed: 'Failed',
-};
+export const STAGE_LABEL: Record<UploadStage, string> = localizedLabels('common:upload', [
+  'uploading', 'saving', 'verifying', 'done', 'failed',
+]);
 
 /**
  * Wraps a caller's progress callback so the percentage can only ever climb.

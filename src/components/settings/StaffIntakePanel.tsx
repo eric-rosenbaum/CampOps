@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link2, Copy, Check, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useSafetyStore } from '@/store/safetyStore';
 import { useCampStore } from '@/store/campStore';
 import { useChecklistStore } from '@/store/checklistStore';
 import { useAuth } from '@/lib/auth';
-import { generateId, toDateStr } from '@/lib/utils';
+import { formatDate, generateId, toDateStr } from '@/lib/utils';
 import {
   dbCreateIntakeLink, dbRevokeIntakeLink, dbLoadIntake, dbMarkSubmissionApplied,
   submissionPatch, type StaffIntakeLink, type StaffIntakeSubmission,
@@ -24,11 +25,19 @@ import type { SafetyStaff } from '@/lib/types';
  * straight to the roster would be an unauthenticated door into camp data, and reviewing is also
  * where a director notices two people typed the same name.
  */
+/**
+ * A calendar day said the reader's way. The birthday comes off a public form, so anything that is
+ * not a clean YYYY-MM-DD is shown as typed — date-fns throws on an invalid date, and one odd reply
+ * would otherwise take the whole roster tab down with it.
+ */
+const day = (s: string) => (/^\d{4}-\d{2}-\d{2}$/.test(s) ? formatDate(s) : s);
+
 export function StaffIntakePanel() {
   const campId = useCampStore((s) => s.currentCamp?.id ?? null);
   const season = useChecklistStore((s) => s.season);
   const { staff, addStaff, updateStaff } = useSafetyStore();
   const { currentUser } = useAuth();
+  const { t } = useTranslation('staff');
 
   const [links, setLinks] = useState<StaffIntakeLink[]>([]);
   const [subs, setSubs] = useState<StaffIntakeSubmission[]>([]);
@@ -108,11 +117,9 @@ export function StaffIntakePanel() {
   return (
     <div className="bg-white rounded-card border border-border overflow-hidden">
       <div className="px-5 py-4 border-b border-cream-dark">
-        <p className="text-[13.5px] font-semibold text-forest">Let staff fill in their own details</p>
+        <p className="text-[13.5px] font-semibold text-forest">{t('intake.title')}</p>
         <p className="text-[12px] text-ink-soft mt-1 leading-relaxed">
-          Send one link to everybody. They give their date of birth, education and camp experience —
-          the fields the state&rsquo;s permit forms ask about a person and no roster export carries.
-          Replies wait here for you to apply.
+          {t('intake.body')}
         </p>
       </div>
 
@@ -120,7 +127,7 @@ export function StaffIntakePanel() {
         <div className="border-b border-cream-dark">
           <div className="px-5 py-2 bg-amber-bg">
             <span className="text-[10px] uppercase tracking-[0.12em] font-bold text-amber-text">
-              {subs.length} waiting for you
+              {t('intake.waiting', { count: subs.length })}
             </span>
           </div>
           {subs.map((sub) => (
@@ -130,16 +137,17 @@ export function StaffIntakePanel() {
                 <div className="text-[13px] font-semibold text-ink">{sub.payload.name}</div>
                 <div className="text-[11.5px] text-ink-soft mt-0.5">
                   {[sub.payload.title,
-                    sub.payload.date_of_birth && `born ${sub.payload.date_of_birth}`,
-                    sub.payload.education].filter(Boolean).join(' · ') || 'Name only'}
+                    sub.payload.date_of_birth
+                      && t('intake.born', { date: day(sub.payload.date_of_birth) }),
+                    sub.payload.education].filter(Boolean).join(' · ') || t('intake.nameOnly')}
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Button size="sm" variant="ghost" onClick={() => void dismiss(sub)}>
-                  <X className="w-3.5 h-3.5" /> Discard
+                  <X className="w-3.5 h-3.5" /> {t('intake.discard')}
                 </Button>
                 <Button size="sm" onClick={() => void apply(sub)}>
-                  <Check className="w-3.5 h-3.5" /> Add to roster
+                  <Check className="w-3.5 h-3.5" /> {t('intake.addToRoster')}
                 </Button>
               </div>
             </div>
@@ -151,27 +159,28 @@ export function StaffIntakePanel() {
         {live.length === 0 ? (
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => void createLink()}>
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-            Create a collection link
+            {t('intake.createLink')}
           </Button>
         ) : (
           <div className="space-y-2">
             {live.map((l) => (
               <div key={l.id} className="flex items-center gap-2 flex-wrap">
-                <code className="text-[11.5px] font-mono bg-paper-raised border border-border
+                <code dir="ltr" className="text-[11.5px] font-mono bg-paper-raised border border-border
                                  rounded-btn px-2.5 py-1.5 min-w-0 truncate flex-1">
                   {window.location.origin}/staff-intake/{l.token}
                 </code>
                 <Button size="sm" variant="ghost" onClick={() => copy(l.token)}>
                   {copied === l.token
-                    ? <><Check className="w-3.5 h-3.5" /> Copied</>
-                    : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+                    ? <><Check className="w-3.5 h-3.5" /> {t('intake.copied')}</>
+                    : <><Copy className="w-3.5 h-3.5" /> {t('intake.copy')}</>}
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => void revoke(l.id)}>Revoke</Button>
+                <Button size="sm" variant="ghost" onClick={() => void revoke(l.id)}>{t('intake.revoke')}</Button>
               </div>
             ))}
             <p className="text-[11px] text-ink-faint">
-              Expires {live[0].expiresOn ?? 'never'}. Revoking it stops the link at once; anything
-              already submitted stays in your queue.
+              {live[0].expiresOn
+                ? t('intake.expires', { date: day(live[0].expiresOn) })
+                : t('intake.expiresNever')}
             </p>
           </div>
         )}

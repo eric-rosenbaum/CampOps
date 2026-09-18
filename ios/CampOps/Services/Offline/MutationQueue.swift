@@ -111,7 +111,7 @@ actor MutationQueue {
         load()
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         items[index].isRejected = true
-        items[index].lastError = message ?? "The server rejected this change."
+        items[index].lastError = message ?? L10n.tr("The server rejected this change.")
         persist()
     }
 

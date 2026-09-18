@@ -234,6 +234,10 @@ function isMutatingRequest(input: RequestInfo | URL, init?: RequestInit): boolea
   const url = input instanceof Request ? input.url : String(input);
   // Auth traffic (token refresh, session) is not a data mutation.
   if (url.includes('/auth/v1/')) return false;
+  // Translating what someone typed stores nothing the reader is waiting on — the original is
+  // already on screen. Counted as a write, each model call held every realtime reload behind
+  // awaitWriteQuiet for up to its cap, and a missing function raised the data-loss banner.
+  if (url.includes('/functions/v1/translate-content')) return false;
   const rpc = url.match(/\/rest\/v1\/rpc\/([^/?#]+)/);
   if (rpc) return !READ_ONLY_RPCS.has(rpc[1]);
   return true;
@@ -302,6 +306,8 @@ const BEST_EFFORT_TARGETS = new Set([
   // modal's failure to report — "what's on screen may not match what's stored" is a lie about
   // an email that was never a write.
   'send-email',
+  // Belt to isMutatingRequest's braces: a translation that failed loses nothing.
+  'translate-content',
 ]);
 
 function describeTarget(url: string): string {

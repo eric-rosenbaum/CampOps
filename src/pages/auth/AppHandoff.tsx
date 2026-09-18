@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 // No offline claim here: the iOS app has no offline layer, so any copy implying it works
 // without a signal would be false advertising in the one place a new user reads carefully.
 import { Camera, ClipboardCheck, Bell } from 'lucide-react';
@@ -23,6 +24,7 @@ import { CampCommandMark } from '@/components/shared/CampCommandMark';
  * redirects straight to the dashboard, so joining from a laptop is unaffected.
  */
 export function AppHandoff() {
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const profile = useAuthStore((s) => s.profile);
   const currentCamp = useCampStore((s) => s.currentCamp);
@@ -57,37 +59,36 @@ export function AppHandoff() {
 
         <div className="bg-white rounded-xl border border-border shadow-sm p-8 text-center">
           <h1 className="text-[20px] font-bold text-forest mb-1.5">
-            {firstName ? `You're in, ${firstName}!` : "You're in!"}
+            {firstName ? t('handoff.titleNamed', { name: firstName }) : t('handoff.title')}
           </h1>
           {currentCamp && (
             <p className="text-[13px] text-ink-soft mb-6">
-              You've joined {currentCamp.name}.
+              {t('handoff.joined', { camp: currentCamp.name })}
             </p>
           )}
 
           <p className="text-[13px] text-ink leading-relaxed mb-5">
-            Most camp work happens away from a desk. Get the iPhone app so you can log issues
-            where you find them.
+            {t('handoff.pitch')}
           </p>
 
-          <ul className="text-left space-y-2.5 mb-7">
-            <Benefit icon={Camera} text="Photograph problems on the spot" />
-            <Benefit icon={Bell} text="Pick up jobs assigned to you" />
-            <Benefit icon={ClipboardCheck} text="Work through opening and closing lists" />
+          <ul className="text-start space-y-2.5 mb-7">
+            <Benefit icon={Camera} text={t('handoff.benefitPhoto')} />
+            <Benefit icon={Bell} text={t('handoff.benefitJobs')} />
+            <Benefit icon={ClipboardCheck} text={t('handoff.benefitLists')} />
           </ul>
 
           <button
             onClick={goToStore}
             className="w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors"
           >
-            Get the iPhone app
+            {t('handoff.getApp')}
           </button>
 
           <button
             onClick={continueInBrowser}
             className="mt-3 text-[12px] text-ink-soft hover:text-forest transition-colors"
           >
-            Continue in browser
+            {t('handoff.continue')}
           </button>
         </div>
       </div>

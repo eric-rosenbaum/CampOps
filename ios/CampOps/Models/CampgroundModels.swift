@@ -18,7 +18,7 @@ enum Trade {
 
     /// The label for a key, from this camp's crews, falling back to a tidied key.
     static func label(_ key: String) -> String {
-        if let crew = AuthManager.shared.crews.first(where: { $0.key == key }) { return crew.name }
+        if let crew = AuthManager.shared.crews.first(where: { $0.key == key }) { return crew.displayName }
         return key.replacingOccurrences(of: "_", with: " ").capitalized
     }
 
@@ -123,28 +123,34 @@ struct WorkSchedule: Codable, Identifiable {
     /// routine that cannot be read back in one line cannot be checked by the person doing it.
     var cadenceLabel: String {
         let n = max(1, intervalCount)
-        let days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-        func every(_ unit: String) -> String { n == 1 ? "Every \(unit)" : "Every \(n) \(unit)s" }
+        // The chosen language's own short weekday names, Sunday first to match `by_weekday`.
+        let days = L10n.calendar.shortWeekdaySymbols
 
         switch cadence {
         case .daily:
-            return n == 1 ? "Every day" : "Every \(n) days"
+            return n == 1 ? L10n.tr("Every day") : L10n.tr("Every %lld days", n)
         case .weekly:
-            let named = (byWeekday ?? []).compactMap { $0 >= 0 && $0 < 7 ? days[$0] : nil }
-            return every("week") + (named.isEmpty ? "" : " on \(named.joined(separator: ", "))")
+            let every = n == 1 ? L10n.tr("Every week") : L10n.tr("Every %lld weeks", n)
+            let named = (byWeekday ?? []).compactMap { $0 >= 0 && $0 < days.count ? days[$0] : nil }
+            guard !named.isEmpty else { return every }
+            return L10n.tr("%1$@ on %2$@", every, named.formatted(.list(type: .and).locale(L10n.locale)))
         case .monthly:
-            return every("month") + (byMonthday.map { " on the \($0)" } ?? "")
+            let every = n == 1 ? L10n.tr("Every month") : L10n.tr("Every %lld months", n)
+            guard let byMonthday else { return every }
+            return L10n.tr("%1$@, on day %2$lld", every, byMonthday)
         case .annually:
-            return every("year")
+            return n == 1 ? L10n.tr("Every year") : L10n.tr("Every %lld years", n)
         case .seasonRelative:
             let d = daysRelativeToOpening ?? 0
-            if d == 0 { return "On opening day" }
-            return d < 0 ? "\(abs(d)) days before opening" : "\(d) days after opening"
+            if d == 0 { return L10n.tr("On opening day") }
+            return d < 0 ? L10n.tr("%lld days before opening", abs(d)) : L10n.tr("%lld days after opening", d)
         case .onTurnover:
-            return "Every turnover"
+            return L10n.tr("Every turnover")
         case .meter:
-            guard let meterInterval else { return "By meter" }
-            return "Every \(meterInterval) \(meterKind == "odometer" ? "miles" : "hours")"
+            guard let meterInterval else { return L10n.tr("By meter") }
+            return meterKind == "odometer"
+                ? L10n.tr("Every %lld miles", meterInterval)
+                : L10n.tr("Every %lld hours", meterInterval)
         }
     }
 }

@@ -15,6 +15,7 @@ import {
   AlertCircle, ArrowUpRight, Camera, Check, ChevronRight, Flame, Gauge, Loader2,
   Plus, Repeat, Undo2, X, Zap, Droplet, Wrench, Ban,
 } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 import type { CampAsset, CampLocation, Issue, Priority, QrTarget, Trade } from '@/lib/types';
 import { TRADES, TRADE_LABELS } from '@/lib/types';
 import { useIssuesStore } from '@/store/issuesStore';
@@ -34,6 +35,9 @@ import { formatDate, relativeTime, todayStr } from '@/lib/utils';
 import { LogIssueModal } from '@/components/shared/LogIssueModal';
 import { OpenInAppCard } from '@/components/qr/OpenInAppCard';
 import { CampCommandMark } from '@/components/shared/CampCommandMark';
+import { TranslatedText } from '@/components/i18n/TranslatedText';
+import { useTranslationLookup } from '@/lib/contentTranslation';
+import { useLang } from '@/lib/language';
 
 const UNDO_MS = 5000;
 
@@ -92,6 +96,9 @@ function Hub({
   /** The scanned sticker, carried through so the app card can hand the app the same URL. */
   token: string;
 }) {
+  const { t } = useTranslation('scan');
+  const { t: tc } = useTranslation('common');
+  const lookup = useTranslationLookup();
   const { currentUser, can, canAccessModule } = useAuth();
   const currentCamp = useCampStore((s) => s.currentCamp);
   const members = useCampStore((s) => s.members);
@@ -213,7 +220,7 @@ function Hub({
         )}
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-widest text-ink-faint">
-            {asset ? 'Equipment' : 'Location'}
+            {asset ? t('kind.asset') : t('kind.location')}
           </p>
           <h1 className="font-display text-[24px] font-bold leading-tight text-ink">{name}</h1>
           {path && <p className="mt-0.5 text-[12.5px] text-ink-faint">{path}</p>}
@@ -221,9 +228,10 @@ function Hub({
         <Link
           to={asset ? '/assets' : '/campground'}
           className="mt-1 flex-none text-ink-faint hover:text-forest"
-          title={asset ? 'Open in Assets' : 'Open in Campground'}
+          title={asset ? t('hub.openInAssets') : t('hub.openInCampground')}
+          aria-label={asset ? t('hub.openInAssets') : t('hub.openInCampground')}
         >
-          <ArrowUpRight className="h-5 w-5" />
+          <ArrowUpRight className="h-5 w-5 rtl:-scale-x-100" />
         </Link>
       </div>
 
@@ -231,26 +239,26 @@ function Hub({
         <div className="mb-4 rounded-card border border-red/40 bg-red-bg px-4 py-3">
           <p className="flex items-center gap-1.5 text-[13px] font-bold text-red-text">
             <Ban className="h-4 w-4 flex-none" />
-            {location.serviceStatus === 'limited' ? 'Limited use' : 'Out of service'}
+            {location.serviceStatus === 'limited' ? t('hub.service.limited') : t('hub.service.out')}
           </p>
           {location.outOfServiceReason && (
             <p className="mt-1 text-[13px] text-red-text/90">{location.outOfServiceReason}</p>
           )}
           <p className="mt-1 text-[12px] text-red-text/75">
-            {location.outOfServiceSince && <>Since {formatDate(location.outOfServiceSince)}. </>}
+            {location.outOfServiceSince && <>{t('hub.service.since', { date: formatDate(location.outOfServiceSince) })} </>}
             {location.expectedBack
-              ? <>Expected back {formatDate(location.expectedBack)}.</>
-              : 'No return date set.'}
+              ? t('hub.service.expectedBackOn', { date: formatDate(location.expectedBack) })
+              : t('hub.service.noReturnDate')}
           </p>
         </div>
       )}
 
       {/* ── Open work ─────────────────────────────────────────────────────── */}
       <Section
-        title={openWork.length === 1 ? '1 thing open here' : `${openWork.length} things open here`}
+        title={t('hub.openHere', { count: openWork.length })}
       >
         {openWork.length === 0 ? (
-          <p className="px-4 py-5 text-[13.5px] text-ink-faint">Nothing open here. Good.</p>
+          <p className="px-4 py-5 text-[13.5px] text-ink-faint">{t('hub.nothingOpen')}</p>
         ) : (
           <ul>
             {openWork.map((issue) => (
@@ -258,12 +266,15 @@ function Hub({
                 <div className="flex items-stretch">
                   <button
                     onClick={() => openEditIssueModal(issue.id)}
-                    className="min-w-0 flex-1 px-4 py-3.5 text-left hover:bg-paper"
+                    className="min-w-0 flex-1 px-4 py-3.5 text-start hover:bg-paper"
                   >
-                    <p className="text-[15px] font-bold leading-snug text-ink">{issue.title}</p>
+                    <TranslatedText
+                      as="p" source="issues" id={issue.id} field="title" text={issue.title}
+                      className="text-[15px] font-bold leading-snug text-ink"
+                    />
                     <p className="mt-0.5 text-[12px] text-ink-faint">
                       {STATUS_LABELS[issue.status]}
-                      {issue.priority !== 'normal' && <> · <span className="font-bold text-red">{issue.priority}</span></>}
+                      {issue.priority !== 'normal' && <> · <span className="font-bold text-red">{tc(`priority.${issue.priority}`)}</span></>}
                       {memberName(issue.assigneeId) && <> · {memberName(issue.assigneeId)}</>}
                       {' · '}{relativeTime(issue.createdAt)}
                     </p>
@@ -273,12 +284,12 @@ function Hub({
                       onClick={() => markDone(issue)}
                       // 56px of thumb. Anything smaller is a mis-tap in sunlight with gloves on.
                       className="flex w-[84px] flex-none flex-col items-center justify-center gap-0.5
-                                 border-l border-border/60 bg-white text-forest
+                                 border-s border-border/60 bg-white text-forest
                                  hover:bg-green-muted-bg active:bg-sage-pale"
-                      aria-label={`Mark "${issue.title}" done`}
+                      aria-label={t('hub.markDone', { title: lookup('issues', issue.id, 'title', issue.title) })}
                     >
                       <Check className="h-5 w-5" />
-                      <span className="text-[11px] font-bold uppercase tracking-wide">Done</span>
+                      <span className="text-[11px] font-bold uppercase tracking-wide">{t('hub.done')}</span>
                     </button>
                   )}
                 </div>
@@ -290,7 +301,7 @@ function Hub({
 
       {/* ── Log something new ─────────────────────────────────────────────── */}
       {can('createIssue') && (
-        <Section title="Log something here">
+        <Section title={t('hub.logTitle')}>
           {logOpen ? (
             <div className="space-y-3 px-4 py-4">
               <input
@@ -298,7 +309,7 @@ function Hub({
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') logIt(); }}
-                placeholder="What's wrong?"
+                placeholder={t('hub.whatsWrong')}
                 className="w-full rounded-btn border border-border bg-white px-3.5 py-3 text-[16px] focus:border-sage focus:outline-none"
               />
               <div className="flex gap-1.5">
@@ -306,11 +317,11 @@ function Hub({
                   <button
                     key={p}
                     onClick={() => setNewPriority(p)}
-                    className={`flex-1 rounded-btn border py-2.5 text-[13px] font-bold capitalize transition-colors ${
+                    className={`flex-1 rounded-btn border py-2.5 text-[13px] font-bold transition-colors ${
                       newPriority === p ? 'border-forest bg-forest text-paper' : 'border-border bg-white text-ink-soft'
                     }`}
                   >
-                    {p}
+                    {tc(`priority.${p}`)}
                   </button>
                 ))}
               </div>
@@ -327,53 +338,52 @@ function Hub({
                   onChange={(e) => setNewAssignee(e.target.value)}
                   className="min-w-0 flex-1 rounded-btn border border-border bg-white px-3 py-2.5 text-[13px]"
                 >
-                  <option value="">Unassigned</option>
+                  <option value="">{t('hub.unassigned')}</option>
                   {members.map((m) => <option key={m.userId} value={m.userId}>{m.fullName}</option>)}
                 </select>
               </div>
               <p className="text-[12px] text-ink-faint">
-                Filed against <span className="font-semibold text-ink-soft">{name}</span> — you scanned it, so
-                nobody has to name it.
+                <Trans t={t} i18nKey="hub.filedAgainst" values={{ name }} components={{ name: <span className="font-semibold text-ink-soft" /> }} />
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => { setLogOpen(false); setNewTitle(''); }}
                   className="rounded-btn border border-border bg-white px-4 py-3 text-[14px] font-bold text-ink-soft"
                 >
-                  Cancel
+                  {tc('actions.cancel')}
                 </button>
                 <button
                   onClick={logIt}
                   disabled={!newTitle.trim()}
                   className="flex-1 rounded-btn bg-forest py-3 text-[14px] font-bold text-paper disabled:opacity-40"
                 >
-                  Log it
+                  {t('hub.logIt')}
                 </button>
               </div>
             </div>
           ) : justLogged ? (
             <div className="flex items-center gap-3 px-4 py-4">
               <Check className="h-5 w-5 flex-none text-forest" />
-              <p className="min-w-0 flex-1 text-[14px] text-ink">Logged.</p>
+              <p className="min-w-0 flex-1 text-[14px] text-ink">{t('hub.logged')}</p>
               <button
                 // Opening the EDIT form on the row we just created is how the full modal gets a
                 // pre-filled location: the location is already on the work order.
                 onClick={() => { openEditIssueModal(justLogged); setJustLogged(null); }}
                 className="flex-none text-[13px] font-bold text-forest underline"
               >
-                Add detail
+                {t('hub.addDetail')}
               </button>
-              <button onClick={() => setJustLogged(null)} className="flex-none text-ink-faint">
+              <button onClick={() => setJustLogged(null)} className="flex-none text-ink-faint" aria-label={tc('actions.close')}>
                 <X className="h-4 w-4" />
               </button>
             </div>
           ) : (
             <button
               onClick={() => setLogOpen(true)}
-              className="flex w-full items-center gap-2.5 px-4 py-4 text-left text-[15px] font-bold text-forest hover:bg-paper"
+              className="flex w-full items-center gap-2.5 px-4 py-4 text-start text-[15px] font-bold text-forest hover:bg-paper"
             >
               <Plus className="h-5 w-5 flex-none" />
-              Something's wrong here
+              {t('hub.somethingWrong')}
             </button>
           )}
         </Section>
@@ -384,7 +394,7 @@ function Hub({
 
       {/* ── Routines ──────────────────────────────────────────────────────── */}
       {routines.length > 0 && (
-        <Section title="Routines here">
+        <Section title={t('hub.routinesHere')}>
           <ul>
             {routines.map((r) => (
               <li key={r.id} className="flex items-start gap-2.5 border-b border-border/60 px-4 py-3 last:border-0">
@@ -416,13 +426,17 @@ function Hub({
           <div className="mx-auto flex max-w-lg items-center gap-3 rounded-card bg-forest px-4 py-3 shadow-lg">
             <Check className="h-4 w-4 flex-none text-sage-light" />
             <p className="min-w-0 flex-1 truncate text-[13.5px] text-cream">
-              Done · <span className="opacity-80">{undo.title}</span>
+              <Trans
+                t={t}
+                i18nKey="hub.undoDone"
+                components={{ item: <TranslatedText source="issues" id={undo.id} field="title" text={undo.title} className="opacity-80" /> }}
+              />
             </p>
             <button
               onClick={takeItBack}
               className="flex flex-none items-center gap-1 rounded-btn bg-forest-mid px-3 py-2 text-[13px] font-bold text-cream"
             >
-              <Undo2 className="h-3.5 w-3.5" /> Undo
+              <Undo2 className="h-3.5 w-3.5 rtl:-scale-x-100" /> {t('hub.undo')}
             </button>
           </div>
         </div>
@@ -492,6 +506,8 @@ function locationPath(l: CampLocation | null, all: CampLocation[]): string | nul
  * know.
  */
 function ServicePanel({ location }: { location: CampLocation }) {
+  const { t } = useTranslation('scan');
+  const { t: tc } = useTranslation('common');
   const locations = useLocationStore((s) => s.locations);
   const setLocations = useLocationStore((s) => s.setLocations);
   const [editing, setEditing] = useState(false);
@@ -519,7 +535,7 @@ function ServicePanel({ location }: { location: CampLocation }) {
   const isDown = location.serviceStatus !== 'in_service';
 
   return (
-    <Section title="Service status">
+    <Section title={t('hub.service.title')}>
       {editing ? (
         <div className="space-y-3 px-4 py-4">
           <div className="flex gap-1.5">
@@ -531,18 +547,18 @@ function ServicePanel({ location }: { location: CampLocation }) {
                   status === s ? 'border-forest bg-forest text-paper' : 'border-border bg-white text-ink-soft'
                 }`}
               >
-                {s === 'limited' ? 'Limited use' : 'Out of service'}
+                {s === 'limited' ? t('hub.service.limited') : t('hub.service.out')}
               </button>
             ))}
           </div>
           <input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Why? e.g. ceiling leak, floor drying"
+            placeholder={t('hub.service.whyPlaceholder')}
             className="w-full rounded-btn border border-border bg-white px-3.5 py-3 text-[15px] focus:border-sage focus:outline-none"
           />
           <label className="block">
-            <span className="mb-1 block text-[12px] font-semibold text-ink-soft">Expected back</span>
+            <span className="mb-1 block text-[12px] font-semibold text-ink-soft">{t('hub.service.expectedBack')}</span>
             <input
               type="date"
               value={expected}
@@ -551,39 +567,38 @@ function ServicePanel({ location }: { location: CampLocation }) {
             />
           </label>
           <p className="text-[12px] leading-relaxed text-ink-faint">
-            This does more than label it: rental groups cannot be booked into a space that is out
-            of service, and the rooming board will not place anyone here.
+            {t('hub.service.explain')}
           </p>
           <div className="flex gap-2">
             <button
               onClick={() => setEditing(false)}
               className="rounded-btn border border-border bg-white px-4 py-3 text-[14px] font-bold text-ink-soft"
             >
-              Cancel
+              {tc('actions.cancel')}
             </button>
             <button
               onClick={() => apply(status)}
               className="flex-1 rounded-btn bg-red py-3 text-[14px] font-bold text-paper"
             >
-              Take it out of service
+              {t('hub.service.takeItOut')}
             </button>
           </div>
         </div>
       ) : isDown ? (
         <button
           onClick={() => apply('in_service')}
-          className="flex w-full items-center gap-2.5 px-4 py-4 text-left text-[15px] font-bold text-forest hover:bg-paper"
+          className="flex w-full items-center gap-2.5 px-4 py-4 text-start text-[15px] font-bold text-forest hover:bg-paper"
         >
           <Check className="h-5 w-5 flex-none" />
-          Put back in service
+          {t('hub.service.putBack')}
         </button>
       ) : (
         <button
           onClick={() => { setStatus('out_of_service'); setEditing(true); }}
-          className="flex w-full items-center gap-2.5 px-4 py-4 text-left text-[15px] font-bold text-ink hover:bg-paper"
+          className="flex w-full items-center gap-2.5 px-4 py-4 text-start text-[15px] font-bold text-ink hover:bg-paper"
         >
           <Ban className="h-5 w-5 flex-none text-ink-faint" />
-          Take out of service
+          {t('hub.service.takeOut')}
         </button>
       )}
     </Section>
@@ -599,6 +614,7 @@ function ServicePanel({ location }: { location: CampLocation }) {
  * every bunk — so the lookup walks up the location tree rather than demanding an exact match.
  */
 function BuildingPanel({ location }: { location: CampLocation }) {
+  const { t } = useTranslation('scan');
   const locations = useLocationStore((s) => s.locations);
   const buildingDetails = useLocationStore((s) => s.buildingDetails);
   const components = useBuildingStore((s) => s.components);
@@ -637,18 +653,18 @@ function BuildingPanel({ location }: { location: CampLocation }) {
   if (!detail && panels.length === 0 && valves.length === 0) return null;
 
   return (
-    <Section title="Shutoffs & panel">
+    <Section title={t('hub.building.title')}>
       {detail && (
         <dl className="divide-y divide-border/60">
-          <Shutoff icon={<Droplet className="h-4 w-4" />} label="Main water" value={detail.mainWaterShutoff} />
-          <Shutoff icon={<Flame className="h-4 w-4" />} label="Main gas" value={detail.mainGasShutoff} />
-          <Shutoff icon={<Zap className="h-4 w-4" />} label="Main electrical" value={detail.mainElectricalPanel} />
+          <Shutoff icon={<Droplet className="h-4 w-4" />} label={t('hub.building.mainWater')} value={detail.mainWaterShutoff} />
+          <Shutoff icon={<Flame className="h-4 w-4" />} label={t('hub.building.mainGas')} value={detail.mainGasShutoff} />
+          <Shutoff icon={<Zap className="h-4 w-4" />} label={t('hub.building.mainElectrical')} value={detail.mainElectricalPanel} />
         </dl>
       )}
 
       {valves.length > 0 && (
         <div className="border-t border-border/60 px-4 py-3">
-          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-widest text-ink-faint">Valves</p>
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-widest text-ink-faint">{t('hub.building.valves')}</p>
           <ul className="space-y-1">
             {valves.map((v) => (
               <li key={v.id} className="text-[13.5px] text-ink">
@@ -667,15 +683,15 @@ function BuildingPanel({ location }: { location: CampLocation }) {
             <p className="text-[13.5px] font-bold text-ink">{p.label}</p>
             {p.locationDetail && <p className="text-[12px] text-ink-faint">{p.locationDetail}</p>}
             {rows.length === 0 ? (
-              <p className="mt-1 text-[12.5px] text-ink-faint">No breakers recorded yet.</p>
+              <p className="mt-1 text-[12.5px] text-ink-faint">{t('hub.building.noBreakers')}</p>
             ) : (
               <ul className="mt-2 divide-y divide-border/50">
                 {rows.map((c) => (
                   <li key={c.id} className="flex items-baseline gap-2 py-1.5 text-[13px]">
                     <span className="w-8 flex-none font-mono text-ink-faint">{c.breakerNumber ?? '—'}</span>
-                    <span className="min-w-0 flex-1 text-ink">{c.label ?? c.controls ?? 'Unlabelled'}</span>
-                    {c.amperage != null && <span className="flex-none font-mono text-[12px] text-ink-faint">{c.amperage}A</span>}
-                    {!c.isOn && <span className="flex-none text-[11px] font-bold uppercase text-red">off</span>}
+                    <span className="min-w-0 flex-1 text-ink">{c.label ?? c.controls ?? t('hub.building.unlabelled')}</span>
+                    {c.amperage != null && <span dir="ltr" className="flex-none font-mono text-[12px] text-ink-faint">{c.amperage}A</span>}
+                    {!c.isOn && <span className="flex-none text-[11px] font-bold uppercase text-red">{t('hub.building.off')}</span>}
                   </li>
                 ))}
               </ul>
@@ -703,6 +719,7 @@ function Shutoff({ icon, label, value }: { icon: React.ReactNode; label: string;
 // ─── Asset ────────────────────────────────────────────────────────────────────
 
 function AssetPanels({ asset }: { asset: CampAsset }) {
+  const { t } = useTranslation('scan');
   const assets = useAssetStore((s) => s.assets);
   const setAssets = useAssetStore((s) => s.setAssets);
   const serviceRecords = useAssetStore((s) => s.serviceRecords);
@@ -753,14 +770,14 @@ function AssetPanels({ asset }: { asset: CampAsset }) {
   return (
     <>
       {kinds.length > 0 && (
-        <Section title="Meter">
+        <Section title={t('hub.meter.title')}>
           <div className="px-4 py-4">
             <div className="mb-3 flex gap-4">
               {asset.tracksHours && (
-                <Reading label="Hours" value={asset.currentHours} />
+                <Reading label={t('hub.meter.hours')} value={asset.currentHours} />
               )}
               {asset.tracksOdometer && (
-                <Reading label="Miles" value={asset.currentOdometer} />
+                <Reading label={t('hub.meter.miles')} value={asset.currentOdometer} />
               )}
             </div>
             <div className="flex gap-2">
@@ -770,15 +787,15 @@ function AssetPanels({ asset }: { asset: CampAsset }) {
                   onChange={(e) => setKind(e.target.value as 'hours' | 'odometer')}
                   className="rounded-btn border border-border bg-white px-3 py-3 text-[14px]"
                 >
-                  <option value="hours">Hours</option>
-                  <option value="odometer">Miles</option>
+                  <option value="hours">{t('hub.meter.hours')}</option>
+                  <option value="odometer">{t('hub.meter.miles')}</option>
                 </select>
               )}
               <input
                 value={reading}
                 onChange={(e) => setReading(e.target.value)}
                 inputMode="numeric"
-                placeholder="Reading now"
+                placeholder={t('hub.meter.readingNow')}
                 className="min-w-0 flex-1 rounded-btn border border-border bg-white px-3.5 py-3 text-[16px] focus:border-sage focus:outline-none"
               />
               <button
@@ -786,23 +803,23 @@ function AssetPanels({ asset }: { asset: CampAsset }) {
                 disabled={!reading.trim() || saving}
                 className="flex-none rounded-btn bg-forest px-4 py-3 text-[14px] font-bold text-paper disabled:opacity-40"
               >
-                <Gauge className="mr-1 inline h-4 w-4" />
-                {saving ? '…' : 'Record'}
+                <Gauge className="me-1 inline h-4 w-4" />
+                {saving ? '…' : t('hub.meter.record')}
               </button>
             </div>
             {error && <p className="mt-2 text-[13px] text-red">{error}</p>}
             {raised != null && (
               <p className="mt-2 text-[13px] text-forest">
-                Recorded{raised > 0 && <> · raised {raised} routine{raised === 1 ? '' : 's'}</>}.
+                {raised > 0 ? t('hub.meter.recordedRaised', { count: raised }) : t('hub.meter.recorded')}
               </p>
             )}
           </div>
         </Section>
       )}
 
-      <Section title="Service history">
+      <Section title={t('hub.history.title')}>
         {history.length === 0 ? (
-          <p className="px-4 py-5 text-[13.5px] text-ink-faint">Nothing logged against this yet.</p>
+          <p className="px-4 py-5 text-[13.5px] text-ink-faint">{t('hub.history.empty')}</p>
         ) : (
           <ul>
             {history.map((r) => (
@@ -828,10 +845,11 @@ function AssetPanels({ asset }: { asset: CampAsset }) {
 }
 
 function Reading({ label, value }: { label: string; value: number | null }) {
+  const lang = useLang();
   return (
     <div>
       <p className="text-[11px] font-bold uppercase tracking-widest text-ink-faint">{label}</p>
-      <p className="font-mono text-[22px] leading-tight text-ink">{value != null ? value.toLocaleString() : '—'}</p>
+      <p className="font-mono text-[22px] leading-tight text-ink">{value != null ? value.toLocaleString(lang === 'he' ? 'he-IL' : lang === 'es' ? 'es' : 'en-US') : '—'}</p>
     </div>
   );
 }
@@ -847,6 +865,7 @@ function FixPhotoSheet({
   onClose: () => void;
   onDone: (url: string | null, note: string) => void;
 }) {
+  const { t } = useTranslation('scan');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [note, setNote] = useState('');
@@ -873,10 +892,10 @@ function FixPhotoSheet({
       <div className="w-full max-w-lg rounded-t-modal bg-white p-4 sm:rounded-modal">
         <div className="mb-3 flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-bold text-ink">Add a photo?</p>
-            <p className="truncate text-[12.5px] text-ink-faint">{title}</p>
+            <p className="text-[15px] font-bold text-ink">{t('hub.photo.title')}</p>
+            <TranslatedText as="p" source="issues" id={issueId} field="title" text={title} className="truncate text-[12.5px] text-ink-faint" />
           </div>
-          <button onClick={onClose} className="flex-none text-ink-faint"><X className="h-4 w-4" /></button>
+          <button onClick={onClose} className="flex-none text-ink-faint" aria-label={t('hub.photo.skip')}><X className="h-4 w-4" /></button>
         </div>
 
         {preview ? (
@@ -884,7 +903,7 @@ function FixPhotoSheet({
         ) : (
           <label className="mb-3 flex cursor-pointer flex-col items-center gap-2 rounded-card border border-dashed border-border py-7">
             <Camera className="h-6 w-6 text-ink-faint" />
-            <span className="text-[13px] text-ink-faint">Take a photo</span>
+            <span className="text-[13px] text-ink-faint">{t('hub.photo.take')}</span>
             <input type="file" accept="image/*" capture="environment" className="hidden" onChange={pick} />
           </label>
         )}
@@ -892,7 +911,7 @@ function FixPhotoSheet({
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="What did you do? (optional)"
+          placeholder={t('hub.photo.notePlaceholder')}
           className="mb-3 w-full rounded-btn border border-border bg-white px-3.5 py-3 text-[15px] focus:border-sage focus:outline-none"
         />
 
@@ -901,18 +920,18 @@ function FixPhotoSheet({
             onClick={onClose}
             className="flex-1 rounded-btn border border-border bg-white py-3 text-[14px] font-bold text-ink-soft"
           >
-            Skip
+            {t('hub.photo.skip')}
           </button>
           <button
             onClick={() => void send()}
             disabled={busy || (!file && !note.trim())}
             className="flex-1 rounded-btn bg-forest py-3 text-[14px] font-bold text-paper disabled:opacity-40"
           >
-            {busy ? 'Sending…' : 'Send'}
+            {busy ? t('hub.photo.sending') : t('hub.photo.send')}
           </button>
         </div>
         <p className="mt-2 text-center text-[11.5px] text-ink-faint">
-          Whoever reported it will see this on their receipt.
+          {t('hub.photo.receiptNote')}
         </p>
       </div>
     </div>
@@ -922,6 +941,7 @@ function FixPhotoSheet({
 // ─── Not this camp ────────────────────────────────────────────────────────────
 
 function NotHere({ token, target }: { token: string; target: QrTarget | null }) {
+  const { t } = useTranslation('scan');
   return (
     <div className="mx-auto max-w-md px-5 py-16 text-center">
       <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-card bg-cream-dark">
@@ -929,24 +949,21 @@ function NotHere({ token, target }: { token: string; target: QrTarget | null }) 
       </div>
       {target ? (
         <>
-          <h1 className="mb-2 text-[19px] font-bold text-ink">That sticker belongs to {target.campName}</h1>
+          <h1 className="mb-2 text-[19px] font-bold text-ink">{t('hub.notHere.title', { camp: target.campName })}</h1>
           <p className="mb-6 text-[14px] leading-relaxed text-ink-soft">
-            You are signed in somewhere else, so there is nothing here to work on.
+            {t('hub.notHere.body')}
           </p>
           <Link
             to={`/l/${token}`}
             className="inline-flex items-center gap-1.5 rounded-btn bg-forest px-4 py-3 text-[14px] font-bold text-paper"
           >
-            Open the sticker <ChevronRight className="h-4 w-4" />
+            {t('hub.notHere.open')} <ChevronRight className="h-4 w-4 rtl:-scale-x-100" />
           </Link>
         </>
       ) : (
         <>
-          <h1 className="mb-2 text-[19px] font-bold text-ink">This code is not recognised</h1>
-          <p className="text-[14px] leading-relaxed text-ink-soft">
-            It may have been reissued, or the place it pointed at may have been removed. Reprint it
-            from Camp Info → Locations.
-          </p>
+          <h1 className="mb-2 text-[19px] font-bold text-ink">{t('unknown.title')}</h1>
+          <p className="text-[14px] leading-relaxed text-ink-soft">{t('hub.notHere.unknownBody')}</p>
         </>
       )}
     </div>

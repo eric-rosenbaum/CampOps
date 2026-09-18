@@ -49,7 +49,9 @@ struct AdminCampListView: View {
             VStack(alignment: .leading, spacing: Spacing.lg) {
                 if !myCamps.isEmpty && search.isEmpty {
                     VStack(alignment: .leading, spacing: Spacing.sm) {
-                        SectionEyebrow(text: "Yours")
+                        // Not "Yours": that key belongs to Home's work orders, and in Spanish a
+                        // list of camps headed "Tuyas" had the wrong gender.
+                        SectionEyebrow(text: "Your camps")
                         ForEach(myCamps) { camp in
                             campRow(camp, borrowed: false)
                         }
@@ -85,9 +87,9 @@ struct AdminCampListView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(camp.name).font(.campBodySemibold)
                     HStack(spacing: Spacing.xs) {
-                        MetaTag(text: camp.accountType.label, systemImage: "tag")
+                        MetaTag(verbatim: camp.accountType.label, systemImage: "tag")
                         if camp.status != .active {
-                            MetaTag(text: camp.status.label, systemImage: "exclamationmark.triangle")
+                            MetaTag(verbatim: camp.status.label, systemImage: "exclamationmark.triangle")
                         }
                         if borrowed {
                             MetaTag(text: "As admin", systemImage: "eye")
@@ -95,7 +97,9 @@ struct AdminCampListView: View {
                     }
                 }
                 Spacer()
-                Image(systemName: "chevron.right")
+                // "forward", not "right": under Hebrew a right-pointing chevron at the row's
+                // trailing (left) edge pointed back out of the list it was meant to lead into.
+                Image(systemName: "chevron.forward")
                     .font(.campMeta)
                     .foregroundStyle(Color.forest.opacity(0.4))
             }

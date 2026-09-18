@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Plus, Phone, Mail, ShieldAlert, ShieldCheck, Shield, Trash2, Hash } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { Modal } from '@/components/shared/Modal';
@@ -48,6 +50,7 @@ function blankVendor(): ServiceVendor {
 }
 
 export function VendorsPanel() {
+  const { t } = useTranslation('campgroundAdmin');
   // Raw slices — never a filtering selector, which allocates a new array each render.
   const vendors = useCampgroundStore((s) => s.vendors);
   const issues = useIssuesStore((s) => s.issues);
@@ -84,16 +87,16 @@ export function VendorsPanel() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-1 mb-5">
         <div className="flex flex-wrap">
-          <StatCard label="Vendors" value={vendors.filter((v) => v.isActive).length} />
+          <StatCard label={t('vendors.statVendors')} value={vendors.filter((v) => v.isActive).length} />
           <StatCard
-            label="Work out with them" value={dispatched}
-            hint={dispatched === 1 ? 'open work order' : 'open work orders'}
+            label={t('vendors.statOut')} value={dispatched}
+            hint={t('vendors.openWorkOrders', { count: dispatched })}
           />
         </div>
         {canEdit && (
           <div className="pb-4">
             <Button onClick={() => setCreating(true)}>
-              <Plus className="w-3.5 h-3.5" aria-hidden="true" /> Add a vendor
+              <Plus className="w-3.5 h-3.5" aria-hidden="true" /> {t('vendors.add')}
             </Button>
           </div>
         )}
@@ -102,9 +105,9 @@ export function VendorsPanel() {
       {vendors.length === 0 ? (
         <div className="rounded-card border border-border bg-white px-6 py-10 text-center">
           <Shield className="w-6 h-6 text-sage mx-auto mb-3" aria-hidden="true" />
-          <p className="font-display text-[16px] font-bold text-forest">No vendors yet</p>
+          <p className="font-display text-[16px] font-bold text-forest">{t('vendors.emptyTitle')}</p>
           <p className="text-[12.5px] text-ink-soft leading-relaxed max-w-md mx-auto mt-2">
-            The septic pumper, the well contractor, the elevator inspector.
+            {t('vendors.emptyBody')}
           </p>
         </div>
       ) : (
@@ -140,11 +143,12 @@ const INSURANCE_STYLE: Record<InsuranceState, { className: string; icon: typeof 
   none: { className: 'bg-cream-dark text-ink-soft', icon: Shield },
 };
 
-function insuranceLabel(v: ServiceVendor, state: InsuranceState): string {
-  if (state === 'none') return 'No insurance date on file';
-  if (state === 'expired') return `Insurance expired ${formatDate(v.insuranceExpiry!)}`;
-  if (state === 'soon') return `Insurance expires ${formatDate(v.insuranceExpiry!)}`;
-  return `Insured to ${formatDate(v.insuranceExpiry!)}`;
+function insuranceLabel(t: TFunction<'campgroundAdmin'>, v: ServiceVendor, state: InsuranceState): string {
+  if (state === 'none') return t('vendors.insuranceNone');
+  const date = formatDate(v.insuranceExpiry!);
+  if (state === 'expired') return t('vendors.insuranceExpired', { date });
+  if (state === 'soon') return t('vendors.insuranceSoon', { date });
+  return t('vendors.insuranceOk', { date });
 }
 
 function VendorRow({ vendor: v, openCount, onOpen }: {
@@ -152,6 +156,7 @@ function VendorRow({ vendor: v, openCount, onOpen }: {
   openCount: number;
   onOpen?: () => void;
 }) {
+  const { t } = useTranslation('campgroundAdmin');
   const labelOf = useTradeLabel();
   const state = insuranceState(v.insuranceExpiry);
   const { className, icon: Icon } = INSURANCE_STYLE[state];
@@ -169,7 +174,7 @@ function VendorRow({ vendor: v, openCount, onOpen }: {
             )}
             {!v.isActive && (
               <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">
-                Not used any more
+                {t('vendors.notUsed')}
               </span>
             )}
           </div>
@@ -177,20 +182,20 @@ function VendorRow({ vendor: v, openCount, onOpen }: {
             {v.contactName && <span>{v.contactName}</span>}
             {v.phone && (
               <span className="inline-flex items-center gap-1">
-                <Phone className="w-3 h-3 text-sage" aria-hidden="true" />{v.phone}
+                <Phone className="w-3 h-3 text-sage" aria-hidden="true" /><bdi dir="ltr">{v.phone}</bdi>
               </span>
             )}
             {v.email && (
               <span className="inline-flex items-center gap-1">
-                <Mail className="w-3 h-3 text-sage" aria-hidden="true" />{v.email}
+                <Mail className="w-3 h-3 text-sage" aria-hidden="true" /><bdi dir="ltr">{v.email}</bdi>
               </span>
             )}
             {v.accountNumber && (
               <span className="inline-flex items-center gap-1">
-                <Hash className="w-3 h-3 text-sage" aria-hidden="true" />{v.accountNumber}
+                <Hash className="w-3 h-3 text-sage" aria-hidden="true" /><bdi dir="ltr">{v.accountNumber}</bdi>
               </span>
             )}
-            {v.lastUsedOn && <span>Last used {formatDate(v.lastUsedOn)}</span>}
+            {v.lastUsedOn && <span>{t('vendors.lastUsedOn', { date: formatDate(v.lastUsedOn) })}</span>}
           </div>
           {v.notes && <p className="text-[12px] text-ink-soft mt-1.5 leading-relaxed">{v.notes}</p>}
         </div>
@@ -198,19 +203,19 @@ function VendorRow({ vendor: v, openCount, onOpen }: {
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           <span className={`inline-flex items-center gap-1 rounded-tag px-2 py-0.5 text-[11px] font-semibold ${className}`}>
             <Icon className="w-3 h-3" aria-hidden="true" />
-            {insuranceLabel(v, state)}
+            {insuranceLabel(t, v, state)}
           </span>
           <span className="text-[11.5px] text-ink-soft">
             {openCount === 0
-              ? 'Nothing out with them'
-              : `${openCount} open work order${openCount === 1 ? '' : 's'} dispatched`}
+              ? t('vendors.nothingOut')
+              : t('vendors.dispatched', { count: openCount })}
           </span>
         </div>
       </div>
     </>
   );
 
-  const shell = `w-full text-left block rounded-card border border-border bg-white px-4 py-3.5 transition-colors ${
+  const shell = `w-full text-start block rounded-card border border-border bg-white px-4 py-3.5 transition-colors ${
     onOpen ? 'cursor-pointer hover:border-sage' : ''
   } ${v.isActive ? '' : 'opacity-60'}`;
 
@@ -230,6 +235,7 @@ function VendorModal({ vendor, openCount, onClose }: {
   openCount: number;
   onClose: () => void;
 }) {
+  const { t } = useTranslation(['campgroundAdmin', 'common']);
   const tradeKeys = useTradeKeys();
   const labelOf = useTradeLabel();
   const addVendor = useCampgroundStore((s) => s.addVendor);
@@ -261,28 +267,28 @@ function VendorModal({ vendor, openCount, onClose }: {
 
   return (
     <Modal
-      title={isNew ? 'Add a vendor' : draft.name || 'Vendor'}
+      title={isNew ? t('vendors.add') : draft.name || t('vendors.modalFallback')}
       onClose={onClose}
       width="min(560px, 94vw)"
     >
       <div className="space-y-4">
         <div>
-          <label className={labelClass} htmlFor="vendor-name">Name</label>
+          <label className={labelClass} htmlFor="vendor-name">{t('shared.name')}</label>
           <input
             id="vendor-name" className={inputClass} value={draft.name}
-            placeholder="Hilltop Septic Service"
+            placeholder={t('vendors.namePlaceholder')}
             onChange={(e) => set({ name: e.target.value })}
           />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelClass} htmlFor="vendor-trade">Crew they work with</label>
+            <label className={labelClass} htmlFor="vendor-trade">{t('vendors.crewTheyWork')}</label>
             <select
               id="vendor-trade" className={inputClass} value={draft.trade ?? ''}
               onChange={(e) => set({ trade: e.target.value || null })}
             >
-              <option value="">Not set</option>
+              <option value="">{t('vendors.notSet')}</option>
               {tradeKeys.map((t) => <option key={t} value={t}>{labelOf(t)}</option>)}
             </select>
             {/* This dropdown has always offered the camp's own crews, so the honest label is the
@@ -290,39 +296,39 @@ function VendorModal({ vendor, openCount, onClose }: {
                 rows hold free text (septic, well, hvac) that matches no crew; those still display,
                 they just cannot be re-picked. */}
             <p className="mt-1 text-[11px] text-ink-faint">
-              Whose work they turn up for.
+              {t('vendors.crewHint')}
             </p>
           </div>
           <div>
-            <label className={labelClass} htmlFor="vendor-contact">Who we ask for</label>
+            <label className={labelClass} htmlFor="vendor-contact">{t('vendors.contact')}</label>
             <input
               id="vendor-contact" className={inputClass} value={draft.contactName ?? ''}
               onChange={(e) => set({ contactName: e.target.value })}
             />
           </div>
           <div>
-            <label className={labelClass} htmlFor="vendor-phone">Phone</label>
+            <label className={labelClass} htmlFor="vendor-phone">{t('vendors.phone')}</label>
             <input
-              id="vendor-phone" type="tel" className={inputClass} value={draft.phone ?? ''}
+              id="vendor-phone" type="tel" dir="ltr" className={inputClass} value={draft.phone ?? ''}
               onChange={(e) => set({ phone: e.target.value })}
             />
           </div>
           <div>
-            <label className={labelClass} htmlFor="vendor-email">Email</label>
+            <label className={labelClass} htmlFor="vendor-email">{t('vendors.email')}</label>
             <input
-              id="vendor-email" type="email" className={inputClass} value={draft.email ?? ''}
+              id="vendor-email" type="email" dir="ltr" className={inputClass} value={draft.email ?? ''}
               onChange={(e) => set({ email: e.target.value })}
             />
           </div>
           <div>
-            <label className={labelClass} htmlFor="vendor-account">Account number</label>
+            <label className={labelClass} htmlFor="vendor-account">{t('vendors.account')}</label>
             <input
               id="vendor-account" className={inputClass} value={draft.accountNumber ?? ''}
               onChange={(e) => set({ accountNumber: e.target.value })}
             />
           </div>
           <div>
-            <label className={labelClass} htmlFor="vendor-insurance">Insurance expires</label>
+            <label className={labelClass} htmlFor="vendor-insurance">{t('vendors.insurance')}</label>
             <input
               id="vendor-insurance" type="date" className={inputClass}
               value={draft.insuranceExpiry ?? ''}
@@ -332,7 +338,7 @@ function VendorModal({ vendor, openCount, onClose }: {
         </div>
 
         <div>
-          <label className={labelClass} htmlFor="vendor-last-used">Last used</label>
+          <label className={labelClass} htmlFor="vendor-last-used">{t('vendors.lastUsed')}</label>
           <input
             id="vendor-last-used" type="date" className={`${inputClass} sm:w-56`}
             value={draft.lastUsedOn ?? ''}
@@ -341,10 +347,10 @@ function VendorModal({ vendor, openCount, onClose }: {
         </div>
 
         <div>
-          <label className={labelClass} htmlFor="vendor-notes">Notes</label>
+          <label className={labelClass} htmlFor="vendor-notes">{t('vendors.notes')}</label>
           <textarea
             id="vendor-notes" className={`${inputClass} min-h-[64px]`} value={draft.notes ?? ''}
-            placeholder="Two weeks' notice in August. Invoices net 30."
+            placeholder={t('vendors.notesPlaceholder')}
             onChange={(e) => set({ notes: e.target.value })}
           />
         </div>
@@ -356,32 +362,32 @@ function VendorModal({ vendor, openCount, onClose }: {
             onChange={(e) => set({ isActive: !e.target.checked })}
           />
           <span className="text-body text-ink">
-            We do not use them any more
+            {t('vendors.inactive')}
             <span className="block text-[11.5px] text-ink-soft">
-              Hides them from the dispatch picker. History keeps their name.
+              {t('vendors.inactiveHint')}
             </span>
           </span>
         </label>
 
         <div className="flex items-center gap-2 pt-1">
           <Button onClick={save} disabled={!draft.name.trim()}>
-            {isNew ? 'Add vendor' : 'Save changes'}
+            {isNew ? t('vendors.addVendor') : t('shared.saveChanges')}
           </Button>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
           {!isNew && (
-            <div className="ml-auto">
+            <div className="ms-auto">
               {confirmDelete ? (
                 <div className="flex items-center gap-2">
                   <span className="text-[12px] text-ink-soft">
-                    {openCount > 0 ? `${openCount} open work order(s) point here.` : 'Delete them?'}
+                    {openCount > 0 ? t('vendors.pointHere', { count: openCount }) : t('vendors.deleteThem')}
                   </span>
                   <Button
                     variant="danger" size="sm"
                     onClick={() => { deleteVendor(draft.id); onClose(); }}
                   >
-                    Yes, delete
+                    {t('shared.yesDelete')}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>No</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>{t('common:actions.no')}</Button>
                 </div>
               ) : (
                 <button
@@ -389,7 +395,7 @@ function VendorModal({ vendor, openCount, onClose }: {
                   onClick={() => setConfirmDelete(true)}
                   className="inline-flex items-center gap-1.5 text-[12.5px] text-ink-faint hover:text-red transition-colors cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> Delete
+                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> {t('common:actions.delete')}
                 </button>
               )}
             </div>

@@ -7,6 +7,7 @@
 // "so you take our money first?" and the answer has to be visible before they click Connect,
 // not buried in a help page.
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CreditCard, ExternalLink, Loader2, RefreshCw, ShieldCheck, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { useAuth } from '@/lib/auth';
@@ -15,6 +16,7 @@ import { fetchPaymentsStatus, refreshStripeStatus, startStripeOnboarding } from 
 type Status = { connected: boolean; chargesEnabled: boolean };
 
 export function PaymentsCard() {
+  const { t } = useTranslation(['campInfo', 'common']);
   const { can } = useAuth();
   const canManage = can('manageCampSettings');
 
@@ -48,12 +50,12 @@ export function PaymentsCard() {
       // Show what actually went wrong. "Stripe could not be reached" is true of a network
       // failure and a lie about a 400, and the lie sends you debugging the wrong thing.
       setBusy(null);
-      setError(e instanceof Error ? e.message : 'Could not start Stripe onboarding.');
+      setError(e instanceof Error ? e.message : t('payments.errorStart'));
       return;
     }
     setBusy(null);
     if (!url) {
-      setError('Stripe could not be reached. Try again in a moment.');
+      setError(t('payments.errorReach'));
       return;
     }
     // Same tab: onboarding returns the camp to the app when it finishes, and a popup would be
@@ -84,14 +86,14 @@ export function PaymentsCard() {
           <CreditCard className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-[14px] font-semibold text-forest">Card payments</h3>
+          <h3 className="text-[14px] font-semibold text-forest">{t('payments.title')}</h3>
           <p className="text-[12.5px] text-ink-soft leading-snug">
-            Let groups pay a deposit or a balance from their portal.
+            {t('payments.subtitle')}
           </p>
         </div>
         {state === 'live' && (
           <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-green-muted-text bg-green-muted-bg px-2.5 py-1 rounded-pill flex-shrink-0">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Live
+            <CheckCircle2 className="w-3.5 h-3.5" /> {t('payments.live')}
           </span>
         )}
       </div>
@@ -99,29 +101,26 @@ export function PaymentsCard() {
       {/* Whose money it is. Stated once, plainly, above the button. */}
       <div className="rounded-btn border border-border bg-cream-dark/40 px-3.5 py-3 mb-4">
         <p className="flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-ink-soft mb-1.5">
-          <ShieldCheck className="w-3.5 h-3.5" /> The money is yours
+          <ShieldCheck className="w-3.5 h-3.5" /> {t('payments.yoursTitle')}
         </p>
         <p className="text-[12.5px] text-ink leading-relaxed">
-          This is Stripe Connect. You get your own Stripe account, and payments settle straight into
-          your bank on Stripe's normal schedule. CampCommand never holds your money, never sees a
-          card number, and holds no key for your account — we create the checkout link and Stripe
-          does the rest. Stripe's processing fee comes out of each payment; we do not add one.
+          {t('payments.yoursBody')}
         </p>
       </div>
 
       {state === 'loading' && (
         <p className="flex items-center gap-2 text-[12.5px] text-ink-soft">
-          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking your account…
+          <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('payments.checkingAccount')}
         </p>
       )}
 
       {state === 'unknown' && (
         <div>
           <p className="text-[12.5px] text-ink-soft mb-3">
-            The payment status could not be read just now. Nothing has changed on your account.
+            {t('payments.unknown')}
           </p>
           <Button variant="ghost" size="sm" onClick={refresh} disabled={busy != null}>
-            <RefreshCw className="w-3.5 h-3.5" /> Try again
+            <RefreshCw className="w-3.5 h-3.5" /> {t('common:actions.retry')}
           </Button>
         </div>
       )}
@@ -129,16 +128,15 @@ export function PaymentsCard() {
       {state === 'off' && (
         <div>
           <p className="text-[12.5px] text-ink-soft mb-3">
-            Not connected. Groups can still pay you the way they do now — the portal shows your own
-            payment instructions on every invoice until this is switched on.
+            {t('payments.off')}
           </p>
           <Button onClick={connect} disabled={!canManage || busy != null}>
             {busy === 'connect'
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Opening Stripe…</>
-              : <><ExternalLink className="w-4 h-4" /> Connect with Stripe</>}
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('payments.opening')}</>
+              : <><ExternalLink className="w-4 h-4" /> {t('payments.connect')}</>}
           </Button>
           {!canManage && (
-            <p className="text-[11.5px] text-ink-faint mt-2">Only a camp administrator can set this up.</p>
+            <p className="text-[11.5px] text-ink-faint mt-2">{t('payments.adminOnly')}</p>
           )}
         </div>
       )}
@@ -148,23 +146,21 @@ export function PaymentsCard() {
       {state === 'pending' && (
         <div className="rounded-btn border border-amber/30 bg-amber-bg px-3.5 py-3">
           <p className="flex items-center gap-1.5 text-[13px] font-semibold text-amber-text mb-1">
-            <AlertTriangle className="w-4 h-4" /> Nearly there
+            <AlertTriangle className="w-4 h-4" /> {t('payments.pendingTitle')}
           </p>
           <p className="text-[12.5px] text-amber-text leading-relaxed mb-3">
-            Your Stripe account exists but cannot take payments yet. Stripe usually wants a bank
-            account, or ID for whoever owns the business. Pick up where you left off — nothing you
-            have already entered is lost.
+            {t('payments.pendingBody')}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={connect} disabled={!canManage || busy != null}>
               {busy === 'connect'
-                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Opening Stripe…</>
-                : <><ExternalLink className="w-3.5 h-3.5" /> Finish setting up</>}
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('payments.opening')}</>
+                : <><ExternalLink className="w-3.5 h-3.5" /> {t('payments.finish')}</>}
             </Button>
             <Button size="sm" variant="ghost" onClick={refresh} disabled={busy != null}>
               {busy === 'refresh'
-                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking…</>
-                : <><RefreshCw className="w-3.5 h-3.5" /> I've finished — re-check</>}
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('payments.checking')}</>
+                : <><RefreshCw className="w-3.5 h-3.5" /> {t('payments.recheckFinished')}</>}
             </Button>
           </div>
         </div>
@@ -173,20 +169,19 @@ export function PaymentsCard() {
       {state === 'live' && (
         <div>
           <p className="text-[12.5px] text-ink-soft mb-3">
-            Invoices in the guest portal now carry a Pay button. Payments and payouts are visible in
-            your own Stripe dashboard.
+            {t('payments.liveBody')}
           </p>
           <div className="flex flex-wrap gap-2">
             <a
               href="https://dashboard.stripe.com" target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-btn font-bold bg-white border border-border text-forest hover:border-sage px-3.5 py-1.5 text-[12.5px] transition-colors"
             >
-              <ExternalLink className="w-3.5 h-3.5" /> Open Stripe
+              <ExternalLink className="w-3.5 h-3.5" /> {t('payments.openStripe')}
             </a>
             <Button size="sm" variant="ghost" onClick={refresh} disabled={busy != null}>
               {busy === 'refresh'
-                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking…</>
-                : <><RefreshCw className="w-3.5 h-3.5" /> Re-check status</>}
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('payments.checking')}</>
+                : <><RefreshCw className="w-3.5 h-3.5" /> {t('payments.recheck')}</>}
             </Button>
           </div>
         </div>

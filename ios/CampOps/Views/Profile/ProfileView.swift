@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject private var authManager: AuthManager
+    @ObservedObject private var language = LanguageStore.shared
     @Environment(\.dismiss) private var dismiss
 
     @State private var switching = false
@@ -14,6 +15,7 @@ struct ProfileView: View {
             ScrollView {
                 VStack(spacing: Spacing.lg) {
                     identityCard
+                    languagePicker
 
                     // Only worth showing when there's actually a choice to make.
                     if authManager.camps.count > 1 {
@@ -37,7 +39,7 @@ struct ProfileView: View {
                 Button("Keep my account", role: .cancel) { }
                 Button("Delete my account", role: .destructive) { deleteAccount() }
             } message: {
-                Text("This removes your account and your access to \(campCountText). It cannot be undone. Work you logged stays with your camp under your name.")
+                Text(L10n.tr("This removes your account and your access to %@. It cannot be undone. Work you logged stays with your camp under your name.", campCountText))
             }
             .alert(
                 "Account not deleted",
@@ -145,6 +147,57 @@ struct ProfileView: View {
         }
     }
 
+    /// The app's language, shared with the web through the profile.
+    ///
+    /// Each option is written in its own script, so somebody who cannot read the current
+    /// language can still find theirs. Picking one applies at once -- the app rebuilds around
+    /// it, which also closes this sheet -- and no trip to iOS Settings is involved.
+    private var languagePicker: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            SectionEyebrow(text: "Language")
+
+            VStack(spacing: 0) {
+                ForEach(Array(AppLanguage.allCases.enumerated()), id: \.element) { index, option in
+                    Button {
+                        guard option != language.language else { return }
+                        Haptics.tap()
+                        language.choose(option)
+                    } label: {
+                        HStack(spacing: Spacing.md) {
+                            Text(verbatim: option.nativeName)
+                                .font(.campBodyMedium)
+                                .foregroundStyle(Color.forest)
+                                // Each name in its own direction: "עברית" reads right to left
+                                // even on an English screen, and "English" left to right on a
+                                // Hebrew one.
+                                .environment(\.layoutDirection, option.layoutDirection)
+                            Spacer(minLength: 0)
+                            if option == language.language {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Color.sage)
+                            }
+                        }
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, 14)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(option == language.language ? .isSelected : [])
+
+                    if index < AppLanguage.allCases.count - 1 {
+                        Divider().overlay(Color.border).padding(.leading, Spacing.md)
+                    }
+                }
+            }
+            .background(Color.surface, in: .rect(cornerRadius: Radius.md))
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.md)
+                    .strokeBorder(Color.border, lineWidth: 1)
+            )
+        }
+    }
+
     private var signOutButton: some View {
         Button {
             Task {
@@ -152,7 +205,13 @@ struct ProfileView: View {
                 await authManager.signOut()
             }
         } label: {
-            Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
+            Label {
+                Text("Sign out")
+            } icon: {
+                // Leaving points toward the way the screen reads out, which under Hebrew is left.
+                Image(systemName: "rectangle.portrait.and.arrow.right")
+                    .flipsForRightToLeftLayoutDirection(true)
+            }
                 .font(.campBodyMedium)
                 .foregroundStyle(Color.priorityUrgent)
                 .frame(maxWidth: .infinity)
@@ -176,7 +235,7 @@ struct ProfileView: View {
         } label: {
             HStack(spacing: Spacing.sm) {
                 if deleting { ProgressView().controlSize(.small) }
-                Text(deleting ? "Deleting\u{2026}" : "Delete my account")
+                Text(deleting ? "Deleting…" : "Delete my account")
                     .font(.campMeta)
                     .foregroundStyle(Color.forest.opacity(0.45))
             }
@@ -190,8 +249,8 @@ struct ProfileView: View {
 
     private var campCountText: String {
         let count = authManager.camps.count
-        if count <= 1 { return authManager.currentCamp?.name ?? "your camp" }
-        return "\(count) camps"
+        if count <= 1 { return authManager.currentCamp?.name ?? L10n.tr("your camp") }
+        return L10n.tr("%lld camps", count)
     }
 
     private func deleteAccount() {

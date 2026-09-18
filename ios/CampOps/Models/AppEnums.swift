@@ -7,9 +7,9 @@ enum Priority: String, Codable, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .urgent: return "Urgent"
-        case .high: return "High"
-        case .normal: return "Normal"
+        case .urgent: return L10n.tr("Urgent")
+        case .high: return L10n.tr("High")
+        case .normal: return L10n.tr("Normal")
         }
     }
 
@@ -64,7 +64,20 @@ enum IssueStatus: String, Codable, CaseIterable {
         self = IssueStatus(rawValue: raw) ?? .inProgress
     }
 
+    /// The label on screen, in the reader's language.
+    ///
+    /// Done has its own key: the English word is shared with every toolbar's Done button, and
+    /// one key for both made the status read "Listo" -- "ready" -- on a closed work order.
     var displayName: String {
+        self == .resolved ? L10n.tr("status.done") : L10n.tr(activityWord)
+    }
+
+    /// The ENGLISH label, for sentences stored in `issue_activity`.
+    ///
+    /// Stored history stays English because SQL reads it back and every reader translates it at
+    /// display time (`ActivityTranslation`). Writing the on-screen label here instead would have
+    /// stored "Changed status to En curso" -- a row no Hebrew reader, and no report, can read.
+    var activityWord: String {
         switch self {
         case .unassigned: return "Unassigned"
         case .assigned: return "Assigned"
@@ -104,14 +117,14 @@ enum IssueSource: String, Codable {
 
     var displayName: String {
         switch self {
-        case .web:     return "Logged in the app"
-        case .ios:     return "Logged on a phone"
-        case .public:  return "Public report"
-        case .qr:      return "Scanned a sticker"
-        case .routine: return "Routine"
-        case .retreat: return "Rental group"
-        case .session: return "Session turnover"
-        case .module:  return "Flagged by another module"
+        case .web:     return L10n.tr("Logged in the app")
+        case .ios:     return L10n.tr("Logged on a phone")
+        case .public:  return L10n.tr("Public report")
+        case .qr:      return L10n.tr("Scanned a sticker")
+        case .routine: return L10n.tr("Routine")
+        case .retreat: return L10n.tr("Rental group")
+        case .session: return L10n.tr("Session turnover")
+        case .module:  return L10n.tr("Flagged by another module")
         }
     }
 }
@@ -123,9 +136,9 @@ enum ChecklistStatus: String, Codable, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .pending: return "Pending"
-        case .inProgress: return "In progress"
-        case .complete: return "Complete"
+        case .pending: return L10n.tr("Pending")
+        case .inProgress: return L10n.tr("In progress")
+        case .complete: return L10n.tr("Complete")
         }
     }
 }

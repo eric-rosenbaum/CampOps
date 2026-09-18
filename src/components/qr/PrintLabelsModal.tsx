@@ -11,6 +11,7 @@
  */
 import { useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   ChevronDown, ChevronRight, Printer, RefreshCw, Search, X, AlertTriangle, Check,
 } from 'lucide-react';
@@ -48,6 +49,9 @@ export function PrintLabelsModal({ open, onClose }: Props) {
   const currentCamp = useCampStore((s) => s.currentCamp);
   const { role } = useAuth();
   const isAdmin = role === 'admin';
+  // Only opened from Camp Info, which is translated. The sticker's printed words follow the same
+  // language — see QrLabel.
+  const { t } = useTranslation('staff');
 
   const [source, setSource] = useState<Source>('locations');
   const [query, setQuery] = useState('');
@@ -240,7 +244,7 @@ export function PrintLabelsModal({ open, onClose }: Props) {
     const token = await dbRotateQrToken(spec.kind, spec.id);
     setRotating(false);
     if (!token) {
-      setRotateError('Could not reissue that code. Only a camp administrator can.');
+      setRotateError(t('labels.rotateError'));
       return;
     }
     // Write the new token straight into the store. There is no DB write to make — rotate_qr_token
@@ -290,44 +294,44 @@ export function PrintLabelsModal({ open, onClose }: Props) {
 
   return (
     <>
-      <Modal title="Print QR labels" onClose={onClose} width="min(940px, 96vw)">
+      <Modal title={t('labels.title')} onClose={onClose} width="min(940px, 96vw)">
         <div className="flex flex-col lg:flex-row gap-5">
 
           {/* ── Pick ─────────────────────────────────────────────────────── */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-3">
-              {sourceTab('locations', 'Locations', activeLocations.length)}
-              {sourceTab('assets', 'Assets', activeAssets.length)}
+              {sourceTab('locations', t('labels.locations'), activeLocations.length)}
+              {sourceTab('assets', t('labels.assets'), activeAssets.length)}
             </div>
 
             <div className="relative mb-2.5">
-              <Search className="w-3.5 h-3.5 text-ink-faint absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-ink-faint absolute start-2.5 top-1/2 -translate-y-1/2" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder={source === 'locations' ? 'Find a building or room…' : 'Find a vehicle or machine…'}
-                className="w-full bg-white border border-border rounded-btn pl-8 pr-3 py-2 text-[13px] focus:outline-none focus:border-sage"
+                placeholder={source === 'locations' ? t('labels.findLocation') : t('labels.findAsset')}
+                className="w-full bg-white border border-border rounded-btn ps-8 pe-3 py-2 text-[13px] focus:outline-none focus:border-sage"
               />
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5 mb-2.5 text-[11.5px]">
               {source === 'locations' ? (
                 <>
-                  <QuickPick onClick={selectAllLocations}>All locations</QuickPick>
+                  <QuickPick onClick={selectAllLocations}>{t('labels.allLocations')}</QuickPick>
                   {categories.map((c) => (
                     <QuickPick key={c.id} onClick={() => selectCategory(c.id)}>{c.name}</QuickPick>
                   ))}
                 </>
               ) : (
-                <QuickPick onClick={selectAllAssets}>Whole fleet</QuickPick>
+                <QuickPick onClick={selectAllAssets}>{t('labels.wholeFleet')}</QuickPick>
               )}
-              <QuickPick onClick={clearAll}>Clear</QuickPick>
+              <QuickPick onClick={clearAll}>{t('labels.clear')}</QuickPick>
             </div>
 
             <div className="border border-border rounded-card bg-white max-h-[46vh] overflow-y-auto">
               {source === 'locations' ? (
                 (childrenBy.get('') ?? []).length === 0 ? (
-                  <Empty>No locations yet. Add them in Camp Info first.</Empty>
+                  <Empty>{t('labels.noLocations')}</Empty>
                 ) : (
                   <LocationTree
                     parentId={null}
@@ -346,7 +350,7 @@ export function PrintLabelsModal({ open, onClose }: Props) {
                   />
                 )
               ) : filteredAssets.length === 0 ? (
-                <Empty>No assets match.</Empty>
+                <Empty>{t('labels.noAssets')}</Empty>
               ) : (
                 filteredAssets.map((a) => (
                   <label key={a.id} className="flex items-center gap-2.5 px-3 py-2 border-b border-border/60 last:border-0 cursor-pointer hover:bg-paper">
@@ -357,7 +361,7 @@ export function PrintLabelsModal({ open, onClose }: Props) {
                       className="w-4 h-4 accent-forest flex-none"
                     />
                     <span className="text-[13px] text-ink truncate">{a.name}</span>
-                    <span className="text-[11px] text-ink-faint truncate ml-auto">
+                    <span className="text-[11px] text-ink-faint truncate ms-auto">
                       {a.storageLocation || ASSET_CATEGORY_LABELS[a.category]}
                     </span>
                   </label>
@@ -369,7 +373,7 @@ export function PrintLabelsModal({ open, onClose }: Props) {
           {/* ── Look at one, then print ──────────────────────────────────── */}
           <div className="lg:w-[340px] flex-none">
             <div className="mb-3">
-              <p className="text-[11px] font-bold text-ink-faint uppercase tracking-widest mb-1.5">Sheet</p>
+              <p className="text-[11px] font-bold text-ink-faint uppercase tracking-widest mb-1.5">{t('labels.sheet')}</p>
               <div className="space-y-1.5">
                 {(Object.keys(LAYOUTS) as LabelLayout[]).map((id) => (
                   <label key={id} className={`flex items-start gap-2.5 border rounded-card px-3 py-2 cursor-pointer transition-colors ${
@@ -383,8 +387,18 @@ export function PrintLabelsModal({ open, onClose }: Props) {
                       className="mt-0.5 accent-forest flex-none"
                     />
                     <span className="min-w-0">
-                      <span className="block text-[13px] font-bold text-ink">{LAYOUTS[id].name}</span>
-                      <span className="block text-[11.5px] text-ink-faint">{LAYOUTS[id].hint}</span>
+                      <span className="block text-[13px] font-bold text-ink">
+                        {id === 'avery5163' ? t('labels.layoutAvery') : t('labels.layoutLarge')}
+                      </span>
+                      <span className="block text-[11.5px] text-ink-faint">
+                        {/* The dimensions are pinned left-to-right: in a Hebrew line "4″ × 2″"
+                            reordered itself into "2″ × 4″", which is a different label. */}
+                        <bdi dir="ltr">{LAYOUTS[id].w}″ × {LAYOUTS[id].h}″</bdi>
+                        {' · '}
+                        {id === 'avery5163'
+                          ? t('labels.hintAvery', { count: perSheet(id) })
+                          : t('labels.hintLarge', { count: perSheet(id) })}
+                      </span>
                     </span>
                   </label>
                 ))}
@@ -399,9 +413,9 @@ export function PrintLabelsModal({ open, onClose }: Props) {
                 className="mt-0.5 w-4 h-4 accent-forest flex-none"
               />
               <span className="min-w-0">
-                <span className="block text-[12.5px] font-bold text-ink">Reprint a single label</span>
+                <span className="block text-[12.5px] font-bold text-ink">{t('labels.reprintSingle')}</span>
                 <span className="block text-[11.5px] text-ink-faint">
-                  Prints only the one below — into whichever slot is still free on a part-used sheet.
+                  {t('labels.reprintHint')}
                 </span>
               </span>
             </label>
@@ -409,9 +423,11 @@ export function PrintLabelsModal({ open, onClose }: Props) {
             {single && (
               <div className="mb-3">
                 <p className="text-[11px] font-bold text-ink-faint uppercase tracking-widest mb-1.5">
-                  Which slot is free?
+                  {t('labels.whichSlot')}
                 </p>
-                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${LAYOUTS[layout].cols}, minmax(0, 1fr))` }}>
+                {/* Left-to-right in every language: these are the positions on the physical sheet, as
+                    QrLabelSheet prints them. */}
+                <div dir="ltr" className="grid gap-1" style={{ gridTemplateColumns: `repeat(${LAYOUTS[layout].cols}, minmax(0, 1fr))` }}>
                   {Array.from({ length: perSheet(layout) }, (_, i) => (
                     <button
                       key={i}
@@ -427,7 +443,7 @@ export function PrintLabelsModal({ open, onClose }: Props) {
               </div>
             )}
 
-            <p className="text-[11px] font-bold text-ink-faint uppercase tracking-widest mb-1.5">Preview</p>
+            <p className="text-[11px] font-bold text-ink-faint uppercase tracking-widest mb-1.5">{t('labels.preview')}</p>
             {previewSpec ? (
               <div>
                 <QrPreview
@@ -441,35 +457,35 @@ export function PrintLabelsModal({ open, onClose }: Props) {
                     disabled={cursor <= 0}
                     className="text-[12px] text-ink-soft disabled:opacity-30 hover:text-forest"
                   >
-                    ‹ Prev
+                    ‹ {t('labels.prev')}
                   </button>
                   <span className="text-[11.5px] text-ink-faint">
-                    {Math.min(cursor + 1, specs.length)} of {specs.length}
+                    {t('labels.position', { current: Math.min(cursor + 1, specs.length), total: specs.length })}
                   </span>
                   <button
                     onClick={() => setPreviewIndex(Math.min(specs.length - 1, cursor + 1))}
                     disabled={cursor >= specs.length - 1}
                     className="text-[12px] text-ink-soft disabled:opacity-30 hover:text-forest"
                   >
-                    Next ›
+                    {t('labels.next')} ›
                   </button>
                   {isAdmin && (
                     <button
                       onClick={() => { setRotateError(null); setConfirmRotate(previewSpec); }}
-                      className="ml-auto inline-flex items-center gap-1 text-[11.5px] text-ink-soft hover:text-red"
-                      title="Issue a new code for this label"
+                      className="ms-auto inline-flex items-center gap-1 text-[11.5px] text-ink-soft hover:text-red"
+                      title={t('labels.reissueTitle')}
                     >
-                      <RefreshCw className="w-3 h-3" /> Reissue
+                      <RefreshCw className="w-3 h-3" /> {t('labels.reissue')}
                     </button>
                   )}
                 </div>
-                <p className="mt-2 text-[11px] text-ink-faint font-mono break-all">
+                <p dir="ltr" className="mt-2 text-[11px] text-ink-faint font-mono break-all text-start">
                   {stickerText(previewSpec.token)}
                 </p>
               </div>
             ) : (
               <div className="border border-dashed border-border rounded-card px-4 py-8 text-center text-[12.5px] text-ink-faint">
-                Tick a location or an asset to see its label.
+                {t('labels.tickToPreview')}
               </div>
             )}
 
@@ -479,8 +495,8 @@ export function PrintLabelsModal({ open, onClose }: Props) {
 
             <div className="mt-4 pt-4 border-t border-border">
               <div className="flex items-center justify-between text-[12.5px] text-ink-soft mb-2.5">
-                <span>{toPrint.length} label{toPrint.length === 1 ? '' : 's'}</span>
-                <span>{sheets} sheet{sheets === 1 ? '' : 's'}</span>
+                <span>{t('labels.labelCount', { count: toPrint.length })}</span>
+                <span>{t('labels.sheetCount', { count: sheets })}</span>
               </div>
               <Button
                 onClick={() => setPrintJob({ specs: toPrint, layout, startSlot: single ? slot : 0 })}
@@ -488,13 +504,11 @@ export function PrintLabelsModal({ open, onClose }: Props) {
                 className="w-full justify-center"
               >
                 <Printer className="w-4 h-4" />
-                {printJob ? 'Preparing…' : 'Print'}
+                {printJob ? t('labels.preparing') : t('labels.print')}
               </Button>
               <p className="mt-2 text-[11px] text-ink-faint leading-snug">
-                Load {layout === 'avery5163' ? 'Avery 5163 label stock' : 'plain US Letter'}, then in the
-                print dialog set scale to <span className="font-semibold">100%</span> (not “fit to page”) and
-                turn <span className="font-semibold">headers and footers off</span>. Either one shifts the
-                whole grid off its backing.
+                <Trans t={t} i18nKey={layout === 'avery5163' ? 'labels.printTipAvery' : 'labels.printTipLetter'}
+                  components={{ b: <span className="font-semibold" /> }} />
               </p>
             </div>
           </div>
@@ -508,22 +522,19 @@ export function PrintLabelsModal({ open, onClose }: Props) {
               <AlertTriangle className="w-5 h-5 text-red flex-none mt-0.5" />
               <div className="min-w-0">
                 <h3 className="text-[15px] font-bold text-ink mb-1.5">
-                  Reissue the code for {confirmRotate.name}?
+                  {t('labels.confirmTitle', { name: confirmRotate.name })}
                 </h3>
                 <p className="text-[13px] text-ink-soft leading-relaxed">
-                  Every sticker already printed for this one stops working the moment you do.
-                  Somebody standing in front of it will get “this code is not recognised”, so only
-                  do this if the old code is being abused — and reprint and replace the sticker
-                  today.
+                  {t('labels.confirmBody')}
                 </p>
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-5">
               <Button variant="ghost" onClick={() => setConfirmRotate(null)} disabled={rotating}>
-                Keep the old code
+                {t('labels.keepOld')}
               </Button>
               <Button variant="danger" onClick={() => void doRotate(confirmRotate)} disabled={rotating}>
-                {rotating ? 'Reissuing…' : 'Reissue'}
+                {rotating ? t('labels.reissuing') : t('labels.reissue')}
               </Button>
             </div>
           </div>
@@ -575,6 +586,7 @@ interface TreeProps {
 function LocationTree(props: TreeProps) {
   const { parentId, depth, childrenBy, visibleIds, selected, expanded, forceOpen, onToggleExpand, onToggle } = props;
   const rows = (childrenBy.get(parentId ?? '') ?? []).filter((l) => !visibleIds || visibleIds.has(l.id));
+  const { t } = useTranslation('staff');
 
   return (
     <>
@@ -587,14 +599,14 @@ function LocationTree(props: TreeProps) {
           <div key={l.id}>
             <div
               className="flex items-center gap-1.5 border-b border-border/60 px-2 py-2 hover:bg-paper"
-              style={{ paddingLeft: 8 + depth * 16 }}
+              style={{ paddingInlineStart: 8 + depth * 16 }}
             >
               <button
                 onClick={() => hasKids && onToggleExpand(l.id)}
                 className={`w-4 h-4 flex-none grid place-items-center text-ink-faint ${hasKids ? 'hover:text-forest' : 'opacity-0 pointer-events-none'}`}
-                aria-label={isOpen ? 'Collapse' : 'Expand'}
+                aria-label={isOpen ? t('labels.collapse') : t('labels.expand')}
               >
-                {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5 rtl:-scale-x-100" />}
               </button>
               <label className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer">
                 <input
@@ -608,14 +620,14 @@ function LocationTree(props: TreeProps) {
                   <span className="text-[11px] text-ink-faint flex-none">{kids.length}</span>
                 )}
                 {!l.qrToken && (
-                  <span className="text-[10.5px] text-amber-text flex-none">no code yet</span>
+                  <span className="text-[10.5px] text-amber-text flex-none">{t('labels.noCodeYet')}</span>
                 )}
                 {l.serviceStatus !== 'in_service' && (
                   <span className="inline-flex items-center gap-0.5 text-[10.5px] text-red flex-none">
-                    <X className="w-3 h-3" /> out of service
+                    <X className="w-3 h-3" /> {t('labels.outOfService')}
                   </span>
                 )}
-                {checked && <Check className="w-3.5 h-3.5 text-forest flex-none ml-auto" />}
+                {checked && <Check className="w-3.5 h-3.5 text-forest flex-none ms-auto" />}
               </label>
             </div>
             {hasKids && isOpen && (

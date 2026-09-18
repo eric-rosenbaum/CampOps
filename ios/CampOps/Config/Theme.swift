@@ -134,9 +134,12 @@ extension ButtonStyle where Self == CampChipButtonStyle {
 
 /// All-caps eyebrow above a group of rows.
 struct SectionEyebrow: View {
-    let text: String
+    let text: LocalizedStringKey
     var body: some View {
-        Text(text.uppercased())
+        // Upper-cased by the text system, after translation. Upper-casing the key first looked
+        // up "YOURS", which no catalog has.
+        Text(text)
+            .textCase(.uppercase)
             .font(.campLabel)
             .tracking(0.7)
             .foregroundStyle(Color.forest.opacity(0.45))
@@ -151,7 +154,7 @@ struct CampWordmark: View {
         VStack(spacing: Spacing.md) {
             // The badge carries its own disc, so it needs no tinted plate behind it.
             CampCommandMark(size: size * 1.5)
-            Text("CampCommand")
+            Text(verbatim: "CampCommand")
                 .font(.campTitle)
                 .foregroundStyle(Color.forest)
         }
@@ -160,7 +163,7 @@ struct CampWordmark: View {
 
 /// Rounded, bordered text field used across the auth screens.
 struct CampField<Content: View>: View {
-    let label: String
+    let label: LocalizedStringKey
     @ViewBuilder let content: () -> Content
 
     var body: some View {

@@ -1,5 +1,6 @@
 import { useAuth } from '@/lib/auth';
 import { useUIStore } from '@/store/uiStore';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   title: string;
@@ -20,16 +21,19 @@ interface Props {
 function RailToggle() {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggle = useUIStore((s) => s.toggleSidebar);
+  const { t } = useTranslation('shell');
+  const label = collapsed ? t('rail.show') : t('rail.hide');
   return (
     <button
       onClick={toggle}
       aria-expanded={!collapsed}
-      title={`${collapsed ? 'Show' : 'Hide'} sidebar  [`}
-      className="hidden lg:grid h-[30px] w-[30px] flex-none place-items-center rounded-btn border
+      title={`${label}  [`}
+      className="relative hidden lg:grid h-[30px] w-[30px] flex-none place-items-center rounded-btn border
                  border-transparent text-ink-soft transition-colors hover:border-border
                  hover:bg-cream hover:text-forest"
     >
-      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden="true">
+      {/* Mirrored under RTL, where the sidebar it pictures sits on the right. */}
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] rtl:-scale-x-100" aria-hidden="true">
         <rect x="3.2" y="4.6" width="17.6" height="14.8" rx="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
         <rect
           x="4.9" y="6.3" width="5.2" height="11.4" rx="1.6"
@@ -37,7 +41,7 @@ function RailToggle() {
           className={`origin-left transition-all duration-300 ${collapsed ? 'opacity-40 scale-x-[0.55]' : 'opacity-90'}`}
         />
       </svg>
-      <span className="sr-only">{collapsed ? 'Show sidebar' : 'Hide sidebar'}</span>
+      <span className="sr-only">{label}</span>
     </button>
   );
 }
@@ -58,7 +62,7 @@ export function Topbar({ title, subtitle, actions, flush = false }: Props) {
           </p>
         )}
       </div>
-      <div className="ml-auto flex items-center gap-2 sm:gap-3 flex-shrink-0">
+      <div className="ms-auto flex items-center gap-2 sm:gap-3 flex-shrink-0">
         {actions}
         <div className="flex items-center gap-2">
           <div className="grid h-[30px] w-[30px] flex-shrink-0 place-items-center rounded-full bg-sage text-[11px] font-bold text-paper-raised">

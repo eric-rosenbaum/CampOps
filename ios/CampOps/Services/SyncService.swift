@@ -29,6 +29,7 @@ final class SyncService: ObservableObject {
                             onAssetChange: (() async -> Void)? = nil,
                             onBuildingChange: (() async -> Void)? = nil,
                             onLocationChange: (() async -> Void)? = nil,
+                            onTranslationChange: (() async -> Void)? = nil,
                             onPermissionChange: (() async -> Void)? = nil) async {
         // Unsubscribe from any existing channel before resubscribing.
         await channel?.unsubscribe()
@@ -57,6 +58,10 @@ final class SyncService: ObservableObject {
         let groupStream      = await ch.postgresChange(AnyAction.self, schema: "public", table: "staff_groups")
         let locationStream   = await ch.postgresChange(AnyAction.self, schema: "public", table: "locations")
         let locCategoryStream = await ch.postgresChange(AnyAction.self, schema: "public", table: "location_categories")
+        // A translation lands a few seconds after the note it translates. Without this the
+        // phone showed the Spanish original until somebody pulled to refresh, which on the
+        // detail screen two people are reading together looked like the feature not working.
+        let translationStream = ch.postgresChange(AnyAction.self, schema: "public", table: "content_translations")
 
         await ch.subscribe()
 
@@ -81,6 +86,7 @@ final class SyncService: ObservableObject {
         Task { for await _ in groupStream    { if let f = onPermissionChange  { await f() } } }
         Task { for await _ in locationStream    { if let f = onLocationChange { await f() } } }
         Task { for await _ in locCategoryStream { if let f = onLocationChange { await f() } } }
+        Task { for await _ in translationStream { if let f = onTranslationChange { await f() } } }
     }
 
     func unsubscribe() async {

@@ -1,6 +1,8 @@
+import { LanguagePicker } from '@/components/i18n/LanguagePicker';
 import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { format } from 'date-fns';
+import { Trans, useTranslation } from 'react-i18next';
+import { formatDate } from '@/lib/utils';
 import { Plus, X, Pencil, Calendar, Sun, Copy, Check, Upload, CornerDownRight, ChevronDown, ChevronRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useCampStore } from '@/store/campStore';
@@ -12,7 +14,7 @@ import { useCabinTypes } from '@/components/rooming/useCabinTypes';
 import { useCampgroundStore } from '@/store/campgroundStore';
 import { ImplementationDropzone, ImplementationFilesTab } from '@/components/settings/ImplementationFiles';
 import { StaffRosterTab } from '@/pages/settings/StaffRegister';
-import { usePoolStore, POOL_TYPE_LABELS } from '@/store/poolStore';
+import { usePoolStore } from '@/store/poolStore';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/lib/auth';
 import { AddEditPoolModal } from '@/components/pool/AddEditPoolModal';
@@ -28,20 +30,21 @@ import { PrintLabelsModal } from '@/components/qr/PrintLabelsModal';
 
 type TabId = 'profile' | 'season' | 'staff' | 'locations' | 'pools' | 'rentals' | 'payments' | 'files';
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'profile',   label: 'Profile' },
-  { id: 'season',    label: 'Season' },
+// Labels are read through t(`tabs.${id}`) at render, so the tab list stays language-free.
+const TABS: { id: TabId }[] = [
+  { id: 'profile' },
+  { id: 'season' },
   // Reference data every module reads -- drills and certifications in Safety, the three named
   // directors on the permit forms, lifeguard cover in Pool Manager. It was its own sidebar entry,
   // which made one consumer look like the owner.
-  { id: 'staff',     label: 'Staff' },
-  { id: 'locations', label: 'Locations' },
-  { id: 'pools',     label: 'Pools & Waterfront' },
+  { id: 'staff' },
+  { id: 'locations' },
+  { id: 'pools' },
   // Stripe Connect. Sits in camp settings rather than inside Retreats because connecting an
   // account is a thing the camp does once, about itself, not about any one group.
-  { id: 'rentals',   label: 'Rentals' },
-  { id: 'payments',  label: 'Payments' },
-  { id: 'files',     label: 'Setup Files' },
+  { id: 'rentals' },
+  { id: 'payments' },
+  { id: 'files' },
 ];
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
@@ -55,7 +58,11 @@ const cardCls  = 'bg-white border border-border rounded-xl p-5';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const CAMP_TYPES = ['Day Camp', 'Overnight Camp'];
+// The stored value is the English phrase; only the option's label is translated.
+const CAMP_TYPES = [
+  { value: 'Day Camp', key: 'day' },
+  { value: 'Overnight Camp', key: 'overnight' },
+] as const;
 const US_STATES  = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
   'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
@@ -71,6 +78,7 @@ const US_STATES  = [
 // ── Profile tab ───────────────────────────────────────────────────────────────
 
 function ProfileTab() {
+  const { t } = useTranslation(['campInfo', 'common']);
   const { currentCamp, updateCamp } = useCampStore();
   const { role } = useAuth();
   // Only what the platform sells this camp. A module the founder switched off is not rendered
@@ -116,12 +124,23 @@ function ProfileTab() {
 
   return (
     <div className="p-7 max-w-2xl space-y-5">
+      {/* Where people looked for it first. It is the person's setting, not the camp's, so it
+          saves on its own the moment it changes rather than waiting for the camp form's Save. */}
+      <div className={cardCls}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-[13px] font-semibold text-forest">{t('profile.language.title')}</h2>
+            <p className="mt-1 text-[12px] text-ink-soft">{t('profile.language.body')}</p>
+          </div>
+          <LanguagePicker />
+        </div>
+      </div>
       <form onSubmit={handleSave} className="space-y-5">
         <div className={cardCls}>
-          <h2 className="text-[13px] font-semibold text-forest mb-4">Camp profile</h2>
+          <h2 className="text-[13px] font-semibold text-forest mb-4">{t('profile.title')}</h2>
           <div className="space-y-3">
             <div>
-              <label className={labelCls}>Camp name</label>
+              <label className={labelCls}>{t('profile.campName')}</label>
               <input
                 type="text" required value={name}
                 onChange={e => setName(e.target.value)}
@@ -130,16 +149,18 @@ function ProfileTab() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>Camp type</label>
+                <label className={labelCls}>{t('profile.campType')}</label>
                 <select value={campType} onChange={e => setCampType(e.target.value)} className={inputCls}>
-                  <option value="">Select type</option>
-                  {CAMP_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  <option value="">{t('profile.selectType')}</option>
+                  {CAMP_TYPES.map(ct => <option key={ct.value} value={ct.value}>{t(`profile.campTypes.${ct.key}`)}</option>)}
+                  {/* A value saved before these two existed still shows, as the camp wrote it. */}
+                  {campType && !CAMP_TYPES.some(ct => ct.value === campType) && <option value={campType}>{campType}</option>}
                 </select>
               </div>
               <div>
-                <label className={labelCls}>State</label>
+                <label className={labelCls}>{t('profile.state')}</label>
                 <select value={state} onChange={e => setState(e.target.value)} className={inputCls}>
-                  <option value="">Select state</option>
+                  <option value="">{t('profile.selectState')}</option>
                   {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
@@ -148,11 +169,8 @@ function ProfileTab() {
         </div>
 
         <div className={cardCls}>
-          <h2 className="text-[13px] font-semibold text-forest mb-1">Modules</h2>
-          <p className="text-[11px] text-ink-faint mb-4">
-            Enable only the modules your camp uses. Switching one off removes it from the sidebar
-            for everyone at this camp; the data stays and comes back if you switch it on again.
-          </p>
+          <h2 className="text-[13px] font-semibold text-forest mb-1">{t('profile.modules.title')}</h2>
+          <p className="text-[11px] text-ink-faint mb-4">{t('profile.modules.body')}</p>
           <div className="space-y-3">
             {allowedModules.map(mod => (
               <div
@@ -161,11 +179,11 @@ function ProfileTab() {
                 onClick={() => setModules(p => ({ ...p, [mod.key]: !p[mod.key] }))}
               >
                 <div className={`w-9 h-5 rounded-full flex-shrink-0 flex items-center transition-colors ${modules[mod.key] ? 'bg-forest' : 'bg-cream-dark'}`}>
-                  <div className={`w-4 h-4 bg-white rounded-full shadow mx-0.5 transition-transform ${modules[mod.key] ? 'translate-x-4' : 'translate-x-0'}`} />
+                  <div className={`w-4 h-4 bg-white rounded-full shadow mx-0.5 transition-transform ${modules[mod.key] ? 'translate-x-4 rtl:-translate-x-4' : 'translate-x-0'}`} />
                 </div>
                 <div>
-                  <p className="text-[13px] font-medium text-forest">{mod.label}</p>
-                  <p className="text-[11px] text-ink-faint">{mod.desc}</p>
+                  <p className="text-[13px] font-medium text-forest">{t(`modules.${mod.key}.label`)}</p>
+                  <p className="text-[11px] text-ink-faint">{t(`modules.${mod.key}.desc`)}</p>
                 </div>
               </div>
             ))}
@@ -177,9 +195,9 @@ function ProfileTab() {
             type="submit" disabled={saving}
             className="bg-forest text-cream text-[13px] font-medium px-5 py-2 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50"
           >
-            {saving ? 'Saving…' : 'Save changes'}
+            {saving ? t('common:actions.saving') : t('saveChanges')}
           </button>
-          {saved && <span className="text-[12px] text-sage font-medium">✓ Saved</span>}
+          {saved && <span className="text-[12px] text-sage font-medium">✓ {t('saved')}</span>}
         </div>
       </form>
 
@@ -192,15 +210,14 @@ function ProfileTab() {
         }
         return (
           <div className={cardCls}>
-            <h2 className="text-[13px] font-semibold text-forest mb-1">Public issue report link</h2>
-            <p className="text-[12px] text-ink-faint mb-3">
-              Share this link so anyone (campers, parents, staff) can report an issue without an account. Reports appear in Issues &amp; Repairs with a Public badge.
-            </p>
+            <h2 className="text-[13px] font-semibold text-forest mb-1">{t('profile.report.title')}</h2>
+            <p className="text-[12px] text-ink-faint mb-3">{t('profile.report.body')}</p>
             <div className="flex items-center gap-2 bg-cream border border-border rounded-btn px-3 py-2">
               <Link
                 to={`/report/${currentCamp.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                dir="ltr"
                 className="flex-1 text-[12px] text-ink font-mono truncate hover:text-forest transition-colors"
               >
                 {reportUrl}
@@ -211,7 +228,7 @@ function ProfileTab() {
                 className="flex items-center gap-1 text-[11px] font-medium text-ink-soft hover:text-forest transition-colors flex-shrink-0 px-1.5 py-0.5 rounded hover:bg-cream-dark"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-sage" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? 'Copied' : 'Copy'}
+                {copied ? t('copied') : t('copy')}
               </button>
             </div>
           </div>
@@ -233,6 +250,7 @@ interface SeasonFormValues {
 }
 
 function SeasonTab() {
+  const { t } = useTranslation(['campInfo', 'common']);
   const { season, editSeason } = useChecklistStore();
   const [mode, setMode] = useState<SeasonMode>('view');
 
@@ -269,7 +287,7 @@ function SeasonTab() {
 
   function fmt(d: string | null | undefined) {
     if (!d) return '-';
-    try { return format(new Date(d + 'T12:00:00'), 'MMM d, yyyy'); } catch { return d; }
+    try { return formatDate(d); } catch { return d; }
   }
 
   // ── Form (edit / new) ─────────────────────────────────────────────────────
@@ -279,22 +297,22 @@ function SeasonTab() {
       <div className="p-7 max-w-xl">
         <div className={cardCls}>
           <h2 className="text-[14px] font-semibold text-forest mb-4">
-            {mode === 'new' ? 'Start new season' : 'Edit season'}
+            {mode === 'new' ? t('season.startNew') : t('season.edit')}
           </h2>
 
           {mode === 'new' && (
             <div className="bg-amber-bg border border-amber/20 rounded-btn px-3 py-2.5 text-[12px] text-amber-text mb-4">
-              Starting a new season will reset all pre/post camp checklist task statuses to <strong>Pending</strong> and recompute due dates.
+              {t('season.newWarning')}
             </div>
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label className={labelCls}>Season name *</label>
+              <label className={labelCls}>{t('season.name')} *</label>
               <input
-                {...register('name', { required: 'Required' })}
+                {...register('name', { required: t('required') })}
                 className={inputCls}
-                placeholder="e.g. Summer 2026"
+                placeholder={t('season.namePlaceholder')}
                 autoFocus
               />
               {errors.name && <p className="text-[11px] text-red mt-0.5">{errors.name.message}</p>}
@@ -302,21 +320,21 @@ function SeasonTab() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>Opening date *</label>
-                <input type="date" {...register('openingDate', { required: 'Required' })} className={inputCls} />
+                <label className={labelCls}>{t('season.openingDate')} *</label>
+                <input type="date" {...register('openingDate', { required: t('required') })} className={inputCls} />
                 {errors.openingDate && <p className="text-[11px] text-red mt-0.5">{errors.openingDate.message}</p>}
               </div>
               <div>
-                <label className={labelCls}>Closing date *</label>
-                <input type="date" {...register('closingDate', { required: 'Required' })} className={inputCls} />
+                <label className={labelCls}>{t('season.closingDate')} *</label>
+                <input type="date" {...register('closingDate', { required: t('required') })} className={inputCls} />
                 {errors.closingDate && <p className="text-[11px] text-red mt-0.5">{errors.closingDate.message}</p>}
               </div>
             </div>
 
             <div>
-              <label className={labelCls}>ACA inspection date <span className="text-forest/30 font-normal">(optional)</span></label>
+              <label className={labelCls}>{t('season.acaDate')} <span className="text-forest/30 font-normal">{t('optional')}</span></label>
               <input type="date" {...register('acaInspectionDate')} className={inputCls} />
-              <p className="text-[11px] text-ink-faint mt-1">Used to track your ACA accreditation visit in Compliance.</p>
+              <p className="text-[11px] text-ink-faint mt-1">{t('season.acaHelp')}</p>
             </div>
 
             <div className="flex gap-2 pt-1">
@@ -324,14 +342,14 @@ function SeasonTab() {
                 type="submit"
                 className="bg-forest text-cream text-[13px] font-medium px-5 py-2 rounded-lg hover:bg-forest/90 transition-colors"
               >
-                {mode === 'new' ? 'Activate new season' : 'Save changes'}
+                {mode === 'new' ? t('season.activate') : t('saveChanges')}
               </button>
               <button
                 type="button"
                 onClick={() => setMode('view')}
                 className="text-[13px] text-ink-soft px-4 py-2 rounded-lg hover:bg-cream transition-colors"
               >
-                Cancel
+                {t('common:actions.cancel')}
               </button>
             </div>
           </form>
@@ -355,15 +373,15 @@ function SeasonTab() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-[15px] font-semibold text-forest">{season.name}</h2>
                   <span className="text-[10px] font-semibold px-2 py-0.5 bg-green-muted-bg text-green-muted-text rounded-tag uppercase tracking-wide">
-                    Active
+                    {t('season.active')}
                   </span>
                 </div>
                 <p className="text-[13px] text-ink-soft mt-0.5">
-                  {fmt(season.openingDate)} → {fmt(season.closingDate)}
+                  {t('season.range', { from: fmt(season.openingDate), to: fmt(season.closingDate) })}
                 </p>
                 {season.acaInspectionDate && (
                   <p className="text-[12px] text-ink-faint mt-1">
-                    ACA inspection: {fmt(season.acaInspectionDate)}
+                    {t('season.acaOn', { date: fmt(season.acaInspectionDate) })}
                   </p>
                 )}
               </div>
@@ -375,14 +393,14 @@ function SeasonTab() {
                 className="flex items-center gap-1.5 text-[13px] font-medium text-forest px-4 py-2 rounded-lg border border-border hover:bg-cream transition-colors"
               >
                 <Pencil className="w-3.5 h-3.5" />
-                Edit season
+                {t('season.edit')}
               </button>
               <button
                 onClick={startNew}
                 className="flex items-center gap-1.5 text-[13px] text-ink-soft px-4 py-2 rounded-lg hover:bg-cream transition-colors"
               >
                 <Calendar className="w-3.5 h-3.5" />
-                Start new season
+                {t('season.startNew')}
               </button>
             </div>
           </>
@@ -391,15 +409,15 @@ function SeasonTab() {
             <div className="w-12 h-12 rounded-full bg-cream-dark flex items-center justify-center mx-auto mb-3">
               <Calendar className="w-6 h-6 text-forest/25" />
             </div>
-            <p className="text-[14px] font-semibold text-forest mb-1">No active season</p>
+            <p className="text-[14px] font-semibold text-forest mb-1">{t('season.none')}</p>
             <p className="text-[12px] text-ink-faint mb-5 max-w-xs mx-auto">
-              Set up your camp season to enable due date tracking on pre/post camp checklist tasks.
+              {t('season.noneBody')}
             </p>
             <button
               onClick={startNew}
               className="bg-forest text-cream text-[13px] font-medium px-5 py-2 rounded-lg hover:bg-forest/90 transition-colors"
             >
-              Set up season
+              {t('season.setUp')}
             </button>
           </div>
         )}
@@ -419,6 +437,7 @@ function LocBadge({ children, tone = 'neutral' }: { children: React.ReactNode; t
 
 /** Read-only overview row. Click to open the detail editor; children render indented below. */
 function LocationRow({ loc, depth, onOpen }: { loc: CampLocation; depth: number; onOpen: (l: CampLocation) => void }) {
+  const { t } = useTranslation('campInfo');
   const { childrenOf, categories } = useLocationStore();
   const kids = childrenOf(loc.id);
   const isRoom = loc.parentId != null;
@@ -429,19 +448,19 @@ function LocationRow({ loc, depth, onOpen }: { loc: CampLocation; depth: number;
       <button
         type="button"
         onClick={() => onOpen(loc)}
-        className="w-full flex items-center gap-2 py-2 pr-1 text-left rounded-btn hover:bg-cream-dark/30 transition-colors"
-        style={{ paddingLeft: `${depth * 20 + 4}px` }}
+        className="w-full flex items-center gap-2 py-2 pe-1 text-start rounded-btn hover:bg-cream-dark/30 transition-colors"
+        style={{ paddingInlineStart: `${depth * 20 + 4}px` }}
       >
-        {depth > 0 && <CornerDownRight className="w-3.5 h-3.5 text-forest/25 flex-shrink-0" />}
+        {depth > 0 && <CornerDownRight className="w-3.5 h-3.5 text-forest/25 flex-shrink-0 rtl:-scale-x-100" />}
         <span className={`text-[13px] font-medium truncate ${loc.isActive ? 'text-forest' : 'text-ink-faint line-through'}`}>
-          {loc.name || 'Untitled location'}
+          {loc.name || t('locations.untitled')}
         </span>
         <span className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
-          {loc.isDorm && <LocBadge>Dorm</LocBadge>}
-          {isRoom && loc.bedCapacity != null && <LocBadge>{loc.bedCapacity} beds</LocBadge>}
-          {loc.retreatAvailable && <LocBadge tone="sage">Retreat</LocBadge>}
-          {loc.accessible && <LocBadge tone="blue">ADA</LocBadge>}
-          {!loc.isActive && <LocBadge tone="muted">Blocked</LocBadge>}
+          {loc.isDorm && <LocBadge>{t('locations.badge.dorm')}</LocBadge>}
+          {isRoom && loc.bedCapacity != null && <LocBadge>{t('locations.badge.beds', { count: loc.bedCapacity })}</LocBadge>}
+          {loc.retreatAvailable && <LocBadge tone="sage">{t('locations.badge.retreat')}</LocBadge>}
+          {loc.accessible && <LocBadge tone="blue">{t('locations.badge.ada')}</LocBadge>}
+          {!loc.isActive && <LocBadge tone="muted">{t('locations.badge.blocked')}</LocBadge>}
           {depth === 0 && catName && <span className="text-[11px] text-ink-faint">{catName}</span>}
         </span>
         <Pencil className="w-3.5 h-3.5 text-forest/25 flex-shrink-0" />
@@ -453,6 +472,7 @@ function LocationRow({ loc, depth, onOpen }: { loc: CampLocation; depth: number;
 
 /** Detail editor for one location. Buildings carry dorm/category; rooms carry beds. Save/Cancel. */
 function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onClose: () => void; onOpen: (l: CampLocation) => void }) {
+  const { t } = useTranslation(['campInfo', 'common']);
   const { categories, updateLocation, deleteLocation, addLocation, childrenOf } = useLocationStore();
   const isRoom = loc.parentId != null;
   const kids = childrenOf(loc.id);
@@ -495,12 +515,14 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
     onClose();
   }
   function remove() {
-    if (confirm(`Delete "${loc.name || 'this location'}"${kids.length ? ' and its sub-locations' : ''}? This can't be undone.`)) {
+    const label = loc.name || t('locations.thisLocation');
+    if (confirm(kids.length ? t('locations.confirmDeleteWithChildren', { name: label }) : t('locations.confirmDelete', { name: label }))) {
       deleteLocation(loc.id);
       onClose();
     }
   }
   function addRoom() {
+    // Stored as the room's name, so it stays English (trap 18); the camp renames it right away.
     const r = addLocation({ name: 'New room', parentId: loc.id });
     onOpen(r); // switch the editor to the new room
   }
@@ -510,56 +532,62 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
   // cabins, not two identical villages. A building offered without rooms is one too -- that is
   // the shape the portal treats as a bookable space.
   const isSleeping = isRoom ? !!parent?.isDorm : (isDorm && kids.length === 0);
-  const chosenType = cabinTypes.find((t) => t.id === cabinTypeId) ?? null;
-  const activeTemplates = templates.filter((t) => t.isActive);
+  const chosenType = cabinTypes.find((ct) => ct.id === cabinTypeId) ?? null;
+  const activeTemplates = templates.filter((tpl) => tpl.isActive);
   const toggle = (on: boolean) => `inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1.5 rounded-pill border transition-colors ${on ? 'bg-sage text-white border-sage' : 'bg-white text-ink-soft border-border hover:border-forest/30'}`;
 
   return (
-    <Modal title={isRoom ? 'Edit room' : 'Edit location'} onClose={onClose} width="460px">
+    <Modal title={isRoom ? t('locations.editRoom') : t('locations.editLocation')} onClose={onClose} width="460px">
       <div className="space-y-4">
         <div>
-          <label className="block text-[12px] font-medium text-ink mb-1">Name</label>
-          <input autoFocus value={name} onChange={e => setName(e.target.value)} className={inputCls} placeholder="e.g. Birch Cabin, Room 2" />
+          <label className="block text-[12px] font-medium text-ink mb-1">{t('locations.name')}</label>
+          <input autoFocus value={name} onChange={e => setName(e.target.value)} className={inputCls} placeholder={t('locations.namePlaceholder')} />
         </div>
 
         {!isRoom && (
           <>
             <div>
-              <label className="block text-[12px] font-medium text-ink mb-1">Category</label>
+              <label className="block text-[12px] font-medium text-ink mb-1">{t('locations.category')}</label>
               <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className={inputCls}>
-                <option value="">Uncategorized</option>
+                <option value="">{t('locations.uncategorized')}</option>
                 {sortedCats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => setIsDorm(v => !v)} className={toggle(isDorm)}>{isDorm && <Check className="w-3 h-3" />} Dorm / sleeping quarters</button>
-              {isDorm && <button type="button" onClick={() => setRetreatAvailable(v => !v)} className={toggle(retreatAvailable)}>{retreatAvailable && <Check className="w-3 h-3" />} Available to retreats</button>}
+              <button type="button" onClick={() => setIsDorm(v => !v)} className={toggle(isDorm)}>{isDorm && <Check className="w-3 h-3" />} {t('locations.dormToggle')}</button>
+              {isDorm && <button type="button" onClick={() => setRetreatAvailable(v => !v)} className={toggle(retreatAvailable)}>{retreatAvailable && <Check className="w-3 h-3" />} {t('locations.retreatToggle')}</button>}
             </div>
-            {isDorm && <p className="text-[11px] text-ink-faint -mt-1.5">Beds live on this building's rooms. Add rooms below and set their beds.</p>}
+            {isDorm && <p className="text-[11px] text-ink-faint -mt-1.5">{t('locations.dormHelp')}</p>}
           </>
         )}
 
         {isRoom && (
           <>
             <div>
-              <label className="block text-[12px] font-medium text-ink mb-1">Beds</label>
+              <label className="block text-[12px] font-medium text-ink mb-1">{t('locations.beds')}</label>
               <input type="number" min={0} value={beds} onChange={e => setBeds(e.target.value)} className={`${inputCls} w-28`} placeholder="0" />
             </div>
             <div>
               <button type="button" disabled={!parentAvailable} onClick={() => setRetreatAvailable(v => !v)}
                 className={`${toggle(parentAvailable && retreatAvailable)} ${!parentAvailable ? 'opacity-40 cursor-not-allowed' : ''}`}>
-                {parentAvailable && retreatAvailable && <Check className="w-3 h-3" />} Available to retreats
+                {parentAvailable && retreatAvailable && <Check className="w-3 h-3" />} {t('locations.retreatToggle')}
               </button>
               {!parentAvailable && (
-                <p className="text-[11px] text-ink-faint mt-1">Mark <span className="font-medium">{parent?.name ?? 'the building'}</span> available to retreats first.</p>
+                <p className="text-[11px] text-ink-faint mt-1">
+                  <Trans
+                    t={t} i18nKey="locations.markParentFirst"
+                    values={{ name: parent?.name ?? t('locations.theBuilding') }}
+                    components={{ b: <span className="font-medium" /> }}
+                  />
+                </p>
               )}
             </div>
           </>
         )}
 
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setAccessible(v => !v)} className={toggle(accessible)}>{accessible && <Check className="w-3 h-3" />} Accessible / ADA</button>
-          <button type="button" onClick={() => setIsActive(v => !v)} className={toggle(isActive)}>{isActive ? <><Check className="w-3 h-3" /> Active</> : 'Blocked / inactive'}</button>
+          <button type="button" onClick={() => setAccessible(v => !v)} className={toggle(accessible)}>{accessible && <Check className="w-3 h-3" />} {t('locations.accessibleToggle')}</button>
+          <button type="button" onClick={() => setIsActive(v => !v)} className={toggle(isActive)}>{isActive ? <><Check className="w-3 h-3" /> {t('locations.activeToggle')}</> : t('locations.blockedToggle')}</button>
         </div>
 
         {/* This is `locations.notes`, and it is what the GUEST PORTAL shows a group choosing rooms
@@ -567,14 +595,14 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
             a field their customers read. Same column, honest label. */}
         {isSleeping && cabinTypes.length > 0 && (
           <div>
-            <label className="block text-[12px] font-medium text-ink mb-1">Saved description</label>
+            <label className="block text-[12px] font-medium text-ink mb-1">{t('locations.savedDescription')}</label>
             <select value={cabinTypeId} onChange={e => setCabinTypeId(e.target.value)} className={inputCls}>
-              <option value="">None — write it below</option>
-              {cabinTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              <option value="">{t('locations.savedDescriptionNone')}</option>
+              {cabinTypes.map(ct => <option key={ct.id} value={ct.id}>{ct.name}</option>)}
             </select>
             {chosenType && (
               <p className="mt-1.5 text-[11.5px] text-ink-soft bg-cream border border-border rounded-btn px-2.5 py-2 whitespace-pre-line">
-                {chosenType.description || 'This saved description is empty.'}
+                {chosenType.description || t('locations.savedDescriptionEmpty')}
               </p>
             )}
           </div>
@@ -582,19 +610,15 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
 
         <div>
           <label className="block text-[12px] font-medium text-ink mb-1">
-            {cabinTypeId ? 'Anything true of this one only' : 'Description groups see'}
+            {cabinTypeId ? t('locations.extraLabel') : t('locations.descriptionLabel')}
           </label>
           <textarea
             value={notes} onChange={e => setNotes(e.target.value)} rows={3}
             className={`${inputCls} resize-y`}
-            placeholder={isRoom
-              ? 'Bunk beds for eight, screened porch, closest to the bathhouse.'
-              : 'Eight cabins around a central green. Bathhouse a short walk, no heating.'}
+            placeholder={isRoom ? t('locations.roomPlaceholder') : t('locations.buildingPlaceholder')}
           />
           <p className="mt-1 text-[11px] text-ink-soft">
-            {cabinTypeId
-              ? 'Added under the saved description in the guest portal. Leave empty if there is nothing extra.'
-              : 'Shown in the guest portal when a group picks rooms and spaces. The same for every group — write it once.'}
+            {cabinTypeId ? t('locations.extraHelp') : t('locations.descriptionHelp')}
           </p>
         </div>
 
@@ -607,18 +631,18 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
               onClick={() => setProgramSpace(v => !v)}
               className={toggle(programSpace)}
             >
-              {programSpace && <Check className="w-3 h-3" />} Groups can book this to meet in
+              {programSpace && <Check className="w-3 h-3" />} {t('locations.programSpaceToggle')}
             </button>
             {programSpace && (
               <div className="mt-2.5">
-                <label className="block text-[12px] font-medium text-ink mb-1">Seats</label>
+                <label className="block text-[12px] font-medium text-ink mb-1">{t('locations.seats')}</label>
                 <input
                   type="number" min={0} value={seats}
                   onChange={e => setSeats(e.target.value)}
                   className={`${inputCls} w-28`} placeholder="0"
                 />
                 <p className="mt-1 text-[11px] text-ink-soft">
-                  Shown beside the name when a group chooses where to run a session.
+                  {t('locations.seatsHelp')}
                 </p>
               </div>
             )}
@@ -631,18 +655,17 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
         {activeTemplates.length > 0 && (
           <div className="border-t border-border pt-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint mb-1.5">
-              Crew only — groups never see this
+              {t('locations.crewOnly')}
             </p>
             <label className="block text-[12px] font-medium text-ink mb-1">
-              Turnover steps for {isRoom ? 'this room' : 'this location'}
+              {isRoom ? t('locations.turnoverStepsRoom') : t('locations.turnoverStepsLocation')}
             </label>
             <select value={checklistTemplateId} onChange={e => setChecklistTemplateId(e.target.value)} className={inputCls}>
-              <option value="">One step, named after it</option>
-              {activeTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              <option value="">{t('locations.oneStep')}</option>
+              {activeTemplates.map(tpl => <option key={tpl.id} value={tpl.id}>{tpl.name}</option>)}
             </select>
             <p className="mt-1 text-[11px] text-ink-soft">
-              When a work order covers the whole building, this checklist's steps go inside it —
-              instead of one line a crew has to remember the shape of.
+              {t('locations.turnoverHelp')}
             </p>
           </div>
         )}
@@ -650,18 +673,18 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
         {!isRoom && (
           <div className="border-t border-border pt-3">
             <div className="flex items-center justify-between mb-1.5">
-              <p className="text-[12px] font-semibold text-ink-soft">Rooms / sub-locations</p>
-              <button type="button" onClick={addRoom} className="inline-flex items-center gap-1 text-[12px] font-medium text-ink-soft hover:text-forest"><Plus className="w-3.5 h-3.5" /> Add room</button>
+              <p className="text-[12px] font-semibold text-ink-soft">{t('locations.rooms')}</p>
+              <button type="button" onClick={addRoom} className="inline-flex items-center gap-1 text-[12px] font-medium text-ink-soft hover:text-forest"><Plus className="w-3.5 h-3.5" /> {t('locations.addRoom')}</button>
             </div>
             {kids.length === 0 ? (
-              <p className="text-[11px] text-ink-faint italic">No rooms yet.</p>
+              <p className="text-[11px] text-ink-faint italic">{t('locations.noRooms')}</p>
             ) : (
               <div className="divide-y divide-stone-100">
                 {kids.map(k => (
-                  <button key={k.id} type="button" onClick={() => onOpen(k)} className="w-full flex items-center gap-2 py-1.5 text-left text-[12px] text-forest hover:text-sage">
-                    <CornerDownRight className="w-3.5 h-3.5 text-forest/25" />
+                  <button key={k.id} type="button" onClick={() => onOpen(k)} className="w-full flex items-center gap-2 py-1.5 text-start text-[12px] text-forest hover:text-sage">
+                    <CornerDownRight className="w-3.5 h-3.5 text-forest/25 rtl:-scale-x-100" />
                     <span className={k.isActive ? '' : 'text-ink-faint line-through'}>{k.name}</span>
-                    {k.bedCapacity != null && <span className="text-ink-faint">· {k.bedCapacity} beds</span>}
+                    {k.bedCapacity != null && <span className="text-ink-faint">· {t('locations.badge.beds', { count: k.bedCapacity })}</span>}
                   </button>
                 ))}
               </div>
@@ -670,20 +693,23 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
         )}
 
         <div className="flex gap-2 pt-1">
-          <button onClick={save} className="flex-1 bg-forest text-cream text-[13px] font-medium py-2 rounded-btn hover:bg-forest/90 transition-colors">Save changes</button>
-          <button onClick={remove} className="text-[13px] text-red hover:bg-red-bg px-3 py-2 rounded-btn transition-colors">Delete</button>
-          <button onClick={onClose} className="text-[13px] text-ink-soft hover:text-forest px-3 py-2 rounded-btn transition-colors">Cancel</button>
+          <button onClick={save} className="flex-1 bg-forest text-cream text-[13px] font-medium py-2 rounded-btn hover:bg-forest/90 transition-colors">{t('saveChanges')}</button>
+          <button onClick={remove} className="text-[13px] text-red hover:bg-red-bg px-3 py-2 rounded-btn transition-colors">{t('common:actions.delete')}</button>
+          <button onClick={onClose} className="text-[13px] text-ink-soft hover:text-forest px-3 py-2 rounded-btn transition-colors">{t('common:actions.cancel')}</button>
         </div>
       </div>
     </Modal>
   );
 }
 
+const GUIDE_COLUMNS = ['name', 'category', 'parent', 'dorm', 'beds', 'accessible'] as const;
+
 interface ParsedRow { name: string; category: string; parent: string; isDorm: boolean; beds: number | null; accessible: boolean; }
 
 function truthy(v: unknown) { return /^(y|yes|true|1|x|dorm|accessible)$/i.test(String(v ?? '').trim()); }
 
 function LocationsTab() {
+  const { t } = useTranslation(['campInfo', 'common']);
   const { topLevel, categories, addLocation, addCategory, deleteCategory } = useLocationStore();
   const locations = useLocationStore(s => s.locations);
 
@@ -710,7 +736,7 @@ function LocationsTab() {
     groups.push({ key: c.id, label: c.name, catId: c.id, items: tops.filter(l => l.categoryId === c.id) });
   }
   const uncategorized = tops.filter(l => !l.categoryId || !categories.some(c => c.id === l.categoryId));
-  if (uncategorized.length) groups.push({ key: '_none', label: 'Uncategorized', catId: null, items: uncategorized });
+  if (uncategorized.length) groups.push({ key: '_none', label: t('locations.uncategorized'), catId: null, items: uncategorized });
 
   function addTop() {
     const n = newTop.trim();
@@ -729,7 +755,7 @@ function LocationsTab() {
         const wb = XLSX.read(ev.target?.result, { type: 'binary' });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
-        if (!raw.length) { alert('That file had no rows.'); return; }
+        if (!raw.length) { alert(t('locations.import.noRows')); return; }
         const cols = Object.keys(raw[0]);
         const find = (re: RegExp) => cols.find(c => re.test(c));
         const nameC = find(/^name$|cabin|bunk|location|area/i) ?? cols[0];
@@ -749,11 +775,11 @@ function LocationsTab() {
             accessible: accC ? truthy(r[accC]) : false,
           };
         }).filter(r => r.name);
-        if (!rows.length) { alert('No usable rows (a "name" column is required).'); return; }
+        if (!rows.length) { alert(t('locations.import.noUsableRows')); return; }
         setPreview({ rows, fileName: file.name });
         setSummary(null);
       } catch {
-        alert('Could not read that file. Use a .csv or .xlsx file.');
+        alert(t('locations.import.unreadable'));
       }
     };
     reader.readAsBinaryString(file);
@@ -771,7 +797,7 @@ function LocationsTab() {
       const key = r.category.toLowerCase();
       if (r.category && !catMap.has(key)) catMap.set(key, store.addCategory(r.category).id);
     }
-    const resolveCat = (t: string) => (t ? catMap.get(t.toLowerCase()) ?? null : null);
+    const resolveCat = (c: string) => (c ? catMap.get(c.toLowerCase()) ?? null : null);
 
     // Pass 1, top-levels (no parent).
     const topRows = preview.rows.filter(r => !r.parent).map(r => ({
@@ -793,7 +819,9 @@ function LocationsTab() {
     useLocationStore.getState().bulkAdd(childRows);
 
     const dorms = preview.rows.filter(r => r.isDorm).length;
-    setSummary(`Imported ${preview.rows.length} location${preview.rows.length !== 1 ? 's' : ''}${dorms ? ` (${dorms} dorm${dorms !== 1 ? 's' : ''})` : ''}.`);
+    setSummary(dorms
+      ? t('locations.import.summaryWithDorms', { count: preview.rows.length, dorms })
+      : t('locations.import.summary', { count: preview.rows.length }));
     setPreview(null);
   }
 
@@ -804,7 +832,7 @@ function LocationsTab() {
       {/* Locations tree */}
       <div className={cardCls}>
         <div className="flex items-start justify-between gap-3 mb-1">
-          <h2 className="text-[13px] font-semibold text-forest">Camp locations</h2>
+          <h2 className="text-[13px] font-semibold text-forest">{t('locations.title')}</h2>
           {/* Putting a code on a door is what turns this list from an inventory into a way for
               anyone standing anywhere on the property to report what they are looking at. */}
           <button
@@ -812,11 +840,11 @@ function LocationsTab() {
             onClick={() => setPrintingLabels(true)}
             className="text-[12px] font-semibold text-forest hover:text-forest-mid whitespace-nowrap"
           >
-            Print QR labels
+            {t('locations.printLabels')}
           </button>
         </div>
         <p className="text-[12px] text-ink-faint mb-4">
-          The unified place inventory, used across the app to tag issues, tasks, assets, dorms, and retreats.
+          {t('locations.intro')}
         </p>
 
         {/* Two import paths: hand off to our team, or DIY spreadsheet import */}
@@ -824,19 +852,19 @@ function LocationsTab() {
           {/* (a) Drop a file for our team, same hand-off channel as the Setup Files tab */}
           <ImplementationDropzone
             category="locations"
-            title="Send us your list"
-            blurb="Drop your spreadsheet (any format) and our team will set up your locations for you."
+            title={t('locations.import.sendTitle')}
+            blurb={t('locations.import.sendBlurb')}
           />
 
           {/* (b) DIY spreadsheet import */}
           <div className="rounded-xl border border-border px-4 py-5 text-center bg-white flex flex-col items-center gap-1.5">
             <Upload className="w-5 h-5 text-ink-faint" />
-            <p className="text-[12px] font-semibold text-forest">Upload it yourself</p>
-            <p className="text-[11px] text-ink-faint leading-snug">Format a CSV or spreadsheet and import it directly.</p>
+            <p className="text-[12px] font-semibold text-forest">{t('locations.import.diyTitle')}</p>
+            <p className="text-[11px] text-ink-faint leading-snug">{t('locations.import.diyBlurb')}</p>
             <div className="flex items-center gap-3 mt-1.5">
-              <button onClick={() => fileRef.current?.click()} className="text-[12px] font-medium text-forest border border-border hover:border-forest/40 px-3 py-1.5 rounded-btn transition-colors">Choose file</button>
+              <button onClick={() => fileRef.current?.click()} className="text-[12px] font-medium text-forest border border-border hover:border-forest/40 px-3 py-1.5 rounded-btn transition-colors">{t('locations.import.chooseFile')}</button>
               <button onClick={() => setShowInstructions(v => !v)} className="text-[12px] text-ink-soft hover:text-forest inline-flex items-center gap-1">
-                {showInstructions ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />} Formatting guide
+                {showInstructions ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5 rtl:-scale-x-100" />} {t('locations.import.guide')}
               </button>
             </div>
             <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFile} />
@@ -846,16 +874,18 @@ function LocationsTab() {
         {/* Collapsible DIY formatting instructions */}
         {showInstructions && (
           <div className="mb-4 text-[12px] text-ink-soft bg-cream/60 border border-border rounded-btn px-3.5 py-2.5 leading-relaxed">
-            <span className="font-semibold text-ink">Spreadsheet format</span>one row per location. Column headers are matched loosely (case-insensitive):
-            <ul className="mt-1.5 space-y-0.5 list-disc pl-4">
-              <li><span className="font-medium text-ink">name</span> <span className="text-ink-faint">(required)</span>the location's name, e.g. “Birch Cabin”.</li>
-              <li><span className="font-medium text-ink">category</span>e.g. Housing, Waterfront, Dining. Created automatically if it's new.</li>
-              <li><span className="font-medium text-ink">parent</span>the exact name of another location to nest under (list parents above their children).</li>
-              <li><span className="font-medium text-ink">dorm</span>yes / true / x to mark a sleeping quarters.</li>
-              <li><span className="font-medium text-ink">beds</span>number of beds (dorms).</li>
-              <li><span className="font-medium text-ink">accessible</span>yes / true if ADA-accessible.</li>
+            <Trans t={t} i18nKey="locations.guide.intro" components={{ b: <span className="font-semibold text-ink" /> }} />
+            <ul className="mt-1.5 space-y-0.5 list-disc ps-4">
+              {/* The column names themselves stay English: they are what the importer matches. */}
+              {GUIDE_COLUMNS.map((col) => (
+                <li key={col}>
+                  <span className="font-medium text-ink" dir="ltr">{col}</span>{' '}
+                  {col === 'name' && <span className="text-ink-faint">{t('locations.guide.required')} </span>}
+                  {t(`locations.guide.${col}`)}
+                </li>
+              ))}
             </ul>
-            <p className="mt-1.5 text-ink-faint">Example row: <code className="bg-white border border-border rounded px-1">Birch Cabin, Housing, , yes, 12, yes</code></p>
+            <p className="mt-1.5 text-ink-faint">{t('locations.guide.example')} <code dir="ltr" className="bg-white border border-border rounded px-1">Birch Cabin, Housing, , yes, 12, yes</code></p>
           </div>
         )}
 
@@ -863,22 +893,22 @@ function LocationsTab() {
         {preview && (
           <div className="mb-4 p-4 bg-paper border border-border rounded-xl space-y-2">
             <p className="text-[12px] font-medium text-forest">
-              {preview.fileName} · {preview.rows.length} row{preview.rows.length !== 1 ? 's' : ''} ready
+              <bdi>{preview.fileName}</bdi> · {t('locations.import.rowsReady', { count: preview.rows.length })}
             </p>
             <div className="max-h-32 overflow-y-auto text-[12px] text-ink-soft space-y-0.5">
               {preview.rows.slice(0, 8).map((r, i) => (
                 <div key={i} className="flex gap-2">
-                  {r.parent && <CornerDownRight className="w-3.5 h-3.5 text-forest/25" />}
+                  {r.parent && <CornerDownRight className="w-3.5 h-3.5 text-forest/25 rtl:-scale-x-100" />}
                   <span className="text-forest">{r.name}</span>
                   {r.category && <span className="text-ink-faint">· {r.category}</span>}
-                  {r.isDorm && <span className="text-sage">· dorm{r.beds ? ` (${r.beds})` : ''}</span>}
+                  {r.isDorm && <span className="text-sage">· {r.beds ? t('locations.import.dormBeds', { beds: r.beds }) : t('locations.import.dorm')}</span>}
                 </div>
               ))}
-              {preview.rows.length > 8 && <p className="text-forest/30 italic">…and {preview.rows.length - 8} more</p>}
+              {preview.rows.length > 8 && <p className="text-forest/30 italic">{t('locations.import.andMore', { count: preview.rows.length - 8 })}</p>}
             </div>
             <div className="flex gap-2 pt-1">
-              <button onClick={runImport} className="bg-forest text-cream text-[12px] font-medium px-3 py-1.5 rounded-btn">Import {preview.rows.length}</button>
-              <button onClick={() => setPreview(null)} className="text-[12px] text-ink-soft hover:text-forest px-3 py-1.5">Cancel</button>
+              <button onClick={runImport} className="bg-forest text-cream text-[12px] font-medium px-3 py-1.5 rounded-btn">{t('locations.import.run', { count: preview.rows.length })}</button>
+              <button onClick={() => setPreview(null)} className="text-[12px] text-ink-soft hover:text-forest px-3 py-1.5">{t('common:actions.cancel')}</button>
             </div>
           </div>
         )}
@@ -889,7 +919,7 @@ function LocationsTab() {
         )}
 
         {locations.length === 0 && !preview && (
-          <p className="text-[13px] text-forest/30 italic mb-4">No locations yet. Add areas below or import a spreadsheet.</p>
+          <p className="text-[13px] text-forest/30 italic mb-4">{t('locations.empty')}</p>
         )}
 
         {/* Grouped tree */}
@@ -900,10 +930,11 @@ function LocationsTab() {
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{g.label}</p>
                 {g.catId && (
                   <button
+                    // Stored as the location's name, so English (trap 18).
                     onClick={() => setDetailLoc(addLocation({ name: 'New location', categoryId: g.catId }))}
                     className="text-[11px] text-ink-faint hover:text-forest transition-colors flex items-center gap-1"
                   >
-                    <Plus className="w-3 h-3" /> Add
+                    <Plus className="w-3 h-3" /> {t('common:actions.add')}
                   </button>
                 )}
               </div>
@@ -921,10 +952,10 @@ function LocationsTab() {
             onChange={e => setNewTop(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTop(); } }}
             className={`${fieldCls} flex-1 min-w-0`}
-            placeholder="e.g. Waterfront, Dining Hall, Bunk Row A"
+            placeholder={t('locations.addPlaceholder')}
           />
           <select value={newTopCat} onChange={e => setNewTopCat(e.target.value)} className={`${fieldCls} w-40 flex-shrink-0`}>
-            <option value="">Uncategorized</option>
+            <option value="">{t('locations.uncategorized')}</option>
             {sortedCats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <button
@@ -932,7 +963,7 @@ function LocationsTab() {
             disabled={!newTop.trim()}
             className="flex items-center gap-1.5 bg-forest text-cream text-[13px] font-medium px-4 py-2 rounded-btn hover:bg-forest/90 transition-colors disabled:opacity-40 flex-shrink-0"
           >
-            <Plus className="w-3.5 h-3.5" /> Add
+            <Plus className="w-3.5 h-3.5" /> {t('common:actions.add')}
           </button>
         </div>
       </div>
@@ -946,9 +977,9 @@ function LocationsTab() {
       {/* Category management */}
       <div className={cardCls}>
         <button onClick={() => setShowCats(v => !v)} className="flex items-center gap-1.5 text-[13px] font-semibold text-forest w-full">
-          {showCats ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          Categories
-          <span className="text-[11px] font-normal text-ink-faint ml-1">({sortedCats.length})</span>
+          {showCats ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4 rtl:-scale-x-100" />}
+          {t('locations.categories')}
+          <span className="text-[11px] font-normal text-ink-faint ms-1">({sortedCats.length})</span>
         </button>
 
         {showCats && (
@@ -958,12 +989,13 @@ function LocationsTab() {
                 <div key={c.id} className="flex items-center gap-1.5 bg-cream border border-border rounded-full px-3 py-1">
                   <span className="text-[12px] font-medium text-forest">{c.name}</span>
                   {c.isPreset ? (
-                    <span className="text-[9px] font-semibold uppercase tracking-wide text-forest/30">preset</span>
+                    <span className="text-[9px] font-semibold uppercase tracking-wide text-forest/30">{t('locations.preset')}</span>
                   ) : (
                     <button
-                      onClick={() => { if (confirm(`Delete category "${c.name}"? Locations in it become Uncategorized.`)) deleteCategory(c.id); }}
+                      onClick={() => { if (confirm(t('locations.confirmDeleteCategory', { name: c.name }))) deleteCategory(c.id); }}
                       className="text-forest/30 hover:text-red transition-colors"
-                      title={`Delete ${c.name}`}
+                      title={t('locations.deleteCategory', { name: c.name })}
+                      aria-label={t('locations.deleteCategory', { name: c.name })}
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -977,14 +1009,14 @@ function LocationsTab() {
                 onChange={e => setNewCat(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && newCat.trim()) { e.preventDefault(); addCategory(newCat.trim()); setNewCat(''); } }}
                 className={`${inputCls} flex-1`}
-                placeholder="Add a custom category…"
+                placeholder={t('locations.addCategoryPlaceholder')}
               />
               <button
                 onClick={() => { if (newCat.trim()) { addCategory(newCat.trim()); setNewCat(''); } }}
                 disabled={!newCat.trim()}
                 className="flex items-center gap-1.5 bg-forest text-cream text-[13px] font-medium px-4 py-2 rounded-btn hover:bg-forest/90 transition-colors disabled:opacity-40 flex-shrink-0"
               >
-                <Plus className="w-3.5 h-3.5" /> Add
+                <Plus className="w-3.5 h-3.5" /> {t('common:actions.add')}
               </button>
             </div>
           </div>
@@ -997,6 +1029,7 @@ function LocationsTab() {
 // ── Pools tab ─────────────────────────────────────────────────────────────────
 
 function PoolsTab() {
+  const { t } = useTranslation(['campInfo', 'common']);
   const { pools, updatePool } = usePoolStore();
   const { isAddEditPoolModalOpen, openAddEditPoolModal } = useUIStore();
 
@@ -1007,27 +1040,27 @@ function PoolsTab() {
       <div className={cardCls}>
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h2 className="text-[13px] font-semibold text-forest">Pools & waterfront</h2>
-            <p className="text-[12px] text-ink-faint mt-0.5">Aquatic locations tracked in Pool Management</p>
+            <h2 className="text-[13px] font-semibold text-forest">{t('pools.title')}</h2>
+            <p className="text-[12px] text-ink-faint mt-0.5">{t('pools.intro')}</p>
           </div>
           <button
             onClick={() => openAddEditPoolModal()}
             className="flex items-center gap-1.5 bg-forest text-cream text-[12px] font-medium px-3 py-1.5 rounded-btn hover:bg-forest/90 transition-colors flex-shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            Add pool
+            {t('pools.add')}
           </button>
         </div>
 
         {sorted.length === 0 ? (
-          <p className="text-[13px] text-forest/30 italic text-center py-4">No pools or waterfront locations added yet.</p>
+          <p className="text-[13px] text-forest/30 italic text-center py-4">{t('pools.empty')}</p>
         ) : (
           <div className="divide-y divide-border">
             {sorted.map(pool => (
               <div key={pool.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-forest truncate">{pool.name}</p>
-                  <p className="text-[11px] text-ink-faint">{POOL_TYPE_LABELS[pool.type]}</p>
+                  <p className="text-[11px] text-ink-faint">{t(`pools.types.${pool.type}`)}</p>
                 </div>
                 <button
                   onClick={() =>
@@ -1039,14 +1072,14 @@ function PoolsTab() {
                       : 'bg-cream-dark text-ink-faint hover:opacity-70'
                   }`}
                 >
-                  {pool.isActive ? 'Active' : 'Inactive'}
+                  {pool.isActive ? t('pools.active') : t('pools.inactive')}
                 </button>
                 <button
                   onClick={() => openAddEditPoolModal(pool.id)}
                   className="flex items-center gap-1 text-[12px] text-ink-faint hover:text-forest px-2 py-1 rounded hover:bg-cream transition-colors flex-shrink-0"
                 >
                   <Pencil className="w-3 h-3" />
-                  Edit
+                  {t('common:actions.edit')}
                 </button>
               </div>
             ))}
@@ -1064,21 +1097,22 @@ function PoolsTab() {
 export function CampSettings() {
   // /settings/staff is a real deep link, not a redirect: Compliance sends people here
   // to edit the roster, and they need a URL that lands on the right tab.
+  const { t } = useTranslation('campInfo');
   const [params] = useSearchParams();
   const { pathname } = useLocation();
   const [activeTab, setActiveTab] = useState<TabId>(() => {
     if (pathname.endsWith('/staff')) return 'staff';
     const wanted = params.get('tab');
-    return TABS.some((t) => t.id === wanted) ? wanted as TabId : 'profile';
+    return TABS.some((tab) => tab.id === wanted) ? wanted as TabId : 'profile';
   });
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Page header + tab bar */}
       <div className="px-4 sm:px-7 pt-7 pb-0 border-b border-border bg-white flex-shrink-0 overflow-x-auto">
-        <h1 className="text-[20px] font-bold text-forest">Camp Info</h1>
+        <h1 className="text-[20px] font-bold text-forest">{t('page.title')}</h1>
         <p className="text-[12px] text-ink-faint mt-0.5">
-          Your camp's profile, season, people, locations and pools
+          {t('page.subtitle')}
         </p>
         <div className="flex mt-5">
           {TABS.map(tab => (
@@ -1091,7 +1125,7 @@ export function CampSettings() {
                   : 'border-transparent text-ink-faint hover:text-forest'
               }`}
             >
-              {tab.label}
+              {t(`tabs.${tab.id}`)}
             </button>
           ))}
         </div>
@@ -1125,6 +1159,7 @@ export function CampSettings() {
  * different number still overrides it.
  */
 function RentalsTab() {
+  const { t } = useTranslation(['campInfo', 'common']);
   const { currentCamp, setRentalDefaults } = useCampStore();
   const { can } = useAuth();
   const editable = can('manageRetreats');
@@ -1181,8 +1216,8 @@ function RentalsTab() {
           a button -- and the page has no other affordance that says these are unsaved. */}
       {editable && (
         <div className="flex items-center justify-end gap-3">
-          {saved && <span className="text-[12.5px] text-green-muted-text">Saved.</span>}
-          <Button onClick={save}>Save</Button>
+          {saved && <span className="text-[12.5px] text-green-muted-text">{t('savedDot')}</span>}
+          <Button onClick={save}>{t('common:actions.save')}</Button>
         </div>
       )}
 
@@ -1191,38 +1226,38 @@ function RentalsTab() {
           the full width, because it is a document rather than a setting. */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
       <div className="rounded-card border border-border bg-white p-5">
-        <h3 className="font-display text-[15px] font-bold text-forest">Your rate</h3>
+        <h3 className="font-display text-[15px] font-bold text-forest">{t('rentals.rate.title')}</h3>
         <p className="text-[12.5px] text-ink-soft mt-0.5">
-          Used for a new booking and for any quote where you have not set a different price.
+          {t('rentals.rate.body')}
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
           <div>
-            <label className={label} htmlFor="rt-model">How you charge</label>
+            <label className={label} htmlFor="rt-model">{t('rentals.rate.model')}</label>
             <select
               id="rt-model" className={input} value={model} disabled={!editable}
               onChange={(e) => setModel(e.target.value)}
             >
-              <option value="per_person_night">Per person, per night</option>
-              <option value="per_cabin_night">Per cabin, per night</option>
-              <option value="flat">Flat facility fee</option>
+              <option value="per_person_night">{t('rentals.rate.perPersonNight')}</option>
+              <option value="per_cabin_night">{t('rentals.rate.perCabinNight')}</option>
+              <option value="flat">{t('rentals.rate.flat')}</option>
             </select>
           </div>
           {model === 'per_person_night' ? (
             <div>
-              <label className={label} htmlFor="rt-rate">Rate per person / night</label>
+              <label className={label} htmlFor="rt-rate">{t('rentals.rate.ratePerPerson')}</label>
               <input
-                id="rt-rate" className={input} inputMode="decimal" placeholder="92"
+                id="rt-rate" className={input} dir="ltr" inputMode="decimal" placeholder="92"
                 value={rate} disabled={!editable} onChange={(e) => setRate(e.target.value)}
               />
             </div>
           ) : (
             <div>
               <label className={label} htmlFor="rt-flat">
-                {model === 'per_cabin_night' ? 'Rate per cabin / night' : 'Facility fee'}
+                {model === 'per_cabin_night' ? t('rentals.rate.ratePerCabin') : t('rentals.rate.facilityFee')}
               </label>
               <input
-                id="rt-flat" className={input} inputMode="decimal" placeholder="1200"
+                id="rt-flat" className={input} dir="ltr" inputMode="decimal" placeholder="1200"
                 value={flat} disabled={!editable} onChange={(e) => setFlat(e.target.value)}
               />
             </div>
@@ -1231,44 +1266,44 @@ function RentalsTab() {
               type it in -- so every new agreement quietly proposed whatever number happened to
               be in the database, and no camp could change it. */}
           <div>
-            <label className={label} htmlFor="rt-deposit">Deposit to hold the dates</label>
+            <label className={label} htmlFor="rt-deposit">{t('rentals.rate.deposit')}</label>
             <input
-              id="rt-deposit" className={input} inputMode="decimal" placeholder="None"
+              id="rt-deposit" className={input} inputMode="decimal" placeholder={t('rentals.rate.depositNone')}
               value={deposit} disabled={!editable} onChange={(e) => setDeposit(e.target.value)}
             />
             <p className="mt-1 text-[11px] text-ink-soft">
-              Filled in on every new agreement. Blank asks for no deposit.
+              {t('rentals.rate.depositHelp')}
             </p>
           </div>
         </div>
       </div>
 
       <div className="rounded-card border border-border bg-white p-5">
-        <h3 className="font-display text-[15px] font-bold text-forest">Agreement defaults</h3>
+        <h3 className="font-display text-[15px] font-bold text-forest">{t('rentals.defaults.title')}</h3>
         <div className="mt-4 space-y-3">
           <div className="max-w-[16rem]">
-            <label className={label} htmlFor="rt-days">An agreement stands for</label>
+            <label className={label} htmlFor="rt-days">{t('rentals.defaults.validFor')}</label>
             <div className="flex items-center gap-2">
               <input
                 id="rt-days" className={input} inputMode="numeric" placeholder="30"
                 value={days} disabled={!editable} onChange={(e) => setDays(e.target.value)}
               />
-              <span className="text-[13px] text-ink-soft">days</span>
+              <span className="text-[13px] text-ink-soft">{t('rentals.defaults.days')}</span>
             </div>
           </div>
           {/* A cheque that never came does not announce itself: the dates stay held, no money
               lands against them, and somebody notices in the week of arrival. */}
           <div className="max-w-[16rem]">
-            <label className={label} htmlFor="rt-chase">Chase an unpaid deposit after</label>
+            <label className={label} htmlFor="rt-chase">{t('rentals.defaults.chaseAfter')}</label>
             <div className="flex items-center gap-2">
               <input
-                id="rt-chase" className={input} inputMode="numeric" placeholder="Never"
+                id="rt-chase" className={input} inputMode="numeric" placeholder={t('rentals.defaults.never')}
                 value={chase} disabled={!editable} onChange={(e) => setChase(e.target.value)}
               />
-              <span className="text-[13px] text-ink-soft">days</span>
+              <span className="text-[13px] text-ink-soft">{t('rentals.defaults.days')}</span>
             </div>
             <p className="text-[11px] text-ink-soft mt-1">
-              Counted from the day the deposit invoice went out. Blank means never.
+              {t('rentals.defaults.chaseHelp')}
             </p>
           </div>
         </div>
@@ -1282,37 +1317,37 @@ function RentalsTab() {
           filled in, instead of as an email somebody has to retype. */}
       <div className="rounded-card border border-border bg-white p-5">
         <div>
-          <p className={label}>Public inquiry link</p>
+          <p className={label}>{t('rentals.inquiry.title')}</p>
           {inquiryToken ? (
             <div className="mt-1.5 space-y-2">
               <div className="flex flex-wrap items-center gap-2 rounded-card border border-border bg-cream px-3.5 py-2.5">
-                <code className="min-w-0 flex-1 truncate text-[12.5px] text-ink">{inquiryUrl}</code>
+                <code dir="ltr" className="min-w-0 flex-1 truncate text-[12.5px] text-ink">{inquiryUrl}</code>
                 <button
                   onClick={() => { void navigator.clipboard.writeText(inquiryUrl); setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000); }}
                   className="text-[12.5px] font-semibold text-forest hover:text-forest-mid"
                 >
-                  {copiedLink ? 'Copied' : 'Copy'}
+                  {copiedLink ? t('copied') : t('copy')}
                 </button>
                 {editable && (
                   <button
-                    onClick={() => { if (confirm('Turn the inquiry link off? Anyone using the old link will see "not recognised".')) void toggleInquiry(false); }}
+                    onClick={() => { if (confirm(t('rentals.inquiry.confirmOff'))) void toggleInquiry(false); }}
                     className="text-[12.5px] font-semibold text-red hover:opacity-80"
                   >
-                    Turn off
+                    {t('rentals.inquiry.turnOff')}
                   </button>
                 )}
               </div>
               <p className="text-[11px] text-ink-soft">
-                Put it on your website or in a reply. Inquiries arrive in the pipeline as new leads.
+                {t('rentals.inquiry.help')}
               </p>
             </div>
           ) : (
             <div className="mt-1.5">
               <Button size="sm" variant="ghost" disabled={!editable} onClick={() => void toggleInquiry(true)}>
-                Create an inquiry link
+                {t('rentals.inquiry.create')}
               </Button>
               <p className="mt-1 text-[11px] text-ink-soft">
-                Off by default. Nothing is public until you make one.
+                {t('rentals.inquiry.offHelp')}
               </p>
             </div>
           )}

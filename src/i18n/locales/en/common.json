@@ -67,5 +67,30 @@
     "grounds": "Grounds",
     "kitchen": "Kitchen",
     "it": "Tech"
+  },
+  "schedule": {
+    "everyDay_one": "Every day",
+    "everyDay_other": "Every {{count}} days",
+    "everyWeek_one": "Every week",
+    "everyWeek_other": "Every {{count}} weeks",
+    "everyWeekOn_one": "Every week on {{days}}",
+    "everyWeekOn_other": "Every {{count}} weeks on {{days}}",
+    "everyMonth_one": "Every month",
+    "everyMonth_other": "Every {{count}} months",
+    "everyMonthOn_one": "Every month on day {{day}}",
+    "everyMonthOn_other": "Every {{count}} months on day {{day}}",
+    "everyYear_one": "Every year",
+    "everyYear_other": "Every {{count}} years",
+    "openingDay": "On opening day",
+    "beforeOpening_one": "{{count}} day before opening",
+    "beforeOpening_other": "{{count}} days before opening",
+    "afterOpening_one": "{{count}} day after opening",
+    "afterOpening_other": "{{count}} days after opening",
+    "everyTurnover": "Every turnover",
+    "everyMiles": "Every {{n}} miles",
+    "everyHours": "Every {{n}} hours",
+    "byMeter": "By meter",
+    "behind_one": "{{count}} cycle behind",
+    "behind_other": "{{count}} cycles behind"
   }
 }

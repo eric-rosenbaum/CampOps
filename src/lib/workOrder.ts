@@ -14,7 +14,7 @@ import type {
   Issue, IssueStatus, Priority, Trade, IssueSource, ActivityEntry, WorkSchedule, Cadence,
 } from './types';
 import { TRADE_LABELS } from './types';
-import { localizedLabels } from '../i18n';
+import i18n, { currentLang, localizedLabels } from '../i18n';
 
 // ─── The queue's vocabulary ───────────────────────────────────────────────────
 
@@ -222,40 +222,45 @@ export function describeCadence(s: Pick<WorkSchedule,
   'cadence' | 'intervalCount' | 'byWeekday' | 'byMonthday' | 'anchorDate'
   | 'daysRelativeToOpening' | 'meterInterval' | 'meterKind'>): string {
   const n = Math.max(1, s.intervalCount || 1);
-  const every = (unit: string) => (n === 1 ? `Every ${unit}` : `Every ${n} ${unit}s`);
-  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const t = i18n.t.bind(i18n);
 
   switch (s.cadence) {
     case 'daily':
-      return n === 1 ? 'Every day' : `Every ${n} days`;
+      return t('common:schedule.everyDay', { count: n });
     case 'weekly': {
-      const days = (s.byWeekday ?? []).map((d) => DAYS[d]).filter(Boolean);
-      return `${every('week')}${days.length ? ` on ${days.join(', ')}` : ''}`;
+      // Weekday names from Intl rather than a table, so they arrive in the reader's language.
+      // 2023-01-01 was a Sunday, which lines index 0 up with the stored byWeekday numbering.
+      const fmt = new Intl.DateTimeFormat(currentLang(), { weekday: 'short' });
+      const names = (s.byWeekday ?? [])
+        .filter((d) => d >= 0 && d <= 6)
+        .map((d) => fmt.format(new Date(2023, 0, 1 + d)));
+      if (!names.length) return t('common:schedule.everyWeek', { count: n });
+      const days = new Intl.ListFormat(currentLang(), { style: 'short', type: 'conjunction' }).format(names);
+      return t('common:schedule.everyWeekOn', { count: n, days });
     }
     case 'monthly':
-      return `${every('month')}${s.byMonthday ? ` on the ${ordinal(s.byMonthday)}` : ''}`;
+      return s.byMonthday
+        ? t('common:schedule.everyMonthOn', { count: n, day: s.byMonthday })
+        : t('common:schedule.everyMonth', { count: n });
     case 'annually':
-      return every('year');
+      return t('common:schedule.everyYear', { count: n });
     case 'season_relative': {
       const d = s.daysRelativeToOpening ?? 0;
-      if (d === 0) return 'On opening day';
-      return d < 0 ? `${Math.abs(d)} days before opening` : `${d} days after opening`;
+      if (d === 0) return t('common:schedule.openingDay');
+      return d < 0
+        ? t('common:schedule.beforeOpening', { count: Math.abs(d) })
+        : t('common:schedule.afterOpening', { count: d });
     }
     case 'on_turnover':
-      return 'Every turnover';
+      return t('common:schedule.everyTurnover');
     case 'meter':
-      return s.meterInterval
-        ? `Every ${s.meterInterval} ${s.meterKind === 'odometer' ? 'miles' : 'hours'}`
-        : 'By meter';
+      if (!s.meterInterval) return t('common:schedule.byMeter');
+      return s.meterKind === 'odometer'
+        ? t('common:schedule.everyMiles', { n: s.meterInterval })
+        : t('common:schedule.everyHours', { n: s.meterInterval });
     default:
       return '';
   }
-}
-
-function ordinal(n: number): string {
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
 }
 
 /**
@@ -268,8 +273,7 @@ function ordinal(n: number): string {
  */
 export function describeMissed(missedCount: number): string | null {
   if (missedCount <= 0) return null;
-  if (missedCount === 1) return '1 cycle behind';
-  return `${missedCount} cycles behind`;
+  return i18n.t('common:schedule.behind', { count: missedCount });
 }
 
 export const CADENCES_NEEDING_ASSET: Cadence[] = ['meter'];

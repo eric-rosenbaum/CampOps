@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { Check, AlertCircle, Loader2 } from 'lucide-react';
 import { useCampStore } from '@/store/campStore';
 import type { CampRole, StaffGroup } from '@/store/campStore';
 import { sendEmail, buildInviteEmail } from '@/lib/email';
+import { seedCrewName } from '@/lib/useTrades';
 
-const ROLE_LABELS: Record<CampRole, string> = {
-  admin: 'Admin', staff: 'Staff', viewer: 'Viewer',
-};
+const ROLES: CampRole[] = ['admin', 'staff', 'viewer'];
 
 type Status = 'queued' | 'sending' | 'sent' | 'failed';
 
@@ -39,6 +39,7 @@ export function BulkInviteForm({
   onSent: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation(['team', 'common']);
   const inviteMember = useCampStore((s) => s.inviteMember);
 
   const [raw, setRaw] = useState('');
@@ -74,15 +75,15 @@ export function BulkInviteForm({
           fromName: campName, fromEmail: 'invites@campcommand.app',
         });
         setRows((prev) => patch(prev, email, res.ok
-          ? { status: 'sent', detail: pending.has(email) ? 'Resent, earlier link no longer works' : undefined }
+          ? { status: 'sent', detail: pending.has(email) ? t('bulk.resent') : undefined }
           // The invitation row exists whether or not the email went out, so the link still
           // works. Surface it so the admin can pass it along by hand instead of losing the
           // invitation entirely.
-          : { status: 'failed', detail: res.error ?? 'Email failed to send', link }));
+          : { status: 'failed', detail: res.error ?? t('bulk.emailFailed'), link }));
       } catch (err) {
         setRows((prev) => patch(prev, email, {
           status: 'failed',
-          detail: err instanceof Error ? err.message : 'Could not create invitation',
+          detail: err instanceof Error ? err.message : t('bulk.errorCreate'),
         }));
       }
     }
@@ -98,8 +99,10 @@ export function BulkInviteForm({
       <div className="space-y-3">
         <p className="text-[12px] font-medium text-forest">
           {running
-            ? `Sending ${Math.min(done + 1, rows.length)} of ${rows.length}…`
-            : `${sent} invitation${sent === 1 ? '' : 's'} sent${failed > 0 ? `, ${failed} failed` : ''}`}
+            ? t('bulk.progress', { current: Math.min(done + 1, rows.length), total: rows.length })
+            : failed > 0
+              ? t('bulk.sentFailed', { count: sent, failed })
+              : t('bulk.sent', { count: sent })}
         </p>
 
         <div className="max-h-64 overflow-y-auto rounded-lg border border-border divide-y divide-stone-100">
@@ -107,14 +110,14 @@ export function BulkInviteForm({
             <div key={r.email} className="flex items-start gap-2.5 px-3 py-2">
               <StatusIcon status={r.status} />
               <div className="min-w-0 flex-1">
-                <p className="text-[12px] text-forest truncate">{r.email}</p>
+                <p dir="ltr" className="text-[12px] text-forest truncate text-start">{r.email}</p>
                 {r.detail && <p className="text-[11px] text-ink-faint">{r.detail}</p>}
                 {r.status === 'failed' && r.link && (
                   <button
                     onClick={() => navigator.clipboard.writeText(r.link!)}
                     className="text-[11px] font-medium text-ink-soft hover:text-forest underline"
                   >
-                    Copy the invite link instead
+                    {t('bulk.copyInstead')}
                   </button>
                 )}
               </div>
@@ -127,7 +130,7 @@ export function BulkInviteForm({
             onClick={onCancel}
             className="w-full bg-forest text-cream text-[12px] font-medium py-1.5 rounded-lg hover:bg-forest/90 transition-colors"
           >
-            Done
+            {t('common:actions.done')}
           </button>
         )}
       </div>
@@ -137,23 +140,25 @@ export function BulkInviteForm({
   return (
     <div className="space-y-2.5">
       <div>
-        <label className="block text-[11px] font-medium text-ink-soft mb-1">Email addresses</label>
+        <label className="block text-[11px] font-medium text-ink-soft mb-1">{t('bulk.emails')}</label>
         <textarea
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           rows={5}
           autoFocus
-          placeholder={'Paste your staff roster here.\nOne per line, or separated by commas.'}
+          placeholder={t('bulk.placeholder')}
           className="w-full px-3 py-2 border border-border rounded-lg text-[12px] text-forest placeholder:text-forest/30 focus:outline-none focus:ring-2 focus:ring-forest/20"
         />
         <p className="text-[11px] text-ink-faint mt-1">
           {parsed.valid.length > 0
-            ? `${parsed.valid.length} address${parsed.valid.length === 1 ? '' : 'es'} ready`
-            : 'Everyone receives their own invitation link.'}
+            ? t('bulk.ready', { count: parsed.valid.length })
+            : t('bulk.ownLink')}
           {parsed.invalid.length > 0 && (
             <span className="text-red-600">
-              {' '}· {parsed.invalid.length} not a valid email: {parsed.invalid.slice(0, 3).join(', ')}
-              {parsed.invalid.length > 3 && '…'}
+              {' · '}
+              <Trans t={t} i18nKey="bulk.invalid" count={parsed.invalid.length}
+                values={{ list: parsed.invalid.slice(0, 3).join(', ') + (parsed.invalid.length > 3 ? '…' : '') }}
+                components={{ e: <bdi dir="ltr" /> }} />
             </span>
           )}
         </p>
@@ -161,28 +166,28 @@ export function BulkInviteForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
-          <label className="block text-[11px] font-medium text-ink-soft mb-1">Role</label>
+          <label className="block text-[11px] font-medium text-ink-soft mb-1">{t('invite.role')}</label>
           <select
             value={role}
             onChange={(e) => setRole(e.target.value as CampRole)}
             className="w-full px-2 py-1.5 border border-border rounded-lg text-[12px] text-forest bg-white focus:outline-none focus:ring-2 focus:ring-forest/20"
           >
-            {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            {ROLES.map((v) => <option key={v} value={v}>{t(`common:role.${v}`)}</option>)}
           </select>
         </div>
         {role === 'staff' && (
           <div>
-            <label className="block text-[11px] font-medium text-ink-soft mb-1">Crew</label>
+            <label className="block text-[11px] font-medium text-ink-soft mb-1">{t('invite.crew')}</label>
             {staffGroups.length === 0 ? (
-              <p className="text-[11px] text-red-500 pt-1.5">Create a crew first</p>
+              <p className="text-[11px] text-red-500 pt-1.5">{t('invite.createCrewFirst')}</p>
             ) : (
               <select
                 value={groupId}
                 onChange={(e) => setGroupId(e.target.value)}
                 className="w-full px-2 py-1.5 border border-border rounded-lg text-[12px] text-forest bg-white focus:outline-none focus:ring-2 focus:ring-forest/20"
               >
-                <option value="">Select group…</option>
-                {staffGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                <option value="">{t('invite.selectCrew')}</option>
+                {staffGroups.map((g) => <option key={g.id} value={g.id}>{seedCrewName(g.key, g.name) ?? g.name}</option>)}
               </select>
             )}
           </div>
@@ -190,8 +195,7 @@ export function BulkInviteForm({
       </div>
 
       <p className="text-[11px] text-ink-faint leading-relaxed">
-        Everyone in this batch gets the same role and group. Because the link arrives in their
-        own inbox, they set up an account without needing a join code.
+        {t('bulk.batchNote')}
       </p>
 
       <div className="flex gap-2 pt-0.5">
@@ -200,7 +204,7 @@ export function BulkInviteForm({
           onClick={onCancel}
           className="text-[12px] text-ink-faint hover:text-forest px-3 py-1.5 rounded-lg hover:bg-paper transition-colors"
         >
-          Cancel
+          {t('common:actions.cancel')}
         </button>
         <button
           onClick={send}
@@ -208,8 +212,8 @@ export function BulkInviteForm({
           className="flex-1 bg-forest text-cream text-[12px] font-medium py-1.5 rounded-lg hover:bg-forest/90 transition-colors disabled:opacity-50"
         >
           {parsed.valid.length > 0
-            ? `Send ${parsed.valid.length} invitation${parsed.valid.length === 1 ? '' : 's'}`
-            : 'Send invitations'}
+            ? t('bulk.sendN', { count: parsed.valid.length })
+            : t('bulk.sendAll')}
         </button>
       </div>
     </div>

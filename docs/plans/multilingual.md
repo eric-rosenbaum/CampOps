@@ -133,3 +133,24 @@ sentence shapes and falls back to the stored English. iOS mirrors it in Swift.
 - `npx tsc -b`, `npm run lint` (baseline 30 problems / 15 errors), `npm run test:unit`.
 - The coordinator drives the browser (staging, Prospect QA) and the simulator in all three
   languages and reads the screenshots.
+
+## Status — 2026-09-18 (built on staging, not yet on production)
+
+- Web: every in-scope screen reads from its namespace in en/es/he; `npm run test:unit` holds the
+  three languages to one key set. `e2e/multilingual.spec.ts` reads one Spanish work order in all
+  three languages at laptop and phone widths.
+- Server: `content_translations` + `translation_queue` + triggers + pg_net ping + 2-minute cron;
+  `translate-content` runs **Opus 5 at low effort** (Haiku's Hebrew was unusable — "llave de paso"
+  became a fire valve). `TRANSLATE_MODEL` overrides it. Push notifications use the recipient's
+  language. Suite: `bash scripts/run-sql-tests.sh content_translations`.
+- iOS: `Localizable.xcstrings` (check with `scripts/check-ios-strings.py`), runtime switching via
+  root locale/layoutDirection + `L10n.tr`, window-level direction override for UIKit bars.
+- Not translated yet: Pool, Safety, Compliance, Assets, Building, Commissary, Retreats, Trips,
+  Receipts, Food requests, camp/team settings, admin, onboarding, the guest portal; iOS Pool,
+  Assets, Building. Routine/template/vendor/location names are the camp's words and are not
+  machine-translated. `open_reports_at` returns no ids, so the public form's "already reported"
+  titles stay in the original language.
+- To ship: apply the three migrations with `scripts/apply-production-migration.sh`, deploy
+  `translate-content` and `push-send` (`--no-verify-jwt` on translate-content), confirm the Vault
+  secrets `cron_secret`/`functions_base_url` and `ANTHROPIC_API_KEY` exist on production, then the
+  web build, then an iOS build.

@@ -235,6 +235,15 @@ meant every sticker ever printed opened Safari. Apple also will not fetch
 `/.well-known/apple-app-site-association` through a redirect, which the apex still answers with —
 so `STICKER_HOST` (src/lib/env.ts) prints the `www` host, which serves the file directly.
 
+**18. A translated label must never reach a stored sentence.** `STATUS_LABELS`, `TRADE_LABELS`,
+`CADENCE_LABELS` and friends are localized getters now (`src/i18n/index.ts`), so interpolating one
+into `issue_activity.action`, a comment or any other row writes Spanish into data that SQL reads
+with `ilike '%resolved%'` and that nobody else can translate. Stored sentences use English words
+(`activityStatusWord`) and people's own names; translation happens at display
+(`translateActivity`, `TranslatedText`). Also: don't import `src/i18n` from a `src/lib` file on
+Playwright's import chain (e2e → foodRequests → … → utils) — Node refuses the JSON; use the
+`i18next` singleton there. Multilingual plan and contracts: `docs/plans/multilingual.md`.
+
 ## 7. Working habits this project expects
 
 - **Verify the fix, not the diff.** Check where a block actually sits in the rendered DOM, not

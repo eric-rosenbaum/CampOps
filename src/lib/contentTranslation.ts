@@ -15,3 +15,20 @@ export function useTranslatedString(
 ): string {
   return text;
 }
+
+/**
+ * A lookup for many rows at once — search over a board of work orders, sorting, exports.
+ * Returns a function `(source, id, field, original) => string` that yields the reader's-language
+ * text when a current translation exists and the original otherwise. Search should match BOTH
+ * (see `searchableText`), so a Spanish reader finds "gotera" and the director still finds "leak".
+ */
+export function useTranslationLookup(): (
+  source: TranslatableSource, id: string, field: TranslatableField, text: string,
+) => string {
+  return (_s, _i, _f, text) => text;
+}
+
+/** Original + translation joined, for matching a search query against either language. */
+export function searchableText(original: string, translated: string): string {
+  return translated === original ? original : `${original}\n${translated}`;
+}

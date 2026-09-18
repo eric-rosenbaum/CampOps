@@ -11,7 +11,7 @@
 // Auth to Apple is token-based (a .p8 signing key), not certificate-based: one key works for
 // every app on the team, in both environments, and does not expire annually. The JWT it produces
 // is what APNs checks, and Apple rejects one older than an hour — hence the cache below.
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -170,6 +170,116 @@ async function sendToDevice(device: Device, payload: unknown, jwt: string): Prom
   return { ok: false, retire, reason };
 }
 
+/** The languages content_translations holds, and so the ones a push can be said in. */
+type Lang = "en" | "es" | "he";
+const isLang = (s: unknown): s is Lang => s === "en" || s === "es" || s === "he";
+
+/** How long a push will wait for its own translation before going out in the original. */
+const TRANSLATE_WAIT_MS = 8000;
+
+/**
+ * Puts each notification in its recipient's language: the work order's title, and for a comment
+ * the comment itself. The fixed wording ("Assigned to you") was already chosen by the trigger
+ * that queued the row; what the trigger could not do is translate words typed a moment earlier,
+ * because translate-content had not seen them yet. So this looks again at send time, asks
+ * translate-content for anything still missing, and waits a few seconds for the answer.
+ *
+ * Somebody with no preferred language is left exactly as queued. And nothing here may stop a
+ * send: a notification in the original language is late news, a notification that never went
+ * out is none.
+ */
+async function localize(admin: SupabaseClient, rows: PushRow[]): Promise<void> {
+  const { data: owners, error: ownErr } = await admin
+    .from("push_notifications").select("id, user_id").in("id", rows.map((r) => r.id));
+  if (ownErr) throw new Error(ownErr.message);
+  const userIds = [...new Set((owners ?? []).map((o) => o.user_id as string))];
+  if (!userIds.length) return;
+  const { data: profiles, error: profErr } = await admin
+    .from("profiles").select("id, preferred_language").in("id", userIds);
+  if (profErr) throw new Error(profErr.message);
+  const langOfUser = new Map((profiles ?? []).map((p) => [p.id as string, p.preferred_language]));
+
+  const langOf = new Map<string, Lang>();
+  for (const o of owners ?? []) {
+    const lang = langOfUser.get(o.user_id as string);
+    if (isLang(lang)) langOf.set(o.id as string, lang);
+  }
+  const todo = rows.filter((r) => langOf.has(r.id) && typeof r.data?.issue_id === "string");
+  if (!todo.length) return;
+
+  const issueIds = [...new Set(todo.map((r) => String(r.data!.issue_id)))];
+  const commentIds = [...new Set(todo
+    .filter((r) => r.data?.kind === "work_order_comment" && typeof r.data?.comment_id === "string")
+    .map((r) => String(r.data!.comment_id)))];
+
+  const [{ data: issues }, { data: comments }] = await Promise.all([
+    admin.from("issues").select("id, title").in("id", issueIds),
+    commentIds.length
+      ? admin.from("issue_comments").select("id, body, author_name").in("id", commentIds)
+      : Promise.resolve({ data: [] as { id: string; body: string; author_name: string }[] }),
+  ]);
+  const titleOf = new Map((issues ?? []).map((i) => [i.id as string, i.title as string]));
+  const commentOf = new Map((comments ?? []).map((c) => [c.id as string, c as { body: string; author_name: string }]));
+
+  type Tr = { source_table: string; source_id: string; field: string; lang: string; source_text: string; text: string };
+  const read = async (): Promise<Tr[]> => {
+    const [a, b] = await Promise.all([
+      admin.from("content_translations").select("source_table, source_id, field, lang, source_text, text")
+        .eq("source_table", "issues").eq("field", "title").in("source_id", issueIds),
+      commentIds.length
+        ? admin.from("content_translations").select("source_table, source_id, field, lang, source_text, text")
+          .eq("source_table", "issue_comments").eq("field", "body").in("source_id", commentIds)
+        : Promise.resolve({ data: [] as Tr[] }),
+    ]);
+    return [...((a.data ?? []) as Tr[]), ...((b.data ?? []) as Tr[])];
+  };
+  // Current means made from the text as it stands now — the same rule both clients use.
+  const current = (all: Tr[], table: string, id: string, lang: Lang, original: string | undefined) =>
+    original === undefined ? undefined
+      : all.find((t) => t.source_table === table && t.source_id === id && t.lang === lang && t.source_text === original)?.text;
+
+  let translations = await read();
+  const missing = new Map<string, { source: string; id: string }>();
+  for (const r of todo) {
+    const lang = langOf.get(r.id)!;
+    const issueId = String(r.data!.issue_id);
+    if (titleOf.has(issueId) && current(translations, "issues", issueId, lang, titleOf.get(issueId)) === undefined) {
+      missing.set(`issues/${issueId}`, { source: "issues", id: issueId });
+    }
+    const commentId = typeof r.data?.comment_id === "string" ? r.data.comment_id : null;
+    if (commentId && commentOf.has(commentId) &&
+        current(translations, "issue_comments", commentId, lang, commentOf.get(commentId)!.body) === undefined) {
+      missing.set(`issue_comments/${commentId}`, { source: "issue_comments", id: commentId });
+    }
+  }
+
+  if (missing.size) {
+    try {
+      const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/translate-content`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-cron-secret": Deno.env.get("CRON_SECRET")! },
+        body: JSON.stringify({ refs: [...missing.values()].slice(0, 50) }),
+        signal: AbortSignal.timeout(TRANSLATE_WAIT_MS),
+      });
+      await res.body?.cancel();
+      translations = await read();
+    } catch (err) {
+      console.warn("push-send: translation did not arrive in time; sending originals:", err instanceof Error ? err.message : err);
+    }
+  }
+
+  for (const r of todo) {
+    const lang = langOf.get(r.id)!;
+    const issueId = String(r.data!.issue_id);
+    const title = current(translations, "issues", issueId, lang, titleOf.get(issueId));
+    if (title) r.title = title.slice(0, 120);
+    const commentId = typeof r.data?.comment_id === "string" ? r.data.comment_id : null;
+    const comment = commentId ? commentOf.get(commentId) : undefined;
+    const body = comment && commentId ? current(translations, "issue_comments", commentId, lang, comment.body) : undefined;
+    if (comment && body) r.body = `${comment.author_name}: ${body}`.slice(0, 300);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -211,6 +321,12 @@ Deno.serve(async (req) => {
 
   const rows = (data ?? []) as PushRow[];
   if (!rows.length) return json({ claimed: 0, delivered: 0, failed: 0, retired: 0 });
+
+  try {
+    await localize(admin, rows);
+  } catch (err) {
+    console.error("push-send: could not localize; sending as queued:", err instanceof Error ? err.message : err);
+  }
 
   let jwt: string;
   try {

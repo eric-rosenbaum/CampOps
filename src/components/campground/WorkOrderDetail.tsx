@@ -24,6 +24,7 @@ import { WorkTimeline } from './WorkTimeline';
 import { dbUploadPhoto } from '@/lib/db';
 import { formatDate, formatDateTime, generateId, relativeDueDate, todayStr } from '@/lib/utils';
 import { TranslatedText } from '@/components/i18n/TranslatedText';
+import { seedCrewName } from '@/lib/useTrades';
 
 /** How long the undo bar stands before the work order is really, quietly, closed. */
 const UNDO_MS = 5000;
@@ -239,8 +240,13 @@ export function WorkOrderDetail({ issue }: Props) {
     setShowTime(false);
   }
 
+  // Shown, not stored: the seed crews read in the reader's language (the log above keeps g.name).
+  const crewKeyName = (id: string): [string, string | undefined] => {
+    const g = staffGroups.find((x) => x.id === id);
+    return [g?.key ?? '', g?.name];
+  };
   const crewName = issue.assigneeGroupId
-    ? (staffGroups.find((g) => g.id === issue.assigneeGroupId)?.name ?? null)
+    ? (seedCrewName(...crewKeyName(issue.assigneeGroupId)) ?? null)
     : null;
   const assignee = issue.assigneeId
     ? (members.find((m) => m.userId === issue.assigneeId)?.fullName ?? null)
@@ -409,7 +415,7 @@ export function WorkOrderDetail({ issue }: Props) {
                 {staffGroups.length > 0 && (
                   <optgroup label={t('detail.crewPicksItUp')}>
                     {staffGroups.map((g) => (
-                      <option key={g.id} value={`crew:${g.id}`}>{g.name}</option>
+                      <option key={g.id} value={`crew:${g.id}`}>{seedCrewName(g.key, g.name)}</option>
                     ))}
                   </optgroup>
                 )}

@@ -15,7 +15,7 @@ import { useLocationStore } from '@/store/locationStore';
 import { useAssetStore } from '@/store/assetStore';
 import { generateId, todayStr, toDateStr, parseDateStr, formatDate, fmtClock } from '@/lib/utils';
 import { CADENCE_LABELS } from '@/lib/types';
-import { useTradeKeys, useTradeLabel } from '@/lib/useTrades';
+import { seedCrewName, useTradeKeys, useTradeLabel } from '@/lib/useTrades';
 import type { Cadence, Priority, WorkSchedule } from '@/lib/types';
 import { currentLang } from '@/i18n';
 
@@ -603,7 +603,7 @@ export function RoutineModal({ schedule = null, onClose = () => {} }: Props) {
                 onChange={(e) => set({ staffGroupId: e.target.value || null })}
               >
                 <option value="">{t('common:actions.none')}</option>
-                {staffGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                {staffGroups.map((g) => <option key={g.id} value={g.id}>{seedCrewName(g.key, g.name)}</option>)}
               </select>
             </div>
             <div>

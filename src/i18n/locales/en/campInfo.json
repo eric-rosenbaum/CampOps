@@ -1,1 +1,368 @@
-{}
+{
+  "tabs": {
+    "profile": "Profile",
+    "season": "Season",
+    "staff": "Staff",
+    "locations": "Locations",
+    "pools": "Pools & Waterfront",
+    "rentals": "Rentals",
+    "payments": "Payments",
+    "files": "Setup Files"
+  },
+  "saveChanges": "Save changes",
+  "saved": "Saved",
+  "copy": "Copy",
+  "copied": "Copied",
+  "required": "Required",
+  "optional": "(optional)",
+  "profile": {
+    "language": {
+      "title": "Your language",
+      "body": "The app, and work orders other people type, appear in this language for you. Everyone at the camp picks their own."
+    },
+    "title": "Camp profile",
+    "campName": "Camp name",
+    "campType": "Camp type",
+    "selectType": "Select type",
+    "campTypes": {
+      "day": "Day Camp",
+      "overnight": "Overnight Camp"
+    },
+    "state": "State",
+    "selectState": "Select state",
+    "modules": {
+      "title": "Modules",
+      "body": "Enable only the modules your camp uses. Switching one off removes it from the sidebar for everyone at this camp; the data stays and comes back if you switch it on again."
+    },
+    "report": {
+      "title": "Public issue report link",
+      "body": "Share this link so anyone (campers, parents, staff) can report an issue without an account. Reports appear in Issues & Repairs with a Public badge."
+    }
+  },
+  "modules": {
+    "dashboard": {
+      "label": "Dashboard",
+      "desc": "The operations overview a camp lands on"
+    },
+    "tasks": {
+      "label": "My Tasks",
+      "desc": "Each person’s own assigned work"
+    },
+    "issues": {
+      "label": "Campground",
+      "desc": "Work orders, routines, housekeeping and repairs"
+    },
+    "safety": {
+      "label": "Compliance",
+      "desc": "Permit, safety plan, inspections, staff certifications"
+    },
+    "assets": {
+      "label": "Assets & Vehicles",
+      "desc": "Fleet, equipment, checkouts, service records"
+    },
+    "building": {
+      "label": "Building Systems",
+      "desc": "Electrical & plumbing infrastructure by room"
+    },
+    "commissary": {
+      "label": "Kitchen Manager",
+      "desc": "Inventory, recipes, menu planning, ordering"
+    },
+    "pool": {
+      "label": "Pool & Waterfront",
+      "desc": "Chemical readings, inspections, equipment"
+    },
+    "retreats": {
+      "label": "Retreat Manager",
+      "desc": "External group rentals, guest portal, invoicing"
+    },
+    "trips": {
+      "label": "Town Trips",
+      "desc": "Rides into town, seats, return trips and a shared errand list"
+    },
+    "receipts": {
+      "label": "Receipts",
+      "desc": "Company-card receipts, statement matching, tax summary, QuickBooks export"
+    }
+  },
+  "season": {
+    "startNew": "Start new season",
+    "edit": "Edit season",
+    "newWarning": "Starting a new season will reset all pre/post camp checklist task statuses to Pending and recompute due dates.",
+    "name": "Season name",
+    "namePlaceholder": "e.g. Summer 2026",
+    "openingDate": "Opening date",
+    "closingDate": "Closing date",
+    "acaDate": "ACA inspection date",
+    "acaHelp": "Used to track your ACA accreditation visit in Compliance.",
+    "activate": "Activate new season",
+    "active": "Active",
+    "range": "{{from}} → {{to}}",
+    "acaOn": "ACA inspection: {{date}}",
+    "none": "No active season",
+    "noneBody": "Set up your camp season to enable due date tracking on pre/post camp checklist tasks.",
+    "setUp": "Set up season"
+  },
+  "locations": {
+    "untitled": "Untitled location",
+    "badge": {
+      "dorm": "Dorm",
+      "beds_one": "{{count}} bed",
+      "beds_other": "{{count}} beds",
+      "retreat": "Retreat",
+      "ada": "ADA",
+      "blocked": "Blocked"
+    },
+    "thisLocation": "this location",
+    "confirmDelete": "Delete \"{{name}}\"? This can't be undone.",
+    "confirmDeleteWithChildren": "Delete \"{{name}}\" and its sub-locations? This can't be undone.",
+    "editRoom": "Edit room",
+    "editLocation": "Edit location",
+    "name": "Name",
+    "namePlaceholder": "e.g. Birch Cabin, Room 2",
+    "category": "Category",
+    "uncategorized": "Uncategorized",
+    "dormToggle": "Dorm / sleeping quarters",
+    "retreatToggle": "Available to retreats",
+    "dormHelp": "Beds live on this building's rooms. Add rooms below and set their beds.",
+    "beds": "Beds",
+    "markParentFirst": "Mark <b>{{name}}</b> available to retreats first.",
+    "theBuilding": "the building",
+    "accessibleToggle": "Accessible / ADA",
+    "activeToggle": "Active",
+    "blockedToggle": "Blocked / inactive",
+    "savedDescription": "Saved description",
+    "savedDescriptionNone": "None — write it below",
+    "savedDescriptionEmpty": "This saved description is empty.",
+    "extraLabel": "Anything true of this one only",
+    "descriptionLabel": "Description groups see",
+    "roomPlaceholder": "Bunk beds for eight, screened porch, closest to the bathhouse.",
+    "buildingPlaceholder": "Eight cabins around a central green. Bathhouse a short walk, no heating.",
+    "extraHelp": "Added under the saved description in the guest portal. Leave empty if there is nothing extra.",
+    "descriptionHelp": "Shown in the guest portal when a group picks rooms and spaces. The same for every group — write it once.",
+    "programSpaceToggle": "Groups can book this to meet in",
+    "seats": "Seats",
+    "seatsHelp": "Shown beside the name when a group chooses where to run a session.",
+    "crewOnly": "Crew only — groups never see this",
+    "turnoverStepsRoom": "Turnover steps for this room",
+    "turnoverStepsLocation": "Turnover steps for this location",
+    "oneStep": "One step, named after it",
+    "turnoverHelp": "When a work order covers the whole building, this checklist's steps go inside it — instead of one line a crew has to remember the shape of.",
+    "rooms": "Rooms / sub-locations",
+    "addRoom": "Add room",
+    "noRooms": "No rooms yet.",
+    "import": {
+      "noRows": "That file had no rows.",
+      "noUsableRows": "No usable rows (a \"name\" column is required).",
+      "unreadable": "Could not read that file. Use a .csv or .xlsx file.",
+      "summary_one": "Imported {{count}} location.",
+      "summary_other": "Imported {{count}} locations.",
+      "summaryWithDorms_one": "Imported {{count}} location (dorms: {{dorms}}).",
+      "summaryWithDorms_other": "Imported {{count}} locations (dorms: {{dorms}}).",
+      "sendTitle": "Send us your list",
+      "sendBlurb": "Drop your spreadsheet (any format) and our team will set up your locations for you.",
+      "diyTitle": "Upload it yourself",
+      "diyBlurb": "Format a CSV or spreadsheet and import it directly.",
+      "chooseFile": "Choose file",
+      "guide": "Formatting guide",
+      "rowsReady_one": "{{count}} row ready",
+      "rowsReady_other": "{{count}} rows ready",
+      "dorm": "dorm",
+      "dormBeds": "dorm ({{beds}})",
+      "andMore_one": "…and {{count}} more",
+      "andMore_other": "…and {{count}} more",
+      "run_one": "Import {{count}}",
+      "run_other": "Import {{count}}"
+    },
+    "title": "Camp locations",
+    "printLabels": "Print QR labels",
+    "intro": "The unified place inventory, used across the app to tag issues, tasks, assets, dorms, and retreats.",
+    "guide": {
+      "intro": "<b>Spreadsheet format</b> — one row per location. Column headers are matched loosely (case-insensitive):",
+      "required": "(required)",
+      "name": "— the location's name, e.g. “Birch Cabin”.",
+      "category": "— e.g. Housing, Waterfront, Dining. Created automatically if it's new.",
+      "parent": "— the exact name of another location to nest under (list parents above their children).",
+      "dorm": "— yes / true / x to mark a sleeping quarters.",
+      "beds": "— number of beds (dorms).",
+      "accessible": "— yes / true if ADA-accessible.",
+      "example": "Example row:"
+    },
+    "empty": "No locations yet. Add areas below or import a spreadsheet.",
+    "addPlaceholder": "e.g. Waterfront, Dining Hall, Bunk Row A",
+    "categories": "Categories",
+    "preset": "preset",
+    "confirmDeleteCategory": "Delete category \"{{name}}\"? Locations in it become Uncategorized.",
+    "deleteCategory": "Delete {{name}}",
+    "addCategoryPlaceholder": "Add a custom category…"
+  },
+  "pools": {
+    "title": "Pools & waterfront",
+    "intro": "Aquatic locations tracked in Pool Management",
+    "add": "Add pool",
+    "empty": "No pools or waterfront locations added yet.",
+    "types": {
+      "pool": "Swimming pool",
+      "waterfront": "Waterfront",
+      "other": "Other (chemical)"
+    },
+    "active": "Active",
+    "inactive": "Inactive"
+  },
+  "page": {
+    "title": "Camp Info",
+    "subtitle": "Your camp's profile, season, people, locations and pools"
+  },
+  "savedDot": "Saved.",
+  "rentals": {
+    "rate": {
+      "title": "Your rate",
+      "body": "Used for a new booking and for any quote where you have not set a different price.",
+      "model": "How you charge",
+      "perPersonNight": "Per person, per night",
+      "perCabinNight": "Per cabin, per night",
+      "flat": "Flat facility fee",
+      "ratePerPerson": "Rate per person / night",
+      "ratePerCabin": "Rate per cabin / night",
+      "facilityFee": "Facility fee",
+      "deposit": "Deposit to hold the dates",
+      "depositNone": "None",
+      "depositHelp": "Filled in on every new agreement. Blank asks for no deposit."
+    },
+    "defaults": {
+      "title": "Agreement defaults",
+      "validFor": "An agreement stands for",
+      "days": "days",
+      "chaseAfter": "Chase an unpaid deposit after",
+      "never": "Never",
+      "chaseHelp": "Counted from the day the deposit invoice went out. Blank means never."
+    },
+    "inquiry": {
+      "title": "Public inquiry link",
+      "confirmOff": "Turn the inquiry link off? Anyone using the old link will see \"not recognised\".",
+      "turnOff": "Turn off",
+      "help": "Put it on your website or in a reply. Inquiries arrive in the pipeline as new leads.",
+      "create": "Create an inquiry link",
+      "offHelp": "Off by default. Nothing is public until you make one."
+    }
+  },
+  "payments": {
+    "errorStart": "Could not start Stripe onboarding.",
+    "errorReach": "Stripe could not be reached. Try again in a moment.",
+    "title": "Card payments",
+    "subtitle": "Let groups pay a deposit or a balance from their portal.",
+    "live": "Live",
+    "yoursTitle": "The money is yours",
+    "yoursBody": "This is Stripe Connect. You get your own Stripe account, and payments settle straight into your bank on Stripe's normal schedule. CampCommand never holds your money, never sees a card number, and holds no key for your account — we create the checkout link and Stripe does the rest. Stripe's processing fee comes out of each payment; we do not add one.",
+    "checkingAccount": "Checking your account…",
+    "unknown": "The payment status could not be read just now. Nothing has changed on your account.",
+    "off": "Not connected. Groups can still pay you the way they do now — the portal shows your own payment instructions on every invoice until this is switched on.",
+    "opening": "Opening Stripe…",
+    "connect": "Connect with Stripe",
+    "adminOnly": "Only a camp administrator can set this up.",
+    "pendingTitle": "Nearly there",
+    "pendingBody": "Your Stripe account exists but cannot take payments yet. Stripe usually wants a bank account, or ID for whoever owns the business. Pick up where you left off — nothing you have already entered is lost.",
+    "finish": "Finish setting up",
+    "checking": "Checking…",
+    "recheckFinished": "I've finished — re-check",
+    "liveBody": "Invoices in the guest portal now carry a Pay button. Payments and payouts are visible in your own Stripe dashboard.",
+    "openStripe": "Open Stripe",
+    "recheck": "Re-check status"
+  },
+  "files": {
+    "categories": {
+      "locations": "Locations & buildings",
+      "staff": "Staff list & groups",
+      "sessions": "Season & session dates",
+      "campers": "Camper roster & allergies",
+      "prepost": "Opening & closing checklists",
+      "pool": "Pool & waterfront",
+      "safety": "Compliance",
+      "assets": "Vehicles & equipment",
+      "building": "Electrical & plumbing",
+      "inventory": "Kitchen inventory & recipes",
+      "vendors": "Vendor order guides",
+      "retreats": "Retreat groups & agreements",
+      "other": "Something else"
+    },
+    "gotIt": "Got it",
+    "followUp": "Our team will load it and follow up.",
+    "sendAnother": "Send another",
+    "uploading": "Uploading {{name}}…",
+    "failed": "Upload failed. Try again.",
+    "title": "Send us your setup files",
+    "intro": "Getting your camp set up? Send your existing spreadsheets and lists here and our team will load them for you. This is the only place to send data. Please don't email it.",
+    "whatIsIt": "What is it?",
+    "note": "Anything we should know?",
+    "notePlaceholder": "e.g. ignore the second sheet",
+    "dropTitle": "Drop your file here",
+    "dropBlurb": "Spreadsheet, PDF, or document, whatever format you already have it in.",
+    "privacy": "Files land in your camp's own private storage, no other camp can reach them, and every upload is recorded in your activity log. Uploads are kept permanently as a record of what you sent us.",
+    "sentTitle": "What you've sent us",
+    "sentIntro": "A permanent record of every file handed off during setup.",
+    "none": "Nothing sent yet.",
+    "download": "Download"
+  },
+  "savingEllipsis": "Saving…",
+  "agreement": {
+    "saveFailed": "That did not save.",
+    "title": "Your retreat agreement",
+    "hide": "Hide",
+    "showTokens": "What can be filled in automatically",
+    "intro": "Write it once. Anywhere a detail changes by group, put a marker like <code>{{marker}}</code> and each booking gets its own filled in. You review every value before it sends.",
+    "groups": {
+      "group": "The group",
+      "stay": "The stay",
+      "money": "Money",
+      "deadlines": "Deadlines",
+      "you": "You"
+    },
+    "example": "e.g. {{hint}}",
+    "insert": "Insert {{token}}",
+    "hints": {
+      "group_name": "Tufts",
+      "coordinator_name": "their contact",
+      "headcount": "how many people",
+      "arrival_date": "Wednesday, 21 October 2026",
+      "arrival_time": "7:00pm",
+      "departure_time": "11:00am",
+      "nights": "3",
+      "rate": "$120 per person per night",
+      "total": "$18,000",
+      "deposit": "$5,000",
+      "balance_due": "14 days before arrival",
+      "cancellation_date": "30 days before arrival",
+      "coi_due": "21 days before arrival",
+      "today": "the date it's sent"
+    },
+    "clickHint": "Click one to add it at the end, or type it anywhere yourself.",
+    "placeholder": "Paste your facility use agreement here, then mark the parts that change by group.",
+    "unknown": "Nothing fills {{tokens}} — it will appear in the agreement exactly like that. Remove it, or pick one from the list above.",
+    "save": "Save agreement"
+  },
+  "descriptions": {
+    "title": "Saved descriptions",
+    "addOne": "Add one",
+    "intro": "Write a description once, then point as many rooms at it as it fits. Editing it here changes every room using it.",
+    "namePlaceholder": "Standard cabin",
+    "whatToKnow": "What a group should know",
+    "placeholder": "Eight bunks, screened windows, shared bathhouse a short walk away. No heat.",
+    "add": "Add",
+    "cancel": "Cancel",
+    "empty": "None yet. Rooms can still be described one at a time — these are for descriptions you would otherwise paste into a dozen rooms.",
+    "delete": "Delete this description. Rooms using it keep their own."
+  },
+  "poolModal": {
+    "confirmDelete": "Delete \"{{name}}\"? This will also delete all readings, equipment, and tasks for this pool. This cannot be undone.",
+    "editTitle": "Edit · {{name}}",
+    "addTitle": "Add pool / waterfront",
+    "intro": "Add a swimming pool, waterfront, or other aquatic location.",
+    "nameRequired": "Name is required",
+    "namePlaceholder": "e.g. Main Pool, Lower Lake, Waterfront",
+    "type": "Type",
+    "typeHelp": "Swimming pools and \"other\" types include the chemical log. Waterfront locations use equipment + inspection tracking only.",
+    "notes": "Notes",
+    "notesPlaceholder": "Location, capacity, any relevant details…",
+    "delete": "Delete"
+  }
+}

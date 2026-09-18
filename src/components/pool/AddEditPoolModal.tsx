@@ -1,10 +1,14 @@
 import { useForm } from 'react-hook-form';
+import { useScreenTranslation } from '@/components/i18n/untranslated';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
 import { useUIStore } from '@/store/uiStore';
-import { usePoolStore, POOL_TYPE_LABELS } from '@/store/poolStore';
+import { usePoolStore } from '@/store/poolStore';
 import { generateId } from '@/lib/utils';
 import type { CampPool, PoolType } from '@/lib/types';
+
+// The stored type is the key; its label is read through t() so it follows the screen's language.
+const POOL_TYPES: PoolType[] = ['pool', 'waterfront', 'other'];
 
 interface FormValues {
   name: string;
@@ -16,6 +20,8 @@ const inputClass = 'w-full text-body bg-white border border-border rounded-btn p
 const labelClass = 'block text-[12px] font-medium text-ink mb-1';
 
 export function AddEditPoolModal({ fromSettings = false }: { fromSettings?: boolean }) {
+  // Screen-aware: Pool Management is not translated yet and opens this same modal.
+  const { t } = useScreenTranslation('campInfo');
   const { closeAllModals, editingPoolId } = useUIStore();
   const { pools, addPool, updatePool, deletePool } = usePoolStore();
 
@@ -52,7 +58,7 @@ export function AddEditPoolModal({ fromSettings = false }: { fromSettings?: bool
 
   function handleDelete() {
     if (!editing) return;
-    if (window.confirm(`Delete "${editing.name}"? This will also delete all readings, equipment, and tasks for this pool. This cannot be undone.`)) {
+    if (window.confirm(t('poolModal.confirmDelete', { name: editing.name }))) {
       deletePool(editing.id);
       closeAllModals();
     }
@@ -60,55 +66,55 @@ export function AddEditPoolModal({ fromSettings = false }: { fromSettings?: bool
 
   return (
     <Modal
-      title={editing ? `Edit · ${editing.name}` : 'Add pool / waterfront'}
+      title={editing ? t('poolModal.editTitle', { name: editing.name }) : t('poolModal.addTitle')}
       onClose={closeAllModals}
       width="440px"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {!editing && (
           <p className="text-[13px] text-ink-soft -mt-1">
-            Add a swimming pool, waterfront, or other aquatic location.
+            {t('poolModal.intro')}
           </p>
         )}
 
         <div>
-          <label className={labelClass}>Name *</label>
+          <label className={labelClass}>{t('locations.name')} *</label>
           <input
-            {...register('name', { required: 'Name is required' })}
+            {...register('name', { required: t('poolModal.nameRequired') })}
             className={inputClass}
-            placeholder="e.g. Main Pool, Lower Lake, Waterfront"
+            placeholder={t('poolModal.namePlaceholder')}
             autoFocus
           />
           {errors.name && <p className="text-[11px] text-red mt-0.5">{errors.name.message}</p>}
         </div>
 
         <div>
-          <label className={labelClass}>Type *</label>
+          <label className={labelClass}>{t('poolModal.type')} *</label>
           <select {...register('type', { required: true })} className={inputClass}>
-            {(Object.entries(POOL_TYPE_LABELS) as [PoolType, string][]).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
+            {POOL_TYPES.map((v) => (
+              <option key={v} value={v}>{t(`pools.types.${v}`)}</option>
             ))}
           </select>
           <p className="text-[11px] text-ink-faint mt-1">
-            Swimming pools and "other" types include the chemical log. Waterfront locations use equipment + inspection tracking only.
+            {t('poolModal.typeHelp')}
           </p>
         </div>
 
         <div>
-          <label className={labelClass}>Notes</label>
+          <label className={labelClass}>{t('poolModal.notes')}</label>
           <textarea
             {...register('notes')}
             className={`${inputClass} resize-none`}
             rows={2}
-            placeholder="Location, capacity, any relevant details…"
+            placeholder={t('poolModal.notesPlaceholder')}
           />
         </div>
 
         <div className="flex gap-2 pt-1">
           <Button type="submit" className="flex-1 justify-center" disabled={isSubmitting}>
-            {editing ? 'Save changes' : 'Add pool'}
+            {editing ? t('saveChanges') : t('pools.add')}
           </Button>
-          <Button type="button" variant="ghost" onClick={closeAllModals}>Cancel</Button>
+          <Button type="button" variant="ghost" onClick={closeAllModals}>{t('descriptions.cancel')}</Button>
           {editing && fromSettings && (
             <Button
               type="button"
@@ -116,7 +122,7 @@ export function AddEditPoolModal({ fromSettings = false }: { fromSettings?: bool
               className="text-red hover:bg-red-bg hover:text-red"
               onClick={handleDelete}
             >
-              Delete
+              {t('poolModal.delete')}
             </Button>
           )}
         </div>

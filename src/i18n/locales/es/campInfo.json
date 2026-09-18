@@ -1,1 +1,374 @@
-{}
+{
+  "tabs": {
+    "profile": "Perfil",
+    "season": "Temporada",
+    "staff": "Personal",
+    "locations": "Ubicaciones",
+    "pools": "Piscinas y zona acuática",
+    "rentals": "Alquileres",
+    "payments": "Pagos",
+    "files": "Archivos de configuración"
+  },
+  "saveChanges": "Guardar cambios",
+  "saved": "Guardado",
+  "copy": "Copiar",
+  "copied": "Copiado",
+  "required": "Obligatorio",
+  "optional": "(opcional)",
+  "profile": {
+    "language": {
+      "title": "Tu idioma",
+      "body": "La app, y las órdenes de trabajo que escriben otras personas, se te muestran en este idioma. Cada persona del campamento elige el suyo."
+    },
+    "title": "Perfil del campamento",
+    "campName": "Nombre del campamento",
+    "campType": "Tipo de campamento",
+    "selectType": "Selecciona un tipo",
+    "campTypes": {
+      "day": "Campamento de día",
+      "overnight": "Campamento con pernocta"
+    },
+    "state": "Estado",
+    "selectState": "Selecciona un estado",
+    "modules": {
+      "title": "Módulos",
+      "body": "Activa solo los módulos que usa tu campamento. Al desactivar uno, desaparece de la barra lateral para todos en este campamento; los datos se conservan y vuelven si lo activas de nuevo."
+    },
+    "report": {
+      "title": "Enlace público para reportar problemas",
+      "body": "Comparte este enlace para que cualquiera (campistas, familias, personal) pueda reportar un problema sin tener cuenta. Los reportes aparecen en Problemas y reparaciones con la etiqueta Público."
+    }
+  },
+  "modules": {
+    "dashboard": {
+      "label": "Panel",
+      "desc": "El resumen de operaciones con el que abre el campamento"
+    },
+    "tasks": {
+      "label": "Mis tareas",
+      "desc": "El trabajo asignado a cada persona"
+    },
+    "issues": {
+      "label": "Campamento",
+      "desc": "Órdenes de trabajo, rutinas, limpieza y reparaciones"
+    },
+    "safety": {
+      "label": "Cumplimiento",
+      "desc": "Permiso, plan de seguridad, inspecciones, certificaciones del personal"
+    },
+    "assets": {
+      "label": "Activos y vehículos",
+      "desc": "Flota, equipo, préstamos, historial de servicio"
+    },
+    "building": {
+      "label": "Sistemas del edificio",
+      "desc": "Infraestructura eléctrica y de plomería por cuarto"
+    },
+    "commissary": {
+      "label": "Cocina",
+      "desc": "Inventario, recetas, planificación de menús, pedidos"
+    },
+    "pool": {
+      "label": "Piscina y zona acuática",
+      "desc": "Lecturas químicas, inspecciones, equipo"
+    },
+    "retreats": {
+      "label": "Retiros",
+      "desc": "Alquileres a grupos externos, portal de invitados, facturación"
+    },
+    "trips": {
+      "label": "Viajes al pueblo",
+      "desc": "Viajes al pueblo, asientos, regresos y una lista compartida de encargos"
+    },
+    "receipts": {
+      "label": "Recibos",
+      "desc": "Recibos de la tarjeta de la empresa, conciliación de estados de cuenta, resumen de impuestos, exportación a QuickBooks"
+    }
+  },
+  "season": {
+    "startNew": "Iniciar nueva temporada",
+    "edit": "Editar temporada",
+    "newWarning": "Iniciar una nueva temporada restablecerá a Pendiente el estado de todas las tareas de la lista de antes y después del campamento, y recalculará las fechas límite.",
+    "name": "Nombre de la temporada",
+    "namePlaceholder": "p. ej. Verano 2026",
+    "openingDate": "Fecha de apertura",
+    "closingDate": "Fecha de cierre",
+    "acaDate": "Fecha de inspección de la ACA",
+    "acaHelp": "Se usa para dar seguimiento a tu visita de acreditación de la ACA en Cumplimiento.",
+    "activate": "Activar nueva temporada",
+    "active": "Activa",
+    "range": "{{from}} → {{to}}",
+    "acaOn": "Inspección de la ACA: {{date}}",
+    "none": "No hay temporada activa",
+    "noneBody": "Configura la temporada del campamento para activar el seguimiento de fechas límite en las tareas de antes y después del campamento.",
+    "setUp": "Configurar temporada"
+  },
+  "locations": {
+    "untitled": "Ubicación sin nombre",
+    "badge": {
+      "dorm": "Dormitorio",
+      "beds_one": "{{count}} cama",
+      "beds_many": "{{count}} camas",
+      "beds_other": "{{count}} camas",
+      "retreat": "Retiro",
+      "ada": "ADA",
+      "blocked": "Bloqueada"
+    },
+    "thisLocation": "esta ubicación",
+    "confirmDelete": "¿Eliminar \"{{name}}\"? Esto no se puede deshacer.",
+    "confirmDeleteWithChildren": "¿Eliminar \"{{name}}\" y sus sububicaciones? Esto no se puede deshacer.",
+    "editRoom": "Editar cuarto",
+    "editLocation": "Editar ubicación",
+    "name": "Nombre",
+    "namePlaceholder": "p. ej. Cabaña Abedul, Cuarto 2",
+    "category": "Categoría",
+    "uncategorized": "Sin categoría",
+    "dormToggle": "Dormitorio / área para dormir",
+    "retreatToggle": "Disponible para retiros",
+    "dormHelp": "Las camas se definen en los cuartos de este edificio. Agrega cuartos abajo e indica sus camas.",
+    "beds": "Camas",
+    "markParentFirst": "Primero marca <b>{{name}}</b> como disponible para retiros.",
+    "theBuilding": "el edificio",
+    "accessibleToggle": "Accesible / ADA",
+    "activeToggle": "Activa",
+    "blockedToggle": "Bloqueada / inactiva",
+    "savedDescription": "Descripción guardada",
+    "savedDescriptionNone": "Ninguna — escríbela abajo",
+    "savedDescriptionEmpty": "Esta descripción guardada está vacía.",
+    "extraLabel": "Lo que aplica solo a este",
+    "descriptionLabel": "Descripción que ven los grupos",
+    "roomPlaceholder": "Literas para ocho, porche con mosquitero, lo más cerca de los baños.",
+    "buildingPlaceholder": "Ocho cabañas alrededor de un jardín central. Baños a poca distancia, sin calefacción.",
+    "extraHelp": "Se agrega debajo de la descripción guardada en el portal de invitados. Déjalo vacío si no hay nada más.",
+    "descriptionHelp": "Se muestra en el portal de invitados cuando un grupo elige cuartos y espacios. Es igual para todos los grupos: escríbela una sola vez.",
+    "programSpaceToggle": "Los grupos pueden reservarlo para reunirse",
+    "seats": "Asientos",
+    "seatsHelp": "Se muestra junto al nombre cuando un grupo elige dónde hacer una sesión.",
+    "crewOnly": "Solo para el equipo — los grupos nunca lo ven",
+    "turnoverStepsRoom": "Pasos de cambio de turno para este cuarto",
+    "turnoverStepsLocation": "Pasos de cambio de turno para esta ubicación",
+    "oneStep": "Un solo paso, con su nombre",
+    "turnoverHelp": "Cuando una orden de trabajo cubre todo el edificio, los pasos de esta lista van dentro de ella, en lugar de una sola línea cuyo detalle el equipo tiene que recordar.",
+    "rooms": "Cuartos / sububicaciones",
+    "addRoom": "Agregar cuarto",
+    "noRooms": "Todavía no hay cuartos.",
+    "import": {
+      "noRows": "Ese archivo no tenía filas.",
+      "noUsableRows": "No hay filas utilizables (se requiere una columna \"name\").",
+      "unreadable": "No se pudo leer ese archivo. Usa un archivo .csv o .xlsx.",
+      "summary_one": "Se importó {{count}} ubicación.",
+      "summary_many": "Se importaron {{count}} ubicaciones.",
+      "summary_other": "Se importaron {{count}} ubicaciones.",
+      "summaryWithDorms_one": "Se importó {{count}} ubicación (dormitorios: {{dorms}}).",
+      "summaryWithDorms_many": "Se importaron {{count}} ubicaciones (dormitorios: {{dorms}}).",
+      "summaryWithDorms_other": "Se importaron {{count}} ubicaciones (dormitorios: {{dorms}}).",
+      "sendTitle": "Envíanos tu lista",
+      "sendBlurb": "Suelta tu hoja de cálculo (en cualquier formato) y nuestro equipo configurará tus ubicaciones.",
+      "diyTitle": "Súbela tú mismo",
+      "diyBlurb": "Da formato a un CSV o una hoja de cálculo e impórtalo directamente.",
+      "chooseFile": "Elegir archivo",
+      "guide": "Guía de formato",
+      "rowsReady_one": "{{count}} fila lista",
+      "rowsReady_many": "{{count}} filas listas",
+      "rowsReady_other": "{{count}} filas listas",
+      "dorm": "dormitorio",
+      "dormBeds": "dormitorio ({{beds}})",
+      "andMore_one": "…y {{count}} más",
+      "andMore_many": "…y {{count}} más",
+      "andMore_other": "…y {{count}} más",
+      "run_one": "Importar {{count}}",
+      "run_many": "Importar {{count}}",
+      "run_other": "Importar {{count}}"
+    },
+    "title": "Ubicaciones del campamento",
+    "printLabels": "Imprimir etiquetas QR",
+    "intro": "El inventario único de lugares, que se usa en toda la app para etiquetar problemas, tareas, activos, dormitorios y retiros.",
+    "guide": {
+      "intro": "<b>Formato de la hoja</b> — una fila por ubicación. Los encabezados de columna se reconocen de forma flexible (sin importar mayúsculas):",
+      "required": "(obligatorio)",
+      "name": "— el nombre de la ubicación, p. ej. “Cabaña Abedul”.",
+      "category": "— p. ej. Alojamiento, Zona acuática, Comedor. Se crea automáticamente si es nueva.",
+      "parent": "— el nombre exacto de otra ubicación dentro de la cual va esta (pon las principales antes que sus sububicaciones).",
+      "dorm": "— yes / true / x para marcar un área para dormir.",
+      "beds": "— número de camas (dormitorios).",
+      "accessible": "— yes / true si es accesible (ADA).",
+      "example": "Fila de ejemplo:"
+    },
+    "empty": "Todavía no hay ubicaciones. Agrega áreas abajo o importa una hoja de cálculo.",
+    "addPlaceholder": "p. ej. Zona acuática, Comedor, Fila de cabañas A",
+    "categories": "Categorías",
+    "preset": "predefinida",
+    "confirmDeleteCategory": "¿Eliminar la categoría \"{{name}}\"? Sus ubicaciones quedarán sin categoría.",
+    "deleteCategory": "Eliminar {{name}}",
+    "addCategoryPlaceholder": "Agrega una categoría personalizada…"
+  },
+  "pools": {
+    "title": "Piscinas y zona acuática",
+    "intro": "Lugares acuáticos que se controlan en Gestión de piscinas",
+    "add": "Agregar piscina",
+    "empty": "Todavía no se agregaron piscinas ni zonas acuáticas.",
+    "types": {
+      "pool": "Piscina",
+      "waterfront": "Zona acuática",
+      "other": "Otro (con químicos)"
+    },
+    "active": "Activa",
+    "inactive": "Inactiva"
+  },
+  "page": {
+    "title": "Datos del campamento",
+    "subtitle": "El perfil, la temporada, las personas, las ubicaciones y las piscinas de tu campamento"
+  },
+  "savedDot": "Guardado.",
+  "rentals": {
+    "rate": {
+      "title": "Tu tarifa",
+      "body": "Se usa en cada reserva nueva y en cualquier cotización donde no hayas fijado otro precio.",
+      "model": "Cómo cobras",
+      "perPersonNight": "Por persona, por noche",
+      "perCabinNight": "Por cabaña, por noche",
+      "flat": "Tarifa fija por las instalaciones",
+      "ratePerPerson": "Tarifa por persona / noche",
+      "ratePerCabin": "Tarifa por cabaña / noche",
+      "facilityFee": "Tarifa por las instalaciones",
+      "deposit": "Depósito para reservar las fechas",
+      "depositNone": "Ninguno",
+      "depositHelp": "Se completa en cada acuerdo nuevo. Si lo dejas vacío, no se pide depósito."
+    },
+    "defaults": {
+      "title": "Valores predeterminados del acuerdo",
+      "validFor": "Un acuerdo es válido durante",
+      "days": "días",
+      "chaseAfter": "Recordar un depósito sin pagar después de",
+      "never": "Nunca",
+      "chaseHelp": "Se cuenta desde el día en que se envió la factura del depósito. Vacío significa nunca."
+    },
+    "inquiry": {
+      "title": "Enlace público de consultas",
+      "confirmOff": "¿Desactivar el enlace de consultas? Quien use el enlace anterior verá \"no reconocido\".",
+      "turnOff": "Desactivar",
+      "help": "Ponlo en tu sitio web o en una respuesta. Las consultas llegan al embudo como nuevos prospectos.",
+      "create": "Crear un enlace de consultas",
+      "offHelp": "Desactivado por defecto. Nada es público hasta que crees uno."
+    }
+  },
+  "payments": {
+    "errorStart": "No se pudo iniciar el registro en Stripe.",
+    "errorReach": "No se pudo conectar con Stripe. Vuelve a intentarlo en un momento.",
+    "title": "Pagos con tarjeta",
+    "subtitle": "Permite que los grupos paguen un depósito o un saldo desde su portal.",
+    "live": "Activo",
+    "yoursTitle": "El dinero es tuyo",
+    "yoursBody": "Esto es Stripe Connect. Tienes tu propia cuenta de Stripe y los pagos se depositan directamente en tu banco según el calendario habitual de Stripe. CampCommand nunca retiene tu dinero, nunca ve un número de tarjeta y no tiene ninguna clave de tu cuenta: nosotros creamos el enlace de pago y Stripe hace el resto. La comisión de procesamiento de Stripe se descuenta de cada pago; nosotros no agregamos ninguna.",
+    "checkingAccount": "Revisando tu cuenta…",
+    "unknown": "No se pudo leer el estado de los pagos en este momento. Nada cambió en tu cuenta.",
+    "off": "No está conectado. Los grupos pueden seguir pagándote como lo hacen ahora: el portal muestra tus propias instrucciones de pago en cada factura hasta que lo actives.",
+    "opening": "Abriendo Stripe…",
+    "connect": "Conectar con Stripe",
+    "adminOnly": "Solo un administrador del campamento puede configurarlo.",
+    "pendingTitle": "Casi listo",
+    "pendingBody": "Tu cuenta de Stripe existe, pero todavía no puede recibir pagos. Stripe suele pedir una cuenta bancaria o una identificación de quien es dueño del negocio. Continúa donde lo dejaste: no se pierde nada de lo que ya ingresaste.",
+    "finish": "Terminar la configuración",
+    "checking": "Revisando…",
+    "recheckFinished": "Ya terminé — volver a revisar",
+    "liveBody": "Las facturas del portal de invitados ahora tienen un botón Pagar. Los pagos y las transferencias se ven en tu propio panel de Stripe.",
+    "openStripe": "Abrir Stripe",
+    "recheck": "Volver a revisar el estado"
+  },
+  "files": {
+    "categories": {
+      "locations": "Ubicaciones y edificios",
+      "staff": "Lista de personal y equipos",
+      "sessions": "Fechas de temporada y sesiones",
+      "campers": "Lista de campistas y alergias",
+      "prepost": "Listas de apertura y cierre",
+      "pool": "Piscina y zona acuática",
+      "safety": "Cumplimiento",
+      "assets": "Vehículos y equipo",
+      "building": "Electricidad y plomería",
+      "inventory": "Inventario de cocina y recetas",
+      "vendors": "Guías de pedido de proveedores",
+      "retreats": "Grupos de retiro y acuerdos",
+      "other": "Otra cosa"
+    },
+    "gotIt": "Recibido",
+    "followUp": "Nuestro equipo lo cargará y te contactará.",
+    "sendAnother": "Enviar otro",
+    "uploading": "Subiendo {{name}}…",
+    "failed": "No se pudo subir. Inténtalo de nuevo.",
+    "title": "Envíanos tus archivos de configuración",
+    "intro": "¿Estás configurando tu campamento? Envía aquí tus hojas de cálculo y listas, y nuestro equipo las cargará por ti. Este es el único lugar para enviar datos. Por favor, no los mandes por correo.",
+    "whatIsIt": "¿Qué es?",
+    "note": "¿Algo que debamos saber?",
+    "notePlaceholder": "p. ej. ignora la segunda hoja",
+    "dropTitle": "Suelta tu archivo aquí",
+    "dropBlurb": "Hoja de cálculo, PDF o documento, en el formato que ya tengas.",
+    "privacy": "Los archivos se guardan en el almacenamiento privado de tu campamento, ningún otro campamento puede acceder a ellos y cada subida queda registrada en tu historial de actividad. Se conservan de forma permanente como registro de lo que nos enviaste.",
+    "sentTitle": "Lo que nos has enviado",
+    "sentIntro": "Un registro permanente de cada archivo entregado durante la configuración.",
+    "none": "Todavía no has enviado nada.",
+    "download": "Descargar"
+  },
+  "savingEllipsis": "Guardando…",
+  "agreement": {
+    "saveFailed": "No se guardó.",
+    "title": "Tu acuerdo de retiro",
+    "hide": "Ocultar",
+    "showTokens": "Qué se puede completar automáticamente",
+    "intro": "Escríbelo una sola vez. Donde un dato cambie según el grupo, pon un marcador como <code>{{marker}}</code> y cada reserva tendrá el suyo completado. Revisas cada valor antes de que se envíe.",
+    "groups": {
+      "group": "El grupo",
+      "stay": "La estadía",
+      "money": "Dinero",
+      "deadlines": "Fechas límite",
+      "you": "Tú"
+    },
+    "example": "p. ej. {{hint}}",
+    "insert": "Insertar {{token}}",
+    "hints": {
+      "group_name": "Tufts",
+      "coordinator_name": "su persona de contacto",
+      "headcount": "cuántas personas",
+      "arrival_date": "Wednesday, 21 October 2026",
+      "arrival_time": "7:00pm",
+      "departure_time": "11:00am",
+      "nights": "3",
+      "rate": "$120 per person per night",
+      "total": "$18,000",
+      "deposit": "$5,000",
+      "balance_due": "14 days before arrival",
+      "cancellation_date": "30 days before arrival",
+      "coi_due": "21 days before arrival",
+      "today": "la fecha en que se envía"
+    },
+    "clickHint": "Haz clic en uno para agregarlo al final, o escríbelo tú donde quieras.",
+    "placeholder": "Pega aquí tu acuerdo de uso de instalaciones y luego marca las partes que cambian según el grupo.",
+    "unknown": "Nada completa {{tokens}}: aparecerá en el acuerdo tal cual. Quítalo o elige uno de la lista de arriba.",
+    "save": "Guardar acuerdo"
+  },
+  "descriptions": {
+    "title": "Descripciones guardadas",
+    "addOne": "Agregar una",
+    "intro": "Escribe una descripción una vez y asígnala a todos los cuartos a los que corresponda. Si la editas aquí, cambia en todos los cuartos que la usan.",
+    "namePlaceholder": "Cabaña estándar",
+    "whatToKnow": "Lo que un grupo debe saber",
+    "placeholder": "Ocho literas, ventanas con mosquitero, baños compartidos a poca distancia. Sin calefacción.",
+    "add": "Agregar",
+    "cancel": "Cancelar",
+    "empty": "Todavía no hay ninguna. Los cuartos se pueden describir uno por uno; estas son para descripciones que, si no, pegarías en una docena de cuartos.",
+    "delete": "Eliminar esta descripción. Los cuartos que la usan conservan la suya."
+  },
+  "poolModal": {
+    "confirmDelete": "¿Eliminar \"{{name}}\"? También se eliminarán todas las lecturas, el equipo y las tareas de esta piscina. Esto no se puede deshacer.",
+    "editTitle": "Editar · {{name}}",
+    "addTitle": "Agregar piscina / zona acuática",
+    "intro": "Agrega una piscina, una zona acuática u otro lugar con agua.",
+    "nameRequired": "El nombre es obligatorio",
+    "namePlaceholder": "p. ej. Piscina principal, Lago inferior, Zona acuática",
+    "type": "Tipo",
+    "typeHelp": "Las piscinas y el tipo \"otro\" incluyen el registro químico. Las zonas acuáticas solo llevan control de equipo e inspecciones.",
+    "notes": "Notas",
+    "notesPlaceholder": "Ubicación, capacidad, cualquier detalle relevante…",
+    "delete": "Eliminar"
+  }
+}

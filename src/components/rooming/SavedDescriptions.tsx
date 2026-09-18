@@ -8,6 +8,7 @@
 // Lives in Camp Info > Locations, beside the rooms it describes -- it used to sit inside a
 // modal buried in one retreat, where a camp setting up its site would never find it.
 import { useState } from 'react';
+import { useScreenTranslation } from '@/components/i18n/untranslated';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/shared/Button';
 import { supabase } from '@/lib/supabase';
@@ -21,6 +22,8 @@ const labelClass = 'block text-[12px] font-medium text-ink mb-1';
 
 
 export function SavedDescriptions({ canManage }: { canManage: boolean }) {
+  // Screen-aware: Retreats, which is not translated yet, can open this too.
+  const { t } = useScreenTranslation('campInfo');
   const campId = useCampStore((s) => s.currentCamp?.id ?? null);
   const [types, refresh] = useCabinTypes();
   const [adding, setAdding] = useState(false);
@@ -40,87 +43,86 @@ export function SavedDescriptions({ canManage }: { canManage: boolean }) {
     setName(''); setDescription(''); setAdding(false); refresh();
   }
 
-  async function save(t: CabinType, patch: Partial<CabinType>) {
+  async function save(ct: CabinType, patch: Partial<CabinType>) {
     await supabase.from('camp_cabin_types')
-      .update({ name: patch.name ?? t.name, description: patch.description ?? t.description,
+      .update({ name: patch.name ?? ct.name, description: patch.description ?? ct.description,
                 updated_at: new Date().toISOString() })
-      .eq('id', t.id);
+      .eq('id', ct.id);
     refresh();
   }
 
-  async function remove(t: CabinType) {
+  async function remove(ct: CabinType) {
     // Cabins pointing at it are set back to no type by the FK, not deleted.
-    await supabase.from('camp_cabin_types').delete().eq('id', t.id);
+    await supabase.from('camp_cabin_types').delete().eq('id', ct.id);
     refresh();
   }
 
   return (
     <div>
       <div className="flex items-center justify-between gap-2 mb-1">
-        <h3 className="text-[13px] font-semibold text-forest">Saved descriptions</h3>
+        <h3 className="text-[13px] font-semibold text-forest">{t('descriptions.title')}</h3>
         {canManage && !adding && (
           <Button size="sm" variant="ghost" onClick={() => setAdding(true)}>
-            <Plus className="w-3.5 h-3.5" /> Add one
+            <Plus className="w-3.5 h-3.5" /> {t('descriptions.addOne')}
           </Button>
         )}
       </div>
       <p className="text-[12px] text-ink-soft mb-3">
-        Write a description once, then point as many rooms at it as it fits. Editing it here
-        changes every room using it.
+        {t('descriptions.intro')}
       </p>
 
       {adding && (
         <div className="rounded-card border border-border bg-cream-dark/40 px-3.5 py-3 mb-3 space-y-2.5">
           <div>
-            <label className={labelClass}>Name</label>
+            <label className={labelClass}>{t('locations.name')}</label>
             <input
               autoFocus value={name} onChange={(e) => setName(e.target.value)}
-              placeholder="Standard cabin" className={inputClass}
+              placeholder={t('descriptions.namePlaceholder')} className={inputClass}
             />
           </div>
           <div>
-            <label className={labelClass}>What a group should know</label>
+            <label className={labelClass}>{t('descriptions.whatToKnow')}</label>
             <textarea
               value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-              placeholder="Eight bunks, screened windows, shared bathhouse a short walk away. No heat."
+              placeholder={t('descriptions.placeholder')}
               className={`${inputClass} resize-y`}
             />
           </div>
           {error && <p className="text-[11.5px] text-red">{error}</p>}
           <div className="flex gap-2">
-            <Button size="sm" onClick={() => void create()} disabled={busy || !name.trim()}>Add</Button>
-            <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setError(null); }}>Cancel</Button>
+            <Button size="sm" onClick={() => void create()} disabled={busy || !name.trim()}>{t('descriptions.add')}</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setError(null); }}>{t('descriptions.cancel')}</Button>
           </div>
         </div>
       )}
 
       {types.length === 0 && !adding ? (
         <p className="text-[12.5px] text-ink-faint">
-          None yet. Rooms can still be described one at a time — these are for descriptions you
-          would otherwise paste into a dozen rooms.
+          {t('descriptions.empty')}
         </p>
       ) : (
         <ul className="space-y-2">
-          {types.map((t) => (
-            <li key={t.id} className="rounded-card border border-border bg-white px-3.5 py-2.5">
+          {types.map((ct) => (
+            <li key={ct.id} className="rounded-card border border-border bg-white px-3.5 py-2.5">
               <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0 space-y-1.5">
                   <input
-                    defaultValue={t.name} disabled={!canManage}
-                    onBlur={(e) => { if (e.target.value.trim() !== t.name) void save(t, { name: e.target.value.trim() }); }}
+                    defaultValue={ct.name} disabled={!canManage}
+                    onBlur={(e) => { if (e.target.value.trim() !== ct.name) void save(ct, { name: e.target.value.trim() }); }}
                     className="w-full text-[13px] font-semibold text-forest bg-transparent focus:outline-none"
                   />
                   <textarea
-                    defaultValue={t.description} disabled={!canManage} rows={2}
-                    onBlur={(e) => { if (e.target.value !== t.description) void save(t, { description: e.target.value }); }}
-                    placeholder="What a group should know"
+                    defaultValue={ct.description} disabled={!canManage} rows={2}
+                    onBlur={(e) => { if (e.target.value !== ct.description) void save(ct, { description: e.target.value }); }}
+                    placeholder={t('descriptions.whatToKnow')}
                     className={`${inputClass} resize-y text-[12.5px]`}
                   />
                 </div>
                 {canManage && (
                   <button
-                    type="button" onClick={() => void remove(t)}
-                    title="Delete this description. Rooms using it keep their own."
+                    type="button" onClick={() => void remove(ct)}
+                    title={t('descriptions.delete')}
+                    aria-label={t('descriptions.delete')}
                     className="p-1.5 text-ink-faint hover:text-red flex-shrink-0"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

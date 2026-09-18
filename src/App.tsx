@@ -88,6 +88,7 @@ import { useComplianceStore } from '@/store/complianceStore';
 import { MARKETING_HOSTS, APP_HOST } from '@/lib/env';
 import { EnvironmentBanner } from '@/components/shared/EnvironmentBanner';
 import { LanguageSync } from '@/lib/language';
+import { useTranslation } from 'react-i18next';
 import { ModuleLoading } from '@/components/shared/ModuleLoading';
 import { campLog } from '@/lib/campLog';
 import { useIssuesStore, startIssueWriteQueue } from '@/store/issuesStore';
@@ -126,7 +127,7 @@ function HomeEntry() {
   const brief = useDemoBrief(currentCamp?.id, isDemoCamp);
   if (!currentCamp) return null;
   if (modules.enabled('dashboard')) {
-    return <Gate of={['issues', 'tasks']} label="Building your dashboard"><HomeRouter /></Gate>;
+    return <Gate of={['issues', 'tasks']} labelKey="dashboard"><HomeRouter /></Gate>;
   }
   if (brief === undefined) return null;
   return <Navigate to={brief ? '/demo-guide' : firstEnabledPath(modules.enabled)} replace />;
@@ -190,8 +191,15 @@ function Untranslated({ children }: { children: React.ReactNode }) {
   return <div dir="ltr" lang="en" className="contents">{children}</div>;
 }
 
-function Gate({ of, label, children }: { of: string[]; label: string; children: React.ReactNode }) {
+type LoadingKey = 'dashboard' | 'tasks' | 'campground' | 'spot';
+
+/** `label` is English for the modules that are not translated; `labelKey` for those that are. */
+function Gate({ of, label, labelKey, children }: {
+  of: string[]; label?: string; labelKey?: LoadingKey; children: React.ReactNode;
+}) {
+  const { t } = useTranslation();
   const ready = useHydrated(...of);
+  label = labelKey ? t(`loading.${labelKey}`) : (label ?? '');
   if (!ready) {
     return (
       <div className="flex flex-col h-full min-h-0">
@@ -705,13 +713,13 @@ export default function App() {
                     than inside every page keeps it to one list and out of the pages' hook
                     order. See <Gate> for why an empty state is the wrong thing to show. */}
                 <Route path="/home" element={<HomeEntry />} />
-                <Route path="/my-tasks" element={<ModuleRoute of="tasks"><Gate of={['tasks']} label="Loading your tasks"><MyTasks /></Gate></ModuleRoute>} />
+                <Route path="/my-tasks" element={<ModuleRoute of="tasks"><Gate of={['tasks']} labelKey="tasks"><MyTasks /></Gate></ModuleRoute>} />
                 <Route path="/demo-guide" element={<Untranslated><DemoGuide /></Untranslated>} />
                 <Route
                   path="/campground"
                   element={(
                     <ModuleRoute of="issues">
-                      <Gate of={['issues', 'locations', 'campground']} label="Opening the campground">
+                      <Gate of={['issues', 'locations', 'campground']} labelKey="campground">
                         <Campground />
                       </Gate>
                     </ModuleRoute>
@@ -729,7 +737,7 @@ export default function App() {
                   path="/hub/:token"
                   element={(
                     <ModuleRoute of="issues">
-                      <Gate of={['issues', 'locations', 'assets', 'campground']} label="Opening this spot">
+                      <Gate of={['issues', 'locations', 'assets', 'campground']} labelKey="spot">
                         <LocationHub />
                       </Gate>
                     </ModuleRoute>

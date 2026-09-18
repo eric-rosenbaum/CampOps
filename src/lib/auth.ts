@@ -1,3 +1,4 @@
+import { localizedLabels } from '@/i18n';
 import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
 import type { CampRole } from '@/store/campStore';
@@ -33,11 +34,7 @@ const ROLE_PERMISSIONS = {
 
 export type Permission = keyof typeof ROLE_PERMISSIONS;
 
-export const ROLE_LABELS: Record<CampRole, string> = {
-  admin:  'Administrator',
-  staff:  'Staff',
-  viewer: 'Viewer',
-};
+export const ROLE_LABELS: Record<CampRole, string> = localizedLabels('common:role', ['admin', 'staff', 'viewer']);
 
 // ─── Hook ──────────────────────────────────────────────────────────────────
 

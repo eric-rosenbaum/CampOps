@@ -92,5 +92,23 @@
     "byMeter": "By meter",
     "behind_one": "{{count}} cycle behind",
     "behind_other": "{{count}} cycles behind"
+  },
+  "role": {
+    "admin": "Administrator",
+    "staff": "Staff",
+    "viewer": "Viewer"
+  },
+  "upload": {
+    "uploading": "Uploading",
+    "saving": "Saving the record",
+    "verifying": "Checking it opens",
+    "done": "Done",
+    "failed": "Failed"
+  },
+  "loading": {
+    "dashboard": "Building your dashboard",
+    "tasks": "Loading your tasks",
+    "campground": "Opening the campground",
+    "spot": "Opening this spot"
   }
 }

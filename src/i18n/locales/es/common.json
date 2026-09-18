@@ -101,5 +101,23 @@
     "behind_one": "{{count}} ciclo atrasado",
     "behind_many": "{{count}} ciclos atrasados",
     "behind_other": "{{count}} ciclos atrasados"
+  },
+  "role": {
+    "admin": "Administrador",
+    "staff": "Personal",
+    "viewer": "Solo lectura"
+  },
+  "upload": {
+    "uploading": "Subiendo",
+    "saving": "Guardando el registro",
+    "verifying": "Comprobando que abre",
+    "done": "Listo",
+    "failed": "Falló"
+  },
+  "loading": {
+    "dashboard": "Preparando tu panel",
+    "tasks": "Cargando tus tareas",
+    "campground": "Abriendo el campamento",
+    "spot": "Abriendo este lugar"
   }
 }

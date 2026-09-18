@@ -13,10 +13,6 @@
     "campData": "Los datos de tu campamento",
     "policies": "Políticas"
   },
-  "language": {
-    "title": "Idioma",
-    "blurb": "El idioma en que CampCommand te habla. Las órdenes de trabajo que escriben otras personas también se traducen a este idioma para ti."
-  },
   "password": {
     "title": "Contraseña",
     "setTitle": "Crea una contraseña",

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Download, ScrollText, Smartphone, Trash2, Check, FileText, ExternalLink, Languages } from 'lucide-react';
+import { Download, ScrollText, Smartphone, Trash2, Check, FileText, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { LanguagePicker } from '@/components/i18n/LanguagePicker';
 import { useLang } from '@/lib/language';
 import { Topbar } from '@/components/layout/Topbar';
 import { Button } from '@/components/shared/Button';
@@ -282,29 +281,6 @@ function PrivacySection() {
 // Two-step sign-in (MFA) is built but archived for now, flip to true to re-enable it.
 const MFA_ENABLED = false;
 
-/**
- * The interface language is the person's, not the camp's, so it lives on the personal settings
- * page. It also decides which language other people's work orders are translated into for them —
- * saying so here is what tells a director why the crew's Spanish reads as English on their board.
- */
-function LanguageSection() {
-  const { t } = useTranslation('account');
-  return (
-    <section className="bg-white rounded-card border border-border p-4 sm:p-6">
-      <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-lg bg-sage-pale flex items-center justify-center flex-shrink-0">
-          <Languages className="w-4.5 h-4.5 text-forest" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[15px] font-semibold text-forest">{t('language.title')}</h2>
-          <p className="text-[13px] text-ink-soft mt-0.5 mb-3">{t('language.blurb')}</p>
-          <LanguagePicker tone="light" />
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export function SecuritySettings() {
   const { t } = useTranslation('account');
   const { role } = useAuth();
@@ -320,7 +296,6 @@ export function SecuritySettings() {
       <div className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6">
         <div className="max-w-2xl mx-auto space-y-4">
           <SectionLabel>{t('sections.account')}</SectionLabel>
-          <LanguageSection />
           <PasswordSection />
           {MFA_ENABLED && <MfaSection />}
 

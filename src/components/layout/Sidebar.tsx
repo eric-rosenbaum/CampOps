@@ -15,7 +15,6 @@ import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
 import { APP_HOST, MARKETING_ORIGIN } from '@/lib/env';
 import { useTranslation } from 'react-i18next';
-import { LanguagePicker } from '@/components/i18n/LanguagePicker';
 
 type LucideIcon = React.ComponentType<{ className?: string }>;
 
@@ -321,9 +320,6 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
             {signingOut ? t('nav.signingOut') : t('common:actions.signOut')}
           </button>
         </div>
-        {/* The language is the person's, so it sits with the person: reachable on a desktop and in
-            the phone drawer alike. Hidden in rail mode, where there is no room for a word. */}
-        <LanguagePicker tone="dark" className={`mt-3 ${collapsed ? 'lg:hidden' : ''}`} />
       </div>
       </aside>
     </>

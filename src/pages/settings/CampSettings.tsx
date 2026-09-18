@@ -1,3 +1,4 @@
+import { LanguagePicker } from '@/components/i18n/LanguagePicker';
 import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
@@ -116,6 +117,20 @@ function ProfileTab() {
 
   return (
     <div className="p-7 max-w-2xl space-y-5">
+      {/* Where people looked for it first. It is the person's setting, not the camp's, so it
+          saves on its own the moment it changes rather than waiting for the camp form's Save. */}
+      <div className={cardCls}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-[13px] font-semibold text-forest">Your language</h2>
+            <p className="mt-1 text-[12px] text-ink-soft">
+              The app, and work orders other people type, appear in this language for you. Everyone
+              at the camp picks their own.
+            </p>
+          </div>
+          <LanguagePicker />
+        </div>
+      </div>
       <form onSubmit={handleSave} className="space-y-5">
         <div className={cardCls}>
           <h2 className="text-[13px] font-semibold text-forest mb-4">Camp profile</h2>

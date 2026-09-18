@@ -13,10 +13,6 @@
     "campData": "Your camp’s data",
     "policies": "Policies"
   },
-  "language": {
-    "title": "Language",
-    "blurb": "The language CampCommand uses with you. Work orders other people write are translated into it for you too."
-  },
   "password": {
     "title": "Password",
     "setTitle": "Set a password",

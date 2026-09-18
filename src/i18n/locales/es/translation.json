@@ -1,1 +1,12 @@
-{}
+{
+  "from": {
+    "en": "Traducido del inglés",
+    "es": "Traducido del español",
+    "he": "Traducido del hebreo",
+    "other": "Traducido de: {{language}}",
+    "unknown": "Traducción automática"
+  },
+  "original": "Original",
+  "showOriginal": "Ver original",
+  "showTranslation": "Ver traducción"
+}

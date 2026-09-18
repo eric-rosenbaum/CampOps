@@ -102,6 +102,7 @@ import { loadCampground, subscribeToCampground, subscribeToIssueComments, dbGene
 import { useCampgroundStore } from '@/store/campgroundStore';
 import { useRetreatStore } from '@/store/retreatStore';
 import { loadLocations, subscribeToLocations } from '@/lib/locationsDb';
+import { startContentTranslations, reloadContentTranslations } from '@/lib/contentTranslationDb';
 import { useLocationStore } from '@/store/locationStore';
 import { useCampStore as useCamp } from '@/store/campStore';
 import { useModules, firstEnabledPath, type ModuleKey } from '@/lib/modules';
@@ -410,6 +411,11 @@ function CampDataLoader() {
     };
     unsubLocations = subscribeToLocations(campId, applyLocationData);
 
+    // What people typed, in the reader's language. Starts its own channel and first load, and
+    // is in no module's hydration gate: the originals are a fine first paint, and a missing
+    // table or edge function leaves the board exactly as it was before translation existed.
+    const stopTranslations = startContentTranslations(campId);
+
     // Load initial data after subscriptions are live. Each load goes through the sync
     // guard, so a subscription reload that lands first is never overwritten by this
     // (older) snapshot.
@@ -513,6 +519,7 @@ function CampDataLoader() {
         loadAndApply('retreats', () => loadRetreats(campId), applyRetreatData).then((ok) => ok && 'retreats'),
         loadAndApply('campground', () => loadCampground(campId), applyCampground).then((ok) => ok && 'campground'),
         loadAndApply('locations', () => loadLocations(campId), applyLocationData).then((ok) => ok && 'locations'),
+        reloadContentTranslations(campId).then((ok) => ok && 'translations'),
       ]);
       const applied = results.filter(Boolean);
       campLog(`[CampOps] refetchAll DONE applied=${applied.join(',') || 'none(sync-guard)'}`);
@@ -577,6 +584,7 @@ function CampDataLoader() {
       unsubComments?.();
       unsubLocations?.();
       unsubSeason?.();
+      stopTranslations();
       stopHeartbeat();
       stopWriteQueue();
       document.removeEventListener('visibilitychange', handleVisibility);

@@ -27,29 +27,41 @@ struct WorkOrderDraft: Sendable {
     var isConfident: Bool { confidence >= Self.lowConfidence }
 }
 
+/// What was handed to the reader, so a failure can say which of them it could not use.
+enum DraftInput {
+    case photo, voice, both
+
+    var noun: String {
+        switch self {
+        case .photo: return "that photo"
+        case .voice: return "what you said"
+        case .both:  return "the photo and what you said"
+        }
+    }
+}
+
 enum DraftError: LocalizedError {
     /// The model looked and could not tell. Carries its own sentence, which says why.
     case unreadable(String)
     /// The server refused, and said why: not a member, out of budget, nothing to read.
     case refused(String)
-    case offline
+    case offline(DraftInput)
     /// Nothing was captured to send.
     case nothingToRead
-    case failed
+    case failed(DraftInput)
 
     var errorDescription: String? {
         switch self {
         case let .unreadable(message): return message
         case let .refused(message): return message
-        case .offline:
-            return "No signal, so nothing was read. What you captured is kept -- type what is wrong and it will send when you are back in range."
+        case let .offline(input):
+            return "No signal, so \(input.noun) was not read. It is kept -- type what is wrong and it all sends when you are back in range."
         case .nothingToRead:
             return "There is nothing to read yet. Take a photo, or record what is wrong."
-        case .failed:
-            // Deliberately does not say "photo": this is also what a voice-only capture hits,
-            // and being told a photo failed when you recorded your voice is its own small
-            // mystery on top of whatever actually went wrong.
-            return "That could not be read. Try again, or just type it."
+        case let .failed(input):
+            // Names what it was actually given. Being told a photo failed when you recorded
+            // your voice is its own small mystery on top of whatever went wrong.
+            return "Could not read \(input.noun). Try again, or just type it."
         }
     }
 }
@@ -70,16 +82,19 @@ final class DraftWorkOrderService {
     @MainActor
     func draft(image: UIImage?, transcript: String?, context: DraftContext) async throws -> WorkOrderDraft {
         guard image != nil || !(transcript ?? "").isEmpty else { throw DraftError.nothingToRead }
+        let input: DraftInput = image != nil
+            ? ((transcript ?? "").isEmpty ? .photo : .both)
+            : .voice
 
         // The camp travels at the body root, where the function looks for it first. It checks
         // membership and spends an hourly budget before it calls the model, and both need to
         // know whose camp this is -- a signed-in caller is not by itself a reason to spend.
-        guard let campId = AuthManager.shared.currentCamp?.id else { throw DraftError.failed }
+        guard let campId = AuthManager.shared.currentCamp?.id else { throw DraftError.failed(input) }
         var body: [String: Any] = ["campId": campId, "context": context.payload]
         if let image {
             let compressed = resized(image, maxWidth: 1000)
             guard let jpeg = compressed.jpegData(compressionQuality: 0.85) else {
-                throw DraftError.failed
+                throw DraftError.failed(input)
             }
             // A data: URL rather than bare base64, so the media type survives the trip and the
             // function does not have to sniff magic bytes to work out what it was sent.
@@ -91,13 +106,20 @@ final class DraftWorkOrderService {
 
         let response: Data
         do {
+            // The trailing closure is what makes this hand back the raw bytes.
+            //
+            // Without it Swift picks `invoke<T: Decodable>` with T inferred as `Data`, and
+            // `Data` decodes from a base64 STRING -- so the SDK tried to JSON-decode a work
+            // order into a blob, threw `typeMismatch`, and the reply never reached this file.
+            // Every AI draft from the phone failed that way, whatever the photo was of. The
+            // pool strip scanner builds its own URLRequest, which is why it was unaffected.
             response = try await SupabaseService.shared.client.functions.invoke(
                 "draft-work-order",
                 options: FunctionInvokeOptions(
                     headers: ["Content-Type": "application/json"],
                     body: data
                 )
-            )
+            ) { bytes, _ in bytes }
         } catch let error as FunctionsError {
             // The server's own sentence, not a shrug.
             //
@@ -110,13 +132,13 @@ final class DraftWorkOrderService {
                let message = json["error"] as? String, !message.isEmpty {
                 throw DraftError.refused(message)
             }
-            throw SyncEngine.shared.isOnline ? DraftError.failed : DraftError.offline
+            throw SyncEngine.shared.isOnline ? DraftError.failed(input) : DraftError.offline(input)
         } catch {
-            throw SyncEngine.shared.isOnline ? DraftError.failed : DraftError.offline
+            throw SyncEngine.shared.isOnline ? DraftError.failed(input) : DraftError.offline(input)
         }
 
         guard let json = try? JSONSerialization.jsonObject(with: response) as? [String: Any] else {
-            throw DraftError.failed
+            throw DraftError.failed(input)
         }
         if let readable = json["readable"] as? Bool, !readable {
             throw DraftError.unreadable(json["error"] as? String

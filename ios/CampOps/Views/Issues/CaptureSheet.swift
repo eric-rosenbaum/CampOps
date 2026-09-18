@@ -50,42 +50,46 @@ struct CaptureSheet: View {
                     dictationBlock
 
                     if let errorMessage {
-                        Text(errorMessage)
-                            .font(.campMeta)
-                            .foregroundStyle(Color.priorityUrgent)
+                        CampErrorBanner(message: errorMessage)
                     }
 
-                    Button {
-                        read()
-                    } label: {
+                    Color.clear.frame(height: Spacing.sm)
+                }
+                .padding(Spacing.lg)
+            }
+            .campCanvas()
+            // The two ways on sit at the bottom, above the thumb, and never scroll away. They
+            // used to be the last thing in the scroll view: after recording, "Read this" was
+            // below the fold, which is most of why tapping it seemed to do nothing.
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: Spacing.sm) {
+                    Divider().overlay(Color.border)
+                    Button { read() } label: {
                         if isReading {
                             HStack(spacing: Spacing.sm) {
-                                ProgressView().tint(Color.ccCream)
+                                ProgressView().tint(Color.cream)
                                 Text("Reading…")
                             }
-                            .frame(maxWidth: .infinity)
                         } else {
-                            Label("Read this", systemImage: "sparkles")
-                                .frame(maxWidth: .infinity)
+                            Label(readButtonTitle, systemImage: "sparkles")
                         }
                     }
-                    .buttonStyle(.campPrimary())
+                    .buttonStyle(.campPrimary(enabled: hasSomethingToRead && !dictation.isRecording))
                     .disabled(isReading || dictation.isRecording || !hasSomethingToRead)
+                    .padding(.horizontal, Spacing.lg)
 
-                    // The way in to the ordinary form, and deliberately a peer of the AI path
-                    // rather than a footnote: typing it is what most people will do most days.
                     Button {
                         dictation.stop()
                         showForm = true
                     } label: {
                         Label("Just type it", systemImage: "square.and.pencil")
-                            .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.campSecondary)
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.bottom, Spacing.sm)
                 }
-                .padding(Spacing.lg)
+                .background(.bar)
             }
-            .campCanvas()
             .navigationTitle("Capture")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -163,61 +167,88 @@ struct CaptureSheet: View {
     }
 
     private var dictationBlock: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             SectionEyebrow(text: "Say what's wrong")
 
-            if dictation.isRecording {
-                Button {
+            // One big target, in the middle, doing one thing: start, or stop. A small chip that
+            // changed its label was the whole problem -- it was not obvious it was listening,
+            // and not obvious how to finish.
+            Button {
+                if dictation.isRecording {
                     Task { await dictation.finish() }
-                } label: {
-                    HStack(spacing: Spacing.sm) {
-                        Circle()
-                            .fill(Color.priorityUrgent)
-                            .frame(width: 10, height: 10)
-                            .opacity(pulse ? 0.25 : 1)
-                            .animation(.easeInOut(duration: 0.6).repeatForever(), value: pulse)
-                        Text("Stop recording").font(.campBodySemibold)
-                        Spacer()
-                        Text(timeLabel).font(.campMeta).monospacedDigit()
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.campChip(filled: true))
-                .onAppear { pulse = true }
-                .onDisappear { pulse = false }
-
-                Text("Listening — say what is wrong, then tap Stop.")
-                    .font(.campMeta)
-                    .foregroundStyle(Color.forest.opacity(0.55))
-            } else {
-                Button {
+                } else {
                     dictation.start()
-                } label: {
-                    Label(dictation.hasSomethingToSend ? "Record again" : "Record what's wrong",
-                          systemImage: "mic.fill")
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.campChip(filled: false))
+            } label: {
+                VStack(spacing: Spacing.sm) {
+                    ZStack {
+                        Circle()
+                            .fill(dictation.isRecording ? Color.priorityUrgent : Color.sage)
+                            .frame(width: 84, height: 84)
+                            .opacity(dictation.isRecording && pulse ? 0.55 : 1)
+                            .animation(
+                                dictation.isRecording
+                                    ? .easeInOut(duration: 0.7).repeatForever()
+                                    : .default,
+                                value: pulse
+                            )
+                        Image(systemName: dictation.isRecording ? "stop.fill" : "mic.fill")
+                            .font(.system(size: 32, weight: .medium))
+                            .foregroundStyle(Color.cream)
+                    }
+                    Text(recordLabel)
+                        .font(.campBodySemibold)
+                        .foregroundStyle(Color.forest)
+                    if dictation.isRecording {
+                        Text(timeLabel)
+                            .font(.campMeta)
+                            .monospacedDigit()
+                            .foregroundStyle(Color.forest.opacity(0.55))
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, Spacing.lg)
             }
+            .buttonStyle(.plain)
+            .onAppear { pulse = true }
 
             if !dictation.transcript.isEmpty {
-                VStack(alignment: .leading, spacing: Spacing.xs) {
-                    Text(dictation.transcript).font(.campBody)
+                VStack(alignment: .leading, spacing: Spacing.sm) {
+                    Text(dictation.transcript)
+                        .font(.campBody)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     if !dictation.isRecording {
-                        Button("Clear") { dictation.clear() }
-                            .font(.campLabel)
-                            .buttonStyle(.plain)
-                            .underline()
+                        HStack(spacing: Spacing.md) {
+                            Button("Record again") { dictation.start() }
+                                .buttonStyle(.campChip(filled: false))
+                            Button("Clear") { dictation.clear() }
+                                .font(.campLabel)
+                                .buttonStyle(.plain)
+                                .underline()
+                            Spacer()
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
                 .cardSurface()
             }
 
             if let issue = dictation.problem {
-                Text(issue).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
+                CampErrorBanner(message: issue)
             }
         }
+    }
+
+    /// Says what the button will do next, not what state it is in.
+    private var recordLabel: String {
+        if dictation.isRecording { return "Tap to stop" }
+        return dictation.hasSomethingToSend ? "Record again" : "Tap to record"
+    }
+
+    private var readButtonTitle: String {
+        if photo != nil && dictation.hasSomethingToSend { return "Read the photo and what I said" }
+        if photo != nil { return "Read the photo" }
+        if dictation.hasSomethingToSend { return "Use what I said" }
+        return "Read this"
     }
 
     private var timeLabel: String {
@@ -335,9 +366,14 @@ final class Dictation: ObservableObject {
 
             let request = SFSpeechAudioBufferRecognitionRequest()
             request.shouldReportPartialResults = true
-            // Keeps the audio on the phone when the phone can manage it, which is both the
-            // private option and the one that works with no bars.
-            request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
+            // On-device recognition ONLY when there is no connection to do better.
+            //
+            // Forcing it whenever the phone claims to support it was the other half of "voice
+            // does not work": support is not readiness, and a locale whose model has not been
+            // downloaded fails the task immediately, leaving an empty transcript and a screen
+            // that looked like it had simply forgotten what was said.
+            request.requiresOnDeviceRecognition =
+                !SyncEngine.shared.isOnline && recognizer.supportsOnDeviceRecognition
             self.request = request
 
             let input = engine.inputNode
@@ -366,6 +402,11 @@ final class Dictation: ObservableObject {
                 Task { @MainActor in
                     guard let self else { return }
                     if let result { self.transcript = result.bestTranscription.formattedString }
+                    // A failure has to say so. Swallowing it left the recording UI vanishing
+                    // with nothing to show for it, which reads as the app losing the words.
+                    if let error, self.transcript.isEmpty {
+                        self.problem = Self.explain(error)
+                    }
                     // The last words arrive AFTER the audio ends. Whoever is waiting on the
                     // finished transcript is released here, not when the mic stopped.
                     if error != nil || (result?.isFinal ?? false) {
@@ -388,6 +429,11 @@ final class Dictation: ObservableObject {
     func finish() async {
         guard isRecording else { return }
         stopAudio()
+        defer {
+            if transcript.trimmingCharacters(in: .whitespaces).isEmpty, problem == nil {
+                problem = "Nothing was picked up. Hold the phone closer and try again."
+            }
+        }
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             finalResult = continuation
             // A recogniser that never delivers must not hold the button hostage; whatever has
@@ -397,6 +443,18 @@ final class Dictation: ObservableObject {
                 self.releaseWaiter()
             }
         }
+    }
+
+    /// Turns a recogniser failure into something worth reading.
+    private static func explain(_ error: Error) -> String {
+        let text = error.localizedDescription.lowercased()
+        if text.contains("no speech") || text.contains("retry") {
+            return "Nothing was picked up. Hold the phone closer and try again."
+        }
+        if text.contains("network") || text.contains("connection") {
+            return "Dictation needs a connection here, and there isn't one. Type it instead."
+        }
+        return "Dictation stopped early: \(error.localizedDescription). You can type it instead."
     }
 
     /// Stop without waiting, for cancelling out of the sheet.

@@ -292,9 +292,11 @@ struct LogIssueView: View {
 
     private var whenCard: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            SectionEyebrow(text: "When")
+            // "When" was ambiguous -- people read it as when the thing broke. It is the date
+            // the work is wanted by, and nothing else, so it says so.
+            SectionEyebrow(text: "Needs doing by")
             HStack(spacing: Spacing.sm) {
-                dueChip("Whenever", active: vm.dueDate == nil) {
+                dueChip("No date", active: vm.dueDate == nil) {
                     vm.dueDate = nil; vm.dueTime = nil
                 }
                 dueChip("Today", active: isDue(offset: 0)) {
@@ -367,7 +369,7 @@ struct LogIssueView: View {
             }
             .padding(Spacing.lg)
             .campCanvas()
-            .navigationTitle("Due")
+            .navigationTitle("Needs doing by")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

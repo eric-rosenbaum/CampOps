@@ -62,7 +62,7 @@ struct ScannedTargetSheet: View {
                 .padding(Spacing.lg)
             }
             .campCanvas()
-            .navigationTitle(target.targetName)
+            .navigationTitle(Text(verbatim: target.targetName))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -106,7 +106,7 @@ struct ScannedTargetSheet: View {
             if !target.isAsset, let ancestors = ancestorPath, !ancestors.isEmpty {
                 Text(ancestors).font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
             }
-            Text(openHere.isEmpty ? "Nothing open here" : "\(openHere.count) open here")
+            Text(openHere.isEmpty ? L10n.tr("Nothing open here") : L10n.tr("%lld open here", openHere.count))
                 .font(.campMeta)
                 .foregroundStyle(Color.forest.opacity(0.55))
         }

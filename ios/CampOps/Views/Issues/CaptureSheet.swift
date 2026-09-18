@@ -240,15 +240,15 @@ struct CaptureSheet: View {
 
     /// Says what the button will do next, not what state it is in.
     private var recordLabel: String {
-        if dictation.isRecording { return "Tap to stop" }
-        return dictation.hasSomethingToSend ? "Record again" : "Tap to record"
+        if dictation.isRecording { return L10n.tr("Tap to stop") }
+        return dictation.hasSomethingToSend ? L10n.tr("Record again") : L10n.tr("Tap to record")
     }
 
     private var readButtonTitle: String {
-        if photo != nil && dictation.hasSomethingToSend { return "Read the photo and what I said" }
-        if photo != nil { return "Read the photo" }
-        if dictation.hasSomethingToSend { return "Use what I said" }
-        return "Read this"
+        if photo != nil && dictation.hasSomethingToSend { return L10n.tr("Read the photo and what I said") }
+        if photo != nil { return L10n.tr("Read the photo") }
+        if dictation.hasSomethingToSend { return L10n.tr("Use what I said") }
+        return L10n.tr("Read this")
     }
 
     private var timeLabel: String {
@@ -298,7 +298,25 @@ final class Dictation: ObservableObject {
     /// whether or not it is listening is a mic nobody trusts.
     @Published private(set) var elapsed: TimeInterval = 0
 
-    private let recognizer = SFSpeechRecognizer(locale: Locale.current)
+    /// Listens in the language chosen in the app. It used to listen in the device's, so a crew
+    /// member who had switched the app to Español and described a leak in Spanish got back an
+    /// English transcript of sounds.
+    private let recognizer = SFSpeechRecognizer(locale: Dictation.speechLocale)
+
+    /// The recogniser's locale for the chosen language: the device's own region when the
+    /// recogniser has it, else the region most camp crews speaking it are from.
+    nonisolated private static var speechLocale: Locale {
+        let region = Locale.current.region?.identifier
+        let candidates: [String]
+        switch L10n.language {
+        case .en: candidates = ["en-\(region ?? "US")", "en-US"]
+        case .es: candidates = ["es-\(region ?? "MX")", "es-MX", "es-US", "es-ES"]
+        case .he: candidates = ["he-IL"]
+        }
+        let norm = { (id: String) in id.replacingOccurrences(of: "_", with: "-").lowercased() }
+        let supported = Set(SFSpeechRecognizer.supportedLocales().map { norm($0.identifier) })
+        return candidates.first { supported.contains(norm($0)) }.map(Locale.init(identifier:)) ?? .current
+    }
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private let engine = AVAudioEngine()
@@ -316,7 +334,7 @@ final class Dictation: ObservableObject {
         // abort(), which took the whole app down twice while this was being built. There is
         // nothing to record here and nothing to be gained by trying.
         #if targetEnvironment(simulator)
-        problem = "Dictation needs a real device. On a phone this records what you say; here, type it."
+        problem = L10n.tr("Dictation needs a real device. On a phone this records what you say; here, type it.")
         return
         #else
         // Permission first, and the microphone's own permission at that. Speech authorization
@@ -324,13 +342,13 @@ final class Dictation: ObservableObject {
         AVAudioApplication.requestRecordPermission { granted in
             Task { @MainActor in
                 guard granted else {
-                    self.problem = "The microphone is off for CampCommand. Turn it on in Settings, or type it."
+                    self.problem = L10n.tr("The microphone is off for CampCommand. Turn it on in Settings, or type it.")
                     return
                 }
                 SFSpeechRecognizer.requestAuthorization { status in
                     Task { @MainActor in
                         guard status == .authorized else {
-                            self.problem = "Dictation needs permission in Settings. You can still type it."
+                            self.problem = L10n.tr("Dictation needs permission in Settings. You can still type it.")
                             return
                         }
                         self.begin()
@@ -343,7 +361,7 @@ final class Dictation: ObservableObject {
 
     private func begin() {
         guard let recognizer, recognizer.isAvailable else {
-            problem = "Dictation isn't available right now. You can still type it."
+            problem = L10n.tr("Dictation isn't available right now. You can still type it.")
             return
         }
         do {
@@ -359,7 +377,7 @@ final class Dictation: ObservableObject {
             // and accessory states) does the same, and the crash lands on somebody standing in
             // front of a broken pump trying to describe it.
             guard session.isInputAvailable, !(session.availableInputs ?? []).isEmpty else {
-                problem = "No microphone is available right now. You can still type it."
+                problem = L10n.tr("No microphone is available right now. You can still type it.")
                 try? session.setActive(false, options: .notifyOthersOnDeactivation)
                 return
             }
@@ -381,7 +399,7 @@ final class Dictation: ObservableObject {
             // A zero-channel or zero-rate format is the other way this fails: the tap installs
             // and then the engine throws on start, or delivers nothing at all.
             guard format.channelCount > 0, format.sampleRate > 0 else {
-                problem = "The microphone isn't ready. You can still type it."
+                problem = L10n.tr("The microphone isn't ready. You can still type it.")
                 teardown()
                 return
             }
@@ -416,7 +434,7 @@ final class Dictation: ObservableObject {
                 }
             }
         } catch {
-            problem = "Couldn't start the microphone. You can still type it."
+            problem = L10n.tr("Couldn't start the microphone. You can still type it.")
             teardown()
         }
     }
@@ -431,7 +449,7 @@ final class Dictation: ObservableObject {
         stopAudio()
         defer {
             if transcript.trimmingCharacters(in: .whitespaces).isEmpty, problem == nil {
-                problem = "Nothing was picked up. Hold the phone closer and try again."
+                problem = L10n.tr("Nothing was picked up. Hold the phone closer and try again.")
             }
         }
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
@@ -449,12 +467,12 @@ final class Dictation: ObservableObject {
     private static func explain(_ error: Error) -> String {
         let text = error.localizedDescription.lowercased()
         if text.contains("no speech") || text.contains("retry") {
-            return "Nothing was picked up. Hold the phone closer and try again."
+            return L10n.tr("Nothing was picked up. Hold the phone closer and try again.")
         }
         if text.contains("network") || text.contains("connection") {
-            return "Dictation needs a connection here, and there isn't one. Type it instead."
+            return L10n.tr("Dictation needs a connection here, and there isn't one. Type it instead.")
         }
-        return "Dictation stopped early: \(error.localizedDescription). You can type it instead."
+        return L10n.tr("Dictation stopped early: %@. You can type it instead.", error.localizedDescription)
     }
 
     /// Stop without waiting, for cancelling out of the sheet.

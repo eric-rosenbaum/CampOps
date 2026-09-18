@@ -36,7 +36,7 @@ struct IssueRow: View {
                     Circle()
                         .fill(Color.priorityUrgent)
                         .frame(width: 7, height: 7)
-                        .accessibilityLabel("Unread messages")
+                        .accessibilityLabel(Text("Unread messages"))
                 }
                 Spacer()
                 if let sourceGlyph {
@@ -48,7 +48,10 @@ struct IssueRow: View {
                     .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
             }
 
-            Text(issue.title).font(.campBodySemibold).lineLimit(2)
+            // In the reader's language when a current translation exists; the original is on
+            // the work order itself.
+            TranslatedLine(source: .issues, id: issue.id, field: "title", original: issue.title)
+                .font(.campBodySemibold).lineLimit(2)
 
             // Crew, and the routine or guest-report marker when there is one.
             HStack(spacing: Spacing.xs) {
@@ -88,7 +91,7 @@ struct IssueRow: View {
                 } else if let crew = issue.assignedCrew {
                     // Waiting with a crew is not the same as waiting with nobody, and a board
                     // that renders both as "Unassigned" hides who is meant to pick it up.
-                    Label("With \(crew.name)", systemImage: "person.2")
+                    Label(L10n.tr("With %@", crew.name), systemImage: "person.2")
                         .font(.campMeta).foregroundStyle(Color.forest.opacity(0.55))
                 }
                 Spacer()
@@ -108,6 +111,8 @@ struct IssueRow: View {
             }
         }
         .cardSurface()
+        // `.leading`, not a left edge: under Hebrew the crew stripe belongs on the right, where
+        // the card starts.
         .overlay(alignment: .leading) {
             Rectangle()
                 .fill(Trade.color(issue.trade))
@@ -131,10 +136,23 @@ struct CrewPill: View {
 
 /// A small neutral marker: where a job came from, rather than what it is.
 struct MetaTag: View {
-    let text: String
+    private let text: Text
     let systemImage: String
+
+    /// A fixed label, translated.
+    init(text: LocalizedStringKey, systemImage: String) {
+        self.text = Text(text)
+        self.systemImage = systemImage
+    }
+
+    /// A value from the data, shown as it is.
+    init(verbatim: String, systemImage: String) {
+        self.text = Text(verbatim: verbatim)
+        self.systemImage = systemImage
+    }
+
     var body: some View {
-        Label(text, systemImage: systemImage)
+        Label { text } icon: { Image(systemName: systemImage) }
             .font(.campLabel)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)

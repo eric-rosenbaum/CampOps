@@ -37,7 +37,7 @@ struct IssueListView: View {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if let onScan {
                         Button { onScan() } label: { Image(systemName: "qrcode.viewfinder") }
-                            .accessibilityLabel("Scan a sticker")
+                            .accessibilityLabel(Text("Scan a sticker"))
                     }
                     if authManager.can.createIssue {
                         // Scan, AI, Log -- in that order, left to right. Three named doors
@@ -47,12 +47,12 @@ struct IssueListView: View {
                         Button { isCapturing = true } label: {
                             Image(systemName: "sparkles")
                         }
-                        .accessibilityLabel("Log with a photo or your voice")
+                        .accessibilityLabel(Text("Log with a photo or your voice"))
 
                         Button { isLogging = true } label: {
                             Image(systemName: "square.and.pencil")
                         }
-                        .accessibilityLabel("Log work")
+                        .accessibilityLabel(Text("Log work"))
                     }
                 }
             }
@@ -74,7 +74,7 @@ struct IssueListView: View {
 
     private func scannedBanner(_ name: String) -> some View {
         HStack {
-            Label("Showing \(name)", systemImage: "qrcode")
+            Label(L10n.tr("Showing %@", name), systemImage: "qrcode")
                 .font(.campMeta)
             Spacer()
             Button("Show all") { vm.clearScannedLocation() }
@@ -173,19 +173,19 @@ struct IssueListView: View {
 
     private var emptyTitle: String {
         switch vm.filter {
-        case .done:       return "Nothing closed yet"
-        case .mine:       return "Nothing on your plate"
-        case .urgent:     return "Nothing urgent"
-        case .unassigned: return "Nothing up for grabs"
-        case .waiting:    return "Nothing is stuck"
-        case .all:        return "All clear"
+        case .done:       return L10n.tr("Nothing closed yet")
+        case .mine:       return L10n.tr("Nothing on your plate")
+        case .urgent:     return L10n.tr("Nothing urgent")
+        case .unassigned: return L10n.tr("Nothing up for grabs")
+        case .waiting:    return L10n.tr("Nothing is stuck")
+        case .all:        return L10n.tr("All clear")
         }
     }
 
     private var emptyMessage: String {
         vm.searchText.isEmpty
-            ? "Scan a sticker or tap + to log something."
-            : "Nothing matches “\(vm.searchText)”."
+            ? L10n.tr("Scan a sticker, or tap the pencil to log something.")
+            : L10n.tr("Nothing matches “%@”.", vm.searchText)
     }
 
     private func take(_ issue: Issue) {
@@ -205,12 +205,12 @@ struct IssueListView: View {
 /// One number and what it counts.
 struct StatTile: View {
     let value: Int
-    let label: String
+    let label: LocalizedStringKey
     var tint: Color = .forest
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("\(value)").font(.campDisplay).foregroundStyle(tint)
+            Text(value, format: .number.locale(L10n.locale)).font(.campDisplay).foregroundStyle(tint)
             Text(label).font(.campLabel).foregroundStyle(Color.forest.opacity(0.55))
         }
         .frame(maxWidth: .infinity, alignment: .leading)

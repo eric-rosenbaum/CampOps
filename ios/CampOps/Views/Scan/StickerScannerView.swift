@@ -62,7 +62,7 @@ struct StickerScannerView: View {
                 if router.isResolving {
                     ProgressView().tint(.white)
                 }
-                Text(router.failure ?? "Point the camera at the sticker on the door")
+                Text(router.failure ?? L10n.tr("Point the camera at the sticker on the door"))
                     .font(.campMeta)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white)
@@ -80,6 +80,9 @@ struct StickerScannerView: View {
                 .foregroundStyle(Color.forest.opacity(0.4))
             Text("This device can't scan")
                 .font(.campTitle)
+                // Fitted on one line in English, so nobody saw it wrap flush left; in Spanish
+                // it takes two and hung off-centre above the centred line beneath it.
+                .multilineTextAlignment(.center)
             Text("Point the phone's own Camera app at the sticker instead, and it will open here.")
                 .font(.campBody)
                 .multilineTextAlignment(.center)

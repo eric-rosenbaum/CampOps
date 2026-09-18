@@ -36,14 +36,15 @@ enum CampDate {
         return Calendar.current.date(from: c)
     }
 
-    /// `HH:mm:ss` (what the `time` column holds) rendered as the phone's own clock format.
+    /// `HH:mm:ss` (what the `time` column holds) rendered in the chosen language's clock: 24-hour
+    /// for Spanish and Hebrew, the phone's own format for English.
     static func timeLabel(_ time: String) -> String? {
         let parts = time.split(separator: ":").compactMap { Int($0) }
         guard parts.count >= 2 else { return nil }
         var c = DateComponents()
         c.hour = parts[0]; c.minute = parts[1]
         guard let d = Calendar.current.date(from: c) else { return nil }
-        return d.formatted(.dateTime.hour().minute())
+        return d.formatted(.dateTime.hour().minute().locale(L10n.locale))
     }
 
     /// "Today", "Tomorrow", "Mon 3 Jun" -- with the clock time appended when there is one.
@@ -51,12 +52,12 @@ enum CampDate {
         guard let date = date(from: day) else { return day }
         let cal = Calendar.current
         let base: String
-        if cal.isDateInToday(date) { base = "Today" }
-        else if cal.isDateInTomorrow(date) { base = "Tomorrow" }
-        else if cal.isDateInYesterday(date) { base = "Yesterday" }
-        else { base = date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)) }
+        if cal.isDateInToday(date) { base = L10n.tr("Today") }
+        else if cal.isDateInTomorrow(date) { base = L10n.tr("Tomorrow") }
+        else if cal.isDateInYesterday(date) { base = L10n.tr("Yesterday") }
+        else { base = date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).locale(L10n.locale)) }
         guard let time, let clock = timeLabel(time) else { return base }
-        return "\(base), \(clock)"
+        return L10n.tr("%1$@, %2$@", base, clock)
     }
 
     /// The `HH:mm:ss` string for a picked time, which is what the `due_time` column wants.

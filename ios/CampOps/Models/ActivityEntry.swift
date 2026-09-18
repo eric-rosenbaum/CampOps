@@ -24,6 +24,15 @@ struct ActivityEntry: Codable, Identifiable {
     }
 }
 
+extension ActivityEntry {
+    /// What happened, in the reader's language. The stored sentence stays English; see
+    /// `ActivityTranslation`.
+    var displayAction: String { ActivityTranslation.translate(action) }
+}
+
+// Every date on screen is formatted in the language chosen in the app, not the device's. A
+// `formatted()` with no locale reads the device, which is how a phone switched to Español kept
+// saying "Tuesday" under a Spanish heading.
 extension Date {
     var relativeDisplay: String {
         let now = Date()
@@ -31,28 +40,28 @@ extension Date {
         let minutes = Int(diff / 60)
         let hours = Int(diff / 3600)
 
-        if diff < 60 { return "just now" }
-        if minutes < 60 { return "\(minutes) min\(minutes == 1 ? "" : "s") ago" }
-        if hours < 24 { return "\(hours) hr\(hours == 1 ? "" : "s") ago" }
+        if diff < 60 { return L10n.tr("just now") }
+        if minutes < 60 { return L10n.tr("%lld min ago", minutes) }
+        if hours < 24 { return L10n.tr("%lld hr ago", hours) }
 
-        let cal = Calendar.current
-        if cal.isDateInYesterday(self) { return "Yesterday" }
+        let cal = L10n.calendar
+        if cal.isDateInYesterday(self) { return L10n.tr("Yesterday") }
         if let week = cal.dateInterval(of: .weekOfYear, for: now), week.contains(self) {
-            return formatted(.dateTime.weekday(.wide))
+            return formatted(.dateTime.weekday(.wide).locale(L10n.locale))
         }
-        return formatted(.dateTime.month(.abbreviated).day())
+        return formatted(.dateTime.month(.abbreviated).day().locale(L10n.locale))
     }
 
     var timeDisplay: String {
-        formatted(.dateTime.hour().minute())
+        formatted(.dateTime.hour().minute().locale(L10n.locale))
     }
 
     var dateTimeDisplay: String {
-        formatted(.dateTime.month(.abbreviated).day().year().hour().minute())
+        formatted(.dateTime.month(.abbreviated).day().year().hour().minute().locale(L10n.locale))
     }
 
     var dateOnlyDisplay: String {
-        formatted(.dateTime.month(.abbreviated).day().year())
+        formatted(.dateTime.month(.abbreviated).day().year().locale(L10n.locale))
     }
 }
 
@@ -75,9 +84,9 @@ extension String {
         let today = Calendar.current.startOfDay(for: Date())
         let dueDay = Calendar.current.startOfDay(for: due)
         let days = Calendar.current.dateComponents([.day], from: today, to: dueDay).day ?? 0
-        if days < 0 { return ("Overdue \(abs(days)) day\(abs(days) == 1 ? "" : "s")", true) }
-        if days == 0 { return ("Due today", false) }
-        if days == 1 { return ("Due tomorrow", false) }
-        return ("Due in \(days) days", false)
+        if days < 0 { return (L10n.tr("Overdue %lld days", abs(days)), true) }
+        if days == 0 { return (L10n.tr("Due today"), false) }
+        if days == 1 { return (L10n.tr("Due tomorrow"), false) }
+        return (L10n.tr("Due in %lld days", days), false)
     }
 }

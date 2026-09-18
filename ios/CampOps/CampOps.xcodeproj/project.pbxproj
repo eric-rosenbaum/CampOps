@@ -108,6 +108,10 @@
 		FE7503186813BBBBBBBBBBBB /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7503186813FFFFFFFFFFFF /* Theme.swift */; };
 		FE9388992182BBBBBBBBBBBB /* ForgotPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9388992182FFFFFFFFFFFF /* ForgotPasswordView.swift */; };
 		FE9407152289BBBBBBBBBBBB /* AccessGateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9407152289FFFFFFFFFFFF /* AccessGateViews.swift */; };
+		132908523041C7B38DC00F15 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C85B663581064DB715A1E3 /* L10n.swift */; };
+		C10A58F0B04AAFA78A52581C /* ActivityTranslation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0226D7C4EE3EDD73E2A98B38 /* ActivityTranslation.swift */; };
+		7F6E7E50E7891575F5345F03 /* ContentTranslations.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D85E5C8662D1213A251276 /* ContentTranslations.swift */; };
+		E3EEB7D480E614A2ECD8E6CF /* TranslatedText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 236CFB6333B59FFDB44614A3 /* TranslatedText.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -207,6 +211,10 @@
 		FE7503186813FFFFFFFFFFFF /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		FE9388992182FFFFFFFFFFFF /* ForgotPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordView.swift; sourceTree = "<group>"; };
 		FE9407152289FFFFFFFFFFFF /* AccessGateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessGateViews.swift; sourceTree = "<group>"; };
+		B6C85B663581064DB715A1E3 /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
+		0226D7C4EE3EDD73E2A98B38 /* ActivityTranslation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityTranslation.swift; sourceTree = "<group>"; };
+		E6D85E5C8662D1213A251276 /* ContentTranslations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentTranslations.swift; sourceTree = "<group>"; };
+		236CFB6333B59FFDB44614A3 /* TranslatedText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslatedText.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -304,6 +312,7 @@
 		49E5A7592F81A74E007122C8 /* Config */ = {
 			isa = PBXGroup;
 			children = (
+				B6C85B663581064DB715A1E3 /* L10n.swift */,
 				DBA1645C9C877790601230CC /* CampDate.swift */,
 				49E5A7572F81A74E007122C8 /* Colors.swift */,
 				FE7503186813FFFFFFFFFFFF /* Theme.swift */,
@@ -324,6 +333,7 @@
 		49E5A7622F81A74E007122C8 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				0226D7C4EE3EDD73E2A98B38 /* ActivityTranslation.swift */,
 				1CA9BD5E26EB3C4910D06AA3 /* CampgroundModels.swift */,
 				49E5A75C2F81A74E007122C8 /* ActivityEntry.swift */,
 				49E5A75D2F81A74E007122C8 /* AppEnums.swift */,
@@ -342,6 +352,7 @@
 		49E5A7672F81A74E007122C8 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				E6D85E5C8662D1213A251276 /* ContentTranslations.swift */,
 				F41F4B9D80422DBBB9668B1F /* DraftWorkOrderService.swift */,
 				49E5A7632F81A74E007122C8 /* DataService.swift */,
 				49E5A7642F81A74E007122C8 /* PhotoService.swift */,
@@ -402,6 +413,7 @@
 		49E5A7832F81A74E007122C8 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				236CFB6333B59FFDB44614A3 /* TranslatedText.swift */,
 				49E5A77C2F81A74E007122C8 /* ActivityFeed.swift */,
 				49E5A77D2F81A74E007122C8 /* AssignPickerSheet.swift */,
 				49E5A7BA2F81A74E007122C8 /* UserMenuButton.swift */,
@@ -562,6 +574,8 @@
 			knownRegions = (
 				en,
 				Base,
+				es,
+				he,
 			);
 			mainGroup = 496203572F81579C003569A5;
 			minimizedProjectReferenceProxies = 1;
@@ -593,6 +607,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E3EEB7D480E614A2ECD8E6CF /* TranslatedText.swift in Sources */,
+				7F6E7E50E7891575F5345F03 /* ContentTranslations.swift in Sources */,
+				C10A58F0B04AAFA78A52581C /* ActivityTranslation.swift in Sources */,
+				132908523041C7B38DC00F15 /* L10n.swift in Sources */,
 				CD3B67DDDF34F5D3692DB4C4 /* AdminCampListView.swift in Sources */,
 				7462ECDE2742405D91995C12 /* CaptureSheet.swift in Sources */,
 				9EE8BF772DA9FBEFD3AE1927 /* ScannedTargetSheet.swift in Sources */,

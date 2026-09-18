@@ -33,9 +33,9 @@ enum DraftInput {
 
     var noun: String {
         switch self {
-        case .photo: return "that photo"
-        case .voice: return "what you said"
-        case .both:  return "the photo and what you said"
+        case .photo: return L10n.tr("that photo")
+        case .voice: return L10n.tr("what you said")
+        case .both:  return L10n.tr("the photo and what you said")
         }
     }
 }
@@ -55,13 +55,13 @@ enum DraftError: LocalizedError {
         case let .unreadable(message): return message
         case let .refused(message): return message
         case let .offline(input):
-            return "No signal, so \(input.noun) was not read. It is kept -- type what is wrong and it all sends when you are back in range."
+            return L10n.tr("No signal, so %@ was not read. It is kept -- type what is wrong and it all sends when you are back in range.", input.noun)
         case .nothingToRead:
-            return "There is nothing to read yet. Take a photo, or record what is wrong."
+            return L10n.tr("There is nothing to read yet. Take a photo, or record what is wrong.")
         case let .failed(input):
             // Names what it was actually given. Being told a photo failed when you recorded
             // your voice is its own small mystery on top of whatever went wrong.
-            return "Could not read \(input.noun). Try again, or just type it."
+            return L10n.tr("Could not read %@. Try again, or just type it.", input.noun)
         }
     }
 }
@@ -90,7 +90,9 @@ final class DraftWorkOrderService {
         // membership and spends an hourly budget before it calls the model, and both need to
         // know whose camp this is -- a signed-in caller is not by itself a reason to spend.
         guard let campId = AuthManager.shared.currentCamp?.id else { throw DraftError.failed(input) }
-        var body: [String: Any] = ["campId": campId, "context": context.payload]
+        // The reader's language rides along so the draft can come back in it. A crew lead who
+        // speaks Spanish was otherwise handed an English title to correct.
+        var body: [String: Any] = ["campId": campId, "context": context.payload, "lang": L10n.language.rawValue]
         if let image {
             let compressed = resized(image, maxWidth: 1000)
             guard let jpeg = compressed.jpegData(compressionQuality: 0.85) else {
@@ -142,7 +144,7 @@ final class DraftWorkOrderService {
         }
         if let readable = json["readable"] as? Bool, !readable {
             throw DraftError.unreadable(json["error"] as? String
-                ?? "That photo doesn't show enough to go on.")
+                ?? L10n.tr("That photo doesn't show enough to go on."))
         }
 
         return WorkOrderDraft(

@@ -58,12 +58,12 @@ struct CampBlockedView: View {
 struct SupportAndSignOutFooter: View {
     @EnvironmentObject private var authManager: AuthManager
 
-    var signOutLabel: String = "Sign out"
+    var signOutLabel: LocalizedStringKey = "Sign out"
 
     var body: some View {
         VStack(spacing: Spacing.md) {
             Link(destination: URL(string: "mailto:\(Constants.supportEmail)")!) {
-                Text("Email \(Constants.supportEmail)")
+                Text(L10n.tr("Email %@", Constants.supportEmail))
             }
             .buttonStyle(.campSecondary)
 

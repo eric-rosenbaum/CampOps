@@ -201,9 +201,9 @@ final class AuthManager: ObservableObject {
         } catch {
             let raw = error.localizedDescription
             if raw.localizedCaseInsensitiveContains("expired") {
-                authError = "That code has expired, request a new one."
+                authError = L10n.tr("That code has expired, request a new one.")
             } else if raw.localizedCaseInsensitiveContains("invalid") {
-                authError = "That code isn't right. Check it and try again."
+                authError = L10n.tr("That code isn't right. Check it and try again.")
             } else {
                 authError = friendlyAuthMessage(error)
             }
@@ -245,7 +245,7 @@ final class AuthManager: ObservableObject {
                 .value
             return info
         } catch {
-            authError = "Could not check that code. Please try again."
+            authError = L10n.tr("Could not check that code. Please try again.")
             return nil
         }
     }
@@ -285,6 +285,8 @@ final class AuthManager: ObservableObject {
         // Leaving the row behind would keep sending this camp's work orders to a phone whose
         // holder has just signed out of it.
         PushService.shared.forgetThisDevice()
+        // Translations of this camp's notes are this camp's notes.
+        ContentTranslations.shared.clear()
 
         Task { try? await supabase.auth.signOut() }
 
@@ -321,7 +323,7 @@ final class AuthManager: ObservableObject {
                 .value
 
             guard result.ok else {
-                return result.error ?? "Your account could not be deleted."
+                return result.error ?? L10n.tr("Your account could not be deleted.")
             }
 
             // The session now points at a user that no longer exists, so clearing local state
@@ -329,7 +331,7 @@ final class AuthManager: ObservableObject {
             await signOut()
             return nil
         } catch {
-            return "Could not delete your account. Check your connection and try again."
+            return L10n.tr("Could not delete your account. Check your connection and try again.")
         }
     }
 
@@ -337,17 +339,17 @@ final class AuthManager: ObservableObject {
     private func friendlyAuthMessage(_ error: Error) -> String {
         let raw = error.localizedDescription
         if raw.localizedCaseInsensitiveContains("invalid login credentials") {
-            return "That email or password doesn't match an account."
+            return L10n.tr("That email or password doesn't match an account.")
         }
         // Raised when an emailed sign-in code is requested for an address that has no account
         // (shouldCreateUser: false). Verbatim it reads "Signups not allowed for otp", which
         // tells a counselor with a typo'd address precisely nothing.
         if raw.localizedCaseInsensitiveContains("signups not allowed")
             || raw.localizedCaseInsensitiveContains("user not found") {
-            return "We couldn't find an account for that email. Check the spelling, or use the invite link your camp administrator sent you."
+            return L10n.tr("We couldn't find an account for that email. Check the spelling, or use the invite link your camp administrator sent you.")
         }
         if raw.localizedCaseInsensitiveContains("email not confirmed") {
-            return "Please confirm your email address first. Check your inbox for the link."
+            return L10n.tr("Please confirm your email address first. Check your inbox for the link.")
         }
         if raw.localizedCaseInsensitiveContains("network")
             || raw.localizedCaseInsensitiveContains("offline")
@@ -355,7 +357,7 @@ final class AuthManager: ObservableObject {
             || raw.localizedCaseInsensitiveContains("connection") {
             // Reached after the retry ladder in NetworkService has already given the
             // connection three chances, so this really is "the network is not working".
-            return "Can't reach CampCommand. Check your signal and try again."
+            return L10n.tr("Can't reach CampCommand. Check your signal and try again.")
         }
         return raw
     }
@@ -435,7 +437,7 @@ final class AuthManager: ObservableObject {
             }
             await loadCampData()
         } catch {
-            authError = "Invalid or expired code. Please try again."
+            authError = L10n.tr("Invalid or expired code. Please try again.")
         }
     }
 
@@ -450,12 +452,13 @@ final class AuthManager: ObservableObject {
         // Fetch profile
         if let profile = try? await supabase
             .from("profiles")
-            .select("full_name")
+            .select("full_name, preferred_language")
             .eq("id", value: userId)
             .single()
             .execute()
             .value as ProfileRow {
             userFullName = profile.fullName
+            adoptPreferredLanguage(profile.preferredLanguage)
         }
 
         await refreshPlatformAdmin()
@@ -542,6 +545,33 @@ final class AuthManager: ObservableObject {
         await loadCrews(campId: row.camps.id,
                         userId: session?.user.id.uuidString.lowercased() ?? "")
         await loadMembers(campId: row.camps.id)
+    }
+
+    // MARK: - Language
+
+    /// Takes the language this person chose, on whichever device they chose it.
+    ///
+    /// Nobody has chosen yet: the phone's own language is written back when it is one we speak,
+    /// so the web greets them in it too instead of in English. A value from the profile wins
+    /// over whatever this phone had, because the profile is the choice they made most recently
+    /// that both platforms can see.
+    private func adoptPreferredLanguage(_ stored: String?) {
+        if let stored, let language = AppLanguage(rawValue: stored) {
+            LanguageStore.shared.choose(language, remember: false)
+        } else if let device = AppLanguage.device {
+            LanguageStore.shared.choose(device, remember: true)
+        }
+    }
+
+    /// Writes the chosen language to the profile. Best effort: the choice already applies on
+    /// this phone, and the next sign-in with signal writes it again.
+    func savePreferredLanguage(_ language: AppLanguage) async {
+        guard let userId = session?.user.id.uuidString.lowercased() else { return }
+        _ = try? await supabase
+            .from("profiles")
+            .update(["preferred_language": language.rawValue])
+            .eq("id", value: userId)
+            .execute()
     }
 
     // MARK: - Platform admin

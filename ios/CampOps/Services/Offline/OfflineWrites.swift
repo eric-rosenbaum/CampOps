@@ -42,7 +42,7 @@ extension SyncEngine {
             table: SyncTable.issues,
             rowId: issueId,
             fields: ["status": .string(status.rawValue)],
-            summary: "\(status.displayName): \(title)"
+            summary: L10n.tr("%1$@: %2$@", status.displayName, title)
         )
     }
 
@@ -56,7 +56,7 @@ extension SyncEngine {
             table: SyncTable.issues,
             rowId: issueId,
             fields: fields,
-            summary: "Resolved: \(title)"
+            summary: L10n.tr("Done: %@", title)
         )
     }
 
@@ -80,7 +80,7 @@ extension SyncEngine {
                 "status": .string(status.rawValue),
             ],
             summary: assigneeId == nil && assigneeGroupId == nil
-                ? "Unassigned: \(title)" : "Assigned: \(title)"
+                ? L10n.tr("Unassigned: %@", title) : L10n.tr("Assigned: %@", title)
         )
     }
 
@@ -118,7 +118,7 @@ extension SyncEngine {
             table: SyncTable.issues,
             rowId: issue.id,
             fields: fields,
-            summary: "Logged: \(issue.title)"
+            summary: L10n.tr("Logged: %@", issue.title)
         )
     }
 
@@ -140,7 +140,7 @@ extension SyncEngine {
                 "due_time": issue.dueTime.json,
                 "photo_url": issue.photoUrl.json,
             ],
-            summary: "Edited: \(issue.title)"
+            summary: L10n.tr("Edited: %@", issue.title)
         )
     }
 
@@ -150,7 +150,7 @@ extension SyncEngine {
             table: SyncTable.issues,
             rowId: issueId,
             fields: ["vendor_id": vendorId.json],
-            summary: "Vendor set: \(title)"
+            summary: L10n.tr("Vendor set: %@", title)
         )
     }
 
@@ -160,7 +160,7 @@ extension SyncEngine {
             table: SyncTable.issues,
             rowId: issueId,
             fields: ["minutes_spent": minutes.map { SyncJSON.integer($0) } ?? .null],
-            summary: "Time logged: \(title)"
+            summary: L10n.tr("Time logged: %@", title)
         )
     }
 
@@ -170,7 +170,7 @@ extension SyncEngine {
             table: SyncTable.issues,
             rowId: issueId,
             fields: ["photo_url": .string(url)],
-            summary: "Photo attached"
+            summary: L10n.tr("Photo attached")
         )
     }
 
@@ -188,7 +188,7 @@ extension SyncEngine {
                 "action": .string(entry.action),
                 "created_at": .string(SyncTimestamp.string(entry.createdAt)),
             ],
-            summary: entry.action
+            summary: entry.displayAction
         )
     }
 
@@ -209,7 +209,7 @@ extension SyncEngine {
                 "mentions": .array(comment.mentions.map { .string($0) }),
                 "created_at": .string(SyncTimestamp.string(comment.createdAt)),
             ],
-            summary: "Comment: \(comment.body.prefix(40))"
+            summary: L10n.tr("Note: %@", String(comment.body.prefix(40)))
         )
     }
 
@@ -219,7 +219,7 @@ extension SyncEngine {
             table: SyncTable.issueChecklistItems,
             rowId: itemId,
             fields: ["photo_url": .string(url)],
-            summary: "Photo attached to a step"
+            summary: L10n.tr("Photo attached to a step")
         )
     }
 
@@ -229,7 +229,7 @@ extension SyncEngine {
             table: SyncTable.issueComments,
             rowId: commentId,
             fields: ["photo_urls": .array(urls.map { .string($0) })],
-            summary: "Photo attached to a message"
+            summary: L10n.tr("Photo attached to a message")
         )
     }
 
@@ -258,7 +258,7 @@ extension SyncEngine {
             table: SyncTable.issueChecklistItems,
             rowId: item.id,
             fields: fields,
-            summary: (done ? "Ticked: " : "Un-ticked: ") + item.text
+            summary: done ? L10n.tr("Ticked: %@", item.text) : L10n.tr("Un-ticked: %@", item.text)
         )
     }
 
@@ -275,7 +275,7 @@ extension SyncEngine {
                 "is_done": .bool(item.isDone),
                 "created_at": .string(SyncTimestamp.string(item.createdAt)),
             ],
-            summary: "Added step: \(item.text)"
+            summary: L10n.tr("Added step: %@", item.text)
         )
     }
 

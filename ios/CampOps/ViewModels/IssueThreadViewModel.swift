@@ -132,7 +132,7 @@ final class IssueThreadViewModel: ObservableObject {
             await refresh()
             Haptics.success()
         } catch {
-            errorMessage = "Couldn't add \(template.name). It needs a connection -- try again in range."
+            errorMessage = L10n.tr("Couldn't add %@. It needs a connection -- try again in range.", template.name)
         }
     }
 

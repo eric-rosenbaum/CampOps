@@ -65,7 +65,7 @@ struct HomeView: View {
             }
             .refreshable { await issueVM.refresh() }
             .campCanvas()
-            .navigationTitle(authManager.currentCamp?.name ?? "CampCommand")
+            .navigationTitle(Text(verbatim: authManager.currentCamp?.name ?? "CampCommand"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { UserMenuButton() }
@@ -81,18 +81,19 @@ struct HomeView: View {
     private var greeting: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(timeOfDayGreeting).font(.campHero)
-            Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)))
+            Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide).locale(L10n.locale)))
                 .font(.campMeta)
                 .foregroundStyle(Color.forest.opacity(0.55))
         }
     }
 
     private var timeOfDayGreeting: String {
-        let name = authManager.currentUser.name.split(separator: " ").first.map(String.init) ?? "Hello"
+        guard let name = authManager.currentUser.name.split(separator: " ").first.map(String.init),
+              !name.isEmpty else { return L10n.tr("Hello") }
         switch Calendar.current.component(.hour, from: Date()) {
-        case 0..<12:  return "Morning, \(name)"
-        case 12..<17: return "Afternoon, \(name)"
-        default:      return "Evening, \(name)"
+        case 0..<12:  return L10n.tr("Morning, %@", name)
+        case 12..<17: return L10n.tr("Afternoon, %@", name)
+        default:      return L10n.tr("Evening, %@", name)
         }
     }
 
@@ -117,7 +118,7 @@ struct HomeView: View {
     }
 
     @ViewBuilder
-    private func quickAction(icon: String, title: String, primary: Bool,
+    private func quickAction(icon: String, title: LocalizedStringKey, primary: Bool,
                              action: @escaping () -> Void) -> some View {
         let label = VStack(spacing: Spacing.xs) {
             Image(systemName: icon).font(.system(size: 22))

@@ -96,7 +96,7 @@ struct ForgotPasswordView: View {
                 .font(.campTitle)
                 .foregroundStyle(Color.forest)
 
-            Text("If an account exists for \(email), a reset link is on its way. Open it to choose a new password, then come back and sign in.")
+            Text(L10n.tr("If an account exists for %@, a reset link is on its way. Open it to choose a new password, then come back and sign in.", email))
                 .font(.campBody)
                 .foregroundStyle(Color.forest.opacity(0.6))
                 .multilineTextAlignment(.center)

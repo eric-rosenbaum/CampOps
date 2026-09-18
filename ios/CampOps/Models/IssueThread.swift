@@ -61,7 +61,7 @@ nonisolated struct IssueComment: Codable, Identifiable, Hashable {
         id                = try c.decode(String.self, forKey: .id)
         issueId           = try c.decode(String.self, forKey: .issueId)
         authorId          = try? c.decodeIfPresent(String.self, forKey: .authorId)
-        authorName        = (try? c.decode(String.self, forKey: .authorName)) ?? "Someone"
+        authorName        = (try? c.decode(String.self, forKey: .authorName)) ?? L10n.tr("Someone")
         body              = (try? c.decode(String.self, forKey: .body)) ?? ""
         photoUrls         = (try? c.decodeIfPresent([String].self, forKey: .photoUrls)) ?? []
         visibleToReporter = (try? c.decode(Bool.self, forKey: .visibleToReporter)) ?? false

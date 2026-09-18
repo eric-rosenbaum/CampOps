@@ -115,9 +115,9 @@ enum CampRole: String, Codable {
 
     var displayName: String {
         switch self {
-        case .admin:  return "Administrator"
-        case .staff:  return "Staff"
-        case .viewer: return "Viewer"
+        case .admin:  return L10n.tr("Administrator")
+        case .staff:  return L10n.tr("Staff")
+        case .viewer: return L10n.tr("Viewer")
         }
     }
 }
@@ -253,10 +253,10 @@ struct JoinCodeInfo: Decodable {
 
     var problemText: String {
         switch reason {
-        case "expired":           return "This join code has expired. Ask your camp administrator for a new one."
-        case "used_up":           return "This join code has been used the maximum number of times."
-        case "camp_unavailable":  return "This camp isn't accepting new staff right now."
-        default:                  return "That join code isn't valid. Check it and try again."
+        case "expired":           return L10n.tr("This join code has expired. Ask your camp administrator for a new one.")
+        case "used_up":           return L10n.tr("This join code has been used the maximum number of times.")
+        case "camp_unavailable":  return L10n.tr("This camp isn't accepting new staff right now.")
+        default:                  return L10n.tr("That join code isn't valid. Check it and try again.")
         }
     }
 }
@@ -283,5 +283,11 @@ struct JoinCodeResult: Decodable {
 
 struct ProfileRow: Decodable {
     let fullName: String?
-    enum CodingKeys: String, CodingKey { case fullName = "full_name" }
+    /// 'en' | 'es' | 'he', shared with the web. Nil until somebody chooses, or on a server that
+    /// predates the column.
+    let preferredLanguage: String?
+    enum CodingKeys: String, CodingKey {
+        case fullName = "full_name"
+        case preferredLanguage = "preferred_language"
+    }
 }

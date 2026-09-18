@@ -13,8 +13,17 @@ struct AvatarCircle: View {
             )
             .overlay(
                 Text(initials)
-                    .font(.custom("Karla-Regular_SemiBold", size: size * 0.38))
+                    .font(initialsFont)
                     .foregroundStyle(Color.forest)
             )
+    }
+
+    /// Karla has no Hebrew letters, so a Hebrew name's initials were drawn in whatever face
+    /// CoreText fell back to, at Karla's metrics. Hebrew initials get the system face.
+    private var initialsFont: Font {
+        let latin = initials.unicodeScalars.allSatisfy { $0.isASCII }
+        return latin && !L10n.language.isRightToLeft
+            ? .custom("Karla-Regular_SemiBold", size: size * 0.38)
+            : .system(size: size * 0.38, weight: .semibold)
     }
 }

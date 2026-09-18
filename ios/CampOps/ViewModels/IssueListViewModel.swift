@@ -25,12 +25,12 @@ final class IssueListViewModel: ObservableObject {
 
         var label: String {
             switch self {
-            case .all:        return "All"
-            case .mine:       return "Mine"
-            case .urgent:     return "Urgent"
-            case .unassigned: return "Up for grabs"
-            case .waiting:    return "Waiting"
-            case .done:       return "Done"
+            case .all:        return L10n.tr("All")
+            case .mine:       return L10n.tr("Mine")
+            case .urgent:     return L10n.tr("Urgent")
+            case .unassigned: return L10n.tr("Up for grabs")
+            case .waiting:    return L10n.tr("Waiting")
+            case .done:       return L10n.tr("status.done")
             }
         }
     }
@@ -88,11 +88,19 @@ final class IssueListViewModel: ObservableObject {
             result = result.filter { $0.trade == trade }
         }
         if !searchText.isEmpty {
+            // Matches the words that were typed AND the translation on screen. Searching only
+            // the original meant a reader could not find a work order by the words they had just
+            // read on its card.
             let q = searchText.lowercased()
-            result = result.filter {
-                $0.title.lowercased().contains(q) ||
-                ($0.description?.lowercased().contains(q) ?? false) ||
-                $0.locations.contains { $0.lowercased().contains(q) }
+            let translations = ContentTranslations.shared
+            result = result.filter { issue in
+                let title = translations.searchable(.issues, id: issue.id, field: "title", original: issue.title)
+                let details = issue.description.map {
+                    translations.searchable(.issues, id: issue.id, field: "description", original: $0)
+                } ?? ""
+                return title.lowercased().contains(q)
+                    || details.lowercased().contains(q)
+                    || issue.locations.contains { $0.lowercased().contains(q) }
             }
         }
 

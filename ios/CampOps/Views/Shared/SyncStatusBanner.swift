@@ -41,7 +41,7 @@ struct SyncStatusPill: View {
                 .font(.campMetaSemibold)
                 .foregroundStyle(isFailed ? Color.urgentText : Color.forest.opacity(0.75))
             if isFailed {
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(.campMicro)
                     .foregroundStyle(Color.urgentText.opacity(0.7))
             }
@@ -86,16 +86,18 @@ struct SyncStatusPill: View {
     /// taps were kept and will go when there is signal.
     private var message: String {
         switch engine.state {
+        // Whole sentences with a count, not "change" + "s": Spanish and Hebrew agree the verb
+        // with the count too, and Hebrew has a form for exactly two.
         case .failed(let items):
-            return "\(items.count) \(items.count == 1 ? "change" : "changes") could not be saved"
+            return L10n.tr("%lld changes could not be saved", items.count)
         case .syncing:
-            return "Syncing…"
+            return L10n.tr("Syncing…")
         case .offline:
             return engine.pendingCount > 0
-                ? "Offline — \(engine.pendingCount) \(engine.pendingCount == 1 ? "change" : "changes") waiting"
-                : "Offline — changes will be saved here"
+                ? L10n.tr("Offline — %lld changes waiting", engine.pendingCount)
+                : L10n.tr("Offline — changes will be saved here")
         case .pendingCount(let n):
-            return "\(n) \(n == 1 ? "change" : "changes") waiting to sync"
+            return L10n.tr("%lld changes waiting to sync", n)
         case .online:
             return ""
         }
@@ -231,7 +233,7 @@ extension View {
 /// Used next to a work order or a comment the person just acted on, so "did that go through?"
 /// has an answer in the place they are already looking rather than only in the pill.
 struct PendingSyncMark: View {
-    var label: String = "Waiting to sync"
+    var label: LocalizedStringKey = "Waiting to sync"
 
     var body: some View {
         HStack(spacing: 4) {
@@ -254,7 +256,7 @@ struct ImpersonationBanner: View {
     var body: some View {
         HStack(spacing: Spacing.sm) {
             Image(systemName: "eye.fill").font(.system(size: 11))
-            Text("Viewing **\(authManager.currentCamp?.name ?? "this camp")** as CampCommand admin")
+            Text("Viewing **\(authManager.currentCamp?.name ?? L10n.tr("this camp"))** as CampCommand admin")
                 .font(.campMeta)
                 .lineLimit(2)
             Spacer()

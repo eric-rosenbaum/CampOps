@@ -177,7 +177,7 @@ struct Issue: Codable, Identifiable, Hashable {
     var holderLabel: String {
         if let person = assignedTo { return person.name }
         if let crew = assignedCrew { return crew.name }
-        return "Unassigned"
+        return L10n.tr("Unassigned")
     }
 }
 

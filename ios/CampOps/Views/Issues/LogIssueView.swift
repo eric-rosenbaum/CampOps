@@ -46,9 +46,10 @@ struct LogIssueView: View {
         if !spokenNote.isEmpty {
             // Verbatim, under whatever the model wrote. A transcript is evidence; a summary of
             // it is a guess, and the person who said it is standing right there to check.
+            let said = L10n.tr("Said: “%@”", spokenNote)
             model.description = model.description.isEmpty
-                ? "Said: \"\(spokenNote)\""
-                : "\(model.description)\n\nSaid: \"\(spokenNote)\""
+                ? said
+                : "\(model.description)\n\n\(said)"
         }
         _vm = StateObject(wrappedValue: model)
         _draftQuestions = State(initialValue: draft?.questions ?? [])
@@ -79,7 +80,7 @@ struct LogIssueView: View {
             .contentShape(Rectangle())
             .onTapGesture { focus = nil }
             .campCanvas()
-            .navigationTitle(vm.editingIssue == nil ? "Log work" : "Edit")
+            .navigationTitle(vm.editingIssue == nil ? Text("Log work") : Text("Edit"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -177,7 +178,7 @@ struct LogIssueView: View {
             pickerRow(
                 icon: "mappin.and.ellipse",
                 label: "Where",
-                value: vm.locationIds.isEmpty ? "Pick a place" : vm.locationNames.joined(separator: ", "),
+                value: vm.locationIds.isEmpty ? L10n.tr("Pick a place") : vm.locationNames.joined(separator: ", "),
                 isPlaceholder: vm.locationIds.isEmpty
             )
         }
@@ -253,7 +254,7 @@ struct LogIssueView: View {
                 if !campground.trades.isEmpty {
                     Section("A crew") {
                         ForEach(campground.trades) { crew in
-                            Button("\(crew.name) crew") { vm.setAssignment(.crew(crew.id)) }
+                            Button(L10n.tr("%@ crew", crew.name)) { vm.setAssignment(.crew(crew.id)) }
                         }
                     }
                 }
@@ -280,11 +281,11 @@ struct LogIssueView: View {
     private var assignmentLabel: String {
         switch vm.assignment {
         case .nobody:
-            return "Nobody yet"
+            return L10n.tr("Nobody yet")
         case let .person(id):
-            return authManager.members.first { $0.id == id }?.name ?? "Somebody"
+            return authManager.members.first { $0.id == id }?.name ?? L10n.tr("Somebody")
         case let .crew(id):
-            return (campground.trades.first { $0.id == id }?.name).map { "\($0) crew" } ?? "A crew"
+            return (campground.trades.first { $0.id == id }?.name).map { L10n.tr("%@ crew", $0) } ?? L10n.tr("A crew")
         }
     }
 
@@ -296,13 +297,13 @@ struct LogIssueView: View {
             // the work is wanted by, and nothing else, so it says so.
             SectionEyebrow(text: "Needs doing by")
             HStack(spacing: Spacing.sm) {
-                dueChip("No date", active: vm.dueDate == nil) {
+                dueChip(L10n.tr("No date"), active: vm.dueDate == nil) {
                     vm.dueDate = nil; vm.dueTime = nil
                 }
-                dueChip("Today", active: isDue(offset: 0)) {
+                dueChip(L10n.tr("Today"), active: isDue(offset: 0)) {
                     vm.dueDate = Date()
                 }
-                dueChip("Tomorrow", active: isDue(offset: 1)) {
+                dueChip(L10n.tr("Tomorrow"), active: isDue(offset: 1)) {
                     vm.dueDate = Calendar.current.date(byAdding: .day, value: 1, to: Date())
                 }
                 dueChip(customLabel, active: isCustomDue) {
@@ -316,7 +317,7 @@ struct LogIssueView: View {
     }
 
     private var customLabel: String {
-        guard isCustomDue, let date = vm.dueDate else { return "Pick…" }
+        guard isCustomDue, let date = vm.dueDate else { return L10n.tr("Pick…") }
         let clock = vm.dueTime.map { CampDate.timeString(from: $0) }
         return CampDate.friendly(day: CampDate.dayString(date), time: clock)
     }
@@ -431,16 +432,16 @@ struct LogIssueView: View {
     }
 
     private var vendorLabel: String {
-        vm.vendorId.flatMap { id in campground.vendors.first { $0.id == id }?.name } ?? "None"
+        vm.vendorId.flatMap { id in campground.vendors.first { $0.id == id }?.name } ?? L10n.tr("None")
     }
 
     private var templateLabel: String {
-        vm.templateId.flatMap { id in campground.templates.first { $0.id == id }?.name } ?? "None"
+        vm.templateId.flatMap { id in campground.templates.first { $0.id == id }?.name } ?? L10n.tr("None")
     }
 
     // MARK: - Shared rows
 
-    private func pickerRow(icon: String, label: String, value: String,
+    private func pickerRow(icon: String, label: LocalizedStringKey, value: String,
                            isPlaceholder: Bool) -> some View {
         HStack(spacing: Spacing.md) {
             Image(systemName: icon)
@@ -457,14 +458,14 @@ struct LogIssueView: View {
                     .lineLimit(1)
             }
             Spacer()
-            Image(systemName: "chevron.right")
+            Image(systemName: "chevron.forward")
                 .font(.campMeta)
                 .foregroundStyle(Color.forest.opacity(0.35))
         }
         .cardSurface(padding: Spacing.lg)
     }
 
-    private func inlineRow(label: String, value: String) -> some View {
+    private func inlineRow(label: LocalizedStringKey, value: String) -> some View {
         HStack {
             Text(label).font(.campBody).foregroundStyle(Color.forest)
             Spacer()

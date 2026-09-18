@@ -156,7 +156,7 @@ actor OfflineCache {
     /// Note this deliberately does NOT touch the mutation queue: unsent work belongs to the
     /// person who typed it, not to the cache, and a stale watermark is no reason to drop it.
     func clearAll(campId: String) {
-        for table in SyncTable.pullable {
+        for table in SyncTable.pullable + [SyncTable.contentTranslations] {
             tables[key(table, campId)] = nil
             loadedTables.remove(key(table, campId))
         }

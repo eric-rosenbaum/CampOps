@@ -9,9 +9,11 @@ import { CampCommandMark } from '@/components/shared/CampCommandMark';
 import { UnsavedChangesBanner } from '@/components/shared/UnsavedChangesBanner';
 import { useDemoBrief } from '@/lib/useDemoBrief';
 import { useLang } from '@/lib/language';
+import { Trans, useTranslation } from 'react-i18next';
 
 // Shown when a founder is viewing a camp they don't belong to, or when a trial is counting down.
 function StatusBanners() {
+  const { t } = useTranslation('shell');
   const { impersonating, currentCamp, exitImpersonation } = useCampStore();
   const navigate = useNavigate();
   const hasGuide = !!useDemoBrief(currentCamp?.id, currentCamp?.accountType === 'trial' || currentCamp?.accountType === 'demo');
@@ -21,9 +23,16 @@ function StatusBanners() {
   if (impersonating) {
     return (
       <div className="flex items-center justify-center gap-3 bg-forest text-cream text-[12px] font-medium px-4 py-1.5 flex-shrink-0">
-        <span>Viewing <span className="font-semibold">{currentCamp?.name}</span> as CampCommand admin</span>
+        <span>
+          <Trans
+            t={t}
+            i18nKey="banner.impersonating"
+            values={{ camp: currentCamp?.name ?? '' }}
+            components={{ b: <span className="font-semibold" /> }}
+          />
+        </span>
         <button onClick={() => { exitImpersonation(); navigate('/admin'); }} className="inline-flex items-center gap-1 underline hover:text-sage-light">
-          <LogOut className="w-3 h-3" /> Exit to admin
+          <LogOut className="w-3 h-3 rtl:-scale-x-100" /> {t('banner.exitToAdmin')}
         </button>
       </div>
     );
@@ -32,10 +41,10 @@ function StatusBanners() {
     return (
       <div className="flex items-center justify-center gap-2 bg-amber-bg text-amber-text text-[12px] font-medium px-4 py-1.5 flex-shrink-0">
         <Clock className="w-3.5 h-3.5" />
-        {trialDays >= 0 ? `Demo · ${trialDays} day${trialDays === 1 ? '' : 's'} left` : 'Demo ended'}
+        {trialDays >= 0 ? t('banner.demoDaysLeft', { count: trialDays }) : t('banner.demoEnded')}
         {trialDays >= 0 && hasGuide && (
           <button onClick={() => navigate('/demo-guide')} className="underline font-semibold hover:text-forest ms-1">
-            Open the demo guide
+            {t('banner.openGuide')}
           </button>
         )}
       </div>
@@ -45,12 +54,13 @@ function StatusBanners() {
 }
 
 function SyncIndicator() {
+  const { t } = useTranslation('shell');
   const pendingCount = useIssuesStore((s) => Object.keys(s.pendingIssues).length);
   if (pendingCount === 0) return null;
   return (
     <div className="fixed bottom-4 end-4 z-50 flex items-center gap-2 rounded-full bg-forest/90 px-3 py-1.5 shadow-lg">
       <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-      <span className="text-[11px] font-medium text-cream">Saving…</span>
+      <span className="text-[11px] font-medium text-cream">{t('sync.saving')}</span>
     </div>
   );
 }
@@ -61,12 +71,13 @@ function SyncIndicator() {
  * sidebar footer would otherwise be the only place to see.
  */
 function MobileHeader({ onMenu }: { onMenu: () => void }) {
+  const { t } = useTranslation('shell');
   const { currentCamp } = useCampStore();
   return (
     <div className="lg:hidden flex items-center gap-3 bg-forest px-3 py-2.5 flex-shrink-0">
       <button
         onClick={onMenu}
-        aria-label="Open navigation"
+        aria-label={t('mobile.openNav')}
         className="p-2 -m-1 rounded-btn text-cream/80 hover:text-cream hover:bg-white/10 transition-colors"
       >
         <Menu className="w-5 h-5" />

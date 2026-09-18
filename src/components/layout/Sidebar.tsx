@@ -14,6 +14,8 @@ import { useModules, type ModuleKey } from '@/lib/modules';
 import { useCampStore } from '@/store/campStore';
 import { useAuthStore } from '@/store/authStore';
 import { APP_HOST, MARKETING_ORIGIN } from '@/lib/env';
+import { useTranslation } from 'react-i18next';
+import { LanguagePicker } from '@/components/i18n/LanguagePicker';
 
 type LucideIcon = React.ComponentType<{ className?: string }>;
 
@@ -49,9 +51,17 @@ function RailTip({ label }: { label: string }) {
   );
 }
 
+/** Keys under `shell:nav.items`. Held as keys, not words, so the nav reads in the current language. */
+type NavLabel =
+  | 'demoGuide' | 'dashboard' | 'myTasks' | 'campground' | 'compliance' | 'assets' | 'building'
+  | 'kitchen' | 'askKitchen' | 'pool' | 'retreats' | 'trips' | 'receipts' | 'campInfo' | 'team'
+  | 'securityPrivacy';
+
+type NavSection = 'today' | 'facilities' | 'commissary' | 'aquatics' | 'retreats' | 'logistics' | 'finance';
+
 interface NavItem {
   path: string;
-  label: string;
+  label: NavLabel;
   icon: LucideIcon;
   end: boolean;
   /**
@@ -62,11 +72,11 @@ interface NavItem {
   module?: ModuleKey;
 }
 
-const demoGuideItem: NavItem = { path: '/demo-guide', label: 'Demo guide', icon: Sparkles, end: true };
+const demoGuideItem: NavItem = { path: '/demo-guide', label: 'demoGuide', icon: Sparkles, end: true };
 
 const todayItems: NavItem[] = [
-  { path: '/home', label: 'Dashboard', icon: LayoutDashboard, end: true, module: 'dashboard' },
-  { path: '/my-tasks', label: 'My Tasks', icon: CheckSquare, end: false, module: 'tasks' },
+  { path: '/home', label: 'dashboard', icon: LayoutDashboard, end: true, module: 'dashboard' },
+  { path: '/my-tasks', label: 'myTasks', icon: CheckSquare, end: false, module: 'tasks' },
 ];
 
 const facilityItems: NavItem[] = [
@@ -75,51 +85,51 @@ const facilityItems: NavItem[] = [
   // the camp's own word for the physical place. The TABLE is still `issues` and the module key is
   // still `issues_repairs`: the word on the screen is the product, the word in Postgres is
   // plumbing, and renaming a table thirteen surfaces read from buys nothing.
-  { path: '/campground', label: 'Campground', icon: Wrench, end: false, module: 'issues' },
+  { path: '/campground', label: 'campground', icon: Wrench, end: false, module: 'issues' },
   // The old Safety module was folded in here: its records are reached from the Requirements tab,
   // grouped by the party that asks for them, and its dialogs open in place. The /safety route
   // still resolves so old links and bookmarks keep working.
   //
   // Named just "Compliance". It absorbed Safety rather than sitting beside it, and a camp opening
   // this looks for the thing the county asks about, not for two words joined by an ampersand.
-  { path: '/compliance', label: 'Compliance', icon: ClipboardCheck, end: false, module: 'safety' },
-  { path: '/assets', label: 'Assets & Vehicles', icon: Truck, end: false, module: 'assets' },
-  { path: '/building', label: 'Building Systems', icon: Building2, end: false, module: 'building' },
+  { path: '/compliance', label: 'compliance', icon: ClipboardCheck, end: false, module: 'safety' },
+  { path: '/assets', label: 'assets', icon: Truck, end: false, module: 'assets' },
+  { path: '/building', label: 'building', icon: Building2, end: false, module: 'building' },
 ];
 
 const commissaryItems: NavItem[] = [
-  { path: '/commissary', label: 'Kitchen Manager', icon: UtensilsCrossed, end: false, module: 'commissary' },
+  { path: '/commissary', label: 'kitchen', icon: UtensilsCrossed, end: false, module: 'commissary' },
   // For the people who ASK the kitchen (program leads), who should not have to find a form inside
   // the kitchen's own inventory screens. Named for what it does: as "Food requests" the kitchen
   // opened it looking for the inbox of requests to approve, which lives in Kitchen Manager.
-  { path: '/food-requests', label: 'Ask the kitchen', icon: ShoppingBasket, end: false, module: 'commissary' },
+  { path: '/food-requests', label: 'askKitchen', icon: ShoppingBasket, end: false, module: 'commissary' },
 ];
 
 const aquaticsItems: NavItem[] = [
-  { path: '/pool', label: 'Pool Manager', icon: Waves, end: false, module: 'pool' },
+  { path: '/pool', label: 'pool', icon: Waves, end: false, module: 'pool' },
 ];
 
 const retreatItems: NavItem[] = [
-  { path: '/retreats', label: 'Retreat Manager', icon: CalendarRange, end: false, module: 'retreats' },
+  { path: '/retreats', label: 'retreats', icon: CalendarRange, end: false, module: 'retreats' },
 ];
 
 // Town Trips is sold to particular camps (defaultOn: false), so for most camps this section is
 // filtered to nothing and disappears.
 const logisticsItems: NavItem[] = [
-  { path: '/trips', label: 'Town Trips', icon: Car, end: false, module: 'trips' },
+  { path: '/trips', label: 'trips', icon: Car, end: false, module: 'trips' },
 ];
 
 const financeItems: NavItem[] = [
-  { path: '/receipts', label: 'Receipts', icon: ReceiptText, end: false, module: 'receipts' },
+  { path: '/receipts', label: 'receipts', icon: ReceiptText, end: false, module: 'receipts' },
 ];
 
 const settingsItems: NavItem[] = [
-  { path: '/settings', label: 'Camp Info', icon: Settings, end: true },
-  { path: '/settings/team', label: 'Team', icon: Settings, end: false },
+  { path: '/settings', label: 'campInfo', icon: Settings, end: true },
+  { path: '/settings/team', label: 'team', icon: Settings, end: false },
   // The camp's people and their certifications. Reference data read by Safety, Compliance and
   // Pool alike, so it sits with the rest of the camp's settings rather than inside the one
   // module that happened to still have a screen after the safety pages were folded in.
-  { path: '/settings/security', label: 'Security & Privacy', icon: ShieldCheck, end: false },
+  { path: '/settings/security', label: 'securityPrivacy', icon: ShieldCheck, end: false },
 ];
 
 interface SidebarProps {
@@ -131,6 +141,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ open = false, onClose, collapsed = false }: SidebarProps) {
+  const { t } = useTranslation(['shell', 'common']);
   const { currentUser, role, roleLabel, canAccessModule } = useAuth();
   const modules = useModules();
   const { currentCamp } = useCampStore();
@@ -175,16 +186,16 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
   const navSections = [
     // Today's pages follow the camp's switches but not the viewer rule: a viewer still has a
     // dashboard.
-    { section: 'Today', items: [
+    { section: 'today' as NavSection, items: [
       ...(demoBrief ? [demoGuideItem] : []),
       ...todayItems.filter((i) => !i.module || modules.enabled(i.module)),
     ] },
-    { section: 'Facilities', items: visible(facilityItems) },
-    { section: 'Commissary', items: visible(commissaryItems) },
-    { section: 'Aquatics', items: visible(aquaticsItems) },
-    { section: 'Retreats', items: visible(retreatItems) },
-    { section: 'Logistics', items: visible(logisticsItems) },
-    { section: 'Finance', items: visible(financeItems) },
+    { section: 'facilities' as NavSection, items: visible(facilityItems) },
+    { section: 'commissary' as NavSection, items: visible(commissaryItems) },
+    { section: 'aquatics' as NavSection, items: visible(aquaticsItems) },
+    { section: 'retreats' as NavSection, items: visible(retreatItems) },
+    { section: 'logistics' as NavSection, items: visible(logisticsItems) },
+    { section: 'finance' as NavSection, items: visible(financeItems) },
   ].filter((s) => s.items.length > 0);
 
   return (
@@ -202,11 +213,12 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
           and every page on a phone was pushed 228px right into a sliver of the screen. `fixed` and
           `lg:sticky` are both positioned, which is all the contours layer inside needs. */}
       <aside
+        aria-label={t('nav.label')}
         className={`h-screen bg-forest flex flex-col flex-shrink-0 overflow-hidden
           fixed inset-y-0 start-0 z-50 transition-transform duration-200 ease-out
           w-sidebar min-w-sidebar
-          ${open ? 'translate-x-0' : '-translate-x-full'}
-          lg:sticky lg:top-0 lg:z-auto lg:translate-x-0
+          ${open ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full'}
+          lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 lg:rtl:translate-x-0
           lg:transition-[width,min-width] lg:duration-300 lg:ease-out
           ${collapsed ? 'lg:w-rail lg:min-w-rail' : ''}`}
       >
@@ -229,7 +241,7 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
             ) : null}
             <p className={`text-[9.5px] font-bold uppercase tracking-[0.16em] text-side-dim px-[18px] pt-2.5 pb-1
                            ${collapsed ? 'lg:hidden' : ''}`}>
-              {section.section}
+              {t(`nav.sections.${section.section}`)}
             </p>
             {section.items.map((item) => (
               <NavLink
@@ -241,8 +253,8 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
                 }
               >
                 <item.icon className={`flex-shrink-0 ${collapsed ? 'w-[18px] h-[18px]' : 'w-4 h-4'}`} />
-                <span className={collapsed ? 'lg:hidden' : ''}>{item.label}</span>
-                {collapsed && <RailTip label={item.label} />}
+                <span className={collapsed ? 'lg:hidden' : ''}>{t(`nav.items.${item.label}`)}</span>
+                {collapsed && <RailTip label={t(`nav.items.${item.label}`)} />}
               </NavLink>
             ))}
           </div>
@@ -255,7 +267,7 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
             ) : null}
             <p className={`text-[9.5px] font-bold uppercase tracking-[0.16em] text-side-dim px-[18px] pt-2.5 pb-1
                            ${collapsed ? 'lg:hidden' : ''}`}>
-              Settings
+              {t('nav.sections.settings')}
             </p>
             {settingsItems.map((item) => (
               <NavLink
@@ -267,8 +279,8 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
                 }
               >
                 <Settings className={`flex-shrink-0 ${collapsed ? 'w-[18px] h-[18px]' : 'w-4 h-4'}`} />
-                <span className={collapsed ? 'lg:hidden' : ''}>{item.label}</span>
-                {collapsed && <RailTip label={item.label} />}
+                <span className={collapsed ? 'lg:hidden' : ''}>{t(`nav.items.${item.label}`)}</span>
+                {collapsed && <RailTip label={t(`nav.items.${item.label}`)} />}
               </NavLink>
             ))}
           </div>
@@ -286,9 +298,9 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
             <b className="block truncate font-display text-[13px] font-semibold text-side-strong">
               {currentCamp?.name ?? ''}
             </b>
-            <span className="block truncate text-[11px] text-side-dim">{currentUser.name} · {roleLabel}</span>
+            <span className="block truncate text-[11px] text-side-dim">{t('nav.userLine', { name: currentUser.name, role: roleLabel })}</span>
           </span>
-          {collapsed && <RailTip label={`${currentCamp?.name ?? ''} · ${currentUser.name}`} />}
+          {collapsed && <RailTip label={t('nav.railUser', { camp: currentCamp?.name ?? '', name: currentUser.name })} />}
         </div>
         <div className={`flex items-center gap-3 mt-3 ${collapsed ? 'lg:hidden' : ''}`}>
           {role !== 'admin' && (
@@ -297,7 +309,7 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
               className="flex items-center gap-1.5 text-[11px] text-side-dim hover:text-side-strong transition-colors"
             >
               <Lock className="w-3 h-3" />
-              Security
+              {t('nav.security')}
             </NavLink>
           )}
           <button
@@ -306,9 +318,12 @@ export function Sidebar({ open = false, onClose, collapsed = false }: SidebarPro
             className="flex items-center gap-1.5 text-[11px] text-side-dim hover:text-side-strong transition-colors disabled:cursor-wait"
           >
             <LogOut className="w-3 h-3" />
-            {signingOut ? 'Signing out…' : 'Sign out'}
+            {signingOut ? t('nav.signingOut') : t('common:actions.signOut')}
           </button>
         </div>
+        {/* The language is the person's, so it sits with the person: reachable on a desktop and in
+            the phone drawer alike. Hidden in rail mode, where there is no room for a word. */}
+        <LanguagePicker tone="dark" className={`mt-3 ${collapsed ? 'lg:hidden' : ''}`} />
       </div>
       </aside>
     </>

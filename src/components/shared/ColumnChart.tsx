@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useLang } from '@/lib/language';
 
 // A small stacked column chart.
 //
@@ -52,6 +54,8 @@ const AXIS_H = 22;
 const TICKS = 4;
 
 export function ColumnChart({ data, series, formatValue, height = 180, emptyMessage }: Props) {
+  const { t } = useTranslation('shell');
+  const lang = useLang();
   const hostRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
 
@@ -86,10 +90,19 @@ export function ColumnChart({ data, series, formatValue, height = 180, emptyMess
   const slot = data.length > 0 ? plotW / data.length : 0;
   const barW = Math.max(3, Math.min(48, slot * 0.62));
 
-  const summary = `${series.map((s) => s.label).join(' and ')} by month, ${data.length} columns, maximum ${formatValue(max)}`;
+  // No period in the wording: the same chart is drawn by month and by week, and "by month" under
+  // a weekly chart told a screen reader something false.
+  const summary = t('chart.summary', {
+    series: new Intl.ListFormat(lang, { type: 'conjunction' }).format(series.map((s) => s.label)),
+    count: data.length,
+    max: formatValue(max),
+  });
 
+  // Held left-to-right under Hebrew: the geometry below is drawn from a left gutter, and time
+  // running left to right is how a chart reads in both scripts. The legend's labels still take
+  // their own direction.
   return (
-    <div>
+    <div dir="ltr">
       <div ref={hostRef} className="w-full">
         {width > 0 && (
           <svg width={width} height={svgH} role="img" aria-label={summary} className="block">
@@ -161,7 +174,7 @@ export function ColumnChart({ data, series, formatValue, height = 180, emptyMess
 
       <div className="flex flex-wrap items-center gap-4 mt-2 ps-[52px]">
         {series.map((s) => (
-          <span key={s.label} className="inline-flex items-center gap-1.5 text-[11px] text-ink-soft">
+          <span key={s.label} dir="auto" className="inline-flex items-center gap-1.5 text-[11px] text-ink-soft">
             <span className="w-2.5 h-2.5 rounded-[2px] flex-shrink-0" style={{ backgroundColor: s.color }} />
             {s.label}
           </span>

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   title: string;
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function Modal({ title, onClose, children, width = '440px', footer }: Props) {
+  const { t } = useTranslation();
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
@@ -39,6 +41,7 @@ export function Modal({ title, onClose, children, width = '440px', footer }: Pro
           <h2 className="text-[15px] font-semibold text-forest">{title}</h2>
           <button
             onClick={onClose}
+            aria-label={t('actions.close')}
             className="text-ink-faint hover:text-forest transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />

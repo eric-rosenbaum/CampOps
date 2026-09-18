@@ -1,5 +1,6 @@
 import { Check, Loader2 } from 'lucide-react';
 import { STAGE_CEILING, type UploadStatus } from '@/lib/uploadProgress';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Where an upload has got to, and what it is still waiting on.
@@ -10,13 +11,14 @@ import { STAGE_CEILING, type UploadStatus } from '@/lib/uploadProgress';
  * the transfer is not the same as having a document you can open.
  */
 export function UploadProgressBar({ status, fileName }: { status: UploadStatus; fileName?: string }) {
+  const { t } = useTranslation('shell');
   const done = status.stage === 'done';
   const failed = status.stage === 'failed';
 
   const ticks: { key: keyof typeof STAGE_CEILING; label: string }[] = [
-    { key: 'uploading', label: 'Upload' },
-    { key: 'saving', label: 'Save' },
-    { key: 'verifying', label: 'Open it' },
+    { key: 'uploading', label: t('upload.upload') },
+    { key: 'saving', label: t('upload.save') },
+    { key: 'verifying', label: t('upload.open') },
   ];
 
   return (
@@ -25,7 +27,7 @@ export function UploadProgressBar({ status, fileName }: { status: UploadStatus; 
         <p className="text-[12.5px] font-semibold text-forest inline-flex items-center gap-1.5 min-w-0">
           {done ? <Check className="w-3.5 h-3.5 text-sage flex-shrink-0" />
             : !failed && <Loader2 className="w-3.5 h-3.5 animate-spin text-ink-soft flex-shrink-0" />}
-          <span className="truncate">{done ? 'Ready to open' : status.label}</span>
+          <span className="truncate">{done ? t('upload.ready') : status.label}</span>
         </p>
         <span className="font-mono text-[12px] text-ink-soft flex-shrink-0 tabular-nums">
           {status.percent}%
@@ -54,7 +56,7 @@ export function UploadProgressBar({ status, fileName }: { status: UploadStatus; 
             </span>
           );
         })}
-        {fileName && <span className="ms-auto text-[10.5px] text-ink-faint truncate max-w-[45%]">{fileName}</span>}
+        {fileName && <span className="ms-auto text-[10.5px] text-ink-faint truncate max-w-[45%]" dir="auto">{fileName}</span>}
       </div>
     </div>
   );

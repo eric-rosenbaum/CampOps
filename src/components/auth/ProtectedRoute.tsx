@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useCampStore } from '@/store/campStore';
 import { FullScreenLoading } from '@/components/shared/ModuleLoading';
 import { APP_HOST, MARKETING_ORIGIN } from '@/lib/env';
+import { useTranslation } from 'react-i18next';
 
 const SUPPORT_EMAIL = 'prakash@campcommand.app';
 
@@ -22,10 +23,11 @@ async function signOutToMarketing() {
   }
 }
 
-function SignOutRetry({ label = 'Sign out and try a different account' }: { label?: string }) {
+function SignOutRetry({ label }: { label?: string }) {
+  const { t } = useTranslation('shell');
   return (
     <button onClick={signOutToMarketing} className="mt-4 text-[13px] font-medium text-ink-soft hover:text-forest underline transition-colors">
-      {label}
+      {label ?? t('access.signOutRetry')}
     </button>
   );
 }
@@ -87,20 +89,19 @@ export function PlatformAdminRoute() {
 }
 
 function CampBlockedScreen({ status }: { status: string }) {
+  const { t } = useTranslation('shell');
   const trial = status === 'trial_expired';
   return (
     <div className="fixed inset-0 bg-cream flex items-center justify-center p-4 sm:p-6 z-50">
       <div className="max-w-md text-center">
         <h1 className="text-[22px] font-bold text-forest mb-3">
-          {trial ? 'Your demo has ended' : 'Your account is paused'}
+          {trial ? t('access.demoEndedTitle') : t('access.pausedTitle')}
         </h1>
         <p className="text-[14px] text-ink-soft leading-relaxed mb-6">
-          {trial
-            ? 'Your 30-day CampCommand demo is over. To set up a real account and pick up where you left off, get in touch and we’ll get you started.'
-            : 'This account is currently paused. Please reach out and we’ll get you back up and running.'}
+          {trial ? t('access.demoEndedBody') : t('access.pausedBody')}
         </p>
         <a href={`mailto:${SUPPORT_EMAIL}`} className="inline-flex items-center justify-center px-5 py-3 rounded-btn bg-sage text-forest text-[15px] font-semibold hover:bg-sage-light transition-colors">
-          Email {SUPPORT_EMAIL}
+          {t('access.email', { email: SUPPORT_EMAIL })}
         </a>
         <div><SignOutRetry /></div>
       </div>
@@ -109,23 +110,24 @@ function CampBlockedScreen({ status }: { status: string }) {
 }
 
 export function NoCampAccess() {
+  const { t } = useTranslation('shell');
   return (
     <div className="fixed inset-0 bg-cream flex items-center justify-center p-4 sm:p-6 z-50">
       <div className="max-w-md text-center">
-        <h1 className="text-[22px] font-bold text-forest mb-3">Your account isn’t set up yet</h1>
+        <h1 className="text-[22px] font-bold text-forest mb-3">{t('access.noCampTitle')}</h1>
         <p className="text-[14px] text-ink-soft leading-relaxed mb-6">
-          You’re signed in, but you don’t have access to a camp yet. If you signed in with the wrong
-          email, sign out and try again with the address your invite was sent to.
+          {t('access.noCampBody')}
         </p>
         <a href={`mailto:${SUPPORT_EMAIL}`} className="inline-flex items-center justify-center px-5 py-3 rounded-btn bg-sage text-forest text-[15px] font-semibold hover:bg-sage-light transition-colors">
-          Email {SUPPORT_EMAIL}
+          {t('access.email', { email: SUPPORT_EMAIL })}
         </a>
-        <div><SignOutRetry label="Sign out and use a different email" /></div>
+        <div><SignOutRetry label={t('access.signOutDifferentEmail')} /></div>
       </div>
     </div>
   );
 }
 
 function AppLoadingScreen() {
-  return <FullScreenLoading label="Getting your camp ready" sublabel="Signing you in and loading your modules" />;
+  const { t } = useTranslation('shell');
+  return <FullScreenLoading label={t('loading.appLabel')} sublabel={t('loading.appSublabel')} />;
 }

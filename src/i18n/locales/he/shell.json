@@ -1,1 +1,233 @@
-{}
+{
+  "nav": {
+    "label": "ניווט ראשי",
+    "sections": {
+      "today": "היום",
+      "facilities": "מתקנים",
+      "commissary": "מטבח",
+      "aquatics": "בריכה ומים",
+      "retreats": "קבוצות אירוח",
+      "logistics": "לוגיסטיקה",
+      "finance": "כספים",
+      "settings": "הגדרות"
+    },
+    "items": {
+      "demoGuide": "מדריך ההדגמה",
+      "dashboard": "לוח בקרה",
+      "myTasks": "המשימות שלי",
+      "campground": "שטח המחנה",
+      "compliance": "רגולציה",
+      "assets": "ציוד ורכבים",
+      "building": "מערכות המבנה",
+      "kitchen": "ניהול המטבח",
+      "askKitchen": "בקשה מהמטבח",
+      "pool": "ניהול הבריכה",
+      "retreats": "ניהול קבוצות אירוח",
+      "trips": "נסיעות לעיר",
+      "receipts": "קבלות",
+      "campInfo": "פרטי המחנה",
+      "team": "צוות",
+      "securityPrivacy": "אבטחה ופרטיות"
+    },
+    "security": "אבטחה",
+    "signingOut": "מתנתקים…",
+    "userLine": "{{name}} · {{role}}",
+    "railUser": "{{camp}} · {{name}}"
+  },
+  "rail": {
+    "show": "הצגת סרגל הצד",
+    "hide": "הסתרת סרגל הצד"
+  },
+  "banner": {
+    "impersonating": "צפייה ב־<b>{{camp}}</b> כמנהל CampCommand",
+    "exitToAdmin": "חזרה לניהול",
+    "demoDaysLeft_one": "הדגמה · נותר יום {{count}}",
+    "demoDaysLeft_two": "הדגמה · נותרו {{count}} ימים",
+    "demoDaysLeft_other": "הדגמה · נותרו {{count}} ימים",
+    "demoEnded": "ההדגמה הסתיימה",
+    "openGuide": "פתיחת מדריך ההדגמה"
+  },
+  "mobile": {
+    "openNav": "פתיחת הניווט",
+    "closeNav": "סגירת הניווט"
+  },
+  "sync": {
+    "saving": "שומרים…"
+  },
+  "loading": {
+    "label": "טוען",
+    "pulling": "מביאים את העדכונים האחרונים מהמחנה…",
+    "appLabel": "מכינים את המחנה שלך",
+    "appSublabel": "מתחברים וטוענים את המודולים"
+  },
+  "time": {
+    "minutesAgo_one": "לפני דקה",
+    "minutesAgo_two": "לפני {{count}} דקות",
+    "minutesAgo_other": "לפני {{count}} דקות",
+    "hoursAgo_one": "לפני שעה",
+    "hoursAgo_two": "לפני שעתיים",
+    "hoursAgo_other": "לפני {{count}} שעות",
+    "yesterday": "אתמול"
+  },
+  "due": {
+    "overdueDays_one": "באיחור של יום",
+    "overdueDays_two": "באיחור של יומיים",
+    "overdueDays_other": "באיחור של {{count}} ימים",
+    "overdueWasDue": "באיחור — היה צריך עד {{time}}",
+    "today": "להיום",
+    "todayBy": "להיום עד {{time}}",
+    "tomorrow": "למחר",
+    "tomorrowBy": "למחר עד {{time}}",
+    "inDays_one": "בעוד יום",
+    "inDays_two": "בעוד יומיים",
+    "inDays_other": "בעוד {{count}} ימים"
+  },
+  "search": {
+    "placeholder": "חיפוש…"
+  },
+  "status": {
+    "pending": "ממתין",
+    "complete": "הושלם"
+  },
+  "logWork": {
+    "titleNew": "פתיחת קריאה",
+    "titleEdit": "עריכת קריאת שירות",
+    "photo": "תמונה",
+    "capture": "צילום והקלטה",
+    "captureHint": "תמונה או קול — ממלאים את הטופס ושומרים את התמונה",
+    "photoAlt": "תמונת קריאת השירות",
+    "removePhoto": "הסרת התמונה",
+    "changePhoto": "החלפת תמונה",
+    "attachOnly": "או לצרף תמונה בלי לקרוא אותה",
+    "filledFromCapture": "מולא לפי הצילום או ההקלטה.",
+    "title": "כותרת",
+    "titleRequired": "צריך כותרת",
+    "titlePlaceholder": "מה לא בסדר, בכמה מילים",
+    "location": "מיקום",
+    "extras": "רשימת שלבים, ציוד וקבלנים",
+    "extrasSet_one": "נבחר {{count}}",
+    "extrasSet_two": "נבחרו {{count}}",
+    "extrasSet_other": "נבחרו {{count}}",
+    "checklist": "רשימת שלבים",
+    "noChecklist": "בלי רשימת שלבים",
+    "templateOption_one": "{{name}} · שלב {{count}}",
+    "templateOption_two": "{{name}} · {{count}} שלבים",
+    "templateOption_other": "{{name}} · {{count}} שלבים",
+    "asset": "רכב או ציוד",
+    "noAsset": "לא קשור לפריט מסוים",
+    "vendor": "ספק חיצוני",
+    "noVendor": "אף אחד מבחוץ",
+    "priority": "עדיפות",
+    "description": "תיאור",
+    "descriptionPlaceholder": "כל דבר נוסף שכדאי לדעת",
+    "crew": "צוות",
+    "assignTo": "שיוך ל",
+    "nobodyYet": "עדיין לאף אחד",
+    "crewGroup": "צוות לוקח את זה",
+    "personGroup": "אדם מסוים",
+    "due": "מועד",
+    "dueTime": "עד שעה",
+    "anyTime": "בכל שעה באותו יום.",
+    "scheduleQuestion": "זה קורה באופן קבוע?",
+    "routineInstead": "עדיף להגדיר את זה כשגרה",
+    "saveChanges": "שמירת השינויים",
+    "logIt": "פתיחת הקריאה"
+  },
+  "issue": {
+    "public": "ציבורי",
+    "noDueDate": "בלי מועד",
+    "takeIt": "לקחת",
+    "anonymous": "אנונימי",
+    "loggedBy": "נפתחה על ידי {{name}} ב־{{date}}",
+    "loggedOn": "נפתחה ב־{{date}}",
+    "priority": "עדיפות",
+    "status": "סטטוס",
+    "assignedTo": "משויכת ל",
+    "description": "תיאור",
+    "noDescription": "אין תיאור",
+    "reportedBy": "דווח על ידי",
+    "photo": "תמונה",
+    "noPhoto": "לא צורפה תמונה",
+    "cost": "עלות",
+    "estimated": "משוערת",
+    "actual": "בפועל",
+    "pendingResolution": "ממתין לסיום",
+    "dueDate": "מועד",
+    "noDueDateSet": "לא נקבע מועד",
+    "logged": "נפתחה",
+    "activity": "פעילות",
+    "deleteConfirm": "למחוק את קריאת השירות? אי אפשר לבטל את זה.",
+    "confirmDelete": "כן, למחוק",
+    "reopen": "פתיחה מחדש של הקריאה",
+    "delete": "מחיקת הקריאה",
+    "costPlaceholder": "עלות בפועל (לא חובה, למשל 280)",
+    "confirmResolve": "אישור שבוצע",
+    "markResolved": "סימון כבוצע",
+    "noActivity": "עדיין אין פעילות."
+  },
+  "location": {
+    "placeholder": "בחירת מיקום…",
+    "uncategorized": "ללא קטגוריה",
+    "dorm": "מגורים",
+    "selected_one": "נבחר {{count}}",
+    "selected_two": "נבחרו {{count}}",
+    "selected_other": "נבחרו {{count}}",
+    "search": "חיפוש מיקומים…",
+    "empty": "עדיין אין מיקומים. אפשר להוסיף אותם בפרטי המחנה.",
+    "noMatch": "אין התאמה ל„{{query}}”.",
+    "remove": "הסרת {{name}}"
+  },
+  "thread": {
+    "empty": "עדיין אין הודעות.",
+    "placeholderTo": "הודעה אל {{name}}…",
+    "placeholder": "כתיבת הודעה…",
+    "send": "שליחה"
+  },
+  "required": {
+    "marker": "חובה",
+    "addFirst": "קודם צריך להוסיף {{list}}."
+  },
+  "unsaved": {
+    "title_one": "שינוי אחד לא נשמר",
+    "title_two": "{{count}} שינויים לא נשמרו",
+    "title_other": "{{count}} שינויים לא נשמרו",
+    "body": "ייתכן שמה שעל המסך לא תואם את מה שנשמר. טעינה מחדש תראה בדיוק מה נשמר.",
+    "affected": "הושפעו: {{list}}.",
+    "reload": "טעינה מחדש",
+    "dismiss": "סגירה"
+  },
+  "upload": {
+    "ready": "מוכן לפתיחה",
+    "upload": "העלאה",
+    "save": "שמירה",
+    "open": "פתיחה"
+  },
+  "season": {
+    "title": "עונה חדשה",
+    "warning": "הפעולה תחזיר את כל המשימות ברשימה למצב ממתין ותחשב מחדש את המועדים.",
+    "name": "שם העונה",
+    "nameRequired": "צריך שם לעונה",
+    "namePlaceholder": "למשל קיץ {{year}}",
+    "defaultName": "קיץ {{year}}",
+    "opening": "תאריך פתיחה",
+    "closing": "תאריך סגירה",
+    "required": "חובה",
+    "aca": "תאריך ביקורת ACA (לא חובה)",
+    "acaHint": "אם צפוי למחנה ביקור הסמכה של ACA, אפשר להזין את התאריך כדי לעקוב אחריו ברגולציה.",
+    "activate": "הפעלת העונה החדשה"
+  },
+  "chart": {
+    "summary": "{{series}}: {{count}} עמודות, מקסימום {{max}}"
+  },
+  "access": {
+    "demoEndedTitle": "ההדגמה הסתיימה",
+    "pausedTitle": "החשבון מושהה",
+    "demoEndedBody": "תקופת ההדגמה של 30 יום ב־CampCommand הסתיימה. כדי לפתוח חשבון אמיתי ולהמשיך מאותה נקודה, כתבו לנו ונעזור לכם להתחיל.",
+    "pausedBody": "החשבון מושהה כרגע. כתבו לנו ונחזיר אתכם לפעילות.",
+    "email": "לכתוב אל {{email}}",
+    "signOutRetry": "להתנתק ולנסות חשבון אחר",
+    "signOutDifferentEmail": "להתנתק ולהשתמש בכתובת אחרת",
+    "noCampTitle": "החשבון עדיין לא מוגדר",
+    "noCampBody": "התחברת, אבל עדיין אין לך גישה לאף מחנה. אם התחברת עם כתובת שגויה, אפשר להתנתק ולנסות שוב עם הכתובת שאליה נשלחה ההזמנה."
+  }
+}

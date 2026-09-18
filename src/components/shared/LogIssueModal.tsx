@@ -18,7 +18,8 @@ import type { ActivityEntry, Priority, Trade, WorkOrderDraft } from '@/lib/types
 import { newWorkOrder } from '@/lib/workOrder';
 import { generateId } from '@/lib/utils';
 import { Camera, ChevronRight, Repeat, Sparkles, X } from 'lucide-react';
-import { useTradeKeys } from '@/lib/useTrades';
+import { seedCrewName, useTradeKeys } from '@/lib/useTrades';
+import { useTranslation } from 'react-i18next';
 
 
 /**
@@ -49,6 +50,7 @@ interface FormValues {
 }
 
 export function LogIssueModal() {
+  const { t } = useTranslation(['shell', 'common']);
   const tradeKeys = useTradeKeys();
   const labelOf = useTradeLabel();
   const navigate = useNavigate();
@@ -326,7 +328,7 @@ export function LogIssueModal() {
   const errorClass = 'text-[11px] text-red mt-0.5';
 
   return (
-    <Modal title={editingIssue ? 'Edit work order' : 'Log work'} onClose={closeAllModals}>
+    <Modal title={editingIssue ? t('logWork.titleEdit') : t('logWork.titleNew')} onClose={closeAllModals}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
         {/* ── Photo ──
@@ -335,7 +337,7 @@ export function LogIssueModal() {
             for the same act -- and the captured photo was thrown away afterwards, so the two
             routes did not even produce the same work order. */}
         <div>
-          <label className={labelClass}>Photo</label>
+          <label className={labelClass}>{t('logWork.photo')}</label>
           {!editingIssue && !displayPhoto && (
             <button
               type="button"
@@ -345,9 +347,9 @@ export function LogIssueModal() {
                          hover:border-sage"
             >
               <Sparkles className="h-4 w-4 flex-none text-sage" />
-              <span className="text-[12.5px] font-semibold text-forest">Capture</span>
+              <span className="text-[12.5px] font-semibold text-forest">{t('logWork.capture')}</span>
               <span className="text-[11.5px] text-ink-soft">
-                Photo or voice — fills this in, and keeps the photo
+                {t('logWork.captureHint')}
               </span>
             </button>
           )}
@@ -356,12 +358,13 @@ export function LogIssueModal() {
               <div className="relative">
                 <img
                   src={displayPhoto}
-                  alt="Issue"
+                  alt={t('logWork.photoAlt')}
                   className="w-full rounded-card border border-border object-cover max-h-48"
                 />
                 <button
                   type="button"
                   onClick={handleRemovePhoto}
+                  aria-label={t('logWork.removePhoto')}
                   className="absolute top-2 end-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -369,7 +372,7 @@ export function LogIssueModal() {
               </div>
               <label className="flex items-center gap-1.5 text-[11px] text-ink-soft cursor-pointer hover:text-ink transition-colors w-fit">
                 <Camera className="w-3 h-3" />
-                <span>Change photo</span>
+                <span>{t('logWork.changePhoto')}</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -381,7 +384,7 @@ export function LogIssueModal() {
           ) : (
             <label className="flex items-center gap-2 py-3 px-3 bg-cream rounded-card border border-dashed border-border text-ink-faint cursor-pointer hover:border-sage hover:text-ink-soft transition-colors">
               <Camera className="w-4 h-4" />
-              <span className="text-[12px]">Or attach one without reading it</span>
+              <span className="text-[12px]">{t('logWork.attachOnly')}</span>
               <input
                 type="file"
                 accept="image/*"
@@ -394,7 +397,7 @@ export function LogIssueModal() {
 
         {draftReading && (
           <div className="rounded-card border border-border bg-paper px-3 py-2.5">
-            <p className="text-[11.5px] font-semibold text-ink-soft">Filled in from your capture.</p>
+            <p className="text-[11.5px] font-semibold text-ink-soft">{t('logWork.filledFromCapture')}</p>
             {/* The open questions stay: they are what to check on site. The reasoning blob and the
                 confidence score do not — the fields below are all editable, so the review is
                 editing them, not reading a second account of them. */}
@@ -409,17 +412,17 @@ export function LogIssueModal() {
         )}
 
         <div>
-          <label className={labelClass}>Title *</label>
+          <label className={labelClass}>{t('logWork.title')} *</label>
           <input
-            {...register('title', { required: 'Title is required' })}
+            {...register('title', { required: t('logWork.titleRequired') })}
             className={inputClass}
-            placeholder="What is wrong, in a few words"
+            placeholder={t('logWork.titlePlaceholder')}
           />
           {errors.title && <p className={errorClass}>{errors.title.message}</p>}
         </div>
 
         <div>
-          <label className={labelClass}>Location</label>
+          <label className={labelClass}>{t('logWork.location')}</label>
           <LocationPicker value={locationIds} onChange={setLocationIds} />
         </div>
 
@@ -431,12 +434,12 @@ export function LogIssueModal() {
               className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-soft hover:text-forest transition-colors"
             >
               <ChevronRight
-                className={`w-3.5 h-3.5 transition-transform ${showExtras ? 'rotate-90' : ''}`}
+                className={`w-3.5 h-3.5 transition-transform ${showExtras ? 'rotate-90' : 'rtl:-scale-x-100'}`}
                 aria-hidden="true"
               />
-              Checklist, equipment and contractors
+              {t('logWork.extras')}
               {extrasCount > 0 && (
-                <span className="font-mono text-[11.5px] text-forest">{extrasCount} set</span>
+                <span className="font-mono text-[11.5px] text-forest">{t('logWork.extrasSet', { count: extrasCount })}</span>
               )}
             </button>
 
@@ -448,16 +451,16 @@ export function LogIssueModal() {
                     is usually left blank is just another field to skip past. */}
                 {checklistOffered && (
                   <div>
-                    <label className={labelClass}>Checklist</label>
+                    <label className={labelClass}>{t('logWork.checklist')}</label>
                     <select
                       value={templateId}
                       onChange={(e) => setTemplateId(e.target.value)}
                       className={inputClass}
                     >
-                      <option value="">No checklist</option>
-                      {tradeTemplates.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name} · {t.items.length} step{t.items.length === 1 ? '' : 's'}
+                      <option value="">{t('logWork.noChecklist')}</option>
+                      {tradeTemplates.map((tpl) => (
+                        <option key={tpl.id} value={tpl.id}>
+                          {t('logWork.templateOption', { name: tpl.name, count: tpl.items.length })}
                         </option>
                       ))}
                     </select>
@@ -467,9 +470,9 @@ export function LogIssueModal() {
                 {/* Work against a *thing*, so cost and days-out roll up to the vehicle or the mower. */}
                 {activeAssets.length > 0 && (
                   <div>
-                    <label className={labelClass}>Vehicle or equipment</label>
+                    <label className={labelClass}>{t('logWork.asset')}</label>
                     <select {...register('assetId')} className={inputClass}>
-                      <option value="">Not about a specific one</option>
+                      <option value="">{t('logWork.noAsset')}</option>
                       {activeAssets.map((a) => (
                         <option key={a.id} value={a.id}>{a.name}</option>
                       ))}
@@ -479,12 +482,12 @@ export function LogIssueModal() {
 
                 {activeVendors.length > 0 && (
                   <div>
-                    <label className={labelClass}>Outside vendor</label>
+                    <label className={labelClass}>{t('logWork.vendor')}</label>
                     <select {...register('vendorId')} className={inputClass}>
-                      <option value="">Nobody outside</option>
+                      <option value="">{t('logWork.noVendor')}</option>
                       {activeVendors.map((v) => (
                         <option key={v.id} value={v.id}>
-                          {v.name}{v.trade ? ` · ${v.trade}` : ''}
+                          {v.name}{v.trade ? ` · ${labelOf(v.trade as Trade)}` : ''}
                         </option>
                       ))}
                     </select>
@@ -497,21 +500,21 @@ export function LogIssueModal() {
 
         {/* A two-column grid with one thing in it, which read as a half-finished row. */}
         <div>
-          <label className={labelClass}>Priority *</label>
+          <label className={labelClass}>{t('logWork.priority')} *</label>
           <select {...register('priority', { required: true })} className={inputClass}>
-            <option value="normal">Normal</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
+            <option value="normal">{t('common:priority.normal')}</option>
+            <option value="high">{t('common:priority.high')}</option>
+            <option value="urgent">{t('common:priority.urgent')}</option>
           </select>
         </div>
 
         <div>
-          <label className={labelClass}>Description</label>
+          <label className={labelClass}>{t('logWork.description')}</label>
           <textarea
             {...register('description')}
             className={`${inputClass} resize-none`}
             rows={3}
-            placeholder="Anything else worth knowing"
+            placeholder={t('logWork.descriptionPlaceholder')}
           />
         </div>
 
@@ -519,21 +522,21 @@ export function LogIssueModal() {
             permission: everyone can see and take everything. Below the description because the
             person logging knows what is wrong before they know whose job it is. */}
         <div>
-          <label className={labelClass}>Crew</label>
+          <label className={labelClass}>{t('logWork.crew')}</label>
           <div className="flex flex-wrap gap-1">
-            {tradeKeys.map((t) => (
+            {tradeKeys.map((k) => (
               <button
-                key={t}
+                key={k}
                 type="button"
-                onClick={() => setValue('trade', t, { shouldDirty: true })}
-                aria-pressed={trade === t}
+                onClick={() => setValue('trade', k, { shouldDirty: true })}
+                aria-pressed={trade === k}
                 className={`rounded-btn border px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
-                  trade === t
+                  trade === k
                     ? 'border-forest bg-forest text-paper'
                     : 'border-border bg-white text-ink hover:border-sage'
                 }`}
               >
-                {labelOf(t)}
+                {labelOf(k)}
               </button>
             ))}
           </div>
@@ -547,7 +550,7 @@ export function LogIssueModal() {
         <div className="space-y-3">
           {can('assign') && (
             <div className="min-w-0">
-              <label className={labelClass}>Assign to</label>
+              <label className={labelClass}>{t('logWork.assignTo')}</label>
               {/* Handing it to a crew is a real answer, and often the honest one: somebody in
                   housekeeping will take it, and naming a person before anyone has agreed is how
                   a board fills up with work its "owner" never knew about. */}
@@ -556,15 +559,15 @@ export function LogIssueModal() {
                 onChange={(e) => { setAssignTouched(true); void register('assignTo').onChange(e); }}
                 className={inputClass}
               >
-                <option value="">Nobody yet</option>
+                <option value="">{t('logWork.nobodyYet')}</option>
                 {staffGroups.length > 0 && (
-                  <optgroup label="A crew picks it up">
+                  <optgroup label={t('logWork.crewGroup')}>
                     {staffGroups.map((g) => (
-                      <option key={g.id} value={`crew:${g.id}`}>{g.name}</option>
+                      <option key={g.id} value={`crew:${g.id}`}>{seedCrewName(g.key, g.name) ?? g.name}</option>
                     ))}
                   </optgroup>
                 )}
-                <optgroup label="A person">
+                <optgroup label={t('logWork.personGroup')}>
                   {members.map((m) => (
                     <option key={m.userId} value={`user:${m.userId}`}>{m.fullName}</option>
                   ))}
@@ -573,7 +576,7 @@ export function LogIssueModal() {
             </div>
           )}
           <div className="min-w-0">
-            <label className={labelClass}>Due</label>
+            <label className={labelClass}>{t('logWork.due')}</label>
             <div className="flex min-w-0 gap-2">
               <input type="date" {...register('dueDate')} className={`${fieldClass} min-w-0 flex-1`} />
               {/* The time is usually the point: a room has to be ready before the group walks
@@ -583,11 +586,11 @@ export function LogIssueModal() {
                 {...register('dueTime')}
                 disabled={!watch('dueDate')}
                 className={`${fieldClass} w-28 flex-none disabled:opacity-50`}
-                aria-label="Due by (time)"
+                aria-label={t('logWork.dueTime')}
               />
             </div>
             {watch('dueDate') && !watch('dueTime') && (
-              <p className="mt-0.5 text-[11px] text-ink-faint">Any time that day.</p>
+              <p className="mt-0.5 text-[11px] text-ink-faint">{t('logWork.anyTime')}</p>
             )}
           </div>
         </div>
@@ -604,23 +607,23 @@ export function LogIssueModal() {
         {/* A question, not a statement. It read as the form telling you this was recurring work,
             on every single log, including the one-off broken hinge. */}
         <p className="text-[12px] text-ink-faint">
-          Does this happen on a schedule?{' '}
+          {t('logWork.scheduleQuestion')}{' '}
           <button
             type="button"
             onClick={() => { closeAllModals(); navigate(ROUTINES_PATH); }}
             className="inline-flex items-center gap-1 font-semibold text-ink-soft hover:text-forest"
           >
             <Repeat className="h-3.5 w-3.5" />
-            Set it up as a routine instead
+            {t('logWork.routineInstead')}
           </button>
         </p>
 
         <div className="flex gap-2 pt-2">
           <Button type="submit" className="flex-1 justify-center" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving…' : (editingIssue ? 'Save changes' : 'Log it')}
+            {isSubmitting ? t('common:actions.saving') : (editingIssue ? t('logWork.saveChanges') : t('logWork.logIt'))}
           </Button>
           <Button type="button" variant="ghost" onClick={closeAllModals} disabled={isSubmitting}>
-            Cancel
+            {t('common:actions.cancel')}
           </Button>
         </div>
       </form>

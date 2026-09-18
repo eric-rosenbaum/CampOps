@@ -2,6 +2,8 @@ import type { Issue } from '@/lib/types';
 import { useCampStore } from '@/store/campStore';
 import { LocationIcon } from './LocationIcon';
 import { relativeDueDate, formatDate } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
+import { TranslatedText } from '@/components/i18n/TranslatedText';
 
 interface Props {
   issue: Issue;
@@ -24,13 +26,8 @@ const priorityWord: Record<string, string> = {
   normal: 'text-ink-soft',
 };
 
-const priorityLabel: Record<string, string> = {
-  urgent: 'Urgent',
-  high: 'High',
-  normal: 'Normal',
-};
-
 export function IssueCard({ issue, selected, onClick, compact = false, onTakeIt }: Props) {
+  const { t } = useTranslation(['shell', 'common']);
   const members = useCampStore((s) => s.members);
   const memberName = (userId: string | null) =>
     userId ? (members.find((m) => m.userId === userId)?.fullName ?? null) : null;
@@ -53,20 +50,27 @@ export function IssueCard({ issue, selected, onClick, compact = false, onTakeIt 
       <LocationIcon location={location} />
 
       <div className="min-w-0 flex-1">
-        <p className="truncate font-display text-[16.5px] font-semibold leading-snug text-ink">{issue.title}</p>
+        <TranslatedText
+          as="p"
+          source="issues"
+          id={issue.id}
+          field="title"
+          text={issue.title}
+          className="truncate font-display text-[16.5px] font-semibold leading-snug text-ink"
+        />
         <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[12.5px] text-ink-soft">
           {location && <span className="truncate">{location}</span>}
           {location && <span className="text-border">·</span>}
-          <span className={priorityWord[issue.priority]}>{priorityLabel[issue.priority]}</span>
+          <span className={priorityWord[issue.priority]}>{t(`common:priority.${issue.priority}`)}</span>
           {issue.isPublicReport && (
             <span className="rounded-tag border border-red px-[5px] py-px text-[9.5px] font-bold uppercase tracking-[0.1em] text-red">
-              Public
+              {t('issue.public')}
             </span>
           )}
           {issue.status === 'resolved' && issue.actualCost != null && (
             <>
               <span className="text-border">·</span>
-              <span className="tabular-nums">${issue.actualCost.toLocaleString()}</span>
+              <bdi className="tabular-nums">${issue.actualCost.toLocaleString()}</bdi>
             </>
           )}
         </div>
@@ -76,7 +80,7 @@ export function IssueCard({ issue, selected, onClick, compact = false, onTakeIt 
         {assigneeName ? (
           <p className="text-[12.5px] font-bold text-forest">{assigneeName.trim().split(/\s+/)[0]}</p>
         ) : (
-          <p className="text-[12.5px] font-bold text-red">Unassigned</p>
+          <p className="text-[12.5px] font-bold text-red">{t('common:status.unassigned')}</p>
         )}
         {due ? (
           <p className={`mt-0.5 text-[11.5px] tabular-nums ${due.overdue ? 'text-red' : 'text-ink-soft'}`}>
@@ -84,7 +88,7 @@ export function IssueCard({ issue, selected, onClick, compact = false, onTakeIt 
           </p>
         ) : (
           <p className="mt-0.5 text-[11.5px] text-ink-faint">
-            {issue.status === 'resolved' ? formatDate(issue.updatedAt) : 'No due date'}
+            {issue.status === 'resolved' ? formatDate(issue.updatedAt) : t('issue.noDueDate')}
           </p>
         )}
         {onTakeIt && !issue.assigneeId && (
@@ -93,7 +97,7 @@ export function IssueCard({ issue, selected, onClick, compact = false, onTakeIt 
             className="mt-1.5 rounded-tag border border-border bg-paper px-2 py-0.5 text-[11px] font-semibold
                        text-forest transition-colors hover:border-sage"
           >
-            Take it
+            {t('issue.takeIt')}
           </button>
         )}
       </div>

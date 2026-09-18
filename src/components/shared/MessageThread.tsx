@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Send, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { currentLang, type Lang } from '@/i18n';
 
 /**
  * A two-party conversation, presentational.
@@ -27,14 +29,15 @@ export interface ThreadMessage {
   unread?: boolean;
 }
 
-function when(iso: string): string {
+const INTL_TAG: Record<Lang, string> = { en: 'en-US', es: 'es', he: 'he-IL' };
+
+function when(iso: string, lang: Lang = currentLang()): string {
   const d = new Date(iso);
   const today = new Date();
   const sameDay = d.toDateString() === today.toDateString();
-  return sameDay
-    ? d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-    : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const tag = INTL_TAG[lang];
+  const time = d.toLocaleTimeString(tag, { hour: 'numeric', minute: '2-digit' });
+  return sameDay ? time : `${d.toLocaleDateString(tag, { month: 'short', day: 'numeric' })} · ${time}`;
 }
 
 export function MessageThread({
@@ -51,6 +54,7 @@ export function MessageThread({
   busy?: boolean;
   otherPartyName?: string | null;
 }) {
+  const { t } = useTranslation('shell');
   const [draft, setDraft] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
   const count = messages.length;
@@ -71,7 +75,7 @@ export function MessageThread({
       <div className="max-h-[22rem] overflow-y-auto pe-1 space-y-2.5">
         {messages.length === 0 ? (
           <p className="text-[12.5px] text-ink-faint italic py-3">
-            {emptyMessage ?? 'No messages yet.'}
+            {emptyMessage ?? t('thread.empty')}
           </p>
         ) : messages.map((m) => {
           const isMine = m.authorKind === mine;
@@ -81,7 +85,7 @@ export function MessageThread({
                 <div className={`max-w-[85%] rounded-xl border px-3.5 py-2.5 ${
                   m.unread ? 'border-amber/50 bg-amber-bg' : 'border-border bg-cream'
                 }`}>
-                  <p className="text-[12.5px] text-ink whitespace-pre-line leading-relaxed">{m.body}</p>
+                  <p className="text-[12.5px] text-ink whitespace-pre-line leading-relaxed" dir="auto">{m.body}</p>
                   <p className="text-[10.5px] text-ink-faint mt-1">
                     {m.authorName ? `${m.authorName} · ` : ''}{when(m.createdAt)}
                   </p>
@@ -105,7 +109,7 @@ export function MessageThread({
                     {m.subject}
                   </p>
                 )}
-                <p className="text-[12.5px] whitespace-pre-line leading-relaxed">{m.body}</p>
+                <p className="text-[12.5px] whitespace-pre-line leading-relaxed" dir="auto">{m.body}</p>
                 <p className={`text-[10.5px] mt-1 ${isMine ? 'text-white/60' : 'text-ink-faint'}`}>
                   {!isMine && m.authorName ? `${m.authorName} · ` : ''}{when(m.createdAt)}
                 </p>
@@ -127,7 +131,7 @@ export function MessageThread({
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); }
             }}
             rows={2}
-            placeholder={placeholder ?? (otherPartyName ? `Message ${otherPartyName}…` : 'Write a message…')}
+            placeholder={placeholder ?? (otherPartyName ? t('thread.placeholderTo', { name: otherPartyName }) : t('thread.placeholder'))}
             className="flex-1 min-w-0 text-[13px] bg-white border border-border rounded-xl px-3 py-2 focus:outline-none focus:border-sage resize-y"
           />
           <button
@@ -136,8 +140,8 @@ export function MessageThread({
             disabled={!draft.trim() || busy}
             className="flex-shrink-0 inline-flex items-center gap-1.5 bg-forest text-white text-[13px] font-semibold rounded-xl px-3.5 py-2.5 hover:bg-forest-mid disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-            Send
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5 rtl:-scale-x-100" />}
+            {t('thread.send')}
           </button>
         </div>
       )}

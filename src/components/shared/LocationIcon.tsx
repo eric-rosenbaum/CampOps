@@ -16,14 +16,14 @@ import {
 function glyphFor(location: string | undefined) {
   const cls = 'h-[19px] w-[19px]';
   if (!location) return <MapPin className={cls} />;
-  if (/kitchen|dining|commissary|mess/i.test(location)) return <Utensils className={cls} />;
-  if (/health|infirmary|medic|nurse/i.test(location)) return <Stethoscope className={cls} />;
-  if (/cabin|bunk|dorm/i.test(location)) return <BedDouble className={cls} />;
+  if (/kitchen|dining|commissary|mess|cocina|comedor|מטבח|חדר אוכל/i.test(location)) return <Utensils className={cls} />;
+  if (/health|infirmary|medic|nurse|enfermer|salud|מרפאה|אחות/i.test(location)) return <Stethoscope className={cls} />;
+  if (/cabin|bunk|dorm|cabaña|צריף|בקתה|חדר/i.test(location)) return <BedDouble className={cls} />;
   if (/lodge|office|hall|barn/i.test(location)) return <Home className={cls} />;
-  if (/maintenance|shop|shed|garage/i.test(location)) return <Wrench className={cls} />;
-  if (/waterfront|dock|lake|boat|beach/i.test(location)) return <Waves className={cls} />;
-  if (/pool|bathhouse|shower|restroom|toilet/i.test(location)) return <Droplet className={cls} />;
-  if (/field|court|athletic|trail|outdoor|ground/i.test(location)) return <Tent className={cls} />;
+  if (/maintenance|shop|shed|garage|taller|bodega|מחסן|אחזקה/i.test(location)) return <Wrench className={cls} />;
+  if (/waterfront|dock|lake|boat|beach|lago|muelle|playa|אגם|חוף/i.test(location)) return <Waves className={cls} />;
+  if (/pool|bathhouse|shower|restroom|toilet|piscina|baño|ducha|בריכה|מקלחת|שירותים/i.test(location)) return <Droplet className={cls} />;
+  if (/field|court|athletic|trail|outdoor|ground|cancha|campo|sendero|מגרש|שביל/i.test(location)) return <Tent className={cls} />;
   return <MapPin className={cls} />;
 }
 

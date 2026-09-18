@@ -89,7 +89,7 @@ export function RosterCompleteness() {
         <span>The permit forms are waiting on some of this roster.</span>
       </p>
 
-      <div className="mt-2.5 space-y-3 pl-5">
+      <div className="mt-2.5 space-y-3 ps-5">
         {missingDob.length > 0 && (
           <div>
             <p className="text-[12.5px] text-ink leading-relaxed">

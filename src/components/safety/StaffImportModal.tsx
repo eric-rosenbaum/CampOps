@@ -196,10 +196,10 @@ export function StaffImportModal({ onClose }: { onClose: () => void }) {
                       {r.name || <em className="text-ink-faint">no name</em>}
                     </span>
                     <span className="text-ink-soft min-w-0 truncate flex-1">{r.title}</span>
-                    <span className="font-mono text-[11px] text-ink-faint w-24 text-right">
+                    <span className="font-mono text-[11px] text-ink-faint w-24 text-end">
                       {r.dateOfBirth ?? ''}
                     </span>
-                    <span className={`text-[11px] w-52 text-right truncate ${
+                    <span className={`text-[11px] w-52 text-end truncate ${
                       r.problem || r.duplicate ? 'text-amber-text' : 'text-ink-faint'}`}
                       title={r.warning ?? undefined}>
                       {r.duplicate ? 'already on the roster' : r.problem ?? r.warning ?? ''}

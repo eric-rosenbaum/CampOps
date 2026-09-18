@@ -301,12 +301,12 @@ export function PrintLabelsModal({ open, onClose }: Props) {
             </div>
 
             <div className="relative mb-2.5">
-              <Search className="w-3.5 h-3.5 text-ink-faint absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-ink-faint absolute start-2.5 top-1/2 -translate-y-1/2" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={source === 'locations' ? 'Find a building or room…' : 'Find a vehicle or machine…'}
-                className="w-full bg-white border border-border rounded-btn pl-8 pr-3 py-2 text-[13px] focus:outline-none focus:border-sage"
+                className="w-full bg-white border border-border rounded-btn ps-8 pe-3 py-2 text-[13px] focus:outline-none focus:border-sage"
               />
             </div>
 
@@ -357,7 +357,7 @@ export function PrintLabelsModal({ open, onClose }: Props) {
                       className="w-4 h-4 accent-forest flex-none"
                     />
                     <span className="text-[13px] text-ink truncate">{a.name}</span>
-                    <span className="text-[11px] text-ink-faint truncate ml-auto">
+                    <span className="text-[11px] text-ink-faint truncate ms-auto">
                       {a.storageLocation || ASSET_CATEGORY_LABELS[a.category]}
                     </span>
                   </label>
@@ -456,7 +456,7 @@ export function PrintLabelsModal({ open, onClose }: Props) {
                   {isAdmin && (
                     <button
                       onClick={() => { setRotateError(null); setConfirmRotate(previewSpec); }}
-                      className="ml-auto inline-flex items-center gap-1 text-[11.5px] text-ink-soft hover:text-red"
+                      className="ms-auto inline-flex items-center gap-1 text-[11.5px] text-ink-soft hover:text-red"
                       title="Issue a new code for this label"
                     >
                       <RefreshCw className="w-3 h-3" /> Reissue
@@ -615,7 +615,7 @@ function LocationTree(props: TreeProps) {
                     <X className="w-3 h-3" /> out of service
                   </span>
                 )}
-                {checked && <Check className="w-3.5 h-3.5 text-forest flex-none ml-auto" />}
+                {checked && <Check className="w-3.5 h-3.5 text-forest flex-none ms-auto" />}
               </label>
             </div>
             {hasKids && isOpen && (

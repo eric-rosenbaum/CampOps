@@ -146,7 +146,7 @@ export function AddStaffModal() {
           <button
             type="button"
             onClick={() => setShowPermitDetails((v) => !v)}
-            className="w-full flex items-center justify-between text-left cursor-pointer"
+            className="w-full flex items-center justify-between text-start cursor-pointer"
           >
             <span>
               <span className="block text-[12px] font-medium text-ink">Details the permit forms ask for</span>
@@ -155,8 +155,8 @@ export function AddStaffModal() {
               </span>
             </span>
             {showPermitDetails
-              ? <ChevronUp className="w-4 h-4 text-forest/40 flex-shrink-0 ml-3" />
-              : <ChevronDown className="w-4 h-4 text-forest/40 flex-shrink-0 ml-3" />}
+              ? <ChevronUp className="w-4 h-4 text-forest/40 flex-shrink-0 ms-3" />
+              : <ChevronDown className="w-4 h-4 text-forest/40 flex-shrink-0 ms-3" />}
           </button>
 
           {showPermitDetails && (

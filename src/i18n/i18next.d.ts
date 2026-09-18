@@ -12,6 +12,9 @@ import type home from './locales/en/home.json';
 import type scan from './locales/en/scan.json';
 import type shell from './locales/en/shell.json';
 import type translation from './locales/en/translation.json';
+import type team from './locales/en/team.json';
+import type staff from './locales/en/staff.json';
+import type campInfo from './locales/en/campInfo.json';
 
 declare module 'i18next' {
   interface CustomTypeOptions {
@@ -27,6 +30,9 @@ declare module 'i18next' {
       scan: typeof scan;
       shell: typeof shell;
       translation: typeof translation;
+      team: typeof team;
+      staff: typeof staff;
+      campInfo: typeof campInfo;
     };
   }
 }

@@ -444,7 +444,7 @@ function LocationRow({ loc, depth, onOpen }: { loc: CampLocation; depth: number;
       <button
         type="button"
         onClick={() => onOpen(loc)}
-        className="w-full flex items-center gap-2 py-2 pr-1 text-left rounded-btn hover:bg-cream-dark/30 transition-colors"
+        className="w-full flex items-center gap-2 py-2 pe-1 text-start rounded-btn hover:bg-cream-dark/30 transition-colors"
         style={{ paddingLeft: `${depth * 20 + 4}px` }}
       >
         {depth > 0 && <CornerDownRight className="w-3.5 h-3.5 text-forest/25 flex-shrink-0" />}
@@ -673,7 +673,7 @@ function LocationDetailModal({ loc, onClose, onOpen }: { loc: CampLocation; onCl
             ) : (
               <div className="divide-y divide-stone-100">
                 {kids.map(k => (
-                  <button key={k.id} type="button" onClick={() => onOpen(k)} className="w-full flex items-center gap-2 py-1.5 text-left text-[12px] text-forest hover:text-sage">
+                  <button key={k.id} type="button" onClick={() => onOpen(k)} className="w-full flex items-center gap-2 py-1.5 text-start text-[12px] text-forest hover:text-sage">
                     <CornerDownRight className="w-3.5 h-3.5 text-forest/25" />
                     <span className={k.isActive ? '' : 'text-ink-faint line-through'}>{k.name}</span>
                     {k.bedCapacity != null && <span className="text-ink-faint">· {k.bedCapacity} beds</span>}
@@ -862,7 +862,7 @@ function LocationsTab() {
         {showInstructions && (
           <div className="mb-4 text-[12px] text-ink-soft bg-cream/60 border border-border rounded-btn px-3.5 py-2.5 leading-relaxed">
             <span className="font-semibold text-ink">Spreadsheet format</span>one row per location. Column headers are matched loosely (case-insensitive):
-            <ul className="mt-1.5 space-y-0.5 list-disc pl-4">
+            <ul className="mt-1.5 space-y-0.5 list-disc ps-4">
               <li><span className="font-medium text-ink">name</span> <span className="text-ink-faint">(required)</span>the location's name, e.g. “Birch Cabin”.</li>
               <li><span className="font-medium text-ink">category</span>e.g. Housing, Waterfront, Dining. Created automatically if it's new.</li>
               <li><span className="font-medium text-ink">parent</span>the exact name of another location to nest under (list parents above their children).</li>
@@ -963,7 +963,7 @@ function LocationsTab() {
         <button onClick={() => setShowCats(v => !v)} className="flex items-center gap-1.5 text-[13px] font-semibold text-forest w-full">
           {showCats ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           Categories
-          <span className="text-[11px] font-normal text-ink-faint ml-1">({sortedCats.length})</span>
+          <span className="text-[11px] font-normal text-ink-faint ms-1">({sortedCats.length})</span>
         </button>
 
         {showCats && (

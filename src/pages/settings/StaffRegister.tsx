@@ -138,7 +138,7 @@ export function StaffRosterTab() {
                       <div className="min-w-0">
                         <p className="text-[13px] text-forest">
                           <span className="font-medium">{m.name}</span>
-                          <span className="text-[11.5px] text-ink-faint ml-2">{m.title}</span>
+                          <span className="text-[11.5px] text-ink-faint ms-2">{m.title}</span>
                         </p>
                         {printsAs.length > 0 && (
                           <p className="text-[11.5px] text-ink-soft mt-0.5">

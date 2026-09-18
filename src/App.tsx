@@ -88,6 +88,7 @@ import { useComplianceStore } from '@/store/complianceStore';
 import { MARKETING_HOSTS, APP_HOST } from '@/lib/env';
 import { EnvironmentBanner } from '@/components/shared/EnvironmentBanner';
 import { LanguageSync } from '@/lib/language';
+import { UntranslatedContext } from '@/components/i18n/untranslated';
 import { useTranslation } from 'react-i18next';
 import { ModuleLoading } from '@/components/shared/ModuleLoading';
 import { campLog } from '@/lib/campLog';
@@ -188,7 +189,11 @@ function ModuleRoute({ of, children }: { of: ModuleKey; children: React.ReactNod
 
 /** A screen that has not been translated yet: English, laid out left-to-right. */
 function Untranslated({ children }: { children: React.ReactNode }) {
-  return <div dir="ltr" lang="en" className="contents">{children}</div>;
+  return (
+    <UntranslatedContext.Provider value>
+      <div dir="ltr" lang="en" className="contents">{children}</div>
+    </UntranslatedContext.Provider>
+  );
 }
 
 type LoadingKey = 'dashboard' | 'tasks' | 'campground' | 'spot';
@@ -758,10 +763,10 @@ export default function App() {
                 <Route path="/trips" element={<ModuleRoute of="trips"><Gate of={['trips']} label="Opening town trips"><Trips /></Gate></ModuleRoute>} />
                 <Route path="/receipts" element={<ModuleRoute of="receipts"><Gate of={['receipts']} label="Opening receipts"><Receipts /></Gate></ModuleRoute>} />
                 <Route path="/receipts/reconcile" element={<ModuleRoute of="receipts"><Gate of={['receipts']} label="Opening receipts"><Receipts /></Gate></ModuleRoute>} />
-                <Route path="/settings" element={<Untranslated><CampSettings /></Untranslated>} />
-                <Route path="/settings/team" element={<Untranslated><Team /></Untranslated>} />
+                <Route path="/settings" element={<CampSettings />} />
+                <Route path="/settings/team" element={<Team />} />
                 {/* Staff is a Camp Info tab now; this path deep-links straight to it. */}
-                <Route path="/settings/staff" element={<Untranslated><CampSettings /></Untranslated>} />
+                <Route path="/settings/staff" element={<CampSettings />} />
                 <Route path="/settings/security" element={<SecuritySettings />} />
               </Route>
             </Route>

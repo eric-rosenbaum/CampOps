@@ -253,7 +253,7 @@ function CrewRoster({ group, campId }: { group: StaffGroup; campId: string }) {
                     : 'bg-white border-border text-ink-soft hover:border-forest/30'
                 }`}
               >
-                {on && <Check className="w-3 h-3 inline -mt-px mr-1" />}
+                {on && <Check className="w-3 h-3 inline -mt-px me-1" />}
                 {m.displayName ?? m.fullName}
               </button>
             );

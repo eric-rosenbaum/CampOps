@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { Camera, Check, Clock, Phone, Repeat, Undo2, Wrench } from 'lucide-react';
 import type { Issue, IssueStatus } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
@@ -21,15 +23,26 @@ import { CommentComposer } from './CommentComposer';
 import { WorkTimeline } from './WorkTimeline';
 import { dbUploadPhoto } from '@/lib/db';
 import { formatDate, formatDateTime, generateId, relativeDueDate, todayStr } from '@/lib/utils';
+import { TranslatedText } from '@/components/i18n/TranslatedText';
 
 /** How long the undo bar stands before the work order is really, quietly, closed. */
 const UNDO_MS = 5000;
+
+/**
+ * The status as the activity log stores it: always English.
+ *
+ * `issue_activity.action` is read back by SQL (`ilike '%resolved%'`) and re-said in the reader's
+ * language by translateActivity(). Building it from STATUS_LABELS — which now answers in the
+ * writer's language — would have stored "set this to en curso", a sentence neither side knows.
+ */
+const englishStatus = (s: IssueStatus) => i18n.t(`status.${s}`, { ns: 'common', lng: 'en' });
 
 interface Props {
   issue: Issue;
 }
 
 export function WorkOrderDetail({ issue }: Props) {
+  const { t } = useTranslation(['campground', 'common']);
   const navigate = useNavigate();
   const { currentUser, can } = useAuth();
   const members = useCampStore((s) => s.members);
@@ -96,6 +109,10 @@ export function WorkOrderDetail({ issue }: Props) {
   // letting a timer fire against a work order nobody is looking at any more.
   useEffect(() => () => { if (undoTimer.current) window.clearTimeout(undoTimer.current); }, []);
 
+  /**
+   * Activity sentences stay English whatever the writer reads (see englishStatus above), so every
+   * `log(...)` below is deliberately not translated: translateActivity() re-says them on display.
+   */
   function log(action: string) {
     addActivityEntry(issue.id, {
       id: generateId(),
@@ -149,10 +166,10 @@ export function WorkOrderDetail({ issue }: Props) {
     const url = await dbUploadPhoto(file, `${issue.id}-fix-${generateId().slice(0, 8)}`);
     setUploadingFix(false);
     if (!url) {
-      setFixError('That photo did not upload. The work order is still closed either way.');
+      setFixError(t('detail.fixPhotoError'));
       return;
     }
-    postComment(issue.id, 'Photo', author, [url], false);
+    postComment(issue.id, t('detail.photoComment'), author, [url], false);
     setFixPrompt(false);
   }
 
@@ -160,7 +177,7 @@ export function WorkOrderDetail({ issue }: Props) {
     if (next === issue.status) return;
     if (next === 'resolved') { handleDone(); return; }
     updateIssue(issue.id, { status: next });
-    log(`${currentUser.name} set this to ${STATUS_LABELS[next].toLowerCase()}`);
+    log(`${currentUser.name} set this to ${englishStatus(next).toLowerCase()}`);
   }
 
   /** `''` = nobody, `user:<id>` = a person, `crew:<id>` = a crew. One or the other, never both. */
@@ -210,7 +227,7 @@ export function WorkOrderDetail({ issue }: Props) {
     if (raw && Number.isNaN(value)) return;
     updateIssue(issue.id, { actualCost: value });
     log(value != null
-      ? `${currentUser.name} recorded $${value.toLocaleString()} spent`
+      ? `${currentUser.name} recorded $${value.toLocaleString('en-US')} spent`
       : `${currentUser.name} cleared the cost`);
   }
 
@@ -229,7 +246,7 @@ export function WorkOrderDetail({ issue }: Props) {
     ? (members.find((m) => m.userId === issue.assigneeId)?.fullName ?? null)
     : null;
   const reporter = issue.isPublicReport
-    ? (issue.reporterName ?? 'Anonymous')
+    ? (issue.reporterName ?? t('detail.anonymous'))
     : (issue.reportedById ? (members.find((m) => m.userId === issue.reportedById)?.fullName ?? null) : null);
   const asset = issue.assetId ? assets.find((a) => a.id === issue.assetId) : undefined;
   const vendor = issue.vendorId ? vendors.find((v) => v.id === issue.vendorId) : undefined;
@@ -249,9 +266,14 @@ export function WorkOrderDetail({ issue }: Props) {
       {/* Header */}
       <div className="border-b border-border bg-white px-4 pb-4 pt-5 sm:px-6">
         <div className="mb-1.5 flex items-start gap-2">
-          <h2 className="flex-1 font-display text-[19px] sm:text-[21px] font-bold leading-[1.2] text-forest">
-            {issue.title}
-          </h2>
+          <TranslatedText
+            as="h2"
+            source="issues"
+            id={issue.id}
+            field="title"
+            text={issue.title}
+            className="flex-1 font-display text-[19px] sm:text-[21px] font-bold leading-[1.2] text-forest"
+          />
           <PriorityBadge priority={issue.priority} />
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -261,13 +283,15 @@ export function WorkOrderDetail({ issue }: Props) {
           <StatusChip status={issue.status} />
           {issue.isPublicReport && (
             <span className="rounded-tag border border-red px-[5px] py-px text-[9.5px] font-bold uppercase tracking-[0.1em] text-red">
-              Public
+              {t('detail.public')}
             </span>
           )}
         </div>
         <p className="mt-1.5 text-[12px] text-ink-soft">
           {issue.locations.length > 0 ? `${issue.locations.join(' · ')} · ` : ''}
-          Logged {reporter ? `by ${reporter} ` : ''}{formatDate(issue.createdAt)}
+          {reporter
+            ? t('detail.loggedBy', { name: reporter, date: formatDate(issue.createdAt) })
+            : t('detail.logged', { date: formatDate(issue.createdAt) })}
           {issue.source ? ` · ${SOURCE_LABELS[issue.source]}` : ''}
         </p>
         {due && (
@@ -288,27 +312,27 @@ export function WorkOrderDetail({ issue }: Props) {
                 className="w-full justify-center"
                 onClick={() => { reopenIssue(issue.id); log(`Reopened by ${currentUser.name}`); }}
               >
-                <Undo2 className="h-3.5 w-3.5" />
-                Reopen
+                <Undo2 className="h-3.5 w-3.5 rtl:-scale-x-100" />
+                {t('detail.reopen')}
               </Button>
             ) : (
               <Button size="sm" className="w-full justify-center" onClick={handleDone}>
                 <Check className="h-3.5 w-3.5" />
                 {checklist.length > 0 && remainingSteps > 0
-                  ? `Done · ${remainingSteps} step${remainingSteps === 1 ? '' : 's'} left`
-                  : 'Done'}
+                  ? t('detail.doneStepsLeft', { count: remainingSteps })
+                  : t('common:status.resolved')}
               </Button>
             )}
 
             {undo && (
               <div className="flex items-center gap-2 rounded-card border border-forest bg-paper px-3 py-2">
-                <p className="flex-1 text-[12.5px] font-semibold text-forest">Closed.</p>
+                <p className="flex-1 text-[12.5px] font-semibold text-forest">{t('detail.closed')}</p>
                 <button
                   onClick={handleUndo}
                   className="inline-flex items-center gap-1 text-[12.5px] font-bold text-red underline"
                 >
-                  <Undo2 className="h-3.5 w-3.5" />
-                  Undo
+                  <Undo2 className="h-3.5 w-3.5 rtl:-scale-x-100" />
+                  {t('detail.undo')}
                 </button>
               </div>
             )}
@@ -318,20 +342,20 @@ export function WorkOrderDetail({ issue }: Props) {
             {fixPrompt && (
               <div className="rounded-card border border-border bg-paper px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <p className="flex-1 text-[12.5px] text-ink">Add a photo?</p>
+                  <p className="flex-1 text-[12.5px] text-ink">{t('detail.addPhotoPrompt')}</p>
                   <button
                     onClick={() => fixFileRef.current?.click()}
                     disabled={uploadingFix}
                     className="inline-flex items-center gap-1 text-[12.5px] font-bold text-forest underline disabled:opacity-50"
                   >
                     <Camera className="h-3.5 w-3.5" />
-                    {uploadingFix ? 'Uploading…' : 'Take one'}
+                    {uploadingFix ? t('detail.uploading') : t('detail.takeOne')}
                   </button>
                   <button
                     onClick={() => setFixPrompt(false)}
                     className="text-[12.5px] text-ink-soft hover:text-ink"
                   >
-                    Not now
+                    {t('detail.notNow')}
                   </button>
                 </div>
                 {fixError && <p className="mt-1 text-[11.5px] text-red">{fixError}</p>}
@@ -355,7 +379,7 @@ export function WorkOrderDetail({ issue }: Props) {
         {/* ── Status, owner, vendor ─────────────────────────────────────────── */}
         <div className="space-y-2.5">
           <div className="flex flex-col gap-1">
-            <span className={railLabel}>Status</span>
+            <span className={railLabel}>{t('detail.status')}</span>
             {editable ? (
               <select
                 value={issue.status}
@@ -373,7 +397,7 @@ export function WorkOrderDetail({ issue }: Props) {
           </div>
 
           <div className="flex flex-col gap-1">
-            <span className={railLabel}>Assigned to</span>
+            <span className={railLabel}>{t('detail.assignedTo')}</span>
             {can('assign') ? (
               <select
                 value={issue.assigneeId ? `user:${issue.assigneeId}`
@@ -381,15 +405,15 @@ export function WorkOrderDetail({ issue }: Props) {
                 onChange={(e) => handleAssigneeChange(e.target.value)}
                 className={selectClass}
               >
-                <option value="">Nobody yet</option>
+                <option value="">{t('detail.nobodyYet')}</option>
                 {staffGroups.length > 0 && (
-                  <optgroup label="A crew picks it up">
+                  <optgroup label={t('detail.crewPicksItUp')}>
                     {staffGroups.map((g) => (
                       <option key={g.id} value={`crew:${g.id}`}>{g.name}</option>
                     ))}
                   </optgroup>
                 )}
-                <optgroup label="A person">
+                <optgroup label={t('detail.aPerson')}>
                   {members.map((m) => (
                     <option key={m.userId} value={`user:${m.userId}`}>{m.fullName}</option>
                   ))}
@@ -398,9 +422,9 @@ export function WorkOrderDetail({ issue }: Props) {
             ) : assignee ? (
               <span className="text-[13px] font-medium text-forest">{assignee}</span>
             ) : crewName ? (
-              <span className="text-[13px] font-medium text-forest">{crewName} · unclaimed</span>
+              <span className="text-[13px] font-medium text-forest">{t('detail.crewUnclaimed', { crew: crewName })}</span>
             ) : (
-              <span className="text-[13px] font-medium text-red">Unassigned</span>
+              <span className="text-[13px] font-medium text-red">{t('common:status.unassigned')}</span>
             )}
           </div>
 
@@ -416,14 +440,14 @@ export function WorkOrderDetail({ issue }: Props) {
             Vendors tab, the season review) had nothing to show.
           */}
           <div className="flex flex-col gap-1">
-            <span className={railLabel}>Outside vendor</span>
+            <span className={railLabel}>{t('detail.outsideVendor')}</span>
             {editable && vendors.length > 0 ? (
               <select
                 value={issue.vendorId ?? ''}
                 onChange={(e) => handleVendorChange(e.target.value)}
                 className={selectClass}
               >
-                <option value="">Nobody outside</option>
+                <option value="">{t('detail.nobodyOutside')}</option>
                 {vendors.filter((v) => v.isActive || v.id === issue.vendorId).map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.name}{v.trade ? ` · ${v.trade}` : ''}
@@ -434,10 +458,10 @@ export function WorkOrderDetail({ issue }: Props) {
               <span className="text-[13px] font-medium text-forest">{vendor.name}</span>
             ) : editable ? (
               <p className="text-[12px] text-ink-soft">
-                No vendors saved yet. Add them on the Vendors tab.
+                {t('detail.noVendors')}
               </p>
             ) : (
-              <span className="text-[13px] text-ink-soft">Nobody outside</span>
+              <span className="text-[13px] text-ink-soft">{t('detail.nobodyOutside')}</span>
             )}
 
             {/* The number, tappable. On a phone this is the whole interaction: read the work
@@ -451,7 +475,7 @@ export function WorkOrderDetail({ issue }: Props) {
                            text-forest hover:text-forest-mid"
               >
                 <Phone className="h-3.5 w-3.5" />
-                {vendor.phone}
+                <bdi>{vendor.phone}</bdi>
               </a>
             )}
           </div>
@@ -474,7 +498,7 @@ export function WorkOrderDetail({ issue }: Props) {
                 <Phone className="h-3.5 w-3.5 flex-none text-sage" />
                 <span className="truncate font-semibold">{vendor.name}</span>
                 {vendor.phone && (
-                  <a href={`tel:${vendor.phone}`} className="ms-auto flex-none tabular-nums text-forest hover:underline">
+                  <a href={`tel:${vendor.phone}`} dir="ltr" className="ms-auto flex-none tabular-nums text-forest hover:underline">
                     {vendor.phone}
                   </a>
                 )}
@@ -488,24 +512,31 @@ export function WorkOrderDetail({ issue }: Props) {
               </div>
             )}
             {retreat && (
-              <p className="text-[12.5px] text-ink">For {retreat.groupName}</p>
+              <p className="text-[12.5px] text-ink">{t('detail.forGroup', { name: retreat.groupName })}</p>
             )}
           </div>
         )}
 
         {/* ── Description ───────────────────────────────────────────────────── */}
         <div>
-          <p className={`${railLabel} mb-1`}>Description</p>
+          <p className={`${railLabel} mb-1`}>{t('detail.description')}</p>
           {issue.description ? (
-            <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink">{issue.description}</p>
+            <TranslatedText
+              variant="block"
+              source="issues"
+              id={issue.id}
+              field="description"
+              text={issue.description}
+              className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink"
+            />
           ) : (
-            <p className="text-[13px] italic text-ink-faint">Nothing written down.</p>
+            <p className="text-[13px] italic text-ink-faint">{t('detail.nothingWritten')}</p>
           )}
         </div>
 
         {issue.isPublicReport && (issue.reporterName || issue.reporterContact) && (
           <div>
-            <p className={`${railLabel} mb-1`}>Reported by</p>
+            <p className={`${railLabel} mb-1`}>{t('detail.reportedBy')}</p>
             {issue.reporterName && <p className="text-[13px] text-ink">{issue.reporterName}</p>}
             {issue.reporterContact && <p className="text-[13px] text-ink-soft">{issue.reporterContact}</p>}
           </div>
@@ -513,11 +544,11 @@ export function WorkOrderDetail({ issue }: Props) {
 
         {issue.photoUrl && (
           <div>
-            <p className={`${railLabel} mb-1`}>Photo</p>
+            <p className={`${railLabel} mb-1`}>{t('detail.photo')}</p>
             <a href={issue.photoUrl} target="_blank" rel="noreferrer">
               <img
                 src={issue.photoUrl}
-                alt="What was reported"
+                alt={t('detail.photoAlt')}
                 className="max-h-40 w-full rounded-card border border-border object-cover"
               />
             </a>
@@ -537,18 +568,18 @@ export function WorkOrderDetail({ issue }: Props) {
             somebody standing in a wet basement is fiction that later gets quoted as fact. */}
         {can('enterActualCost') && (
           <div>
-            <p className={`${railLabel} mb-1`}>What it cost</p>
+            <p className={`${railLabel} mb-1`}>{t('detail.cost')}</p>
             <div className="flex items-center gap-1.5">
               <input
                 value={costInput}
                 onChange={(e) => setCostInput(e.target.value)}
                 onBlur={saveCost}
                 inputMode="decimal"
-                placeholder="e.g. 280"
+                placeholder={t('detail.costPlaceholder')}
                 className="min-w-0 flex-1 rounded-btn border border-border bg-white px-2 py-1.5 text-[13px]
                            placeholder:text-ink-faint focus:border-sage focus:outline-none"
               />
-              <span className="flex-none text-[11.5px] text-ink-faint">optional</span>
+              <span className="flex-none text-[11.5px] text-ink-faint">{t('detail.optional')}</span>
             </div>
           </div>
         )}
@@ -562,12 +593,12 @@ export function WorkOrderDetail({ issue }: Props) {
                 value={minutesInput}
                 onChange={(e) => setMinutesInput(e.target.value)}
                 inputMode="numeric"
-                placeholder="Minutes"
+                placeholder={t('detail.minutesPlaceholder')}
                 className="min-w-0 flex-1 rounded-btn border border-border bg-white px-2 py-1.5 text-[13px]
                            placeholder:text-ink-faint focus:border-sage focus:outline-none"
               />
-              <Button size="sm" onClick={saveMinutes}>Save</Button>
-              <Button size="sm" variant="ghost" onClick={() => setShowTime(false)}>Cancel</Button>
+              <Button size="sm" onClick={saveMinutes}>{t('common:actions.save')}</Button>
+              <Button size="sm" variant="ghost" onClick={() => setShowTime(false)}>{t('common:actions.cancel')}</Button>
             </div>
           ) : (
             <button
@@ -575,14 +606,16 @@ export function WorkOrderDetail({ issue }: Props) {
               className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-ink-soft hover:text-forest"
             >
               <Clock className="h-3 w-3" />
-              {issue.minutesSpent != null ? `${issue.minutesSpent} min logged · change` : 'Log time'}
+              {issue.minutesSpent != null
+                ? t('detail.minutesLogged', { minutes: issue.minutesSpent })
+                : t('detail.logTime')}
             </button>
           )
         )}
 
         {/* ── One timeline ──────────────────────────────────────────────────── */}
         <div>
-          <p className={`${railLabel} mb-2`}>Everything that happened</p>
+          <p className={`${railLabel} mb-2`}>{t('detail.timeline')}</p>
           <WorkTimeline issue={issue} />
           {editable && (
             <div className="mt-3">
@@ -591,7 +624,7 @@ export function WorkOrderDetail({ issue }: Props) {
           )}
         </div>
 
-        <p className="text-[11px] text-ink-faint">Logged {formatDateTime(issue.createdAt)}</p>
+        <p className="text-[11px] text-ink-faint">{t('detail.logged', { date: formatDateTime(issue.createdAt) })}</p>
       </div>
 
       {/* Footer */}
@@ -600,7 +633,7 @@ export function WorkOrderDetail({ issue }: Props) {
           {showDeleteConfirm ? (
             <>
               <p className="text-center text-[12px] text-ink-soft">
-                Delete this work order? The record goes with it.
+                {t('detail.deleteConfirm')}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -609,10 +642,10 @@ export function WorkOrderDetail({ issue }: Props) {
                   className="flex-1 justify-center"
                   onClick={() => deleteIssue(issue.id)}
                 >
-                  Confirm delete
+                  {t('detail.confirmDelete')}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setShowDeleteConfirm(false)}>
-                  Cancel
+                  {t('common:actions.cancel')}
                 </Button>
               </div>
             </>
@@ -624,7 +657,7 @@ export function WorkOrderDetail({ issue }: Props) {
                 className="w-full justify-center"
                 onClick={() => openEditIssueModal(issue.id)}
               >
-                Edit
+                {t('common:actions.edit')}
               </Button>
               <Button
                 variant="ghost"
@@ -632,7 +665,7 @@ export function WorkOrderDetail({ issue }: Props) {
                 className="w-full justify-center text-red/70 hover:text-red"
                 onClick={() => setShowDeleteConfirm(true)}
               >
-                Delete
+                {t('common:actions.delete')}
               </Button>
             </>
           )}

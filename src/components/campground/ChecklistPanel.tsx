@@ -1,11 +1,14 @@
 import { useRef, useState } from 'react';
 import { Camera, Plus, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { IssueChecklistItem } from '@/lib/types';
 import { useTradeLabel } from '@/lib/useTrades';
 import { useAuth } from '@/lib/auth';
 import { useCampgroundStore, checklistFor } from '@/store/campgroundStore';
 import { dbUploadPhoto } from '@/lib/db';
 import { generateId } from '@/lib/utils';
+import { useTranslatedString } from '@/lib/contentTranslation';
+import { TranslatedText } from '@/components/i18n/TranslatedText';
 
 interface Props {
   issueId: string;
@@ -23,6 +26,7 @@ interface Props {
  * would mean fighting the trigger and losing on a slow connection.
  */
 export function ChecklistPanel({ issueId, highlight = false }: Props) {
+  const { t } = useTranslation('campground');
   const labelOf = useTradeLabel();
   const { currentUser } = useAuth();
   // Raw slices, derived below. Filtering inside a selector allocates a new array per render.
@@ -72,7 +76,7 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
         key: `${key}-${idx}`,
         name: item.section
           ?? (item.templateId
-            ? templates.find((t) => t.id === item.templateId)?.name ?? 'Checklist'
+            ? templates.find((tpl) => tpl.id === item.templateId)?.name ?? t('checklist.defaultGroup')
             : null),
         items: [item],
       });
@@ -95,7 +99,7 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
     const url = await dbUploadPhoto(file, `${issueId}-step-${generateId().slice(0, 8)}`);
     setUploadingId(null);
     if (!url) {
-      setError('That photo did not upload. The step is still open, so try it again.');
+      setError(t('checklist.photoError'));
       return;
     }
     tickChecklistItem(item.id, true, author, url);
@@ -122,7 +126,7 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
     >
       <div className="mb-2 flex items-baseline gap-2">
         <span className="flex-none text-[9.5px] font-bold uppercase tracking-[0.13em] text-ink-soft">
-          Steps
+          {t('checklist.steps')}
         </span>
         <span
           className="h-px flex-1 -translate-y-[3px] bg-[repeating-linear-gradient(90deg,#DED3BB_0_4px,transparent_4px_8px)]"
@@ -130,14 +134,14 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
         />
         {items.length > 0 && (
           <span className="flex-none text-[11.5px] tabular-nums text-ink-soft">
-            {done} of {items.length}
+            {t('checklist.progress', { done, total: items.length })}
           </span>
         )}
       </div>
 
       {items.length === 0 && (
         <p className="mb-2 text-[12px] text-ink-soft">
-          No steps yet. Apply a checklist or type one below.
+          {t('checklist.empty')}
         </p>
       )}
 
@@ -149,7 +153,7 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
             <p className="mb-1 text-[11px] font-semibold text-ink-soft">
               {g.name}
               <span className="ms-1.5 font-normal text-ink-faint">
-                {g.items.filter((i) => i.isDone).length} of {g.items.length}
+                {t('checklist.progress', { done: g.items.filter((i) => i.isDone).length, total: g.items.length })}
               </span>
             </p>
           )}
@@ -177,9 +181,9 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
             onChange={(e) => setTemplateId(e.target.value)}
             className="w-full rounded-btn border border-border bg-white px-2 py-1.5 text-[13px] focus:border-sage focus:outline-none sm:flex-1"
           >
-            <option value="">{items.length ? 'Add another checklist…' : 'Apply a checklist…'}</option>
-            {unappliedTemplates.map((t) => (
-              <option key={t.id} value={t.id}>{t.name} · {labelOf(t.trade)}</option>
+            <option value="">{items.length ? t('checklist.addAnother') : t('checklist.applyOne')}</option>
+            {unappliedTemplates.map((tpl) => (
+              <option key={tpl.id} value={tpl.id}>{tpl.name} · {labelOf(tpl.trade)}</option>
             ))}
           </select>
           <button
@@ -188,7 +192,7 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
             className="rounded-btn bg-forest px-3 py-1.5 text-[12.5px] font-bold text-paper
                        transition-colors hover:bg-forest-mid disabled:opacity-50"
           >
-            {applying ? 'Applying…' : 'Apply'}
+            {applying ? t('checklist.applying') : t('checklist.apply')}
           </button>
         </div>
       )}
@@ -200,14 +204,16 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
           value={newStep}
           onChange={(e) => setNewStep(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }}
-          placeholder="Add a step…"
+          placeholder={t('checklist.addStepPlaceholder')}
+          dir="auto"
           className="min-w-0 flex-1 rounded-btn border border-border bg-white px-2 py-1.5 text-[12.5px]
                      placeholder:text-ink-faint focus:border-sage focus:outline-none"
         />
         <button
           onClick={handleAdd}
           disabled={!newStep.trim()}
-          title="Add this step"
+          title={t('checklist.addStepTitle')}
+          aria-label={t('checklist.addStepTitle')}
           className="grid h-[30px] w-[30px] flex-none place-items-center rounded-btn border border-border
                      text-forest transition-colors hover:border-sage disabled:opacity-40"
         >
@@ -216,7 +222,7 @@ export function ChecklistPanel({ issueId, highlight = false }: Props) {
       </div>
 
       {items.length > 0 && done === items.length - 1 && (
-        <p className="mt-2 text-[11.5px] text-ink-soft">One step left. Ticking it closes this work order.</p>
+        <p className="mt-2 text-[11.5px] text-ink-soft">{t('checklist.oneLeft')}</p>
       )}
     </div>
   );
@@ -229,7 +235,10 @@ function Step({ item, uploading, onToggle, onPhoto, onRemove }: {
   onPhoto: (file: File) => void;
   onRemove: () => void;
 }) {
+  const { t } = useTranslation('campground');
   const fileRef = useRef<HTMLInputElement>(null);
+  // For the proof photo's alt text, which cannot hold a component.
+  const stepText = useTranslatedString('issue_checklist_items', item.id, 'text', item.text);
   // A step can ask for a photo, and saying so is the whole job. It used to also refuse to tick
   // without one, which meant a crew with no signal at the back of the property could not close
   // out their morning -- so the ask is visible on the step itself and the tick is never blocked.
@@ -240,7 +249,7 @@ function Step({ item, uploading, onToggle, onPhoto, onRemove }: {
         onClick={onToggle}
         disabled={uploading}
         aria-pressed={item.isDone}
-        title={item.isDone ? 'Untick' : 'Tick'}
+        title={item.isDone ? t('checklist.untick') : t('checklist.tick')}
         className={`mt-[3px] grid h-[17px] w-[17px] flex-none place-items-center rounded-[3px] border
                     transition-colors disabled:opacity-50 ${
           item.isDone ? 'border-forest bg-forest text-paper' : 'border-border bg-white hover:border-sage'
@@ -254,8 +263,16 @@ function Step({ item, uploading, onToggle, onPhoto, onRemove }: {
       </button>
 
       <div className="min-w-0 flex-1">
-        <p className={`text-[13px] leading-snug ${item.isDone ? 'text-ink-faint line-through' : 'text-ink'}`}>
-          {item.text}
+        <p className={`text-[13px] leading-snug ${item.isDone ? 'text-ink-faint' : 'text-ink'}`}>
+          {/* The strike is on the words, not the line: text-decoration is inherited and the
+              photo chip beside them could not take it back off. */}
+          <TranslatedText
+            source="issue_checklist_items"
+            id={item.id}
+            field="text"
+            text={item.text}
+            className={item.isDone ? 'line-through' : undefined}
+          />
           {/* Sits on the step's own line, so a list of ten shows at a glance which two want a
               photo. Clicking it is how you add one; it never stands in the way of the tick. */}
           {item.requiresPhoto && (
@@ -263,7 +280,7 @@ function Step({ item, uploading, onToggle, onPhoto, onRemove }: {
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              title={item.photoUrl ? 'Replace the photo' : 'Add the photo this step asks for'}
+              title={item.photoUrl ? t('checklist.replacePhoto') : t('checklist.addAskedPhoto')}
               className={`ms-1.5 inline-flex translate-y-px items-center gap-1 rounded-tag px-1.5 py-px
                           align-middle text-[9.5px] font-bold uppercase tracking-[0.08em]
                           transition-colors disabled:opacity-50 ${
@@ -273,19 +290,28 @@ function Step({ item, uploading, onToggle, onPhoto, onRemove }: {
               }`}
             >
               <Camera className="h-3 w-3" aria-hidden="true" />
-              {item.photoUrl ? 'Photo' : 'Photo asked for'}
+              {item.photoUrl ? t('checklist.photo') : t('checklist.photoAskedFor')}
             </button>
           )}
         </p>
-        {item.note && <p className="text-[11.5px] text-ink-soft">{item.note}</p>}
+        {item.note && (
+          <TranslatedText
+            as="p"
+            source="issue_checklist_items"
+            id={item.id}
+            field="note"
+            text={item.note}
+            className="text-[11.5px] text-ink-soft"
+          />
+        )}
         {item.isDone && item.doneByName && (
-          <p className="text-[11px] text-ink-faint">Done by {item.doneByName}</p>
+          <p className="text-[11px] text-ink-faint">{t('checklist.doneBy', { name: item.doneByName })}</p>
         )}
         {item.photoUrl && (
           <a href={item.photoUrl} target="_blank" rel="noreferrer">
             <img
               src={item.photoUrl}
-              alt={`Proof for ${item.text}`}
+              alt={t('checklist.proofAlt', { step: stepText })}
               className="mt-1 h-14 w-14 rounded-card border border-border object-cover"
             />
           </a>
@@ -309,7 +335,8 @@ function Step({ item, uploading, onToggle, onPhoto, onRemove }: {
 
       <button
         onClick={onRemove}
-        title="Remove this step"
+        title={t('checklist.removeStep')}
+        aria-label={t('checklist.removeStep')}
         className="mt-0.5 flex-none text-ink-faint opacity-0 transition-opacity hover:text-red
                    group-hover:opacity-100 focus:opacity-100"
       >

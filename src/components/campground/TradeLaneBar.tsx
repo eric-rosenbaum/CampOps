@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useTradeLabel } from '@/lib/useTrades';
 import type { Trade } from '@/lib/types';
 import { tradePill } from '@/lib/workOrder';
@@ -30,6 +31,7 @@ const ALWAYS_OFFERED: Trade[] = ['maintenance', 'housekeeping'];
  * the exact trap the staff-visibility split below the board exists to avoid.
  */
 export function TradeLaneBar({ value, onChange, counts, total }: Props) {
+  const { t } = useTranslation('campground');
   const tradeKeys = useTradeKeys();
   const labelOf = useTradeLabel();
   // The selected lane stays visible even after its last work order closes, or the bar would
@@ -41,11 +43,11 @@ export function TradeLaneBar({ value, onChange, counts, total }: Props) {
   return (
     <div
       role="tablist"
-      aria-label="Crew"
+      aria-label={t('lanes.crew')}
       className="-mx-1 flex items-center gap-1.5 overflow-x-auto overflow-y-hidden no-scrollbar px-1 py-2"
     >
       <Lane
-        label="All"
+        label={t('lanes.all')}
         count={total}
         active={value === 'all'}
         tone="bg-cream-dark text-ink"

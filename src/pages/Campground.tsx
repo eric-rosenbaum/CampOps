@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { ChevronLeft, ChevronRight, Download, Plus, X } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -31,6 +32,8 @@ import {
 } from '@/lib/workOrder';
 import { todayStr } from '@/lib/utils';
 import { useTradeKeys } from '@/lib/useTrades';
+import { searchableText, useTranslationLookup } from '@/lib/contentTranslation';
+import { TranslatedText } from '@/components/i18n/TranslatedText';
 
 /**
  * The Campground board.
@@ -48,12 +51,8 @@ type Tab = 'board' | 'routines' | 'crews' | 'review';
 // "what happens on its own". Crews and vendors are both the answer to "who does it" -- the people
 // here and the people you call -- so they are the other. Five tabs where two pairs said the same
 // thing meant setting up a turnover took three of them.
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'board', label: 'Board' },
-  { id: 'routines', label: 'Routines & checklists' },
-  { id: 'crews', label: 'Crews & vendors' },
-  { id: 'review', label: 'Season review' },
-];
+// Labels are read in the reader's language at render time (`board.tabs.<id>`).
+const TABS: readonly Tab[] = ['board', 'routines', 'crews', 'review'];
 
 /**
  * `waiting` is one filter over two states, because a camp does not think "vendor or part" — it
@@ -62,31 +61,15 @@ const TABS: { id: Tab; label: string }[] = [
  */
 type BoardFilter = 'all' | 'mine' | 'urgent' | 'unassigned' | 'in_progress' | 'waiting' | 'resolved' | 'public';
 
-const BOARD_FILTERS: { key: BoardFilter; label: string }[] = [
-  { key: 'all', label: 'All work' },
-  { key: 'mine', label: 'Assigned to me' },
-  { key: 'urgent', label: 'Urgent' },
-  { key: 'unassigned', label: 'Unassigned' },
-  { key: 'in_progress', label: 'In progress' },
-  { key: 'waiting', label: 'Waiting' },
-  { key: 'resolved', label: 'Done' },
-  { key: 'public', label: 'Public reports' },
+// Labels (`board.filters.<key>`) and empty states (`board.empty.<key>`) are in the campground
+// namespace, read at render time.
+const BOARD_FILTERS: readonly BoardFilter[] = [
+  'all', 'mine', 'urgent', 'unassigned', 'in_progress', 'waiting', 'resolved', 'public',
 ];
 
 const selectClass =
   'rounded-btn border border-border bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-forest ' +
   'focus:border-sage focus:outline-none cursor-pointer';
-
-const EMPTY_MESSAGE: Record<BoardFilter, string> = {
-  all: 'Nothing on the board',
-  mine: 'Nothing assigned to you',
-  urgent: 'Nothing urgent right now',
-  unassigned: 'Everything has an owner',
-  in_progress: 'Nothing in progress',
-  waiting: 'Nothing is stuck waiting',
-  resolved: 'Nothing closed yet',
-  public: 'No public reports yet',
-};
 
 function csvCell(v: string | number | null): string {
   const s = v == null ? '' : String(v);
@@ -105,6 +88,8 @@ function downloadCsv(filename: string, text: string) {
 }
 
 export function Campground() {
+  const { t } = useTranslation(['campground', 'common']);
+  const lookup = useTranslationLookup();
   const tradeKeys = useTradeKeys();
   const labelOf = useTradeLabel();
   /**
@@ -117,7 +102,7 @@ export function Campground() {
    */
   const [params, setParams] = useSearchParams();
   const raw = params.get('tab');
-  const tab: Tab = TABS.some((t) => t.id === raw) ? (raw as Tab) : 'board';
+  const tab: Tab = TABS.includes(raw as Tab) ? (raw as Tab) : 'board';
   const setTab = (next: Tab) => {
     const nextParams = new URLSearchParams(params);
     if (next === 'board') nextParams.delete('tab');
@@ -231,19 +216,22 @@ export function Campground() {
     else if (filter === 'resolved') rows = rows.filter((i) => i.status === 'resolved');
     else if (filter === 'public') rows = rows.filter((i) => i.isPublicReport);
 
+    // Matched against the original AND the reader's translation, so a Spanish reader finds
+    // "gotera" and the director who wrote "leak" still finds it too.
     const q = search.trim().toLowerCase();
     if (q) {
       rows = rows.filter(
         (i) =>
-          i.title.toLowerCase().includes(q) ||
-          i.description.toLowerCase().includes(q) ||
+          searchableText(i.title, lookup('issues', i.id, 'title', i.title)).toLowerCase().includes(q) ||
+          searchableText(i.description, lookup('issues', i.id, 'description', i.description))
+            .toLowerCase().includes(q) ||
           i.locations.some((l) => l.toLowerCase().includes(q)),
       );
     }
 
     // Overdue first, then priority, then how long it has been sitting.
     return [...rows].sort((a, b) => compareWorkOrders(a, b, today));
-  }, [inLane, filter, search, today, currentUser.id]);
+  }, [inLane, filter, search, today, currentUser.id, lookup]);
 
   // Split the list only when the group can't see everything; otherwise flat is right.
   const showsSplitSections = role === 'staff' && !issuesSeeUnassigned;
@@ -281,10 +269,14 @@ export function Campground() {
 
   /** Exports exactly what is on screen: current lane, filter and search, in list order. */
   function handleExport() {
+    // The export is read by a person, in the language they asked for. The cells a person typed
+    // (title, description) stay as they were written: a spreadsheet is a record, not a view.
     const header = [
-      'Title', 'Trade', 'Status', 'Priority', 'Locations', 'Asset', 'Assignee', 'Reported by',
-      'Source', 'Vendor', 'Routine', 'Checklist', 'Due date', 'Assigned at', 'Resolved at',
-      'Minutes spent', 'Actual cost', 'Created', 'Last updated', 'Description',
+      t('csv.title'), t('csv.crew'), t('csv.status'), t('csv.priority'), t('csv.locations'),
+      t('csv.asset'), t('csv.assignee'), t('csv.reportedBy'), t('csv.source'), t('csv.vendor'),
+      t('csv.routine'), t('csv.checklist'), t('csv.dueDate'), t('csv.assignedAt'),
+      t('csv.resolvedAt'), t('csv.minutesSpent'), t('csv.actualCost'), t('csv.created'),
+      t('csv.lastUpdated'), t('csv.description'),
     ];
     const rows = filtered.map((i) => {
       const progress = checklistProgress(checklistItems, i.id);
@@ -292,15 +284,15 @@ export function Campground() {
         i.title,
         labelOf(i.trade),
         STATUS_LABELS[i.status],
-        i.priority,
+        t(`common:priority.${i.priority}`),
         i.locations.join('; '),
         i.assetId ? (assets.find((a) => a.id === i.assetId)?.name ?? '') : '',
         memberName(i.assigneeId) ?? '',
         i.isPublicReport ? (i.reporterName ?? '') : (memberName(i.reportedById) ?? ''),
-        i.isPublicReport ? 'Public report' : 'Staff',
+        i.isPublicReport ? t('csv.publicReport') : t('csv.staff'),
         i.vendorId ? (vendors.find((v) => v.id === i.vendorId)?.name ?? '') : '',
-        i.scheduleId ? 'Yes' : '',
-        progress ? `${progress.done} of ${progress.total}` : '',
+        i.scheduleId ? t('csv.yes') : '',
+        progress ? t('csv.progress', { done: progress.done, total: progress.total }) : '',
         i.dueDate ?? '',
         i.assignedAt ? format(new Date(i.assignedAt), 'yyyy-MM-dd HH:mm') : '',
         i.resolvedAt ? format(new Date(i.resolvedAt), 'yyyy-MM-dd HH:mm') : '',
@@ -342,7 +334,7 @@ export function Campground() {
           status: before.status,
         });
       }
-      setTakeError(`That did not save — ${error}. Open the work order and assign it there.`);
+      setTakeError(t('board.takeError', { error }));
       return;
     }
     addActivityEntry(issueId, {
@@ -393,14 +385,14 @@ export function Campground() {
   );
 
   const subtitle = season
-    ? `${season.name} · ${openTotal} open`
-    : `${openTotal} open`;
+    ? t('board.seasonOpenCount', { season: season.name, count: openTotal })
+    : t('board.openCount', { count: openTotal });
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <Topbar
         flush
-        title="Campground"
+        title={t('board.title')}
         subtitle={tradeFilter === 'all' ? subtitle : `${tradeLabel(tradeFilter)} · ${subtitle}`}
         actions={
           <div className="flex items-center gap-2">
@@ -411,17 +403,17 @@ export function Campground() {
                 onClick={handleExport}
                 disabled={filtered.length === 0}
                 title={filtered.length === 0
-                  ? 'Nothing to export'
-                  : `Export ${filtered.length} work order${filtered.length !== 1 ? 's' : ''} as CSV`}
+                  ? t('board.exportNothing')
+                  : t('board.exportTitle', { count: filtered.length })}
               >
                 <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Export CSV</span>
+                <span className="hidden sm:inline">{t('board.exportCsv')}</span>
               </Button>
             )}
             {can('createIssue') && (
               <Button size="sm" onClick={openLogIssueModal}>
                 <Plus className="h-3.5 w-3.5" />
-                Log work
+                {t('board.logWork')}
               </Button>
             )}
           </div>
@@ -431,16 +423,16 @@ export function Campground() {
       {/* Module tabs */}
       <div className="flex-shrink-0 overflow-x-auto overflow-y-hidden border-b border-border bg-paper-raised px-4 no-scrollbar sm:px-7">
         <div className="flex">
-          {TABS.map((t) => (
+          {TABS.map((id) => (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              key={id}
+              onClick={() => setTab(id)}
               className={`-mb-px whitespace-nowrap border-b-[3px] px-3 pb-2.5 pt-3 text-[13px] font-semibold
                           transition-colors sm:px-4 ${
-                tab === t.id ? 'border-red text-forest' : 'border-transparent text-ink-soft hover:text-forest'
+                tab === id ? 'border-red text-forest' : 'border-transparent text-ink-soft hover:text-forest'
               }`}
             >
-              {t.label}
+              {t(`board.tabs.${id}`)}
             </button>
           ))}
         </div>
@@ -467,10 +459,10 @@ export function Campground() {
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <div className="flex-shrink-0 bg-paper-raised px-4 sm:px-7">
               <div className="grid grid-cols-2 border-t border-border sm:flex sm:items-stretch">
-                <StatCard label="Urgent" value={urgentCount} hint="Needs action today" variant="red" />
-                <StatCard label="Open" value={openTotal} hint="Everything not done" />
-                <StatCard label="Waiting" value={waitingCount} hint="Vendor or part" variant="amber" />
-                <StatCard label="Done" value={doneCount} hint="This season" variant="green" />
+                <StatCard label={t('board.stats.urgent')} value={urgentCount} hint={t('board.stats.urgentHint')} variant="red" />
+                <StatCard label={t('board.stats.open')} value={openTotal} hint={t('board.stats.openHint')} />
+                <StatCard label={t('board.stats.waiting')} value={waitingCount} hint={t('board.stats.waitingHint')} variant="amber" />
+                <StatCard label={t('board.stats.done')} value={doneCount} hint={t('board.stats.doneHint')} variant="green" />
               </div>
             </div>
 
@@ -481,25 +473,25 @@ export function Campground() {
             <div className="flex-shrink-0 border-b border-border bg-paper-raised px-4 sm:px-7 py-2.5">
               <div className="flex flex-wrap items-center gap-2">
                 <select
-                  aria-label="Crew"
+                  aria-label={t('board.crewFilter')}
                   value={tradeFilter}
                   onChange={(e) => setTradeFilter(e.target.value as typeof tradeFilter)}
                   className={selectClass}
                 >
-                  <option value="all">All crews · {openTotal}</option>
-                  {tradeKeys.map((t) => (
-                    <option key={t} value={t}>{labelOf(t)} · {laneCounts[t] ?? 0}</option>
+                  <option value="all">{t('board.allCrews', { count: openTotal })}</option>
+                  {tradeKeys.map((k) => (
+                    <option key={k} value={k}>{labelOf(k)} · {laneCounts[k] ?? 0}</option>
                   ))}
                 </select>
 
                 <select
-                  aria-label="Status"
+                  aria-label={t('board.statusFilter')}
                   value={filter}
                   onChange={(e) => setFilter(e.target.value as BoardFilter)}
                   className={selectClass}
                 >
-                  {BOARD_FILTERS.map(({ key, label }) => (
-                    <option key={key} value={key}>{label} · {filterCounts[key]}</option>
+                  {BOARD_FILTERS.map((key) => (
+                    <option key={key} value={key}>{t(`board.filters.${key}`)} · {filterCounts[key]}</option>
                   ))}
                 </select>
 
@@ -509,12 +501,12 @@ export function Campground() {
                     onClick={() => { setTradeFilter('all'); setFilter('all'); }}
                     className="text-[12px] font-semibold text-ink-soft hover:text-forest px-1"
                   >
-                    Clear
+                    {t('board.clear')}
                   </button>
                 )}
 
                 <div className="ms-auto">
-                  <SearchInput value={search} onChange={setSearch} placeholder="Search work…" />
+                  <SearchInput value={search} onChange={setSearch} placeholder={t('board.searchPlaceholder')} />
                 </div>
               </div>
             </div>
@@ -526,7 +518,7 @@ export function Campground() {
                   <button
                     type="button"
                     onClick={() => setTakeError(null)}
-                    aria-label="Dismiss"
+                    aria-label={t('board.dismiss')}
                     className="flex-none text-red/60 hover:text-red"
                   >
                     <X className="h-4 w-4" />
@@ -539,9 +531,7 @@ export function Campground() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-[12.5px] font-semibold text-blue-text">
-                        {unreadThreads.length === 1
-                          ? 'New message on a job you are on'
-                          : `New messages on ${unreadThreads.length} jobs you are on`}
+                        {t('board.newMessages', { count: unreadThreads.length })}
                       </p>
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
                         {unreadThreads.slice(0, 4).map((i) => (
@@ -551,12 +541,12 @@ export function Campground() {
                             onClick={() => { selectIssue(i.id); setMobileDetailOpen(true); }}
                             className="text-[12px] text-blue-text underline underline-offset-2 hover:no-underline"
                           >
-                            {i.title}
+                            <TranslatedText source="issues" id={i.id} field="title" text={i.title} />
                           </button>
                         ))}
                         {unreadThreads.length > 4 && (
                           <span className="text-[12px] text-blue-text/70">
-                            and {unreadThreads.length - 4} more
+                            {t('board.andMore', { count: unreadThreads.length - 4 })}
                           </span>
                         )}
                       </div>
@@ -564,7 +554,7 @@ export function Campground() {
                     <button
                       type="button"
                       onClick={() => setMessagesDismissed(true)}
-                      aria-label="Dismiss"
+                      aria-label={t('board.dismiss')}
                       className="flex-none text-blue-text/60 hover:text-blue-text"
                     >
                       <X className="h-4 w-4" />
@@ -577,10 +567,10 @@ export function Campground() {
                 <div className="mb-4 mt-4 rounded-card border border-red/20 bg-red-bg px-4 py-3.5">
                   <div className="mb-1.5 flex items-center justify-between">
                     <p className="text-[12px] font-semibold text-red">
-                      {failedDevices.length} safety device{failedDevices.length !== 1 ? 's' : ''} failed last inspection
+                      {t('board.failedDevices', { count: failedDevices.length })}
                     </p>
                     <Link to="/safety" className="text-[11px] font-semibold text-red hover:underline">
-                      View in Safety →
+                      {t('board.viewInSafety')}
                     </Link>
                   </div>
                   <div className="space-y-0.5">
@@ -593,9 +583,9 @@ export function Campground() {
 
               {openRows.length === 0 && doneRows.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <p className="text-[15px] font-semibold text-ink-soft">{EMPTY_MESSAGE[filter]}</p>
+                  <p className="text-[15px] font-semibold text-ink-soft">{t(`board.empty.${filter}`)}</p>
                   <p className="mt-1 text-[13px] text-ink-faint">
-                    {search ? 'Try a different search term' : 'All clear for now'}
+                    {search ? t('board.emptyHintSearch') : t('board.emptyHintClear')}
                   </p>
                 </div>
               ) : showsSplitSections ? (
@@ -604,15 +594,15 @@ export function Campground() {
                 <div className="space-y-5">
                   {assignedToMe.length > 0 && (
                     <div>
-                      <GroupHeader label="Assigned to you" count={assignedToMe.length} />
+                      <GroupHeader label={t('board.assignedToYou')} count={assignedToMe.length} />
                       {assignedToMe.map(card)}
                     </div>
                   )}
                   {reportedByMe.length > 0 && (
                     <div>
-                      <GroupHeader label="You reported" count={reportedByMe.length} />
+                      <GroupHeader label={t('board.youReported')} count={reportedByMe.length} />
                       <p className="-mt-1 mb-2 text-[12px] text-ink-soft">
-                        Someone else will pick these up. You'll see status changes here.
+                        {t('board.youReportedHint')}
                       </p>
                       {reportedByMe.map(card)}
                     </div>
@@ -630,10 +620,10 @@ export function Campground() {
                         className="flex w-full items-center gap-2 text-[13px] font-semibold text-ink-soft hover:text-forest transition-colors"
                       >
                         <ChevronRight
-                          className={`h-4 w-4 transition-transform ${showDone ? 'rotate-90' : ''}`}
+                          className={`h-4 w-4 transition-transform rtl:-scale-x-100 ${showDone ? 'rotate-90 rtl:-rotate-90' : ''}`}
                           aria-hidden="true"
                         />
-                        Done
+                        {t('board.done')}
                         <span className="font-mono text-[12px] text-ink-faint">{doneRows.length}</span>
                       </button>
                       {showDone && <div className="pt-3">{doneRows.map(card)}</div>}
@@ -658,8 +648,8 @@ export function Campground() {
                   className="flex flex-shrink-0 items-center gap-1.5 border-b border-border px-4 py-3
                              text-[13px] font-medium text-ink hover:text-forest lg:hidden"
                 >
-                  <ChevronLeft className="h-4 w-4" />
-                  All work
+                  <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" />
+                  {t('board.allWork')}
                 </button>
                 {/* Keyed on the record: switching work orders resets the panel's own state
                     (a pending undo, a half-typed cost) by remounting, which is cheaper and
@@ -668,7 +658,7 @@ export function Campground() {
               </>
             ) : (
               <div className="flex h-full items-center justify-center text-[13px] text-forest/30">
-                Pick something to see the detail
+                {t('board.pickSomething')}
               </div>
             )}
           </div>

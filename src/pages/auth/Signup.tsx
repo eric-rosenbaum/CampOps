@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { CampCommandMark, CC_CREAM, CC_GREEN } from '@/components/shared/CampCommandMark';
+import { DEMO_SCHEDULING_URL } from '@/pages/landing/LandingPage';
 
 export function Signup() {
   const signUp = useAuthStore((s) => s.signUp);
@@ -99,7 +100,7 @@ export function Signup() {
             <p className="text-[13px] text-ink-soft leading-relaxed mb-5">
               CampCommand is set up for your camp by our team. Book a demo to get started, and we’ll create your account.
             </p>
-            <a href="https://www.campcommand.app" className="inline-flex items-center justify-center w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors mb-3">
+            <a href={DEMO_SCHEDULING_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-full bg-forest text-cream font-medium text-[13px] py-2.5 rounded-lg hover:bg-forest/90 transition-colors mb-3">
               Book a demo
             </a>
             <Link to="/login" className="text-[13px] font-medium text-forest hover:underline">Already have an account? Sign in</Link>

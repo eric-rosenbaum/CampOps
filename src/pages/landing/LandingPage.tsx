@@ -14,8 +14,9 @@ import './landing.css';
 const DEMO_MAILTO =
   'mailto:eric@campcommand.app?subject=CampCommand%20demo%20request&body=Hi%20%E2%80%94%20I%27d%20like%20to%20see%20a%20demo%20of%20CampCommand%20for%20our%20camp.';
 
-/** A Google Appointment Schedule link. Falls back to email if ever cleared. */
-const DEMO_SCHEDULING_URL: string = 'https://calendar.app.google/Cwfexway6Wswhf6p9';
+/** A Google Appointment Schedule link. Falls back to email if ever cleared. The Signup page
+ *  reads it too: that button once pointed at the landing page instead of the booking page. */
+export const DEMO_SCHEDULING_URL: string = 'https://calendar.app.google/FicXFEjrTU8ryfJ7A';
 
 type TabId = 'fac' | 'pool' | 'com' | 'ret' | 'saf';
 
